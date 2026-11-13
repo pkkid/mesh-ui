@@ -3,8 +3,7 @@
  * fallback list, one network with its embedded eeros, speed test history and
  * permissions. See docs/eero-api/endpoints.md.
  *
- * `GET /account` lives here because network.list needs it; if the account
- * area adds its own, the first registered route answers.
+ * `GET /account`, which network.list also reads, lives in ./account.ts.
  */
 
 import { ok, type Route } from "../server";
@@ -19,7 +18,6 @@ const time = (v: string | null): number | null => {
 };
 
 export const routes: Route[] = [
-  { method: "GET", path: "/account", handle: ({ state }) => ok(state.account) },
   {
     method: "GET",
     path: "/networks",

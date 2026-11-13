@@ -39,14 +39,3 @@ export type MeshApi = {
   /** Window-only, not a command. */
   setTitlebarColors(colors: TitlebarColors): void;
 };
-
-// ---------------------------------------------------------------------------
-// Prototype bridge, kept only so the unused prototype LoginView still
-// compiles until M1.9 replaces it with the sign-in pages. Both calls reject
-// without reaching eero. Remove with LoginView.
-
-/** @deprecated Use `execute` with the auth.login commands. */
-export type LegacyMeshApi = {
-  startLogin(login: string): Promise<void>;
-  verify(code: string): Promise<void>;
-};
