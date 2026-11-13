@@ -15,221 +15,100 @@ UI do not know which one is active. Every command must work on both.
 
 ## The interface
 
-A sketch; the real file is `src/core/backend.ts`. Network-scoped methods
-take the network id first. Methods throw `BackendError` (below), which the
-engine maps to error codes.
+The real file is `src/core/backend.ts`; this is a summary. Network-scoped
+methods take the network id first. Methods throw `BackendError` (from
+`src/core/errors.ts`), which the engine maps to error codes.
+
+The interface is split into one sub-interface per area, named in the
+singular to match the area files (`src/core/commands/<area>.ts` and
+`src/core/eero/backend/<area>.ts`):
 
 ```ts
-import type * as M from "./model";
-
-export interface Backend {
-  readonly kind: "eero" | "demo";
-
-  // auth and account
-  auth: {
-    start(login: string): Promise<void>;
-    verify(code: string): Promise<void>;          // session becomes signed in
-    resend(): Promise<void>;
-    logout(): Promise<void>;                       // best effort
-  };
-  account: {
-    get(): Promise<M.Account>;
-    setName(name: string): Promise<void>;
-    setEmail(email: string): Promise<void>;
-    verifyEmail(code: string): Promise<void>;
-    setPhone(phone: string): Promise<void>;
-    verifyPhone(code: string): Promise<void>;
-    setConsents(c: { marketingEmails: boolean }): Promise<void>;
-    setPush(p: { networkOffline: boolean; nodeOffline: boolean }): Promise<void>;
-    delete(): Promise<void>;
-  };
-
-  // network
-  networks: {
-    list(): Promise<M.NetworkSummary[]>;
-    get(net: Id): Promise<M.Network>;
-    health(net: Id): Promise<M.NetworkHealth>;
-    permissions(net: Id): Promise<M.Permissions>;
-    setNickname(net: Id, nickname: string): Promise<void>;
-    restart(net: Id): Promise<void>;
-  };
-
-  // internet
-  internet: {
-    get(net: Id): Promise<M.Internet>;
-    runSpeedTest(net: Id): Promise<{ startedAt: Iso }>;
-    speedTests(net: Id, from: Iso, to: Iso): Promise<M.SpeedTest[]>;
-    usage(net: Id, q: { scope: M.UsageSeries["scope"]; id: Id | null; from: Iso; to: Iso; cadence: "hourly" | "daily"; timezone: string }): Promise<M.UsageSeries>;
-    breakdown(net: Id, q: { by: "device" | "profile" | "eero"; from: Iso; to: Iso }): Promise<M.UsageBreakdown>;
-  };
-
-  // eeros
-  eeros: {
-    list(net: Id): Promise<M.Eero[]>;
-    get(net: Id, eero: Id): Promise<M.Eero>;
-    rename(net: Id, eero: Id, location: string): Promise<void>;
-    restart(net: Id, eero: Id): Promise<void>;
-    setLed(net: Id, eero: Id, led: { on?: boolean; brightness?: number }): Promise<void>;
-    blink(net: Id, eero: Id, seconds: number): Promise<void>;
-    setNightlight(net: Id, eero: Id, n: M.Nightlight): Promise<void>;
-    ports(net: Id, eero: Id): Promise<M.EeroPorts>;
-    portAction(net: Id, eero: Id, port: number, action: PortAction): Promise<void>;
-    firmwareHistory(net: Id, eero: Id, limit: number): Promise<M.FirmwareEntry[]>;
-    remove(net: Id, eero: Id): Promise<void>;
-    placementTest(net: Id, eero: Id): Promise<M.PlacementResult>;
-    coverageScan(net: Id): Promise<M.CoverageScan>;
-    upgradeReport(net: Id): Promise<M.UpgradeReport>;
-  };
-
-  // devices
-  devices: {
-    list(net: Id): Promise<M.Device[]>;            // includes blocked
-    get(net: Id, device: Id): Promise<M.Device>;
-    requestBurst(net: Id): Promise<{ nextBurstAt: Iso }>;
-    update(net: Id, device: Id, patch: { paused?: boolean; nickname?: string; type?: DeviceType }): Promise<void>;
-    setProfile(net: Id, device: Id, profile: Id | null): Promise<void>;
-    block(net: Id, device: Id): Promise<void>;
-    unblock(net: Id, device: Id): Promise<void>;
-  };
-
-  // profiles
-  profiles: {
-    list(net: Id): Promise<M.Profile[]>;
-    get(net: Id, profile: Id): Promise<M.Profile>;
-    create(net: Id, p: { name: string; deviceIds: Id[] }): Promise<M.Profile>;
-    update(net: Id, profile: Id, patch: { name?: string; paused?: boolean; deviceIds?: Id[] }): Promise<void>;
-    delete(net: Id, profile: Id): Promise<void>;
-    addSchedule(net: Id, profile: Id, s: Omit<M.Schedule, "id">): Promise<M.Schedule>;
-    updateSchedule(net: Id, profile: Id, schedule: Id, patch: Partial<Omit<M.Schedule, "id">>): Promise<void>;
-    removeSchedule(net: Id, profile: Id, schedule: Id): Promise<void>;
-  };
-
-  // guest and Wi-Fi
-  guest: {
-    get(net: Id): Promise<M.GuestNetwork>;
-    set(net: Id, patch: { enabled?: boolean; name?: string }): Promise<void>;
-    setPassword(net: Id, password: string | null): Promise<void>;
-    share(net: Id): Promise<M.WifiShare>;           // sensitive
-  };
-  wifi: {
-    get(net: Id): Promise<M.WifiSettings>;
-    password(net: Id): Promise<string>;             // sensitive
-    setName(net: Id, name: string): Promise<void>;
-    setPassword(net: Id, password: string): Promise<void>;
-    setSecurity(net: Id, s: { band24?: Security; band5?: Security }): Promise<void>;
-    setHide5g(net: Id, enabled: boolean): Promise<void>;
-  };
-
-  // settings: one patch method per eero endpoint family
-  settings: {
-    get(net: Id): Promise<M.NetworkSettings>;
-    patch(net: Id, patch: SettingsPatch): Promise<void>;  // PUT {net}/settings
-    setFastTransition(net: Id, on: boolean): Promise<void>;
-    setMlo(net: Id, mode: "disabled" | "single" | "multi"): Promise<void>;
-    setPowerSaving(net: Id, p: { enabled?: boolean; scheduleEnabled?: boolean }): Promise<void>;
-    addPowerSchedule(net: Id, s: Omit<M.Schedule, "id">): Promise<M.Schedule>;
-    updatePowerSchedule(net: Id, id: Id, patch: Partial<Omit<M.Schedule, "id">>): Promise<void>;
-    removePowerSchedule(net: Id, id: Id): Promise<void>;
-    setLegacyMode(net: Id, on: boolean): Promise<void>;
-    setSimpleSetup(net: Id, on: boolean): Promise<void>;
-    setThread(net: Id, t: { enabled?: boolean; credentialSync?: boolean }): Promise<void>;
-    threadCredentials(net: Id): Promise<M.ThreadCredentials>; // sensitive
-    resetThread(net: Id): Promise<void>;
-  };
-
-  // routing
-  routing: {
-    get(net: Id): Promise<{ reservations: M.Reservation[]; forwards: M.Forward[]; pinholes: M.Pinhole[]; lan: M.LanMap }>;
-    addReservation(net: Id, r: { mac: string; ip: string; description: string }): Promise<M.Reservation>;
-    updateReservation(net: Id, id: Id, patch: { ip?: string; description?: string }): Promise<void>;
-    removeReservation(net: Id, id: Id, removeForwards: boolean): Promise<void>;
-    addForward(net: Id, f: Omit<M.Forward, "id" | "deviceId">): Promise<M.Forward>;
-    updateForward(net: Id, id: Id, patch: Partial<Omit<M.Forward, "id" | "deviceId">>): Promise<void>;
-    removeForward(net: Id, id: Id): Promise<void>;
-    addPinhole(net: Id, p: { deviceId: Id; protocol: "tcp" | "udp" | "both"; port: string }): Promise<M.Pinhole>;
-    removePinhole(net: Id, id: Id): Promise<void>;
-  };
-
-  // updates, admins, activity, diagnostics
-  updates: {
-    get(net: Id): Promise<M.Updates>;
-    install(net: Id): Promise<void>;
-    setHour(net: Id, hour: number): Promise<void>;
-    notes(net: Id): Promise<M.ReleaseNotes | null>;
-  };
-  admins: {
-    list(net: Id): Promise<M.AdminList>;
-    invite(net: Id, nickname: string | null): Promise<{ inviteId: Id; inviteUrl: string; expiresAt: Iso | null }>;
-    cancelInvite(net: Id, invite: Id): Promise<void>;
-    remove(net: Id, admin: Id): Promise<void>;
-    transfer(net: Id, to: { name: string; email: string; phone?: string }): Promise<void>;
-  };
-  activity: {
-    events(net: Id, cursor: string | null): Promise<{ events: M.NetworkEvent[]; nextCursor: string | null }>;
-    notifications(net: Id, cursor: string | null): Promise<M.NotificationPage>;
-    markRead(net: Id): Promise<void>;
-    notificationSettings(net: Id): Promise<Record<string, boolean>>;
-    setNotificationSettings(net: Id, map: Record<string, boolean>): Promise<void>;
-  };
-  diagnostics: {
-    latest(net: Id): Promise<M.DiagnosticsResult | null>;
-    run(net: Id, q: { symptom?: string; deviceId?: Id }): Promise<M.DiagnosticsResult>;
-    support(net: Id): Promise<M.SupportInfo>;
-  };
+export interface BackendAreas {
+  auth: AuthBackend;         // status, start, verify, resend, logout
+  account: AccountBackend;   // get
+  network: NetworkBackend;   // list, get, health, permissions
+  internet: InternetBackend; // get, speedTests
+  usage: UsageBackend;       // series, breakdown
+  eero: EeroBackend;         // list, get
+  device: DeviceBackend;     // list (includes blocked), get, requestBurst
+  profile: ProfileBackend;   // list, get
+  events: EventsBackend;     // list(net, cursor): one page, newest first
 }
 
-type SettingsPatch = {
-  dns?: { mode: "automatic" | "custom"; servers?: string[]; ipv6Servers?: string[]; caching?: boolean };
-  dhcp?: { mode: "automatic" | "custom"; subnetIp?: string; subnetMask?: string; startIp?: string; endIp?: string };
-  ipv6?: boolean;
-  wan?: { mode: "dhcp" | "static" | "pppoe"; static?: { ip: string; mask: string; router: string }; pppoe?: { username: string; password: string }; vlan?: number | null };
-  connectionMode?: "nat" | "bridged" | "ipPassthrough";
-  natRandomization?: boolean;
-  upnp?: boolean;
-  sqm?: boolean;
-  bandSteering?: boolean;
-  timezone?: string;
-};
-
-export class BackendError extends Error {
-  constructor(
-    readonly code: "not_signed_in" | "rate_limited" | "eero_error" | "network_error" | "bad_params",
-    message: string,
-    readonly detail?: { status?: number; eeroError?: string; retryAfterSec?: number },
-  ) { super(message); }
+export interface Backend extends BackendAreas {
+  readonly kind: "eero" | "demo";
 }
 ```
 
-Composite results (`health.check`, `support.report`, `DeviceList.summary`,
-`Profile.nextChange`, `LanMap`) are computed in commands or shared helpers
-in `src/core`, not in the backend, so the demo backend gets them for free.
+The file holds the M1 methods, which are all reads plus sign-in. Later
+milestones add their writes (renames, pause, restarts, settings) to the
+matching area, and new areas (guest, Wi-Fi, settings, routing, updates,
+admins, notifications, diagnostics) as they are built. There is no
+`activity` area: events have their own `events` area, and notifications
+will get theirs.
+
+`SecretStore`, the host contract for the session token, is defined in the
+same file.
+
+### Composing a backend
+
+`composeBackend(kind, areas)` builds a `Backend` from the areas given and
+fills every missing one with `unimplementedArea(kind, area)`, whose methods
+all reject with `eero_error` "`<area>.<method>` is not available in the
+`<kind>` backend yet". So the engine and every surface run while a backend
+is only partly built. The eero backend is made this way: it registers one
+factory per area file in `src/core/eero/backend/index.ts`. The demo backend
+(`src/core/demo/backend.ts`) implements every M1 area itself.
+
+### Derived fields are filled by core
+
+Backends return what eero (or the fixtures) know. Fields computed from
+other data or from app settings are filled in by core, so the demo backend
+gets them for free and both backends agree:
+
+- `NetworkSummary.selected` (backends may leave it `false`),
+- `Internet.planMbps` (from app settings; backends omit it),
+- `SpeedTest.rating` (backends leave it `null`),
+- `Profile.nextChange` (backends may leave it `null`),
+- `usage.breakdown` rows: backends return them unsorted and unfiltered;
+  core sorts them and computes each row's `share`,
+- summaries such as `DeviceList.summary`, and composites such as
+  `health.check` and `support.report`.
+
+The once-a-minute limit on `device.requestBurst` is also enforced in core.
 
 ## eero backend
 
-`src/core/eero/` holds three layers. Nothing outside it imports from it
-except `createEeroBackend`.
+`src/core/eero/` holds the client and the backend. Nothing outside it
+imports from it except `createEeroBackend` (and the CLI host, which builds
+the backend).
 
 | File | Job |
 | --- | --- |
-| `client.ts` | The HTTP client: base URL, headers, cookie, envelope, refresh, rotation, rate limiter, timeouts, error mapping. |
-| `urls.ts` | id-to-url map filled from every response (`url`, `resources.*`), plus fallbacks (`{net}/x`) and version pins (`/2.3/` device writes, `/2.4/` scans, `/2.2/` support). |
-| `map.ts` | Raw shapes (loose types with every field optional) to model objects. Pure functions, unit tested with captured-shape fixtures. |
-| `backend.ts` | Implements `Backend` by calling the client and mappers. |
+| `client.ts` | `EeroClient`: base URL, headers, cookie, envelope, sign-in, refresh, rotation, timeouts, error mapping. |
+| `ratelimit.ts` | `RateLimiter`: request budget, in-flight cap, serial writes, 429 pause. |
+| `urls.ts` | Origin check, version prefixes (`/2.3/` device writes), ids from links, path redaction for logs. |
+| `raw.ts` | Raw eero shapes (every field optional) and the lenient `asList` helper. |
+| `backend/index.ts` | `createEeroBackend`: builds one `EeroContext` (`options`, `client`) and composes the area factories. |
+| `backend/<area>.ts` | One file per area, each exporting `EeroArea<"area">`: calls `ctx.client` and maps raw shapes to model objects. Added by the stories that build each area. |
 
 ### Client rules
 
 Summary of [eero-client.md](eero-client.md), which is the full reference:
 
-- Base `https://api-user.e2ro.com`. The client refuses any other origin for
-  requests that carry the session (the release notes manifest is fetched
-  through a separate cookieless `fetchPublic`, https only, 1 MB cap).
+- Base `https://api-user.e2ro.com`. The only other origin it accepts is a
+  loopback `http` fake eero server (dev and tests). The client refuses any
+  other origin for requests that carry the session. The release notes
+  manifest is to be fetched through a separate cookieless call, https only,
+  1 MB cap (not yet built in M1).
 - Headers: `Accept: application/json`, `X-Accept-Language: en-US`, an
   app-like `User-Agent` (default in the style of
   `eero-ios/2026.8.1 (iPhone; iOS 18.5)`, overridable in app settings),
   cookie `s=<token>`.
 - Bodies per endpoint: JSON, form (`application/x-www-form-urlencoded`,
-  booleans `true` / `false`) or empty-JSON (`""`). The endpoint table in
-  `client.ts` says which; see the notes column in
+  booleans `true` / `false`) or empty-JSON (`""`). The backend area that
+  makes the call states the encoding on each request; see the notes column in
   [commands.md](commands.md#catalogue).
 - GET params go in the query string, never a body. Times are
   `YYYY-MM-DDTHH:MM:SSZ`.
@@ -265,7 +144,8 @@ Summary of [eero-client.md](eero-client.md), which is the full reference:
 
 ### Mapping
 
-`map.ts` is the one place eero field names appear. Each mapper is
+The area files in `backend/` (and the raw types in `raw.ts`) are the one
+place eero field names appear. Each mapper is
 defensive: unknown enum values become `null` or `"unknown"`, and a missing
 nested object never throws. Field-by-field sources are in
 [data-model.md](data-model.md). Mappers are tested against JSON shaped like
@@ -276,9 +156,9 @@ the open source clients' redacted fixtures, rewritten with invented values.
 `src/core/demo/` implements `Backend` over a mutable in-memory copy of the
 fixtures.
 
-- **Writes apply.** `devices.update({ paused: true })` flips the fixture,
-  `profiles.delete` moves devices to unassigned, `routing.addForward`
-  appears in `routing.get`. Restarts set the network or eero to `updating`
+- **Writes apply.** pausing a device flips the fixture,
+  deleting a profile moves its devices to unassigned, and a new port
+  forward appears in the routing list. Restarts set the network or eero to `updating`
   and back to `online` after a short simulated delay (5 s, not minutes), so
   the restart flow can be checked.
 - **Auth.** Any login is accepted; the code `000000` (or any 6 digits)
@@ -323,8 +203,9 @@ fixtures.
 
 The second sandbox layer, in `test/fake-eero/`: a small Node HTTP server
 that answers like `api-user.e2ro.com`, built from the shapes in
-[../eero-api/endpoints.md](../eero-api/endpoints.md). The real `eero` backend is pointed at it with a
-base URL override that only tests can set.
+[../eero-api/endpoints.md](../eero-api/endpoints.md). The real `eero` backend is pointed at it with the
+`origin` option (dev and tests only; `checkOrigin` in `urls.ts` accepts
+only a loopback `http` origin besides the real API).
 
 It must let tests prove:
 

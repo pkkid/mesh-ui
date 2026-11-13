@@ -79,6 +79,7 @@ Commands
 
 Global options
   --demo                   Use the demo backend (also MESH_UI_DEMO=1)
+  --fake                   Dev builds only: use the local fake eero server
   --network <id|name>      Network for this run (default: the selected one)
   --format <json|table>    Output format (default: table on a TTY, json otherwise)
   --quiet                  Print nothing on success; errors still go to stderr
@@ -226,10 +227,29 @@ mesh-ui login
 
 - `src/cli/` holds argument parsing, output formatting and the launcher relay.
   It imports `src/core` and nothing from the renderer.
-- The CLI host (`src/cli/host.ts`) builds the engine with the Electron
-  `SecretStore` and settings paths from `src/main`'s host module, so the paths
-  and storage rules are identical to the app.
+- `src/cli/index.ts` holds the entry points and the host contract:
+  - `runCli(argv, io, host)` parses the global flags, picks the subcommand
+    and the backend mode (`demo`, `fake` or `live`), and returns an exit
+    code. It never exits the process.
+  - `cliMain(argv, host?)` runs the CLI as a whole process: it calls
+    `runCli`, exits 130 on Ctrl C, and waits for stdout and stderr to drain
+    before `process.exit`, so piped output is never cut short.
+  - `CliHost` is what differs per runtime: version, `dev` (allows `--fake`),
+    `isTTY`, env, `createEngine({ mode, surface, userDataDir })`, stdin and
+    a terminal prompt. The engine is built once per run and shared by the
+    subcommand (and by `mcp`, see [mcp.md](mcp.md#implementation)).
+  - `nodeHost()` is the host for tests and the dev launcher. It serves the
+    demo backend and the fake eero server only (`--fake` needs
+    `MESH_UI_FAKE_ORIGIN` set to a loopback origin), with an in-memory
+    session. A live request fails with "This build has no live backend".
+    Settings go to `settings.json` in `--user-data-dir` (or
+    `MESH_UI_USER_DATA_DIR`) when given, else stay in memory.
+- The live host is the Electron one: `src/main` builds the engine with the
+  Electron `SecretStore` and the app's settings paths and passes it to
+  `runCli` as a `CliHost`, so the paths and storage rules are identical to
+  the app. Not yet built in M1: the `--cli` hand-off in `src/main`.
 - stdout carries only results (or, for `mcp`, the protocol). Logs and progress
   go to stderr.
-- Commands from the CLI and MCP are recorded in the audit log (see
-  [security.md](security.md#audit-log)).
+- Commands from the CLI and MCP are to be recorded in the audit log (see
+  [security.md](security.md#audit-log)). Not yet built in M1: there is no
+  audit log yet.

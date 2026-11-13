@@ -2,8 +2,8 @@
 
 `mesh-ui mcp` runs a Model Context Protocol server on stdio so AI agents can
 manage the network with the same commands as the UI and CLI. It is part of the
-CLI (see [cli.md](cli.md)), runs in the same headless Electron process, and
-uses the same session.
+CLI (see [cli.md](cli.md)) and runs on the engine the CLI host builds, so it
+uses the same backend and session as `mesh-ui run`.
 
 ## Setup
 
@@ -72,11 +72,17 @@ as tools. Agents cannot sign in; they use the session the user created.
 
 A tool call runs `engine.execute(id, arguments)` and returns:
 
-- on success, `structuredContent` with the command's `result`, plus one text
-  block holding the same JSON (for clients that ignore structured content);
+- on success, `structuredContent` with the command's `result` when it is a
+  plain object. MCP requires an object there, so any other result (an
+  array, a string, a number, `null`) is wrapped as `{ "result": ... }`. One
+  text block always holds `JSON.stringify(result)` exactly, unwrapped (for
+  clients that ignore structured content);
 - on failure, `isError: true` with a text block
-  `{"code": "needs_confirm", "message": "..."}`. Engine errors never become
-  protocol errors; only a malformed MCP request does.
+  `{"code": "needs_confirm", "message": "..."}`. A call to a tool that does
+  not exist or is not exposed (hidden, or filtered out by `--read-only` or
+  `--allow`) returns `isError` with code `unknown_command` and never reaches
+  the engine. Engine errors never become protocol errors; only a malformed
+  MCP request does.
 
 The result is the same JSON the UI and CLI get, so an agent's output can be
 replayed as a CLI script line.
@@ -98,8 +104,9 @@ The MCP server can control the user's network, so:
 - **Sensitive results** (`wifi.password.get`, `wifi.share`, `guest.share`) are
   labelled in their descriptions. `--read-only` still exposes them, since they
   are queries; use `--allow` to leave them out.
-- **Audit.** Every tool call is appended to the audit log, shown in App &
-  account (see [security.md](security.md#audit-log)).
+- **Audit.** Every tool call is to be appended to the audit log, shown in App
+  & account (see [security.md](security.md#audit-log)). Not yet built in M1:
+  the engine writes no audit log.
 
 ## Not included
 
@@ -112,8 +119,14 @@ The MCP server can control the user's network, so:
 
 - `src/cli/mcp.ts` uses the official TypeScript MCP SDK
   (`@modelcontextprotocol/sdk`) with the stdio transport.
-- Tools are built from `registry.list()` at start-up; there is no per-tool
-  code. A new command appears as a tool automatically.
+- `runMcp(argv, io, makeEngine)` parses the `mcp` flags and gets its engine
+  from `makeEngine`. The `mcp` subcommand passes the CLI host's engine
+  (`ctx.engine("mcp")`), so the server runs on whatever backend the host
+  serves (demo and fake today; live once the Electron host lands). Without
+  a factory it serves `--demo` only.
+- `createMcpServer(engine, opts)` builds the tools from `engine.commands()`
+  at start-up; there is no per-tool code. A new command appears as a tool
+  automatically.
 - stdout is reserved for the protocol. Logs go to stderr.
 - Tests start the server in-process with the demo backend, list tools, check
   names, schemas and annotations, and call a `query`, a `write` and a
