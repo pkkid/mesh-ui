@@ -103,7 +103,7 @@
           <div class="grow"><div class="lb"><mark>Pause</mark> device...</div><div class="id">device.pause</div></div>
           <div class="r"><span class="eff w">write</span><span class="keys"><span>Ctrl</span><span>⇧</span><span>D</span></span></div></div>
         <div class="it"><div class="ico" style="--c:var(--c-band24)"><i data-lucide="wifi"></i></div>
-          <div class="grow"><div class="lb"><mark>Pause</mark> 5 and 6 GHz for 2.4 GHz setup</div><div class="id">wifi.band24_only.start</div></div>
+          <div class="grow"><div class="lb"><mark>Pause</mark> 5 and 6 GHz for 2.4 GHz setup</div><div class="id">wifi.hide5g.set</div></div>
           <div class="r"><span class="eff d">disruptive</span><span class="keys none">-</span></div></div>
         <div class="it"><div class="ico" style="--c:var(--s-red)"><i data-lucide="calendar-clock"></i></div>
           <div class="grow"><div class="lb">Add a scheduled <mark>pause</mark>...</div><div class="id">profile.schedule.add</div></div>
@@ -118,7 +118,7 @@
         <div class="grp"><i data-lucide="monitor-smartphone" style="width:12px;height:12px"></i>Devices<span class="n">2</span></div>
         <div class="it"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="gamepad-2"></i></div>
           <div class="grow row-6"><span class="lb">Leo's Switch</span><span class="pill warn">Paused</span><span class="ctx">· Leo · Upstairs Hall</span></div>
-          <div class="r"><span class="ctx">Unpause</span><span class="eff w">write</span></div></div>
+          <div class="r"><span class="ctx">Resume</span><span class="eff w">write</span></div></div>
         <div class="it"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="gamepad-2"></i></div>
           <div class="grow row-6"><span class="lb">PlayStation 5</span><span class="ctx">· Alex · Living Room · 48 GB today</span></div>
           <div class="r"><span class="ctx"><mark>Pause</mark></span><span class="eff w">write</span></div></div>
@@ -130,7 +130,7 @@
         <div class="it"><div class="avatar" style="--c:var(--s-red);width:24px;height:24px;font-size:11px">M</div>
           <div class="grow row-6"><span class="lb">Mia</span><span class="pill info">Scheduled</span><span class="ctx">· Bedtime 9 PM to 7 AM</span></div>
           <div class="r"><span class="ctx"><mark>Pause</mark> now</span><span class="eff w">write</span></div></div>
-        <div class="row-6 xs muted" style="margin:14px 10px 0;padding:10px 12px;border-radius:10px;border:1px dashed var(--border-2)"><i data-lucide="lightbulb" style="width:14px;height:14px;color:var(--muted)"></i>Type <span class="keys"><span>&gt;</span></span> to search all 64 commands by id, like <span class="mono fg2">&gt;eero.reboot</span></div>
+        <div class="row-6 xs muted" style="margin:14px 10px 0;padding:10px 12px;border-radius:10px;border:1px dashed var(--border-2)"><i data-lucide="lightbulb" style="width:14px;height:14px;color:var(--muted)"></i>Type <span class="keys"><span>&gt;</span></span> to search all 64 commands by id, like <span class="mono fg2">&gt;eero.restart</span></div>
       </div>
 
       <!-- Preview -->
@@ -142,28 +142,26 @@
             <div class="mono xs muted mt-4">profile.pause · src/core/commands/profile.ts</div>
           </div>
         </div>
-        <div class="sm fg2" style="margin-top:-4px">Cuts internet for every device in a profile, for a while or until resumed. Reversible, no confirm needed.</div>
+        <div class="sm fg2" style="margin-top:-4px">Cuts internet for every device in a profile until resumed. Reversible, no confirm needed.</div>
 
         <div>
           <div class="lab">Params<span class="ml-auto muted xxs">zod schema · Tab to edit</span></div>
           <div class="pf">
             <span class="k">profile<small>*</small></span>
-            <div class="input select" style="height:30px"><span class="avatar" style="--c:var(--s-aqua);width:18px;height:18px;font-size:9.5px">L</span>Leo <span class="xxs warning">already paused, sets 30 min</span></div>
-            <span class="k">minutes</span>
-            <div class="seg" style="justify-self:start"><span>15</span><span class="on">30</span><span>60</span><span>Until resumed</span></div>
+            <div class="input select" style="height:30px"><span class="avatar" style="--c:var(--s-red);width:18px;height:18px;font-size:9.5px">M</span>Mia <span class="xxs muted">scheduled, Bedtime at 9 PM</span></div>
           </div>
         </div>
 
         <div>
           <div class="lab"><i data-lucide="terminal" style="width:12px;height:12px;color:var(--muted)"></i>CLI<span class="ml-auto"><button class="btn sm ghost" style="height:20px"><i data-lucide="copy"></i>Copy</button></span></div>
-<pre class="cb"><span class="p">$ </span><span class="f">mesh-ui</span> run <span class="k2">profile.pause</span> --params <span class="s">'{"profile":"Leo","minutes":30}'</span></pre>
+<pre class="cb"><span class="p">$ </span><span class="f">mesh-ui</span> run <span class="k2">profile.pause</span> --params <span class="s">'{"profile":"Mia"}'</span></pre>
         </div>
 
         <div>
           <div class="lab"><i data-lucide="bot" style="width:12px;height:12px;color:var(--muted)"></i>MCP tool <span class="mono" style="letter-spacing:0;text-transform:none;color:var(--fg-2)">profile_pause</span><span class="ml-auto row-6"><span class="badge">readOnly: false</span><span class="badge">destructive: false</span></span></div>
-<pre class="cb">{ <span class="k2">"name"</span>: <span class="s">"profile_pause"</span>, <span class="k2">"arguments"</span>: { <span class="k2">"profile"</span>: <span class="s">"Leo"</span>, <span class="k2">"minutes"</span>: <span class="n2">30</span> } }
+<pre class="cb">{ <span class="k2">"name"</span>: <span class="s">"profile_pause"</span>, <span class="k2">"arguments"</span>: { <span class="k2">"profile"</span>: <span class="s">"Mia"</span> } }
 <span class="p">// same result the UI and CLI get</span>
-{ <span class="k2">"ok"</span>: <span class="c">true</span>, <span class="k2">"result"</span>: { <span class="k2">"profile"</span>: <span class="s">"Leo"</span>, <span class="k2">"paused"</span>: <span class="c">true</span>, <span class="k2">"until"</span>: <span class="s">"15:42"</span>, <span class="k2">"devices"</span>: <span class="n2">3</span> } }</pre>
+{ <span class="k2">"ok"</span>: <span class="c">true</span>, <span class="k2">"result"</span>: { <span class="k2">"profile"</span>: <span class="s">"Mia"</span>, <span class="k2">"paused"</span>: <span class="c">true</span>, <span class="k2">"devices"</span>: <span class="n2">4</span> } }</pre>
         </div>
 
         <div class="surf">
@@ -174,7 +172,7 @@
         <div class="xxs muted" style="margin-top:-6px">One registry, one <span class="mono">engine.execute(id, params)</span>. Disruptive and destructive commands need <span class="mono">confirm: true</span> on every surface.</div>
 
         <div class="row gap-8" style="margin-top:auto">
-          <button class="btn primary"><i data-lucide="play"></i>Pause Leo for 30 min<span class="keys" style="margin-left:4px"><span style="background:transparent;color:inherit;border-color:color-mix(in srgb, currentColor 35%, transparent);box-shadow:none">↵</span></span></button>
+          <button class="btn primary"><i data-lucide="play"></i>Pause Mia<span class="keys" style="margin-left:4px"><span style="background:transparent;color:inherit;border-color:color-mix(in srgb, currentColor 35%, transparent);box-shadow:none">↵</span></span></button>
           <button class="btn"><i data-lucide="file-json"></i>Add to script.jsonl</button>
         </div>
       </div>

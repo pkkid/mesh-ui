@@ -105,7 +105,7 @@
     <div class="grid g2" id="ecards"></div>
   </section>
 
-  <!-- Traffic + clients by band -->
+  <!-- Traffic, clients by band and network actions -->
   <div class="grid g-2-1" style="gap:28px">
     <section class="section">
       <div class="section-h"><h2>Data usage by eero</h2><span class="sub">Download and upload per hour, stacked</span>
@@ -115,42 +115,31 @@
         <div id="ch-eero"></div>
       </div>
     </section>
-    <section class="section">
-      <div class="section-h"><h2>Clients by band</h2></div>
-      <div class="card pad col gap-16">
-        <div class="row gap-24" style="align-items:center">
-          <div id="dn-band"></div>
-          <div class="col gap-8 grow">
-            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band5)"></i><span class="muted">5 GHz</span></span><b class="m tnum">14</b></div>
-            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band24)"></i><span class="muted">2.4 GHz</span></span><b class="m tnum">9</b></div>
-            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band6)"></i><span class="muted">6 GHz</span></span><b class="m tnum">4</b></div>
-            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-wired)"></i><span class="muted">Wired</span></span><b class="m tnum">4</b></div>
+    <div class="col" style="gap:28px">
+      <section class="section">
+        <div class="section-h"><h2>Clients by band</h2></div>
+        <div class="card pad col gap-16">
+          <div class="row gap-24" style="align-items:center">
+            <div id="dn-band"></div>
+            <div class="col gap-8 grow">
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band5)"></i><span class="muted">5 GHz</span></span><b class="m tnum">14</b></div>
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band24)"></i><span class="muted">2.4 GHz</span></span><b class="m tnum">9</b></div>
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band6)"></i><span class="muted">6 GHz</span></span><b class="m tnum">4</b></div>
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-wired)"></i><span class="muted">Wired</span></span><b class="m tnum">4</b></div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- Add / replace + network actions -->
-  <div class="grid g-2-1" style="gap:28px">
-    <section class="section">
-      <div class="section-h"><h2>Add or replace eero</h2><span class="sub">Guided setup with placement test</span></div>
-      <div class="grid g2" style="gap:12px">
-        <div class="opt"><div class="ico lg"><i data-lucide="router"></i></div><div class="grow"><div class="m">Add indoor eero</div><div class="xs muted mt-4">Place it, connect over Bluetooth, test placement, pick a room.</div></div><span class="chev" style="margin-top:6px"></span></div>
-        <div class="opt"><div class="ico lg"><i data-lucide="trees"></i></div><div class="grow"><div class="m">Add outdoor eero</div><div class="xs muted mt-4">eero Outdoor 7. Placement guide, connection test and mounting videos.</div></div><span class="chev" style="margin-top:6px"></span></div>
-        <div class="opt"><div class="ico lg"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">eero Signal</div><div class="xs muted mt-4">Cellular backup device. Plug into the eero with the best signal using the Y-splitter. Requires NAT mode.</div></div><span class="chev" style="margin-top:6px"></span></div>
-        <div class="opt"><div class="ico lg"><i data-lucide="replace"></i></div><div class="grow"><div class="m">Replace eero</div><div class="xs muted mt-4">Pick the eero to swap out, then follow the steps. Its room name and settings move over.</div></div><span class="chev" style="margin-top:6px"></span></div>
-      </div>
-    </section>
-    <section class="section">
-      <div class="section-h"><h2>Network actions</h2></div>
-      <div class="rows">
-        <div class="r" style="flex-direction:column;align-items:stretch;gap:10px">
-          <div class="row-12"><div class="ico"><i data-lucide="rotate-ccw"></i></div><div class="grow"><div class="t">Restart network</div><div class="d">Restarts every eero at once</div></div><span class="pill bad nodot">Disruptive</span></div>
-          <div class="note bad"><i data-lucide="alert-octagon"></i><div class="body">Everyone loses internet for about 2 minutes, including every connected device and any calls in progress. <div class="row gap-8 mt-8"><button class="btn sm danger">Yes, restart network</button><button class="btn sm ghost">Cancel</button></div></div></div>
+      </section>
+      <section class="section">
+        <div class="section-h"><h2>Network actions</h2></div>
+        <div class="rows">
+          <div class="r" style="flex-direction:column;align-items:stretch;gap:10px">
+            <div class="row-12"><div class="ico"><i data-lucide="rotate-ccw"></i></div><div class="grow"><div class="t">Restart network</div><div class="d">Restarts every eero at once</div></div><span class="pill bad nodot">Disruptive</span></div>
+            <div class="note bad"><i data-lucide="alert-octagon"></i><div class="body">Everyone loses internet for about 2 to 3 minutes, including every connected device and any calls in progress. <div class="row gap-8 mt-8"><button class="btn sm danger">Yes, restart network</button><button class="btn sm ghost">Cancel</button></div></div></div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </div>
 </div>
 

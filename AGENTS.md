@@ -5,8 +5,16 @@
 > Every story is a GitHub issue in `pkkid/mesh-ui` added to this board.
 
 Mesh UI is an Electron desktop app for managing eero mesh networks. Its look
-and feel follow T3 Code (`~/Sources/t3code`): quiet zinc surfaces, a sidebar
+and feel follow T3 Code (`~/Sources/t3code`): quiet surfaces, a sidebar
 plus main pane, a custom titlebar, and role-based theme palettes.
+
+**Docs:** this file holds the short rules. The detail lives in
+[docs/](docs/README.md): architecture, the command catalogue
+(`docs/architecture/commands.md`, the source of truth for command ids),
+platform and release, testing, the design system, one UX doc per page, and
+the eero API reference. The approved screens are `docs/mockups/`. Read the
+relevant docs before building a feature, and update them in the same change
+when behaviour or a command changes.
 
 ## Scope: no eero Plus features
 
@@ -187,10 +195,16 @@ building a new chart; port from them rather than inventing a style.
   `src/renderer/src/lib/chartColors.ts`, and used in every chart, legend,
   dot and bar for that thing (download, upload, each band, each eero, each
   profile). Never pick a colour inline.
-- Series colours are distinct mid-tones that read on both light and dark
-  themes, like T3's provider colours (`#5b9bbd` blue, `#8c7bd1` violet,
-  `#4d9f8a` teal, `#d97757` orange). A neutral series uses a mix of
-  `--foreground` with the background. Check every chart in light and dark.
+- Series colours come from the active theme's palette (Gruvbox Hard by
+  default: blue, purple, aqua, orange, red, green, yellow, gray), with a
+  light and a dark value each, so they read on both. A neutral series uses a
+  mix of `--foreground` with the background. Check every chart in light and
+  dark. See `docs/design/design-system.md`.
+- **Restrained colour.** Colour is only for chart series (and their legends,
+  share bars, heatmaps) and status. No gradients, glows or coloured accent
+  bars; icons, chips, badges, buttons and selected states are neutral; one
+  colour marker per legend item. Sections stay in subtle cards (solid
+  surface, 1px border); a fully flat layout was tried and rejected.
 - Semantic tokens (`success`, `warning`, `destructive`, `info`) mean status
   only (online, degraded, offline, notice), never "series number three".
 
