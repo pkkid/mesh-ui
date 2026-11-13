@@ -15,6 +15,7 @@ import { IconTile } from "~/components/ui/hero";
 import { type KvItem, KvList } from "~/components/ui/kv-list";
 import { HeaderLink, SectionError, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
+import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { formatMbps, formatRelative } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth } from "../../../../core/model";
@@ -25,31 +26,6 @@ const WAN_LABEL: Record<NonNullable<Internet["wanType"]>, string> = { dhcp: "DHC
 function portLabel(mbps: number | null): string | null {
   if (mbps === null) return null;
   return mbps >= 1000 ? `${mbps / 1000} GbE` : formatMbps(mbps);
-}
-
-/**
- * Copies text. The app denies web permission checks (src/main/index.ts), which
- * can refuse the async Clipboard API, so fall back to a selected textarea and
- * `execCommand("copy")`, which needs only the click's user gesture.
- */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const el = document.createElement("textarea");
-    el.value = text;
-    el.setAttribute("readonly", "");
-    el.style.position = "fixed";
-    el.style.opacity = "0";
-    document.body.append(el);
-    el.select();
-    try {
-      return document.execCommand("copy");
-    } finally {
-      el.remove();
-    }
-  }
 }
 
 /**

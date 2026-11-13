@@ -1,7 +1,10 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { type AuthState, composeBackend } from "./backend";
-import { createEngine, memorySettings } from "./engine";
+import { createEngine, fileSettings, memorySettings } from "./engine";
 import { BackendError } from "./errors";
 import type { Device, HostEvent, NetworkSummary } from "./model";
 import { createRegistry } from "./registry";
@@ -336,5 +339,22 @@ describe("registry", () => {
 
   it("builds from the command index without errors", () => {
     expect(() => createRegistry()).not.toThrow();
+  });
+});
+
+describe("fileSettings", () => {
+  const plan = { planMbps: { net_1: { down: 1200, up: 1200 } } };
+
+  it("starts from initial when the file is missing, and the file wins once saved", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mesh-ui-settings-test-"));
+    try {
+      const path = join(dir, "settings.json");
+      expect((await fileSettings(path, plan).get()).planMbps).toEqual(plan.planMbps);
+      await writeFile(path, JSON.stringify({ planMbps: {} }));
+      expect((await fileSettings(path, plan).get()).planMbps).toEqual({});
+      expect((await fileSettings(join(dir, "other.json")).get()).planMbps).toEqual({});
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

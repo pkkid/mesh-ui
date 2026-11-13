@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createFakeEero, type FakeEero } from "../../../test/fake-eero/server";
 import type { AuthState, Backend, SecretStore } from "../backend";
-import { createDemoBackend } from "../demo";
+import { createDemoBackend, DEMO_SETTINGS } from "../demo";
 import { createEeroBackend } from "../eero/backend";
 import { mapInternet, mapSpeedTests } from "../eero/map/network";
 import { createEngine, memorySettings } from "../engine";
@@ -37,6 +37,17 @@ describe("internet commands (demo)", () => {
     const rated = await ok(demoEngine({ settings }).execute<M.Internet>("internet.get", { networkId: MAPLE }));
     expect(rated.planMbps).toEqual({ down: 1200, up: 1200 });
     expect(rated.lastSpeedTest?.rating).toBe("great");
+  });
+
+  it("the demo hosts' settings give Maple Street the mockup plan and the other networks none", async () => {
+    const engine = demoEngine({ settings: memorySettings(DEMO_SETTINGS) });
+    const maple = await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }));
+    expect(maple.planMbps).toEqual({ down: 1200, up: 1200 });
+    expect(maple.verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber is fast and steady" });
+    const networks = await ok(engine.execute<M.Network[]>("network.list"));
+    for (const n of networks.filter((x) => x.id !== MAPLE)) {
+      expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: n.id }))).planMbps).toBeNull();
+    }
   });
 
   it("internet.get format text is the Copy details block", async () => {

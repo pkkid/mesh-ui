@@ -69,16 +69,19 @@ export function memorySettings(initial: Partial<AppSettings> = {}): SettingsStor
   };
 }
 
-/** settings.json in the config dir: read once, written atomically on change. */
-export function fileSettings(path: string): SettingsStore {
+/**
+ * settings.json in the config dir: read once, written atomically on change.
+ * `initial` fills fields the file does not have (the demo hosts pass the demo plan).
+ */
+export function fileSettings(path: string, initial: Partial<AppSettings> = {}): SettingsStore {
   let current: Promise<AppSettings> | null = null;
   let writing: Promise<unknown> = Promise.resolve();
   const load = async (): Promise<AppSettings> => {
     try {
       const raw: unknown = JSON.parse(await readFile(path, "utf8"));
-      return raw && typeof raw === "object" ? { ...DEFAULT_SETTINGS, ...(raw as Partial<AppSettings>) } : { ...DEFAULT_SETTINGS };
+      return raw && typeof raw === "object" ? { ...DEFAULT_SETTINGS, ...initial, ...(raw as Partial<AppSettings>) } : { ...DEFAULT_SETTINGS, ...initial };
     } catch {
-      return { ...DEFAULT_SETTINGS };
+      return { ...DEFAULT_SETTINGS, ...initial };
     }
   };
   const save = async (s: AppSettings) => {
