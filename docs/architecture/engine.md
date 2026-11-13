@@ -12,13 +12,18 @@ client in [eero-client.md](eero-client.md), the renderer side in
 
 ```ts
 const engine = createEngine({
-  backend: demo ? createDemoBackend() : createEeroBackend({ userAgent }),
-  secrets,        // host SecretStore (Electron safeStorage)
-  paths,          // { configDir } for settings.json and audit.jsonl
-  surface,        // "ui" | "cli" | "mcp", recorded in the audit log
+  backend: demo ? createDemoBackend() : createEeroBackend({ secrets, userAgent }),
+  settings,       // SettingsStore: fileSettings(path) or memorySettings()
+  surface,        // "ui" | "cli" | "mcp"
+  host,           // HostInfo: version, configDir, ...
+  commands,       // optional; defaults to every spec in src/core/commands
   clock,          // injectable for tests
 });
 ```
+
+The host's `SecretStore` goes to the eero backend, not the engine: the
+token lives in the eero client (see
+[eero-client.md](eero-client.md#token-custody)).
 
 `--demo` or `MESH_UI_DEMO=1` picks the demo backend on every surface. The
 engine only knows which backend it has through `backend.kind`, reported by
@@ -35,11 +40,15 @@ Steps, in order:
 1. Look up `id`. Missing: `unknown_command`.
 2. Validate `params` (default `{}`) with the spec's zod schema. Failure:
    `bad_params` with `detail.issues`.
-3. Scope check. `network` and `account` scope need a session, else
-   `not_signed_in`. `auth.*` and `app.*` do not.
-4. Resolve `networkId?` (default: the selected network) and every `Ref`
-   param to ids, using cached lists (fetching them if cold). No match or
-   several: `bad_params`.
+3. Scope check. Every command except `app` scope and `auth.*` asks
+   `backend.auth.status()` and fails with `not_signed_in` when signed out.
+4. Resolve the network for `network` scope commands: the `networkId` param
+   (an id or name), else the selected network if it is still in the
+   account's list, else the first network, which becomes the selection
+   (saved and announced with `network.selected`). No networks: `bad_params`.
+   `Ref` params (eero, device, profile) are resolved by the command through
+   `ctx.resolve(kind, ref)`, using cached lists (fetching them if cold). No
+   match or several: `bad_params`.
 5. Confirmation. `disruptive` or `destructive` without `confirm: true`:
    `needs_confirm` with a message from the spec's optional
    `confirmMessage(ctx, params)` or a default built from the label.
@@ -50,7 +59,8 @@ Steps, in order:
    query of any of them goes to the backend.
 8. Map any thrown error to an error code. `execute` never throws.
 9. CLI and MCP calls append an audit line (see
-   [security.md](security.md#audit-log)).
+   [security.md](security.md#audit-log)). Not yet built in M1: the engine
+   writes no audit log.
 
 Concurrency: queries run in parallel and are deduplicated (two callers
 asking for the same cold key share one backend call). Writes to one network
@@ -73,13 +83,14 @@ type Session = {
 };
 ```
 
-The token is a private field of the session module. The eero client reads it
-through a getter on every request and reports rotations back
-([eero-client.md](eero-client.md#token-custody)). It never appears in
-`Session`, results, events, errors or logs.
+In M1 the token is a private field of the eero client, loaded from the
+host `SecretStore` on first use and saved on every rotation
+([eero-client.md](eero-client.md#token-custody)); the engine never holds
+it. It never appears in `Session`, results, events, errors or logs.
 
-- **Startup.** The engine calls `secrets.load()`. With a token it is
-  `signed_in` and loads the account lazily on the first command.
+- **Startup.** The eero client calls `secrets.load()` lazily, on its first
+  session-dependent call. With a token it is `signed_in` and loads the
+  account lazily on the first command.
 - **Sign in.** `auth.login.start` holds the unverified token in memory
   (`pending_code`). `auth.login.verify` promotes it and calls
   `secrets.save(token)`, which answers `keychain` or `memory`.
@@ -91,6 +102,8 @@ through a getter on every request and reports rotations back
   other's copy can go stale. Before treating a 401 as final, the engine
   re-reads `secrets.load()`; if the stored token differs from its own, it
   adopts it and replays once. Only then does it return `not_signed_in`.
+  Not yet built in M1: the client reads the store once and does not re-read
+  it on a 401.
 - **Session dead** (`error.session.expired`, `invalid` after refresh,
   `revoked`, other 401 or 419): clear memory and store, drop every cache
   entry, emit `session.changed`. The UI routes to sign in.
@@ -99,7 +112,10 @@ through a getter on every request and reports rotations back
 
 ## Cache
 
-One in-memory cache per engine, keyed by `topic + networkId + paramsHash`.
+One in-memory cache per engine, keyed by
+`topic|networkId|commandId|params` (params as stable JSON). Only queries
+with a `topic` and a TTL above zero are cached; concurrent calls for a cold
+key share one promise, and a failed load is dropped, not cached.
 Each query spec names the `topic` it reads; each write lists the topics it
 `invalidates`. The TTL is how long a cached result is served before the next
 `execute` goes to the backend. It protects the rate budget when several
@@ -137,8 +153,14 @@ the backend while two views polling the same topic share one request.
 - Sensitive results (`wifi.password.get`, `wifi.share`, `guest.share`,
   `settings.thread.credentials`) are never cached.
 - After a write the invalidated topics are stale at once. Where eero is slow
-  to reflect a change (device pause, profile writes), the engine waits about
-  2 s before serving the next read of that topic from the backend.
+  to reflect a change (device pause, profile writes), the read after it
+  should wait about 2 s. The engine offers `ctx.invalidate(topics, atMs)`
+  with a future time: cached answers are served until then, and anything
+  fetched before it expires at that time. A cold read still fetches at
+  once. Not yet built in M1: no command uses it, and the engine's own
+  invalidation after a write is immediate.
+- A backend `not_signed_in` clears the whole cache and emits
+  `session.changed`.
 - After a `disruptive` write that restarts eeros (`network.restart`,
   `eero.restart`, `updates.install`, settings that restart the mesh), the
   engine marks `network`, `eeros` and `devices` stale. The UI keeps polling
@@ -182,11 +204,13 @@ only after a burst:
 
 1. `device.rates.refresh` calls `POST {net}/burst_reporters`. The response
    has `next_burst`, about 12 s ahead. eero allows one burst per minute per
-   network; the client keeps a per-network timestamp and a second call
-   inside the minute returns the pending `nextBurstAt` without calling eero.
+   network; core (not the eero client) keeps a per-network timestamp and a
+   second call inside the minute returns the pending `nextBurstAt` without
+   calling eero. Not yet built in M1.
 2. The engine shortens the `devices` TTL until `next_burst` plus 2 s, so the
    next `device.list` after that point reads fresh `usage.down_mbps` and
-   `usage.up_mbps`.
+   `usage.up_mbps`. Not yet built in M1 (a spec's `ttl` may be a
+   function of params, which is where this will go).
 3. The mapper stamps each device's `rates` with the read time. Rates older
    than 90 s become `null`, which the UI shows as `-`, never `0`.
 4. `DeviceList.summary.rates` sums current rates and counts active devices
@@ -203,7 +227,8 @@ stored, and there is no history to load.
 
 Command results are the data path. The only push channel carries host
 events that are not command results. The Electron host sends them on one
-outbound IPC channel; preload exposes `window.mesh.onEvent(cb)`.
+outbound IPC channel; preload exposes `window.mesh.on(listener)`, which returns an
+unsubscribe. Main forwards `engine.onEvent` to it (`src/main/ipc.ts`).
 
 ```ts
 type HostEvent =
@@ -227,21 +252,23 @@ type HostEvent =
 
 ## Network switching
 
-- The selected network is `session.networkId`, persisted as
-  `lastNetworkId` in `settings.json` so the app and CLI start on the same
+- The selected network is held by the engine (`engine.selectedNetworkId()`),
+  read lazily from and persisted as `lastNetworkId` in `settings.json` so the app and CLI start on the same
   network. After the first sign in with several networks the UI shows the
   chooser; with one network it selects it.
 - `network.select` (app-local, no eero call) sets the id, saves it, and
   emits `network.selected`. The renderer drops its query state for the old
   network and re-runs its visible queries.
-- The engine cache is per network. It keeps the last two networks so
-  switching back is instant; older entries are dropped.
+- The engine cache is keyed per network. It is meant to keep the last two
+  networks so switching back is instant and drop older entries. Not yet
+  built in M1: the cache keeps entries for every network until they expire
+  or are cleared.
 - Every network-scoped command accepts `networkId?` (an id or a name), so a
   CLI script or agent can act on another network without changing the
   selection. `--network` in the CLI and MCP is shorthand for it.
 - If the selected network disappears from the account (access removed or
-  transferred), the engine selects the first remaining one and emits
-  `network.selected`.
+  transferred), the next network-scoped command without `networkId` selects
+  the first remaining one and emits `network.selected`.
 
 ## Rate limiting
 
@@ -264,5 +291,5 @@ The limiter lives in the eero client; the full rules are in
 The app and a CLI or MCP process have separate buckets. A long CLI script
 should pace itself; the limiter still keeps each process under the budget.
 
-The demo backend skips the limiter but adds 50 to 300 ms of simulated
-latency so loading states stay visible.
+The demo backend skips the limiter. It is meant to add 50 to 300 ms of
+simulated latency so loading states stay visible; not yet built in M1.

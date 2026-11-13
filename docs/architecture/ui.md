@@ -24,8 +24,11 @@ src/renderer/src/
   App.tsx               auth gate, shell, router outlet
   global.d.ts           window.mesh type (from src/shared)
   index.css             Tailwind tokens and base styles
+  app/
+    useCommand.ts       the data path: execute(), useQuery(), useCommand(), followHostEvents()
+    router.tsx          in-memory router (view state)
+    routes.ts           page list
   lib/
-    mesh.ts             typed wrappers: run(), useQuery(), useCommand()
     themes.ts           applies palettes as --theme-* variables
     themePalettes.ts    ThemeDefinition list (ported from T3 Code)
     chartColors.ts      one colour per series kind
@@ -48,15 +51,17 @@ commands for everything else.
 
 ## The bridge: `window.mesh`
 
-The preload script exposes one object. Its type lives in `src/shared/` so main,
-preload and renderer agree.
+The preload script exposes one object. Its type (`MeshApi`) lives in
+`src/shared/types.ts` so main, preload and renderer agree. Both halves of
+the bridge (`createMeshBridge` for preload and the `ipcMain` handlers) are
+in `src/main/ipc.ts`, so they are tested together.
 
 ```ts
 type MeshApi = {
   platform: "darwin" | "linux" | "win32";
   execute(id: string, params?: unknown): Promise<Result>;   // the only data path
   commands(): Promise<CommandInfo[]>;                       // registry listing
-  onEvent(cb: (e: HostEvent) => void): () => void;          // session and update events
+  on(listener: (e: HostEvent) => void): () => void;         // host events; returns an unsubscribe
   setTitlebarColors(colors: TitlebarColors): void;          // window-only, not a command
 };
 type Result = { ok: true; result: unknown } | { ok: false; error: { code: string; message: string; detail?: unknown } };
@@ -71,14 +76,23 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   [Ref conventions](commands.md#params-conventions): `device`, `profile`,
   `eero` take an id or exact name, bulk actions take `devices: Ref[]`, and
   `networkId` is optional. The palette and confirm dialogs read it.
-- `onEvent` carries host events that are not command results:
-  `session.changed` (signed out or expired elsewhere, for example by the CLI),
-  `update.ready` (an app update is downloaded). No eero data travels on it.
+- `on` carries host events that are not command results, on the
+  `mesh:event` channel: `session.changed` (signed out or expired elsewhere,
+  for example by the CLI), `network.selected`, `update.ready` (an app
+  update is downloaded). No eero data travels on it.
+
+The renderer reads the bridge through a local `MeshBridge` type in
+`app/useCommand.ts` (`execute`, `commands`, optional `on`). If `window.mesh`
+has no `execute` (for example a renderer opened without the preload),
+`bridge()` falls back to a stub that answers every call with
+`network_error` ("not connected to its engine yet") and an empty registry,
+so the shell renders its empty and missing states; `engineConnected()`
+reports which one is active.
 
 ## Data access
 
-`lib/mesh.ts` wraps `execute` in two hooks. No page calls `window.mesh`
-directly.
+`app/useCommand.ts` wraps `execute` in two hooks. No page calls
+`window.mesh` directly.
 
 ```ts
 const devices = useQuery("device.list", { profile: null }, { poll: true });
@@ -88,23 +102,33 @@ const pauseProfile = useCommand("profile.pause");
 await pauseProfile.run({ profile: "Leo" });
 ```
 
-- **`useQuery(id, params, opts)`** caches by `id + params`, dedupes concurrent
-  calls, keeps the previous data while refetching, and returns
-  `{ data, error, loading, stale, refetch }`. With `poll: true` it refetches on
-  the interval the registry reports for that command (from
-  `src/core/poll.ts`), only while the window is visible and focused at least
-  once in the last 5 minutes.
-- **`useCommand(id)`** runs a write. It handles `needs_confirm` by opening the
-  confirm flow (below), and on success invalidates the queries that the
-  command's area owns (a device write invalidates `device.*`, `profile.*` and
-  `network.get`), mirroring the "re-read after write" habit of mature eero
+- **`useQuery(id, params, opts)`** caches by `id + params` (key order does
+  not matter), dedupes concurrent calls, keeps the previous data while
+  refetching, and returns `{ data, error, loading, fetchedAt, fading,
+  refetch }`. `fading` turns on after a request has been in flight 150 ms.
+  `poll: true` refetches on the interval the registry reports for that
+  command (from `src/core/poll.ts`), a number polls every that many
+  seconds, and `enabled: false` skips the query. While the window is hidden
+  polls stretch to at least 5 minutes, and it refetches at once when shown;
+  a `rate_limited` error waits at least `retryAfterSec`.
+- **`useCommand(id)`** runs a command on demand and returns `{ run, running,
+  result, error, reset }`. Confirmation is the caller's job: show the
+  confirm flow (below) first, then pass `confirm: true`; a `needs_confirm`
+  error comes back like any other. After a successful write it invalidates
+  the queries `affectedBy(id)` names: the command's own area, `network.get`
+  and related areas (a device write also refetches `profile.*` and
+  `eero.*`), mirroring the "re-read after write" habit of mature eero
   clients.
+- **`followHostEvents()`**, called once by `App.tsx`, ends the session on a
+  `session.changed` sign-out and refetches every query on
+  `network.selected`. Any command answering `not_signed_in` also ends the
+  session (`onSessionEnded`).
 - **Optimistic updates** only for cheap toggles whose result is certain
   (pause, LED on). Roll back on error.
 - **Errors** show inline where the data would be, with a Retry button.
   `not_signed_in` anywhere sends the app to the sign-in screen.
   `rate_limited` shows "eero is rate limiting requests, retrying in 20 s" and
-  pauses polling for `retryAfter`.
+  pauses polling for `retryAfterSec`.
 
 ## Shell
 
