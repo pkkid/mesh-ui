@@ -92,6 +92,17 @@ const GB = 1e9;
 const TZ = "America/Los_Angeles";
 
 /** Seeded random in [0, 1); the same seed gives the same fixtures. */
+/**
+ * App settings a demo host starts with when it keeps settings in memory.
+ * Settings are not backend state (the engine reads them from the host's
+ * store), so they live here as data and the hosts seed `memorySettings` with
+ * them. Maple Street has the mockup 02 plan (Fiber Gig, 1.2 Gbps both ways);
+ * Lake Cabin and Mom's House have none, so the no-plan forms stay covered.
+ */
+export const DEMO_SETTINGS: Pick<M.AppSettings, "planMbps"> = {
+  planMbps: { "4821907": { down: 1200, up: 1200 } },
+};
+
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
