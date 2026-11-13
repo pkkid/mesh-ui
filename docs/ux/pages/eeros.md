@@ -18,16 +18,16 @@ Sidebar count: number of eeros.
      eero placed by hop count, with a link line to its upstream. Wired links
      are solid in the wired colour with a label ("10 Gbps WAN"); wireless
      backhaul is dashed in the status colour of its quality with a label
-     chip ("Excellent" 4 bars, "Good" 3, "Weak" 2) and mesh bars. A node with
+     chip ("Excellent" 4 to 5 bars, "Good" 3, "Weak" 2, "Poor" 0 to 1) and mesh bars. A node with
      a weak link gets a dashed warning outline; the selected node a solid
      muted outline. A small chip under the gateway summarises wired clients
-     ("3 wired: NAS, PS5, Hue Bridge"). Legend bottom left (Wired, Good 3 to 4
+     ("3 wired: NAS, PS5, Hue Bridge"). Legend bottom left (Wired, Good 3 to 5
      bars, Weak, Poor) and "Dashed lines are wireless backhaul" bottom right.
    - **Tree** view (toggle): the same data as an indented list: eero,
      backhaul, bars, downstream eeros.
    - Right column (330 px):
      - Weak link note when any eero is weak (warn note): title "Garage has a
-       weak link", body "It reaches Office at only 2 of 4 bars, so the 3
+       weak link", body "It reaches Office at only 2 of 5 bars, so the 3
        devices connected through it get slower speeds than the rest of the
        mesh.", three suggestions with icons (move it 1 or 2 rooms closer, in
        line of sight; run Ethernet for wired backhaul; add an eero halfway),
@@ -67,11 +67,11 @@ Sidebar count: number of eeros.
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Subtitle firmware line | `updates.get` | 10 min |
+| Subtitle firmware line ("eeroOS 7.12.1, 7.13.0 scheduled") | `updates.get` | 15 min (`POLL.updates`) |
 | Topology nodes and links (upstream, backhaul, mesh bars, wired link speed) | `eero.list` (each eero has `upstreamId`, `backhaul`, `meshBars`, `hop`) | 60 s |
 | Internet node label (ISP, ONT) | `internet.get` | 10 min |
 | Wired clients chip | `device.list {eero: gateway, band: "wired"}` (names from summary) | 30 s |
-| Weak link note and suggestions | `network.health` (issues with kind `weak_link`, target eero, upstream, affected device count) | 30 s |
+| Weak link note and suggestions | `network.health` issues: the most serious one shows (`network_offline`, then `eero_offline`, then `weak_link`), with its eero, upstream and affected devices | 60 s |
 | Selected eero card | `eero.list` (view state picks the eero; default the first with an issue, else the first non-gateway) | 60 s |
 | eero cards: header fields, bands, channel, width, utilisation, clients | `eero.list` | 60 s |
 | Find state ("Blinking · 24s") | Result of `eero.find` (`until` timestamp); countdown in the renderer | - |
@@ -120,12 +120,27 @@ Sidebar count: number of eeros.
   test unsupported on a model: Test placement hidden for that eero.
 - **Bridge mode.** Page works as normal.
 
+## Built so far (M2.5)
+
+- Find, Test placement and Restart network are shown disabled with a
+  "Coming soon" tooltip until `eero.find`, `eero.placement.test` and
+  `network.restart` land; Scan coverage links to Troubleshooting. So the
+  Stop control, the blinking countdown and the open inline confirm in the
+  mockup are not built yet.
+- The Map, Tree and radio table live in `components/mesh/` (`Topology`,
+  `TopologyTree`, `LinkChip`, `RadioTable`) so eero detail can draw one
+  eero's uplink with the same pieces.
+- Legend reads "Good (3 to 5 bars)": core words 4 to 5 bars Excellent and
+  3 Good, both in the success colour.
+- An offline eero shows "last seen 2:16 AM" (a date and time once it is
+  older than most of a day).
+
 ## Notes
 
 - Topology layout (columns by hop, vertical spread, link label positions) is
   view code in `components/`; the graph itself (who is upstream of whom,
   quality words from bars) comes from `eero.list` and core mapping. Quality
-  words: 4 bars Excellent, 3 Good, 2 Weak, 0 to 1 Poor.
+  words: 4 to 5 bars Excellent, 3 Good, 2 Weak, 0 to 1 Poor.
 - `eero.find` maps to `POST /2.2/eeros/{serial}/led_cycle` with a 30 s
   duration. Open question: there is no known stop endpoint; `stop: true`
   could re-apply the LED setting through `led_action`. Until verified, hide

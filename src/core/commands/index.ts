@@ -15,4 +15,5 @@ export { commands as eero } from "./eero";
 export { commands as internet } from "./internet";
 export { commands as network } from "./network";
 export { commands as profile } from "./profile";
+export { commands as updates } from "./updates";
 export { commands as usage } from "./usage";

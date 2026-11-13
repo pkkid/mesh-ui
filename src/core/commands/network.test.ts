@@ -95,6 +95,43 @@ describe("network commands (demo)", () => {
     expect(perms.can["network.transfer"]?.update).toBe(false);
   });
 
+  it("network.health derives a weak_link issue with upstream and devices", async () => {
+    const { engine } = demoEngine();
+    const health = await ok(engine.execute<M.NetworkHealth>("network.health", { networkId: MAPLE }));
+    const eeros = await ok(engine.execute<M.Eero[]>("eero.list", { networkId: MAPLE }));
+    const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId: MAPLE }));
+    const garage = eeros.find((e) => e.location === "Garage");
+    const office = eeros.find((e) => e.location === "Office");
+    expect(health.issues).toEqual([
+      { kind: "weak_link", eeroId: garage?.id, upstreamId: office?.id, deviceIds: expect.any(Array) },
+    ]);
+    expect([...(health.issues[0]?.deviceIds ?? [])].sort()).toEqual(devices.devices.filter((d) => d.connected && d.eeroId === garage?.id).map((d) => d.id).sort());
+    expect(health.issues[0]?.deviceIds).toHaveLength(3);
+    // A healthy network has no issues.
+    expect((await ok(engine.execute<M.NetworkHealth>("network.health", { networkId: MOM }))).issues).toEqual([]);
+  });
+
+  it("network.health reports eero_offline with the devices last on it", async () => {
+    const { engine } = demoEngine({ scenario: "eero_offline" });
+    const health = await ok(engine.execute<M.NetworkHealth>("network.health", { networkId: MAPLE }));
+    const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId: MAPLE }));
+    const garage = health.eeros.find((e) => e.location === "Garage");
+    // Offline replaces weak: the Garage gets one issue, not two.
+    expect(health.issues.map((i) => [i.kind, i.eeroId])).toEqual([["eero_offline", garage?.id]]);
+    const dropped = devices.devices.filter((d) => d.eeroId === garage?.id).map((d) => d.id);
+    expect(dropped.length).toBeGreaterThan(0);
+    expect([...(health.issues[0]?.deviceIds ?? [])].sort()).toEqual(dropped.sort());
+    expect(health.issues[0]?.upstreamId).not.toBeNull();
+  });
+
+  it("network.health reports network_offline alone when the network is not reporting", async () => {
+    const { engine } = demoEngine({ scenario: "network_offline" });
+    const health = await ok(engine.execute<M.NetworkHealth>("network.health", { networkId: MAPLE }));
+    const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId: MAPLE }));
+    expect(health.issues).toEqual([{ kind: "network_offline", eeroId: null, upstreamId: null, deviceIds: expect.any(Array) }]);
+    expect([...(health.issues[0]?.deviceIds ?? [])].sort()).toEqual(devices.devices.map((d) => d.id).sort());
+  });
+
   it("rejects bad params", async () => {
     const { engine, events } = demoEngine();
     expect(await code(engine.execute("network.list", { extra: 1 }))).toBe("bad_params");
@@ -229,8 +266,24 @@ describe("network commands (fake eero server)", () => {
       { id: "500003", location: "Upstairs Hall", status: "online", meshBars: 4, weakLink: false },
       { id: "500004", location: "Garage", status: "degraded", meshBars: 1, weakLink: true },
     ]);
-    expect(fake.log.filter((l) => l.path.startsWith("/2.2/networks/100001")).map((l) => l.path)).toEqual(["/2.2/networks/100001"]);
-    expect(fake.log).toHaveLength(1);
+    // Garage is weak, so the issue reads eeros (upstream) and devices; a healthy network stays one call.
+    expect(health.issues).toEqual([{ kind: "weak_link", eeroId: "500004", upstreamId: "500001", deviceIds: [] }]);
+    expect(fake.log.map((l) => l.path)).toContain("/2.2/networks/100001/eeros");
+    expect(fake.log.map((l) => l.path)).toContain("/2.2/networks/100001/devices");
+
+    const healthy = fakeEngine({ prepare: (f) => f.state.networks.get("100001")?.eeros.forEach((e) => { e.status = "green"; e.mesh_quality_bars = 5; }) });
+    await ok(healthy.engine.execute("network.permissions"));
+    healthy.fake.log.length = 0;
+    const h = await ok(healthy.engine.execute<M.NetworkHealth>("network.health", { networkId: "100001" }));
+    expect(h.issues).toEqual([]);
+    expect(healthy.fake.log.map((l) => l.path).filter((p) => p.startsWith("/2.2/networks/100001"))).toEqual(["/2.2/networks/100001"]);
+  });
+
+  it("network.health reports an offline eero and an offline network", async () => {
+    const { engine } = fakeEngine();
+    const lake = await ok(engine.execute<M.NetworkHealth>("network.health", { networkId: "100002" }));
+    expect(lake.status).toBe("offline");
+    expect(lake.issues.map((i) => [i.kind, i.eeroId])).toEqual([["network_offline", null]]);
   });
 
   it("network.permissions maps role and areas, without per_eero", async () => {
