@@ -16,7 +16,7 @@ the format follows the `milestone-plan` skill. The design lives in
 | Milestone | Goal | Status |
 |---|---|---|
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
-| M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ready ([milestone](https://github.com/pkkid/mesh-ui/milestone/2)) |
+| M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | later |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | later |
@@ -321,7 +321,7 @@ and get `MANUAL:` lines.
 - scope: Page (mockup 04), read-only: hero with product tile and LED bar, status, model and radio badges, uptime, devices and 24h data with share; Uplink card from the M2.5 mesh components (Internet and WAN for the gateway); Data usage Day/Week; Radios (channel, width, tx power, clients, utilisation, `-` when not reported); Connected devices; Ethernet ports tiles from `eero.ports.get`; settings cards shown as values (Location, Status light, Nightlight on Beacon only, Software from `updates.get` with the `eero.firmware.history` list, IP addresses with copy, Device information); `[` `]` move between eeros. Rename, LED, nightlight, port actions, Blink, Restart and Remove are disabled ("Coming soon"). Gateway, offline, gone, no-ports and no-history states.
 - done when: `pnpm ui:shot` of the gateway, a wireless leaf (Office), the Beacon and an offline eero (`eero_offline`), demo and `--fake`, light and dark, are in the PR; uplink and ports match `eero.list` and `eero.ports.get` from the CLI; `MANUAL: eero detail on the real network | pnpm dev, open each eero | uplink, radios, ports and versions match the eero app | none`.
 
-### M2.R Review ☐
+### M2.R Review ✅
 - issue: [#58](https://github.com/pkkid/mesh-ui/issues/58)
 - owner: maintainer
 - after: M2.1, M2.2, M2.3, M2.4, M2.5, M2.6, M2.7, M2.8, M2.9
@@ -339,6 +339,12 @@ offline alerts.
 Carried from M1: guest usage on the eero backend (demo only today);
 `events.summary`, `usage.quiet_hours` and grouped events; `slow` and
 `errors` demo scenarios so loading and error states can be shown in demo.
+Carried from M2: the shared Section header wraps when its subtitle is long
+(eero detail "Ethernet ports"); `EerosList.tsx` keeps its own `MeshBars`
+(import `components/mesh/LinkChip`); mockups 05, 10 and 14 still use old
+`3c:22:fb` sample MACs; a fixed `max` on `AreaChart` so the Internet speed
+chart can scale to the plan; a host save dialog for CSV exports (Internet
+Export CSV copies to the clipboard today; Activity CSV needs it too).
 
 ## M4: Everyday control
 
@@ -356,6 +362,9 @@ and a write settle delay; each write invalidates the topics it changes
 `network.get` counts); the engine cache keeps only the last two networks;
 the eero client re-reads the SecretStore on a 401 so two processes (app and
 CLI) share one session.
+Carried from M2: palette and pages dim commands by capability and bridge
+mode, and show the "no permission" state, once commands report them; copy
+and export feedback through the undo toast system.
 
 ## M5: Advanced settings
 
@@ -365,6 +374,9 @@ SQM, band steering, Thread, power saving, integrations), reservations, port
 forwards and IPv6 pinholes, updates (install, preferred hour, notes), admins
 and invites, network transfer and delete, eero ports and remove,
 diagnostics, coverage scan and upgrade report, notification settings.
+Carried from M2: a real source for `Radio.autoChannel` (maybe
+`{net}/radio_settings`, shape unknown); firmware history paging past 50
+rows if eero ever returns more.
 
 ## M6: App, account and release
 
