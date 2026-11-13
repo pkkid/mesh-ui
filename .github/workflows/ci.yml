@@ -1,0 +1,43 @@
+# Cross-platform smoke (docs/platform/build-and-release.md#ci). Light on
+# purpose: the real test signal is local (`pnpm check`). No UI, packaging,
+# keychain-less or eero jobs run here, and no secrets are used.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, "milestone/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.18.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      # Hosted runners are slower than a dev machine; the charts property
+      # test takes ~4.5s locally against vitest's 5s default.
+      - run: pnpm test --test-timeout=30000
+      - run: pnpm build
