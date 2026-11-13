@@ -332,7 +332,20 @@ export type DeviceSummary = {
   byBand: Record<Band, number>;
   byCategory: Record<DeviceCategory, number>;
   newThisWeek: Id[];
-  rates: { downMbps: number; upMbps: number; active: number; at: Iso } | null;
+  rates: DeviceRateTotals | null;
+};
+
+/** Live rate totals over devices with fresh rates (device.list summary). */
+export type DeviceRateTotals = {
+  downMbps: number;
+  upMbps: number;
+  /** Devices with any traffic right now. */
+  active: number;
+  at: Iso;
+  /** Per band, over connected devices: rate totals, share of traffic (down plus up) and share of connected devices, 0 to 100; null when there is nothing to share. */
+  byBand: Record<Band, { downMbps: number; upMbps: number; trafficPct: number | null; devicePct: number | null }>;
+  /** The Wi-Fi band carrying the most traffic, for the "6 GHz carries 41% of traffic with 19% of devices" line; null with no Wi-Fi traffic. */
+  topBand: Exclude<Band, "wired"> | null;
 };
 
 export type DeviceList = { devices: Device[]; summary: DeviceSummary };
