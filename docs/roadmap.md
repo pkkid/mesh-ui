@@ -297,7 +297,7 @@ and get `MANUAL:` lines.
 - scope: `eero.ports.get {eero}`: `GET resources.connections` mapped to `EeroPorts` (port status, negotiated and supported speed such as `P2500`, PoE, MAC, attached device or eero joined by MAC to devices and eeros, `actions[]` kept for M4, empty list when eero reports none). `eero.firmware.history {eero, limit?}`: `GET /2.2/eeros/{id}/firmware_update/history`, newest first, `current` marked. Map the M2.1 eero fields (`radio_channel_stats` tx power and utilisation, auto channel, subnet, gateway IP). Fake routes for both.
 - done when: demo tests for both commands, including `bad_params`, an unknown eero and an eero from another network; fake-server tests cover speed parsing, attached-device joins, an empty port list and firmware ordering; `mesh-ui --demo run eero.ports.get --params '{"eero":"Office"}'` prints a table; `MANUAL: eero.ports.get and eero.firmware.history shapes | pnpm mesh-ui run each for one eero | ports and versions match the eero app; note if firmware history is empty or 404 | none`.
 
-### M2.7 Device detail, reservation and forward reads, Devices filter counts ☐
+### M2.7 Device detail, reservation and forward reads, Devices filter counts ✅ (#68)
 - issue: [#55](https://github.com/pkkid/mesh-ui/issues/55)
 - after: M2.1, M2.2, M2.3
 - docs: ux/pages/device-detail.md, ux/pages/devices.md, architecture/commands.md (device, routing)
