@@ -143,7 +143,9 @@ describe("device.list (demo)", () => {
     expect(names(await list(engine, { search: "Synology" }))).toEqual(["Synology NAS"]);
     expect(names(await list(engine, { search: tv.mac }))).toEqual(["Living Room TV"]);
     expect(names(await list(engine, { search: tv.mac.replace(/:/g, "").toUpperCase() }))).toEqual(["Living Room TV"]);
-    expect(names(await list(engine, { search: tv.ipv4 }))).toEqual(["Living Room TV"]);
+    // Search is a substring match, so pick an IP that is not the prefix of another (.4.12 would also match .4.127).
+    const nas = all.devices.find((d) => d.name === "Synology NAS");
+    expect(names(await list(engine, { search: nas?.ipv4 ?? "fixture" }))).toEqual(["Synology NAS"]);
     expect((await list(engine, { search: "nothing like this" })).devices).toEqual([]);
   });
 
@@ -172,7 +174,7 @@ describe("device.list (demo)", () => {
     const lines = r.result.trimEnd().split("\r\n");
     expect(lines[0]).toBe("Name,Status,Connected to,Band,Network,IP,MAC,Profile,Manufacturer,Model,Category,Down Mbps,Up Mbps,Last active,First seen");
     expect(lines).toHaveLength(4);
-    expect(lines[3]).toMatch(/^Leo's Switch,Paused,Living Room,5 GHz,main,192\.168\.4\.72,[0-9a-f:]+,Leo,Nintendo,Switch 2,entertainment,,,/);
+    expect(lines[3]).toMatch(/^Leo's Switch,Paused,Living Room,5 GHz,main,192\.168\.4\.172,[0-9a-f:]+,Leo,Nintendo,Switch 2,entertainment,,,/);
   });
 
   it("fails bad_params for wrong values and unknown refs", async () => {
@@ -270,7 +272,7 @@ describe("device commands (fake eero server)", () => {
     expect(l.devices.find((d) => d.name === "Jamie's Phone")).toMatchObject({ blocked: true, connected: false, band: null });
     expect(l.devices.find((d) => d.id === "0a1b2c000fff")).toMatchObject({ name: "0a:1b:2c:00:0f:ff", blocked: true, connected: false });
     expect(l.devices.find((d) => d.name === "Living Room TV")).toMatchObject({ band: "wired", category: "entertainment", signal: null, profileId: null });
-    expect(l.devices.find((d) => d.name === "Alex's Phone")).toMatchObject({ profileId: "700", ssid: "main", ipv4: "192.168.4.21" });
+    expect(l.devices.find((d) => d.name === "Alex's Phone")).toMatchObject({ profileId: "700", ssid: "main", ipv4: "192.168.4.101" });
     expect(l.summary).toMatchObject({ total: 9, online: 6, offline: 1, paused: 1, blocked: 2, rates: null });
     expect(fake.log.map((e) => `${e.method} ${e.path}`).sort()).toEqual(["GET /2.2/networks/100001/blacklist", "GET /2.2/networks/100001/devices"]);
   });

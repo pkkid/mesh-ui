@@ -6,10 +6,11 @@
  * per-device parts. docs/ux/pages/internet.md (Layout 5, States).
  */
 import { ArrowDown, ArrowUp, Ellipsis } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
-import { invalidate, useCommand, useQuery } from "~/app/useCommand";
+import { useQuery } from "~/app/useCommand";
+import { useLiveRates } from "~/app/useLiveRates";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { BarChart } from "~/components/charts/BarChart";
 import { bandLabel } from "~/components/ui/band-badge";
@@ -22,8 +23,7 @@ import { entityColors, seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { bytesParts, formatBytes, formatPercent, mbpsParts, networkClock } from "../../../../core/format";
-import type { BurstResult, DeviceList, Eero, Network, ProfileList, UsageBreakdown, UsageRange, UsageSeries } from "../../../../core/model";
-import { BURST_SETTLE_SEC, POLL } from "../../../../core/poll";
+import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown, UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
   { value: "day", label: "Day" },
@@ -116,39 +116,6 @@ function PerHour({ range, bridged, network }: { range: UsageRange; bridged: bool
       )}
     </Card>
   );
-}
-
-/**
- * Asks for fresh rates once a minute while the page is visible, then
- * refetches the device list once they have settled. Core keeps bursts to
- * once a minute per network, so this shares the Devices page's budget.
- */
-function useLiveRates(enabled: boolean): void {
-  const { run } = useCommand<Record<string, never>, BurstResult>("device.rates.refresh");
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    let next: ReturnType<typeof setTimeout> | undefined;
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    const tick = async () => {
-      if (document.visibilityState === "visible") {
-        const res = await run({});
-        if (cancelled) return;
-        if (res.ok) {
-          const wait = Date.parse(res.result.nextBurstAt) + BURST_SETTLE_SEC * 1000 - Date.now();
-          clearTimeout(settle);
-          settle = setTimeout(() => invalidate(["device.list"]), Number.isFinite(wait) && wait > 0 ? wait : 0);
-        }
-      }
-      if (!cancelled) next = setTimeout(tick, POLL.rates * 1000);
-    };
-    void tick();
-    return () => {
-      cancelled = true;
-      clearTimeout(next);
-      clearTimeout(settle);
-    };
-  }, [enabled, run]);
 }
 
 function UsingNow({ offline }: { offline: boolean }) {

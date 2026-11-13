@@ -1,24 +1,22 @@
 /**
  * The hero's Now box: this device's live download and upload. While the page
  * is visible and the device is online it asks for `device.rates.refresh`
- * once a minute (the engine shares that one burst per network with every
- * live view, so Devices and this page never double it) and refetches
- * `device.get` once the rates have settled.
+ * through the shared `useLiveRates` hook, which refetches `device.get` once
+ * the rates have settled.
  */
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
-import { invalidate, useCommand } from "~/app/useCommand";
+import { useLiveRates } from "~/app/useLiveRates";
 import { StatusDot } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { mbpsParts } from "../../../../core/format";
-import type { BurstResult, Device } from "../../../../core/model";
-import { BURST_SETTLE_SEC, POLL } from "../../../../core/poll";
+import type { Device } from "../../../../core/model";
 
 export function DeviceNow({ device: d, muted = false }: { device: Device; muted?: boolean }) {
   const online = d.connected && !d.blocked;
-  const pending = useDeviceRates(online && !d.paused);
+  const pending = useLiveRates(online && !d.paused);
   const live = online && !d.paused && d.rates;
 
   let note = "Current rates while the device is active";
@@ -58,42 +56,4 @@ function Rate({ icon, label, mbps }: { icon: ReactNode; label: string; mbps: num
       </div>
     </div>
   );
-}
-
-/** One burst a minute while visible and `active`; true while a burst is settling. */
-function useDeviceRates(active: boolean): boolean {
-  const { run } = useCommand<Record<string, never>, BurstResult>("device.rates.refresh");
-  const [pending, setPending] = useState(false);
-  useEffect(() => {
-    if (!active) return;
-    let cancelled = false;
-    let next: ReturnType<typeof setTimeout> | undefined;
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    const tick = async () => {
-      if (document.visibilityState === "visible") {
-        const res = await run({});
-        if (cancelled) return;
-        if (res.ok) {
-          const wait = Date.parse(res.result.nextBurstAt) + BURST_SETTLE_SEC * 1000 - Date.now();
-          if (Number.isFinite(wait) && wait > 0) {
-            setPending(true);
-            clearTimeout(settle);
-            settle = setTimeout(() => {
-              setPending(false);
-              invalidate(["device.get", "device.list"]);
-            }, wait);
-          }
-        }
-      }
-      if (!cancelled) next = setTimeout(tick, POLL.rates * 1000);
-    };
-    void tick();
-    return () => {
-      cancelled = true;
-      clearTimeout(next);
-      clearTimeout(settle);
-      setPending(false);
-    };
-  }, [active, run]);
-  return pending;
 }

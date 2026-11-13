@@ -37,8 +37,8 @@ describe("reservation.list (demo)", () => {
     const mbp = r.reservations.find((x) => x.name === "Alex's MacBook Pro");
     expect(mbp).toMatchObject({ ip: "192.168.4.23", forwards: 3 });
     expect(r.lan).toMatchObject({ subnet: "192.168.4.0/22", size: 1024, gateway: "192.168.4.1", staticRange: { start: "192.168.4.2", end: "192.168.4.99" } });
-    // The demo's DHCP clients all sit below the pool (.4.100 up), so none count as leased.
-    expect(r.lan?.pool.leased).toBe(0);
+    // Reserved devices sit in the static range; the other connected main-network clients hold pool leases (.4.100 up).
+    expect(r.lan?.pool.leased).toBe(23);
   });
 
   it("counts leases as connected main-network devices inside the pool without a reservation", async () => {
@@ -156,8 +156,8 @@ describe("routing commands (fake eero server)", () => {
       subnet: "192.168.4.0/22",
       size: 1024,
       gateway: "192.168.4.1",
-      // The fake's clients have static-range addresses (.4.21 to .4.28), so none are leases.
-      pool: { start: "192.168.4.100", end: "192.168.7.254", size: 923, leased: 0 },
+      // The two reserved clients keep static-range addresses; the connected unreserved ones lease from the pool.
+      pool: { start: "192.168.4.100", end: "192.168.7.254", size: 923, leased: 5 },
       staticRange: { start: "192.168.4.2", end: "192.168.4.99" },
     });
     const f = await ok<ForwardList>(engine, "forward.list");

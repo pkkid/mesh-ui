@@ -10,13 +10,13 @@
 import { Share2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { invalidate, useCommand, useQuery } from "~/app/useCommand";
+import { useQuery } from "~/app/useCommand";
+import { useLiveRates } from "~/app/useLiveRates";
 import { Button } from "~/components/ui/button";
 import { entityColors } from "~/lib/chartColors";
 import { TopBarActions, TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative } from "../../../../core/format";
-import type { BurstResult, DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
-import { BURST_SETTLE_SEC, POLL } from "../../../../core/poll";
+import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
 
 import {
   type ColumnKey,
@@ -129,7 +129,7 @@ export function DevicesPage() {
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
   const usage = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }, { poll: true });
-  const ratesPending = useLiveRates(netId);
+  const ratesPending = useLiveRates(netId !== "", netId);
 
   const eeroName = useMemo(() => new Map((eeros.data ?? []).map((e) => [e.id, e.location])), [eeros.data]);
   const profileInfo = useMemo(() => {
@@ -222,49 +222,6 @@ export function DevicesPage() {
       </section>
     </>
   );
-}
-
-/**
- * Asks for fresh rates once a minute while the page is visible, then
- * refetches the device list once they have settled (about 12 s later).
- * Returns true while a burst is pending, so the Now figures can fade.
- */
-function useLiveRates(netId: string): boolean {
-  const refresh = useCommand<Record<string, never>, BurstResult>("device.rates.refresh");
-  const run = refresh.run;
-  const [pending, setPending] = useState(false);
-  useEffect(() => {
-    if (!netId) return;
-    let cancelled = false;
-    let next: ReturnType<typeof setTimeout> | undefined;
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    const tick = async () => {
-      if (document.visibilityState === "visible") {
-        const res = await run({});
-        if (cancelled) return;
-        if (res.ok) {
-          const wait = Date.parse(res.result.nextBurstAt) + BURST_SETTLE_SEC * 1000 - Date.now();
-          if (Number.isFinite(wait) && wait > 0) {
-            setPending(true);
-            clearTimeout(settle);
-            settle = setTimeout(() => {
-              setPending(false);
-              invalidate(["device.list"]);
-            }, wait);
-          }
-        }
-      }
-      if (!cancelled) next = setTimeout(tick, POLL.rates * 1000);
-    };
-    void tick();
-    return () => {
-      cancelled = true;
-      clearTimeout(next);
-      clearTimeout(settle);
-      setPending(false);
-    };
-  }, [netId, run]);
-  return pending;
 }
 
 /** "Updated just now", "Updated 2 min ago" in the topbar. */

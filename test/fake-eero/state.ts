@@ -210,8 +210,11 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     resources: { schedules: `${netUrl}/profiles/${700 + i}/schedules` },
   }));
 
+  // Reserved devices (see seedRouting) keep static-range addresses (.4.20 to .4.99); the rest take DHCP leases from the pool (.4.100 up).
+  const reservedSeeds = new Set([seed.devices.find((d) => d.band === "wired"), seed.devices.find((d) => d.type === "laptop_computer")]);
   const devices: RawDevice[] = seed.devices.map((d) => {
     const m = mac(d.n);
+    const ip = reservedSeeds.has(d) ? `192.168.4.${20 + (d.n % 80)}` : `192.168.4.${100 + (d.n % 150)}`;
     const eero = seed.eeros[d.eero];
     const profile = d.profile === undefined ? null : profiles[d.profile];
     const wired = d.band === "wired";
@@ -224,8 +227,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       manufacturer: "Example Corp",
       model_name: null,
       device_type: d.type,
-      ip: `192.168.4.${20 + (d.n % 200)}`,
-      ips: [`192.168.4.${20 + (d.n % 200)}`],
+      ip,
+      ips: [ip],
       connected: d.online ?? true,
       wireless: !wired,
       connection_type: wired ? "wired" : "wireless",
@@ -386,7 +389,7 @@ function seedConnections(e: EeroSeed, i: number, devices: RawDevice[]): RawConne
   return { ports: { layout: "horizontal", interfaces }, node_actions: [{ type: "POWER_CYCLE_ALL_PORTS_AND_REBOOT" }], wireless_devices: [] };
 }
 
-/** One reservation and forward on the first wired device, one on the first laptop, and an IPv6 pinhole. */
+/** One reservation and forward on the first wired device, one on the first laptop, and an IPv6 pinhole. buildNetwork keeps these two on static-range addresses. */
 function seedRouting(netUrl: string, devices: RawDevice[]): RawRouting {
   const picks = [devices.find((d) => d.wireless === false), devices.find((d) => d.device_type === "laptop_computer")].filter((d): d is RawDevice => !!d);
   return {
