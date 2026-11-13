@@ -25,7 +25,9 @@ export const EXIT = {
 } as const;
 
 /** Subcommands, one line each, alphabetical: `mcp: runMcp,` */
-const subcommands: Record<string, Subcommand> = {};
+const subcommands: Record<string, Subcommand> = {
+  mcp: (argv, io) => import("./mcp").then((m) => m.runMcp(argv, io)),
+};
 
 const defaultIo: CliIo = {
   stdout: (text) => process.stdout.write(text),
