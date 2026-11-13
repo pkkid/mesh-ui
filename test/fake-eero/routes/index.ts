@@ -7,4 +7,6 @@
  */
 
 export { routes as auth } from "./auth";
+export { routes as events } from "./events";
 export { routes as network } from "./network";
+export { routes as usage } from "./usage";

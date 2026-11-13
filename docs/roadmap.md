@@ -154,7 +154,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: `eero.list`, `eero.get`, `device.list` (with the filter, search, sort and summary params from commands.md, applied in core), `device.get`, `device.rates.refresh` (burst reporter, once a minute), `profile.list`, `profile.get`, with mapping, name fallbacks, and fake routes.
 - done when: demo and fake-server tests pass, including the burst reporter rate limit and device name fallback chain; `mesh-ui --demo run device.list --params '{"status":"online"}'` prints a table.
 
-### M1.12 Usage and events read commands ☐
+### M1.12 Usage and events read commands ✅ (#30)
 - issue: [#12](https://github.com/pkkid/mesh-ui/issues/12)
 - after: M1.2, M1.3
 - docs: architecture/commands.md (internet usage, activity), ux/pages/overview.md
