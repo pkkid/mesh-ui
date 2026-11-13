@@ -90,7 +90,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: The in-memory demo backend implementing every M1 read in `Backend` from one fixture set matching the mockups (Maple Street and Lake Cabin, Alex, Jamie, Mia, Leo, four eeros, about 38 devices, usage series, speed tests, events). Includes the states pages must handle (offline eero, weak link, paused and scheduled profiles, blocked device, update available, bridge mode network, admin role, missing capability). `scenario.ts` holds switchable states for tests (`demo.scenario.set` is registered in M1.9).
 - done when: fixtures are typed against `model.ts`; tests check each read returns consistent data (counts in summaries match the lists); no real names, MACs or IPs.
 
-### M1.4 Electron host: keychain, IPC and preload ☐
+### M1.4 Electron host: keychain, IPC and preload ✅ (#20)
 - issue: [#4](https://github.com/pkkid/mesh-ui/issues/4)
 - after: M1.1
 - docs: architecture/security.md, architecture/ui.md (bridge), platform/cross-platform.md
