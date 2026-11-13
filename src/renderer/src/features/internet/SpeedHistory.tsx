@@ -33,7 +33,8 @@ export function SpeedHistory() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
 
   const clock = networkClock(network.data?.timezone);
-  const tests = [...(history.data?.tests ?? [])].reverse();
+  // Oldest first; a test missing either direction is left off the chart rather than drawn as 0.
+  const tests = (history.data?.tests ?? []).filter((t) => t.downMbps !== null && t.upMbps !== null).reverse();
   const plan = internet.data?.planMbps ?? null;
   const avg = history.data?.avg7d;
   const isp = internet.data?.isp.name ?? "your ISP";
@@ -72,8 +73,8 @@ export function SpeedHistory() {
           </div>
           <AreaChart
             series={[
-              { id: "down", label: "Download", color: seriesColors.download, values: tests.map((t) => t.downMbps ?? 0) },
-              { id: "up", label: "Upload", color: seriesColors.upload, values: tests.map((t) => t.upMbps ?? 0) },
+              { id: "down", label: "Download", color: seriesColors.download, values: tests.map((t) => t.downMbps as number) },
+              { id: "up", label: "Upload", color: seriesColors.upload, values: tests.map((t) => t.upMbps as number) },
             ]}
             labels={tests.map((t) => clock.day(t.at))}
             tooltipLabels={tests.map((t) => clock.dateTime(t.at))}
