@@ -122,7 +122,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: The window everyone builds in. Routes for every page (unbuilt ones render `ComingSoon`), sidebar with all nav items and counts, topbar with title, subtitle slot and actions slot, network switcher, the seven themes (Classic, Rose, Grove, Ocean, Ember, Iris, Gruvbox Hard; Gruvbox Hard default) with light, dark and system, chart series colours per theme, and primitives: card, status dot plus label, segmented toggle, page header (hero), inline confirm. `useCommand` hook wrapping `window.mesh.execute` with loading, error and polling from `poll.ts`. Retire the prototype Devices and Settings views (their pages come in M1.15 and M6). Works against a stub `window.mesh` until M1.4 lands.
 - done when: every route renders without console errors; themes switch live and persist; primitives match the mockups; a renderer test or screenshot covers light and dark.
 
-### M1.8 Chart kit ☐
+### M1.8 Chart kit ✅ (#27)
 - issue: [#8](https://github.com/pkkid/mesh-ui/issues/8)
 - after: M1.1
 - docs: AGENTS.md (Charts), design/design-system.md (charts)
