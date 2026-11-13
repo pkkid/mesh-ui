@@ -16,6 +16,8 @@ type RawEeroWan = RawEero & {
 type RawNetworkWan = RawNetwork & {
   pppoe_enabled?: boolean;
   ipv6_lease?: { ip?: string; address?: string; prefix?: string; prefix_delegation?: string; ipv6_prefix?: string } | null;
+  /** The renew time is unverified: `renews_on` if eero sends it, else `expires_on`. */
+  lease?: { mode?: string; dhcp?: { ip?: string; mask?: string; router?: string; renews_on?: string; expires_on?: string } };
 };
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v : null);
@@ -233,6 +235,13 @@ function wanType(raw: RawNetworkWan): M.Internet["wanType"] {
   return null;
 }
 
+/** When the WAN DHCP lease renews, from `lease.dhcp`; null off DHCP or when eero sends no time. */
+export function leaseRenewsAt(raw: RawNetworkWan): M.Iso | null {
+  if (wanType(raw) !== "dhcp") return null;
+  const dhcp = raw.lease?.dhcp;
+  return toIso(dhcp?.renews_on) ?? toIso(dhcp?.expires_on);
+}
+
 /** `speed` on the network: the latest test. `rating` is left for core. */
 export function mapLastSpeedTest(raw: RawNetwork): M.SpeedTest | null {
   const at = toIso(raw.speed?.date);
@@ -279,8 +288,7 @@ export function mapInternet(raw: RawNetwork, eeros: RawEero[] = eerosOf(raw)): O
           wanPortSpeedMbps: portSpeedMbps(wanPort?.speed),
         }
       : null,
-    // Mapped from `lease` by M2.4.
-    leaseRenewsAt: null,
+    leaseRenewsAt: leaseRenewsAt(r),
     lastSpeedTest: mapLastSpeedTest(raw),
   };
 }
