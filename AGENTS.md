@@ -321,8 +321,9 @@ Work is planned and run with the `milestone-plan`, `milestone-start` and
 - Each milestone has one parent issue `M<n>: <name>` in `pkkid/mesh-ui`, and
   each story (including `M<n>.R`) is a GitHub sub-issue of it. All of them
   share the GitHub milestone, sit on the project board (top of this file) and
-  are linked from the roadmap. A story's PR closes its issue; the review PR
-  closes `M<n>.R` and the parent. Issues are created one milestone at a time,
+  are linked from the roadmap. Branching and merging follow the milestone
+  skills: story PRs merge into `milestone/M<n>`, and only the maintainer
+  merges the milestone PR into `main`. Issues are created one milestone at a time,
   after the maintainer approves the stories.
 - Only plan a milestone when the maintainer asks. Write stories only for the
   next milestone; later ones get a Goal line.
@@ -332,4 +333,5 @@ Work is planned and run with the `milestone-plan`, `milestone-start` and
   needs the real network is a `MANUAL:` line, not a done-when.
 - Reviews are written to `docs/reviews/M<n>.md` and include the Manual checks
   section above, plus demo-mode screenshots for UI changes.
-- Never merge a review PR; the maintainer approves a milestone by merging it.
+- Never merge the milestone PR (`milestone/M<n>` into `main`); the maintainer
+  approves a milestone by merging it.
