@@ -22,11 +22,10 @@ import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
+import { HeaderLink, PlaceholderRows, Row, RowList, SectionError, useNow } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import { formatRelative } from "../../../../core/format";
 import type { EventCategory, EventPage, Network, NetworkEvent } from "../../../../core/model";
-
-import { HeaderLink, PlaceholderRows, Row, RowList, SectionError, useNow } from "./OverviewView";
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
   device_new: PlusCircle,

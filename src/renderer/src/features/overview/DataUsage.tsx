@@ -11,24 +11,17 @@ import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { ShareBar } from "~/components/charts/ShareBar";
 import { Section } from "~/components/ui/card";
+import { SectionError } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { bytesParts, formatBytes, formatPercent } from "../../../../core/format";
+import { bytesParts, formatBytes, formatPercent, networkClock } from "../../../../core/format";
 import type { Eero, Network, UsageRange, UsageSeries } from "../../../../core/model";
-
-import { SectionError } from "./OverviewView";
 
 const RANGES = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
 ] as const;
-
-/** Clock and date labels in the network time zone. */
-export function zoneFormat(tz: string, options: Intl.DateTimeFormatOptions) {
-  const f = new Intl.DateTimeFormat("en-US", { ...options, timeZone: tz });
-  return (iso: string) => f.format(Date.parse(iso));
-}
 
 /** Half of the Day / Week crossfade: fade out, swap, fade in over the same time. */
 const SWITCH_MS = 150;
@@ -68,20 +61,17 @@ export function DataUsage() {
   const hasData = total > 0;
   const day = range === "day";
 
-  const hour = zoneFormat(tz, { hour: "numeric" });
-  const weekday = zoneFormat(tz, { weekday: "short" });
-  const longDay = zoneFormat(tz, { weekday: "long" });
-  const longDate = zoneFormat(tz, { weekday: "long", month: "short", day: "numeric" });
+  const { hour, weekday, longWeekday: longDay, longDate } = networkClock(tz);
   const labels = points.map((p) => (day ? hour(p.at) : weekday(p.at)));
   const tooltipLabels = points.map((p) =>
     day
-      ? `${weekday(p.at)} ${hour(p.at)} to ${hour(new Date(Date.parse(p.at) + 3_600_000).toISOString())}`
+      ? `${weekday(p.at)} ${hour(p.at)} to ${hour(Date.parse(p.at) + 3_600_000)}`
       : longDate(p.at),
   );
 
   const busiest = s?.busiest
     ? day
-      ? `busiest hour ${hour(s.busiest.at)} to ${hour(new Date(Date.parse(s.busiest.at) + 3_600_000).toISOString())}`
+      ? `busiest hour ${hour(s.busiest.at)} to ${hour(Date.parse(s.busiest.at) + 3_600_000)}`
       : `busiest day ${longDay(s.busiest.at)}`
     : null;
 

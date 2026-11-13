@@ -11,12 +11,11 @@ import { Gauge } from "~/components/charts/Gauge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
+import { ComingSoonButton, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
 import { formatDuration, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, SpeedHistory } from "../../../../core/model";
-
-import { ComingSoonButton, useNow } from "./OverviewView";
 
 export function NetworkHero() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
