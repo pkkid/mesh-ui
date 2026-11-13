@@ -10,6 +10,7 @@ import { execute, useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { Meter } from "~/components/ui/meter";
 import { SectionError } from "~/components/ui/page";
+import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatMbps, networkClock } from "../../../../core/format";
 import type { Internet, Network, PlanSpeed, SpeedHistory, SpeedTest } from "../../../../core/model";
@@ -80,8 +81,8 @@ export function EarlierTests() {
                     return (
                       <tr key={t.at} className="border-border/50 border-b last:border-b-0 hover:bg-muted/50">
                         <td className="whitespace-nowrap px-3 py-2.5 font-medium">{clock.dateTime(t.at)}</td>
-                        <SpeedCell value={t.downMbps} plan={plan?.down ?? null} label="Download" className={weak === "down" ? tone : undefined} />
-                        <SpeedCell value={t.upMbps} plan={plan?.up ?? null} label="Upload" className={weak === "up" ? tone : undefined} />
+                        <SpeedCell value={t.downMbps} plan={plan?.down ?? null} label="Download" color={seriesColors.download} className={weak === "down" ? tone : undefined} />
+                        <SpeedCell value={t.upMbps} plan={plan?.up ?? null} label="Upload" color={seriesColors.upload} className={weak === "up" ? tone : undefined} />
                         <td className={cn("whitespace-nowrap px-3 py-2.5 text-right text-xs", t.rating ? VERDICT[t.rating].className : "text-muted-foreground")}>
                           {t.rating ? VERDICT[t.rating].label : "-"}
                         </td>
@@ -101,12 +102,12 @@ export function EarlierTests() {
   );
 }
 
-function SpeedCell({ value, plan, label, className }: { value: number | null; plan: number | null; label: string; className?: string }) {
+function SpeedCell({ value, plan, label, color, className }: { value: number | null; plan: number | null; label: string; color: string; className?: string }) {
   return (
     <td className="px-3 py-2.5">
       <div className="flex items-center gap-3">
         <span className={cn("w-[78px] shrink-0 font-medium tabular-nums", className)}>{formatMbps(value)}</span>
-        {plan ? <Meter value={value} max={plan} label={`${label}, share of plan`} /> : null}
+        {plan ? <Meter value={value} max={plan} color={color} label={`${label}, share of plan`} /> : null}
       </div>
     </td>
   );

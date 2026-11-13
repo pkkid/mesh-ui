@@ -207,7 +207,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Note | Bordered inset box with an icon in the status colour and body text in normal colour, for real warnings |
 | Key-value list | `kv-list.tsx`. Two columns, muted keys, `tabular-nums` values; IPs, MACs and serials in mono with a small copy button |
 | Band badge | `band-badge.tsx`. The neutral Badge box with "2.4 GHz", "5 GHz", "6 GHz" or a cable icon and "Wired". Never coloured: band colours are for chart series |
-| Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
+| Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), or the series colour via `color` for a series share (download and upload plan meters), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
 | Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from device type (then category) to a lucide icon, shown in an Icon tile. Never map device types to icons anywhere else |
 | Tooltip | Glass card (see Charts) |
 | Dialog and sheet | `bg-popover`, border, large radius, dimmed backdrop |
