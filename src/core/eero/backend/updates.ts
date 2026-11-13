@@ -20,7 +20,7 @@ export const updates: EeroArea<"updates"> = (ctx) => {
         ctx.client.request<RawUpdates | null>({ method: "GET", path: links.get(`net:${id}.updates`, `${base(id)}/updates`) }),
         ctx.client.request<unknown>({ method: "GET", path: links.get(`net:${id}.eeros`, `${base(id)}/eeros`) }),
       ]);
-      return mapUpdates(raw, asList<RawEeroFull>(eeros, "eeros").map(mapEero));
+      return mapUpdates(raw, asList<RawEeroFull>(eeros, "eeros").map((e) => mapEero(e)));
     },
   };
 };
