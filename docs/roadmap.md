@@ -305,7 +305,7 @@ and get `MANUAL:` lines.
 - scope: Core: `reservation.list` (reservations joined to devices, plus `LanMap`) and `forward.list {device?}`, both reading one cached `GET {net}/routing`, with bridge mode answering empty with a reason; the eero backend fills `device.get` reservation from routing and maps link-local IPv6; fake routes. Page (mockup 06): hero with profile, eero and signal; Now live box (shared burst); Data usage Day/Week with busiest hour and network rank; Device information (wired variant shows port and speed); IP addresses with Reserved badge; Port forwarding rows; Prev/Next and `[` `]` follow the Devices list order; Devices row click lands here. Pause, Appearance, Change profile, Block, Edit/Reserve, the trash and switch on forwards, and + Open a port are disabled ("Coming soon"). Offline, paused, blocked, guest, wired, gone and bridge states. Carried from M1: counts in the Devices eero, profile and manufacturer filters from the M2.1 summary fields.
 - done when: demo tests for both routing commands (incl. `bad_params`, an unknown device and bridge mode) and fake-server tests for routing mapping and `device.get` reservation; `pnpm ui:shot` of a wireless, a wired, a blocked and a guest device, demo and `--fake`, light and dark, plus Devices with the Filters popover open showing counts, are in the PR; `MANUAL: reservation.list and forward.list | pnpm mesh-ui run each | reservations and forwards match the eero app | none`.
 
-### M2.8 Command palette ✅ (#PR)
+### M2.8 Command palette ✅ (#65)
 - issue: [#56](https://github.com/pkkid/mesh-ui/issues/56)
 - after: M2.2
 - docs: ux/pages/command-palette.md, architecture/ui.md (bridge), architecture/mcp.md (tool names, hints)
