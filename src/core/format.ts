@@ -101,6 +101,89 @@ export function formatRelative(iso: string | null | undefined, now: number, time
 }
 
 // ---------------------------------------------------------------------------
+// Network clock: times and dates in the network's time zone (eero reports an
+// IANA zone such as "America/New_York"), never the viewer's.
+
+/** Clock and date labels for one time zone. Every method takes an ISO time or epoch ms. */
+export type Clock = {
+  /** "9:41 AM" */
+  time: (at: At) => string;
+  /** "Oct 20, 9:41 AM" */
+  dateTime: (at: At) => string;
+  /** "Sat Nov 8" */
+  day: (at: At) => string;
+  /** "Saturday, Nov 8" */
+  longDate: (at: At) => string;
+  /** Hour labels for charts: "9 AM", "12 PM". */
+  hour: (at: At) => string;
+  /** "Sat" */
+  weekday: (at: At) => string;
+  /** "Saturday" */
+  longWeekday: (at: At) => string;
+  /** Local weekday (0 = Monday to 6 = Sunday) and hour (0 to 23), for day-by-hour grids. */
+  parts: (at: At) => { weekday: number; hour: number };
+};
+
+type At = string | number;
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const clocks = new Map<string, Clock>();
+
+/** Builds a formatter set from Intl options, falling back to UTC for an unknown zone. */
+function makeClock(timeZone: string): Clock {
+  let zone = timeZone;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+  } catch {
+    zone = "UTC";
+  }
+  const fmt = (options: Intl.DateTimeFormatOptions) => {
+    const f = new Intl.DateTimeFormat("en-US", { ...options, timeZone: zone });
+    return (at: At) => {
+      const ms = typeof at === "number" ? at : Date.parse(at);
+      // ICU puts a narrow no-break space before AM/PM; use a plain one everywhere.
+      return Number.isFinite(ms) ? f.format(ms).replace(/\u202f/g, " ") : MISSING;
+    };
+  };
+  const dayParts = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: zone });
+  const gridParts = new Intl.DateTimeFormat("en-US", { weekday: "short", hour: "2-digit", hourCycle: "h23", timeZone: zone });
+  const toMs = (at: At) => (typeof at === "number" ? at : Date.parse(at));
+  return {
+    time: fmt({ hour: "numeric", minute: "2-digit" }),
+    dateTime: fmt({ month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
+    day: (at) => {
+      const ms = toMs(at);
+      if (!Number.isFinite(ms)) return MISSING;
+      // en-US puts a comma after the weekday ("Sat, Nov 8"); the UI drops it.
+      const p = Object.fromEntries(dayParts.formatToParts(ms).map((x) => [x.type, x.value]));
+      return `${p.weekday} ${p.month} ${p.day}`;
+    },
+    longDate: fmt({ weekday: "long", month: "short", day: "numeric" }),
+    hour: fmt({ hour: "numeric" }),
+    weekday: fmt({ weekday: "short" }),
+    longWeekday: fmt({ weekday: "long" }),
+    parts: (at) => {
+      const ms = toMs(at);
+      if (!Number.isFinite(ms)) return { weekday: -1, hour: -1 };
+      const p = gridParts.formatToParts(ms);
+      return {
+        weekday: WEEKDAYS.indexOf(p.find((x) => x.type === "weekday")?.value ?? ""),
+        hour: Number(p.find((x) => x.type === "hour")?.value),
+      };
+    },
+  };
+}
+
+/** The (cached) clock for a network time zone. A missing or unknown zone reads as UTC. */
+export function networkClock(timeZone: string | null | undefined): Clock {
+  const key = timeZone || "UTC";
+  let c = clocks.get(key);
+  if (!c) clocks.set(key, (c = makeClock(key)));
+  return c;
+}
+
+// ---------------------------------------------------------------------------
 // CSV (every Export CSV button and `format: "csv"` result)
 
 export type CsvColumn<T> = { header: string; value: (row: T) => string | number | boolean | null | undefined };

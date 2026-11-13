@@ -7,23 +7,21 @@
 import { useQuery } from "~/app/useCommand";
 import { Heatmap } from "~/components/charts/Heatmap";
 import { Card, Empty, Section } from "~/components/ui/card";
+import { SectionError } from "~/components/ui/page";
 import { seriesColors } from "~/lib/chartColors";
-import { formatPercent } from "../../../../core/format";
+import { formatPercent, networkClock } from "../../../../core/format";
 import type { Network, UsageSeries } from "../../../../core/model";
 
-import { SectionError } from "./OverviewView";
-
+/** Row labels, Monday first like `Clock.parts`. */
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** Places each hourly point in its local weekday row and hour column. */
 function grid(series: UsageSeries | undefined, tz: string): number[][] {
   const cells = DAYS.map(() => Array.from({ length: 24 }, () => 0));
   if (!series) return cells;
-  const f = new Intl.DateTimeFormat("en-US", { weekday: "short", hour: "2-digit", hourCycle: "h23", timeZone: tz });
+  const clock = networkClock(tz);
   for (const p of series.points) {
-    const parts = f.formatToParts(Date.parse(p.at));
-    const day = DAYS.indexOf(parts.find((x) => x.type === "weekday")?.value ?? "");
-    const hour = Number(parts.find((x) => x.type === "hour")?.value);
+    const { weekday: day, hour } = clock.parts(p.at);
     const row = cells[day];
     if (row && hour >= 0 && hour < 24) row[hour] = (row[hour] ?? 0) + p.down + p.up;
   }

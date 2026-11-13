@@ -11,12 +11,12 @@ import { Donut } from "~/components/charts/Donut";
 import { Card } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { entityColor, seriesColors } from "~/lib/chartColors";
+import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatCount, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Device, DeviceCategory, DeviceSummary as Summary } from "../../../../core/model";
 
 import { CATEGORIES, CATEGORY_LABELS } from "./DeviceFilters";
-import { deviceIcon } from "./DeviceTable";
 
 /** Category series colours: entity hues in order, with Other as the neutral series. */
 export const categoryColor = (c: DeviceCategory): string =>
