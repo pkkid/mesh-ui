@@ -6,12 +6,12 @@
  */
 import { useQuery } from "~/app/useCommand";
 import { Heatmap } from "~/components/charts/Heatmap";
-import { Card, Empty, Section } from "~/components/ui/card";
+import { Card, Empty } from "~/components/ui/card";
 import { seriesColors } from "~/lib/chartColors";
 import { formatPercent } from "../../../../core/format";
 import type { Network, UsageSeries } from "../../../../core/model";
 
-import { SectionError } from "./OverviewView";
+import { OverviewSection, SectionError } from "./OverviewView";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -38,7 +38,7 @@ export function BusyHeatmap() {
   const peak = Math.max(0, ...values.flat());
 
   return (
-    <Section title="When the network is busy" subtitle="This week">
+    <OverviewSection title="When the network is busy" subtitle="This week">
       {usage.error && !usage.data ? (
         <SectionError what="busy hours" error={usage.error} onRetry={() => void usage.refetch()} />
       ) : usage.data && peak === 0 ? (
@@ -60,6 +60,6 @@ export function BusyHeatmap() {
           />
         </Card>
       )}
-    </Section>
+    </OverviewSection>
   );
 }
