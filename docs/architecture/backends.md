@@ -191,7 +191,8 @@ fixtures.
   come from the connected devices' `wiredPort` (the gateway WAN port takes
   the internet gateway's speed); firmware history is stored newest first
   and `current` marks the entry equal to the eero's firmware; forwards per
-  reservation and the pool's leased count come from the lists; per-eero
+  reservation come from the lists (the pool's leased count is left at 0
+  for core's `reservation.list` to count, as with the eero backend); per-eero
   update versions come from the eeros. Bridge mode (Mom's House) answers
   routing with empty lists and no LAN map.
 - **Errors on purpose** (not yet built in M1, as it needs writes). A

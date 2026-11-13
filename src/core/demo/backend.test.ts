@@ -23,7 +23,11 @@ const sum = (xs: { down: number; up: number }[]) => xs.reduce((s, x) => s + x.do
 const count = <T>(xs: T[], f: (x: T) => boolean) => xs.filter(f).length;
 
 describe("demo fixtures", () => {
-  it("are deterministic for a clock and seed", () => {
+  // Runs in about 10ms (two builds of ~160 KB of fixtures and a deep compare). It took 6.4s once on the 3-vCPU
+  // macOS runner: it is the first heavy synchronous test in this file and runs while every other test file's
+  // fork is still importing (the run reported import 60%) and cli.test.ts builds the CLI, so the fork was
+  // starved of CPU. Nothing in it is slow; the longer timeout only covers that cold, contended start.
+  it("are deterministic for a clock and seed", { timeout: 30_000 }, () => {
     expect(createFixtures(NOW, 7)).toEqual(createFixtures(NOW, 7));
   });
 
@@ -427,8 +431,8 @@ describe("M2 fixtures", () => {
     }
     for (const res of r.reservations) expect(res.forwards).toBe(r.forwards.filter((f) => f.deviceId === res.deviceId).length);
     for (const p of r.pinholes) expect(devices.find((d) => d.id === p.deviceId)?.ipv6).toContain(p.address);
-    const reserved = new Set(r.reservations.map((x) => x.deviceId));
-    expect(r.lan?.pool.leased).toBe(count(devices, (d) => d.connected && !!d.ipv4 && !reserved.has(d.id)));
+    // Leases are counted in core (reservation.list), not by the backend.
+    expect(r.lan?.pool.leased).toBe(0);
   });
 
   it("answer routing empty in bridge mode", async () => {

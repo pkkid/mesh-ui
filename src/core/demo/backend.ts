@@ -6,7 +6,7 @@
  * Derived fields come from the lists, so they always agree: a network's eero
  * count and devices online, an eero's clients, a profile's devices and state,
  * health per eero, port attachments (from devices' wired ports), the current
- * firmware, forwards per reservation and leased addresses. Usage is generated per device and hour from its typical
+ * firmware and forwards per reservation (leased addresses are counted in core). Usage is generated per device and hour from its typical
  * daily traffic, and every scope (network, eero, profile, guest, device) and
  * breakdown sums the same per-device hours, so totals add up everywhere.
  */
@@ -416,13 +416,12 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     routing: {
       get: async (id) => {
         const data = net(id);
-        const reserved = new Set(data.reservations.map((r) => r.deviceId));
-        const leased = data.devices.filter((d) => d.connected && d.ipv4 && !reserved.has(d.id)).length;
         return {
           reservations: data.reservations.map((r) => ({ ...clone(r), forwards: data.forwards.filter((f) => f.deviceId === r.deviceId).length })),
           forwards: clone(data.forwards),
           pinholes: clone(data.pinholes),
-          lan: data.lan ? { ...clone(data.lan), pool: { ...data.lan.pool, leased } } : null,
+          // pool.leased is counted in core (commands/routing.ts), as for the eero backend.
+          lan: data.lan ? { ...clone(data.lan), pool: { ...data.lan.pool, leased: 0 } } : null,
         };
       },
     },
