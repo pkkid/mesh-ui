@@ -4,8 +4,8 @@
  */
 
 import type * as M from "../../model";
-import { type RawEero, linkUrl } from "../raw";
-import { idFromUrl } from "../urls";
+import { type RawEero, type RawFirmwareHistoryEntry, type RawNetwork, type RawPortInterface, linkUrl } from "../raw";
+import { compactMac, idFromUrl } from "../urls";
 import { speedMbps } from "./device";
 
 type RawRadioStats = { channel?: number; channel_width?: string | number; tx_power?: number; channel_utilization?: number; client_count?: number };
@@ -71,8 +71,8 @@ function radios(raw: RawEeroFull): M.Radio[] {
       widthMhz: speedMbps(s.channel_width),
       utilization: num(s.channel_utilization),
       clients,
-      // Mapped by M2.6 (radio_channel_stats tx_power, auto channel).
-      txPowerDbm: null,
+      txPowerDbm: num(s.tx_power),
+      // radio_channel_stats has no auto flag; null until a source is seen (MANUAL, M2.6).
       autoChannel: null,
     });
   }
@@ -94,7 +94,48 @@ function upstream(raw: RawEeroFull, wired: boolean): M.Id | null {
   return url ? idFromUrl(url) : wireless ? idFromUrl(wireless) : null;
 }
 
-export function mapEero(raw: RawEeroFull): M.Eero {
+/** LAN facts every eero shares, from the network object and the gateway eero. */
+export type Lan = { subnet: string | null; gatewayIp: string | null };
+
+const NO_LAN: Lan = { subnet: null, gatewayIp: null };
+
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+function ipv4Int(ip: string | null): number | null {
+  const m = ip ? IPV4.exec(ip) : null;
+  if (!m) return null;
+  const parts = m.slice(1).map(Number);
+  return parts.every((n) => n <= 255) ? parts.reduce((a, n) => a * 256 + n, 0) : null;
+}
+
+/** "192.168.4.0" and "255.255.252.0" to "192.168.4.0/22"; null for a bad or non-contiguous mask. */
+export function cidr(ip: string | null, mask: string | null): string | null {
+  const a = ipv4Int(ip);
+  const m = ipv4Int(mask);
+  if (a === null || m === null) return null;
+  const bits = m.toString(2).padStart(32, "0");
+  if (!/^1*0*$/.test(bits)) return null;
+  const prefix = bits.indexOf("0") === -1 ? 32 : bits.indexOf("0");
+  const base = prefix === 0 ? 0 : (a - (a % 2 ** (32 - prefix)));
+  return `${[24, 16, 8, 0].map((s) => Math.floor(base / 2 ** s) % 256).join(".")}/${prefix}`;
+}
+
+/**
+ * Subnet from the network's custom DHCP settings (null in automatic mode:
+ * eero does not send the range it picked), and the LAN gateway, the gateway
+ * eero's own address. In bridge mode eero is not the gateway, so null.
+ */
+export function lanOf(net: Pick<RawNetwork, "dhcp" | "connection"> | null, eeros: RawEero[]): Lan {
+  const mode = net?.connection?.mode?.toLowerCase();
+  const gw = eeros.find((e) => e.gateway === true || e.is_primary_node === true);
+  const custom = net?.dhcp?.mode?.toLowerCase() === "custom" ? net.dhcp.custom : undefined;
+  return {
+    subnet: custom ? cidr(str(custom.subnet_ip), str(custom.subnet_mask)) : null,
+    gatewayIp: mode && mode !== "nat" ? null : str(gw?.ip_address),
+  };
+}
+
+export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN): M.Eero {
   const url = linkUrl(raw.url);
   const isGateway = raw.gateway === true || raw.is_primary_node === true;
   const wired = raw.wired === true || raw.connection_type?.toUpperCase() === "WIRED";
@@ -129,9 +170,8 @@ export function mapEero(raw: RawEeroFull): M.Eero {
     nightlight: nightlight(raw),
     ipv4: str(raw.ip_address),
     ipv6: (raw.ipv6_addresses ?? []).map((a) => (typeof a === "string" ? a : a?.address)).filter((a): a is string => typeof a === "string" && a.length > 0),
-    // Mapped by M2.6.
-    subnet: null,
-    gatewayIp: null,
+    subnet: lan.subnet,
+    gatewayIp: lan.gatewayIp,
     mac: str(raw.mac_address),
     bssids: (raw.bssids_with_bands ?? []).flatMap((b) => {
       const band = bandOf(b.band);
@@ -144,4 +184,91 @@ export function mapEero(raw: RawEeroFull): M.Eero {
     powerSource: str(raw.power_info?.power_source),
     messages: (raw.messages ?? []).map((m) => (typeof m === "string" ? m : str((m as { message?: unknown; title?: unknown })?.message) ?? str((m as { title?: unknown })?.title))).filter((m): m is string => !!m),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Ports (`GET resources.connections`)
+
+const PORT_ACTIONS = new Set<M.PortAction>(["ENABLE_PORT", "DISABLE_PORT", "ENABLE_DATA", "DISABLE_DATA", "ENABLE_POE", "DISABLE_POE", "RESTART_POWER"]);
+
+/** eero link speeds: "P2500" 2500, "P1000" 1000, "P10G" 10000, a number as is. Null when absent or unreadable. */
+export function portSpeed(v: unknown): number | null {
+  if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : null;
+  const m = typeof v === "string" ? /(\d+(?:\.\d+)?)\s*(g)?/i.exec(v) : null;
+  if (!m) return null;
+  const n = Number(m[1]) * (m[2] ? 1000 : 1);
+  return n > 0 ? n : null;
+}
+
+function portStatus(v: unknown): M.EeroPort["status"] {
+  const s = typeof v === "string" ? v.toUpperCase() : "";
+  if (s === "UP" || s === "CONNECTED" || s === "ACTIVE") return "up";
+  if (s === "DISABLED") return "disabled";
+  return "down";
+}
+
+function poe(v: unknown): M.EeroPort["poe"] {
+  const s = typeof v === "string" ? v.toUpperCase() : "";
+  if (["ON", "ENABLED", "ACTIVE", "POWERED"].includes(s)) return "on";
+  if (["OFF", "DISABLED", "INACTIVE"].includes(s)) return "off";
+  return null;
+}
+
+/** What the ports can join against: the network's devices and eeros. */
+export type PortJoin = { devices: Pick<M.Device, "id" | "mac" | "name">[]; eeros: Pick<M.Eero, "id" | "mac" | "location">[] };
+
+function attached(n: RawPortInterface["neighbor"], join: PortJoin): M.EeroPort["attached"] {
+  if (!n) return null;
+  const meta = n.metadata ?? {};
+  const mac = str(meta.mac) ? compactMac(meta.mac as string) : null;
+  const url = linkUrl(meta.url);
+  const urlId = url ? idFromUrl(url) : null;
+  const isEero = n.type?.toUpperCase() === "EERO" || (url?.includes("/eeros/") ?? false);
+  if (isEero) {
+    const e = join.eeros.find((x) => (mac && x.mac && compactMac(x.mac) === mac) || x.id === urlId);
+    const name = e?.location ?? str(meta.location) ?? str(meta.display_name);
+    return { deviceId: null, eeroId: e?.id ?? urlId, name };
+  }
+  const d = join.devices.find((x) => (mac && compactMac(x.mac) === mac) || x.id === urlId);
+  const deviceId = d?.id ?? urlId ?? mac;
+  const name = d?.name ?? str(meta.display_name);
+  return deviceId || name ? { deviceId, eeroId: null, name } : null;
+}
+
+export function mapPorts(eeroId: M.Id, raw: { ports?: { interfaces?: RawPortInterface[] } } | null | undefined, join: PortJoin): M.EeroPorts {
+  const ports = (raw?.ports?.interfaces ?? []).map((p, i): M.EeroPort => {
+    const status = portStatus(p.port_status);
+    return {
+      number: num(p.interface_number) ?? i + 1,
+      name: str(p.name),
+      status,
+      speedMbps: status === "up" ? portSpeed(p.negotiated_speed) : null,
+      supportedMbps: portSpeed(p.supported_speed),
+      isWan: p.network_type?.toUpperCase() === "WAN",
+      poe: poe(p.poe_status),
+      mac: str(p.ethernet_address),
+      attached: attached(p.neighbor, join),
+      actions: (p.actions ?? []).map((a) => a?.type?.toUpperCase()).filter((t): t is M.PortAction => !!t && PORT_ACTIONS.has(t as M.PortAction)),
+    };
+  });
+  return { eeroId, ports: ports.sort((a, b) => a.number - b.number) };
+}
+
+// ---------------------------------------------------------------------------
+// Firmware history (`GET /2.2/eeros/{id}/firmware_update/history`)
+
+/** Newest first, `current` on the newest entry matching the running version. Entries without a version are dropped. */
+export function mapFirmwareHistory(rows: RawFirmwareHistoryEntry[], running: string | null): M.FirmwareEntry[] {
+  const list = rows
+    .map((r) => ({ version: str(r.os_version) ?? str(r.version), installedAt: str(r.installed_at) ?? str(r.installed) ?? str(r.created) }))
+    .filter((r): r is { version: string; installedAt: string | null } => r.version !== null);
+  const time = (t: string | null) => (t ? Date.parse(t) : Number.NaN);
+  list.sort((a, b) => {
+    const ta = time(a.installedAt);
+    const tb = time(b.installedAt);
+    if (Number.isNaN(ta) || Number.isNaN(tb)) return Number.isNaN(ta) ? (Number.isNaN(tb) ? 0 : 1) : -1;
+    return tb - ta;
+  });
+  const cur = running ? list.findIndex((r) => r.version === running) : -1;
+  return list.map((r, i) => ({ ...r, current: i === cur }));
 }
