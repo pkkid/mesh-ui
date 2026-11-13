@@ -103,14 +103,23 @@ function mesh(args: string[], opts: { stdin?: string; env?: Record<string, strin
   return new Promise((done, fail) => {
     const env: Record<string, string | undefined> = { ...process.env, NO_COLOR: undefined, MESH_UI_DEMO: undefined, ...opts.env };
     const demo = opts.demo === false ? [] : ["--demo"];
-    const child = spawn(process.execPath, [cli, ...demo, "--user-data-dir", userDataDir, ...args], { env, cwd: dir });
+    // Without input the child gets no stdin pipe (it reads EOF at once), so nothing is written to a process that
+    // may already have exited. Writing "" to a child that exits without reading (e.g. --help) raced it to EPIPE.
+    const argv = [cli, ...demo, "--user-data-dir", userDataDir, ...args];
+    const child = opts.stdin === undefined ? spawn(process.execPath, argv, { env, cwd: dir, stdio: ["ignore", "pipe", "pipe"] }) : spawn(process.execPath, argv, { env, cwd: dir });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d) => (stdout += d));
     child.stderr.on("data", (d) => (stderr += d));
     child.on("error", fail);
     child.on("close", (code) => done({ code: code ?? -1, stdout, stderr }));
-    child.stdin.end(opts.stdin ?? "");
+    if (child.stdin) {
+      // A child may exit before reading all its input; that is judged by its exit code and output, not as a crash here.
+      child.stdin.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code !== "EPIPE") fail(err);
+      });
+      child.stdin.end(opts.stdin);
+    }
   });
 }
 

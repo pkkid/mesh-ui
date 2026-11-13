@@ -355,8 +355,10 @@ All three lists come from one `GET {net}/routing` (pinned to `/2.2/`),
 cached as the `routing` topic; the LAN map comes from the network's `dhcp`
 settings (`dhcp.custom`, or eero's automatic 192.168.4.0/22 with the pool
 from .4.100 to .7.254). Core joins rows to devices by MAC (reservations) and
-IP (forwards) and counts leased addresses (connected devices with an IPv4
-and no reservation). Writes apply instantly and never restart eeros. Not
+IP (forwards) and counts leased addresses: connected, unblocked
+main-network devices with an IPv4 inside the pool and no reservation, using
+the same `blocked` flag `device.list` reports. Only core counts leases; both
+backends report `pool.leased` as 0. Writes apply instantly and never restart eeros. Not
 available in bridge or IP passthrough mode: the reads answer empty lists
 with `unavailable` set to the reason, without calling eero's routing.
 
