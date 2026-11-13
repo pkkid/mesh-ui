@@ -98,7 +98,8 @@ function initials(name: string | null | undefined): string {
 
 function UserFooter() {
   const account = useQuery<Account>("account.get");
-  const networks = useQuery<NetworkSummary[]>("network.list", undefined, { poll: 60 });
+  // Shares the switcher's network.list entry, which does the polling.
+  const networks = useQuery<NetworkSummary[]>("network.list");
   const logout = useCommand("auth.logout");
   const current = networks.data?.find((n) => n.selected) ?? networks.data?.[0];
   const role = current?.role === "owner" ? "Owner" : current?.role === "admin" ? "Admin" : "-";

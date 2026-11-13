@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 
 import { Link } from "~/app/router";
 import { routeById } from "~/app/routes";
-import { invalidate, useCommand, useQuery } from "~/app/useCommand";
+import { useCommand, useQuery } from "~/app/useCommand";
 import { Badge } from "~/components/ui/badge";
 import { networkStatus, StatusDot } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
@@ -59,8 +59,8 @@ export function NetworkSwitcher() {
   const choose = async (n: NetworkSummary) => {
     setOpen(false);
     if (n.id === current?.id) return;
-    const res = await select.run({ network: n.id });
-    if (res.ok) invalidate();
+    // A successful network.select refetches every query (useCommand invalidates all).
+    await select.run({ network: n.id });
   };
 
   const status = current ? networkStatus(current.status) : null;
