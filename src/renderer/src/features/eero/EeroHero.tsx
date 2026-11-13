@@ -10,6 +10,7 @@ import { eeroIcon } from "~/components/mesh/Topology";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount, formatDuration, formatPercent } from "../../../../core/format";
 import type { Eero, UsageBreakdownRow } from "../../../../core/model";
+import { ledState, radioBadge } from "./helpers";
 
 import { EeroUplink } from "./EeroUplink";
 
@@ -27,14 +28,6 @@ export type EeroHeroProps = {
   internet: { label: string | null; wanMbps: number | null } | null;
   fading?: boolean;
 };
-
-/** "Tri-band Wi-Fi 7", "Dual-band": band count, plus the Wi-Fi generation when the model name carries it. */
-export function radioBadge(e: Pick<Eero, "bands" | "model">): string | null {
-  const n = e.bands.filter((b) => b !== "wired").length;
-  const bands = n >= 3 ? "Tri-band" : n === 2 ? "Dual-band" : null;
-  const gen = /\b(7|6E|6)$/i.exec(e.model ?? "")?.[1]?.toUpperCase();
-  return [bands, gen ? `Wi-Fi ${gen}` : null].filter(Boolean).join(" ") || null;
-}
 
 export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage, internet, fading = false }: EeroHeroProps) {
   const status = offline ? networkStatus("offline") : networkStatus(eero?.status);
@@ -86,13 +79,6 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
       aside={eero ? <EeroUplink eero={eero} eeros={eeros} internet={internet} networkOffline={networkOffline} /> : null}
     />
   );
-}
-
-/** LED state from `eero.led`: on at full, dimmed, off, or unknown. */
-function ledState(e: Eero | null, offline: boolean): "on" | "dim" | "off" | "unknown" {
-  if (!e || offline || e.led.on === null) return "unknown";
-  if (!e.led.on) return "off";
-  return e.led.brightness !== null && e.led.brightness < 100 ? "dim" : "on";
 }
 
 const LED_LABEL = { on: "Status light on", dim: "Status light dimmed", off: "Status light off", unknown: "Status light unknown" } as const;

@@ -90,10 +90,10 @@ function BreakdownTable<T>({
     <table className={cn("w-full border-collapse text-[13px] transition-opacity", fading && "opacity-40", className)}>
       <thead>
         <tr className="border-b text-left text-muted-foreground text-xs">
-          {ranked && <th className="px-3 py-2 font-normal">#</th>}
+          {ranked && <th className="whitespace-nowrap px-3 py-2 font-normal">#</th>}
           <th className="w-full px-3 py-2 font-normal">{nameHeader}</th>
           {columns.map((c) => (
-            <th key={c.header} className="px-3 py-2 text-right font-normal">
+            <th key={c.header} className="whitespace-nowrap px-3 py-2 text-right font-normal">
               {c.header}
             </th>
           ))}

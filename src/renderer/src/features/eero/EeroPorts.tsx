@@ -16,21 +16,7 @@ import { Status, type StatusTone } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import { MISSING } from "../../../../core/format";
 import type { EeroPort, EeroPorts as Ports, PortAction } from "../../../../core/model";
-
-/** "2.5 GbE", "10 GbE", "100 Mb". */
-const ethernet = (mbps: number) => (mbps >= 1000 ? `${Number((mbps / 1000).toFixed(1))} GbE` : `${mbps} Mb`);
-
-/** "2 x 5 GbE, numbered left to right", "WAN plus 3 LAN: 1 x 10 GbE, 2 x 2.5 GbE". */
-export function portsLine(ports: ReadonlyArray<EeroPort>): string | null {
-  if (ports.length === 0) return null;
-  const counts = new Map<number, number>();
-  for (const p of ports) if (p.supportedMbps) counts.set(p.supportedMbps, (counts.get(p.supportedMbps) ?? 0) + 1);
-  const speeds = [...counts].sort((a, b) => b[0] - a[0]).map(([mbps, n]) => `${n} x ${ethernet(mbps)}`);
-  return [speeds.join(", ") || `${ports.length} ports`, "numbered left to right"].join(", ");
-}
-
-/** "Port 1", or eero's own name for it ("WAN"). */
-export const portName = (p: Pick<EeroPort, "number" | "name">) => p.name ?? `Port ${p.number}`;
+import { portName, portsLine } from "./helpers";
 
 const ACTION: Partial<Record<PortAction, { label: (n: string) => string; consequence: (attached: string | null) => string }>> = {
   DISABLE_PORT: { label: (n) => `Disable ${n.toLowerCase()}`, consequence: (a) => (a ? `${a} loses its wired connection` : "Nothing is plugged in") },

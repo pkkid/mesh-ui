@@ -3,7 +3,7 @@ import { createFakeEero, type FakeEero, fail, ok, type Route } from "../../../te
 import type { SecretStore } from "../backend";
 import { BackendError } from "../errors";
 import { createEeroBackend } from "./backend";
-import { EeroClient, type EeroClientOptions, type RequestLogEntry } from "./client";
+import { EeroClient, type EeroClientOptions, READ_SHARE_MS, type RequestLogEntry } from "./client";
 import { RateLimiter } from "./ratelimit";
 import { asList } from "./raw";
 import { checkOrigin, deviceWritePath, idFromUrl, redactPath, resolveUrl } from "./urls";
@@ -62,7 +62,8 @@ function setup(opts: { signedIn?: boolean; client?: Partial<EeroClientOptions> }
   return { fake, client, secrets, logs, token };
 }
 
-const echo = (client: EeroClient) => client.request<{ query: Record<string, string> }>({ method: "GET", path: "/2.2/test/echo" });
+/** A GET; pass `n` to make it differ from other echoes, which it would otherwise share an answer with. */
+const echo = (client: EeroClient, n?: number) => client.request<{ query: Record<string, string> }>({ method: "GET", path: "/2.2/test/echo", query: { n } });
 const write = (client: EeroClient, body: Record<string, unknown> = { a: 1 }) => client.request({ method: "PUT", path: "/2.2/test/write", body });
 
 async function codeOf(p: Promise<unknown>): Promise<string> {
@@ -297,7 +298,7 @@ describe("session refresh", () => {
   it("shares one refresh between concurrent 401s", async () => {
     const { fake, client } = setup();
     fake.scenarios.sessionRefresh(4);
-    await Promise.all([echo(client), echo(client), echo(client), echo(client)]);
+    await Promise.all([echo(client, 1), echo(client, 2), echo(client, 3), echo(client, 4)]);
     expect(fake.log.filter((e) => e.path === "/2.2/login/refresh")).toHaveLength(1);
     expect(fake.log.filter((e) => e.path === "/2.2/test/echo" && e.status === 200)).toHaveLength(4);
   });
@@ -317,8 +318,8 @@ describe("token rotation", () => {
   it("adopts a Set-Cookie s= token from a normal response and saves it", async () => {
     const { fake, client, secrets, token } = setup();
     fake.scenarios.rotateToken();
-    await echo(client);
-    await echo(client);
+    await echo(client, 1);
+    await echo(client, 2);
     const rotated = fake.log[1]?.token;
     expect(fake.log[0]?.token).toBe(token);
     expect(rotated).not.toBe(token);
@@ -375,7 +376,7 @@ describe("rate limits", () => {
   it("lets no more than 80 of 120 queued requests through per minute, 4 at a time", async () => {
     const { fake, client } = setup();
     fake.scenarios.delay(100, {});
-    const all = Promise.all(Array.from({ length: 120 }, () => echo(client)));
+    const all = Promise.all(Array.from({ length: 120 }, (_, i) => echo(client, i)));
     await vi.advanceTimersByTimeAsync(59_000);
     expect(fake.log).toHaveLength(80);
     expect(fake.stats.maxInFlight).toBe(4);
@@ -404,11 +405,58 @@ describe("rate limits", () => {
     const limiter = new RateLimiter({ perWindow: 2 });
     const a = setup({ client: { limiter } });
     const b = setup({ client: { limiter } });
-    const p = Promise.all([echo(a.client), echo(b.client), echo(a.client)]);
+    const p = Promise.all([echo(a.client, 1), echo(b.client, 2), echo(a.client, 3)]);
     await vi.advanceTimersByTimeAsync(10);
     expect(a.fake.log.length + b.fake.log.length).toBe(2);
     await vi.advanceTimersByTimeAsync(60_000);
     await p;
+  });
+});
+
+describe("shared reads", () => {
+  useFakeTimers();
+  const shared = () => setup({ client: { readShareMs: READ_SHARE_MS } });
+
+  it("shares identical GETs while in flight and for READ_SHARE_MS after, each caller with its own copy", async () => {
+    const { fake, client } = shared();
+    const [a, b] = await Promise.all([echo(client), echo(client)]);
+    expect(fake.log).toHaveLength(1);
+    a.query.mutated = "yes";
+    expect(b.query.mutated).toBeUndefined();
+    expect((await echo(client)).query.mutated).toBeUndefined();
+    expect(fake.log).toHaveLength(1);
+    await echo(client, 2);
+    expect(fake.log).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(READ_SHARE_MS);
+    await echo(client);
+    expect(fake.log).toHaveLength(3);
+  });
+
+  it("drops shared answers on a write, and never shares a failure", async () => {
+    const { fake, client } = shared();
+    await echo(client);
+    await write(client);
+    await echo(client);
+    expect(fake.log.map((e) => `${e.method} ${e.path}`)).toEqual(["GET /2.2/test/echo", "PUT /2.2/test/write", "GET /2.2/test/echo"]);
+    fake.scenarios.fail(403, "error.forbidden", { path: "/test/bare" });
+    await expect(client.request({ method: "GET", path: "/2.2/test/bare" })).rejects.toMatchObject({ code: "eero_error" });
+    await client.request({ method: "GET", path: "/2.2/test/bare" });
+    expect(fake.log.filter((e) => e.path === "/2.2/test/bare").map((e) => e.status)).toEqual([403, 200]);
+  });
+
+  it("shares only while in flight when readShareMs is 0 (the default with an injected fetch)", async () => {
+    const { fake, client } = setup();
+    await Promise.all([echo(client), echo(client)]);
+    await echo(client);
+    expect(fake.log).toHaveLength(2);
+  });
+
+  it("drops shared answers when the session ends", async () => {
+    const { fake, client } = shared();
+    await echo(client);
+    await client.logout();
+    await expect(echo(client)).rejects.toMatchObject({ code: "not_signed_in" });
+    expect(fake.log.filter((e) => e.path === "/2.2/test/echo")).toHaveLength(1);
   });
 });
 
