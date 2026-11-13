@@ -2,7 +2,8 @@
  * The Electron host. It builds the engine (src/core) with a backend and the
  * `safeStorage` SecretStore, exposes it to the window over src/main/ipc.ts,
  * and keeps every web contents locked down. With `--cli` it creates no
- * window and hands argv to `runCli` (docs/architecture/cli.md#how-the-cli-runs).
+ * window and hands the argv after the flag to `cliMain` with the Electron
+ * CLI host, which builds the same engines (docs/architecture/cli.md#how-the-cli-runs).
  *
  * Backends:
  * - live: the eero backend against api-user.e2ro.com.
@@ -10,7 +11,8 @@
  * - fake (dev builds only): `MESH_UI_FAKE=1` points the eero backend at the
  *   local fake eero server (`MESH_UI_FAKE_ORIGIN`, or one started here from
  *   test/fake-eero) with a throwaway config dir. Release builds drop this
- *   code, so they have no way to point the client anywhere but eero.
+ *   code. The CLI's `--fake` needs an unpackaged build and a loopback
+ *   `MESH_UI_FAKE_ORIGIN`, and never uses the saved session.
  */
 
 import { mkdtempSync } from "node:fs";
@@ -18,12 +20,13 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, ipcMain, nativeTheme, safeStorage, session, shell } from "electron";
-import type { Backend } from "../core/backend";
+import { version as appVersion } from "../../package.json";
+import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend } from "../core/demo";
 import { createEeroBackend } from "../core/eero/backend";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
-import type { SettingsStore } from "../core/spec";
-import { EXIT, runCli } from "../cli";
+import type { SettingsStore, Surface } from "../core/spec";
+import { type CliHost, cliMain, nodeHost } from "../cli";
 import { registerIpc } from "./ipc";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
@@ -35,7 +38,7 @@ const argv = process.argv;
 const cliIndex = argv.indexOf("--cli");
 const isCli = cliIndex !== -1;
 const isDemo = process.env.MESH_UI_DEMO === "1" || (!isCli && argv.includes("--demo"));
-const isFake = import.meta.env.DEV && process.env.MESH_UI_FAKE === "1";
+const isFake = import.meta.env.DEV && !isCli && process.env.MESH_UI_FAKE === "1";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -57,10 +60,16 @@ if (isCli) app.setPath("sessionData", paths.cliSessionData);
 // ---------------------------------------------------------------------------
 // Engine
 
+const LOCAL_ORIGIN = /^http:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+$/;
+
 /** Dev only: origin of the fake eero server, starting it when none is given. */
 async function fakeOrigin(): Promise<string | undefined> {
   if (!import.meta.env.DEV || !isFake) return undefined;
-  if (process.env.MESH_UI_FAKE_ORIGIN) return process.env.MESH_UI_FAKE_ORIGIN;
+  const given = process.env.MESH_UI_FAKE_ORIGIN;
+  if (given) {
+    if (!LOCAL_ORIGIN.test(given)) throw new Error("MESH_UI_FAKE_ORIGIN must be a loopback http origin, e.g. http://127.0.0.1:4010.");
+    return given;
+  }
   // Glob so the build still works before test/fake-eero/server.ts exists.
   const loaders = import.meta.glob<{ startFakeEero?: () => Promise<{ origin: string }> }>("../../test/fake-eero/server.ts");
   const load = Object.values(loaders)[0];
@@ -71,30 +80,82 @@ async function fakeOrigin(): Promise<string | undefined> {
   return origin;
 }
 
-async function createAppEngine(): Promise<Engine> {
+type EngineMode = { mode: "demo" } | { mode: "live" } | { mode: "fake"; origin: string; secrets: SecretStore };
+
+/** The engine for any surface. Only live mode reads or writes the saved session. */
+async function buildEngine(m: EngineMode, surface: Surface, dir: string, settings: SettingsStore): Promise<Engine> {
   let backend: Backend;
-  let settings: SettingsStore;
-  if (isDemo) {
-    // Demo never touches the session or the saved settings.
+  if (m.mode === "demo") {
     backend = createDemoBackend();
-    settings = memorySettings();
   } else {
-    settings = fileSettings(paths.settings);
-    const secrets = createSecretStore({ file: paths.session, safeStorage, platform: process.platform });
-    const origin = await fakeOrigin();
-    backend = createEeroBackend({ secrets, userAgent: (await settings.get()).userAgent, ...(origin ? { origin } : {}) });
+    const secrets = m.mode === "fake" ? m.secrets : createSecretStore({ file: configPaths(dir).session, safeStorage, platform: process.platform });
+    const userAgent = (await settings.get()).userAgent;
+    backend = createEeroBackend({ secrets, userAgent, ...(m.mode === "fake" ? { origin: m.origin } : {}) });
   }
   return createEngine({
     backend,
     settings,
-    surface: "ui",
+    surface,
     host: {
-      version: app.getVersion(),
+      version: appVersion,
       electron: process.versions.electron ?? null,
-      configDir,
-      keychainName: isDemo ? null : keychainName(safeStorage, process.platform),
+      configDir: dir,
+      keychainName: m.mode === "live" ? keychainName(safeStorage, process.platform) : null,
     },
   });
+}
+
+async function createAppEngine(): Promise<Engine> {
+  // Demo never touches the session or the saved settings.
+  if (isDemo) return buildEngine({ mode: "demo" }, "ui", configDir, memorySettings());
+  const settings = fileSettings(paths.settings);
+  const origin = await fakeOrigin();
+  if (origin) {
+    // The fake config dir is a throwaway one, so its session file is too.
+    const secrets = createSecretStore({ file: paths.session, safeStorage, platform: process.platform });
+    return buildEngine({ mode: "fake", origin, secrets }, "ui", configDir, settings);
+  }
+  return buildEngine({ mode: "live" }, "ui", configDir, settings);
+}
+
+/** In-memory session for `--fake` without a throwaway config dir. */
+function memorySecrets(): SecretStore {
+  let token: string | null = null;
+  return {
+    load: async () => token,
+    save: async (t) => {
+      token = t;
+      return "memory";
+    },
+    clear: async () => {
+      token = null;
+    },
+    storage: async () => "memory",
+  };
+}
+
+/** The Electron CLI host: nodeHost's terminal handling plus the live backend and this app's paths. */
+function electronCliHost(): CliHost {
+  const base = nodeHost({ dev: !app.isPackaged });
+  return {
+    ...base,
+    async createEngine({ mode, surface, userDataDir }) {
+      const dir = userDataDir ? path.resolve(userDataDir) : configDir;
+      const given = Boolean(userDataDir || userDataSwitch);
+      if (mode === "demo") return buildEngine({ mode: "demo" }, surface, dir, given ? fileSettings(configPaths(dir).settings) : memorySettings());
+      if (mode === "fake") {
+        // runCli only allows --fake when host.dev, that is, an unpackaged build.
+        const origin = process.env.MESH_UI_FAKE_ORIGIN ?? "";
+        if (!LOCAL_ORIGIN.test(origin)) {
+          throw new Error("--fake needs MESH_UI_FAKE_ORIGIN set to the local fake eero server, e.g. http://127.0.0.1:4010.");
+        }
+        // Never the real session: a file only in a config dir given for this run.
+        const secrets = given ? createSecretStore({ file: configPaths(dir).session, safeStorage, platform: process.platform }) : memorySecrets();
+        return buildEngine({ mode: "fake", origin, secrets }, surface, dir, given ? fileSettings(configPaths(dir).settings) : memorySettings());
+      }
+      return buildEngine({ mode: "live" }, surface, dir, fileSettings(configPaths(dir).settings));
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -171,15 +232,9 @@ function lockDownSession(): void {
 
 if (isCli) {
   app.dock?.hide();
-  void app.whenReady().then(async () => {
+  void app.whenReady().then(() => {
     lockDownSession();
-    let code: number;
-    try {
-      code = await runCli(argv.slice(cliIndex + 1));
-    } catch {
-      code = EXIT.failed;
-    }
-    app.exit(code);
+    return cliMain(argv.slice(cliIndex + 1), electronCliHost());
   });
 } else {
   void app.whenReady().then(async () => {
