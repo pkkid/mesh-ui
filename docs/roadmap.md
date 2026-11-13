@@ -281,7 +281,7 @@ and get `MANUAL:` lines.
 - scope: Core: the hero verdict built in core ("fast and steady", "slower than your plan", "down"); lease renew time mapped from `lease` on the eero backend with a fake route; `usage.breakdown {top?}` folds the rest into an "Others (n)" row in core. Page (mockup 02): hero with gauges; Connection cards (ISP, Addressing, NAT or Bridge badge, Copy details via `internet.get {format: "text"}`); speed test history Day/Week with averages, plan meters and info note; Earlier tests table with Export CSV (`speedtest.history {format: "csv"}` through a save dialog, or the clipboard if no host save exists yet); Data usage per hour and per day; "Using the most right now" (shares the once-a-minute burst); By device and By profile tables. Run speed test and the plan popover are disabled ("Coming soon"). Bridge mode hides per-device parts. All states from the page doc.
 - done when: demo tests cover the verdict forms, Poor in the table, `top` with Others and `bad_params`, and fake-server tests cover lease mapping; `pnpm ui:shot --route '#/internet'` in demo and `--fake`, light and dark, plus `network_offline`, `empty_network` and Mom's House (bridge), are in the PR; `MANUAL: Internet page on the real network | pnpm dev, open Internet | ISP, public IPs, lease, DNS and speed tests match the eero app | none`.
 
-### M2.5 eeros page and software updates read ☐
+### M2.5 eeros page and software updates read ✅ (#PRNUM)
 - issue: [#53](https://github.com/pkkid/mesh-ui/issues/53)
 - after: M2.1, M2.2, M2.3
 - docs: ux/pages/eeros.md, architecture/commands.md (network, updates)

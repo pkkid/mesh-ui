@@ -98,6 +98,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   account: page(() => import("~/features/settings/SettingsView"), "AccountPlaceholder"),
   devices: page(() => import("~/features/devices/DevicesPage"), "DevicesPage"),
   internet: page(() => import("~/features/internet/InternetPage"), "InternetPage"),
+  eeros: page(() => import("~/features/eeros/EerosPage"), "EerosPage"),
   ...(import.meta.env.DEV ? { "dev-charts": page(() => import("~/components/charts/ChartGallery"), "ChartGallery") } : {}),
 };
 

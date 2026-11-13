@@ -194,7 +194,7 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 | `network.list` | Networks | `{}` | q | `GET /2.2/account` (`networks.data`), fallback `GET /2.2/networks`; `GET {net}` per network for status | Scope account. `NetworkSummary[]` with role, eero count, online devices, status, selected flag. |
 | `network.select` | Switch network | `{ network: Ref }` | w | none (app-local) | Sets the selected network in the session and `settings.json`. See engine.md. |
 | `network.get` | Network | `{}` | q | `GET {net}` | `Network` model: name, nickname, status, counts, capabilities, timezone. |
-| `network.health` | Network health | `{}` | q | `GET {net}` (`health`, `eeros.data`, `updates`) | `NetworkHealth`: internet, mesh, per-eero status, weak links, banner messages. Derived, no extra calls. |
+| `network.health` | Network health | `{}` | q | `GET {net}` (`health`, `eeros.data`, `updates`); `GET {net}/eeros` and `GET {net}/devices` only when an issue needs them | `NetworkHealth`: internet, mesh, per-eero status, weak links, banner messages, and `issues` built in core: `network_offline` (alone, every known device), else `eero_offline` per offline eero (devices last on it) then `weak_link` per weak wireless eero that is not offline (its upstream and the devices connected through it). A healthy network stays one call. |
 | `network.permissions` | Permissions | `{}` | q | `GET {net}/permissions` | `Permissions` model. UI disables controls the role cannot use. |
 | `network.nickname.set` | Network nickname | `{ nickname: string(0..32) }` | w | `PUT {net}/label?labelType=specialMarket` form `label` | Only LD uses this path; needs a MANUAL check. |
 | `network.restart` | Restart network | `{}` | d | `POST {net}/reboot` empty-JSON | Every eero restarts, about 2 to 3 minutes offline (see [Restart estimates](#restart-estimates)). |
@@ -374,7 +374,7 @@ bridge mode.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `updates.get` | Software updates | `{}` | q | `GET {net}/updates` | `Updates`: current and target eeroOS, can update now, scheduled time, preferred hour, per-eero versions. |
+| `updates.get` | Software updates | `{}` | q | `GET {net}/updates`, `GET {net}/eeros` | `Updates`: current (the gateway's) and target eeroOS, can update now, scheduled time, preferred hour, per-eero versions (from the eeros; the updates object has none), stuck eeros from `last_user_update`. Status from `update_status`, else `has_update` and a scheduled time. Polls every 15 min. |
 | `updates.install` | Install update now | `{}` | d | `POST {net}/updates` empty-JSON | Only when `canUpdateNow`. Every eero restarts, about 10 minutes. |
 | `updates.hour.set` | Preferred update time | `{ hour: 0..23 }` | w | `POST {net}/updates/preferred_update_hour` JSON | |
 | `updates.notes` | Release notes | `{}` | q | `GET updates.manifest_resource` (absolute URL, not api-user) | Fetched by the eero client **without** the session cookie, https only, size capped. |
