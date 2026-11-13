@@ -70,12 +70,11 @@ async function fakeOrigin(): Promise<string | undefined> {
     if (!LOCAL_ORIGIN.test(given)) throw new Error("MESH_UI_FAKE_ORIGIN must be a loopback http origin, e.g. http://127.0.0.1:4010.");
     return given;
   }
-  // Glob so the build still works before test/fake-eero/server.ts exists.
-  const loaders = import.meta.glob<{ startFakeEero?: () => Promise<{ origin: string }> }>("../../test/fake-eero/server.ts");
+  // A glob, not an import, so release builds never resolve or bundle it.
+  const loaders = import.meta.glob<typeof import("../../test/fake-eero/server")>("../../test/fake-eero/server.ts");
   const load = Object.values(loaders)[0];
-  const start = load && (await load()).startFakeEero;
-  if (!start) throw new Error("MESH_UI_FAKE=1 needs test/fake-eero/server.ts to export startFakeEero(), or set MESH_UI_FAKE_ORIGIN.");
-  const { origin } = await start();
+  if (!load) throw new Error("MESH_UI_FAKE=1 needs test/fake-eero/server.ts, or set MESH_UI_FAKE_ORIGIN.");
+  const origin = await (await load()).createFakeEero().listen();
   console.log(`[mesh-ui] fake eero server at ${origin}, config in ${configDir}`);
   return origin;
 }
