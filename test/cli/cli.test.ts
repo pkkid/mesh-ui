@@ -157,6 +157,15 @@ describe("basics", () => {
   });
 });
 
+describe("mcp", () => {
+  it("serves the host's engine, so mcp gets the same backend as run", async () => {
+    // stdin closes at once, so the server lists its tools and exits.
+    const r = await mesh(["mcp"]);
+    expect(r.code).toBe(0);
+    expect(r.stderr).toContain("serving 9 tools on stdio");
+  });
+});
+
 describe("commands", () => {
   it("prints the registry as JSON when piped", async () => {
     const r = await mesh(["commands"]);
