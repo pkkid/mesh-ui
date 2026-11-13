@@ -82,7 +82,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: The only eero HTTP client and the stateful fake server it is tested against. Client: base URL, headers (cookie, User-Agent), body encodings, `/2.2` vs `/2.3`, origin check (fake origin only by injection), no redirects, 30 s timeout, `error.session.refresh` refresh with single flight and one replay, `Set-Cookie` rotation, 80 req/min budget with 4 in flight and serialised writes, 429 and `Retry-After` for queries only, error mapping. `raw.ts` holds the raw response types used by mapping and the fake server. Fake server: random port, per-test state (one account, two networks), request log, scenario switches, auth routes (login, verify, resend, refresh, logout) accepting any email and code `123456`.
 - done when: every scenario in testing.md's fake-server table that concerns the client has a passing test using fake timers; request and error logs never contain the token; the suite for this story runs in under 5 seconds.
 
-### M1.3 Demo backend and fixtures ☐
+### M1.3 Demo backend and fixtures ✅ (#23)
 - issue: [#3](https://github.com/pkkid/mesh-ui/issues/3)
 - after: M1.1
 - docs: architecture/backends.md (demo), testing.md (Fixtures)
