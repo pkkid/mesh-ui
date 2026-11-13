@@ -11,13 +11,28 @@ Actions matrix. Releases are published to GitHub Releases on
 pnpm install            # also downloads the Electron binary
 pnpm typecheck
 pnpm build              # electron-vite: out/main, out/preload, out/renderer
+pnpm test               # vitest, the whole suite
 pnpm dist               # electron-builder for the current OS (unsigned unless signing env is set)
 pnpm dist:dir           # unpacked app in dist/<os>-unpacked, fastest to test
+pnpm dist:smoke         # launch the dist:dir app with --demo and check CLI and window
+pnpm test:keychainless  # Linux: built app with --password-store=basic keeps the session in memory
 ```
 
-`pnpm dist`, `pnpm dist:dir` and `pnpm test` are planned scripts (not yet in
-`package.json`). `pnpm dist` reads `electron-builder.yml`. Local builds are unsigned unless the
-signing variables below are set; that is fine for testing.
+`pnpm dist` and `pnpm dist:dir` build with electron-vite, then run
+electron-builder, which reads `electron-builder.yml`. `pnpm dist:smoke` and
+`pnpm test:keychainless` run `scripts/dist-smoke.mjs` with a throwaway user
+data dir and `XDG_CONFIG_HOME`, against the demo backend or the local fake
+eero server. Local builds are unsigned unless the signing variables below are
+set; that is fine for testing.
+
+electron-builder is not a devDependency. The scripts run it as
+`pnpm dlx electron-builder@26.18.0`, pinned to an exact version. As a
+devDependency it makes `pnpm install` fail under pnpm 12's strict dependency
+builds, because `electron-winstaller` (a peer of `app-builder-lib`, for
+Squirrel, which Mesh UI does not use) has a build script that would need an
+`allowBuilds` entry in `pnpm-workspace.yaml`. Running it through `dlx` keeps
+installs, the lockfile and CI lighter. To bump it, change the version in both
+scripts in `package.json`.
 
 ## Identity
 
@@ -97,7 +112,7 @@ Pull request workflows never see them.
 
 Two workflows, and nothing else runs in GitHub Actions.
 
-### `ci.yml` (pull requests to `main`, and manual runs)
+### `ci.yml` (pull requests to `main` and `milestone/**`, and manual runs)
 
 Light on purpose: most testing is local (see [testing.md](../testing.md#local-first)).
 
@@ -105,9 +120,14 @@ Light on purpose: most testing is local (see [testing.md](../testing.md#local-fi
 | --- | --- | --- |
 | smoke | `ubuntu-latest`, `macos-latest`, `windows-latest` | `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm build` |
 
+It triggers on `pull_request` to `main` and `milestone/**` (story PRs target
+the milestone branch, so they get the smoke too) and on `workflow_dispatch`.
 No UI, screenshot, keychain-less or packaging jobs run in CI; those run
-locally (`pnpm test:ui`, `pnpm test:keychainless`, `pnpm dist:dir`). Pushes to
-branches do not trigger CI; concurrency cancels superseded runs.
+locally (`pnpm test:keychainless`, `pnpm dist:dir` then `pnpm dist:smoke`).
+Pushes to branches do not trigger CI; concurrency cancels superseded runs.
+`pnpm test` runs with vitest's default 5s per-test timeout, so keep every
+test well under it (property tests check with plain comparisons and one
+`expect` per case, not one per sample).
 
 ### `release.yml` (tag `v*`)
 

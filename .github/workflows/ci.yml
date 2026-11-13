@@ -37,7 +37,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      # Hosted runners are slower than a dev machine; the charts property
-      # test takes ~4.5s locally against vitest's 5s default.
-      - run: pnpm test --test-timeout=30000
+      - run: pnpm test
       - run: pnpm build
