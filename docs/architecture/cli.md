@@ -142,10 +142,17 @@ a TTY, so scripts get stable output without flags.
 
 For people at a terminal. Rendered from the result:
 
-- an array of objects becomes columns (the command spec may name default
-  columns; otherwise the first 6 scalar fields);
+- an array of objects becomes a grid: the first 6 scalar fields as columns,
+  headed in upper case (`DEVICES ONLINE`), numeric columns right-aligned;
 - an object becomes `key  value` rows;
-- nested objects are summarised (`3 items`), use json for detail;
+- an object with an array-of-objects field (`{ devices, summary }`) prints in
+  sections: its scalar fields first as `key  value` rows, then each such
+  array as its own grid headed `NAME (count)` (`DEVICES (12)`), then its
+  other object fields as `key  value` blocks under their own heading;
+- inside a cell, a small flat object (up to 6 scalar fields) shows inline
+  (`downMbps 171 Mbps, upMbps 38 Mbps`); other nested objects are summarised
+  (`8 fields`) and other arrays, including an empty nested array, as a count
+  (`0 items`); use json for detail;
 - values use the shared formatters (Mbps, GB, relative time) and `-` for
   missing;
 - `sensitive` fields show `********` unless `--reveal`.
