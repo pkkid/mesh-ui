@@ -265,7 +265,7 @@ and get `MANUAL:` lines.
 - scope: Renderer pieces every M2 page reuses; no new commands and no visible change. Move `useNow`, `HeaderLink`, `ComingSoonButton`, `RowList`, `Row`, `PlaceholderRows` and `SectionError` out of `OverviewView.tsx` into `components/ui/page.tsx` and update Overview imports. New primitives: meter (plan and utilisation bars, warning tone at a threshold), band badge ("2.4 GHz", "5 GHz", "6 GHz", "Wired"), key-value list for info cards (mono values, copy button), breakdown table (2px series bar, Others row). Carried from M1: one device-type icon map in `lib/deviceIcons.ts` used by Overview and Devices, and a shared network-time-zone clock formatter in `core/format.ts` ("9:41 AM", "Oct 20, 9:41 AM", "Sat Nov 8", hour labels) replacing the inline `Intl.DateTimeFormat` in `BusyHeatmap` and `DataUsage`.
 - done when: `pnpm check` passes and format tests cover the clock across a DST change and in two zones; `pnpm ui:shot` of Overview and Devices in light and dark look unchanged from M1 (before and after in the PR); no file outside `lib/deviceIcons.ts` maps device types to icons.
 
-### M2.3 Mockups match the fixtures ✅
+### M2.3 Mockups match the fixtures ✅ (#61)
 - issue: [#51](https://github.com/pkkid/mesh-ui/issues/51)
 - after: M1.R
 - docs: reviews/M1.md (questions 3 and 6), architecture/backends.md (demo)
