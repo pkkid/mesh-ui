@@ -2,7 +2,9 @@
  * The network row at the top of the sidebar and its popover
  * (docs/ux/overview.md#network-switcher). Rows come from `network.list`;
  * choosing one runs `network.select` and refetches every query. With one
- * network the row is not interactive and hides its chevrons.
+ * network the row is not interactive and hides its chevrons. The popover is
+ * the width of the row, and each of its rows shows what the row shows: status
+ * dot, name and the same status line.
  */
 import { Popover } from "@base-ui/react/popover";
 import { ChevronsUpDown, Settings } from "lucide-react";
@@ -11,27 +13,16 @@ import { useEffect, useState } from "react";
 import { Link } from "~/app/router";
 import { routeById } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
-import { Badge } from "~/components/ui/badge";
 import { networkStatus, StatusDot } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import { formatRelative } from "../../../../core/format";
 import type { NetworkSummary } from "../../../../core/model";
 
-/** "Online · Ziply Fiber" under the name in the sidebar row. */
+/** "Online · Ziply Fiber" under the name, in the sidebar row and in every popover row. */
 function rowLine(n: NetworkSummary): string {
   const status = networkStatus(n.status).label;
   if (n.status === "offline" && n.lastSeen) return `${status} · last seen ${formatRelative(n.lastSeen, Date.now())}`;
   return n.isp ? `${status} · ${n.isp}` : status;
-}
-
-/** "4 eeros · 31 devices online", "last seen 2 days ago" or "update available" in the popover. */
-function detailLine(n: NetworkSummary): string {
-  if (n.status === "offline") return n.lastSeen ? `last seen ${formatRelative(n.lastSeen, Date.now())}` : "Offline";
-  const parts: string[] = [];
-  if (n.eeroCount !== null) parts.push(`${n.eeroCount} ${n.eeroCount === 1 ? "eero" : "eeros"}`);
-  if (n.devicesOnline !== null) parts.push(`${n.devicesOnline} ${n.devicesOnline === 1 ? "device" : "devices"} online`);
-  if (n.updateAvailable) parts.push("update available");
-  return parts.join(" · ") || "-";
 }
 
 export function NetworkSwitcher() {
@@ -90,7 +81,7 @@ export function NetworkSwitcher() {
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-          <Popover.Popup className="no-drag w-[calc(var(--anchor-width)+6rem)] max-w-[22rem] rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
+          <Popover.Popup className="no-drag w-(--anchor-width) rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
             <div role="group" aria-label="Networks">
               {networks.map((n) => {
                 const s = networkStatus(n.status);
@@ -102,19 +93,14 @@ export function NetworkSwitcher() {
                     aria-current={selected || undefined}
                     onClick={() => void choose(n)}
                     className={cn(
-                      "flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-start outline-none hover:bg-muted/60 focus-visible:bg-muted/60",
+                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-start outline-none hover:bg-muted/60 focus-visible:bg-muted/60",
                       selected && "bg-muted",
                     )}
                   >
-                    <StatusDot tone={s.tone} className="mt-1.5 size-2" />
+                    <StatusDot tone={s.tone} className="size-2" />
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium text-[13px]">{n.name}</span>
-                        {n.role && <Badge className="h-[18px] border px-1.5 text-2xs">{n.role === "owner" ? "Owner" : "Admin"}</Badge>}
-                      </div>
-                      <div className="mt-0.5 truncate text-muted-foreground">
-                        {s.label} · {detailLine(n)}
-                      </div>
+                      <div className="truncate font-medium text-[13px]">{n.name}</div>
+                      <div className="truncate text-2xs text-muted-foreground">{rowLine(n)}</div>
                     </div>
                   </button>
                 );
