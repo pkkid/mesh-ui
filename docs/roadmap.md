@@ -98,7 +98,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: Rebuild the host on the engine. `SecretStore` over `safeStorage` (keychain only, never plaintext, atomic 0600 writes, v1/v2 session file handling) replacing `session.ts`. One IPC channel for `execute`, plus `commands` and host events (`session.changed`, `network.selected`). Preload exposes `window.mesh.execute/commands/on`. Backend selection: live, `MESH_UI_DEMO=1` demo, and dev-only fake origin injection for `pnpm dev:fake` (start the fake server from `test/fake-eero` in dev only). Config paths per OS. Keep the window lockdown. `--cli` argv hands off to `runCli` from `src/cli/index.ts` with no window. Delete the prototype `eero.ts` and `demo.ts` once nothing imports them.
 - done when: host tests cover keychain, basic_text and unavailable backends, plaintext and undecryptable files, and sign-out deleting the file; the token never crosses IPC (test the bridge payloads); `pnpm dev:demo` opens the window.
 
-### M1.5 CLI surface ☐
+### M1.5 CLI surface ✅ (#21)
 - issue: [#5](https://github.com/pkkid/mesh-ui/issues/5)
 - after: M1.1
 - docs: architecture/cli.md, platform/cross-platform.md (CLI launcher)
