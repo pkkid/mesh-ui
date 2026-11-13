@@ -7,3 +7,4 @@
  */
 
 export { routes as auth } from "./auth";
+export { routes as network } from "./network";

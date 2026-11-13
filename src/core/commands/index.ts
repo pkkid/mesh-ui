@@ -5,4 +5,5 @@
  *   export { commands as device } from "./device";
  */
 
-export {};
+export { commands as internet } from "./internet";
+export { commands as network } from "./network";
