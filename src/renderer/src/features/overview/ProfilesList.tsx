@@ -8,13 +8,12 @@ import { Plus } from "lucide-react";
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
+import { ComingSoonButton, HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatBytes } from "../../../../core/format";
 import type { Hhmm, Profile, ProfileList, UsageSeries } from "../../../../core/model";
-
-import { ComingSoonButton, HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "./OverviewView";
 
 const STATE: Record<Profile["state"], { tone: StatusTone; label: string }> = {
   active: { tone: "success", label: "Active" },

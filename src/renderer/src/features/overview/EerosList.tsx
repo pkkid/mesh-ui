@@ -12,13 +12,12 @@ import { Sparkline } from "~/components/charts/Sparkline";
 import { Badge } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
+import { HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatCount } from "../../../../core/format";
 import type { Eero, NetworkHealth, UsageSeries } from "../../../../core/model";
-
-import { HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "./OverviewView";
 
 export function EerosList() {
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });

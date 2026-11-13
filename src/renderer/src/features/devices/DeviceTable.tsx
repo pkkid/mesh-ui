@@ -7,42 +7,21 @@
  */
 import {
   Ban,
-  Bell,
-  Bike,
-  BookOpen,
-  Cable,
-  Cast,
   ChevronDown,
   ChevronRight,
-  CircleHelp,
-  Cpu,
   Ellipsis,
-  Fan,
-  Gamepad2,
-  HardDrive,
   History,
   House,
   Info,
   Laptop,
-  Lightbulb,
   type LucideIcon,
-  Monitor,
   Pause,
   Play,
-  Plug,
-  Printer,
-  Radar,
   Router,
   Shapes,
-  Smartphone,
-  Speaker,
-  Tablet,
-  Thermometer,
   Tv,
   UserRoundPlus,
   Users,
-  Warehouse,
-  Watch,
   Wifi,
   X,
 } from "lucide-react";
@@ -50,9 +29,11 @@ import { Fragment, type ReactNode, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import { Button } from "~/components/ui/button";
+import { BandBadge } from "~/components/ui/band-badge";
 import { Card, Empty } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { Status, type StatusTone } from "~/components/ui/status";
+import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Device, DeviceCategory } from "../../../../core/model";
@@ -60,45 +41,7 @@ import type { Device, DeviceCategory } from "../../../../core/model";
 import { COLUMN_LABELS, type ColumnKey, type GroupBy } from "./DeviceFilters";
 
 // ---------------------------------------------------------------------------
-// Icons and labels
-
-const TYPE_ICONS: Record<string, LucideIcon> = {
-  phone: Smartphone,
-  tablet: Tablet,
-  watch: Watch,
-  ereader: BookOpen,
-  laptop: Laptop,
-  desktop: Monitor,
-  nas: HardDrive,
-  printer: Printer,
-  tv: Tv,
-  media_streamer: Cast,
-  game_console: Gamepad2,
-  speaker: Speaker,
-  thermostat: Thermometer,
-  light: Lightbulb,
-  plug: Plug,
-  garage: Warehouse,
-  sensor: Radar,
-  smoke_alarm: Bell,
-  doorbell: Bell,
-  smart_hub: Router,
-  air_purifier: Fan,
-  fitness: Bike,
-  microcontroller: Cpu,
-};
-
-const CATEGORY_ICONS: Record<DeviceCategory, LucideIcon> = {
-  phones_tablets: Smartphone,
-  computers: Laptop,
-  entertainment: Tv,
-  smart_home: House,
-  other: CircleHelp,
-};
-
-export function deviceIcon(d: Pick<Device, "type" | "category">): LucideIcon {
-  return TYPE_ICONS[d.type] ?? CATEGORY_ICONS[d.category];
-}
+// States and labels
 
 type DeviceState = "online" | "paused" | "offline" | "blocked";
 
@@ -428,16 +371,7 @@ function Row({ device: d, show, eeroName, profiles, usage, newIds, ratesPending 
           {off || !d.band ? (
             <span className="text-muted-foreground/70 text-xs">-</span>
           ) : (
-            <span className="inline-flex h-[19px] items-center gap-1 whitespace-nowrap rounded-[5px] border bg-muted px-1.5 font-medium text-[11px] text-foreground/80 tabular-nums [&_svg]:size-[11px]">
-              {d.band === "wired" ? (
-                <>
-                  <Cable />
-                  Wired
-                </>
-              ) : (
-                `${d.band} GHz`
-              )}
-            </span>
+            <BandBadge band={d.band} />
           )}
         </td>
       )}

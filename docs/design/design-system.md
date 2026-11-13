@@ -205,7 +205,10 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Signal bars | Four bars; one bar red, two yellow, three or four in text colour |
 | Settings rows | Card with rows split by 1px borders: title, muted description, value or control on the right, chevron if it opens something |
 | Note | Bordered inset box with an icon in the status colour and body text in normal colour, for real warnings |
-| Key-value list | Two columns, muted keys, `tabular-nums` values |
+| Key-value list | `kv-list.tsx`. Two columns, muted keys, `tabular-nums` values; IPs, MACs and serials in mono with a small copy button |
+| Band badge | `band-badge.tsx`. The neutral Badge box with "2.4 GHz", "5 GHz", "6 GHz" or a cable icon and "Wired". Never coloured: band colours are for chart series |
+| Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
+| Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from device type (then category) to a lucide icon, shown in an Icon tile. Never map device types to icons anywhere else |
 | Tooltip | Glass card (see Charts) |
 | Dialog and sheet | `bg-popover`, border, large radius, dimmed backdrop |
 
@@ -218,6 +221,19 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 - Under a name, an optional 2px (`h-0.5`) bar in the series colour scaled to
   the largest row, `max-w-48`.
 - Group header rows: `text-3xs` uppercase, tracking, on `bg-muted`.
+- `components/ui/breakdown-table.tsx` is the shared breakdown: optional `#`
+  rank, icon tile, name with the 2px bar, figure columns, and an optional
+  Others row (muted name, neutral bar) that sums everything past `limit`.
+
+### Page kit
+
+`components/ui/page.tsx` holds what every page reuses: `RowList` and `Row`
+(58px rows split by 1px borders, a link when given `to`),
+`PlaceholderRows` (blank rows at normal height while loading), `HeaderLink`
+(small outline button in a section header, optional arrow),
+`ComingSoonButton` (disabled, "Coming soon" tooltip, for writes in a later
+milestone), `SectionError` (what failed, eero's message, Retry; other
+sections keep working) and `useNow` (a ticking clock for relative times).
 
 ## Charts
 
@@ -294,6 +310,11 @@ Other chart kinds in the mockups, same rules for colour and labels:
   for Mbps and Gbps, MB, GB and TB, percent, ms, relative time ("2h ago",
   "Yesterday, 3:04 AM"), durations ("23 days, 4 hours"). The same quantity
   looks the same everywhere, including CLI table output.
+- Clock times and dates are always in the network's time zone, never the
+  viewer's: `networkClock(network.timezone)` in `src/core/format.ts` gives
+  `time` ("9:41 AM"), `dateTime` ("Oct 20, 9:41 AM"), `day` ("Sat Nov 8"),
+  `hour` chart labels ("9 AM"), weekdays and `parts` for day-by-hour grids.
+  Do not build an `Intl.DateTimeFormat` in a component.
 - Show `-` for a missing value, never `0` or blank.
 - No emdashes in UI copy or docs. Use a comma, colon or a new sentence.
 - Example data is invented: Maple Street, Alex Kim, `192.168.4.x`.
