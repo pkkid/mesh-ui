@@ -15,7 +15,8 @@
     "typecheck": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "mesh-ui": "node scripts/mesh-ui-dev.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",
