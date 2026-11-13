@@ -15,7 +15,7 @@ the format follows the `milestone-plan` skill. The design lives in
 
 | Milestone | Goal | Status |
 |---|---|---|
-| M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | planned |
+| M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ready ([milestone](https://github.com/pkkid/mesh-ui/milestone/1)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | later |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | later |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
@@ -65,6 +65,7 @@ by M1.1, later stories only add to their area files), `src/core/commands/index.t
 anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 
 ### M1.1 Core contracts and test tooling ☐
+- issue: [#1](https://github.com/pkkid/mesh-ui/issues/1)
 - after: (none)
 - docs: architecture/overview.md, architecture/commands.md, architecture/engine.md, architecture/backends.md, architecture/data-model.md, testing.md
 - files: src/core/model.ts, src/core/backend.ts, src/core/registry.ts, src/core/engine.ts, src/core/errors.ts, src/core/spec.ts, src/core/poll.ts, src/core/format.ts, src/core/commands/index.ts, src/core/demo/index.ts, src/core/eero/backend/index.ts, src/cli/index.ts, test/setup.ts, test/fake-eero/routes/index.ts, vitest.config.ts, package.json, tsconfig.json
@@ -72,6 +73,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: `pnpm check` passes; engine tests cover unknown_command, bad_params, needs_confirm (disruptive and destructive), success, and a thrown backend error mapped to eero_error; a test proves the fetch guard blocks eero.
 
 ### M1.2 eero HTTP client and fake eero server ☐
+- issue: [#2](https://github.com/pkkid/mesh-ui/issues/2)
 - after: M1.1
 - docs: architecture/eero-client.md, testing.md (Fake eero server), eero-api/endpoints.md
 - files: src/core/eero/client.ts, src/core/eero/urls.ts, src/core/eero/ratelimit.ts, src/core/eero/raw.ts, src/core/eero/client.test.ts, test/fake-eero/server.ts, test/fake-eero/state.ts, test/fake-eero/scenarios.ts, test/fake-eero/routes/auth.ts
@@ -79,6 +81,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: every scenario in testing.md's fake-server table that concerns the client has a passing test using fake timers; request and error logs never contain the token; the suite for this story runs in under 5 seconds.
 
 ### M1.3 Demo backend and fixtures ☐
+- issue: [#3](https://github.com/pkkid/mesh-ui/issues/3)
 - after: M1.1
 - docs: architecture/backends.md (demo), testing.md (Fixtures)
 - files: src/core/demo/backend.ts, src/core/demo/fixtures.ts, src/core/demo/scenario.ts, src/core/demo/backend.test.ts
@@ -86,6 +89,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: fixtures are typed against `model.ts`; tests check each read returns consistent data (counts in summaries match the lists); no real names, MACs or IPs.
 
 ### M1.4 Electron host: keychain, IPC and preload ☐
+- issue: [#4](https://github.com/pkkid/mesh-ui/issues/4)
 - after: M1.1
 - docs: architecture/security.md, architecture/ui.md (bridge), platform/cross-platform.md
 - files: src/main/index.ts, src/main/secret-store.ts, src/main/secret-store.test.ts, src/main/ipc.ts, src/main/paths.ts, src/main/session.ts, src/main/eero.ts, src/main/demo.ts, src/preload/index.ts, src/shared/types.ts, src/renderer/src/global.d.ts
@@ -93,6 +97,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: host tests cover keychain, basic_text and unavailable backends, plaintext and undecryptable files, and sign-out deleting the file; the token never crosses IPC (test the bridge payloads); `pnpm dev:demo` opens the window.
 
 ### M1.5 CLI surface ☐
+- issue: [#5](https://github.com/pkkid/mesh-ui/issues/5)
 - after: M1.1
 - docs: architecture/cli.md, platform/cross-platform.md (CLI launcher)
 - files: src/cli/index.ts, src/cli/args.ts, src/cli/run.ts, src/cli/format.ts, src/cli/script.ts, test/cli/cli.test.ts, scripts/mesh-ui-dev.mjs
@@ -100,6 +105,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: CLI tests spawn the built CLI with `--demo` and a temp user data dir and cover each format, exit code and script rule; `mesh-ui --demo run app.info` works on the maintainer's machine.
 
 ### M1.6 MCP surface ☐
+- issue: [#6](https://github.com/pkkid/mesh-ui/issues/6)
 - after: M1.1
 - docs: architecture/mcp.md
 - files: src/cli/mcp.ts, test/mcp/mcp.test.ts
@@ -107,6 +113,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: in-process tests list tools, check names, schemas and annotations, call a query and a needs_confirm command with and without `confirm`, and `--read-only` hides writes.
 
 ### M1.7 App shell, themes and UI primitives ☐
+- issue: [#7](https://github.com/pkkid/mesh-ui/issues/7)
 - after: M1.1
 - docs: ux/overview.md, design/design-system.md, architecture/ui.md
 - files: src/renderer/src/App.tsx, src/renderer/src/app/router.tsx, src/renderer/src/app/routes.ts, src/renderer/src/app/useCommand.ts, src/renderer/src/features/shell/Sidebar.tsx, src/renderer/src/features/shell/TopBar.tsx, src/renderer/src/features/shell/NetworkSwitcher.tsx, src/renderer/src/features/shell/ComingSoon.tsx, src/renderer/src/lib/themePalettes.ts, src/renderer/src/lib/themes.ts, src/renderer/src/lib/chartColors.ts, src/renderer/src/index.css, src/renderer/src/components/ui/card.tsx, src/renderer/src/components/ui/status.tsx, src/renderer/src/components/ui/segmented.tsx, src/renderer/src/components/ui/hero.tsx, src/renderer/src/components/ui/confirm.tsx, src/renderer/src/features/devices/DevicesView.tsx, src/renderer/src/features/settings/SettingsView.tsx
@@ -114,6 +121,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: every route renders without console errors; themes switch live and persist; primitives match the mockups; a renderer test or screenshot covers light and dark.
 
 ### M1.8 Chart kit ☐
+- issue: [#8](https://github.com/pkkid/mesh-ui/issues/8)
 - after: M1.1
 - docs: AGENTS.md (Charts), design/design-system.md (charts)
 - files: src/renderer/src/components/charts/AreaChart.tsx, src/renderer/src/components/charts/BarChart.tsx, src/renderer/src/components/charts/Sparkline.tsx, src/renderer/src/components/charts/ShareBar.tsx, src/renderer/src/components/charts/Donut.tsx, src/renderer/src/components/charts/Gauge.tsx, src/renderer/src/components/charts/Heatmap.tsx, src/renderer/src/components/charts/Tooltip.tsx, src/renderer/src/components/charts/scale.ts, src/renderer/src/components/charts/curve.ts, src/renderer/src/components/charts/charts.test.ts
@@ -121,6 +129,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: unit tests cover nice ticks and that curves never overshoot data or go below zero; a demo gallery route (dev only) shows every chart in light and dark.
 
 ### M1.9 Auth, account and app commands, and sign-in ☐
+- issue: [#9](https://github.com/pkkid/mesh-ui/issues/9)
 - after: M1.2, M1.3, M1.4, M1.7
 - docs: ux/sign-in.md, architecture/commands.md (auth, account, app), architecture/security.md
 - files: src/core/commands/auth.ts, src/core/commands/account.ts, src/core/commands/app.ts, src/core/commands/demo.ts, src/core/commands/auth.test.ts, src/core/commands/account.test.ts, src/core/commands/app.test.ts, src/core/eero/backend/auth.ts, src/core/eero/backend/account.ts, test/fake-eero/routes/account.ts, src/renderer/src/features/sign-in/SignInView.tsx, src/renderer/src/features/sign-in/CodeStep.tsx, src/renderer/src/features/sign-in/ChooseNetwork.tsx
@@ -128,6 +137,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: command tests on demo and client tests on the fake server pass; sign-in works end to end in `pnpm dev:fake`; `MANUAL: Sign in to the real account | pnpm dev, sign in with your eero email and code | Overview shows your network | none`.
 
 ### M1.10 Network and internet read commands ☐
+- issue: [#10](https://github.com/pkkid/mesh-ui/issues/10)
 - after: M1.2, M1.3
 - docs: architecture/commands.md (network, internet), ux/pages/overview.md
 - files: src/core/commands/network.ts, src/core/commands/internet.ts, src/core/commands/network.test.ts, src/core/commands/internet.test.ts, src/core/eero/backend/network.ts, src/core/eero/backend/internet.ts, src/core/eero/map/network.ts, test/fake-eero/routes/network.ts
@@ -135,6 +145,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: each command has demo tests (including bad_params) and fake-server tests for mapping; switching networks emits `network.selected`.
 
 ### M1.11 eero, device and profile read commands ☐
+- issue: [#11](https://github.com/pkkid/mesh-ui/issues/11)
 - after: M1.2, M1.3
 - docs: architecture/commands.md (eero, device, profile), ux/pages/devices.md
 - files: src/core/commands/eero.ts, src/core/commands/device.ts, src/core/commands/profile.ts, src/core/commands/eero.test.ts, src/core/commands/device.test.ts, src/core/commands/profile.test.ts, src/core/eero/backend/eero.ts, src/core/eero/backend/device.ts, src/core/eero/backend/profile.ts, src/core/eero/map/eero.ts, src/core/eero/map/device.ts, src/core/eero/map/profile.ts, test/fake-eero/routes/eeros.ts, test/fake-eero/routes/devices.ts, test/fake-eero/routes/profiles.ts
@@ -142,6 +153,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: demo and fake-server tests pass, including the burst reporter rate limit and device name fallback chain; `mesh-ui --demo run device.list --params '{"status":"online"}'` prints a table.
 
 ### M1.12 Usage and events read commands ☐
+- issue: [#12](https://github.com/pkkid/mesh-ui/issues/12)
 - after: M1.2, M1.3
 - docs: architecture/commands.md (internet usage, activity), ux/pages/overview.md
 - files: src/core/commands/usage.ts, src/core/commands/activity.ts, src/core/commands/usage.test.ts, src/core/commands/activity.test.ts, src/core/eero/backend/usage.ts, src/core/eero/backend/events.ts, src/core/eero/map/usage.ts, test/fake-eero/routes/usage.ts, test/fake-eero/routes/events.ts
@@ -149,6 +161,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: demo and fake-server tests pass, including the 7-day clamp and CSV output.
 
 ### M1.13 Package build and CI smoke ☐
+- issue: [#13](https://github.com/pkkid/mesh-ui/issues/13)
 - after: M1.4, M1.5
 - docs: platform/build-and-release.md, testing.md (CI)
 - files: electron-builder.yml, .github/workflows/ci.yml, scripts/dist-smoke.mjs, package.json
@@ -156,6 +169,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: `pnpm dist:dir` builds and launches with `--demo` locally; the smoke workflow is green on all three OS on the story's PR.
 
 ### M1.14 Overview page ☐
+- issue: [#14](https://github.com/pkkid/mesh-ui/issues/14)
 - after: M1.7, M1.8, M1.10, M1.11, M1.12
 - docs: ux/pages/overview.md
 - files: src/renderer/src/features/overview/OverviewView.tsx, src/renderer/src/features/overview/NetworkHero.tsx, src/renderer/src/features/overview/DataUsage.tsx, src/renderer/src/features/overview/EerosList.tsx, src/renderer/src/features/overview/TopDevices.tsx, src/renderer/src/features/overview/ProfilesList.tsx, src/renderer/src/features/overview/BusyHeatmap.tsx, src/renderer/src/features/overview/RecentActivity.tsx, src/renderer/src/app/routes.ts
@@ -163,6 +177,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: matches the mockup in `pnpm dev:demo` and `pnpm dev:fake` in light and dark (screenshots in the PR); loading, empty and error states shown via `demo.scenario.set`.
 
 ### M1.15 Devices page ☐
+- issue: [#15](https://github.com/pkkid/mesh-ui/issues/15)
 - after: M1.7, M1.8, M1.11
 - docs: ux/pages/devices.md
 - files: src/renderer/src/features/devices/DevicesPage.tsx, src/renderer/src/features/devices/DeviceSummary.tsx, src/renderer/src/features/devices/DeviceFilters.tsx, src/renderer/src/features/devices/DeviceTable.tsx, src/renderer/src/app/routes.ts
@@ -170,6 +185,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - done when: matches the mockup in demo and fake modes in light and dark (screenshots in the PR); filters and sort run through `device.list` params, not renderer logic.
 
 ### M1.R Review ☐
+- issue: [#16](https://github.com/pkkid/mesh-ui/issues/16)
 - owner: maintainer
 - after: M1.1, M1.2, M1.3, M1.4, M1.5, M1.6, M1.7, M1.8, M1.9, M1.10, M1.11, M1.12, M1.13, M1.14, M1.15
 
