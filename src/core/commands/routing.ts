@@ -25,6 +25,11 @@ const ipNum = (ip: string): number | null => {
 const compact = (mac: string) => mac.toLowerCase().replace(/[^0-9a-f]/g, "");
 
 /** Why routing is off for this network, or null when it is on. */
+/** Whether a device holds a DHCP lease from the pool (`inPool` tests its IPv4). */
+function isLeased(d: M.Device, inPool: (ip: string | null) => boolean, reserved: Set<M.Id>): boolean {
+  return d.connected && !d.blocked && d.ssid !== "guest" && inPool(d.ipv4) && !reserved.has(d.id);
+}
+
 export function routingUnavailable(mode: M.ConnectionMode | null): string | null {
   if (mode === "bridged") return "Reservations and port forwards are off while the network is in bridge mode.";
   if (mode === "ipPassthrough") return "Reservations and port forwards are off while the network is in IP passthrough mode.";
@@ -36,8 +41,10 @@ type Joined = { routing: M.Routing; unavailable: string | null; devices: M.Devic
 /**
  * The routing lists joined to devices: a reservation without a device id
  * takes the device with its MAC, a forward without one takes its
- * reservation's device (by IP), and the pool's leased count is the connected
- * main-network devices with an IPv4 address inside the pool and no reservation.
+ * reservation's device (by IP), and the pool's leased count is the connected,
+ * unblocked main-network devices with an IPv4 address inside the pool and no
+ * reservation. This is the only place leases are counted; backends report
+ * `pool.leased` as 0. `blocked` is the same flag device.list reports.
  */
 async function joined(ctx: CommandContext): Promise<Joined> {
   const network = await ctx.backend.network.get(ctx.net);
@@ -59,7 +66,7 @@ async function joined(ctx: CommandContext): Promise<Joined> {
       const n = ip ? ipNum(ip) : null;
       return n !== null && start !== null && end !== null && n >= start && n <= end;
     };
-    const leased = devices.filter((d) => d.connected && d.ssid !== "guest" && inPool(d.ipv4) && !reserved.has(d.id)).length;
+    const leased = devices.filter((d) => isLeased(d, inPool, reserved)).length;
     lan = { ...lan, pool: { ...lan.pool, leased } };
   }
   return { routing: { ...routing, reservations, forwards, lan }, unavailable, devices };

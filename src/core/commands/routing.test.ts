@@ -54,9 +54,27 @@ describe("reservation.list (demo)", () => {
       at("03", "192.168.4.50"), // static range
       at("04", "192.168.4.160", { ssid: "guest" }),
       at("05", "192.168.4.170", { connected: false }),
+      // Blocked but still reported connected with a pool address: never a lease.
+      at("06", "192.168.4.180", { blocked: true }),
     ];
     const engine = createEngine({ backend: { ...backend, device: { ...backend.device, list: async () => list } }, clock: () => NOW });
     expect((await ok<ReservationList>(engine, "reservation.list")).lan?.pool.leased).toBe(2);
+  });
+
+  it("never counts a blocked device as leased, using device.list's blocked flag", async () => {
+    const { backend } = demo();
+    const devices = await backend.device.list("4821907");
+    const routing = await backend.routing.get("4821907");
+    const reserved = new Set(routing.reservations.map((x) => x.deviceId));
+    const lease = devices.find((d) => d.connected && d.ssid === "main" && !reserved.has(d.id) && d.ipv4?.startsWith("192.168.4.1"));
+    if (!lease) throw new Error("fixture");
+    const before = (await ok<ReservationList>(demo().engine, "reservation.list")).lan?.pool.leased ?? 0;
+    // Block one leased device the way a backend might report it: still connected, pool address kept.
+    const list = devices.map((d) => (d.id === lease.id ? { ...d, blocked: true } : d));
+    const engine = createEngine({ backend: { ...backend, device: { ...backend.device, list: async () => list } }, clock: () => NOW });
+    const listed = (await ok<M.DeviceList>(engine, "device.list")).devices.find((d) => d.id === lease.id);
+    expect(listed?.blocked).toBe(true);
+    expect((await ok<ReservationList>(engine, "reservation.list")).lan?.pool.leased).toBe(before - 1);
   });
 
   it("answers empty with a reason in bridge mode", async () => {
@@ -167,6 +185,16 @@ describe("routing commands (fake eero server)", () => {
     ]);
     expect((await ok<ForwardList>(engine, "forward.list", { device: "Living Room TV" })).forwards.map((x) => x.id)).toEqual(["400"]);
     expect(fake.log.some((e) => e.method === "GET" && e.path === "/2.2/networks/100001/routing")).toBe(true);
+  });
+
+  it("does not count a blocked device as leased", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    fake.state.networks.get("100001")?.blacklist.push("0a:1b:2c:00:00:03");
+    const jamie = (await ok<M.DeviceList>(engine, "device.list")).devices.find((d) => d.name === "Jamie's Phone");
+    expect(jamie).toMatchObject({ blocked: true, ipv4: "192.168.4.103" });
+    // Five connected unreserved pool clients, less the blocked Jamie's Phone.
+    expect((await ok<ReservationList>(engine, "reservation.list")).lan?.pool.leased).toBe(4);
   });
 
   it("uses a custom DHCP range and skips GET routing in bridge mode", async () => {
