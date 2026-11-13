@@ -15,6 +15,7 @@ import { LINK_COLOR, LinkChip, type LinkLook, linkSpeed, uplinkLook } from "~/co
 import { behindOffline, eeroIcon } from "~/components/mesh/Topology";
 import { cn } from "~/lib/utils";
 import type { Eero } from "../../../../core/model";
+import { uplinkOf } from "./helpers";
 
 export type EeroUplinkProps = {
   eero: Eero;
@@ -22,16 +23,6 @@ export type EeroUplinkProps = {
   internet: { label: string | null; wanMbps: number | null } | null;
   networkOffline: boolean;
 };
-
-/** This eero's upstream (the gateway when eero reports none) and the eeros that hang off it. */
-export function uplinkOf(eero: Eero, eeros: ReadonlyArray<Eero>): { upstream: Eero | null; downstream: Eero[] } {
-  const others = eeros.filter((e) => e.id !== eero.id);
-  const upstream = eero.isGateway ? null : (others.find((e) => e.id === eero.upstream) ?? others.find((e) => e.isGateway) ?? null);
-  const downstream = others
-    .filter((e) => !e.isGateway && (e.upstream === eero.id || (eero.isGateway && e.upstream === null)))
-    .sort((a, b) => a.location.localeCompare(b.location));
-  return { upstream, downstream };
-}
 
 export function EeroUplink({ eero, eeros, internet, networkOffline }: EeroUplinkProps) {
   const { upstream, downstream } = uplinkOf(eero, eeros);

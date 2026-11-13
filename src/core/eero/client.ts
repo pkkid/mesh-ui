@@ -23,6 +23,14 @@ export const MAX_BODY_BYTES = 10 * 1024 * 1024;
 export const RETRY_BACKOFF_MS = [1_000, 4_000] as const;
 /** Pause after a 429 that has no Retry-After. */
 export const DEFAULT_RETRY_AFTER_MS = 30_000;
+/**
+ * How long a session GET answer is shared with identical GETs. One page load
+ * runs many commands that each read `GET {net}`, its permissions or the
+ * account; without sharing, two page loads spent the whole 80 a minute budget
+ * and every later read queued for up to a minute. Far under every poll interval
+ * (60 s and up), and any write or session change drops it.
+ */
+export const READ_SHARE_MS = 5_000;
 
 export type Method = "GET" | "POST" | "PUT" | "DELETE";
 /** json: JSON object; form: x-www-form-urlencoded; empty: the literal body `""`; none: no body. */
@@ -73,12 +81,20 @@ export type EeroClientOptions = {
   fetch?: typeof fetch;
   limiter?: RateLimiter;
   timeoutMs?: number;
+  /**
+   * How long identical session GETs share one answer; 0 shares only while in
+   * flight. Default READ_SHARE_MS, or 0 when `fetch` is injected, since those
+   * tests change fake server state between reads.
+   */
+  readShareMs?: number;
   onLog?: (entry: RequestLogEntry) => void;
   /** Called when the session starts or ends (sign-in, sign-out, expiry). */
   onSessionChange?: (signedIn: boolean) => void;
 };
 
 type Exchange<T> = { data: T; cookieToken: string | null };
+
+type SharedRead = { promise: Promise<Exchange<unknown>>; expires: number };
 
 type Attempt = {
   status: number;
@@ -103,6 +119,9 @@ export class EeroClient {
   private readonly userAgent: string;
   private readonly fetchFn: typeof fetch;
   private readonly timeoutMs: number;
+  private readonly readShareMs: number;
+  /** Session GETs in flight or answered in the last readShareMs, by URL. */
+  private readonly shared = new Map<string, SharedRead>();
   private readonly onLog: ((entry: RequestLogEntry) => void) | undefined;
   private readonly onSessionChange: ((signedIn: boolean) => void) | undefined;
 
@@ -119,6 +138,7 @@ export class EeroClient {
     this.fetchFn = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.limiter = options.limiter ?? new RateLimiter();
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.readShareMs = options.readShareMs ?? (options.fetch ? 0 : READ_SHARE_MS);
     this.onLog = options.onLog;
     this.onSessionChange = options.onSessionChange;
   }
@@ -174,6 +194,7 @@ export class EeroClient {
       throw new BackendError("eero_error", "eero gave a sign-in that Mesh UI cannot use. Try signing in again.");
     }
     this.token = session;
+    this.shared.clear();
     this.loaded = Promise.resolve();
     await this.secrets.save(session);
     this.onSessionChange?.(true);
@@ -199,6 +220,7 @@ export class EeroClient {
     this.token = null;
     this.pendingToken = null;
     this.login = null;
+    this.shared.clear();
     await this.secrets.clear();
     if (wasSignedIn) this.onSessionChange?.(false);
     if (!token) return;
@@ -214,8 +236,46 @@ export class EeroClient {
 
   private async exchange<T>(spec: RequestSpec): Promise<Exchange<T>> {
     const effect = spec.effect ?? (spec.method === "GET" ? "query" : "write");
-    const run = () => this.withRetries<T>(spec, effect);
-    return effect === "write" ? this.limiter.serial(run) : run();
+    if (effect === "write") {
+      // A write may change anything a shared read holds: drop them before and after.
+      this.shared.clear();
+      return this.limiter.serial(() => this.withRetries<T>(spec, effect)).finally(() => this.shared.clear());
+    }
+    if (spec.method !== "GET" || (spec.auth ?? "session") !== "session") return this.withRetries<T>(spec, effect);
+    return this.sharedRead<T>(spec);
+  }
+
+  /**
+   * Identical session GETs share one request while it is in flight and for
+   * readShareMs after it succeeds. Each caller gets its own copy of the data.
+   */
+  private async sharedRead<T>(spec: RequestSpec): Promise<Exchange<T>> {
+    let key: string;
+    try {
+      key = requestUrl(spec, this.origin).href;
+    } catch {
+      // A refused url: let the normal path log and map it.
+      return this.withRetries<T>(spec, "query");
+    }
+    const now = Date.now();
+    for (const [k, e] of this.shared) if (e.expires <= now) this.shared.delete(k);
+    let entry = this.shared.get(key);
+    if (!entry) {
+      const fresh: SharedRead = { promise: this.withRetries<unknown>(spec, "query"), expires: Number.POSITIVE_INFINITY };
+      entry = fresh;
+      this.shared.set(key, fresh);
+      fresh.promise.then(
+        () => {
+          fresh.expires = Date.now() + this.readShareMs;
+          if (this.readShareMs <= 0 && this.shared.get(key) === fresh) this.shared.delete(key);
+        },
+        () => {
+          if (this.shared.get(key) === fresh) this.shared.delete(key);
+        },
+      );
+    }
+    const { data, cookieToken } = await entry.promise;
+    return { data: structuredClone(data) as T, cookieToken };
   }
 
   private async withRetries<T>(spec: RequestSpec, effect: RequestEffect): Promise<Exchange<T>> {
@@ -289,10 +349,7 @@ export class EeroClient {
 
   /** One HTTP attempt: limiter slot, headers, body, timeout, envelope. */
   private async attempt(spec: RequestSpec, token: string | null): Promise<Attempt> {
-    const url = resolveUrl(spec.path, this.origin, spec.version);
-    for (const [key, value] of Object.entries(spec.query ?? {})) {
-      if (value !== null && value !== undefined) url.searchParams.set(key, String(value));
-    }
+    const url = requestUrl(spec, this.origin);
 
     const encoding = spec.encoding ?? (spec.method === "GET" ? "none" : spec.body ? "json" : "empty");
     if (spec.method === "GET" && (encoding !== "none" || spec.body)) throw new Error("GET requests take query parameters, never a body.");
@@ -394,6 +451,7 @@ export class EeroClient {
   private async endSession(): Promise<void> {
     const was = this.token !== null;
     this.token = null;
+    this.shared.clear();
     await this.secrets.clear();
     if (was) this.onSessionChange?.(false);
   }
@@ -437,6 +495,15 @@ export class EeroClient {
 
 function isOk(status: number): boolean {
   return status >= 200 && status < 300;
+}
+
+/** The full URL of a request, query included. */
+function requestUrl(spec: RequestSpec, origin: string): URL {
+  const url = resolveUrl(spec.path, origin, spec.version);
+  for (const [key, value] of Object.entries(spec.query ?? {})) {
+    if (value !== null && value !== undefined) url.searchParams.set(key, String(value));
+  }
+  return url;
 }
 
 function sleep(ms: number): Promise<void> {

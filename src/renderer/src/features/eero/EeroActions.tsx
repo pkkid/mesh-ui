@@ -11,14 +11,7 @@ import { IconTile } from "~/components/ui/hero";
 import { ComingSoonButton, Row, RowList } from "~/components/ui/page";
 import { Section } from "~/components/ui/card";
 import type { Eero } from "../../../../core/model";
-
-/** Restart copy: who drops and for how long (about 1 minute for a leaf, 2 to 3 for the gateway; commands.md#restart-estimates). */
-export function restartLine(eero: Eero, eeros: ReadonlyArray<Eero>, networkName: string): string {
-  if (eero.isGateway) return `Everyone on ${networkName} loses internet for about 2 to 3 minutes`;
-  const downstream = eeros.filter((e) => e.upstream === eero.id).map((e) => e.location);
-  const also = downstream.length > 0 ? ` and ${downstream.join(", ")} (downstream)` : "";
-  return `Its devices${also} drop for about 1 minute`;
-}
+import { restartLine } from "./helpers";
 
 export function EeroActions({ eero, eeros, networkName, offline }: { eero: Eero | null; eeros: ReadonlyArray<Eero>; networkName: string; offline: boolean }) {
   const name = eero?.location ?? "eero";
