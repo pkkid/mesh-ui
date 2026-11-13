@@ -202,6 +202,12 @@ bands and channels, data usage by eero, clients by band), eero detail
 (radios, ports and attached devices, firmware history, uplink), device
 detail (signal, rates, usage, IP addresses, reservation and forwards shown),
 and the command palette for navigation and running query commands.
+Carried from M1 ([review](reviews/M1.md)): align mockups with the demo
+fixtures (eero shares, band totals, Lake Cabin) and update mockup 18 to the
+two-step sign-in; a "Poor" speed rating tier (needs a model field); counts in
+the Devices eero, profile and manufacturer filters (`device.list` summary
+fields); a shared network-time-zone clock formatter in `core/format.ts`; one
+device-type icon map shared by Overview and Devices.
 
 ## M3: See people and settings
 
@@ -213,6 +219,9 @@ isolation, guest devices, QR via `guest.share`), Wi-Fi (name, encryption,
 bands, QR via `wifi.share`), Advanced networking and Reservations & ports
 as read views, Troubleshooting health check, desktop notifications for
 offline alerts.
+Carried from M1: guest usage on the eero backend (demo only today);
+`events.summary`, `usage.quiet_hours` and grouped events; `slow` and
+`errors` demo scenarios so loading and error states can be shown in demo.
 
 ## M4: Everyday control
 
@@ -223,6 +232,13 @@ Rough scope: device writes, profile CRUD and schedules, guest enable,
 disable, rename and password, Wi-Fi name, password, security and only-2.4
 GHz, eero rename, find, LED and nightlight, eero and network restart, speed
 test run, undo toasts for reversible writes, the palette running commands.
+Carried from M1: the audit log for CLI and MCP calls (no owner yet; cli.md
+and mcp.md expect it); burst cooldown, the devices cache TTL after a burst
+and a write settle delay; each write invalidates the topics it changes
+(`internet.plan.set` invalidates network and speedtest; device writes refresh
+`network.get` counts); the engine cache keeps only the last two networks;
+the eero client re-reads the SecretStore on a 401 so two processes (app and
+CLI) share one session.
 
 ## M5: Advanced settings
 
@@ -243,3 +259,8 @@ and delete), CLI install on PATH per OS, signed and notarized macOS builds,
 release workflow and draft releases, auto-update and beta channel, Linux
 AppImage, deb and rpm, Windows installer (unsigned for now), first public
 release.
+Carried from M1: "Try demo mode" switches a running app to demo; "delete
+my account" (`account.delete`); move to the async safeStorage API (the sync
+call is deprecated in Electron 45); an `author` with email in package.json
+for deb and rpm; prove `pnpm dist:dir` and `pnpm ui:shot` on macOS and
+Windows; add the `pnpm test:ui` script or drop it from testing.md.
