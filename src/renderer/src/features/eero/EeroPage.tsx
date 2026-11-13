@@ -43,8 +43,8 @@ export function EeroPage({ params }: PageProps) {
 
   useEeroShortcuts(list, id);
 
-  // Gone: the list has loaded and no longer has this eero (removed elsewhere).
-  if (eeros.data && !listed && !eero.data) {
+  // Gone: the latest list no longer has this eero (removed elsewhere), even if an older eero.get is cached.
+  if (eeros.data && !listed) {
     return (
       <Card>
         <Empty className="flex flex-col items-center gap-2">

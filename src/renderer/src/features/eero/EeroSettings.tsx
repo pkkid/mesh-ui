@@ -37,7 +37,7 @@ export function EeroSettings({ eero, eeros, clock }: { eero: Eero | null; eeros:
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <LocationCard eero={eero} />
       <StatusLightCard eero={eero} />
-      <NightlightCard eero={eero} eeros={eeros} clock={clock} />
+      <NightlightCard eero={eero} eeros={eeros} />
       <SoftwareCard eero={eero} clock={clock} />
       <IpCard eero={eero} />
       <InfoCard eero={eero} />
@@ -166,7 +166,7 @@ function StatusLightCard({ eero }: { eero: Eero | null }) {
   );
 }
 
-function NightlightCard({ eero, eeros, clock }: { eero: Eero | null; eeros: ReadonlyArray<Eero>; clock: Clock }) {
+function NightlightCard({ eero, eeros }: { eero: Eero | null; eeros: ReadonlyArray<Eero> }) {
   const nl = eero?.nightlight ?? null;
   if (!eero || !nl) {
     const beacon = eeros.find((e) => e.nightlight !== null && e.id !== eero?.id);
@@ -193,8 +193,9 @@ function NightlightCard({ eero, eeros, clock }: { eero: Eero | null; eeros: Read
   }
   const time = (hhmm: string | null) => {
     if (!hhmm) return null;
-    const [h, m] = hhmm.split(":").map(Number);
-    return clock.time(Date.UTC(2000, 0, 1, h ?? 0, m ?? 0)).replace(/\s/, " ");
+    // A wall-clock time on the eero, so no time zone conversion.
+    const [h = 0, m = 0] = hhmm.split(":").map(Number);
+    return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
   };
   return (
     <SettingsCard
