@@ -1,58 +1,104 @@
+/**
+ * The Electron host. It builds the engine (src/core) with a backend and the
+ * `safeStorage` SecretStore, exposes it to the window over src/main/ipc.ts,
+ * and keeps every web contents locked down. With `--cli` it creates no
+ * window and hands argv to `runCli` (docs/architecture/cli.md#how-the-cli-runs).
+ *
+ * Backends:
+ * - live: the eero backend against api-user.e2ro.com.
+ * - demo: `MESH_UI_DEMO=1` or `--demo`, in-memory fixtures, no secrets.
+ * - fake (dev builds only): `MESH_UI_FAKE=1` points the eero backend at the
+ *   local fake eero server (`MESH_UI_FAKE_ORIGIN`, or one started here from
+ *   test/fake-eero) with a throwaway config dir. Release builds drop this
+ *   code, so they have no way to point the client anywhere but eero.
+ */
+
+import { mkdtempSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, ipcMain, nativeTheme, session, shell } from "electron";
-import type { TitlebarColors } from "@shared/types";
-import { demoNetworks, isDemo } from "./demo";
-import * as eero from "./eero";
-import { clearToken, loadToken, saveToken, sessionStorage } from "./session";
+import { app, BrowserWindow, ipcMain, nativeTheme, safeStorage, session, shell } from "electron";
+import type { Backend } from "../core/backend";
+import { createDemoBackend } from "../core/demo";
+import { createEeroBackend } from "../core/eero/backend";
+import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
+import type { SettingsStore } from "../core/spec";
+import { EXIT, runCli } from "../cli";
+import { registerIpc } from "./ipc";
+import { configPaths, resolveConfigDir } from "./paths";
+import { createSecretStore, keychainName } from "./secret-store";
 
 /** Matches --titlebar-height in the renderer's index.css. */
 const TITLEBAR_HEIGHT = 44;
 
-let token: string | null = null;
+const argv = process.argv;
+const cliIndex = argv.indexOf("--cli");
+const isCli = cliIndex !== -1;
+const isDemo = process.env.MESH_UI_DEMO === "1" || (!isCli && argv.includes("--demo"));
+const isFake = import.meta.env.DEV && process.env.MESH_UI_FAKE === "1";
+
 let mainWindow: BrowserWindow | null = null;
 
-ipcMain.handle("start-login", async (_e, login: string) => {
-  token = await eero.startLogin(login);
-});
+// ---------------------------------------------------------------------------
+// Paths. Must run before the app is ready.
 
-ipcMain.handle("verify", async (_e, code: string) => {
-  if (!token) throw new Error("No login in progress");
-  await eero.verify(token, code);
-  saveToken(token);
-});
+app.setName("Mesh UI");
+const userDataSwitch = app.commandLine.getSwitchValue("user-data-dir");
+const configDir =
+  isFake && !userDataSwitch && !process.env.MESH_UI_USER_DATA_DIR
+    ? mkdtempSync(path.join(os.tmpdir(), "mesh-ui-fake-"))
+    : resolveConfigDir({ appData: app.getPath("appData"), userDataSwitch, env: process.env });
+const paths = configPaths(configDir);
+app.setPath("userData", configDir);
+// The CLI shares session.json, settings.json and the safeStorage key, but not
+// Chromium's profile files, so it can run next to an open window.
+if (isCli) app.setPath("sessionData", paths.cliSessionData);
 
-ipcMain.handle("logout", async () => {
-  const current = token ?? loadToken();
-  token = null;
-  clearToken();
-  // Best effort: the local session is already gone even if eero is unreachable.
-  if (current && !isDemo) await eero.logout(current).catch(() => {});
-});
+// ---------------------------------------------------------------------------
+// Engine
 
-ipcMain.handle("session-storage", () => sessionStorage());
+/** Dev only: origin of the fake eero server, starting it when none is given. */
+async function fakeOrigin(): Promise<string | undefined> {
+  if (!import.meta.env.DEV || !isFake) return undefined;
+  if (process.env.MESH_UI_FAKE_ORIGIN) return process.env.MESH_UI_FAKE_ORIGIN;
+  // Glob so the build still works before test/fake-eero/server.ts exists.
+  const loaders = import.meta.glob<{ startFakeEero?: () => Promise<{ origin: string }> }>("../../test/fake-eero/server.ts");
+  const load = Object.values(loaders)[0];
+  const start = load && (await load()).startFakeEero;
+  if (!start) throw new Error("MESH_UI_FAKE=1 needs test/fake-eero/server.ts to export startFakeEero(), or set MESH_UI_FAKE_ORIGIN.");
+  const { origin } = await start();
+  console.log(`[mesh-ui] fake eero server at ${origin}, config in ${configDir}`);
+  return origin;
+}
 
-ipcMain.handle("load", async () => {
-  if (isDemo) return demoNetworks;
-  token ??= loadToken();
-  if (!token) return null;
-  try {
-    return await eero.loadNetworks(token);
-  } catch (err) {
-    // An expired or revoked session sends the user back to sign in.
-    if (err instanceof eero.EeroError && err.status === 401) {
-      token = null;
-      clearToken();
-      return null;
-    }
-    throw err;
+async function createAppEngine(): Promise<Engine> {
+  let backend: Backend;
+  let settings: SettingsStore;
+  if (isDemo) {
+    // Demo never touches the session or the saved settings.
+    backend = createDemoBackend();
+    settings = memorySettings();
+  } else {
+    settings = fileSettings(paths.settings);
+    const secrets = createSecretStore({ file: paths.session, safeStorage, platform: process.platform });
+    const origin = await fakeOrigin();
+    backend = createEeroBackend({ secrets, userAgent: (await settings.get()).userAgent, ...(origin ? { origin } : {}) });
   }
-});
+  return createEngine({
+    backend,
+    settings,
+    surface: "ui",
+    host: {
+      version: app.getVersion(),
+      electron: process.versions.electron ?? null,
+      configDir,
+      keychainName: isDemo ? null : keychainName(safeStorage, process.platform),
+    },
+  });
+}
 
-ipcMain.on("set-titlebar-colors", (_e, colors: TitlebarColors) => {
-  if (!mainWindow || process.platform === "darwin") return;
-  mainWindow.setTitleBarOverlay({ ...colors, height: TITLEBAR_HEIGHT });
-});
+// ---------------------------------------------------------------------------
+// Window
 
 function createWindow(): void {
   const dark = nativeTheme.shouldUseDarkColors;
@@ -79,6 +125,7 @@ function createWindow(): void {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       sandbox: true,
+      nodeIntegration: false,
     },
   });
 
@@ -113,21 +160,49 @@ app.on("web-contents-created", (_e, contents) => {
   });
 });
 
-app.setName("Mesh UI");
-// Keep config in a lowercase directory (~/.config/mesh-ui on Linux,
-// ~/Library/Application Support/mesh-ui on macOS, %APPDATA%\mesh-ui on
-// Windows) rather than the display name. Must run before the app is ready.
-app.setPath("userData", path.join(app.getPath("appData"), "mesh-ui"));
-app.whenReady().then(() => {
+function lockDownSession(): void {
   // The app needs no camera, mic, location, notifications, etc.
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
+}
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+// ---------------------------------------------------------------------------
+// Start
+
+if (isCli) {
+  app.dock?.hide();
+  void app.whenReady().then(async () => {
+    lockDownSession();
+    let code: number;
+    try {
+      code = await runCli(argv.slice(cliIndex + 1));
+    } catch {
+      code = EXIT.failed;
+    }
+    app.exit(code);
+  });
+} else {
+  void app.whenReady().then(async () => {
+    lockDownSession();
+    const engine = await createAppEngine();
+    registerIpc(ipcMain, {
+      engine,
+      isAppUrl,
+      broadcast: (channel, event) => {
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send(channel, event);
+      },
+      setTitlebarColors: (colors) => {
+        if (!mainWindow || process.platform === "darwin") return;
+        mainWindow.setTitleBarOverlay({ ...colors, height: TITLEBAR_HEIGHT });
+      },
+    });
+    createWindow();
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+  });
+}

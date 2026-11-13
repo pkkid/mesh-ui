@@ -1,14 +1,9 @@
+/**
+ * Exposes `window.mesh` to the renderer. The bridge itself is built in
+ * src/main/ipc.ts next to the main side of the same channels, so both halves
+ * are tested together.
+ */
 import { contextBridge, ipcRenderer } from "electron";
-import type { MeshApi } from "@shared/types";
+import { createMeshBridge } from "../main/ipc";
 
-const api: MeshApi = {
-  platform: process.platform,
-  startLogin: (login) => ipcRenderer.invoke("start-login", login),
-  verify: (code) => ipcRenderer.invoke("verify", code),
-  load: () => ipcRenderer.invoke("load"),
-  logout: () => ipcRenderer.invoke("logout"),
-  sessionStorage: () => ipcRenderer.invoke("session-storage"),
-  setTitlebarColors: (colors) => ipcRenderer.send("set-titlebar-colors", colors),
-};
-
-contextBridge.exposeInMainWorld("mesh", api);
+contextBridge.exposeInMainWorld("mesh", createMeshBridge(ipcRenderer, process.platform));
