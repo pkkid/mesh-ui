@@ -361,12 +361,113 @@ describe("scenarios", () => {
   });
 });
 
+describe("M2 fixtures", () => {
+  it("attach each wired port to the connected device that device.list puts on it", async () => {
+    const b = demo();
+    for (const n of await b.network.list()) {
+      const devices = await b.device.list(n.id);
+      for (const e of await b.eero.list(n.id)) {
+        const { eeroId, ports } = await b.eero.ports(n.id, e.id);
+        expect(eeroId).toBe(e.id);
+        for (const p of ports) {
+          const wired = devices.find((d) => d.connected && d.wiredPort?.eeroId === e.id && d.wiredPort.port === p.number);
+          expect(p.attached?.deviceId ?? null).toBe(wired?.id ?? null);
+          if (p.attached) expect(wired?.eeroId).toBe(e.id);
+          if (wired && e.status !== "offline") expect(p).toMatchObject({ status: "up", speedMbps: wired.wiredPort?.speedMbps });
+        }
+      }
+      // Every connected wired device sits on a port of its eero.
+      for (const d of devices.filter((x) => x.connected && x.wiredPort)) {
+        const { ports } = await b.eero.ports(n.id, d.wiredPort?.eeroId ?? "");
+        expect(ports.find((p) => p.number === d.wiredPort?.port)?.attached?.deviceId).toBe(d.id);
+      }
+    }
+  });
+
+  it("give the gateway WAN port the internet gateway's speed and the Beacon no ports", async () => {
+    const b = demo();
+    const wan = (await b.eero.ports(MAPLE, "80011")).ports.find((p) => p.isWan);
+    expect(wan).toMatchObject({ number: 1, status: "up", speedMbps: (await b.internet.get(MAPLE)).gateway?.wanPortSpeedMbps, attached: null });
+    expect((await b.eero.ports(MAPLE, "80014")).ports).toEqual([]);
+    expect((await b.eero.ports(LAKE, "81021")).ports.every((p) => p.status === "down")).toBe(true);
+  });
+
+  it("end firmware history at each eero's current version, newest first", async () => {
+    const b = demo();
+    for (const n of await b.network.list()) {
+      for (const e of await b.eero.list(n.id)) {
+        const h = await b.eero.firmwareHistory(n.id, e.id, 50);
+        expect(h.length).toBeGreaterThan(0);
+        expect(h[0]).toMatchObject({ version: e.firmware, current: true });
+        expect(h.filter((x) => x.current)).toHaveLength(1);
+        expect(h.map((x) => x.installedAt)).toEqual([...h.map((x) => x.installedAt)].sort().reverse());
+      }
+    }
+    expect(await b.eero.firmwareHistory(MAPLE, "80011", 2)).toHaveLength(2);
+  });
+
+  it("refuse ports and firmware for an unknown eero or one on another network", async () => {
+    const b = demo();
+    await expect(b.eero.ports(MAPLE, "nope")).rejects.toBeInstanceOf(BackendError);
+    await expect(b.eero.ports(MAPLE, "81021")).rejects.toMatchObject({ code: "eero_error" });
+    await expect(b.eero.firmwareHistory(MOM, "80011", 5)).rejects.toMatchObject({ code: "eero_error" });
+  });
+
+  it("put every Maple Street forward on a reserved device, with matching counts", async () => {
+    const b = demo();
+    const r = await b.routing.get(MAPLE);
+    expect(r.reservations).toHaveLength(8);
+    expect(r.forwards).toHaveLength(5);
+    expect(r.pinholes).toHaveLength(2);
+    const devices = await b.device.list(MAPLE);
+    for (const f of r.forwards) {
+      const res = r.reservations.find((x) => x.deviceId === f.deviceId);
+      expect(res?.ip).toBe(f.ip);
+      expect(devices.find((d) => d.id === f.deviceId)?.ipv4).toBe(f.ip);
+    }
+    for (const res of r.reservations) expect(res.forwards).toBe(r.forwards.filter((f) => f.deviceId === res.deviceId).length);
+    for (const p of r.pinholes) expect(devices.find((d) => d.id === p.deviceId)?.ipv6).toContain(p.address);
+    const reserved = new Set(r.reservations.map((x) => x.deviceId));
+    expect(r.lan?.pool.leased).toBe(count(devices, (d) => d.connected && !!d.ipv4 && !reserved.has(d.id)));
+  });
+
+  it("answer routing empty in bridge mode", async () => {
+    expect(await demo().routing.get(MOM)).toEqual({ reservations: [], forwards: [], pinholes: [], lan: null });
+  });
+
+  it("report updates per network with per-eero versions from the eeros", async () => {
+    const b = demo();
+    const maple = await b.updates.get(MAPLE);
+    expect(maple).toMatchObject({ status: "scheduled", current: "7.12.1", target: "7.13.0", canUpdateNow: true });
+    expect(maple.eeros.map((e) => e.firmware)).toEqual((await b.eero.list(MAPLE)).map((e) => e.firmware));
+    expect(Date.parse(maple.scheduledAt ?? "")).toBeGreaterThan(NOW);
+    expect(await b.updates.get(LAKE)).toMatchObject({ status: "up_to_date", current: "7.11.4", target: null });
+    expect(await b.updates.get(MOM)).toMatchObject({ status: "available", target: "7.13.0" });
+  });
+
+  it("fill lease time, tx power, auto channel, subnet and link-local addresses", async () => {
+    const b = demo();
+    expect(Date.parse((await b.internet.get(MAPLE)).leaseRenewsAt ?? "")).toBeGreaterThan(NOW);
+    expect((await b.internet.get(LAKE)).leaseRenewsAt).toBeNull();
+    const office = await b.eero.get(MAPLE, "80012");
+    expect(office).toMatchObject({ subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" });
+    expect(office.radios.find((r) => r.band === "5")).toMatchObject({ txPowerDbm: 23, autoChannel: false });
+    expect(office.radios.find((r) => r.band === "6")).toMatchObject({ txPowerDbm: 24, autoChannel: true });
+    expect((await b.eero.get(LAKE, "81021")).radios.every((r) => r.txPowerDbm === null)).toBe(true);
+    const devices = await b.device.list(MAPLE);
+    expect(devices.filter((d) => d.ipv4).every((d) => d.ipv6LinkLocal?.startsWith("fe80::"))).toBe(true);
+    expect(new Set(devices.map((d) => d.ipv6LinkLocal).filter(Boolean)).size).toBe(count(devices, (d) => !!d.ipv4));
+  });
+});
+
 describe("invented data only", () => {
   it("uses invented MACs, private or documentation IPs and example contacts", async () => {
     const b = demo();
     const dump: unknown[] = [await b.account.get()];
     for (const n of await b.network.list()) {
       dump.push(await b.network.get(n.id), await b.internet.get(n.id), await b.eero.list(n.id), await b.device.list(n.id), await b.events.list(n.id, null));
+      dump.push(await b.routing.get(n.id), await b.updates.get(n.id));
+      for (const e of await b.eero.list(n.id)) dump.push(await b.eero.ports(n.id, e.id), await b.eero.firmwareHistory(n.id, e.id, 50));
     }
     const text = JSON.stringify(dump);
     const macs = text.match(/\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b/gi) ?? [];
@@ -375,7 +476,9 @@ describe("invented data only", () => {
     const ipv4 = text.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g) ?? [];
     for (const ip of ipv4) expect(ip).toMatch(/^(192\.168\.|203\.0\.113\.|198\.51\.100\.)/);
     const ipv6 = text.match(/\b[0-9a-f]{1,4}(?::[0-9a-f]{0,4}){2,7}\b/gi)?.filter((s) => !/^0[26]:4d:55/.test(s) && s.includes("::")) ?? [];
-    for (const ip of ipv6) expect(ip.toLowerCase()).toMatch(/^2001:db8:/);
+    // Link-local addresses are built from the invented MACs (fe80::4d:55ff:fe..).
+    for (const ip of ipv6) expect(ip.toLowerCase()).toMatch(/^(2001:db8:|fe80::4?4d:55ff:fe)/);
+    expect(text).toContain("fe80::");
     for (const email of text.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) ?? []) expect(email).toMatch(/@example\.com$/);
     expect(text).toContain("+15550100142");
     for (const asn of text.match(/AS\d+/g) ?? []) expect(Number(asn.slice(2))).toBeGreaterThanOrEqual(64496);

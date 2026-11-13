@@ -249,7 +249,7 @@ thresholds (Great 75% or more of plan, Below plan under 75%, Poor under
 40%); a Pages group and `network.select` in the palette. Unknowns show `-`
 and get `MANUAL:` lines.
 
-### M2.1 Core contracts and fixtures for M2 ☐
+### M2.1 Core contracts and fixtures for M2 ✅ (#62)
 - issue: [#49](https://github.com/pkkid/mesh-ui/issues/49)
 - after: M1.R
 - docs: architecture/data-model.md, architecture/backends.md, architecture/commands.md (eero, device, internet), testing.md (Fixtures)

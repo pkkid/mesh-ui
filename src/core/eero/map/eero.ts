@@ -8,7 +8,7 @@ import { type RawEero, linkUrl } from "../raw";
 import { idFromUrl } from "../urls";
 import { speedMbps } from "./device";
 
-type RawRadioStats = { channel?: number; channel_width?: string | number; channel_utilization?: number; client_count?: number };
+type RawRadioStats = { channel?: number; channel_width?: string | number; tx_power?: number; channel_utilization?: number; client_count?: number };
 
 /** Fields beyond raw.ts that the eero mapper reads when eero sends them. */
 export type RawEeroFull = RawEero & {
@@ -71,6 +71,9 @@ function radios(raw: RawEeroFull): M.Radio[] {
       widthMhz: speedMbps(s.channel_width),
       utilization: num(s.channel_utilization),
       clients,
+      // Mapped by M2.6 (radio_channel_stats tx_power, auto channel).
+      txPowerDbm: null,
+      autoChannel: null,
     });
   }
   return [...out.values()];
@@ -112,6 +115,9 @@ export function mapEero(raw: RawEeroFull): M.Eero {
     backhaul,
     meshBars: backhaul === "wireless" && bars !== null ? Math.max(1, Math.min(5, bars)) : null,
     upstream: isGateway ? null : upstream(raw, wired),
+    // Derived in core (eero.list, eero.get).
+    hop: null,
+    meshQuality: null,
     clients: {
       total: num(raw.connected_clients_count),
       wired: num(raw.connected_wired_clients_count),
@@ -123,6 +129,9 @@ export function mapEero(raw: RawEeroFull): M.Eero {
     nightlight: nightlight(raw),
     ipv4: str(raw.ip_address),
     ipv6: (raw.ipv6_addresses ?? []).map((a) => (typeof a === "string" ? a : a?.address)).filter((a): a is string => typeof a === "string" && a.length > 0),
+    // Mapped by M2.6.
+    subnet: null,
+    gatewayIp: null,
     mac: str(raw.mac_address),
     bssids: (raw.bssids_with_bands ?? []).flatMap((b) => {
       const band = bandOf(b.band);

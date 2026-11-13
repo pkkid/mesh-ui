@@ -166,7 +166,7 @@ export function mapNetwork(raw: RawNetwork, opts: { id?: M.Id; role: M.Role | nu
 }
 
 /** Derived from `GET {net}` only: health, the embedded eeros, messages. */
-export function mapHealth(raw: RawNetwork): M.NetworkHealth {
+export function mapHealth(raw: RawNetwork): Omit<M.NetworkHealth, "issues"> {
   return {
     status: networkStatus(raw),
     internet: { status: mapStatus(raw.health?.internet?.status), ispUp: bool(raw.health?.internet?.isp_up) },
@@ -241,7 +241,7 @@ export function mapLastSpeedTest(raw: RawNetwork): M.SpeedTest | null {
 }
 
 /** The connection details from `GET {net}`; the gateway from its eeros (embedded or `GET {net}/eeros`). */
-export function mapInternet(raw: RawNetwork, eeros: RawEero[] = eerosOf(raw)): Omit<M.Internet, "planMbps"> {
+export function mapInternet(raw: RawNetwork, eeros: RawEero[] = eerosOf(raw)): Omit<M.Internet, "planMbps" | "verdict"> {
   const r = raw as RawNetworkWan;
   const geo = raw.geo_ip;
   const asn = geo?.asn as unknown;
@@ -279,6 +279,8 @@ export function mapInternet(raw: RawNetwork, eeros: RawEero[] = eerosOf(raw)): O
           wanPortSpeedMbps: portSpeedMbps(wanPort?.speed),
         }
       : null,
+    // Mapped from `lease` by M2.4.
+    leaseRenewsAt: null,
     lastSpeedTest: mapLastSpeedTest(raw),
   };
 }

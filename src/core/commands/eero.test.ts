@@ -5,6 +5,7 @@ import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
 import { bandOf, eeroStatus, mapEero } from "../eero/map/eero";
 import { createEngine } from "../engine";
+import { meshQuality, withTopology } from "./eero";
 import type * as M from "../model";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
@@ -21,6 +22,20 @@ describe("eero.list and eero.get (demo)", () => {
     expect(gw?.isGateway).toBe(true);
     expect(gw?.upstream).toBeNull();
     for (const e of rest) expect(e.upstream).not.toBeNull();
+  });
+
+  it("derives hop and mesh quality in core", async () => {
+    const engine = demoEngine();
+    const r = await engine.execute<M.Eero[]>("eero.list");
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.result.map((e) => [e.location, e.hop, e.meshBars, e.meshQuality])).toEqual([
+      ["Living Room", 0, null, null],
+      ["Garage", 2, 2, "weak"],
+      ["Office", 1, 5, "excellent"],
+      ["Upstairs Hall", 1, 4, "excellent"],
+    ]);
+    const garage = await engine.execute<M.Eero>("eero.get", { eero: "Garage" });
+    expect(garage.ok && [garage.result.hop, garage.result.meshQuality]).toEqual([2, "weak"]);
   });
 
   it("gets one eero by name, id or serial", async () => {
@@ -98,10 +113,28 @@ describe("eero commands (fake eero server)", () => {
     close = fake.close;
     const r = await engine.execute<M.Eero>("eero.get", { eero: "Office" });
     expect(r.ok && r.result).toMatchObject({ id: "500002", serial: "FAKE00OF0002", location: "Office" });
-    expect(fake.log.at(-1)?.path).toBe("/2.2/eeros/500002");
+    expect(fake.log.map((l) => l.path)).toContain("/2.2/eeros/500002");
     const other = await engine.execute("eero.get", { eero: "Cabin", networkId: "Maple Street" });
     expect(other).toMatchObject({ ok: false, error: { code: "bad_params" } });
     expect(await engine.backend.eero.get("100001", "500010").catch((e: Error) => e.message)).toBe("That eero is not on this network.");
+  });
+});
+
+describe("hop and mesh quality", () => {
+  const eero = (id: string, o: Partial<M.Eero> = {}) => ({ id, isGateway: false, upstream: null, backhaul: "wireless", meshBars: null, hop: null, meshQuality: null, ...o }) as M.Eero;
+
+  it("follows the bar rules: 4 to 5 excellent, 3 good, 2 weak, 0 to 1 poor, wired none", () => {
+    expect([5, 4, 3, 2, 1, 0].map((meshBars) => meshQuality({ backhaul: "wireless", meshBars }))).toEqual(["excellent", "excellent", "good", "weak", "poor", "poor"]);
+    expect(meshQuality({ backhaul: "wired", meshBars: 5 })).toBeNull();
+    expect(meshQuality({ backhaul: "wireless", meshBars: null })).toBeNull();
+    expect(meshQuality({ backhaul: null, meshBars: 3 })).toBeNull();
+  });
+
+  it("counts links from the gateway and gives null for a broken chain", () => {
+    const hops = (list: M.Eero[]) => Object.fromEntries(withTopology(list).map((e) => [e.id, e.hop]));
+    expect(hops([eero("c", { upstream: "b" }), eero("gw", { isGateway: true, backhaul: "wired" }), eero("b", { upstream: "gw" }), eero("w", { backhaul: "wired" })])).toEqual({ c: 2, gw: 0, b: 1, w: 1 });
+    expect(hops([eero("gw", { isGateway: true }), eero("x", { upstream: "y" }), eero("y", { upstream: "x" }), eero("z", { upstream: "gone" })])).toEqual({ gw: 0, x: null, y: null, z: null });
+    expect(hops([eero("a"), eero("b", { upstream: "a" })])).toEqual({ a: null, b: null });
   });
 });
 
@@ -119,5 +152,8 @@ describe("eero mapper", () => {
     });
     expect(e).toMatchObject({ id: "9", location: "eero", backhaul: null, radios: [{ band: "5", channel: 36, widthMhz: 80, clients: 5 }], endOfLife: { expired: true }, messages: ["Hi", "There"] });
     expect(() => mapEero({})).not.toThrow();
+    // New M2 fields stay null until their stories map them; hop and quality come from core.
+    expect(mapEero({})).toMatchObject({ hop: null, meshQuality: null, subnet: null, gatewayIp: null });
+    expect(e.radios[0]).toMatchObject({ txPowerDbm: null, autoChannel: null });
   });
 });

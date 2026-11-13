@@ -5,7 +5,8 @@
  *
  * Derived fields come from the lists, so they always agree: a network's eero
  * count and devices online, an eero's clients, a profile's devices and state,
- * health per eero. Usage is generated per device and hour from its typical
+ * health per eero, port attachments (from devices' wired ports), the current
+ * firmware, forwards per reservation and leased addresses. Usage is generated per device and hour from its typical
  * daily traffic, and every scope (network, eero, profile, guest, device) and
  * breakdown sums the same per-device hours, so totals add up everywhere.
  */
@@ -206,6 +207,27 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     };
   };
 
+  const eeroIn = (data: NetworkData, eeroId: M.Id) => data.eeros.find((x) => x.id === eeroId) ?? notFound("eero");
+
+  /** Ports with status, speed and attachment from the devices wired to them. */
+  const portsView = (data: NetworkData, eeroId: M.Id): M.EeroPorts => {
+    const e = eeroIn(data, eeroId);
+    const up = e.status !== "offline";
+    const wanUp = up && data.internet.status === "online";
+    const ports = (data.ports[e.id] ?? []).map((p): M.EeroPort => {
+      const d = data.devices.find((x) => x.connected && x.wiredPort?.eeroId === e.id && x.wiredPort.port === p.number);
+      const live = p.isWan ? wanUp : up && !!d;
+      const speed = p.isWan ? (data.internet.gateway?.eeroId === e.id ? data.internet.gateway.wanPortSpeedMbps : null) : (d?.wiredPort?.speedMbps ?? null);
+      return {
+        ...clone(p),
+        status: live ? "up" : "down",
+        speedMbps: live ? speed : null,
+        attached: d && up ? { deviceId: d.id, eeroId: null, name: d.name } : null,
+      };
+    });
+    return { eeroId: e.id, ports };
+  };
+
   const summary = (data: NetworkData): M.NetworkSummary => {
     const n = data.network;
     return {
@@ -381,6 +403,39 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const data = net(id);
         const e = data.eeros.find((x) => x.id === eeroId) ?? notFound("eero");
         return eeroView(data, e);
+      },
+      ports: async (id, eeroId) => portsView(net(id), eeroId),
+      firmwareHistory: async (id, eeroId, limit) => {
+        const data = net(id);
+        const e = eeroIn(data, eeroId);
+        const list = (data.firmware[e.id] ?? []).slice(0, Math.max(0, limit));
+        return list.map((f, i) => ({ ...f, current: i === 0 && f.version === e.firmware }));
+      },
+    },
+
+    routing: {
+      get: async (id) => {
+        const data = net(id);
+        const reserved = new Set(data.reservations.map((r) => r.deviceId));
+        const leased = data.devices.filter((d) => d.connected && d.ipv4 && !reserved.has(d.id)).length;
+        return {
+          reservations: data.reservations.map((r) => ({ ...clone(r), forwards: data.forwards.filter((f) => f.deviceId === r.deviceId).length })),
+          forwards: clone(data.forwards),
+          pinholes: clone(data.pinholes),
+          lan: data.lan ? { ...clone(data.lan), pool: { ...data.lan.pool, leased } } : null,
+        };
+      },
+    },
+
+    updates: {
+      get: async (id) => {
+        const data = net(id);
+        const gateway = data.eeros.find((e) => e.isGateway) ?? data.eeros[0];
+        return {
+          ...clone(data.updates),
+          current: gateway?.firmware ?? null,
+          eeros: data.eeros.map((e) => ({ id: e.id, location: e.location, firmware: e.firmware })),
+        };
       },
     },
 

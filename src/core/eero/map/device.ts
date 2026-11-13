@@ -156,6 +156,8 @@ export function mapDevice(raw: RawDeviceFull, opts: { blocked?: boolean; ratesAt
     privateMac: raw.is_private === true,
     ipv4: str(raw.ipv4) ?? str(raw.ip) ?? str(raw.ips?.[0]),
     ipv6: ipv6(raw.ipv6_addresses),
+    // Mapped by M2.7.
+    ipv6LinkLocal: null,
     connected,
     lastActive: str(raw.last_active),
     firstSeen: str(raw.first_active),

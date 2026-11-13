@@ -86,15 +86,7 @@ export type RawNetwork = {
   thread?: boolean;
   power_saving?: boolean;
   guest_network?: { url?: string; name?: string; enabled?: boolean };
-  updates?: {
-    has_update?: boolean;
-    update_required?: boolean;
-    can_update_now?: boolean;
-    target_firmware?: string;
-    update_status?: string | null;
-    scheduled_update_time?: string | null;
-    preferred_update_hour?: number | null;
-  };
+  updates?: RawUpdates;
   capabilities?: Record<string, RawCapability>;
   resources?: Record<string, RawLink>;
   eeros?: { count?: number; data?: RawEero[] };
@@ -148,6 +140,72 @@ export type RawEero = {
   messages?: unknown[];
   network?: RawRef & { created?: string };
   resources?: Record<string, RawLink>;
+};
+
+/** `GET resources.connections` (normally `{eero}/connections`). */
+export type RawPortInterface = {
+  interface_number?: number;
+  name?: string | null;
+  port_status?: string;
+  /** "P2500", "P1000"; absent when the link is down. */
+  negotiated_speed?: string | null;
+  supported_speed?: string | null;
+  network_type?: string;
+  poe_status?: string | null;
+  ethernet_address?: string;
+  /** What is plugged in, when eero knows (shape partly unverified). */
+  neighbor?: { type?: string; metadata?: { url?: string; mac?: string; display_name?: string; location?: string } } | null;
+  actions?: { type?: string }[];
+};
+
+export type RawConnections = {
+  ports?: { layout?: string; interfaces?: RawPortInterface[] };
+  node_actions?: { type?: string }[];
+  wireless_devices?: { type?: string; metadata?: { display_name?: string; device_type?: string } }[];
+  provide_device_power?: boolean;
+};
+
+/** One row of `GET /2.2/eeros/{id}/firmware_update/history`. Shape unverified (only LD uses it). */
+export type RawFirmwareHistoryEntry = {
+  os_version?: string;
+  version?: string;
+  installed?: string;
+  installed_at?: string;
+  created?: string;
+  status?: string;
+};
+
+// ---------------------------------------------------------------------------
+// Routing (`GET {net}/routing`)
+
+export type RawReservation = { url?: string; description?: string; mac?: string; ip?: string; public_static_ip?: string | null };
+export type RawForward = { url?: string; description?: string; ip?: string; gateway_port?: string | number; client_port?: string | number; protocol?: string; enabled?: boolean; reservation?: RawLink };
+export type RawPinhole = { url?: string; device?: (RawRef & { mac?: string }) | string; ip?: string; protocol?: string; port?: string | number };
+
+export type RawRouting = {
+  url?: string;
+  devices?: { url?: string; data?: { url?: string; mac?: string; nickname?: string | null }[] };
+  reservations?: { url?: string; data?: RawReservation[] };
+  forwards?: { url?: string; data?: RawForward[] };
+  pinholes?: { url?: string; data?: RawPinhole[] };
+};
+
+// ---------------------------------------------------------------------------
+// Updates (`GET {net}/updates`, also embedded in the network as `updates`)
+
+export type RawUpdates = {
+  has_update?: boolean;
+  update_required?: boolean;
+  can_update_now?: boolean;
+  target_firmware?: string | null;
+  update_to_firmware?: string | null;
+  min_required_firmware?: string | null;
+  update_status?: string | null;
+  scheduled_update_time?: string | null;
+  preferred_update_hour?: number | null;
+  last_update_started?: string | null;
+  last_user_update?: { unresponsive_eeros?: RawLink[]; incomplete_eeros?: RawLink[] } | null;
+  manifest_resource?: string | null;
 };
 
 // ---------------------------------------------------------------------------
