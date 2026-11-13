@@ -16,7 +16,7 @@ the format follows the `milestone-plan` skill. The design lives in
 | Milestone | Goal | Status |
 |---|---|---|
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
-| M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | later |
+| M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ready ([milestone](https://github.com/pkkid/mesh-ui/milestone/2)) |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | later |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | later |
@@ -193,21 +193,138 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 
 ## M2: See the network and its devices
 
+Issue: [#48](https://github.com/pkkid/mesh-ui/issues/48) (parent of every M2 story)
+
 Goal: the network side of the app is complete read-only: how the internet
 connection is doing, how the mesh is built, and everything about each eero
-and each device. Safe to point at a real network.
-Rough scope: Internet (connection details, speed test history and CSV,
-usage by device and profile), eeros (topology map and tree, eero cards with
-bands and channels, data usage by eero, clients by band), eero detail
-(radios, ports and attached devices, firmware history, uplink), device
-detail (signal, rates, usage, IP addresses, reservation and forwards shown),
-and the command palette for navigation and running query commands.
-Carried from M1 ([review](reviews/M1.md)): align mockups with the demo
-fixtures (eero shares, band totals, Lake Cabin) and update mockup 18 to the
-two-step sign-in; a "Poor" speed rating tier (needs a model field); counts in
-the Devices eero, profile and manufacturer filters (`device.list` summary
-fields); a shared network-time-zone clock formatter in `core/format.ts`; one
-device-type icon map shared by Overview and Devices.
+and each device, plus a command palette. Safe to point at a real network.
+In: Internet page; eeros page (topology map and tree, eero cards, usage by
+eero, clients by band); eero detail (uplink, radios, connected devices,
+ports, firmware history, IP and device info); device detail (signal, live
+rates, usage, device info, IP addresses, reservation and forwards shown
+read-only); command palette (go to pages, devices, profiles; run query
+commands); new read commands `updates.get`, `eero.ports.get`,
+`eero.firmware.history`, `reservation.list`, `forward.list`; the Carried
+from M1 items.
+Out: every write (speed test run, find and blink, placement test, LED,
+nightlight, rename, port actions, pause, block, profile change, reservations
+and forwards, `internet.plan.set`, eero and network restart, eero remove).
+Their buttons render disabled with the "Coming soon" tooltip and the palette
+lists write commands dimmed. Also out: coverage scan, Troubleshooting,
+Profiles, Activity, Guest, Wi-Fi pages, and anything eero Plus (radio
+analytics history, usage beyond about 7 days).
+
+Done when:
+- `pnpm check` passes locally in under a minute and the CI smoke is green
+  on macOS, Windows and Linux.
+- `pnpm ui:shot` screenshots of Internet, eeros, eero detail (gateway and a
+  wireless leaf), device detail (wireless and wired) and the open palette, in
+  demo and `--fake`, light and dark Gruvbox Hard, match mockups 02, 03, 04,
+  06 and 19 (as aligned by M2.3), with the `network_offline`, `eero_offline`
+  and `empty_network` scenarios and the bridge-mode network (Mom's House).
+- Every new M2 command has demo tests through `engine.execute` including
+  `bad_params`, and fake-server mapping tests; `mesh-ui --demo commands`
+  lists them and `mesh-ui mcp --read-only` exposes them.
+- `Ctrl K` (`Cmd K`) opens the palette, finds pages, devices, profiles and
+  commands, runs a query command and shows its result; disruptive and
+  destructive commands cannot run from it.
+- Every Carried from M1 item is closed (M2.1, M2.2, M2.3, M2.7).
+
+Parallelism: 4 waves (3, 5, 1, R); critical path M2.1 > M2.5 > M2.9 > M2.R
+(M2.6 also gates M2.9). Hotspots: `src/core/model.ts`, `src/core/backend.ts`,
+`src/core/eero/raw.ts`, `src/core/demo/fixtures.ts`, `src/core/demo/backend.ts`
+and `test/fake-eero/state.ts` (owned by M2.1; wave 2 does not edit them);
+`src/renderer/src/features/overview/OverviewView.tsx` (owned by M2.2);
+`docs/architecture/commands.md` (each story edits only its own area's
+section); registration files `src/core/commands/index.ts`,
+`src/core/eero/backend/index.ts`, `test/fake-eero/routes/index.ts`,
+`src/renderer/src/app/routes.ts`, `package.json`, `pnpm-lock.yaml` (one-line
+edits by anyone).
+
+Open questions (answers change details, not the plan): firmware history and
+`resources.connections` availability on free accounts and older eeros;
+whether the eero object has `radio_channel_stats`; per-device retries and
+link-local IPv6; `{net}/routing` for admins and in bridge mode; the verdict
+thresholds (Great 75% or more of plan, Below plan under 75%, Poor under
+40%); a Pages group and `network.select` in the palette. Unknowns show `-`
+and get `MANUAL:` lines.
+
+### M2.1 Core contracts and fixtures for M2 ☐
+- issue: [#49](https://github.com/pkkid/mesh-ui/issues/49)
+- after: M1.R
+- docs: architecture/data-model.md, architecture/backends.md, architecture/commands.md (eero, device, internet), testing.md (Fixtures)
+- files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, test/fake-eero/state.ts, src/core/commands/eero.ts, src/core/commands/eero.test.ts, src/core/commands/device.ts, src/core/commands/device.test.ts, src/core/commands/internet.ts, src/core/commands/internet.test.ts, src/core/commands/network.ts, src/core/eero/map/eero.ts, src/core/eero/map/device.ts, src/core/eero/map/network.ts, docs/architecture/data-model.md, docs/architecture/backends.md
+- scope: Everything wave 2 shares, so it can fan out. Model: `SpeedTest.rating` gains `"poor"` (under 40% of plan, threshold in `internet.ts`); `Internet` gains `verdict` and `leaseRenewsAt` (core fills verdict, null for now); `Eero` gains `hop`, `meshQuality` (4 bars Excellent, 3 Good, 2 Weak, 0 to 1 Poor), `subnet`, `gatewayIp`, and per-`Radio` `txPowerDbm` and `autoChannel`; `NetworkHealth.issues` (`weak_link`, `eero_offline`, `network_offline` with eero, upstream and devices affected; `[]` for now); `Device.ipv6LinkLocal`; `DeviceSummary.byEero`, `byProfile`, `byManufacturer`; a `Routing` type (reservations, forwards, pinholes, `LanMap`); `FirmwareEntry.current`. Backend: `eero.ports`, `eero.firmwareHistory`, and new `routing` and `updates` areas (eero areas stay "not available yet" until wave 2). Core derives hop and quality in `eero.list`/`eero.get` and the three summary counts in `device.list`. Eero mapping returns `null` for new fields until their stories map them. Raw types for `connections`, `firmware_update/history`, `routing`, `updates` from docs/eero-api. Demo fixtures and backend methods for every new read (ports per eero with attached devices on that eero, firmware history ending at the current version, Maple Street forwards on reserved devices, updates per network, link-local addresses, lease time, tx power, auto channel), and fake-server seed state for the same raw shapes.
+- done when: `pnpm check` passes; demo consistency tests cover the new fixtures (port attachments match `device.list`, forward devices have reservations, current firmware equals the eero's); tests show `byEero`, `byProfile`, `byManufacturer` each sum to `summary.total`, hop and quality follow the bar rules, and a 35% test rates `poor`; `mesh-ui --demo run eero.list` shows `hop` and `meshQuality`; no real names, MACs or IPs.
+
+### M2.2 Shared page kit, device icons and time-zone clock ☐
+- issue: [#50](https://github.com/pkkid/mesh-ui/issues/50)
+- after: M1.R
+- docs: AGENTS.md (Dashboards and charts), design/design-system.md
+- files: src/renderer/src/components/ui/page.tsx, src/renderer/src/components/ui/meter.tsx, src/renderer/src/components/ui/band-badge.tsx, src/renderer/src/components/ui/kv-list.tsx, src/renderer/src/components/ui/breakdown-table.tsx, src/renderer/src/lib/deviceIcons.ts, src/renderer/src/features/overview/OverviewView.tsx, src/renderer/src/features/overview/TopDevices.tsx, src/renderer/src/features/overview/NetworkHero.tsx, src/renderer/src/features/overview/ProfilesList.tsx, src/renderer/src/features/overview/RecentActivity.tsx, src/renderer/src/features/overview/EerosList.tsx, src/renderer/src/features/overview/BusyHeatmap.tsx, src/renderer/src/features/overview/DataUsage.tsx, src/renderer/src/features/devices/DeviceTable.tsx, src/renderer/src/features/devices/DeviceSummary.tsx, src/core/format.ts, src/core/format.test.ts, docs/design/design-system.md
+- scope: Renderer pieces every M2 page reuses; no new commands and no visible change. Move `useNow`, `HeaderLink`, `ComingSoonButton`, `RowList`, `Row`, `PlaceholderRows` and `SectionError` out of `OverviewView.tsx` into `components/ui/page.tsx` and update Overview imports. New primitives: meter (plan and utilisation bars, warning tone at a threshold), band badge ("2.4 GHz", "5 GHz", "6 GHz", "Wired"), key-value list for info cards (mono values, copy button), breakdown table (2px series bar, Others row). Carried from M1: one device-type icon map in `lib/deviceIcons.ts` used by Overview and Devices, and a shared network-time-zone clock formatter in `core/format.ts` ("9:41 AM", "Oct 20, 9:41 AM", "Sat Nov 8", hour labels) replacing the inline `Intl.DateTimeFormat` in `BusyHeatmap` and `DataUsage`.
+- done when: `pnpm check` passes and format tests cover the clock across a DST change and in two zones; `pnpm ui:shot` of Overview and Devices in light and dark look unchanged from M1 (before and after in the PR); no file outside `lib/deviceIcons.ts` maps device types to icons.
+
+### M2.3 Mockups match the fixtures ☐
+- issue: [#51](https://github.com/pkkid/mesh-ui/issues/51)
+- after: M1.R
+- docs: reviews/M1.md (questions 3 and 6), architecture/backends.md (demo)
+- files: docs/mockups/01-overview.html, docs/mockups/02-internet.html, docs/mockups/03-eeros.html, docs/mockups/04-eero-detail.html, docs/mockups/06-device-detail.html, docs/mockups/17-account-settings.html, docs/mockups/18-sign-in.html
+- scope: Carried from M1, docs only. Align the mockups' numbers with the demo fixtures (Overview eero shares, eeros page band totals and client counts, Lake Cabin's role and eero count, and the values M2 pages show in 02, 04 and 06). Redraw mockup 18 as the two-step sign-in (welcome, code, dashboard) with no chooser or first-run frame. Layout and design stay as approved.
+- done when: every changed number matches `mesh-ui --demo run` output for the same field (listed in the PR); mockup 18 shows only welcome and code; the mockup index still opens every page.
+
+### M2.4 Internet page ☐
+- issue: [#52](https://github.com/pkkid/mesh-ui/issues/52)
+- after: M2.1, M2.2, M2.3
+- docs: ux/pages/internet.md, architecture/commands.md (internet, speed tests and usage)
+- files: src/core/commands/internet.ts, src/core/commands/internet.test.ts, src/core/commands/usage.ts, src/core/commands/usage.test.ts, src/core/eero/backend/internet.ts, src/core/eero/map/network.ts, test/fake-eero/routes/network.ts, src/renderer/src/features/internet/InternetPage.tsx, src/renderer/src/features/internet/InternetHero.tsx, src/renderer/src/features/internet/Connection.tsx, src/renderer/src/features/internet/SpeedHistory.tsx, src/renderer/src/features/internet/EarlierTests.tsx, src/renderer/src/features/internet/InternetUsage.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/internet.md
+- scope: Core: the hero verdict built in core ("fast and steady", "slower than your plan", "down"); lease renew time mapped from `lease` on the eero backend with a fake route; `usage.breakdown {top?}` folds the rest into an "Others (n)" row in core. Page (mockup 02): hero with gauges; Connection cards (ISP, Addressing, NAT or Bridge badge, Copy details via `internet.get {format: "text"}`); speed test history Day/Week with averages, plan meters and info note; Earlier tests table with Export CSV (`speedtest.history {format: "csv"}` through a save dialog, or the clipboard if no host save exists yet); Data usage per hour and per day; "Using the most right now" (shares the once-a-minute burst); By device and By profile tables. Run speed test and the plan popover are disabled ("Coming soon"). Bridge mode hides per-device parts. All states from the page doc.
+- done when: demo tests cover the verdict forms, Poor in the table, `top` with Others and `bad_params`, and fake-server tests cover lease mapping; `pnpm ui:shot --route '#/internet'` in demo and `--fake`, light and dark, plus `network_offline`, `empty_network` and Mom's House (bridge), are in the PR; `MANUAL: Internet page on the real network | pnpm dev, open Internet | ISP, public IPs, lease, DNS and speed tests match the eero app | none`.
+
+### M2.5 eeros page and software updates read ☐
+- issue: [#53](https://github.com/pkkid/mesh-ui/issues/53)
+- after: M2.1, M2.2, M2.3
+- docs: ux/pages/eeros.md, architecture/commands.md (network, updates)
+- files: src/core/commands/updates.ts, src/core/commands/updates.test.ts, src/core/commands/network.ts, src/core/commands/network.test.ts, src/core/eero/backend/updates.ts, src/core/eero/map/updates.ts, test/fake-eero/routes/updates.ts, src/renderer/src/components/mesh/Topology.tsx, src/renderer/src/components/mesh/TopologyTree.tsx, src/renderer/src/components/mesh/LinkChip.tsx, src/renderer/src/components/mesh/RadioTable.tsx, src/renderer/src/features/eeros/EerosPage.tsx, src/renderer/src/features/eeros/WeakLinkNote.tsx, src/renderer/src/features/eeros/EeroCards.tsx, src/renderer/src/features/eeros/EeroUsage.tsx, src/renderer/src/features/eeros/ClientsByBand.tsx, src/renderer/src/features/eeros/NetworkActions.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/eeros.md
+- scope: Core: `updates.get` (query) with demo and eero backends, mapping and fake route; `network.health` issues derived in core from eeros and devices (weak link with upstream and devices affected, eero offline, network offline). Page (mockup 03): topology Map and Tree with layout in `components/mesh/` for reuse by eero detail (Internet node, gateway, eeros by hop, solid wired links with speed, dashed wireless links with a quality chip, wired-clients chip, legend); weak link note and selected-eero card; eero cards Grid/List with the radio table, dual-band note and wired row; Data usage by eero, stacked, Day/Week, with legend toggles; Clients by band donut; Network actions; subtitle from `updates.get`. Find, Test placement and Restart network are disabled ("Coming soon"); Scan coverage links to Troubleshooting. Offline, one-eero-offline and single-eero states.
+- done when: demo tests for `updates.get` (incl. `bad_params`) and every health issue kind, and fake-server tests for updates mapping; `pnpm ui:shot --route '#/eeros'` Map and Tree, demo and `--fake`, light and dark, plus `eero_offline` and `network_offline`, are in the PR; `MANUAL: eeros topology | pnpm dev, open eeros | upstream links, bars and band channels match the eero app | none`; `MANUAL: updates.get shape | pnpm mesh-ui run updates.get | current, target and per-eero versions filled | none`.
+
+### M2.6 eero ports and firmware history reads ☐
+- issue: [#54](https://github.com/pkkid/mesh-ui/issues/54)
+- after: M2.1
+- docs: architecture/commands.md (eero), eero-api/endpoints.md (connections, firmware history), ux/pages/eero-detail.md (Data)
+- files: src/core/commands/eero.ts, src/core/commands/eero.test.ts, src/core/eero/backend/eero.ts, src/core/eero/map/eero.ts, test/fake-eero/routes/eeros.ts
+- scope: `eero.ports.get {eero}`: `GET resources.connections` mapped to `EeroPorts` (port status, negotiated and supported speed such as `P2500`, PoE, MAC, attached device or eero joined by MAC to devices and eeros, `actions[]` kept for M4, empty list when eero reports none). `eero.firmware.history {eero, limit?}`: `GET /2.2/eeros/{id}/firmware_update/history`, newest first, `current` marked. Map the M2.1 eero fields (`radio_channel_stats` tx power and utilisation, auto channel, subnet, gateway IP). Fake routes for both.
+- done when: demo tests for both commands, including `bad_params`, an unknown eero and an eero from another network; fake-server tests cover speed parsing, attached-device joins, an empty port list and firmware ordering; `mesh-ui --demo run eero.ports.get --params '{"eero":"Office"}'` prints a table; `MANUAL: eero.ports.get and eero.firmware.history shapes | pnpm mesh-ui run each for one eero | ports and versions match the eero app; note if firmware history is empty or 404 | none`.
+
+### M2.7 Device detail, reservation and forward reads, Devices filter counts ☐
+- issue: [#55](https://github.com/pkkid/mesh-ui/issues/55)
+- after: M2.1, M2.2, M2.3
+- docs: ux/pages/device-detail.md, ux/pages/devices.md, architecture/commands.md (device, routing)
+- files: src/core/commands/routing.ts, src/core/commands/routing.test.ts, src/core/eero/backend/routing.ts, src/core/eero/map/routing.ts, src/core/eero/backend/device.ts, src/core/eero/map/device.ts, test/fake-eero/routes/routing.ts, src/renderer/src/features/device/DevicePage.tsx, src/renderer/src/features/device/DeviceHero.tsx, src/renderer/src/features/device/DeviceNow.tsx, src/renderer/src/features/device/DeviceUsage.tsx, src/renderer/src/features/device/DeviceInfo.tsx, src/renderer/src/features/device/DeviceAddresses.tsx, src/renderer/src/features/device/DeviceForwards.tsx, src/renderer/src/features/devices/DeviceFilters.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/device-detail.md
+- scope: Core: `reservation.list` (reservations joined to devices, plus `LanMap`) and `forward.list {device?}`, both reading one cached `GET {net}/routing`, with bridge mode answering empty with a reason; the eero backend fills `device.get` reservation from routing and maps link-local IPv6; fake routes. Page (mockup 06): hero with profile, eero and signal; Now live box (shared burst); Data usage Day/Week with busiest hour and network rank; Device information (wired variant shows port and speed); IP addresses with Reserved badge; Port forwarding rows; Prev/Next and `[` `]` follow the Devices list order; Devices row click lands here. Pause, Appearance, Change profile, Block, Edit/Reserve, the trash and switch on forwards, and + Open a port are disabled ("Coming soon"). Offline, paused, blocked, guest, wired, gone and bridge states. Carried from M1: counts in the Devices eero, profile and manufacturer filters from the M2.1 summary fields.
+- done when: demo tests for both routing commands (incl. `bad_params`, an unknown device and bridge mode) and fake-server tests for routing mapping and `device.get` reservation; `pnpm ui:shot` of a wireless, a wired, a blocked and a guest device, demo and `--fake`, light and dark, plus Devices with the Filters popover open showing counts, are in the PR; `MANUAL: reservation.list and forward.list | pnpm mesh-ui run each | reservations and forwards match the eero app | none`.
+
+### M2.8 Command palette ☐
+- issue: [#56](https://github.com/pkkid/mesh-ui/issues/56)
+- after: M2.2
+- docs: ux/pages/command-palette.md, architecture/ui.md (bridge), architecture/mcp.md (tool names, hints)
+- files: src/renderer/src/features/palette/CommandPalette.tsx, src/renderer/src/features/palette/PaletteResults.tsx, src/renderer/src/features/palette/PalettePreview.tsx, src/renderer/src/features/palette/ParamsForm.tsx, src/renderer/src/features/palette/search.ts, src/renderer/src/features/palette/search.test.ts, src/renderer/src/components/ui/dialog.tsx, src/renderer/src/features/shell/TopBar.tsx, src/renderer/src/App.tsx, docs/ux/pages/command-palette.md
+- scope: The palette from mockup 19, opened by the titlebar search or `Ctrl K` / `Cmd K`. Data: commands from `window.mesh.commands()`, devices and profiles from cached `device.list` and `profile.list`, plus a Pages group from `ROUTES` (documented in the page doc). Behaviour: scope chips, `>` id mode, ranked matches with highlight, Up/Down and Tab, Esc closes. Preview: effect tag, description, a params form generated from the JSON Schema (entity pickers for `Ref` params, segmented controls for small enums, zod messages), CLI line with Copy, MCP tool name, hints and call JSON. Running: Enter on a page, device or profile navigates; Enter on a query command runs it through `window.mesh.execute` and shows the result JSON in the preview. Write, disruptive and destructive commands and device and profile row actions are dimmed with "Coming soon"; "Add to script.jsonl" is disabled. Not-signed-in and no-permission states. Port the dialog from T3 Code.
+- done when: unit tests cover ranking, `>` mode, scope counts and param-form defaults from a JSON Schema; `pnpm ui:shot --before` opening the palette with a query (`device`, `>eero.`) shows results and preview in light and dark; running `device.list {"status":"online"}` from the palette in demo shows the same JSON as the CLI.
+
+### M2.9 eero detail page ☐
+- issue: [#57](https://github.com/pkkid/mesh-ui/issues/57)
+- after: M2.5, M2.6
+- docs: ux/pages/eero-detail.md
+- files: src/renderer/src/features/eero/EeroPage.tsx, src/renderer/src/features/eero/EeroHero.tsx, src/renderer/src/features/eero/EeroUplink.tsx, src/renderer/src/features/eero/EeroUsage.tsx, src/renderer/src/features/eero/EeroRadios.tsx, src/renderer/src/features/eero/EeroDevices.tsx, src/renderer/src/features/eero/EeroPorts.tsx, src/renderer/src/features/eero/EeroSettings.tsx, src/renderer/src/features/eero/EeroActions.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/eero-detail.md
+- scope: Page (mockup 04), read-only: hero with product tile and LED bar, status, model and radio badges, uptime, devices and 24h data with share; Uplink card from the M2.5 mesh components (Internet and WAN for the gateway); Data usage Day/Week; Radios (channel, width, tx power, clients, utilisation, `-` when not reported); Connected devices; Ethernet ports tiles from `eero.ports.get`; settings cards shown as values (Location, Status light, Nightlight on Beacon only, Software from `updates.get` with the `eero.firmware.history` list, IP addresses with copy, Device information); `[` `]` move between eeros. Rename, LED, nightlight, port actions, Blink, Restart and Remove are disabled ("Coming soon"). Gateway, offline, gone, no-ports and no-history states.
+- done when: `pnpm ui:shot` of the gateway, a wireless leaf (Office), the Beacon and an offline eero (`eero_offline`), demo and `--fake`, light and dark, are in the PR; uplink and ports match `eero.list` and `eero.ports.get` from the CLI; `MANUAL: eero detail on the real network | pnpm dev, open each eero | uplink, radios, ports and versions match the eero app | none`.
+
+### M2.R Review ☐
+- issue: [#58](https://github.com/pkkid/mesh-ui/issues/58)
+- owner: maintainer
+- after: M2.1, M2.2, M2.3, M2.4, M2.5, M2.6, M2.7, M2.8, M2.9
 
 ## M3: See people and settings
 
