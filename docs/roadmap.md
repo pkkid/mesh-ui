@@ -114,7 +114,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: `mesh-ui mcp` over stdio with `@modelcontextprotocol/sdk`: one tool per registry command (name from id, input schema from params, `confirm` added for disruptive and destructive), annotations from effect, `--read-only`, `--allow <glob>`, `--network`; auth login commands and `app.cli.install` not exposed. Registers itself in `src/cli/index.ts` (one-line edit).
 - done when: in-process tests list tools, check names, schemas and annotations, call a query and a needs_confirm command with and without `confirm`, and `--read-only` hides writes.
 
-### M1.7 App shell, themes and UI primitives ☐
+### M1.7 App shell, themes and UI primitives ✅ (#25)
 - issue: [#7](https://github.com/pkkid/mesh-ui/issues/7)
 - after: M1.1
 - docs: ux/overview.md, design/design-system.md, architecture/ui.md

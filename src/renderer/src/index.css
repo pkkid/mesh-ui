@@ -71,6 +71,9 @@
   color-scheme: light;
   --radius: 0.5rem;
   --control-radius: 0.5rem;
+  /* Section cards and the page header (design-system.md, Shape and spacing). */
+  --card-radius: 14px;
+  --hero-radius: 18px;
   /* Matches TITLEBAR_HEIGHT in src/main/index.ts. */
   --titlebar-height: 44px;
   --sidebar-width: 15rem;
@@ -80,19 +83,19 @@
   --scrollbar-thumb: rgb(0 0 0 / 14%);
   --scrollbar-thumb-hover: rgb(0 0 0 / 24%);
 
-  /* Themes do not override these identity colors (same as T3 Code). */
-  --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-700);
-  --info: var(--color-blue-500);
-  --info-foreground: var(--color-blue-700);
+  /* Status colours come from the theme's series palette (set by themes.ts as
+     --series-*), so Gruvbox status dots match the mockups. Warning and
+     destructive come from the theme roles. Fallbacks cover the first paint. */
+  --success: var(--series-green, var(--color-emerald-600));
+  --success-foreground: var(--series-green, var(--color-emerald-700));
+  --info: var(--series-blue, var(--color-blue-600));
+  --info-foreground: var(--series-blue, var(--color-blue-700));
 }
 
 :root.dark {
   color-scheme: dark;
   --scrollbar-thumb: rgb(255 255 255 / 8%);
   --scrollbar-thumb-hover: rgb(255 255 255 / 14%);
-  --success-foreground: var(--color-emerald-400);
-  --info-foreground: var(--color-blue-400);
 }
 
 [data-platform="darwin"] {

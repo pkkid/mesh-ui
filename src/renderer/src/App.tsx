@@ -1,80 +1,96 @@
-import { useCallback, useEffect, useState } from "react";
-import type { Network } from "@shared/types";
+/**
+ * The auth gate and the window shell: sidebar, topbar and the routed page
+ * (docs/ux/overview.md#window-layout). Signed-out sessions get the sign-in
+ * screen; it is a placeholder until the sign-in story (M1.9) lands.
+ */
+import { LogIn } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { Spinner } from "~/components/ui/spinner";
-import { DevicesView } from "~/features/devices/DevicesView";
-import { LoginView } from "~/features/login/LoginView";
-import { SettingsView } from "~/features/settings/SettingsView";
-import { Sidebar, type View } from "~/features/shell/Sidebar";
-
-type State =
-  | { status: "loading" }
-  | { status: "signed-out"; error?: string }
-  | { status: "ready"; networks: Network[]; refreshing: boolean; error?: string };
+import { RouterOutlet, useNavigationShortcuts } from "~/app/router";
+import { followHostEvents, invalidate, onSessionEnded, useQuery } from "~/app/useCommand";
+import { Card, Empty } from "~/components/ui/card";
+import { PageHeader } from "~/components/ui/hero";
+import { Status } from "~/components/ui/status";
+import { Sidebar } from "~/features/shell/Sidebar";
+import { TopBar, TopBarProvider } from "~/features/shell/TopBar";
+import type { AuthStatus } from "../../core/model";
 
 export function App() {
-  const [state, setState] = useState<State>({ status: "loading" });
-  const [view, setView] = useState<View>({ kind: "devices", networkId: null });
-  // Remembered so returning from Settings lands on the same network.
-  const [lastNetworkId, setLastNetworkId] = useState<string | null>(null);
-  const navigate = (next: View) => {
-    if (next.kind === "devices") setLastNetworkId(next.networkId);
-    setView(next);
-  };
-
-  const load = useCallback(async () => {
-    setState((s) => (s.status === "ready" ? { ...s, refreshing: true, error: undefined } : s));
-    try {
-      const networks = await window.mesh.load();
-      setState(networks ? { status: "ready", networks, refreshing: false } : { status: "signed-out" });
-    } catch (err) {
-      const error = err instanceof Error ? err.message : String(err);
-      setState((s) =>
-        s.status === "ready" ? { ...s, refreshing: false, error } : { status: "signed-out", error },
-      );
-    }
-  }, []);
+  const auth = useQuery<AuthStatus>("auth.status");
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const offSession = onSessionEnded(() => setSessionEnded(true));
+    const offHost = followHostEvents();
+    return () => {
+      offSession();
+      offHost();
+    };
+  }, []);
 
-  const signOut = async () => {
-    await window.mesh.logout();
-    setState({ status: "signed-out" });
-    setView({ kind: "devices", networkId: null });
-  };
+  // A fresh auth.status that says signed in clears an ended session.
+  useEffect(() => {
+    if (auth.data?.signedIn) setSessionEnded(false);
+  }, [auth.data]);
 
-  if (state.status === "loading") {
-    return (
-      <div className="drag-region grid h-full place-items-center">
-        <Spinner className="size-5" />
-      </div>
-    );
+  // Wait for the first answer so a signed-out start does not flash the shell.
+  if (auth.data === undefined && auth.error === null) {
+    return <div className="drag-region h-full bg-background" />;
   }
-
-  if (state.status === "signed-out") {
-    return <LoginView initialError={state.error} onSignedIn={load} />;
+  // Before the engine has auth commands (or while the stub answers), auth.status
+  // fails and the shell shows with its missing states.
+  if (sessionEnded || auth.data?.signedIn === false) {
+    return <SignedOut />;
   }
+  return <Shell />;
+}
 
-  const selectedId = view.kind === "devices" ? view.networkId : lastNetworkId;
-  const network = state.networks.find((n) => n.id === selectedId) ?? state.networks[0] ?? null;
-
+function Shell() {
+  useNavigationShortcuts();
   return (
     <div className="flex h-full">
-      <Sidebar networks={state.networks} activeNetworkId={network?.id ?? null} view={view} onNavigate={navigate} />
-      <main className="flex min-w-0 flex-1 flex-col bg-background">
-        {view.kind === "settings" ? (
-          <SettingsView onSignOut={signOut} />
-        ) : (
-          <DevicesView
-            network={network}
-            refreshing={state.refreshing}
-            error={state.error}
-            onRefresh={load}
-          />
-        )}
-      </main>
+      <Sidebar />
+      <TopBarProvider>
+        <main className="flex min-w-0 flex-1 flex-col bg-background">
+          <TopBar />
+          <RouterOutlet />
+        </main>
+      </TopBarProvider>
+    </div>
+  );
+}
+
+/** Stands in for the sign-in screen (mockup 18) until M1.9. */
+function SignedOut() {
+  return (
+    <div className="flex h-full flex-col bg-background">
+      <div className="drag-region h-(--titlebar-height) shrink-0" />
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-7 px-7 pt-10">
+        <PageHeader
+          icon={LogIn}
+          title="Sign in"
+          status={
+            <>
+              <Status tone="muted">Signed out</Status>
+              <span>Your session ended. Sign in again.</span>
+            </>
+          }
+        />
+        <Card>
+          <Empty>
+            Signing in from the window arrives with the sign-in page. Until then, run Mesh UI with MESH_UI_DEMO=1.
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => invalidate(["auth."])}
+                className="cursor-pointer text-foreground text-xs underline-offset-4 hover:underline"
+              >
+                Check again
+              </button>
+            </div>
+          </Empty>
+        </Card>
+      </div>
     </div>
   );
 }
