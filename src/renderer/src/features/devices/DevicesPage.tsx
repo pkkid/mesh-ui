@@ -1,6 +1,6 @@
 /**
  * Devices (docs/ux/pages/devices.md, mockup 05), read-only in M1: summary
- * strip, toolbar and filter chips, and the grouped table with live rates.
+ * strip, toolbar with the Filters popover, and the grouped table with live rates.
  *
  * Filters, search and sort are `device.list` params, applied in core; this
  * page only keeps what the user picked (per network, for the session) and
@@ -68,6 +68,7 @@ export function listParams(f: DeviceFilterState, sort: SortKey): Record<string, 
     profile: f.profile === null ? undefined : f.profile === UNASSIGNED ? null : f.profile,
     type: f.type ?? undefined,
     manufacturer: f.manufacturer ?? undefined,
+    firstSeenSince: f.newSince ?? undefined,
     sort: sort === "name" ? undefined : sort,
   };
 }

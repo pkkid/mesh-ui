@@ -1,32 +1,18 @@
 /**
- * The Devices toolbar and filter chips (docs/ux/pages/devices.md, Layout 2
- * and 3): search, Main / Guest segment, Group by, Sort, Columns, then the
- * status, connection and dropdown chips. Every filter and the sort become
- * `device.list` params in DevicesPage; grouping and columns are view state.
+ * The Devices toolbar (docs/ux/pages/devices.md, Layout 2 and 3): search, a
+ * status segment and a Filters popover (network, band, type, eero, profile,
+ * manufacturer, new this week) on the left; Group by, Sort and Columns on
+ * the right. Popover filters that are set show as removable chips under the
+ * toolbar. Every filter and the sort become `device.list` params in
+ * DevicesPage; grouping and columns are view state.
  */
 import { Popover } from "@base-ui/react/popover";
-import {
-  ArrowDownAZ,
-  Ban,
-  Cable,
-  Check,
-  ChevronDown,
-  Columns3,
-  Factory,
-  Layers,
-  type LucideIcon,
-  PauseCircle,
-  Router,
-  Search,
-  Shapes,
-  Users,
-} from "lucide-react";
+import { ArrowDownAZ, Check, ChevronDown, Columns3, Layers, ListFilter, type LucideIcon, Search, X } from "lucide-react";
 import { type ReactNode, type RefObject, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
-import { StatusDot, type StatusTone } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import type { Band, DeviceCategory, DeviceSummary } from "../../../../core/model";
 
@@ -49,6 +35,8 @@ export type DeviceFilterState = {
   profile: string | null;
   type: DeviceCategory | null;
   manufacturer: string | null;
+  /** New this week: the ISO time one week before the filter was set (sent as `firstSeenSince`), or null. */
+  newSince: string | null;
 };
 
 export const EMPTY_FILTERS: DeviceFilterState = {
@@ -60,7 +48,21 @@ export const EMPTY_FILTERS: DeviceFilterState = {
   profile: null,
   type: null,
   manufacturer: null,
+  newSince: null,
 };
+
+/** Clears every filter in the Filters popover; search and status stay. */
+const CLEAR_POPOVER: Partial<DeviceFilterState> = {
+  ssid: "all",
+  band: null,
+  type: null,
+  eero: null,
+  profile: null,
+  manufacturer: null,
+  newSince: null,
+};
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const CATEGORY_LABELS: Record<DeviceCategory, string> = {
   phones_tablets: "Phones & tablets",
@@ -71,6 +73,10 @@ export const CATEGORY_LABELS: Record<DeviceCategory, string> = {
 };
 
 export const CATEGORIES = Object.keys(CATEGORY_LABELS) as DeviceCategory[];
+
+const BAND_LABELS: Record<Band, string> = { wired: "Wired", "2.4": "2.4 GHz", "5": "5 GHz", "6": "6 GHz" };
+// Listed by hand: Object.keys would put the numeric-looking "5" and "6" first.
+const BANDS: Band[] = ["wired", "2.4", "5", "6"];
 
 export const COLUMN_LABELS: Record<ColumnKey, string> = {
   profile: "Profile",
@@ -83,7 +89,7 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
 };
 
 const SORT_LABELS: Record<SortKey, string> = {
-  name: "Name, A to Z",
+  name: "Name",
   rate: "Live rate",
   usage: "Data today",
   last_seen: "Last seen",
@@ -123,39 +129,30 @@ const count = (n: number | undefined) => (n === undefined ? "-" : String(n));
 
 export function DeviceFilters(props: DeviceFiltersProps) {
   const { filters: f, onChange, summary: s } = props;
-  const statusChip = (value: StatusFilter, label: string, n: number | undefined, lead?: ReactNode) => (
-    <Chip
-      key={value}
-      selected={f.status === value}
-      onClick={() => onChange({ status: value === f.status && value !== "all" ? "all" : value })}
-      lead={lead}
-      count={count(n)}
-    >
-      {label}
-    </Chip>
-  );
-  const bandChip = (band: Band, label: string, icon?: LucideIcon) => (
-    <Chip
-      key={band}
-      selected={f.band === band}
-      onClick={() => onChange({ band: f.band === band ? null : band })}
-      icon={icon}
-      count={count(s?.byBand[band])}
-    >
-      {label}
-    </Chip>
-  );
-  const dot = (tone: StatusTone) => <StatusDot tone={tone} className="size-[7px]" />;
+  const profileOptions: Option[] = [...props.profiles, { value: UNASSIGNED, label: "Unassigned" }];
+  const typeOptions: Option[] = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c], count: s?.byCategory[c] }));
+  const labelOf = (options: ReadonlyArray<Option>, value: string) => options.find((o) => o.value === value)?.label ?? value;
+
+  // One removable chip per popover filter that is set.
+  const chips: { key: string; text: string; clear: Partial<DeviceFilterState> }[] = [];
+  if (f.ssid !== "all") chips.push({ key: "ssid", text: f.ssid === "main" ? "Main network" : "Guest network", clear: { ssid: "all" } });
+  if (f.band) chips.push({ key: "band", text: BAND_LABELS[f.band], clear: { band: null } });
+  if (f.type) chips.push({ key: "type", text: CATEGORY_LABELS[f.type], clear: { type: null } });
+  if (f.eero) chips.push({ key: "eero", text: `eero: ${labelOf(props.eeros, f.eero)}`, clear: { eero: null } });
+  if (f.profile) chips.push({ key: "profile", text: `Profile: ${labelOf(profileOptions, f.profile)}`, clear: { profile: null } });
+  if (f.manufacturer) chips.push({ key: "manufacturer", text: f.manufacturer, clear: { manufacturer: null } });
+  if (f.newSince) chips.push({ key: "newSince", text: "New this week", clear: { newSince: null } });
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-[340px] max-w-full">
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="relative min-w-36 max-w-[300px] flex-1 basis-36">
           <Input
             ref={props.searchRef}
             type="search"
             aria-label="Search devices"
-            placeholder="Search by name, manufacturer, MAC or IP"
+            placeholder="Search devices"
+            title="Search by name, manufacturer, MAC or IP"
             icon={<Search />}
             value={props.searchText}
             onChange={(e) => props.onSearchText(e.target.value)}
@@ -169,113 +166,186 @@ export function DeviceFilters(props: DeviceFiltersProps) {
           </kbd>
         </div>
         <Segmented
-          aria-label="Network"
-          value={f.ssid}
-          onValueChange={(ssid) => onChange({ ssid })}
+          aria-label="Status"
+          value={f.status}
+          onValueChange={(status) => onChange({ status })}
           options={[
-            { value: "all", label: "All networks" },
-            { value: "main", label: "Main" },
-            { value: "guest", label: props.guestCount === undefined ? "Guest" : `Guest ${props.guestCount}` },
+            { value: "all", label: `All ${count(s?.total)}` },
+            { value: "online", label: `Online ${count(s?.online)}` },
+            { value: "offline", label: `Offline ${count(s?.offline)}` },
+            { value: "paused", label: `Paused ${count(s?.paused)}` },
+            { value: "blocked", label: `Blocked ${count(s?.blocked)}` },
           ]}
         />
-        <div className="ms-auto flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">Group by</span>
+        <FiltersButton active={chips.length} onClear={() => onChange(CLEAR_POPOVER)}>
+          <FilterRow label="Network">
+            <Segmented
+              aria-label="Network"
+              value={f.ssid}
+              onValueChange={(ssid) => onChange({ ssid })}
+              options={[
+                { value: "all", label: "All" },
+                { value: "main", label: "Main" },
+                { value: "guest", label: props.guestCount === undefined ? "Guest" : `Guest ${props.guestCount}` },
+              ]}
+            />
+          </FilterRow>
+          <FilterRow label="Band">
+            <div role="group" aria-label="Band" className="flex flex-wrap gap-1">
+              {BANDS.map((b) => (
+                <Toggle key={b} pressed={f.band === b} onClick={() => onChange({ band: f.band === b ? null : b })}>
+                  {BAND_LABELS[b]}
+                  <span className="text-muted-foreground tabular-nums">{count(s?.byBand[b])}</span>
+                </Toggle>
+              ))}
+            </div>
+          </FilterRow>
+          <FilterRow label="Type">
+            <SelectPicker
+              name="Type"
+              value={f.type}
+              options={typeOptions}
+              onChange={(type) => onChange({ type: type as DeviceCategory | null })}
+            />
+          </FilterRow>
+          <FilterRow label="eero">
+            <SelectPicker name="eero" value={f.eero} options={props.eeros} onChange={(eero) => onChange({ eero })} />
+          </FilterRow>
+          <FilterRow label="Profile">
+            <SelectPicker name="Profile" value={f.profile} options={profileOptions} onChange={(profile) => onChange({ profile })} />
+          </FilterRow>
+          <FilterRow label="Manufacturer">
+            <SelectPicker
+              name="Manufacturer"
+              value={f.manufacturer}
+              options={props.manufacturers.map((m) => ({ value: m, label: m }))}
+              onChange={(manufacturer) => onChange({ manufacturer })}
+            />
+          </FilterRow>
+          <FilterRow label="First seen">
+            <Toggle
+              pressed={f.newSince !== null}
+              onClick={() => onChange({ newSince: f.newSince ? null : new Date(Date.now() - WEEK_MS).toISOString() })}
+            >
+              New this week
+              <span className="text-muted-foreground tabular-nums">{count(s?.newThisWeek.length)}</span>
+            </Toggle>
+          </FilterRow>
+        </FiltersButton>
+        <div className="ms-auto flex items-center gap-1.5">
           <Picker
             label="Group by"
             value={props.groupBy}
             options={(Object.keys(GROUP_LABELS) as GroupBy[]).map((g) => ({ value: g, label: GROUP_LABELS[g] }))}
             onChange={(g) => props.onGroupBy(g as GroupBy)}
-            triggerClassName={selectClass}
+            align="end"
+            triggerClassName={compactClass}
             trigger={<SelectTrigger icon={Layers}>{GROUP_LABELS[props.groupBy]}</SelectTrigger>}
           />
-          <span className="text-muted-foreground text-xs">Sort</span>
           <Picker
             label="Sort"
             value={props.sort}
             options={(Object.keys(SORT_LABELS) as SortKey[]).map((k) => ({ value: k, label: SORT_LABELS[k] }))}
             onChange={(k) => props.onSort(k as SortKey)}
-            triggerClassName={selectClass}
+            align="end"
+            triggerClassName={compactClass}
             trigger={<SelectTrigger icon={ArrowDownAZ}>{SORT_LABELS[props.sort]}</SelectTrigger>}
           />
           <ColumnsButton hidden={props.hidden} onToggle={props.onToggleColumn} />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filters">
-        {statusChip("all", "All", s?.total)}
-        {statusChip("online", "Online", s?.online, dot("success"))}
-        {statusChip("offline", "Offline", s?.offline, dot("muted"))}
-        {statusChip("paused", "Paused", s?.paused, <PauseCircle />)}
-        {statusChip("blocked", "Blocked", s?.blocked, <Ban />)}
-        <Rule />
-        {bandChip("wired", "Wired", Cable)}
-        {bandChip("2.4", "2.4 GHz")}
-        {bandChip("5", "5 GHz")}
-        {bandChip("6", "6 GHz")}
-        <Rule />
-        <DropdownChip
-          icon={Router}
-          name="eero"
-          value={f.eero}
-          options={props.eeros}
-          onChange={(eero) => onChange({ eero })}
-        />
-        <DropdownChip
-          icon={Users}
-          name="Profile"
-          value={f.profile}
-          options={[...props.profiles, { value: UNASSIGNED, label: "Unassigned" }]}
-          onChange={(profile) => onChange({ profile })}
-        />
-        <DropdownChip
-          icon={Shapes}
-          name="Type"
-          value={f.type}
-          options={CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c], count: s?.byCategory[c] }))}
-          onChange={(type) => onChange({ type: type as DeviceCategory | null })}
-        />
-        <DropdownChip
-          icon={Factory}
-          name="Manufacturer"
-          bare
-          value={f.manufacturer}
-          options={props.manufacturers.map((m) => ({ value: m, label: m }))}
-          onChange={(manufacturer) => onChange({ manufacturer })}
-        />
-      </div>
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Active filters">
+          {chips.map((c) => (
+            <span
+              key={c.key}
+              className="inline-flex h-6 items-center gap-1 rounded-full border bg-card ps-2.5 pe-1 text-foreground/80 text-xs"
+            >
+              {c.text}
+              <button
+                type="button"
+                aria-label={`Remove filter: ${c.text}`}
+                onClick={() => onChange(c.clear)}
+                className="grid size-4 cursor-pointer place-items-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+          <Button variant="ghost-muted" size="xs" onClick={() => onChange(CLEAR_POPOVER)}>
+            Clear all
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-const Rule = () => <span aria-hidden className="mx-1 h-[18px] w-px bg-border" />;
-
-const chipClass = (selected: boolean) =>
-  cn(
-    "inline-flex h-[26px] cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-2.5 text-foreground/80 text-xs outline-none transition-colors",
-    "hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-[13px] [&_svg]:text-muted-foreground",
-    selected && "border-muted-foreground/50 bg-muted text-foreground [&_svg]:text-foreground",
-  );
-
-function Chip({
-  selected,
-  onClick,
-  icon: Icon,
-  lead,
-  count: n,
-  children,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  icon?: LucideIcon;
-  lead?: ReactNode;
-  count?: string;
-  children: ReactNode;
-}) {
+/** The Filters button and its popover; the badge counts the popover filters that are set. */
+function FiltersButton({ active, onClear, children }: { active: number; onClear: () => void; children: ReactNode }) {
+  // The wrapper keeps the popover's focus guards out of the toolbar's flex gaps.
   return (
-    <button type="button" aria-pressed={selected} onClick={onClick} className={chipClass(selected)}>
-      {Icon ? <Icon /> : lead}
+    <div className="flex">
+    <Popover.Root>
+      <Popover.Trigger
+        render={<Button variant="outline" aria-label={active ? `Filters, ${active} set` : "Filters"} />}
+        className="gap-1.5 px-2 font-normal text-[13px]"
+      >
+        <ListFilter className="size-3.5 text-muted-foreground" />
+        Filters
+        {active > 0 && (
+          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-muted px-1 font-medium text-2xs text-foreground tabular-nums">
+            {active}
+          </span>
+        )}
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
+          <Popover.Popup
+            aria-label="Filters"
+            className="no-drag w-[340px] rounded-xl border bg-popover text-popover-foreground text-xs shadow-lg outline-none"
+          >
+            <div className="flex flex-col gap-2.5 p-3">{children}</div>
+            <div className="flex items-center justify-between border-t px-3 py-2">
+              <span className="text-muted-foreground">
+                {active === 0 ? "No filters set" : `${active} ${active === 1 ? "filter" : "filters"} set`}
+              </span>
+              <Button variant="ghost-muted" size="xs" disabled={active === 0} onClick={onClear}>
+                Clear all
+              </Button>
+            </div>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
+    </div>
+  );
+}
+
+function FilterRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+      <span className="text-muted-foreground">{label}</span>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+/** A neutral on/off pill inside the Filters popover. */
+function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-6 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border bg-card px-2.5 text-foreground/80 text-xs outline-none transition-colors",
+        "hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring",
+        pressed && "border-muted-foreground/50 bg-muted text-foreground",
+      )}
+    >
       {children}
-      {n !== undefined && <span className="text-muted-foreground tabular-nums">{n}</span>}
     </button>
   );
 }
@@ -294,6 +364,7 @@ function Picker({
   trigger,
   triggerClassName,
   anyLabel,
+  align = "start",
 }: {
   label: string;
   value: string | null;
@@ -304,6 +375,7 @@ function Picker({
   trigger: ReactNode;
   /** Adds a first "Any" row that clears the value. */
   anyLabel?: string;
+  align?: "start" | "end";
 }) {
   const [open, setOpen] = useState(false);
   const rows: ReadonlyArray<{ value: string | null; label: string; count?: number }> = anyLabel
@@ -311,11 +383,11 @@ function Picker({
     : options;
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger aria-label={label} className={triggerClassName}>
+      <Popover.Trigger aria-label={label} title={label} className={triggerClassName}>
         {trigger}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
+        <Popover.Positioner side="bottom" align={align} sideOffset={4} className="z-50">
           <Popover.Popup className={popupClass}>
             <div role="listbox" aria-label={label}>
               {rows.length === 0 && <div className="px-2.5 py-1.5 text-muted-foreground">Nothing to pick yet</div>}
@@ -345,7 +417,11 @@ function Picker({
 }
 
 const selectClass =
-  "inline-flex h-8 w-[150px] cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
+  "inline-flex h-7 cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
+
+/** Group by and Sort: sized to their value, with the name in the tooltip and for screen readers. */
+const compactClass =
+  "inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-input bg-background px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
 
 function SelectTrigger({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
@@ -357,24 +433,19 @@ function SelectTrigger({ icon: Icon, children }: { icon: LucideIcon; children: R
   );
 }
 
-function DropdownChip({
-  icon: Icon,
+/** A full-width select inside the Filters popover, with an "Any" row. */
+function SelectPicker({
   name,
   value,
   options,
   onChange,
-  bare = false,
 }: {
-  icon: LucideIcon;
   name: string;
   value: string | null;
   options: ReadonlyArray<Option>;
   onChange: (value: string | null) => void;
-  /** Shows just the name while nothing is picked ("Manufacturer" rather than "Manufacturer: Any"). */
-  bare?: boolean;
 }) {
-  const picked = value === null ? null : (options.find((o) => o.value === value)?.label ?? value);
-  const text = picked !== null ? `${name}: ${picked}` : bare ? name : `${name}: Any`;
+  const picked = value === null ? "Any" : (options.find((o) => o.value === value)?.label ?? value);
   return (
     <Picker
       label={name}
@@ -382,12 +453,11 @@ function DropdownChip({
       options={options}
       onChange={onChange}
       anyLabel="Any"
-      triggerClassName={chipClass(value !== null)}
+      triggerClassName={cn(selectClass, "w-full")}
       trigger={
         <>
-          <Icon />
-          {text}
-          <ChevronDown />
+          <span className={cn("min-w-0 flex-1 truncate text-start", value === null && "text-muted-foreground")}>{picked}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </>
       }
     />

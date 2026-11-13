@@ -40,7 +40,7 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
 
   return (
     <Card className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1.2fr] [&>*+*]:border-t md:[&>*+*]:border-t-0 md:[&>*+*]:border-l">
-      <Cell className={cn("flex items-center gap-4", fading && "opacity-40")}>
+      <Cell className={cn("flex items-start gap-4", fading && "opacity-40")}>
         <Donut
           size={84}
           thickness={9}

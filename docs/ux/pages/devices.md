@@ -12,7 +12,8 @@ Wi-Fi**. Sidebar count: all known devices (38).
 ## Layout
 
 1. **Summary strip**: one card split into three cells by 1px rules.
-   - **By type**: a small donut and a list with counts: Phones & tablets 12,
+   - **By type**: a small donut (straight segment ends with a small gap,
+     its top level with the "BY TYPE" label) and a list with counts: Phones & tablets 12,
      Computers 7, Entertainment 6, Smart home 10, Other 3, each with its
      colour square.
    - **Throughput now**: "186 Mbps down", "24 Mbps up · 14 devices active",
@@ -21,17 +22,21 @@ Wi-Fi**. Sidebar count: all known devices (38).
    - **New this week** with the count (3): up to three devices with icon,
      name and a muted line ("48 min ago · Living Room", "Tue · Living Room",
      "Mon · blocked" in destructive text).
-2. **Toolbar** row:
-   - Search field "Search by name, manufacturer, MAC or IP" with a `/` hint.
-   - Segmented: All networks / Main / Guest (with a guest count).
-   - Right: "Group by" select (Category), "Sort" select (Name, A to Z), and a
-     Columns button.
-3. **Filter chips**, separated into three groups by thin rules:
-   - Status: All 38, Online 31 (success dot), Offline 5 (muted dot), Paused
-     3, Blocked 2.
-   - Connection: Wired 4, 2.4 GHz 11, 5 GHz 10, 6 GHz 6.
-   - Dropdown chips: eero: Any, Profile: Any, Type: Any, Manufacturer. Each
-     opens a popover list with counts.
+2. **Toolbar**, one row:
+   - Search field "Search devices" (tooltip: name, manufacturer, MAC or IP)
+     with a `/` hint. It grows up to 300px.
+   - Status segment: All 38 / Online 31 / Offline 5 / Paused 3 / Blocked 2.
+   - **Filters** button with a count of the popover filters that are set. Its
+     popover has one row per filter: Network (All / Main / Guest 1), Band
+     (Wired 4, 2.4 GHz 11, 5 GHz 10, 6 GHz 6 toggles), Type, eero, Profile
+     (with Unassigned) and Manufacturer (selects with an Any row), First seen
+     (New this week 3), and a footer "3 filters set" with **Clear all**.
+   - Right: Group by menu (Category), Sort menu (Name), and a Columns button.
+     The menus show their name in the tooltip.
+3. **Active filters** (only while a popover filter is set): one small chip
+   per filter ("6 GHz", "Computers", "Profile: Alex") with an x to remove it,
+   then **Clear all**, which clears the popover filters (search and status
+   stay).
 4. **Bulk action bar** (only while rows are selected): mixed checkbox, "3
    selected", the selected names in muted text, then **Pause**, **Resume**,
    **Assign profile ▾**, **Block 3** (danger), a rule, **Clear**.
@@ -44,12 +49,15 @@ Wi-Fi**. Sidebar count: all known devices (38).
    - Rows are grouped. Group header rows have a chevron, an icon, the group
      name and a count. Collapsed groups show a summary instead ("10 devices ·
      all online · Nest Thermostat, Hue Bridge, Ring Doorbell, Kitchen Echo,
-     +6" and "Expand"); an empty group says "No devices online".
+     +6" and "Expand"). A group with no devices is not shown, with or
+     without filters.
    - Groups in the mockup (Group by Category): Computers & Personal,
-     Entertainment, Home (collapsed), Other (empty), Recently online (offline
-     devices with last seen), Blocked.
+     Entertainment, Home (collapsed), Other (hidden while empty), Recently
+     online (offline devices with last seen), Blocked.
    - Offline and blocked rows have muted icons and eero names; selected rows
-     have the selected surface and a left marker.
+     have the selected surface and a left marker. The row hover is a muted
+     background; the device name is not underlined on hover, since the whole
+     row opens device detail.
    - Footer: info icon, "Offline devices drop off the list after 7 days.
      Paused devices stay connected but have no internet." and, right,
      "`Shift` click to select a range".
@@ -58,9 +66,9 @@ Wi-Fi**. Sidebar count: all known devices (38).
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Table rows | `device.list {ssid?, connected?, paused?, blocked?, band?, eero?, profile?, type?, manufacturer?, search?, sort?}` | 30 s |
+| Table rows | `device.list {status?, ssid?, band?, eero?, profile?, type?, manufacturer?, firstSeenSince?, search?, sort?}` (New this week sends `firstSeenSince` a week before it was turned on) | 30 s |
 | Live "Now" column, Throughput now | `device.rates.refresh` then `device.list` (rates in each device's `rate`) | 60 s while the page is visible |
-| Filter chip counts, By type, band insight, guest count, New this week | `device.list` `summary` (counts by status, band, eero, profile, type, manufacturer; `newThisWeek`) | 30 s |
+| Status and Filters popover counts, By type, band insight, guest count, New this week | `device.list` `summary` (counts by status, band, eero, profile, type, manufacturer; `newThisWeek`) | 30 s |
 | Profile avatars and names | `device.list` (embedded profile ref) + `profile.list` for colours | 60 s |
 | Assign profile menu | `profile.list` | 60 s |
 | Sidebar count | `device.list` summary `total` | 30 s |
@@ -70,7 +78,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Share Wi-Fi (topbar) | `wifi.share` | query | No | Share Wi-Fi sheet (QR, name, show and copy password) |
-| Search, network segment, filter chips, dropdown chips, sort | - (view state, passed as `device.list` params) | - | No | Table and counts update; filter state kept per network |
+| Search, status segment, Filters popover, active filter chips, Clear all, sort | - (view state, passed as `device.list` params) | - | No | Table and counts update; filter state kept per network |
 | Group by, Columns, expand or collapse a group | - (view state) | - | No | Layout only |
 | Row click, device name | - | - | No | Device detail (Prev and Next follow this table's order) |
 | Checkbox, `Shift+click`, `Ctrl+A`, header checkbox | - (view state) | - | No | Selection; bulk bar appears |
@@ -89,13 +97,13 @@ Wi-Fi**. Sidebar count: all known devices (38).
 
 ## States
 
-- **Loading.** Summary cells with `-`; toolbar and chips render with counts
-  `-`; table shows blank rows at normal height. On refresh, the "Now" column
+- **Loading.** Summary cells with `-`; toolbar and Filters popover render
+  with counts `-`; table shows blank rows at normal height. On refresh, the "Now" column
   fades to 40% while a burst is pending (about 12 s).
 - **Empty.** A filter with no matches: one muted sentence in the table body,
   "No devices match these filters." with **Reset filters**. A network with no
-  devices: "No devices have joined Maple Street yet." Empty group headers
-  stay with "No devices online" only for Category grouping.
+  devices: "No devices have joined Maple Street yet." Groups with no
+  devices are hidden.
 - **Error.** Table body note with Retry; summary keeps last values. A failed
   burst leaves the last rates and marks the column "rates from 3 min ago".
 - **Offline (this computer).** Shell banner; bulk and row-menu writes
