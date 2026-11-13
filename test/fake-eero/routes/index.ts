@@ -6,4 +6,4 @@
  *   export { routes as devices } from "./devices";
  */
 
-export {};
+export { routes as auth } from "./auth";
