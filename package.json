@@ -12,7 +12,10 @@
     "dev:demo": "MESH_UI_DEMO=1 electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",
@@ -24,7 +27,8 @@
     "electron-vite": "^6.0.0",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -33,6 +37,7 @@
     "lucide-react": "^1.72.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   }
 }
