@@ -74,7 +74,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: The contracts every other story builds on. `model.ts` with every type in data-model.md (whole model, so later stories never edit it for M1 types). `backend.ts`: the `Backend` interface split into per-area sub-interfaces (auth, account, network, internet, eero, device, profile, usage, events) with method signatures for every M1 command. `spec.ts` (CommandSpec with id, label, description, icon, params zod schema, effect, sensitive, poll, run), `registry.ts` (register, list, JSON Schema via zod-to-json-schema), `engine.ts` (`execute` with lookup, validation, confirm enforcement, error mapping, never throws), `errors.ts` (codes from AGENTS.md). `poll.ts` and `format.ts` with the M1 intervals and formatters (Mbps, GB, %, relative time). Empty registration index files for commands, demo areas, eero backend areas and fake-server routes, plus a `src/cli/index.ts` stub exporting `runCli(argv)`. Vitest config, `test/setup.ts` with the fetch guard that throws on `api-user.e2ro.com`, and scripts `test`, `test:watch`, `check` in package.json.
 - done when: `pnpm check` passes; engine tests cover unknown_command, bad_params, needs_confirm (disruptive and destructive), success, and a thrown backend error mapped to eero_error; a test proves the fetch guard blocks eero.
 
-### M1.2 eero HTTP client and fake eero server ☐
+### M1.2 eero HTTP client and fake eero server ✅ (#22)
 - issue: [#2](https://github.com/pkkid/mesh-ui/issues/2)
 - after: M1.1
 - docs: architecture/eero-client.md, testing.md (Fake eero server), eero-api/endpoints.md
