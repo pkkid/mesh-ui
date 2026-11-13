@@ -13,6 +13,11 @@
  *   test/fake-eero) with a throwaway config dir. Release builds drop this
  *   code. The CLI's `--fake` needs an unpackaged build and a loopback
  *   `MESH_UI_FAKE_ORIGIN`, and never uses the saved session.
+ *
+ * `MESH_UI_HEADLESS=1` (scripts/ui-shot.mjs) renders the window offscreen and
+ * never shows it, so agents can drive and screenshot the UI without a window
+ * on the desktop. It also drops the native window-controls overlay, which
+ * crashes Electron under `--ozone-platform=headless`. Inert unless set.
  */
 
 import { mkdtempSync } from "node:fs";
@@ -45,6 +50,7 @@ const cliIndex = argv.indexOf("--cli");
 const isCli = cliIndex !== -1;
 const isDemo = process.env.MESH_UI_DEMO === "1" || (!isCli && argv.includes("--demo"));
 const isFake = import.meta.env.DEV && !isCli && process.env.MESH_UI_FAKE === "1";
+const isHeadless = !isCli && process.env.MESH_UI_HEADLESS === "1";
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -179,23 +185,26 @@ function createWindow(): void {
     backgroundColor: dark ? "#000000" : "#fcfcfc",
     ...(isMac
       ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 15 } }
-      : {
-          titleBarStyle: "hidden",
-          titleBarOverlay: {
-            color: "#00000000",
-            symbolColor: dark ? "#f5f5f5" : "#18181b",
-            height: OVERLAY_HEIGHT,
-          },
-        }),
+      : isHeadless
+        ? { titleBarStyle: "hidden" }
+        : {
+            titleBarStyle: "hidden",
+            titleBarOverlay: {
+              color: "#00000000",
+              symbolColor: dark ? "#f5f5f5" : "#18181b",
+              height: OVERLAY_HEIGHT,
+            },
+          }),
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      ...(isHeadless ? { offscreen: true } : {}),
     },
   });
 
-  mainWindow.once("ready-to-show", () => mainWindow?.show());
+  if (!isHeadless) mainWindow.once("ready-to-show", () => mainWindow?.show());
   mainWindow.on("closed", () => (mainWindow = null));
 
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -242,6 +251,7 @@ if (isCli) {
     return cliMain(argv.slice(cliIndex + 1), electronCliHost());
   });
 } else {
+  if (isHeadless) app.dock?.hide();
   void app.whenReady().then(async () => {
     lockDownSession();
     const engine = await createAppEngine();
@@ -252,7 +262,7 @@ if (isCli) {
         for (const win of BrowserWindow.getAllWindows()) win.webContents.send(channel, event);
       },
       setTitlebarColors: (colors) => {
-        if (!mainWindow || process.platform === "darwin") return;
+        if (!mainWindow || process.platform === "darwin" || isHeadless) return;
         mainWindow.setTitleBarOverlay({ ...colors, height: OVERLAY_HEIGHT });
       },
     });
