@@ -109,7 +109,7 @@ function fakeEngine() {
   const live = createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch });
   const auth: AuthState = { signedIn: true, pending: false, login: null, storage: "memory" };
   const summary = (id: string, name: string) => ({ id, name, nickname: null, role: "owner", status: "online", eeroCount: null, devicesOnline: null, isp: null, updateAvailable: null, lastSeen: null, selected: false }) as M.NetworkSummary;
-  // auth and network are M1.10's areas; stub them so the engine can resolve networks.
+  // Stub auth (no eero auth area yet) and network (keeps these tests to their own routes).
   const backend = composeBackend("eero", {
     auth: { ...live.auth, status: async () => auth },
     network: {
