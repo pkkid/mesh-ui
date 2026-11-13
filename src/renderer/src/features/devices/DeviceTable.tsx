@@ -123,7 +123,7 @@ function makerLine(d: Device): string {
 // ---------------------------------------------------------------------------
 // Groups (view state)
 
-type Group = { key: string; label: string; icon: LucideIcon; devices: Device[]; showEmpty?: boolean };
+type Group = { key: string; label: string; icon: LucideIcon; devices: Device[] };
 
 const isOff = (d: Device) => !d.connected && !d.blocked;
 
@@ -140,10 +140,10 @@ function groupDevices(
     case "category": {
       const live = (cats: DeviceCategory[]) => (d: Device) => d.connected && !d.blocked && cats.includes(d.category);
       return [
-        { key: "personal", label: "Computers & Personal", icon: Laptop, devices: pick(live(["phones_tablets", "computers"])), showEmpty: true },
-        { key: "entertainment", label: "Entertainment", icon: Tv, devices: pick(live(["entertainment"])), showEmpty: true },
-        { key: "home", label: "Home", icon: House, devices: pick(live(["smart_home"])), showEmpty: true },
-        { key: "other", label: "Other", icon: Shapes, devices: pick(live(["other"])), showEmpty: true },
+        { key: "personal", label: "Computers & Personal", icon: Laptop, devices: pick(live(["phones_tablets", "computers"])) },
+        { key: "entertainment", label: "Entertainment", icon: Tv, devices: pick(live(["entertainment"])) },
+        { key: "home", label: "Home", icon: House, devices: pick(live(["smart_home"])) },
+        { key: "other", label: "Other", icon: Shapes, devices: pick(live(["other"])) },
         { key: "offline", label: "Recently online", icon: History, devices: pick(isOff) },
         { key: "blocked", label: "Blocked", icon: Ban, devices: pick((d) => d.blocked) },
       ];
@@ -268,10 +268,11 @@ export function DeviceTable(props: DeviceTableProps) {
   } else {
     const groups = groupDevices(devices, groupBy, props.eeroName, props.profiles);
     body = groups.map((g) => {
-      if (g.devices.length === 0 && !(g.showEmpty && groupBy === "category" && !props.filtersActive)) return null;
+      // Groups with no devices are left out, whatever the filters.
+      if (g.devices.length === 0) return null;
       const key = `${groupBy}:${g.key}`;
-      const isCollapsed = collapsed.has(key) && g.devices.length > 0;
-      const Chevron = isCollapsed || g.devices.length === 0 ? ChevronRight : ChevronDown;
+      const isCollapsed = collapsed.has(key);
+      const Chevron = isCollapsed ? ChevronRight : ChevronDown;
       return (
         <Fragment key={key}>
           {groupBy !== "none" && (
@@ -279,16 +280,15 @@ export function DeviceTable(props: DeviceTableProps) {
               <td colSpan={columns} className="p-0">
                 <button
                   type="button"
-                  disabled={g.devices.length === 0}
-                  aria-expanded={g.devices.length > 0 ? !isCollapsed : undefined}
+                  aria-expanded={!isCollapsed}
                   onClick={() => toggle(key)}
-                  className="flex w-full cursor-pointer items-center gap-1.5 px-2.5 py-2 text-start font-semibold text-3xs text-muted-foreground uppercase tracking-widest outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-default [&_svg]:size-[13px]"
+                  className="flex w-full cursor-pointer items-center gap-1.5 px-2.5 py-2 text-start font-semibold text-3xs text-muted-foreground uppercase tracking-widest outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset [&_svg]:size-[13px]"
                 >
                   <Chevron />
                   <g.icon />
                   {g.label}
                   <span className="ms-1.5 min-w-0 truncate font-medium text-muted-foreground/70 normal-case tracking-normal">
-                    {g.devices.length === 0 ? "No devices online" : isCollapsed ? collapsedLine(g) : g.devices.length}
+                    {isCollapsed ? collapsedLine(g) : g.devices.length}
                   </span>
                   {isCollapsed && <span className="ms-auto font-medium text-foreground/80 normal-case tracking-normal">Expand</span>}
                 </button>
@@ -394,7 +394,7 @@ function Row({ device: d, show, eeroName, profiles, usage, newIds, ratesPending 
           <IconTile icon={deviceIcon(d)} size="sm" className={cn("size-7", off && "opacity-60")} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <Link to={to} className="truncate font-medium text-foreground outline-none hover:underline focus-visible:underline">
+              <Link to={to} className="truncate font-medium text-foreground outline-none focus-visible:underline">
                 {d.name}
               </Link>
               {newIds.has(d.id) && <Tag>NEW</Tag>}
