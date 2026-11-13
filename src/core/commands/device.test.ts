@@ -45,6 +45,37 @@ describe("device.list (demo)", () => {
     expect(l.summary.rates?.downMbps).toBeCloseTo(down, 1);
   });
 
+  it("counts by eero, profile and manufacturer, each summing to the total", async () => {
+    const l = await list(demo().engine);
+    const { total, byEero, byProfile, byManufacturer } = l.summary;
+    for (const rows of [byEero, byProfile, byManufacturer]) {
+      expect(rows.reduce((s, r) => s + r.count, 0)).toBe(total);
+      expect(rows.map((r) => r.count)).toEqual([...rows.map((r) => r.count)].sort((a, b) => b - a));
+    }
+    const per = <K extends string | null>(key: (d: M.Device) => K) => {
+      const m = new Map<K, number>();
+      for (const d of l.devices) m.set(key(d), (m.get(key(d)) ?? 0) + 1);
+      return m;
+    };
+    expect(new Map(byEero.map((r) => [r.eeroId, r.count]))).toEqual(per((d) => d.eeroId));
+    expect(new Map(byProfile.map((r) => [r.profileId, r.count]))).toEqual(per((d) => d.profileId));
+    expect(new Map(byManufacturer.map((r) => [r.manufacturer, r.count]))).toEqual(per((d) => d.manufacturer));
+    // Blocked devices are on no eero; Apple leads the makers.
+    expect(byEero.find((r) => r.eeroId === null)?.count).toBe(2);
+    expect(byManufacturer[0]).toEqual({ manufacturer: "Apple", count: 12 });
+    expect(byProfile.find((r) => r.profileId === null)?.count).toBe(l.devices.filter((d) => d.profileId === null).length);
+  });
+
+  it("keeps the summary counts for the whole network when filtered", async () => {
+    const l = await list(demo().engine, { status: "online", eero: "Office" });
+    expect(l.summary.byEero.reduce((s, r) => s + r.count, 0)).toBe(38);
+  });
+
+  it("summarize counts a missing manufacturer as null", () => {
+    const d = { id: "x", eeroId: null, profileId: null, manufacturer: "  ", category: "other", connected: false, band: null, rates: null, firstSeen: null, paused: false, blocked: false } as unknown as M.Device;
+    expect(summarize([d], NOW).byManufacturer).toEqual([{ manufacturer: null, count: 1 }]);
+  });
+
   it("totals live rates per band with shares of traffic and connected devices", async () => {
     const l = await list(demo().engine);
     const rates = l.summary.rates;

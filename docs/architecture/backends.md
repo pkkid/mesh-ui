@@ -30,10 +30,12 @@ export interface BackendAreas {
   network: NetworkBackend;   // list, get, health, permissions
   internet: InternetBackend; // get, speedTests
   usage: UsageBackend;       // series, breakdown
-  eero: EeroBackend;         // list, get
+  eero: EeroBackend;         // list, get, ports, firmwareHistory
   device: DeviceBackend;     // list (includes blocked), get, requestBurst
   profile: ProfileBackend;   // list, get
   events: EventsBackend;     // list(net, cursor): one page, newest first
+  routing: RoutingBackend;   // get: reservations, forwards, pinholes, LAN map
+  updates: UpdatesBackend;   // get
 }
 
 export interface Backend extends BackendAreas {
@@ -41,10 +43,14 @@ export interface Backend extends BackendAreas {
 }
 ```
 
-The file holds the M1 methods, which are all reads plus sign-in. Later
-milestones add their writes (renames, pause, restarts, settings) to the
-matching area, and new areas (guest, Wi-Fi, settings, routing, updates,
-admins, notifications, diagnostics) as they are built. There is no
+The file holds the M1 and M2 methods, which are all reads plus sign-in.
+M2.1 added `eero.ports`, `eero.firmwareHistory` and the `routing` and
+`updates` areas; the demo backend answers them, while the eero backend
+answers "not available yet" until the M2 stories that map them (M2.5 updates,
+M2.6 ports and firmware, M2.7 routing). Later milestones add their writes
+(renames, pause, restarts, settings) to the matching area, and new areas
+(guest, Wi-Fi, settings, admins, notifications, diagnostics) as they are
+built. There is no
 `activity` area: events have their own `events` area, and notifications
 will get theirs.
 
@@ -68,12 +74,15 @@ other data or from app settings are filled in by core, so the demo backend
 gets them for free and both backends agree:
 
 - `NetworkSummary.selected` (backends may leave it `false`),
-- `Internet.planMbps` (from app settings; backends omit it),
+- `NetworkHealth.issues` (backends omit it),
+- `Internet.planMbps` (from app settings) and `Internet.verdict` (backends omit both),
 - `SpeedTest.rating` (backends leave it `null`),
+- `Eero.hop` and `Eero.meshQuality` (backends leave them `null`),
 - `Profile.nextChange` (backends may leave it `null`),
 - `usage.breakdown` rows: backends return them unsorted and unfiltered;
   core sorts them and computes each row's `share`,
-- summaries such as `DeviceList.summary`, and composites such as
+- summaries such as `DeviceList.summary` (including `byEero`, `byProfile`
+  and `byManufacturer`), and composites such as
   `health.check` and `support.report`.
 
 The once-a-minute limit on `device.requestBurst` also belongs in core.
@@ -178,6 +187,13 @@ fixtures.
   totals add up across network, eero, profile and device scopes.
 - **Events.** A generated stream covering every `EventCategory`, with
   `nextCursor` paging.
+- **Ports, firmware, routing, updates.** Port status, speed and attachment
+  come from the connected devices' `wiredPort` (the gateway WAN port takes
+  the internet gateway's speed); firmware history is stored newest first
+  and `current` marks the entry equal to the eero's firmware; forwards per
+  reservation and the pool's leased count come from the lists; per-eero
+  update versions come from the eeros. Bridge mode (Mom's House) answers
+  routing with empty lists and no LAN map.
 - **Errors on purpose** (not yet built in M1, as it needs writes). A
   device named "Flaky Plug" fails writes with
   `eero_error` (`error.eero.offline`) so error states are reachable in the
@@ -197,8 +213,14 @@ fixtures.
 - Maple Street has about 38 devices across every category and band, 4
   profiles (Alex active, Jamie active, Mia scheduled with Bedtime and
   Homework, Leo paused), a guest network with a few guests, 8 reservations,
-  5 port forwards, 2 IPv6 pinholes, Thread on, an available eeroOS update,
-  and one pending admin invite.
+  5 port forwards (3 on Alex's MacBook Pro, 1 each on the Synology NAS and
+  PlayStation 5, all reserved), 2 IPv6 pinholes, Thread on, eeroOS 7.13.0
+  scheduled for the next 2 AM window, and one pending admin invite.
+- Every eero has Ethernet ports except the Garage Beacon, a firmware
+  history ending at its current version, tx power and auto channel per
+  radio, and its LAN subnet and gateway. Devices have `fe80::` link-local
+  addresses built from their invented MACs. WAN leases renew in the future
+  (none for the offline Lake Cabin).
 - Account: Alex Kim, `alex@example.com`, `+1 (555) 010-0142`.
 - Every name, MAC, IP, serial and phone number is invented. IPs use
   `192.168.4.x` on the LAN and documentation ranges (`203.0.113.x`,
@@ -230,4 +252,8 @@ It must let tests prove:
 
 The fake server stores state in memory per test, seeded from the same
 invented data as the demo fixtures (converted to eero shapes), so a write
-followed by a read round-trips through the real mapper.
+followed by a read round-trips through the real mapper. Since M2.1 the
+seed also holds raw `connections` per eero, `firmware_update/history` per
+eero (seeded oldest first, so mappers must sort), `routing` and `updates`
+(the same object the network embeds); the routes that serve them land with
+the stories that map them.

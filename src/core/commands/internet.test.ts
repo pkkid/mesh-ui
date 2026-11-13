@@ -47,6 +47,16 @@ describe("internet commands (demo)", () => {
     expect(text).toContain("Plan: -");
   });
 
+  it("rates a 35% test poor and labels it Poor in the CSV", async () => {
+    const engine = demoEngine({ settings: memorySettings({ planMbps: { [MAPLE]: { down: 2000, up: 1000 } } }) });
+    const week = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }));
+    // 702 / 2000 is 35% of the plan.
+    expect(week.tests.find((t) => t.downMbps === 702)?.rating).toBe("poor");
+    expect(week.tests.find((t) => t.downMbps === 942)?.rating).toBe("below_plan");
+    const csv = await ok(engine.execute<string>("speedtest.history", { networkId: MAPLE, format: "csv" }));
+    expect(csv.split("\n").find((l) => l.includes(",702,"))).toMatch(/,Poor\r?$/);
+  });
+
   it("speedtest.history returns the week newest first with 7-day averages", async () => {
     const engine = demoEngine({ settings: memorySettings({ planMbps: { [MAPLE]: { down: 1000, up: 1000 } } }) });
     const week = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }));
@@ -107,6 +117,14 @@ describe("speed ratings", () => {
     expect(speedRating({ downMbps: null, upMbps: null }, plan)).toBeNull();
     expect(speedRating({ downMbps: 900, upMbps: 90 }, null)).toBeNull();
   });
+
+  it("is poor under 40% of plan in any measured direction", () => {
+    const plan = { down: 1000, up: 100 };
+    expect(speedRating({ downMbps: 350, upMbps: 100 }, plan)).toBe("poor");
+    expect(speedRating({ downMbps: 900, upMbps: 35 }, plan)).toBe("poor");
+    expect(speedRating({ downMbps: 400, upMbps: 40 }, plan)).toBe("below_plan");
+    expect(speedRating({ downMbps: 350, upMbps: null }, plan)).toBe("poor");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -161,8 +179,10 @@ describe("internet commands (fake eero server)", () => {
       dnsMode: "automatic",
       doubleNat: false,
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
+      leaseRenewsAt: null,
       planMbps: { down: 1000, up: 50 },
       lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
+      verdict: null,
     });
   });
 
@@ -171,7 +191,7 @@ describe("internet commands (fake eero server)", () => {
     const history = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
     expect(history.tests).toEqual([
       { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "below_plan" },
-      { at: "2026-11-11T03:00:00.000Z", downMbps: 884.1, upMbps: 39.7, rating: "below_plan" },
+      { at: "2026-11-11T03:00:00.000Z", downMbps: 884.1, upMbps: 39.7, rating: "poor" },
       { at: "2026-11-10T03:00:00.000Z", downMbps: 901.9, upMbps: 41, rating: "below_plan" },
     ]);
     expect(history.avg7d).toEqual({ downMbps: 899.5, upMbps: 40.3 });
@@ -229,7 +249,7 @@ describe("internet mapping", () => {
   });
 
   it("formats missing values as -", () => {
-    const text = internetText({ ...mapInternet({}), planMbps: null });
+    const text = internetText({ ...mapInternet({}), planMbps: null, verdict: null });
     expect(text).toContain("ISP: -");
     expect(text).toContain("Double NAT: -");
     expect(text).toContain("Gateway: -");

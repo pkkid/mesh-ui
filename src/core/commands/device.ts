@@ -65,6 +65,15 @@ export function knownDevices(devices: M.Device[], now: number): M.Device[] {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/** Counts per key, largest first, then by key with null last; every device counted once. */
+function countBy<K extends string | null>(devices: M.Device[], key: (d: M.Device) => K): { key: K; count: number }[] {
+  const counts = new Map<K, number>();
+  for (const d of devices) counts.set(key(d), (counts.get(key(d)) ?? 0) + 1);
+  return [...counts]
+    .map(([k, count]) => ({ key: k, count }))
+    .sort((a, b) => b.count - a.count || (a.key === null ? 1 : b.key === null ? -1 : a.key.localeCompare(b.key)));
+}
+
 export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
   const byBand = Object.fromEntries(BANDS.map((b) => [b, 0])) as Record<M.Band, number>;
   const byCategory = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<M.DeviceCategory, number>;
@@ -100,6 +109,9 @@ export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
     blocked: devices.filter((d) => d.blocked).length,
     byBand,
     byCategory,
+    byEero: countBy(devices, (d) => d.eeroId).map(({ key, count }) => ({ eeroId: key, count })),
+    byProfile: countBy(devices, (d) => d.profileId).map(({ key, count }) => ({ profileId: key, count })),
+    byManufacturer: countBy(devices, (d) => d.manufacturer?.trim() || null).map(({ key, count }) => ({ manufacturer: key, count })),
     newThisWeek,
     rates: latest === null ? null : { downMbps: round1(down), upMbps: round1(up), active, at: new Date(latest).toISOString(), ...bandShares(byBand, bandRates) },
   };

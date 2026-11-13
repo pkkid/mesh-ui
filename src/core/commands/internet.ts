@@ -18,12 +18,16 @@ const DAY_MS = 24 * HOUR_MS;
 /** A result at or above this share of the plan is "great". */
 export const GREAT_SHARE = 0.75;
 
+/** A result under this share of the plan is "poor". */
+export const POOR_SHARE = 0.4;
+
 /** The most tests one history call asks eero for (the 7-day window). */
 export const SPEEDTEST_FETCH_LIMIT = 200;
 
 /**
- * "great" when every measured direction reaches 75% of the plan, else
- * "below_plan"; null without a plan or a measurement.
+ * "great" when every measured direction reaches 75% of the plan, "poor"
+ * when any is under 40%, else "below_plan"; null without a plan or a
+ * measurement.
  */
 export function speedRating(test: Pick<M.SpeedTest, "downMbps" | "upMbps">, plan: M.PlanSpeed | null): M.SpeedTest["rating"] {
   if (!plan) return null;
@@ -31,7 +35,8 @@ export function speedRating(test: Pick<M.SpeedTest, "downMbps" | "upMbps">, plan
   if (test.downMbps !== null && plan.down > 0) shares.push(test.downMbps / plan.down);
   if (test.upMbps !== null && plan.up > 0) shares.push(test.upMbps / plan.up);
   if (shares.length === 0) return null;
-  return Math.min(...shares) >= GREAT_SHARE ? "great" : "below_plan";
+  const worst = Math.min(...shares);
+  return worst >= GREAT_SHARE ? "great" : worst < POOR_SHARE ? "poor" : "below_plan";
 }
 
 const rate = (test: M.SpeedTest, plan: M.PlanSpeed | null): M.SpeedTest => ({ ...test, rating: speedRating(test, plan) });
@@ -74,7 +79,7 @@ export function internetText(i: M.Internet): string {
   return `${lines.join("\n")}\n`;
 }
 
-const RATING_LABEL: Record<NonNullable<M.SpeedTest["rating"]>, string> = { great: "Great", below_plan: "Below plan" };
+const RATING_LABEL: Record<NonNullable<M.SpeedTest["rating"]>, string> = { great: "Great", below_plan: "Below plan", poor: "Poor" };
 
 const SPEED_CSV: CsvColumn<M.SpeedTest>[] = [
   { header: "When", value: (t) => t.at },
@@ -96,7 +101,8 @@ export const commands: AnyCommand[] = [
     async run(ctx, p): Promise<M.Internet | string> {
       const net = ctx.net;
       const [raw, plan] = await Promise.all([ctx.backend.internet.get(net), planFor(ctx, net)]);
-      const internet: M.Internet = { ...raw, planMbps: plan, lastSpeedTest: raw.lastSpeedTest ? rate(raw.lastSpeedTest, plan) : null };
+      // verdict: built here by M2.4.
+      const internet: M.Internet = { ...raw, planMbps: plan, lastSpeedTest: raw.lastSpeedTest ? rate(raw.lastSpeedTest, plan) : null, verdict: null };
       return p.format === "text" ? internetText(internet) : internet;
     },
   }),

@@ -72,13 +72,14 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "network.health",
     label: "Network health",
-    description: "Internet and mesh status, each eero's status and mesh bars, weak links and banner messages.",
+    description: "Internet and mesh status, each eero's status and mesh bars, weak links, banner messages and issues (weak_link, eero_offline, network_offline with the eero, its upstream and the devices affected).",
     icon: "activity",
     params: empty,
     effect: "query",
     topic: "network",
     poll: POLL.network,
-    run: (ctx): Promise<M.NetworkHealth> => ctx.backend.network.health(ctx.net),
+    // issues: derived here from eeros and devices by M2.5.
+    run: async (ctx): Promise<M.NetworkHealth> => ({ ...(await ctx.backend.network.health(ctx.net)), issues: [] }),
   }),
 
   defineCommand({

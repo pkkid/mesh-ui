@@ -9,7 +9,7 @@
  *
  * The interface is split into one sub-interface per area, so each eero
  * backend area file implements exactly one of them. This file holds every
- * M1 method; later milestones add their writes here.
+ * read through M2; later milestones add their writes here.
  */
 
 import { BackendError } from "./errors";
@@ -60,15 +60,16 @@ export interface NetworkBackend {
   /** `selected` is filled in by core; backends may leave it false. */
   list(): Promise<M.NetworkSummary[]>;
   get(net: M.Id): Promise<M.Network>;
-  health(net: M.Id): Promise<M.NetworkHealth>;
+  /** `issues` are derived in core, so backends leave them out. */
+  health(net: M.Id): Promise<Omit<M.NetworkHealth, "issues">>;
   permissions(net: M.Id): Promise<M.Permissions>;
 }
 
 export type SpeedTestQuery = { from: M.Iso; to: M.Iso; limit: number };
 
 export interface InternetBackend {
-  /** `planMbps` comes from app settings and is filled in by core. */
-  get(net: M.Id): Promise<Omit<M.Internet, "planMbps">>;
+  /** `planMbps` comes from app settings and `verdict` is built in core; backends omit both. */
+  get(net: M.Id): Promise<Omit<M.Internet, "planMbps" | "verdict">>;
   /** Newest first. `rating` is computed in core, so backends leave it null. */
   speedTests(net: M.Id, q: SpeedTestQuery): Promise<M.SpeedTest[]>;
 }
@@ -99,8 +100,13 @@ export interface UsageBackend {
 }
 
 export interface EeroBackend {
+  /** `hop` and `meshQuality` are filled in by core; backends may leave them null. */
   list(net: M.Id): Promise<M.Eero[]>;
   get(net: M.Id, eero: M.Id): Promise<M.Eero>;
+  /** Ethernet ports, with attached devices or eeros joined by MAC. Empty list when eero reports none. */
+  ports(net: M.Id, eero: M.Id): Promise<M.EeroPorts>;
+  /** Installed versions, newest first, at most `limit`; the running one has `current: true`. */
+  firmwareHistory(net: M.Id, eero: M.Id, limit: number): Promise<M.FirmwareEntry[]>;
 }
 
 export interface DeviceBackend {
@@ -115,6 +121,15 @@ export interface ProfileBackend {
   /** `nextChange` is computed in core; backends may leave it null. */
   list(net: M.Id): Promise<M.Profile[]>;
   get(net: M.Id, profile: M.Id): Promise<M.Profile>;
+}
+
+export interface RoutingBackend {
+  /** Reservations, forwards and pinholes joined to devices, plus the LAN map. */
+  get(net: M.Id): Promise<M.Routing>;
+}
+
+export interface UpdatesBackend {
+  get(net: M.Id): Promise<M.Updates>;
 }
 
 export type EventChunk = { events: M.NetworkEvent[]; nextCursor: string | null };
@@ -137,6 +152,8 @@ export interface BackendAreas {
   device: DeviceBackend;
   profile: ProfileBackend;
   events: EventsBackend;
+  routing: RoutingBackend;
+  updates: UpdatesBackend;
 }
 
 export type AreaName = keyof BackendAreas;
@@ -151,12 +168,19 @@ export const AREA_NAMES: readonly AreaName[] = [
   "device",
   "profile",
   "events",
+  "routing",
+  "updates",
 ];
 
 export interface Backend extends BackendAreas {
   readonly kind: M.BackendKind;
   /** True when the eero backend talks to the local fake eero server (an injected origin). Unset for live and demo. */
   readonly fake?: true;
+}
+
+/** The rejection an unbuilt method gives: `eero_error` "<area>.<method> is not available in the <kind> backend yet". */
+export function notAvailable(kind: M.BackendKind, area: AreaName, method: string): Promise<never> {
+  return Promise.reject(new BackendError("eero_error", `${area}.${method} is not available in the ${kind} backend yet.`));
 }
 
 /**
@@ -167,7 +191,7 @@ export function unimplementedArea<K extends AreaName>(kind: M.BackendKind, area:
   return new Proxy({} as BackendAreas[K], {
     get(_target, method) {
       if (typeof method !== "string") return undefined;
-      return () => Promise.reject(new BackendError("eero_error", `${area}.${method} is not available in the ${kind} backend yet.`));
+      return () => notAvailable(kind, area, method);
     },
   });
 }

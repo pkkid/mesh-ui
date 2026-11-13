@@ -10,8 +10,9 @@
  *
  * Times are relative to `now` so "48 min ago" stays true whenever the demo
  * runs. Fields the backend derives from the lists (eero and device counts,
- * eero clients, profile devices and state) are not stored here; see
- * backend.ts.
+ * eero clients, profile devices and state, port attachments, the current
+ * firmware, forwards per reservation, leased addresses, per-eero update
+ * versions) are not stored here; see backend.ts.
  */
 
 import type * as M from "../model";
@@ -39,11 +40,17 @@ export type EeroFixture = Omit<M.Eero, "clients">;
 /** A network as stored: counts, eero count, devices online and isp are derived. */
 export type NetworkFixture = Omit<M.Network, "eeroCount" | "devicesOnline" | "isp" | "updateAvailable" | "selected" | "counts">;
 
+/** An Ethernet port as stored: status, speed and attachment come from the devices and eeros. */
+export type PortFixture = Pick<M.EeroPort, "number" | "name" | "supportedMbps" | "isWan" | "poe" | "mac" | "actions">;
+
+/** The network's update state as stored: the current version and per-eero versions come from the eeros. */
+export type UpdatesFixture = Omit<M.Updates, "current" | "eeros">;
+
 export type NetworkData = {
   network: NetworkFixture;
   health: { internet: M.NetworkHealth["internet"]; mesh: M.NetworkHealth["mesh"]; messages: string[] };
   permissions: M.Permissions;
-  internet: Omit<M.Internet, "planMbps" | "lastSpeedTest">;
+  internet: Omit<M.Internet, "planMbps" | "lastSpeedTest" | "verdict">;
   eeros: EeroFixture[];
   devices: M.Device[];
   profiles: ProfileFixture[];
@@ -51,8 +58,19 @@ export type NetworkData = {
   speedTests: M.SpeedTest[];
   /** Newest first. */
   events: M.NetworkEvent[];
-  /** DHCP reservations; device.get reads its own. */
+  /** DHCP reservations; device.get reads its own. `forwards` is derived. */
   reservations: M.Reservation[];
+  /** Port forwards, each on a reserved device. */
+  forwards: M.Forward[];
+  /** IPv6 firewall rules. */
+  pinholes: M.Pinhole[];
+  /** The LAN map; `pool.leased` is derived. Null in bridge mode. */
+  lan: M.LanMap | null;
+  /** Ethernet ports per eero id; an eero with no entry has none. */
+  ports: Record<M.Id, PortFixture[]>;
+  /** Installed versions per eero id, newest first, ending at its current firmware. */
+  firmware: Record<M.Id, Omit<M.FirmwareEntry, "current">[]>;
+  updates: UpdatesFixture;
   /** Typical traffic per device id. */
   usage: Record<M.Id, DeviceUsage>;
 };
@@ -89,6 +107,12 @@ const hex = (n: number) => n.toString(16).padStart(2, "0");
 /** An invented MAC: locally administered prefix, then a block and a serial. */
 const mac = (block: number, n: number, priv = false) => [priv ? "06" : "02", "4d", "55", hex(block), hex(n >> 8), hex(n & 0xff)].join(":");
 const idOf = (m: string) => m.replace(/:/g, "");
+/** fe80:: address built from a MAC the EUI-64 way. */
+function linkLocal(m: string): string {
+  const b = m.split(":").map((x) => Number.parseInt(x, 16));
+  const w = (hi: number, lo: number) => ((hi << 8) | lo).toString(16);
+  return `fe80::${w((b[0] ?? 0) ^ 2, b[1] ?? 0)}:${w(b[2] ?? 0, 0xff)}:${w(0xfe, b[3] ?? 0)}:${w(b[4] ?? 0, b[5] ?? 0)}`;
+}
 
 const SCHOOL_NIGHTS: M.Day[] = ["SUN", "MON", "TUE", "WED", "THU"];
 const WEEKDAYS: M.Day[] = ["MON", "TUE", "WED", "THU", "FRI"];
@@ -210,6 +234,8 @@ function buildDevice(row: DeviceRow, n: number, now: number, lan: Lan): [M.Devic
     privateMac: row.privateMac ?? false,
     ipv4,
     ipv6: ipv4 && lan.v6 && !row.privateMac ? [`${lan.v6}::${(row.ip ?? 0).toString(16)}`] : [],
+    // EUI-64 style from the invented MAC (first byte with the local bit flipped).
+    ipv6LinkLocal: ipv4 ? linkLocal(m) : null,
     connected,
     lastActive: new Date(now - (row.offlineMin ?? 0) * MIN).toISOString(),
     firstSeen: row.newMin !== undefined ? new Date(now - row.newMin * MIN).toISOString() : `2025-0${(n % 6) + 3}-0${(n % 8) + 1}T17:20:00Z`,
@@ -337,7 +363,13 @@ type EeroRow = {
   nightlight?: M.Nightlight;
   endOfLife?: M.Eero["endOfLife"];
   heartbeatMin?: number;
+  /** Bands with a channel set by hand (auto channel off). */
+  manual?: M.WirelessBand[];
+  subnet: string;
+  gatewayIp: string;
 };
+
+const TX_POWER: Record<M.WirelessBand, number> = { "2.4": 20, "5": 23, "6": 24 };
 
 function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Record<string, string>): EeroFixture {
   const m = mac(block, n);
@@ -357,6 +389,8 @@ function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Rec
     backhaul: row.gateway ? "wired" : "wireless",
     meshBars: row.gateway ? null : (row.meshBars ?? null),
     upstream: row.upstream ? (ids[row.upstream] ?? null) : null,
+    hop: null,
+    meshQuality: null,
     bands: row.bands,
     radios: wireless.map((band) => ({
       band,
@@ -364,11 +398,15 @@ function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Rec
       widthMhz: row.status === "offline" ? null : (row.radios[band]?.width ?? null),
       utilization: row.status === "offline" ? null : band === "2.4" ? 34 : band === "5" ? 21 : 9,
       clients: null,
+      txPowerDbm: row.status === "offline" ? null : TX_POWER[band],
+      autoChannel: !(row.manual ?? []).includes(band),
     })),
     led: { on: row.status !== "offline" ? true : null, brightness: row.ledBrightness ?? 100 },
     nightlight: row.nightlight ?? null,
     ipv4: row.ip,
     ipv6: row.v6 ? [row.v6] : [],
+    subnet: row.subnet,
+    gatewayIp: row.gatewayIp,
     mac: m,
     bssids: wireless.map((band, i) => ({ band, mac: `${base}${hex((n & 0xff) + 8 + i * 4)}` })),
     joined: row.joined,
@@ -445,6 +483,35 @@ function speedTests(now: number, rows: [hoursAgo: number, down: number | null, u
 }
 
 // ---------------------------------------------------------------------------
+// Ports, firmware, routing
+
+type PortSpec = [number: number, supportedMbps: number, opts?: { wan?: boolean; poe?: boolean }];
+
+/** Port specs for one eero. Port MACs follow the eero's own invented MAC. */
+function portsOf(eero: EeroFixture, specs: PortSpec[]): PortFixture[] {
+  const base = eero.mac ? eero.mac.slice(0, -2) : null;
+  const last = eero.mac ? Number.parseInt(eero.mac.slice(-2), 16) : 0;
+  return specs.map(([number, supportedMbps, o]) => ({
+    number,
+    name: o?.wan ? "WAN" : null,
+    supportedMbps,
+    isWan: o?.wan ?? false,
+    poe: o?.poe ? "on" : null,
+    mac: base ? `${base}${hex((last + 0x40 + number) & 0xff)}` : null,
+    actions: o?.wan ? [] : o?.poe ? ["DISABLE_PORT", "DISABLE_POE", "RESTART_POWER"] : ["DISABLE_PORT"],
+  }));
+}
+
+/** Installed versions newest first, from [version, days ago]; drops any before the eero joined. */
+function firmwareOf(eero: EeroFixture, now: number, steps: [string, number][]): Omit<M.FirmwareEntry, "current">[] {
+  const joined = eero.joined ? Date.parse(eero.joined) : Number.NEGATIVE_INFINITY;
+  return steps.map(([version, days]) => ({ version, at: now - days * DAY })).filter((s) => s.at >= joined).map((s) => ({ version: s.version, installedAt: new Date(s.at).toISOString() }));
+}
+
+/** The next 02:00 in Los Angeles standard time (10:00 UTC), for a scheduled update. */
+const nextUpdateWindow = (now: number) => Math.ceil((now - 10 * HOUR) / DAY) * DAY + 10 * HOUR;
+
+// ---------------------------------------------------------------------------
 // The fixture set
 
 const roundToMinute = (ms: number) => Math.floor(ms / MIN) * MIN;
@@ -458,10 +525,10 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
   // --- Maple Street ------------------------------------------------------
   const mapleIds = { lr: "80011", of: "80012", up: "80013", ga: "80014" };
   const mapleEeros = [
-    buildEero({ key: "lr", id: mapleIds.lr, location: "Living Room", model: "eero Max 7", modelNumber: "S040001", serial: "MU0DEMO0000011", gateway: true, bands: ["2.4", "5", "6", "wired"], radios: { "2.4": { channel: 6, width: 20 }, "5": { channel: 149, width: 80 }, "6": { channel: 37, width: 160 } }, ip: "192.168.4.1", v6: "2001:db8:4a1c:7e00::1", firmware: "7.12.1", updateAvailable: true, uptimeMin: 23 * 24 * 60 + 4 * 60, joined: "2025-03-03T17:05:00Z" }, 0xe0, 0x1000, now, mapleIds),
-    buildEero({ key: "of", id: mapleIds.of, location: "Office", model: "eero Pro 7", modelNumber: "S030001", serial: "MU0DEMO0000012", upstream: "lr", meshBars: 5, bands: ["2.4", "5", "6", "wired"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 36, width: 80 }, "6": { channel: 69, width: 160 } }, ip: "192.168.4.22", v6: "2001:db8:4a1c:7e00::22", firmware: "7.12.1", updateAvailable: true, uptimeMin: 33 * 60, joined: "2025-03-03T17:12:00Z", ledBrightness: 60 }, 0xe0, 0x1010, now, mapleIds),
-    buildEero({ key: "up", id: mapleIds.up, location: "Upstairs Hall", model: "eero 7", modelNumber: "S020001", serial: "MU0DEMO0000013", upstream: "lr", meshBars: 4, bands: ["2.4", "5", "wired"], radios: { "2.4": { channel: 11, width: 20 }, "5": { channel: 44, width: 80 } }, ip: "192.168.4.24", v6: "2001:db8:4a1c:7e00::24", firmware: "7.12.1", updateAvailable: true, uptimeMin: 23 * 24 * 60 + 3 * 60, joined: "2025-03-03T17:18:00Z" }, 0xe0, 0x1020, now, mapleIds),
-    buildEero({ key: "ga", id: mapleIds.ga, location: "Garage", model: "eero Beacon", modelNumber: "B010001", serial: "MU0DEMO0000014", upstream: "of", meshBars: 2, bands: ["2.4", "5"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 36, width: 80 } }, ip: "192.168.4.26", v6: "2001:db8:4a1c:7e00::26", firmware: "7.12.1", updateAvailable: true, uptimeMin: 2 * 24 * 60 + 12 * 60, joined: "2025-06-14T19:40:00Z", nightlight: { mode: "ambient", brightness: 40, on: null, off: null } }, 0xe0, 0x1030, now, mapleIds),
+    buildEero({ key: "lr", id: mapleIds.lr, location: "Living Room", model: "eero Max 7", modelNumber: "S040001", serial: "MU0DEMO0000011", gateway: true, bands: ["2.4", "5", "6", "wired"], radios: { "2.4": { channel: 6, width: 20 }, "5": { channel: 149, width: 80 }, "6": { channel: 37, width: 160 } }, ip: "192.168.4.1", v6: "2001:db8:4a1c:7e00::1", firmware: "7.12.1", updateAvailable: true, uptimeMin: 23 * 24 * 60 + 4 * 60, joined: "2025-03-03T17:05:00Z", subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" }, 0xe0, 0x1000, now, mapleIds),
+    buildEero({ key: "of", id: mapleIds.of, location: "Office", model: "eero Pro 7", modelNumber: "S030001", serial: "MU0DEMO0000012", upstream: "lr", meshBars: 5, bands: ["2.4", "5", "6", "wired"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 36, width: 80 }, "6": { channel: 69, width: 160 } }, ip: "192.168.4.22", v6: "2001:db8:4a1c:7e00::22", firmware: "7.12.1", updateAvailable: true, uptimeMin: 33 * 60, joined: "2025-03-03T17:12:00Z", ledBrightness: 60, manual: ["5"], subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" }, 0xe0, 0x1010, now, mapleIds),
+    buildEero({ key: "up", id: mapleIds.up, location: "Upstairs Hall", model: "eero 7", modelNumber: "S020001", serial: "MU0DEMO0000013", upstream: "lr", meshBars: 4, bands: ["2.4", "5", "wired"], radios: { "2.4": { channel: 11, width: 20 }, "5": { channel: 44, width: 80 } }, ip: "192.168.4.24", v6: "2001:db8:4a1c:7e00::24", firmware: "7.12.1", updateAvailable: true, uptimeMin: 23 * 24 * 60 + 3 * 60, joined: "2025-03-03T17:18:00Z", subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" }, 0xe0, 0x1020, now, mapleIds),
+    buildEero({ key: "ga", id: mapleIds.ga, location: "Garage", model: "eero Beacon", modelNumber: "B010001", serial: "MU0DEMO0000014", upstream: "of", meshBars: 2, bands: ["2.4", "5"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 36, width: 80 } }, ip: "192.168.4.26", v6: "2001:db8:4a1c:7e00::26", firmware: "7.12.1", updateAvailable: true, uptimeMin: 2 * 24 * 60 + 12 * 60, joined: "2025-06-14T19:40:00Z", nightlight: { mode: "ambient", brightness: 40, on: null, off: null }, subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" }, 0xe0, 0x1030, now, mapleIds),
   ];
   const mapleProfileIds = { alex: "9101", jamie: "9102", mia: "9103", leo: "9104" };
   const mapleBuilt = MAPLE_DEVICES.map((row, i) => buildDevice(row, i + 1, now, { block: 0x10, subnet: "192.168.4", v6: "2001:db8:4a1c:7e00", eeros: mapleIds, eeroList: mapleEeros, profiles: mapleProfileIds }));
@@ -478,7 +545,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     { min: 490, category: "admin", type: "admin_invite_sent", title: "Alex Kim invited sam@example.com as admin", detail: "Invite pending · expires in 2 days", refs: { adminId: "7001" } },
     { min: 18 * 60, category: "schedules", type: "profile_schedule_started", title: "Schedule started: Bedtime for Mia", detail: "Mia · 4 devices paused until 7:00 AM", refs: { profileId: mapleProfileIds.mia } },
     { min: 36 * 60, category: "firmware", type: "firmware_update_installed", title: "eeroOS 7.12.1 installed on all 4 eeros", detail: "Scheduled update window 2 AM to 5 AM · network restarted" },
-    { min: 36 * 60 - 3, category: "ports_temperature", type: "ethernet_port_up", title: "Ethernet port 1 on Living Room online at 2.5 Gbps", detail: "Living Room · WAN · after restart", refs: { eeroId: mapleIds.lr } },
+    { min: 36 * 60 - 3, category: "ports_temperature", type: "ethernet_port_up", title: "Ethernet port 1 on Living Room online at 10 Gbps", detail: "Living Room · WAN · after restart", refs: { eeroId: mapleIds.lr } },
     { min: 2 * 24 * 60 + 300, category: "devices", type: "device_new", title: "New device joined: Grandma's iPad", detail: "Living Room · 5 GHz · Unassigned", refs: { deviceId: deviceId("Grandma's iPad"), eeroId: mapleIds.lr } },
     { min: 2 * 24 * 60 + 12 * 60, category: "eero_status", type: "eero_online", title: "Garage is back online", detail: "Garage · offline for 4 min · 3 devices reconnected", refs: { eeroId: mapleIds.ga } },
     { min: 2 * 24 * 60 + 12 * 60 + 4, category: "eero_status", type: "eero_offline", title: "Garage went offline", detail: "Garage · eero Beacon", refs: { eeroId: mapleIds.ga } },
@@ -520,6 +587,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       dnsInUse: ["203.0.113.53", "203.0.113.54"],
       dnsMode: "automatic",
       doubleNat: false,
+      leaseRenewsAt: iso(-18 * HOUR),
       gateway: { eeroId: mapleIds.lr, location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 10000 },
     },
     eeros: mapleEeros,
@@ -548,15 +616,54 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     ]),
     events: [],
     reservations: [],
+    forwards: [],
+    pinholes: [],
+    lan: {
+      subnet: "192.168.4.0/22",
+      size: 1024,
+      gateway: "192.168.4.1",
+      pool: { start: "192.168.4.100", end: "192.168.7.254", size: 923, leased: 0 },
+      staticRange: { start: "192.168.4.2", end: "192.168.4.99" },
+    },
+    ports: {
+      [mapleIds.lr]: portsOf(mapleEeros[0] as EeroFixture, [[1, 10000, { wan: true }], [2, 10000], [3, 2500], [4, 2500]]),
+      [mapleIds.of]: portsOf(mapleEeros[1] as EeroFixture, [[1, 5000], [2, 5000]]),
+      [mapleIds.up]: portsOf(mapleEeros[2] as EeroFixture, [[1, 2500], [2, 2500]]),
+    },
+    firmware: Object.fromEntries(mapleEeros.map((e) => [e.id, firmwareOf(e, now, [["7.12.1", 1.5], ["7.11.4", 41], ["7.10.2", 97], ["7.9.0", 160]])])),
+    updates: {
+      status: "scheduled",
+      target: "7.13.0",
+      canUpdateNow: true,
+      required: false,
+      scheduledAt: new Date(nextUpdateWindow(now)).toISOString(),
+      preferredHour: 2,
+      lastUpdatedAt: iso(36 * HOUR),
+      stuckEeros: [],
+    },
     usage: Object.fromEntries(mapleBuilt.map(([d, u]) => [d.id, u])),
   };
-  const reserved: [string, number][] = [
-    ["Alex's MacBook Pro", 3], ["Synology NAS", 1], ["PlayStation 5", 1], ["Office iMac", 0],
-    ["HP LaserJet", 0], ["Living Room TV", 0], ["Hue Bridge", 0], ["Ring Doorbell", 0],
+  const reserved = ["Alex's MacBook Pro", "Synology NAS", "PlayStation 5", "Office iMac", "HP LaserJet", "Living Room TV", "Hue Bridge", "Ring Doorbell"];
+  const forwardRows: [device: string, name: string, external: string, internal: string, protocol: M.Protocol, enabled: boolean][] = [
+    ["Alex's MacBook Pro", "Web dev server", "8080", "8080", "tcp", true],
+    ["Alex's MacBook Pro", "Syncthing", "22000", "22000", "both", true],
+    ["Alex's MacBook Pro", "Game server", "27015-27030", "27015-27030", "udp", false],
+    ["Synology NAS", "Plex Media Server", "32400", "32400", "tcp", true],
+    ["PlayStation 5", "PSN party chat", "3478-3480", "3478-3480", "both", true],
   ];
-  maple.reservations = reserved.flatMap(([name, forwards], i) => {
-    const d = mapleDevices.find((x) => x.name === name);
+  const byName = (name: string) => mapleDevices.find((x) => x.name === name);
+  maple.forwards = forwardRows.flatMap(([name, desc, externalPort, internalPort, protocol, enabled], i) => {
+    const d = byName(name);
+    return d?.ipv4 ? [{ id: `96${String(i + 1).padStart(2, "0")}`, deviceId: d.id, name: desc, ip: d.ipv4, externalPort, internalPort, protocol, enabled }] : [];
+  });
+  maple.reservations = reserved.flatMap((name, i) => {
+    const d = byName(name);
+    const forwards = maple.forwards.filter((f) => f.deviceId === d?.id).length;
     return d?.ipv4 ? [{ id: `95${String(i + 1).padStart(2, "0")}`, deviceId: d.id, name: d.name, mac: d.mac, ip: d.ipv4, forwards }] : [];
+  });
+  maple.pinholes = ([["Synology NAS", "443", "tcp"], ["PlayStation 5", "3074", "udp"]] as const).flatMap(([name, port, protocol], i) => {
+    const d = byName(name);
+    return d ? [{ id: `97${String(i + 1).padStart(2, "0")}`, deviceId: d.id, address: d.ipv6[0] ?? null, port, protocol }] : [];
   });
   maple.events = toEvents([...mapleEvents, ...mapleFiller], now, "ms");
 
@@ -564,7 +671,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
   const lakeIds = { lc: "81021" };
   const lakeOfflineMin = 2 * 24 * 60;
   const lakeEeros = [
-    buildEero({ key: "lc", id: lakeIds.lc, location: "Great Room", model: "eero 6+", modelNumber: "N010001", serial: "MU0DEMO0000021", gateway: true, bands: ["2.4", "5", "wired"], radios: { "2.4": { channel: 6, width: 20 }, "5": { channel: 149, width: 80 } }, ip: "192.168.4.1", firmware: "7.11.4", updateAvailable: false, status: "offline", uptimeMin: 0, joined: "2024-07-02T20:10:00Z", heartbeatMin: lakeOfflineMin, endOfLife: { expired: false, date: "2029-12-31T00:00:00Z" } }, 0xe1, 0x2000, now, lakeIds),
+    buildEero({ key: "lc", id: lakeIds.lc, location: "Great Room", model: "eero 6+", modelNumber: "N010001", serial: "MU0DEMO0000021", gateway: true, bands: ["2.4", "5", "wired"], radios: { "2.4": { channel: 6, width: 20 }, "5": { channel: 149, width: 80 } }, ip: "192.168.4.1", firmware: "7.11.4", updateAvailable: false, status: "offline", uptimeMin: 0, joined: "2024-07-02T20:10:00Z", heartbeatMin: lakeOfflineMin, endOfLife: { expired: false, date: "2029-12-31T00:00:00Z" }, subnet: "192.168.4.0/24", gatewayIp: "192.168.4.1" }, 0xe1, 0x2000, now, lakeIds),
   ];
   const lakeBuilt = LAKE_DEVICES.map((row, i) => buildDevice(row, i + 1, now, { block: 0x11, subnet: "192.168.4", v6: null, eeros: lakeIds, eeroList: lakeEeros, profiles: {} }));
   const lake: NetworkData = {
@@ -596,6 +703,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       dnsInUse: ["198.51.100.53"],
       dnsMode: "automatic",
       doubleNat: false,
+      leaseRenewsAt: null,
       gateway: { eeroId: lakeIds.lc, location: "Great Room", model: "eero 6+", wanPortSpeedMbps: null },
     },
     eeros: lakeEeros,
@@ -613,14 +721,35 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       "lc",
     ),
     reservations: [],
+    forwards: [],
+    pinholes: [],
+    lan: {
+      subnet: "192.168.4.0/24",
+      size: 256,
+      gateway: "192.168.4.1",
+      pool: { start: "192.168.4.20", end: "192.168.4.254", size: 235, leased: 0 },
+      staticRange: { start: "192.168.4.2", end: "192.168.4.19" },
+    },
+    ports: { [lakeIds.lc]: portsOf(lakeEeros[0] as EeroFixture, [[1, 1000, { wan: true }], [2, 1000]]) },
+    firmware: Object.fromEntries(lakeEeros.map((e) => [e.id, firmwareOf(e, now, [["7.11.4", 52], ["7.10.2", 97], ["7.9.0", 160]])])),
+    updates: {
+      status: "up_to_date",
+      target: null,
+      canUpdateNow: false,
+      required: false,
+      scheduledAt: null,
+      preferredHour: 3,
+      lastUpdatedAt: iso(52 * DAY),
+      stuckEeros: [],
+    },
     usage: Object.fromEntries(lakeBuilt.map(([d, u]) => [d.id, u])),
   };
 
   // --- Mom's House: admin role, bridge mode, no Thread or nightlight ------
   const momIds = { ki: "82031", de: "82032" };
   const momEeros = [
-    buildEero({ key: "ki", id: momIds.ki, location: "Kitchen", model: "eero 6+", modelNumber: "N010001", serial: "MU0DEMO0000031", gateway: true, bands: ["2.4", "5", "wired"], radios: { "2.4": { channel: 11, width: 20 }, "5": { channel: 44, width: 80 } }, ip: "192.168.1.40", firmware: "7.12.1", updateAvailable: true, uptimeMin: 9 * 24 * 60, joined: "2023-11-25T22:00:00Z" }, 0xe2, 0x3000, now, momIds),
-    buildEero({ key: "de", id: momIds.de, location: "Den", model: "eero 6", modelNumber: "M010001", serial: "MU0DEMO0000032", upstream: "ki", meshBars: 4, bands: ["2.4", "5"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 157, width: 80 } }, ip: "192.168.1.41", firmware: "7.12.1", updateAvailable: true, uptimeMin: 9 * 24 * 60, joined: "2023-11-25T22:10:00Z", endOfLife: { expired: false, date: "2028-06-30T00:00:00Z" } }, 0xe2, 0x3010, now, momIds),
+    buildEero({ key: "ki", id: momIds.ki, location: "Kitchen", model: "eero 6+", modelNumber: "N010001", serial: "MU0DEMO0000031", gateway: true, bands: ["2.4", "5", "wired"], radios: { "2.4": { channel: 11, width: 20 }, "5": { channel: 44, width: 80 } }, ip: "192.168.1.40", firmware: "7.12.1", updateAvailable: true, uptimeMin: 9 * 24 * 60, joined: "2023-11-25T22:00:00Z", subnet: "192.168.1.0/24", gatewayIp: "192.168.1.1" }, 0xe2, 0x3000, now, momIds),
+    buildEero({ key: "de", id: momIds.de, location: "Den", model: "eero 6", modelNumber: "M010001", serial: "MU0DEMO0000032", upstream: "ki", meshBars: 4, bands: ["2.4", "5"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 157, width: 80 } }, ip: "192.168.1.41", firmware: "7.12.1", updateAvailable: true, uptimeMin: 9 * 24 * 60, joined: "2023-11-25T22:10:00Z", endOfLife: { expired: false, date: "2028-06-30T00:00:00Z" }, subnet: "192.168.1.0/24", gatewayIp: "192.168.1.1" }, 0xe2, 0x3010, now, momIds),
   ];
   const momBuilt = MOM_DEVICES.map((row, i) => buildDevice(row, i + 1, now, { block: 0x12, subnet: "192.168.1", v6: null, eeros: momIds, eeroList: momEeros, profiles: {} }));
   const momDevices = momBuilt.map(([d]) => d);
@@ -653,6 +782,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       dnsInUse: ["192.168.1.1"],
       dnsMode: "automatic",
       doubleNat: null,
+      leaseRenewsAt: iso(-9 * HOUR),
       gateway: { eeroId: momIds.ki, location: "Kitchen", model: "eero 6+", wanPortSpeedMbps: 1000 },
     },
     eeros: momEeros,
@@ -668,7 +798,26 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       now,
       "mh",
     ),
+    // Bridge mode: the router does reservations and forwards.
     reservations: [],
+    forwards: [],
+    pinholes: [],
+    lan: null,
+    ports: {
+      [momIds.ki]: portsOf(momEeros[0] as EeroFixture, [[1, 1000, { wan: true }], [2, 1000]]),
+      [momIds.de]: portsOf(momEeros[1] as EeroFixture, [[1, 1000], [2, 1000]]),
+    },
+    firmware: Object.fromEntries(momEeros.map((e) => [e.id, firmwareOf(e, now, [["7.12.1", 9], ["7.11.4", 44], ["7.10.2", 99]])])),
+    updates: {
+      status: "available",
+      target: "7.13.0",
+      canUpdateNow: true,
+      required: false,
+      scheduledAt: null,
+      preferredHour: 3,
+      lastUpdatedAt: iso(9 * DAY),
+      stuckEeros: [],
+    },
     usage: Object.fromEntries(momBuilt.map(([d, u]) => [d.id, u])),
   };
 
