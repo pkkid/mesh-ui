@@ -259,27 +259,42 @@ building a new chart; port from them rather than inventing a style.
 - Do not commit secrets, tokens, or real network data (device names, MACs, IPs).
 - No emdashes in docs or UI copy.
 
-## Testing: sandbox only, never the maintainer's network
+## Testing: sandbox for changes, read-only on the real network
 
-The maintainer's eero network is real and in use. **Agents never touch it on
-their own initiative.** That rule outranks feature work and holds for every
-surface (app, CLI, MCP, scripts, tests).
+The maintainer's eero network is real and in use. Agents may read it, never
+change it. That rule outranks feature work and holds for every surface (app,
+CLI, MCP, scripts, tests).
 
-- **Exception: the maintainer asks.** When the maintainer explicitly asks an
-  agent to check or test something on their network, the agent may use the
-  real network and session for that request. Scope it to what was asked,
-  prefer read-only calls, never put the token in output or files, print only
-  the fields needed, and confirm before any write. The permission covers that
-  request only, not later work.
-
-- **No agent sends any request to eero's cloud API** (`api-user.e2ro.com`),
-  not even read-only queries, and never runs the app, CLI or MCP server
-  against a live session. Always use `--demo` / `MESH_UI_DEMO=1`.
-- **Never read or use the maintainer's session or settings.** Do not open,
-  copy or decrypt `~/.config/mesh-ui/` (or the macOS and Windows
-  equivalents). Every automated run, screenshot or test uses a throwaway
-  user data directory in a temp or scratch folder, so the maintainer's
-  theme, window state and session are never changed.
+- **Read-only checks on the real network are allowed, at any time.** Agents
+  may run `query`-effect commands against the maintainer's real network and
+  session, without asking first, for example to check a response shape.
+  Be gentle: a few sequential calls, no polling loops, no parallel bursts;
+  honour 429 and `Retry-After` (stop on `rate_limited`), and stay well under
+  the rate budget (about 100 requests a minute).
+- **Never a `write`, `disruptive` or `destructive` command on the real
+  network**, on any surface, even with `confirm`. Changes are tried only in
+  demo mode or against the fake eero server.
+- **How a CLI reaches the real session.** `pnpm mesh-ui` (the dev launcher,
+  `scripts/mesh-ui-dev.mjs`) uses a scratch user data dir in the system temp
+  folder unless `MESH_UI_USER_DATA_DIR` or `--user-data-dir` is given, so by
+  default it is `not_signed_in`. To read the real network, point it at the
+  app's config dir for that one command, after `pnpm build`:
+  `MESH_UI_USER_DATA_DIR=~/.config/mesh-ui pnpm -s mesh-ui run <query id>
+  --format json | jq '<only counts and booleans>'` (macOS
+  `~/Library/Application Support/mesh-ui`, Windows `%APPDATA%\mesh-ui`).
+  The session is decrypted by the OS keychain inside that process; never
+  open, copy or decrypt `session.json` yourself, and never sign in or out
+  there. If the session is missing or expired, record "not signed in" and
+  stop.
+- **No real data leaves the terminal.** Never print the token. Pipe real
+  output through `jq` so only shapes, counts and booleans reach the
+  terminal. Real names, MACs, IPs, serials and versions never go into files,
+  commits, PRs, screenshots or logs.
+- **Everything else stays in the sandbox.** UI screenshots, tests, `pnpm
+  ui:shot`, `pnpm dev:fake` and every Electron window an agent starts use a
+  throwaway user data directory in a temp or scratch folder and demo or fake
+  data, so the maintainer's theme, window state, settings and session are
+  never changed. Tests never call `api-user.e2ro.com`.
 - **The sandbox has two layers:**
   1. The `demo` backend: in-memory fixtures behind the same `Backend`
      interface, used for command tests, UI work and screenshots. Writes apply
@@ -294,11 +309,11 @@ surface (app, CLI, MCP, scripts, tests).
   Client behaviour has tests against the fake server.
 - **Fixtures are invented.** Fake names, MACs, IPs and serials; never copy
   real network data into code, tests or docs.
-- **When only a real network can prove something** (a response shape we
-  have not seen, a write that must really stick, timing of a reboot), do not
-  try it. Write a manual check instead (below). If a real response shape is
-  needed for a fixture, ask the maintainer to capture it with a read-only
-  command and redact it.
+- **When only a real network can prove something** that a read cannot (a
+  write that must really stick, the timing of a reboot), do not try it.
+  Write a manual check instead (below). A response shape can be checked
+  with a read-only command as above; if a fixture needs the raw shape, ask
+  the maintainer to capture and redact it.
 
 ### Manual checks
 
