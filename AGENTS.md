@@ -318,9 +318,12 @@ Work is planned and run with the `milestone-plan`, `milestone-start` and
 - The roadmap lives in `docs/roadmap.md`: milestones (`M<n>`), each a slice
   a user can try, made of stories (tasks, `M<n>.<k>`), each one PR, ending
   with the maintainer's review `M<n>.R`.
-- Each story is also a GitHub issue in `pkkid/mesh-ui`, added to the project
-  board (top of this file) and linked from its roadmap block. Its PR closes
-  the issue; the board shows status.
+- Each milestone has one parent issue `M<n>: <name>` in `pkkid/mesh-ui`, and
+  each story (including `M<n>.R`) is a GitHub sub-issue of it. All of them
+  share the GitHub milestone, sit on the project board (top of this file) and
+  are linked from the roadmap. A story's PR closes its issue; the review PR
+  closes `M<n>.R` and the parent. Issues are created one milestone at a time,
+  after the maintainer approves the stories.
 - Only plan a milestone when the maintainer asks. Write stories only for the
   next milestone; later ones get a Goal line.
 - A story is a vertical slice where it can be: commands in `src/core`, their

@@ -32,6 +32,8 @@ work that only makes sense once the app is useful.
 
 ## M1: Foundation, Overview and Devices
 
+Issue: [#17](https://github.com/pkkid/mesh-ui/issues/17) (parent of every M1 story)
+
 Goal: a user can sign in to eero, or run in demo mode or against the local
 fake eero server, and see the Overview and Devices pages, with the same data
 available from `mesh-ui run ...` and the MCP server.
