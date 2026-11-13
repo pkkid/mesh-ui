@@ -17,7 +17,7 @@
     { id: "internet", file: "02-internet.html", label: "Internet", icon: "globe", c: "var(--s-aqua)" },
     { id: "eeros", file: "03-eeros.html", label: "eeros", icon: "router", c: "var(--s-blue)", meta: "4" },
     { id: "devices", file: "05-devices.html", label: "Devices", icon: "monitor-smartphone", c: "var(--s-purple)", meta: "38" },
-    { id: "profiles", file: "07-profiles.html", label: "Profiles", icon: "users", c: "var(--s-orange)", meta: "5" },
+    { id: "profiles", file: "07-profiles.html", label: "Profiles", icon: "users", c: "var(--s-orange)", meta: "4" },
     { id: "activity", file: "10-activity.html", label: "Activity", icon: "activity", c: "var(--s-red)" },
     { id: "guest", file: "11-guest.html", label: "Guest network", icon: "ticket", c: "var(--s-yellow)" },
     { group: "Settings" },

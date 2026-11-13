@@ -408,7 +408,8 @@ function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Rec
     subnet: row.subnet,
     gatewayIp: row.gatewayIp,
     mac: m,
-    bssids: wireless.map((band, i) => ({ band, mac: `${base}${hex((n & 0xff) + 8 + i * 4)}` })),
+    // Offsets stay inside this eero's 16-address block, so no BSSID equals another eero's MAC.
+    bssids: wireless.map((band, i) => ({ band, mac: `${base}${hex((n & 0xff) + [8, 12, 14][i]!)}` })),
     joined: row.joined,
     uptimeSec: row.status === "offline" ? null : row.uptimeMin * 60,
     lastHeartbeat: new Date(now - (row.heartbeatMin ?? 0) * MIN).toISOString(),
