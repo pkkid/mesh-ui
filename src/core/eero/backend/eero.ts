@@ -1,5 +1,6 @@
 /** eero area of the eero backend: `GET {net}/eeros` and `GET {eero}`. */
 
+import { notAvailable } from "../../backend";
 import { BackendError } from "../../errors";
 import { mapEero, type RawEeroFull } from "../map/eero";
 import { asList, linkUrl } from "../raw";
@@ -21,4 +22,8 @@ export const eero: EeroArea<"eero"> = ({ client }) => ({
     if (!raw || (owner && idFromUrl(owner) !== net)) throw new BackendError("eero_error", "That eero is not on this network.", { status: 404 });
     return mapEero(raw);
   },
+
+  // Built by M2.6.
+  ports: () => notAvailable("eero", "eero", "ports"),
+  firmwareHistory: () => notAvailable("eero", "eero", "firmwareHistory"),
 });

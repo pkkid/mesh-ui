@@ -8,7 +8,21 @@
  * src/core/eero/raw.ts, so model changes break the fixtures at compile time.
  */
 
-import type { RawAccount, RawDevice, RawEero, RawEvent, RawNetwork, RawPermissions, RawProfile, RawSpeedTest } from "../../src/core/eero/raw";
+import type {
+  RawAccount,
+  RawConnections,
+  RawDevice,
+  RawEero,
+  RawEvent,
+  RawFirmwareHistoryEntry,
+  RawNetwork,
+  RawPermissions,
+  RawPortInterface,
+  RawProfile,
+  RawRouting,
+  RawSpeedTest,
+  RawUpdates,
+} from "../../src/core/eero/raw";
 
 /** The one code the fake sign-in accepts. */
 export const FAKE_CODE = "123456";
@@ -32,6 +46,14 @@ export type FakeNetwork = {
   events: RawEvent[];
   /** Blocked MACs. */
   blacklist: string[];
+  /** `GET {eero}/connections` per eero id. */
+  connections: Record<string, RawConnections>;
+  /** `GET /2.2/eeros/{id}/firmware_update/history` per eero id, oldest first (as seeded; mappers sort). */
+  firmwareHistory: Record<string, RawFirmwareHistoryEntry[]>;
+  /** `GET {net}/routing`. */
+  routing: RawRouting;
+  /** `GET {net}/updates`; the network's embedded `updates` is the same object. */
+  updates: RawUpdates;
 };
 
 export type FakeState = {
@@ -226,6 +248,21 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
   });
 
   const online = devices.filter((d) => d.connected).length;
+  const maple = seed.id === "100001";
+  const updates: RawUpdates = {
+    has_update: maple,
+    update_required: false,
+    can_update_now: true,
+    target_firmware: maple ? "7.11.0" : null,
+    update_to_firmware: maple ? "7.11.0" : null,
+    min_required_firmware: "7.8.0",
+    update_status: maple ? "available" : "up_to_date",
+    scheduled_update_time: null,
+    preferred_update_hour: 3,
+    last_update_started: iso("05T03:00:00"),
+    last_user_update: { unresponsive_eeros: [], incomplete_eeros: [] },
+    manifest_resource: null,
+  };
   const network: RawNetwork = {
     url: netUrl,
     name: seed.name,
@@ -258,7 +295,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     thread: seed.id === "100001",
     power_saving: false,
     guest_network: { url: `${netUrl}/guestnetwork`, name: `${seed.name} Guest`, enabled: false },
-    updates: { has_update: seed.id === "100001", update_required: false, can_update_now: true, target_firmware: "7.11.0", preferred_update_hour: 3 },
+    updates,
     capabilities: {
       device_blacklist: { capable: true },
       led_action: { capable: true },
@@ -308,5 +345,58 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       { id: 3, event_type: "eero.offline", title: "Garage went offline", created: iso("12T09:15:00") },
     ],
     blacklist: [],
+    connections: Object.fromEntries(seed.eeros.map((e, i) => [e.id, seedConnections(e, i, devices)])),
+    firmwareHistory: Object.fromEntries(
+      eeros.map((e) => [
+        e.url?.split("/").pop() ?? "",
+        [
+          { os_version: "7.8.0", installed: "2026-07-01T03:00:00Z" },
+          { os_version: "7.9.2", installed: "2026-09-01T03:00:00Z" },
+          { os_version: e.os_version, installed: iso("05T03:00:00") },
+        ],
+      ]),
+    ),
+    routing: seedRouting(netUrl, maple ? devices : []),
+    updates,
+  };
+}
+
+/** Ports per eero: the gateway has a WAN port and every wired device on it; leaves have idle ports; a Beacon has none. */
+function seedConnections(e: EeroSeed, i: number, devices: RawDevice[]): RawConnections {
+  if (e.model === "eero Beacon") return { ports: { layout: "none", interfaces: [] }, node_actions: [], wireless_devices: [] };
+  const wired = devices.filter((d) => d.wireless === false && d.connected && d.source?.url === `/2.2/eeros/${e.id}`);
+  const port = (n: number, extra: Partial<RawPortInterface>): RawPortInterface => ({
+    interface_number: n,
+    name: `Port ${n}`,
+    port_status: "DOWN",
+    negotiated_speed: null,
+    supported_speed: "P2500",
+    network_type: "LAN",
+    poe_status: null,
+    ethernet_address: mac(950 + i * 4 + n),
+    actions: [{ type: "DISABLE_PORT" }],
+    ...extra,
+  });
+  const interfaces: RawPortInterface[] = [];
+  if (e.gateway) interfaces.push(port(1, { name: "WAN", port_status: "UP", negotiated_speed: "P2500", network_type: "WAN", actions: [] }));
+  wired.forEach((d, k) =>
+    interfaces.push(port(interfaces.length + 1, { port_status: "UP", negotiated_speed: "P1000", neighbor: { type: "DEVICE", metadata: { url: d.url, mac: d.mac, display_name: d.display_name ?? undefined } }, actions: [{ type: "DISABLE_PORT" }, { type: k === 0 ? "RESTART_POWER" : "DISABLE_DATA" }] })),
+  );
+  while (interfaces.length < 2) interfaces.push(port(interfaces.length + 1, {}));
+  return { ports: { layout: "horizontal", interfaces }, node_actions: [{ type: "POWER_CYCLE_ALL_PORTS_AND_REBOOT" }], wireless_devices: [] };
+}
+
+/** One reservation and forward on the first wired device, one on the first laptop, and an IPv6 pinhole. */
+function seedRouting(netUrl: string, devices: RawDevice[]): RawRouting {
+  const picks = [devices.find((d) => d.wireless === false), devices.find((d) => d.device_type === "laptop_computer")].filter((d): d is RawDevice => !!d);
+  return {
+    url: `${netUrl}/routing`,
+    devices: { url: `${netUrl}/devices`, data: picks.map((d) => ({ url: d.url, mac: d.mac, nickname: d.nickname ?? null })) },
+    reservations: { url: `${netUrl}/reservations`, data: picks.map((d, i) => ({ url: `${netUrl}/reservations/${300 + i}`, description: d.display_name ?? "", mac: d.mac, ip: d.ip ?? undefined, public_static_ip: null })) },
+    forwards: {
+      url: `${netUrl}/forwards`,
+      data: picks.map((d, i) => ({ url: `${netUrl}/forwards/${400 + i}`, description: i === 0 ? "Media server" : "Web dev server", ip: d.ip ?? undefined, gateway_port: i === 0 ? "32400" : "8080", client_port: i === 0 ? "32400" : "8080", protocol: i === 0 ? "tcp" : "both", enabled: i === 0 })),
+    },
+    pinholes: { url: `${netUrl}/pinholes`, data: picks.slice(1).map((d, i) => ({ url: `${netUrl}/pinholes/${500 + i}`, device: { url: d.url, mac: d.mac }, ip: "2001:db8:100:1::22", protocol: "tcp", port: "443" })) },
   };
 }

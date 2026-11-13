@@ -100,6 +100,20 @@ export type NetworkHealth = {
   mesh: { status: Status };
   eeros: { id: Id; location: string; status: Status; meshBars: number | null; weakLink: boolean }[];
   messages: string[];
+  /** Problems worth a banner, derived in core from eeros and devices. */
+  issues: HealthIssue[];
+};
+
+export type HealthIssueKind = "weak_link" | "eero_offline" | "network_offline";
+
+export type HealthIssue = {
+  kind: HealthIssueKind;
+  /** The eero with the problem; null for network_offline. */
+  eeroId: Id | null;
+  /** That eero's parent in the mesh, when it has one. */
+  upstreamId: Id | null;
+  /** Devices on the affected eero (or network). */
+  deviceIds: Id[];
 };
 
 export type Permission = { read: boolean; create: boolean; update: boolean; delete: boolean };
@@ -116,7 +130,8 @@ export type SpeedTest = {
   at: Iso;
   downMbps: number | null;
   upMbps: number | null;
-  rating: "great" | "below_plan" | null;
+  /** Computed in core against the plan: great (75% and up), below_plan, poor (under 40%). */
+  rating: "great" | "below_plan" | "poor" | null;
 };
 
 export type PlanSpeed = { down: number; up: number };
@@ -141,9 +156,20 @@ export type Internet = {
   dnsMode: "automatic" | "custom" | null;
   doubleNat: boolean | null;
   gateway: { eeroId: Id; location: string; model: string | null; wanPortSpeedMbps: number | null } | null;
+  /** When the WAN DHCP lease renews; null when not on DHCP or not reported. */
+  leaseRenewsAt: Iso | null;
   /** From app settings ("set by you"), filled in by core, not the backend. */
   planMbps: PlanSpeed | null;
   lastSpeedTest: SpeedTest | null;
+  /** The hero line, built in core; null until it has something to say. */
+  verdict: InternetVerdict | null;
+};
+
+export type InternetVerdict = {
+  /** steady: fast and steady; slow: slower than your plan; down: no internet. */
+  kind: "steady" | "slow" | "down";
+  title: string;
+  detail: string | null;
 };
 
 export type SpeedHistory = {
@@ -192,6 +218,9 @@ export type Radio = {
   widthMhz: number | null;
   utilization: number | null;
   clients: number | null;
+  txPowerDbm: number | null;
+  /** eero picks the channel itself. */
+  autoChannel: boolean | null;
 };
 
 export type Nightlight = {
@@ -219,6 +248,10 @@ export type Eero = {
   meshBars: number | null;
   /** Parent eero. */
   upstream: Id | null;
+  /** Links from the gateway: 0 gateway, 1 its children, and so on. Filled in by core. */
+  hop: number | null;
+  /** From meshBars (4 to 5 excellent, 3 good, 2 weak, 0 to 1 poor); null when wired. Filled in by core. */
+  meshQuality: MeshQuality | null;
   clients: { total: number | null; wired: number | null; wireless: number | null };
   bands: Band[];
   radios: Radio[];
@@ -227,6 +260,10 @@ export type Eero = {
   nightlight: Nightlight | null;
   ipv4: string | null;
   ipv6: string[];
+  /** LAN subnet in CIDR, e.g. "192.168.4.0/22". */
+  subnet: string | null;
+  /** The LAN gateway address this eero uses. */
+  gatewayIp: string | null;
   mac: string | null;
   bssids: { band: Band; mac: string }[];
   joined: Iso | null;
@@ -252,7 +289,10 @@ export type EeroPort = {
 
 export type EeroPorts = { eeroId: Id; ports: EeroPort[] };
 
-export type FirmwareEntry = { version: string; installedAt: Iso | null };
+export type MeshQuality = "excellent" | "good" | "weak" | "poor";
+
+/** One installed version, newest first; `current` marks the running one. */
+export type FirmwareEntry = { version: string; installedAt: Iso | null; current: boolean };
 
 export type PlacementResult = {
   eeroId: Id;
@@ -293,6 +333,8 @@ export type Device = {
   privateMac: boolean;
   ipv4: string | null;
   ipv6: string[];
+  /** fe80:: address, when eero reports one. */
+  ipv6LinkLocal: string | null;
   connected: boolean;
   lastActive: Iso | null;
   firstSeen: Iso | null;
@@ -331,6 +373,12 @@ export type DeviceSummary = {
   blocked: number;
   byBand: Record<Band, number>;
   byCategory: Record<DeviceCategory, number>;
+  /** Every device counted once, by the eero it is on (null: none, e.g. blocked). Largest first; sums to total. */
+  byEero: { eeroId: Id | null; count: number }[];
+  /** By profile (null: Unassigned). Largest first; sums to total. */
+  byProfile: { profileId: Id | null; count: number }[];
+  /** By manufacturer (null: unknown). Largest first; sums to total. */
+  byManufacturer: { manufacturer: string | null; count: number }[];
   newThisWeek: Id[];
   rates: DeviceRateTotals | null;
 };
@@ -477,6 +525,14 @@ export type LanMap = {
   gateway: string;
   pool: { start: string; end: string; size: number; leased: number };
   staticRange: { start: string; end: string };
+};
+
+/** Everything from one `GET {net}/routing`. Bridge mode: empty lists and a null lan. */
+export type Routing = {
+  reservations: Reservation[];
+  forwards: Forward[];
+  pinholes: Pinhole[];
+  lan: LanMap | null;
 };
 
 // ---------------------------------------------------------------------------

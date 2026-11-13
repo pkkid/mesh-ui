@@ -109,6 +109,14 @@ type NetworkHealth = {
   mesh: { status: Status };
   eeros: { id: Id; location: string; status: Status; meshBars: number | null; weakLink: boolean }[];
   messages: string[];
+  issues: HealthIssue[];          // derived in core; [] until M2.5
+};
+
+type HealthIssue = {
+  kind: "weak_link" | "eero_offline" | "network_offline";
+  eeroId: Id | null;              // null for network_offline
+  upstreamId: Id | null;          // the affected eero's parent
+  deviceIds: Id[];                // devices affected
 };
 
 type Permissions = {
@@ -130,6 +138,7 @@ type Permissions = {
 | `health.internet` | `health.internet.{status,isp_up}` |
 | `health.mesh` | `health.eero_network.status` |
 | `weakLink` | wireless eero with `mesh_quality_bars <= 2` |
+| `issues` | derived in core from eeros and devices (not a backend field) |
 | `Permissions.can` | `permissions.<area>.{create,read,update,delete}` |
 
 ## Internet, speed and usage
@@ -148,11 +157,14 @@ type Internet = {
   dnsMode: "automatic" | "custom" | null;
   doubleNat: boolean | null;
   gateway: { eeroId: Id; location: string; model: string | null; wanPortSpeedMbps: number | null } | null;
+  leaseRenewsAt: Iso | null;      // WAN DHCP lease renewal
   planMbps: { down: number; up: number } | null;   // from app settings, "set by you"
   lastSpeedTest: SpeedTest | null;
+  verdict: { kind: "steady" | "slow" | "down"; title: string; detail: string | null } | null;  // built in core
 };
 
-type SpeedTest = { at: Iso; downMbps: number | null; upMbps: number | null; rating: "great" | "below_plan" | null };
+// rating vs plan, in core: great when every direction is at least 75%, poor when any is under 40%, else below_plan
+type SpeedTest = { at: Iso; downMbps: number | null; upMbps: number | null; rating: "great" | "below_plan" | "poor" | null };
 
 type SpeedHistory = { tests: SpeedTest[]; avg7d: { downMbps: number | null; upMbps: number | null } };
 
@@ -184,6 +196,8 @@ type UsageBreakdown = {
 | `wanType` | `wan_type`, `lease.mode`, `pppoe_enabled` |
 | `ispGateway` | `gateway_ip` or `lease.dhcp.router` |
 | `dnsInUse`, `dnsMode` | `dns.parent.ips` or `dns.custom.ips`, `dns.mode` |
+| `leaseRenewsAt` | `lease` (shape unverified; mapped by M2.4, null until then) |
+| `verdict` | built in core from status, plan and the last speed test (M2.4; null until then) |
 | `gateway.wanPortSpeedMbps` | gateway eero `ethernet_status.statuses[isWanPort].speed` (`"P2500"` to 2500) |
 | `lastSpeedTest` | `speed.{date,down.value,up.value}` |
 | `SpeedTest` | `GET {net}/speedtest` rows `{date, down_mbps, up_mbps}`; `rating` vs `planMbps` in core |
@@ -208,6 +222,8 @@ type Eero = {
   backhaul: "wired" | "wireless" | null;
   meshBars: number | null;        // 1..5, wireless only
   upstream: Id | null;            // parent eero
+  hop: number | null;             // core: 0 gateway, parent + 1; null for a broken chain
+  meshQuality: "excellent" | "good" | "weak" | "poor" | null;  // core: bars 4-5, 3, 2, 0-1; null when wired
   clients: { total: number | null; wired: number | null; wireless: number | null };
   bands: Band[];
   radios: Radio[];
@@ -215,6 +231,8 @@ type Eero = {
   nightlight: Nightlight | null;  // Beacon only
   ipv4: string | null;
   ipv6: string[];
+  subnet: string | null;          // LAN CIDR
+  gatewayIp: string | null;       // LAN gateway address
   mac: string | null;
   bssids: { band: Band; mac: string }[];
   joined: Iso | null;
@@ -224,7 +242,10 @@ type Eero = {
   messages: string[];
 };
 
-type Radio = { band: Band; channel: number | null; widthMhz: number | null; utilization: number | null; clients: number | null };
+type Radio = {
+  band: Band; channel: number | null; widthMhz: number | null; utilization: number | null; clients: number | null;
+  txPowerDbm: number | null; autoChannel: boolean | null;
+};
 
 type Nightlight = { mode: "off" | "ambient" | "schedule"; brightness: number | null; on: Hhmm | null; off: Hhmm | null };
 
@@ -244,7 +265,7 @@ type EeroPorts = {
   }[];
 };
 
-type FirmwareEntry = { version: string; installedAt: Iso | null };
+type FirmwareEntry = { version: string; installedAt: Iso | null; current: boolean };  // newest first
 
 type PlacementResult = { eeroId: Id; rating: "poor" | "fair" | "good" | "strong" | null; advice: string | null };
 
@@ -273,12 +294,15 @@ type UpgradeReport = {
 | `upstream` | `wireless_upstream_node.url`, else the eero in `ethernet_status.statuses[].neighbor` with `isLeafWiredToUpstream` |
 | `clients` | `connected_clients_count`, `connected_wired_clients_count`, `connected_wireless_clients_count` |
 | `bands` | `bands[]` (`band_5GHz_low` and `_high` both map to `"5"`) |
-| `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}` |
+| `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}`; `txPowerDbm` from `tx_power` and `autoChannel` (M2.6; null until then) |
+| `hop`, `meshQuality` | derived in core in `eero.list` and `eero.get` from `upstream`, `backhaul` and `meshBars` |
+| `subnet`, `gatewayIp` | mapped by M2.6 (null until then) |
 | `led` | `led_on`, `led_brightness` |
 | `nightlight` | `nightlight` (`enabled` false = off; `schedule.enabled` picks schedule vs ambient) |
 | `ipv4`, `ipv6`, `mac`, `bssids` | `ip_address`, `ipv6_addresses[].address`, `mac_address`, `bssids_with_bands` |
 | `uptimeSec`, `joined` | `uptime.since_last_reboot_s`, `joined` |
 | `EeroPorts` | `resources.connections`: `ports.interfaces[]` (`negotiated_speed` `"P2500"`, `supported_speed`, `poe_status`, `actions[].type`) |
+| `FirmwareEntry` | `GET /2.2/eeros/{id}/firmware_update/history` (shape unverified, MANUAL); `current` is the entry matching `os_version` |
 | `CoverageScan`, `UpgradeReport` | `/2.4/` placement scans; shapes known only from LD, MANUAL capture needed |
 
 ## Devices
@@ -299,6 +323,7 @@ type Device = {
   privateMac: boolean;
   ipv4: string | null;
   ipv6: string[];
+  ipv6LinkLocal: string | null;   // fe80:: address
   connected: boolean;
   lastActive: Iso | null;
   firstSeen: Iso | null;
@@ -323,6 +348,10 @@ type DeviceList = {
     total: number; online: number; offline: number; paused: number; blocked: number;
     byBand: Record<Band, number>;
     byCategory: Record<DeviceCategory, number>;
+    // each sums to total, largest first; null is no eero (blocked), Unassigned, unknown maker
+    byEero: { eeroId: Id | null; count: number }[];
+    byProfile: { profileId: Id | null; count: number }[];
+    byManufacturer: { manufacturer: string | null; count: number }[];
     newThisWeek: Id[];
     rates: { downMbps: number; upMbps: number; active: number; at: Iso } | null;
   };
@@ -337,6 +366,7 @@ type DeviceList = {
 | `category` | core table from `device_type` (phone and tablet, laptop and desktop, television and game console and media streamer, thermostat and plug and camera and so on) |
 | `privateMac` | `is_private` |
 | `ipv4`, `ipv6` | `ipv4` or `ip`, `ipv6_addresses[].address` |
+| `ipv6LinkLocal` | the `fe80::` entry of `ipv6_addresses` (M2.7; null until then) |
 | `connected`, `lastActive`, `firstSeen` | `connected`, `last_active`, `first_active` |
 | `ssid` | `is_guest` (guest) else main; `subnet_kind` when present |
 | `eeroId` | `source.url` |
@@ -441,6 +471,8 @@ type Reservation = { id: Id; deviceId: Id | null; name: string; mac: string; ip:
 type Forward = { id: Id; deviceId: Id | null; name: string; ip: string; externalPort: string; internalPort: string; protocol: "tcp" | "udp" | "both"; enabled: boolean };
 type Pinhole = { id: Id; deviceId: Id | null; address: string | null; port: string; protocol: "tcp" | "udp" | "both" };
 type LanMap = { subnet: string; size: number; gateway: string; pool: { start: string; end: string; size: number; leased: number }; staticRange: { start: string; end: string } };
+// everything from one GET {net}/routing; bridge mode gives empty lists and lan null
+type Routing = { reservations: Reservation[]; forwards: Forward[]; pinholes: Pinhole[]; lan: LanMap | null };
 ```
 
 | Model | eero source |
