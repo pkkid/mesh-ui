@@ -41,32 +41,12 @@ export type MeshApi = {
 };
 
 // ---------------------------------------------------------------------------
-// Prototype bridge, kept only so the prototype renderer still compiles until
-// M1.7 (app shell) and M1.9 (sign-in) move every page to `execute`. These
-// calls never reach eero: `load` reports signed out and sign-in answers that
-// it is not available yet. Remove once nothing uses them.
+// Prototype bridge, kept only so the unused prototype LoginView still
+// compiles until M1.9 replaces it with the sign-in pages. Both calls reject
+// without reaching eero. Remove with LoginView.
 
-/** @deprecated Prototype device shape; pages use src/core/model.ts. */
-export type Device = {
-  id: string;
-  name: string;
-  ip: string | null;
-  mac: string | null;
-  manufacturer: string | null;
-  connected: boolean;
-  wireless: boolean;
-  frequency: string | null;
-  via: string | null;
-};
-
-/** @deprecated Prototype network shape; pages use src/core/model.ts. */
-export type Network = { id: string; name: string; devices: Device[] };
-
-/** @deprecated Use `execute` with the auth and network commands. */
+/** @deprecated Use `execute` with the auth.login commands. */
 export type LegacyMeshApi = {
   startLogin(login: string): Promise<void>;
   verify(code: string): Promise<void>;
-  load(): Promise<Network[] | null>;
-  logout(): Promise<void>;
-  sessionStorage(): Promise<SessionStorage>;
 };

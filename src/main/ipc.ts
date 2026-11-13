@@ -121,18 +121,7 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
 
   // Prototype calls (see LegacyMeshApi). They never reach eero.
   const unavailable = () => Promise.reject(new Error("Sign-in is not available in this build yet."));
-  const legacy: LegacyMeshApi = {
-    startLogin: unavailable,
-    verify: unavailable,
-    load: async () => null,
-    logout: async () => {
-      await execute("auth.logout");
-    },
-    sessionStorage: async () => {
-      const status = await execute<{ storage?: unknown }>("auth.status");
-      return status.ok && status.result.storage === "keychain" ? "keychain" : "memory";
-    },
-  };
+  const legacy: LegacyMeshApi = { startLogin: unavailable, verify: unavailable };
 
   return { ...api, ...legacy };
 }

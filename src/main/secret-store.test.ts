@@ -357,7 +357,6 @@ describe("window.mesh bridge", () => {
     expect(leak).toMatchObject({ ok: false, error: { code: "eero_error" } });
     await mesh.execute("test.reboot", { confirm: true });
     await mesh.execute("test.select");
-    await mesh.sessionStorage();
     mesh.setTitlebarColors({ color: "#000000", symbolColor: "#ffffff" });
 
     expect(ipc.payloads.length).toBeGreaterThan(8);
@@ -391,9 +390,7 @@ describe("window.mesh bridge", () => {
 
   it("keeps the prototype calls away from eero", async () => {
     const { mesh } = await bridgeSetup();
-    expect(await mesh.load()).toBeNull();
     await expect(mesh.startLogin("alex@example.com")).rejects.toThrow(/not available/);
-    // auth.status is not registered in this setup, so storage falls back to memory.
-    expect(await mesh.sessionStorage()).toBe("memory");
+    await expect(mesh.verify("123456")).rejects.toThrow(/not available/);
   });
 });
