@@ -1,11 +1,12 @@
 # Testing
 
-Mesh UI is tested entirely in a sandbox. The maintainer's eero network is
-real and in use, so **agents never touch it on their own initiative**: no
-request to eero's cloud API (`api-user.e2ro.com`), not even a read, and no run
-of the app, CLI or MCP server against a live session. That rule outranks
-feature work and holds for every surface. The full rule, including the
-exception when the maintainer explicitly asks, is in `AGENTS.md`.
+Mesh UI is tested in a sandbox. The maintainer's eero network is real and
+in use, so **agents may read it but never change it**: gentle `query`
+commands against the real session are allowed (to check a response shape,
+say), and no `write`, `disruptive` or `destructive` command ever runs on it.
+Tests, screenshots and every window an agent starts use demo or fake data
+and a throwaway user data dir. The full rule, including how a CLI reaches
+the real session and what may be printed, is in `AGENTS.md` (Testing).
 
 ## Local first
 
@@ -63,10 +64,11 @@ Plus two guards:
   throws on any request to `api-user.e2ro.com`, and the client's origin check
   only accepts the fake server's origin when a test or the dev entry point
   injects it (release builds have no way to redirect the client).
-- **No real user data.** Every run that starts Electron passes a throwaway
-  `--user-data-dir` in a temp or scratch folder. Nothing reads, copies or
-  decrypts `~/.config/mesh-ui/`, `~/Library/Application Support/mesh-ui/` or
-  `%APPDATA%\mesh-ui\`.
+- **No real user data in tests.** Every test, screenshot or window that
+  starts Electron passes a throwaway `--user-data-dir` in a temp or scratch
+  folder. Only a one-off read-only CLI check (see `AGENTS.md`) points at
+  `~/.config/mesh-ui/`, `~/Library/Application Support/mesh-ui/` or
+  `%APPDATA%\mesh-ui\`, and nothing copies or decrypts files there.
 
 ## Fixtures
 
@@ -259,13 +261,13 @@ packaging smoke tests (`pnpm dist:dir`, then `pnpm dist:smoke`) run locally. CI 
 
 Once a milestone looks complete in demo mode and against the fake server,
 the maintainer runs a short hands-on pass in the real UI against their real
-network. That pass is driven by the checklist below. Agents never do it
-themselves, and only touch the real network when the maintainer explicitly
-asks (see `AGENTS.md`).
+network. That pass is driven by the checklist below. Agents may tick the
+items a read-only CLI check proves (see `AGENTS.md`); visual comparisons
+with the eero app stay with the maintainer.
 
-Some things only a real network can prove: a response shape we have not seen,
-a write that must really stick, the timing of a reboot. Agents do not try
-them. Instead the task adds a line to its PR body:
+Some things only a real network can prove: a write that must really stick,
+the timing of a reboot. Agents do not try them. Instead the task adds a line
+to its PR body:
 
 ```text
 MANUAL: <what to check> | <steps> | <expected result> | <risk: none, brief outage, ...>
