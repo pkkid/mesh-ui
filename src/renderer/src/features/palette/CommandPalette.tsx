@@ -156,14 +156,23 @@ function PaletteBody({ close }: { close: () => void }) {
   const [run, setRun] = useState<{ key: string | null; state: RunState }>({ key: null, state: { running: false, result: null } });
   const runState = run.key === item?.key ? run.state : { running: false, result: null };
 
-  const entities: EntityOptions = useMemo(
-    () => ({
-      device: sources.devices.map((d) => ({ value: d.label, label: d.label, hint: [d.state, d.context].filter(Boolean).join(" · ") || null })),
-      profile: sources.profiles.map((p) => ({ value: p.label, label: p.label, hint: [p.state, p.context].filter(Boolean).join(" · ") || null })),
-      eero: (eeros.data ?? []).map((e) => ({ value: e.location, label: e.location, hint: e.model })),
-    }),
-    [sources, eeros.data],
-  );
+  const entities: EntityOptions = useMemo(() => {
+    // Send the name, as the CLI would, unless two entities share it; then the id.
+    const pick = <T,>(list: ReadonlyArray<T>, id: (x: T) => string, name: (x: T) => string, hint: (x: T) => string | null) => {
+      const seen = new Map<string, number>();
+      for (const x of list) seen.set(name(x).toLowerCase(), (seen.get(name(x).toLowerCase()) ?? 0) + 1);
+      return list.map((x) => {
+        const dup = (seen.get(name(x).toLowerCase()) ?? 0) > 1;
+        return { value: dup ? id(x) : name(x), label: dup ? `${name(x)} (${id(x)})` : name(x), hint: hint(x) };
+      });
+    };
+    const ctx = (x: { state: string | null; context: string }) => [x.state, x.context].filter(Boolean).join(" · ") || null;
+    return {
+      device: pick(sources.devices, (d) => d.id, (d) => d.label, ctx),
+      profile: pick(sources.profiles, (p) => p.id, (p) => p.label, ctx),
+      eero: pick(eeros.data ?? [], (e) => e.id, (e) => e.location, (e) => e.model),
+    };
+  }, [sources, eeros.data]);
 
   const blocked =
     item === null
