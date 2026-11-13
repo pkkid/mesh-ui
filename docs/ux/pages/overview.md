@@ -14,15 +14,19 @@ actions.
 1. **Status hero** (card). Left column:
    - Network name ("Maple Street") as the title.
    - Status line: Online status and "Gateway up 23 days, 4 hours".
-   - Metric row: ISP ("Ziply Fiber"), Public IP (mono, "203.0.113.48"), Last
-     speed test ("2h ago").
+   - Metric row: ISP ("Ziply Fiber"), Public IP ("203.0.113.48"), Last
+     speed test ("2h ago"), all three values in the same type so they share a
+     baseline.
    - Action row: **Run speed test** (primary), **Share Wi-Fi**, **Pause a
      profile**, **Restart network** (ghost).
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      on the plan max (1.2 Gbps) with the latest result in the middle ("942
      Mbps", "918 Mbps") in the download and upload series colours.
 2. **Data usage** section. Header: "Data usage", sub "Per hour, last 24 hours,
-   all devices", Day / Week toggle. Body is a side column plus main chart:
+   all devices" on the heading's baseline, Day / Week toggle. Switching range
+   crossfades the subtitle and body (150 ms out, swap, 150 ms in, opacity
+   only, none with reduced motion); background polls never crossfade. Body is
+   a side column plus main chart:
    - Hero figure "412 GB" with "used in 24h · busiest hour 12 to 1 PM" and
      "48.2 GB so far today".
    - Series list: Download (arrow icon in series colour, "351 GB", "85% of
@@ -34,9 +38,12 @@ actions.
      tooltip with a Total row.
 3. Two columns:
    - **eeros**. Header link "Topology →". One row per eero: icon (router, or
-     lamp for a Beacon), name with a Gateway badge, detail line (model,
-     backhaul type with mesh bars for wireless, device count), a 24 h usage
-     sparkline in that eero's series colour, and status (Online, Weak link).
+     lamp for a Beacon) and three lines: the name followed by a Gateway badge;
+     model · backhaul type; status (Online, Weak link, Offline), mesh bars for
+     wireless, device count. A 24 h usage sparkline in that eero's series
+     colour sits right of lines 2 and 3 (never beside the name), the same
+     width in every row, up to 110 px; it narrows before the text does and
+     hides below 40 px.
    - **Top devices**. Sub "Data used, 24h · 31 online now", link "All devices
      →". Table of the top 5: rank, device icon and name with a thin bar scaled
      to the top device, Down and Up (Up muted).

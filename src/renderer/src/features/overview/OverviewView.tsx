@@ -8,13 +8,13 @@
  * per-section error note, disabled "Coming soon" buttons) live here too.
  */
 import { ArrowRight } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useState } from "react";
 
 import { Link } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Button, type ButtonProps } from "~/components/ui/button";
-import { Card, Empty } from "~/components/ui/card";
+import { Card, Empty, Section } from "~/components/ui/card";
 import { TopBarSubtitle } from "~/features/shell/TopBar";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
@@ -88,6 +88,22 @@ export function useNow(everyMs = 30_000): number {
 
 // ---------------------------------------------------------------------------
 // Shared pieces
+
+/**
+ * A Section whose heading and subtitle share a baseline. Section centres the
+ * 14px title and the 12px subtitle on their boxes, which leaves the smaller
+ * line sitting about a pixel high; this aligns the header row on baselines
+ * and gives the title the row's 28px line so it stays vertically centred
+ * (tools such as the Day / Week toggle align on their label's baseline).
+ */
+export function OverviewSection({ className, ...props }: ComponentProps<typeof Section>) {
+  return (
+    <Section
+      className={cn("[&>div:first-child>h2]:leading-7 [&>div:first-child]:items-baseline", className)}
+      {...props}
+    />
+  );
+}
 
 /** A small outline button in a section header that goes to another page ("Topology →"). */
 export function HeaderLink({ to, children, arrow = false }: { to: string; children: ReactNode; arrow?: boolean }) {

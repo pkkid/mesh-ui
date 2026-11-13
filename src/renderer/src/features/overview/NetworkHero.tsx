@@ -70,7 +70,7 @@ export function NetworkHero() {
         facts={
           <>
             <Metric label="ISP" value={internet.data?.isp.name ?? n?.isp} />
-            <Metric label="Public IP" value={internet.data?.publicIpv4} mono />
+            <Metric label="Public IP" value={internet.data?.publicIpv4} />
             <Metric label="Last speed test" value={latest ? formatRelative(latest.at, now, tz) : null} />
           </>
         }
