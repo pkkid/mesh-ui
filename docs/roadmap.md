@@ -170,7 +170,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: electron-builder config with app id `io.github.pkkid.meshui`, `pnpm dist:dir` for the current OS (unsigned), a local `pnpm test:keychainless` (Linux), and `ci.yml`: one smoke job per OS on pull requests to main and manual runs (install, typecheck, test, build), with concurrency cancelling. No other CI jobs.
 - done when: `pnpm dist:dir` builds and launches with `--demo` locally; the smoke workflow is green on all three OS on the story's PR.
 
-### M1.14 Overview page ☐
+### M1.14 Overview page ✅ (#36)
 - issue: [#14](https://github.com/pkkid/mesh-ui/issues/14)
 - after: M1.7, M1.8, M1.10, M1.11, M1.12
 - docs: ux/pages/overview.md
