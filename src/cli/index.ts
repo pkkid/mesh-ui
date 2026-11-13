@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { version as packageVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
-import { createDemoBackend } from "../core/demo";
+import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
 import { createEeroBackend } from "../core/eero/backend";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
 import type { ErrorCode } from "../core/errors";
@@ -213,7 +213,8 @@ export function nodeHost(opts: NodeHostOptions = {}): CliHost {
     isTTY: process.stdout.isTTY === true,
     env: process.env,
     createEngine({ mode, surface, userDataDir }) {
-      const settings = userDataDir ? fileSettings(join(userDataDir, "settings.json")) : memorySettings();
+      const initial = mode === "demo" ? DEMO_SETTINGS : {};
+      const settings = userDataDir ? fileSettings(join(userDataDir, "settings.json"), initial) : memorySettings(initial);
       const host = { version: packageVersion, configDir: userDataDir };
       if (mode === "demo") {
         return createEngine({ backend: (opts.demoBackend ?? createDemoBackend)(), commands: opts.commands, settings, surface, host });

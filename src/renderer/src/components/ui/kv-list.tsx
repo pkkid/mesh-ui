@@ -4,6 +4,7 @@
 import { Check, Copy } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
+import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { MISSING } from "../../../../core/format";
 
@@ -60,31 +61,6 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       <Icon className="size-3" />
     </button>
   );
-}
-
-/**
- * Copies text. The app denies web permission checks (src/main/index.ts), which
- * can refuse the async Clipboard API, so fall back to a selected textarea and
- * `execCommand("copy")`, which needs only the click's user gesture.
- */
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const el = document.createElement("textarea");
-    el.value = text;
-    el.setAttribute("readonly", "");
-    el.style.position = "fixed";
-    el.style.opacity = "0";
-    document.body.append(el);
-    el.select();
-    try {
-      return document.execCommand("copy");
-    } finally {
-      el.remove();
-    }
-  }
 }
 
 export { KvList };

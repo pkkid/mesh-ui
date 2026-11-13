@@ -27,7 +27,7 @@ import { pathToFileURL } from "node:url";
 import { app, BrowserWindow, ipcMain, nativeTheme, safeStorage, session, shell } from "electron";
 import { version as appVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
-import { createDemoBackend } from "../core/demo";
+import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
 import { createEeroBackend } from "../core/eero/backend";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
 import type { SettingsStore, Surface } from "../core/spec";
@@ -118,7 +118,7 @@ async function buildEngine(m: EngineMode, surface: Surface, dir: string, setting
 
 async function createAppEngine(): Promise<Engine> {
   // Demo never touches the session or the saved settings.
-  if (isDemo) return buildEngine({ mode: "demo" }, "ui", configDir, memorySettings());
+  if (isDemo) return buildEngine({ mode: "demo" }, "ui", configDir, memorySettings(DEMO_SETTINGS));
   const settings = fileSettings(paths.settings);
   const origin = await fakeOrigin();
   if (origin) {
@@ -153,7 +153,7 @@ function electronCliHost(): CliHost {
     async createEngine({ mode, surface, userDataDir }) {
       const dir = userDataDir ? path.resolve(userDataDir) : configDir;
       const given = Boolean(userDataDir || userDataSwitch);
-      if (mode === "demo") return buildEngine({ mode: "demo" }, surface, dir, given ? fileSettings(configPaths(dir).settings) : memorySettings());
+      if (mode === "demo") return buildEngine({ mode: "demo" }, surface, dir, given ? fileSettings(configPaths(dir).settings, DEMO_SETTINGS) : memorySettings(DEMO_SETTINGS));
       if (mode === "fake") {
         // runCli only allows --fake when host.dev, that is, an unpackaged build.
         const origin = process.env.MESH_UI_FAKE_ORIGIN ?? "";

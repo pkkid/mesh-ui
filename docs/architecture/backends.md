@@ -221,6 +221,12 @@ fixtures.
   radio, and its LAN subnet and gateway. Devices have `fe80::` link-local
   addresses built from their invented MACs. WAN leases renew in the future
   (none for the offline Lake Cabin).
+- Demo settings: `DEMO_SETTINGS` gives Maple Street the mockup 02 plan
+  (1,200 Mbps down and up); Lake Cabin and Mom's House have none. Settings
+  are host state, not backend state, so the demo hosts (app window, CLI)
+  seed their settings store with it: `memorySettings(DEMO_SETTINGS)`, or
+  `fileSettings(path, DEMO_SETTINGS)` with a user data dir, where the file
+  wins once written. Tests pass their own settings.
 - Account: Alex Kim, `alex@example.com`, `+1 (555) 010-0142`.
 - Every name, MAC, IP, serial and phone number is invented. IPs use
   `192.168.4.x` on the LAN and documentation ranges (`203.0.113.x`,
