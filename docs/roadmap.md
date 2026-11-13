@@ -138,7 +138,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: `auth.status`, `auth.login.start`, `auth.login.verify`, `auth.login.resend`, `auth.logout`, `account.get`, `app.info`, and `demo.scenario.set` (demo only), with eero backend implementations and fake routes. Sign-in UI from mockup 18: email or phone, code entry with wrong-code and resend, choose network, first-run loading, signed-out and expired-session states.
 - done when: command tests on demo and client tests on the fake server pass; sign-in works end to end in `pnpm dev:fake`; `MANUAL: Sign in to the real account | pnpm dev, sign in with your eero email and code | Overview shows your network | none`.
 
-### M1.10 Network and internet read commands ✅ (#PR)
+### M1.10 Network and internet read commands ✅ (#28)
 - issue: [#10](https://github.com/pkkid/mesh-ui/issues/10)
 - after: M1.2, M1.3
 - docs: architecture/commands.md (network, internet), ux/pages/overview.md
