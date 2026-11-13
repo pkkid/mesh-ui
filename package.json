@@ -10,6 +10,7 @@
     "postinstall": "node node_modules/electron/install.js",
     "dev": "electron-vite dev",
     "dev:demo": "MESH_UI_DEMO=1 electron-vite dev",
+    "dev:fake": "MESH_UI_FAKE=1 electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc",
