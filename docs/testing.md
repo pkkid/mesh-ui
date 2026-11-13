@@ -7,6 +7,23 @@ of the app, CLI or MCP server against a live session. That rule outranks
 feature work and holds for every surface. The full rule, including the
 exception when the maintainer explicitly asks, is in `AGENTS.md`.
 
+## Local first
+
+Almost all testing runs on the developer's machine, and it has to be fast.
+GitHub Actions only does light cross-platform checks and release builds
+(see [CI](#ci)).
+
+- `pnpm test` runs every layer except UI in one Vitest run. Target: under
+  30 seconds on a laptop. Tests share nothing, need no network beyond
+  `127.0.0.1`, and start the fake eero server in-process.
+- `pnpm test:watch` reruns affected tests on save; use it while building.
+- `pnpm test:ui` runs the Playwright Electron checks locally (a few minutes).
+  Run it before opening a PR that changes the UI, and attach its screenshots.
+- `pnpm check` is the pre-PR gate: `typecheck`, `test`, `build`. Every PR is
+  expected to pass it locally first; CI is a backstop, not the main signal.
+- Slow tests are a bug. A test that needs real waiting (rate limits,
+  `Retry-After`, burst cooldowns) uses fake timers, never `sleep`.
+
 ## The sandbox
 
 Two layers stand in for eero:
@@ -15,19 +32,37 @@ Two layers stand in for eero:
    same `Backend` interface as the live backend. Writes apply to the fixtures,
    so pausing or renaming visibly works. Used for command tests, CLI and MCP
    tests, UI work and screenshots. Enabled with `--demo` or `MESH_UI_DEMO=1`.
-2. **Fake eero server** (`test/fake-eero/`). A local HTTP server that answers
-   like the real API, built from the shapes in
-   [eero-api/endpoints.md](eero-api/endpoints.md) and
-   [eero-api/data-model.md](eero-api/data-model.md). The real `eero` client
-   runs against it, so auth, refresh, rotation, rate limits, `/2.3/` writes and
-   error mapping are covered without touching eero.
+2. **Fake eero server** (`test/fake-eero/`). A local stand-in for eero's
+   cloud API: an HTTP server that answers like `api-user.e2ro.com`, built
+   from the shapes in [eero-api/endpoints.md](eero-api/endpoints.md) and
+   [eero-api/data-model.md](eero-api/data-model.md). It keeps state (writes
+   stick), so it behaves like a small real network. The real `eero` client
+   and `EeroBackend` run against it, so auth, refresh, rotation, rate limits,
+   `/2.3/` writes and error mapping are covered without touching eero. This
+   is where most testing of the live code path happens.
+
+The demo backend is for speed and screenshots; the fake server is for
+proving the code that will talk to the real eero.
+
+### Running the app against the fake server
+
+`pnpm dev:fake` starts the fake eero server on a local port and the app in
+dev mode pointed at it, with a temp user data dir. Sign-in, every page and
+every action then run through the **real** eero client and backend, exactly
+as they would against eero, so flows can be tried by hand in the real UI
+without touching a real network. The CLI has the same: `mesh-ui --fake run
+...` in dev builds. The fake sign-in accepts any email and the code `123456`.
+
+The redirect exists only in dev builds: the fake origin is injected by the
+dev entry point, and release builds contain no code path that points the
+client anywhere but `api-user.e2ro.com`.
 
 Plus two guards:
 
 - **No real eero.** The test setup replaces global `fetch` with a wrapper that
   throws on any request to `api-user.e2ro.com`, and the client's origin check
-  only accepts the fake server's origin when a test injects it (there is no
-  environment variable that redirects the client).
+  only accepts the fake server's origin when a test or the dev entry point
+  injects it (release builds have no way to redirect the client).
 - **No real user data.** Every run that starts Electron passes a throwaway
   `--user-data-dir` in a temp or scratch folder. Nothing reads, copies or
   decrypts `~/.config/mesh-ui/`, `~/Library/Application Support/mesh-ui/` or
@@ -64,8 +99,7 @@ Plus two guards:
 | UI | Pages render, confirm flows, screenshots | Electron + Playwright, demo | `test/ui/*.spec.ts` |
 
 Runner: Vitest for everything but UI; Playwright's Electron support
-(`_electron.launch`) for UI. `pnpm test` runs all but UI; `pnpm test:ui` runs
-UI.
+(`_electron.launch`) for UI. All of it runs locally; see [Local first](#local-first).
 
 ### Command tests
 
@@ -118,8 +152,9 @@ switched per test:
 - plaintext or undecryptable file: deleted on load;
 - sign-out deletes the file even when the eero logout call fails.
 
-On Linux CI the same checks also run against real Electron with
-`--password-store=basic`.
+A local script (`pnpm test:keychainless`, Linux) also runs the app and CLI
+against real Electron with `--password-store=basic` to prove the session
+stays in memory.
 
 ### CLI and MCP tests
 
@@ -149,12 +184,26 @@ for looks.
 
 ## CI
 
-Runs on macOS, Windows and Linux (see
-[build-and-release.md](platform/build-and-release.md#ci)): typecheck, unit,
-command, client, host, CLI and MCP tests everywhere; the keychain-less job and
-UI screenshots on Linux. CI has no eero credentials and needs none.
+Kept deliberately light. GitHub Actions is used for two things only:
 
-## Manual checks
+1. **Cross-platform smoke** on pull requests to `main` (and on demand):
+   one job per OS (macOS, Windows, Linux) that installs, runs `pnpm typecheck`
+   and `pnpm test`, and builds. Its job is catching OS-specific breakage
+   (paths, keychains, line endings), not being the main test signal.
+2. **Release builds** when a version tag is pushed, because signed macOS and
+   Windows artifacts need those runners.
+
+UI tests, screenshots, the keychain-less run and packaging smoke tests run
+locally. CI has no eero credentials and needs none. Details in
+[build-and-release.md](platform/build-and-release.md#ci).
+
+## Manual checks on the real network
+
+Once a milestone looks complete in demo mode and against the fake server,
+the maintainer runs a short hands-on pass in the real UI against their real
+network. That pass is driven by the checklist below. Agents never do it
+themselves, and only touch the real network when the maintainer explicitly
+asks (see `AGENTS.md`).
 
 Some things only a real network can prove: a response shape we have not seen,
 a write that must really stick, the timing of a reboot. Agents do not try
@@ -178,8 +227,8 @@ MANUAL: Device pause persists | Pause "Leo's Switch" in Devices, reopen the app 
 
 ## Done means
 
-- `pnpm typecheck`, `pnpm test` and `pnpm build` pass.
+- `pnpm check` (typecheck, test, build) passes locally.
 - New commands have tests, including `bad_params` and `needs_confirm`.
 - New client behaviour has a fake-server test.
-- UI changes have demo-mode screenshots in the PR.
+- UI changes ran `pnpm test:ui` locally and have demo-mode screenshots in the PR.
 - Anything that needs the real network is a `MANUAL:` line, not a done-when.

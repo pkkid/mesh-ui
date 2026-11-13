@@ -242,10 +242,13 @@ building a new chart; port from them rather than inventing a style.
 
 ## Working rules
 
-- Run `pnpm typecheck` and `pnpm build` before calling work done.
+- Run `pnpm check` (typecheck, test, build) locally before calling work done.
+  Testing is local-first and fast; GitHub Actions only runs a light
+  cross-platform smoke on PRs and the release builds. Do not add CI jobs.
 - Check behaviour headless first (`mesh-ui run --demo ...`); the window is for
   checking looks.
-- To see UI changes, run `pnpm dev:demo` rather than signing in to a real account.
+- To see UI changes, run `pnpm dev:demo` (fixtures) or `pnpm dev:fake` (the
+  real eero client against the local fake eero server), never a real sign-in.
 - See "Testing" for the sandbox rule and "Milestone runs" for how work is
   planned and reviewed.
 - Keep changes small and the model simple. Prefer one clear file over layers of
@@ -278,9 +281,9 @@ surface (app, CLI, MCP, scripts, tests).
   1. The `demo` backend: in-memory fixtures behind the same `Backend`
      interface, used for command tests, UI work and screenshots. Writes apply
      to the fixtures so behaviour is visible.
-  2. A fake eero HTTP server in the test suite that answers like the real
-     API, using response shapes from `notes/api-endpoints.md` and the open
-     source clients. The real `eero` client code (auth, session refresh,
+  2. A fake eero HTTP server (`test/fake-eero/`) that answers like the real
+     API, using response shapes from `docs/eero-api/` and the open source
+     clients. It keeps state, and `pnpm dev:fake` runs the app against it. The real `eero` client code (auth, session refresh,
      cookie rotation, rate limits, `/2.3/` writes, error mapping) is tested
      against it, so the live code path is covered without touching eero.
 - **Every command has a test** that runs it through `engine.execute` against

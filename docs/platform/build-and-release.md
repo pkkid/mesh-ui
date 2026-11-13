@@ -95,16 +95,19 @@ Pull request workflows never see them.
 
 ## CI
 
-Two workflows.
+Two workflows, and nothing else runs in GitHub Actions.
 
-### `ci.yml` (every push and pull request)
+### `ci.yml` (pull requests to `main`, and manual runs)
+
+Light on purpose: most testing is local (see [testing.md](../testing.md#local-first)).
 
 | Job | Runners | Steps |
 | --- | --- | --- |
-| check | `ubuntu-latest`, `macos-latest`, `windows-latest` | `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm build` |
-| keychain-less | `ubuntu-latest` | App and CLI tests with `--password-store=basic` (session must stay in memory) |
-| ui | `ubuntu-latest` | Playwright Electron run in demo mode under `xvfb-run`, screenshots uploaded as artifacts |
-| package-smoke | all three | `pnpm dist:dir` unsigned, then launch with `--demo` and run `mesh-ui --demo run app.info` |
+| smoke | `ubuntu-latest`, `macos-latest`, `windows-latest` | `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm build` |
+
+No UI, screenshot, keychain-less or packaging jobs run in CI; those run
+locally (`pnpm test:ui`, `pnpm test:keychainless`, `pnpm dist:dir`). Pushes to
+branches do not trigger CI; concurrency cancels superseded runs.
 
 ### `release.yml` (tag `v*`)
 
