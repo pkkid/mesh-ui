@@ -41,10 +41,15 @@ export async function readParams(source: string | null, ctx: CliContext): Promis
   return value;
 }
 
-/** Adds `--network` as `networkId` unless the params already name one. */
-export function withNetwork(params: Params, ctx: CliContext): Params {
+/**
+ * Adds `--network` as `networkId` unless the params already name one. Only
+ * for commands that take a network, so `--network` never breaks an account
+ * or app command.
+ */
+export function withNetwork(params: Params, ctx: CliContext, command: CommandInfo | undefined): Params {
   const network = ctx.args.flags.network;
-  return network && params.networkId === undefined ? { ...params, networkId: network } : params;
+  const takesNetwork = command !== undefined && "networkId" in ((command.params.properties ?? {}) as object);
+  return network && takesNetwork && params.networkId === undefined ? { ...params, networkId: network } : params;
 }
 
 /** Prints a usage problem in the chosen format and returns exit 2. */
@@ -77,15 +82,16 @@ async function info(ctx: CliContext, id: string): Promise<CommandInfo | undefine
 async function runOne(io: CliIo, ctx: CliContext, id: string): Promise<number> {
   let params: Params;
   try {
-    params = withNetwork(await readParams(ctx.args.flags.params, ctx), ctx);
+    params = await readParams(ctx.args.flags.params, ctx);
   } catch (err) {
     if (err instanceof UsageError) return usage(io, ctx, err.message);
     throw err;
   }
+  const command = await info(ctx, id);
+  params = withNetwork(params, ctx, command);
   if (ctx.args.flags.confirm) params = { ...params, confirm: true };
-  const engine = await ctx.engine();
-  const result = await engine.execute(id, params);
-  return report(result, io, ctx, (await info(ctx, id))?.sensitive === true);
+  const result = await (await ctx.engine()).execute(id, params);
+  return report(result, io, ctx, command?.sensitive === true);
 }
 
 /** Script targets: a file ending .jsonl, a path, or - for stdin. */

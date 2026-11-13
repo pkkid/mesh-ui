@@ -47,7 +47,7 @@ export async function runScript(io: CliIo, ctx: CliContext, target: string): Pro
   }
 
   const engine = await ctx.engine();
-  const sensitive = new Set(engine.commands().filter((c) => c.sensitive).map((c) => c.id));
+  const infos = new Map(engine.commands().map((c) => [c.id, c]));
   const print = ({ line, id, result }: Line) => {
     if (!result.ok) {
       if (ctx.format === "json" && !quiet) io.stdout(json({ line, id, ...result }));
@@ -57,7 +57,7 @@ export async function runScript(io: CliIo, ctx: CliContext, target: string): Pro
     if (quiet) return;
     if (ctx.format === "json") io.stdout(json({ line, id, ...result }));
     else {
-      const shown = id && sensitive.has(id) && !reveal ? maskSensitive(result.result) : result.result;
+      const shown = id && infos.get(id)?.sensitive && !reveal ? maskSensitive(result.result) : result.result;
       io.stdout(`# line ${line}: ${id}\n${renderTable(shown, ctx.style, Date.now())}`);
     }
   };
@@ -72,7 +72,7 @@ export async function runScript(io: CliIo, ctx: CliContext, target: string): Pro
     const result: ExecuteResult =
       "error" in parsed
         ? { ok: false, error: { code: "bad_params", message: parsed.error } }
-        : await engine.execute(parsed.id, withNetwork(parsed.params, ctx));
+        : await engine.execute(parsed.id, withNetwork(parsed.params, ctx, infos.get(parsed.id)));
     print({ line, id: parsed.id, result });
     if (!result.ok) {
       failed = true;

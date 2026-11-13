@@ -249,6 +249,7 @@ export function nodeHost(opts: NodeHostOptions = {}): CliHost {
 export async function cliMain(argv: string[], host?: CliHost): Promise<never> {
   process.on("SIGINT", () => process.exit(EXIT.interrupted));
   const code = await runCli(argv, defaultIo, host);
-  await new Promise<void>((resolve) => process.stdout.write("", () => resolve()));
+  const drain = (stream: NodeJS.WriteStream) => new Promise<void>((resolve) => stream.write("", () => resolve()));
+  await Promise.all([drain(process.stdout), drain(process.stderr)]);
   process.exit(code);
 }

@@ -232,6 +232,11 @@ describe("run output", () => {
     expect(parse(r.stdout)).toEqual({ ok: true, result: { networkId: "net_2" } });
   });
 
+  it("--network is left off commands that take no network", async () => {
+    const r = await mesh(["run", "test.list", "--network", "Test Cabin"]);
+    expect(r.code).toBe(0);
+  });
+
   it("MESH_UI_DEMO=1 works like --demo", async () => {
     const r = await mesh(["run", "test.list"], { demo: false, env: { MESH_UI_DEMO: "1" } });
     expect(r.code).toBe(0);
