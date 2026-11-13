@@ -33,6 +33,12 @@ import { createSecretStore, keychainName } from "./secret-store";
 
 /** Matches --titlebar-height in the renderer's index.css. */
 const TITLEBAR_HEIGHT = 44;
+/**
+ * The Windows and Linux controls overlay stops 1px short of the titlebar so
+ * the header's 1px bottom border (the last row of the 44px strip) is not
+ * painted over and runs to the window's right edge.
+ */
+const OVERLAY_HEIGHT = TITLEBAR_HEIGHT - 1;
 
 const argv = process.argv;
 const cliIndex = argv.indexOf("--cli");
@@ -178,7 +184,7 @@ function createWindow(): void {
           titleBarOverlay: {
             color: "#00000000",
             symbolColor: dark ? "#f5f5f5" : "#18181b",
-            height: TITLEBAR_HEIGHT,
+            height: OVERLAY_HEIGHT,
           },
         }),
     webPreferences: {
@@ -247,7 +253,7 @@ if (isCli) {
       },
       setTitlebarColors: (colors) => {
         if (!mainWindow || process.platform === "darwin") return;
-        mainWindow.setTitleBarOverlay({ ...colors, height: TITLEBAR_HEIGHT });
+        mainWindow.setTitleBarOverlay({ ...colors, height: OVERLAY_HEIGHT });
       },
     });
     createWindow();
