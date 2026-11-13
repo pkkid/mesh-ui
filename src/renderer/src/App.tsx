@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { RouterOutlet, useNavigationShortcuts } from "~/app/router";
 import { followHostEvents, onSessionEnded, useQuery } from "~/app/useCommand";
+import { CommandPalette } from "~/features/palette/CommandPalette";
 import { SignInView } from "~/features/sign-in/SignInView";
 import { Sidebar } from "~/features/shell/Sidebar";
 import { TopBar, TopBarProvider } from "~/features/shell/TopBar";
@@ -68,6 +69,7 @@ function Shell() {
           <RouterOutlet />
         </main>
       </TopBarProvider>
+      <CommandPalette />
     </div>
   );
 }
