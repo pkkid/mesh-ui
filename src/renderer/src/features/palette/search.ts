@@ -10,6 +10,7 @@
  */
 import { z } from "zod";
 
+import { toolName } from "../../../../core/mcpNames";
 import type { Device, Effect, Eero, Permissions, ProfileList } from "../../../../core/model";
 import type { CommandInfo, JsonSchema } from "../../../../core/registry";
 
@@ -469,20 +470,8 @@ export function cliLine(id: string, params: Record<string, unknown>, effect: Eff
   return `mesh-ui run ${id}${json}${needsConfirm(effect) ? " --confirm" : ""}`;
 }
 
-/** MCP tool name, as `mesh-ui mcp` names it (src/cli/mcp.ts `toolName`): dots become underscores. */
-export const toolName = (id: string): string => id.replaceAll(".", "_");
-
-export type McpHints = { readOnlyHint: boolean; idempotentHint: boolean; destructiveHint: boolean; openWorldHint: boolean };
-
-/** Tool annotations from the effect, per docs/architecture/mcp.md. `app.*` commands are not open world. */
-export function mcpHints(id: string, effect: Effect): McpHints {
-  return {
-    readOnlyHint: effect === "query",
-    idempotentHint: effect === "query",
-    destructiveHint: needsConfirm(effect),
-    openWorldHint: !id.startsWith("app."),
-  };
-}
+// Tool name and hints live in core so the preview matches `mesh-ui mcp`.
+export { type McpHints, mcpHints, toolName } from "../../../../core/mcpNames";
 
 /** The MCP `tools/call` an agent would send for the same params. */
 export function mcpCall(id: string, params: Record<string, unknown>, effect: Effect): { name: string; arguments: Record<string, unknown> } {

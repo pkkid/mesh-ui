@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { toTool } from "../../../../cli/mcp";
 import { createDemoBackend } from "../../../../core/demo";
 import { createEngine } from "../../../../core/engine";
 import type { DeviceList, Eero, ProfileList } from "../../../../core/model";
@@ -15,13 +14,11 @@ import {
   highlightParts,
   matchText,
   mcpCall,
-  mcpHints,
   pageItems,
   paramFields,
   profileItems,
   type Sources,
   search,
-  toolName,
   missingRequired,
   validateParams,
 } from "./search";
@@ -228,14 +225,8 @@ describe("CLI and MCP text", () => {
     expect(cliLine("eero.reboot", { eero: "x" }, "disruptive")).toBe(`mesh-ui run eero.reboot --params '{"eero":"x"}' --confirm`);
   });
 
-  it("names tools and hints exactly as mesh-ui mcp does", async () => {
-    const { commands } = await demo();
-    for (const c of commands) {
-      const tool = toTool(c);
-      expect(toolName(c.id)).toBe(tool.name);
-      const { title: _t, ...hints } = tool.annotations ?? {};
-      expect(mcpHints(c.id, c.effect)).toEqual(hints);
-    }
+  it("builds the MCP tools/call with the core tool name, adding confirm when needed", () => {
+    expect(mcpCall("device.list", { status: "online" }, "query")).toEqual({ name: "device_list", arguments: { status: "online" } });
     expect(mcpCall("eero.reboot", { eero: "x" }, "disruptive")).toEqual({ name: "eero_reboot", arguments: { eero: "x", confirm: true } });
   });
 });
