@@ -13,9 +13,13 @@
     "dev:fake": "MESH_UI_FAKE=1 electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
+    "dist": "pnpm build && pnpm dlx electron-builder@26.18.0 --publish never",
+    "dist:dir": "pnpm build && pnpm dlx electron-builder@26.18.0 --dir --publish never",
+    "dist:smoke": "node scripts/dist-smoke.mjs",
     "typecheck": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:keychainless": "pnpm build && node scripts/dist-smoke.mjs --keychainless",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "mesh-ui": "node scripts/mesh-ui-dev.mjs"
   },
