@@ -106,7 +106,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: `mesh-ui commands`, `run <id> --params '{...}' | @file | stdin`, `run script.jsonl` (stop on failure, `--keep-going`, per-line confirm, global `--confirm` refused for scripts), `status`, `login`, `logout`, `help`, `--version`; `--demo` and dev-only `--fake`; JSON and table output, `--quiet`, `--no-color`, `--reveal` for sensitive results; exit codes from cli.md. A dev launcher script runs the CLI through the local Electron binary headless.
 - done when: CLI tests spawn the built CLI with `--demo` and a temp user data dir and cover each format, exit code and script rule; `mesh-ui --demo run app.info` works on the maintainer's machine.
 
-### M1.6 MCP surface ☐
+### M1.6 MCP surface ✅ (#19)
 - issue: [#6](https://github.com/pkkid/mesh-ui/issues/6)
 - after: M1.1
 - docs: architecture/mcp.md
