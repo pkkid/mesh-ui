@@ -11,6 +11,7 @@ import { toCsv } from "../format";
 import type * as M from "../model";
 import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, POLL, RATES_STALE_SEC } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
+import { usageWindow } from "./usage";
 
 const DAY_MS = 86_400_000;
 /** eero drops offline devices after about a week; so does the list. */
@@ -32,7 +33,7 @@ export const deviceListParams = z.object({
   manufacturer: z.string().trim().min(1).optional().describe("Exact manufacturer, case-insensitive."),
   firstSeenSince: z.iso.datetime({ offset: true }).optional().describe("Only devices first seen at or after this ISO time."),
   search: z.string().trim().max(100).optional().describe("Matches name, hostname, manufacturer, model, MAC (with or without colons) or IP."),
-  sort: z.enum(["name", "usage", "rate", "last_seen"]).optional().describe("Default name, A to Z. usage: data used in the last 24 h; rate: live rate; last_seen: most recent first."),
+  sort: z.enum(["name", "usage", "rate", "last_seen"]).optional().describe("Default name, A to Z. usage: data used in the last 24 h (the usage.breakdown day window); rate: live rate; last_seen: most recent first."),
   limit: z.number().int().min(1).max(500).optional(),
   format: z.enum(["json", "csv"]).optional(),
 });
@@ -128,10 +129,11 @@ async function filter(ctx: CommandContext, devices: M.Device[], p: ListParams): 
 
 const byName = (a: M.Device, b: M.Device) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.id.localeCompare(b.id);
 
-/** Bytes per device over the last 24 hours, for sort "usage". */
+/** Bytes per device over the same day window as usage.breakdown, for sort "usage". */
 async function usageByDevice(ctx: CommandContext): Promise<Map<M.Id, number>> {
-  const now = ctx.now();
-  const b = await ctx.backend.usage.breakdown(ctx.net, { by: "device", range: "day", from: new Date(now - DAY_MS).toISOString(), to: new Date(now).toISOString() });
+  const tz = (await ctx.backend.network.get(ctx.net)).timezone ?? "UTC";
+  const w = usageWindow("day", undefined, ctx.now(), tz);
+  const b = await ctx.backend.usage.breakdown(ctx.net, { by: "device", range: "day", from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString() });
   return new Map(b.rows.flatMap((r) => (r.id ? [[r.id, r.down + r.up] as const] : [])));
 }
 

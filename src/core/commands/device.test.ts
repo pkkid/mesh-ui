@@ -183,6 +183,7 @@ function fakeEngine() {
     eero: live.eero,
     device: live.device,
     profile: live.profile,
+    usage: live.usage,
   });
   return { fake, engine: createEngine({ backend }) };
 }
@@ -243,6 +244,18 @@ describe("device commands (fake eero server)", () => {
     // Without another burst, rates go missing 90 s after the last one.
     vi.setSystemTime(start + 73_000 + 91_000);
     expect((await list(engine, { limit: 1 })).summary.rates).toBeNull();
+  });
+
+  it("sorts by usage from the usage breakdown", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    const l = await list(engine, { sort: "usage" });
+    expect(fake.log.some((e) => e.path === "/2.2/networks/100001/data_usage/breakdown")).toBe(true);
+    const b = await engine.execute<M.UsageBreakdown>("usage.breakdown", { by: "device", range: "day" });
+    if (!b.ok) throw new Error(b.error.message);
+    const top = [...b.result.rows].sort((x, y) => y.down + y.up - (x.down + x.up))[0];
+    expect(top && top.down + top.up > 0).toBe(true);
+    expect(l.devices[0]?.id).toBe(top?.id);
   });
 
   it("gets one device by name from GET {net}/devices/{mac}", async () => {
