@@ -7,7 +7,7 @@ import { mapInternet, mapSpeedTests } from "../eero/map/network";
 import { createEngine, memorySettings } from "../engine";
 import type * as M from "../model";
 import type { SettingsStore } from "../spec";
-import { internetText, speedRating } from "./internet";
+import { internetText, internetVerdict, speedRating } from "./internet";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const HOUR = 3_600_000;
@@ -107,6 +107,64 @@ describe("internet commands (demo)", () => {
   });
 });
 
+describe("internet verdict", () => {
+  const base = { ...mapInternet({ geo_ip: { isp: "Ziply Fiber" } }), status: "online" as M.Status };
+  const test = (downMbps: number | null, upMbps: number | null, hoursAgo = 2): M.SpeedTest => ({
+    at: new Date(NOW - hoursAgo * HOUR).toISOString(),
+    downMbps,
+    upMbps,
+    rating: null,
+  });
+  const plan = { down: 1200, up: 1200 };
+
+  it("is fast and steady when the last test reached 75% of the plan", () => {
+    expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
+      kind: "steady",
+      title: "Ziply Fiber is fast and steady",
+      detail: "Last test 2 h ago hit 79% of your 1,200 Mbps plan",
+    });
+  });
+
+  it("is slower than your plan when below plan or poor", () => {
+    expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(702, 846) }, NOW)).toMatchObject({
+      kind: "slow",
+      title: "Ziply Fiber is slower than your plan",
+      detail: "Last test 2 h ago hit 59% of your 1,200 Mbps plan",
+    });
+    expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(300, 900) }, NOW).kind).toBe("slow");
+  });
+
+  it("is down when the internet is offline", () => {
+    expect(internetVerdict({ ...base, status: "offline", planMbps: plan, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
+      kind: "down",
+      title: "Ziply Fiber is down",
+      detail: null,
+    });
+    expect(internetVerdict({ ...base, isp: { ...base.isp, name: null }, status: "offline", planMbps: null, lastSpeedTest: null }, NOW).title).toBe("Your internet is down");
+  });
+
+  it("is up without a test or without a plan", () => {
+    expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: null }, NOW)).toEqual({ kind: "steady", title: "Ziply Fiber is up", detail: "No speed test yet" });
+    expect(internetVerdict({ ...base, planMbps: null, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
+      kind: "steady",
+      title: "Ziply Fiber is up",
+      detail: "Last test 2 h ago measured 942 Mbps down, 918 Mbps up",
+    });
+  });
+
+  it("comes back from internet.get in demo for every form", async () => {
+    const plan = memorySettings({ planMbps: { [MAPLE]: { down: 1200, up: 1200 }, [LAKE]: { down: 500, up: 50 } } });
+    const engine = demoEngine({ settings: plan });
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }))).verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber is fast and steady" });
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: LAKE }))).verdict?.kind).toBe("down");
+    const slow = demoEngine({ settings: memorySettings({ planMbps: { [MAPLE]: { down: 2000, up: 2000 } } }) });
+    expect((await ok(slow.execute<M.Internet>("internet.get", { networkId: MAPLE }))).verdict).toMatchObject({
+      kind: "slow",
+      title: "Ziply Fiber is slower than your plan",
+    });
+  });
+});
+
 describe("speed ratings", () => {
   it("is great at 75% of plan in every measured direction", () => {
     const plan = { down: 1000, up: 100 };
@@ -179,11 +237,26 @@ describe("internet commands (fake eero server)", () => {
       dnsMode: "automatic",
       doubleNat: false,
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
-      leaseRenewsAt: null,
+      leaseRenewsAt: "2026-11-13T07:41:00.000Z",
       planMbps: { down: 1000, up: 50 },
       lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
-      verdict: null,
+      verdict: { kind: "steady", title: "Example Fiber is fast and steady", detail: "Last test 20 h ago hit 91% of your 1,000 Mbps plan" },
     });
+  });
+
+  it("maps the lease renew time from lease.dhcp, only on a DHCP WAN", async () => {
+    const seeded = (lease: unknown, wanType = "DHCP") =>
+      fakeEngine({
+        prepare: (fake) => {
+          const net = fake.state.networks.get("100001")?.network as Record<string, unknown>;
+          net.lease = lease;
+          net.wan_type = wanType;
+        },
+      }).engine.execute<M.Internet>("internet.get", { networkId: "100001" });
+    expect((await ok(seeded({ mode: "dhcp", dhcp: { renews_on: "2026-11-13T04:00:00+0000" } }))).leaseRenewsAt).toBe("2026-11-13T04:00:00.000Z");
+    expect((await ok(seeded({ mode: "dhcp", dhcp: { expires_on: "2026-11-13T10:00:00Z" } }))).leaseRenewsAt).toBe("2026-11-13T10:00:00.000Z");
+    expect((await ok(seeded({ mode: "dhcp", dhcp: { ip: "203.0.113.9" } }))).leaseRenewsAt).toBeNull();
+    expect((await ok(seeded({ mode: "static", dhcp: { renews_on: "2026-11-13T04:00:00Z" } }, "STATIC"))).leaseRenewsAt).toBeNull();
   });
 
   it("speedtest.history sends the window and limit, and maps rows newest first", async () => {

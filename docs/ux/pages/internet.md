@@ -71,7 +71,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | Per hour chart and totals | `usage.get {scope: "network", range: "day"}` | 5 min |
 | Using the most right now | `device.rates.refresh` then `device.list {sort: "rate", limit: 6}` | 60 s while visible |
 | Per day chart, average, today, busiest day | `usage.get {scope: "network", range: "week", cadence: "daily"}` | 5 min |
-| By device | `usage.breakdown {range, by: "device"}` (top 5 plus Others) | 5 min |
+| By device | `usage.breakdown {range, by: "device", top: 5}` (Others row folded in core) | 5 min |
 | By profile | `usage.breakdown {range, by: "profile"}` | 5 min |
 
 ## Actions
@@ -84,7 +84,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | ISP settings → | - | - | No | Advanced networking, WAN section |
 | Plan value (click the "set by you" row) | `internet.plan.set {down, up, label?}` | write | No | Small popover with download and upload Mbps and an optional name; gauges, meters and verdicts recompute |
 | Day / Week (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart and averages switch range |
-| Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog, file `speed-tests-maple-street-2026-11-12.csv` |
+| Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog, file `speed-tests-maple-street-2026-11-12.csv`. Until the host has a save dialog (M2.4), the CSV is copied to the clipboard and the button reads "CSV copied" |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
 | Device in "Using the most" or By device | - | - | No | Device detail |
 | All devices → | - | - | No | Devices sorted by data today |
@@ -139,6 +139,13 @@ Topbar: title "Internet", subtitle freshness, no page actions.
   never burst twice.
 - Usage history is limited to about 7 days for free accounts, so there is
   no Month range.
+- Built in M2.4: Run speed test and the plan popover are disabled
+  ("Coming soon") until `speedtest.run` and `internet.plan.set` land. There
+  is no toast yet, so Copy details and Export CSV confirm on the button
+  ("Details copied", "CSV copied"). The Per day card always shows the last 7
+  days (one bar for Day would say nothing); the Day / Week toggle switches the
+  Per hour chart and both tables. The speed test chart scales to the results,
+  not to the plan, until the shared chart takes a fixed maximum.
 - Open question: "Gateway up ... since Oct 20, 9:41 AM" uses the gateway's
   `last_reboot`; WAN uptime might differ from gateway uptime if the ISP link
   dropped without a reboot. Show gateway uptime and label it as such.

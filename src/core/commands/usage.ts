@@ -139,15 +139,29 @@ const BREAKDOWN_CSV: CsvColumn<M.UsageBreakdownRow>[] = [
   { header: "Share (%)", value: (r) => r.share },
 ];
 
+/**
+ * The first `top` rows, then one "Others (n)" row summing the rest that used
+ * any data (n counts those); no Others row when none did.
+ */
+export function foldOthers(rows: M.UsageBreakdownRow[], top: number, all: number): M.UsageBreakdownRow[] {
+  const rest = rows.slice(top).filter((r) => r.down + r.up > 0);
+  if (rest.length === 0) return rows.slice(0, top);
+  const down = rest.reduce((n, r) => n + r.down, 0);
+  const up = rest.reduce((n, r) => n + r.up, 0);
+  const share = all > 0 ? Math.round(((down + up) / all) * 1000) / 10 : 0;
+  return [...rows.slice(0, top), { id: null, name: `Others (${rest.length})`, down, up, share }];
+}
+
 const usageBreakdown = defineCommand({
   id: "usage.breakdown",
   label: "Usage breakdown",
-  description: "Who used the most data over the last day or week: rows per device, profile (plus Unassigned) or eero, largest first, with each row's share of the network total.",
+  description: "Who used the most data over the last day or week: rows per device, profile (plus Unassigned) or eero, largest first, with each row's share of the network total. `top` folds the smaller rows into one Others row.",
   icon: "list-ordered",
   params: z.object({
     range,
     by: z.enum(["device", "profile", "eero"]).default("device"),
     profile: ref("profile").optional().describe("With by device: only that profile's devices."),
+    top: z.number().int().min(1).max(100).optional().describe('Keep the largest `top` rows and fold the rest into one last row, "Others (n)", with a null id.'),
     format: z.enum(["json", "csv"]).default("json"),
   }),
   effect: "query",
@@ -174,6 +188,7 @@ const usageBreakdown = defineCommand({
         .sort((a, b) => bytesOf(b) - bytesOf(a) || a.name.localeCompare(b.name)),
       total: { down: raw.total.down, up: raw.total.up },
     };
+    if (p.top !== undefined) result.rows = foldOthers(result.rows, p.top, all);
     return p.format === "csv" ? toCsv(result.rows, BREAKDOWN_CSV) : result;
   },
 });

@@ -273,7 +273,7 @@ and get `MANUAL:` lines.
 - scope: Carried from M1, docs only. Align the mockups' numbers with the demo fixtures (Overview eero shares, eeros page band totals and client counts, Lake Cabin's role and eero count, and the values M2 pages show in 02, 04 and 06). Redraw mockup 18 as the two-step sign-in (welcome, code, dashboard) with no chooser or first-run frame. Layout and design stay as approved.
 - done when: every changed number matches `mesh-ui --demo run` output for the same field (listed in the PR); mockup 18 shows only welcome and code; the mockup index still opens every page.
 
-### M2.4 Internet page ☐
+### M2.4 Internet page ✅ (#66)
 - issue: [#52](https://github.com/pkkid/mesh-ui/issues/52)
 - after: M2.1, M2.2, M2.3
 - docs: ux/pages/internet.md, architecture/commands.md (internet, speed tests and usage)

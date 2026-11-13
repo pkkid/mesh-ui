@@ -230,9 +230,31 @@ describe("usage.breakdown on the demo backend", () => {
     expect(lines[1]).toBe([first.name, first.id, first.down, first.up, first.down + first.up, first.share].join(","));
   });
 
+  it("top keeps the largest rows and folds the rest into Others (n)", async () => {
+    const { engine } = demoEngine();
+    const all = await ok(engine.execute<M.UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }));
+    const top = await ok(engine.execute<M.UsageBreakdown>("usage.breakdown", { range: "day", by: "device", top: 5 }));
+    const used = all.rows.slice(5).filter((r) => bytes(r) > 0);
+    expect(used.length).toBeGreaterThan(1);
+    expect(top.rows).toHaveLength(6);
+    expect(top.rows.slice(0, 5)).toEqual(all.rows.slice(0, 5));
+    const others = top.rows[5] as M.UsageBreakdownRow;
+    expect(others).toMatchObject({ id: null, name: `Others (${used.length})` });
+    expect(others.down).toBe(used.reduce((n, r) => n + r.down, 0));
+    expect(others.up).toBe(used.reduce((n, r) => n + r.up, 0));
+    expect(others.share).toBe(Math.round((bytes(others) / bytes(all.total)) * 1000) / 10);
+    expect(sumOf(top.rows)).toBe(sumOf(all.rows));
+    expect(top.total).toEqual(all.total);
+    // Nothing left over: no Others row.
+    const wide = await ok(engine.execute<M.UsageBreakdown>("usage.breakdown", { range: "day", by: "eero", top: 10 }));
+    expect(wide.rows.some((r) => r.name.startsWith("Others"))).toBe(false);
+    const csv = await ok(engine.execute<string>("usage.breakdown", { range: "day", by: "device", top: 5, format: "csv" }));
+    expect(csv.split("\r\n")[6]).toMatch(/^Others \(\d+\),,/);
+  });
+
   it("rejects bad params", async () => {
     const { engine } = demoEngine();
-    for (const params of [{ by: "room" }, { range: "month" }, { by: "eero", profile: "Leo" }, { profile: "Nobody" }, { format: "xml" }]) {
+    for (const params of [{ by: "room" }, { range: "month" }, { by: "eero", profile: "Leo" }, { profile: "Nobody" }, { format: "xml" }, { top: 0 }, { top: 1.5 }, { top: 101 }, { top: "5" }]) {
       expect(await engine.execute("usage.breakdown", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
     }
   });
