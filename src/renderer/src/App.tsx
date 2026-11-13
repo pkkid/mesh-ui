@@ -15,12 +15,13 @@ import type { AuthStatus } from "../../core/model";
 
 export function App() {
   const auth = useQuery<AuthStatus>("auth.status");
-  const [sessionEnded, setSessionEnded] = useState(false);
+  /** Set when the session ends in this run; `expired` is false for the user's own sign-out. */
+  const [sessionEnded, setSessionEnded] = useState<{ expired: boolean } | null>(null);
   /** Set while the sign-in steps are up; `expired` when the session ended in this run. */
   const [signIn, setSignIn] = useState<{ expired: boolean } | null>(null);
 
   useEffect(() => {
-    const offSession = onSessionEnded(() => setSessionEnded(true));
+    const offSession = onSessionEnded((expired) => setSessionEnded((s) => s ?? { expired }));
     const offHost = followHostEvents();
     return () => {
       offSession();
@@ -28,9 +29,9 @@ export function App() {
     };
   }, []);
 
-  const signedOut = sessionEnded || auth.data?.signedIn === false;
+  const signedOut = sessionEnded !== null || auth.data?.signedIn === false;
   useEffect(() => {
-    if (signedOut) setSignIn((s) => s ?? { expired: sessionEnded });
+    if (signedOut) setSignIn((s) => s ?? { expired: sessionEnded?.expired ?? false });
   }, [signedOut, sessionEnded]);
 
   // Wait for the first answer so a signed-out start does not flash the shell.
@@ -41,11 +42,11 @@ export function App() {
   if (signIn || signedOut) {
     return (
       <SignInView
-        expired={signIn?.expired ?? sessionEnded}
+        expired={signIn?.expired ?? sessionEnded?.expired ?? false}
         onDone={() => {
           // Wait for a fresh auth.status, so a stale "signed out" cannot reopen sign-in.
           void auth.refetch().then(() => {
-            setSessionEnded(false);
+            setSessionEnded(null);
             setSignIn(null);
           });
         }}

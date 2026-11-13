@@ -54,23 +54,39 @@ export function bridge(): MeshBridge {
 /** Whether the real engine is behind `window.mesh` (false while the stub answers). */
 export const engineConnected = (): boolean => bridge() !== STUB_BRIDGE;
 
-const sessionListeners = new Set<() => void>();
+const sessionListeners = new Set<(expired: boolean) => void>();
 
-/** Called whenever any command reports `not_signed_in`. Returns an unsubscribe. */
-export function onSessionEnded(listener: () => void): () => void {
+/**
+ * Set from the moment the user runs `auth.logout` here until the next sign-in,
+ * so the sign-out it causes (its session.changed event and the not_signed_in
+ * answers from polls) is not reported as an expired session.
+ */
+let signedOutByUser = false;
+
+const endSession = () => sessionListeners.forEach((l) => l(!signedOutByUser));
+
+/**
+ * Called whenever the session ends: a command reports `not_signed_in` or the
+ * host says it signed out. `expired` is false when the user's own sign-out in
+ * this window caused it. Returns an unsubscribe.
+ */
+export function onSessionEnded(listener: (expired: boolean) => void): () => void {
   sessionListeners.add(listener);
   return () => sessionListeners.delete(listener);
 }
 
 /** Runs a command. Never throws. */
 export async function execute<R = unknown>(id: string, params?: unknown): Promise<ExecuteResult<R>> {
+  if (id === "auth.logout") signedOutByUser = true;
   let res: ExecuteResult<R>;
   try {
     res = (await bridge().execute(id, params)) as ExecuteResult<R>;
   } catch (err) {
     res = { ok: false, error: { code: "network_error", message: err instanceof Error ? err.message : String(err) } };
   }
-  if (!res.ok && res.error.code === "not_signed_in") sessionListeners.forEach((l) => l());
+  if (id === "auth.logout" && !res.ok) signedOutByUser = false;
+  if (id === "auth.login.verify" && res.ok) signedOutByUser = false;
+  if (!res.ok && res.error.code === "not_signed_in") endSession();
   return res;
 }
 
@@ -83,7 +99,8 @@ export function followHostEvents(): () => void {
   const mesh = bridge();
   if (typeof mesh.on !== "function") return () => {};
   return mesh.on((event) => {
-    if (event.type === "session.changed" && event.state === "signed_out") sessionListeners.forEach((l) => l());
+    if (event.type === "session.changed" && event.state === "signed_in") signedOutByUser = false;
+    if (event.type === "session.changed" && event.state === "signed_out") endSession();
     if (event.type === "network.selected") invalidate();
   });
 }
