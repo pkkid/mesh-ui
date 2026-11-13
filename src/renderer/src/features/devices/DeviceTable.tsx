@@ -160,6 +160,10 @@ type DeviceTableProps = {
 
 const DEFAULT_COLLAPSED = new Set(["category:home"]);
 
+/** The table's last row order (groups in order), for Prev and Next on device detail. View state. */
+let shownOrder: readonly string[] = [];
+export const devicesOrder = (): readonly string[] => shownOrder;
+
 export function DeviceTable(props: DeviceTableProps) {
   const { devices, groupBy, hidden } = props;
   const [collapsed, setCollapsed] = useState<Set<string>>(DEFAULT_COLLAPSED);
@@ -210,6 +214,7 @@ export function DeviceTable(props: DeviceTableProps) {
     );
   } else {
     const groups = groupDevices(devices, groupBy, props.eeroName, props.profiles);
+    shownOrder = groups.flatMap((g) => g.devices.map((d) => d.id));
     body = groups.map((g) => {
       // Groups with no devices are left out, whatever the filters.
       if (g.devices.length === 0) return null;

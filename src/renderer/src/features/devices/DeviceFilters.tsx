@@ -129,7 +129,19 @@ const count = (n: number | undefined) => (n === undefined ? "-" : String(n));
 
 export function DeviceFilters(props: DeviceFiltersProps) {
   const { filters: f, onChange, summary: s } = props;
-  const profileOptions: Option[] = [...props.profiles, { value: UNASSIGNED, label: "Unassigned" }];
+  // Counts come from the device.list summary (the whole network), like the band and type counts.
+  const counted = (options: ReadonlyArray<Option>, rows: { key: string | null; count: number }[] | undefined, keyOf = (v: string): string | null => v): Option[] =>
+    options.map((o) => ({ ...o, count: rows ? (rows.find((r) => r.key === keyOf(o.value))?.count ?? 0) : undefined }));
+  const profileOptions: Option[] = counted(
+    [...props.profiles, { value: UNASSIGNED, label: "Unassigned" }],
+    s?.byProfile.map((r) => ({ key: r.profileId, count: r.count })),
+    (v) => (v === UNASSIGNED ? null : v),
+  );
+  const eeroOptions = counted(props.eeros, s?.byEero.map((r) => ({ key: r.eeroId, count: r.count })));
+  const manufacturerOptions = counted(
+    props.manufacturers.map((m) => ({ value: m, label: m })),
+    s?.byManufacturer.map((r) => ({ key: r.manufacturer, count: r.count })),
+  );
   const typeOptions: Option[] = CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c], count: s?.byCategory[c] }));
   const labelOf = (options: ReadonlyArray<Option>, value: string) => options.find((o) => o.value === value)?.label ?? value;
 
@@ -209,7 +221,7 @@ export function DeviceFilters(props: DeviceFiltersProps) {
             />
           </FilterRow>
           <FilterRow label="eero">
-            <SelectPicker name="eero" value={f.eero} options={props.eeros} onChange={(eero) => onChange({ eero })} />
+            <SelectPicker name="eero" value={f.eero} options={eeroOptions} onChange={(eero) => onChange({ eero })} />
           </FilterRow>
           <FilterRow label="Profile">
             <SelectPicker name="Profile" value={f.profile} options={profileOptions} onChange={(profile) => onChange({ profile })} />
@@ -218,7 +230,7 @@ export function DeviceFilters(props: DeviceFiltersProps) {
             <SelectPicker
               name="Manufacturer"
               value={f.manufacturer}
-              options={props.manufacturers.map((m) => ({ value: m, label: m }))}
+              options={manufacturerOptions}
               onChange={(manufacturer) => onChange({ manufacturer })}
             />
           </FilterRow>

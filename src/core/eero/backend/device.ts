@@ -9,13 +9,15 @@ import { BackendError } from "../../errors";
 import type * as M from "../../model";
 import { mapDevice, type RawDeviceFull } from "../map/device";
 import { asList, type RawBurstResult } from "../raw";
-import { compactMac, networkPath } from "../urls";
+import { compactMac, idFromUrl, networkPath } from "../urls";
 import type { EeroArea } from "./index";
+import { fetchRouting } from "./routing";
 
 /** When the last two bursts per network were due, epoch ms. */
 type Bursts = { last: number; prev: number | null };
 
-export const device: EeroArea<"device"> = ({ client }) => {
+export const device: EeroArea<"device"> = (ctx) => {
+  const { client } = ctx;
   const bursts = new Map<M.Id, Bursts>();
 
   /** The time of the newest burst whose rates are in, or null when none is known. */
@@ -55,23 +57,39 @@ export const device: EeroArea<"device"> = ({ client }) => {
     return out;
   };
 
+  /** The device's DHCP reservation from `GET {net}/routing`, matched on MAC. Bridge mode or a failed read: none. */
+  const reservationFor = async (net: M.Id, mac: string): Promise<M.Device["reservation"]> => {
+    if (!mac) return null;
+    try {
+      const r = (await fetchRouting(ctx, net))?.reservations?.data?.find((x) => compactMac(x?.mac ?? "") === compactMac(mac));
+      return r?.ip ? { id: r.url ? idFromUrl(r.url) : compactMac(mac), ip: r.ip } : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getOne = async (net: M.Id, id: M.Id): Promise<M.Device> => {
+    try {
+      const raw = await client.request<RawDeviceFull>({ method: "GET", path: networkPath(net, `devices/${compactMac(id) || encodeURIComponent(id)}`) });
+      if (raw && typeof raw === "object") {
+        const blocked = raw.blocked === true || raw.blacklisted === true;
+        return mapDevice(raw, { blocked, ratesAt: ratesAt(net) });
+      }
+    } catch (err) {
+      // Blocked devices may only be on the blocklist.
+      if (!(err instanceof BackendError && err.detail?.status === 404)) throw err;
+    }
+    const found = (await list(net)).find((d) => d.id === id || compactMac(d.mac) === compactMac(id));
+    if (!found) throw new BackendError("eero_error", "That device is not on this network.", { status: 404 });
+    return found;
+  };
+
   return {
     list,
 
     async get(net, id) {
-      try {
-        const raw = await client.request<RawDeviceFull>({ method: "GET", path: networkPath(net, `devices/${compactMac(id) || encodeURIComponent(id)}`) });
-        if (raw && typeof raw === "object") {
-          const blocked = raw.blocked === true || raw.blacklisted === true;
-          return mapDevice(raw, { blocked, ratesAt: ratesAt(net) });
-        }
-      } catch (err) {
-        // Blocked devices may only be on the blocklist.
-        if (!(err instanceof BackendError && err.detail?.status === 404)) throw err;
-      }
-      const found = (await list(net)).find((d) => d.id === id || compactMac(d.mac) === compactMac(id));
-      if (!found) throw new BackendError("eero_error", "That device is not on this network.", { status: 404 });
-      return found;
+      const d = await getOne(net, id);
+      return { ...d, reservation: await reservationFor(net, d.mac) };
     },
 
     async requestBurst(net) {

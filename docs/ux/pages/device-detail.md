@@ -60,8 +60,9 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
 | "#2 on the network" | `usage.breakdown {range, by: "device"}` (rank of this device) | 5 min |
 | Device information | `device.get` | 30 s |
 | IP addresses | `device.get` (IPv4, IPv6 list, link-local) | 30 s |
-| Reserved badge | `reservation.list` (match on MAC) | 60 s |
-| Port forwarding rows | `forward.list {device}` | 60 s |
+| Reserved badge | `reservation.list` (match on MAC), or `device.get` `reservation` | 60 s |
+| Link-local | `device.get` `ipv6LinkLocal` | 30 s |
+| Port forwarding rows | `forward.list {device}` (`unavailable` explains an empty list in bridge mode) | 60 s |
 | Prev / Next targets | Renderer list order from Devices (view state) | - |
 | Appearance: nickname, hostname, type list | `device.get`; type list is static in core | On open |
 | Change profile menu | `profile.list` | 60 s |
@@ -116,6 +117,19 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
   (security type, SNR, retries) show `-`. No burst support: Now box hidden.
 - **Bridge mode.** Pause, Change profile, Block, Reserve and Port forwarding
   are hidden; Now box hidden; the bridge note sits under the hero.
+
+## Built so far (M2.7)
+
+Read-only: every write control above (Pause and Resume, Appearance, Change
+profile, Block and Unblock, Edit or Reserve, the trash and switch on a
+forward, + Open a port) is shown disabled with "Coming soon" until its
+command lands. The Block inline confirm is not shown yet. The Now box asks
+for `device.rates.refresh` once a minute while the page is visible and the
+device is online, sharing the engine's one burst per network with Devices.
+Prev and Next follow the Devices table's last row order (groups in order);
+opened without it, they follow `device.list`'s A to Z order. The "No burst
+support: Now box hidden" and "No permission" states wait for the
+capability and permission checks of the write stories.
 
 ## Notes
 

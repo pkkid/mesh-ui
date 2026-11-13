@@ -330,7 +330,8 @@ describe("device commands (fake eero server)", () => {
     close = fake.close;
     const r = await engine.execute<M.Device>("device.get", { device: "Mia's Tablet" });
     expect(r.ok && r.result).toMatchObject({ id: "0a1b2c000004", name: "Mia's Tablet", eeroId: "500003", profileId: "702" });
-    expect(fake.log.at(-1)?.path).toBe("/2.2/networks/100001/devices/0a1b2c000004");
+    // Then GET {net}/routing for its reservation.
+    expect(fake.log.slice(-2).map((e) => e.path)).toEqual(["/2.2/networks/100001/devices/0a1b2c000004", "/2.2/networks/100001/routing"]);
   });
 });
 
