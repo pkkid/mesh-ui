@@ -28,7 +28,7 @@ export function toIso(v: unknown): M.Iso | null {
   let ms = Date.parse(v);
   // "+0000" without a colon is not ISO 8601; some engines refuse it.
   if (!Number.isFinite(ms)) ms = Date.parse(v.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"));
-  return Number.isFinite(ms) ? new Date(ms).toISOString().replace(/\.000Z$/, "Z") : null;
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
 /** Network or health status words to the Status union. */

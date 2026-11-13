@@ -156,7 +156,7 @@ describe("network commands (fake eero server)", () => {
     const nets = await ok(engine.execute<M.NetworkSummary[]>("network.list"));
     expect(nets).toEqual([
       { id: "100001", name: "Maple Street", nickname: null, role: "owner", status: "online", eeroCount: 4, devicesOnline: 7, isp: "Example Fiber", updateAvailable: true, lastSeen: null, selected: false },
-      { id: "100002", name: "Lake Cabin", nickname: null, role: "admin", status: "offline", eeroCount: 1, devicesOnline: 0, isp: "Example Fiber", updateAvailable: false, lastSeen: "2026-11-12T18:00:00Z", selected: false },
+      { id: "100002", name: "Lake Cabin", nickname: null, role: "admin", status: "offline", eeroCount: 1, devicesOnline: 0, isp: "Example Fiber", updateAvailable: false, lastSeen: "2026-11-12T18:00:00.000Z", selected: false },
     ]);
     const paths = fake.log.map((l) => l.path).sort();
     expect(paths).toEqual(["/2.2/account", "/2.2/networks/100001", "/2.2/networks/100001/permissions", "/2.2/networks/100002", "/2.2/networks/100002/permissions"]);
@@ -188,7 +188,7 @@ describe("network commands (fake eero server)", () => {
       timezone: "America/New_York",
       connectionMode: "nat",
       gatewayUptimeSec: 7 * 86_400,
-      lastReboot: "2026-11-05T03:00:00Z",
+      lastReboot: "2026-11-05T03:00:00.000Z",
       counts: { eeros: 1, devices: 0, profiles: 0 },
     });
     expect(net.capabilities).toMatchObject({ device_blacklist: true, thread_network: false });
@@ -256,7 +256,7 @@ describe("network mapping", () => {
   });
 
   it("parses eero dates, port speeds and private addresses", () => {
-    expect(toIso("2026-11-12T03:00:00+0000")).toBe("2026-11-12T03:00:00Z");
+    expect(toIso("2026-11-12T03:00:00+0000")).toBe("2026-11-12T03:00:00.000Z");
     expect(toIso("2026-11-12T03:00:00.250Z")).toBe("2026-11-12T03:00:00.250Z");
     expect(toIso("soon")).toBeNull();
     expect([portSpeedMbps("P2500"), portSpeedMbps("1000"), portSpeedMbps("fast"), portSpeedMbps(undefined)]).toEqual([2500, 1000, null, null]);

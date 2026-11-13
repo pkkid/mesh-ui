@@ -162,7 +162,7 @@ describe("internet commands (fake eero server)", () => {
       doubleNat: false,
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
       planMbps: { down: 1000, up: 50 },
-      lastSpeedTest: { at: "2026-11-12T03:00:00Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
+      lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
     });
   });
 
@@ -170,9 +170,9 @@ describe("internet commands (fake eero server)", () => {
     const { engine, fake } = fakeEngine({ settings: memorySettings({ planMbps: { "100001": { down: 1000, up: 100 } } }) });
     const history = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
     expect(history.tests).toEqual([
-      { at: "2026-11-12T03:00:00Z", downMbps: 912.4, upMbps: 40.2, rating: "below_plan" },
-      { at: "2026-11-11T03:00:00Z", downMbps: 884.1, upMbps: 39.7, rating: "below_plan" },
-      { at: "2026-11-10T03:00:00Z", downMbps: 901.9, upMbps: 41, rating: "below_plan" },
+      { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "below_plan" },
+      { at: "2026-11-11T03:00:00.000Z", downMbps: 884.1, upMbps: 39.7, rating: "below_plan" },
+      { at: "2026-11-10T03:00:00.000Z", downMbps: 901.9, upMbps: 41, rating: "below_plan" },
     ]);
     expect(history.avg7d).toEqual({ downMbps: 899.5, upMbps: 40.3 });
     const req = fake.log.find((l) => l.path === "/2.2/networks/100001/speedtest");
@@ -180,7 +180,7 @@ describe("internet commands (fake eero server)", () => {
     expect([q.get("startTime"), q.get("endTime"), q.get("limit")]).toEqual(["2026-11-05T22:41:00.000Z", "2026-11-12T22:41:00.000Z", "200"]);
 
     const day = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001", range: "day" }));
-    expect(day.tests.map((t) => t.at)).toEqual(["2026-11-12T03:00:00Z"]);
+    expect(day.tests.map((t) => t.at)).toEqual(["2026-11-12T03:00:00.000Z"]);
   });
 
   it("uses the speedtest link eero handed back", async () => {
@@ -215,7 +215,7 @@ describe("internet mapping", () => {
       wan_type: "PPPoE",
       dns: { mode: "custom", parent: { ips: ["1.1.1.1"] }, custom: { ips: ["9.9.9.9", ""] } },
       geo_ip: { asn: 64500 },
-      speed: { date: "2026-11-12T03:00:00Z", down: { value: 1.2, units: "Gbps" }, up: { value: 40 } },
+      speed: { date: "2026-11-12T03:00:00.000Z", down: { value: 1.2, units: "Gbps" }, up: { value: 40 } },
     });
     expect(i).toMatchObject({ wanType: "pppoe", dnsMode: "custom", dnsInUse: ["9.9.9.9"], isp: { asn: "AS64500" }, lastSpeedTest: { downMbps: 1200, upMbps: 40 } });
     expect(i.gateway).toBeNull();
@@ -223,8 +223,8 @@ describe("internet mapping", () => {
 
   it("drops undated speed test rows and sorts newest first", () => {
     expect(mapSpeedTests([{ date: "2026-11-10T03:00:00+0000", down_mbps: 1 }, { down_mbps: 2 }, { date: "2026-11-11T03:00:00+0000" }])).toEqual([
-      { at: "2026-11-11T03:00:00Z", downMbps: null, upMbps: null, rating: null },
-      { at: "2026-11-10T03:00:00Z", downMbps: 1, upMbps: null, rating: null },
+      { at: "2026-11-11T03:00:00.000Z", downMbps: null, upMbps: null, rating: null },
+      { at: "2026-11-10T03:00:00.000Z", downMbps: 1, upMbps: null, rating: null },
     ]);
   });
 
