@@ -3,9 +3,10 @@
  * and the signed-in user's permissions. See docs/architecture/commands.md
  * (network) and engine.md (Network switching).
  *
- * `network.list` reports the session's selection as it is: when nothing has
- * been chosen yet every `selected` is false, so a UI can offer the chooser
- * before running any network-scoped command (which would auto-pick the first
+ * `network.list` reports the session's selection as it is: the last used
+ * network (`lastNetworkId`) once one has been chosen, else every `selected`
+ * is false. Sign-in uses it to open the last used network, else the first,
+ * before any network-scoped command runs (which would auto-pick the first
  * network).
  */
 

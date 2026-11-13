@@ -1,8 +1,9 @@
 /**
  * The auth gate and the window shell: sidebar, topbar and the routed page
  * (docs/ux/overview.md#window-layout). Signed-out sessions get the sign-in
- * steps (docs/ux/sign-in.md), which stay up until the user opens the
- * dashboard, even though the session is live from the moment the code checks.
+ * steps (docs/ux/sign-in.md), which stay up after the code checks until they
+ * have opened the last used network (else the first), then hand over to the
+ * dashboard.
  */
 import { useEffect, useState } from "react";
 

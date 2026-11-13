@@ -126,7 +126,7 @@ type Permissions = {
 | `connectionMode` | `connection.mode` |
 | `gatewayUptimeSec` | gateway eero `uptime.since_last_reboot_s` |
 | `capabilities` | `capabilities.<name>.capable` |
-| `counts` | `eeros.count`, `clients.count`, `profiles.count` |
+| `counts` | `eeros.count`, `profiles.count`; `devices` is every known device, the same number as `device.list` `summary.total` (eero's `clients.count` counts connected devices only, so it is not used) |
 | `health.internet` | `health.internet.{status,isp_up}` |
 | `health.mesh` | `health.eero_network.status` |
 | `weakLink` | wireless eero with `mesh_quality_bars <= 2` |

@@ -65,8 +65,8 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 
 1. **Header.** App mark (wifi glyph in a rounded square) and the name "Mesh UI".
 2. **Network switcher row.** Status dot, network name ("Maple Street"), a
-   status line ("Online · 1.2 Gbps fiber") and a chevrons icon. Opens the
-   [network switcher](#network-switcher).
+   status line, "status · ISP" ("Online · Ziply Fiber"), and a chevrons
+   icon. Opens the [network switcher](#network-switcher).
 3. **Navigation**, in two groups. Items show an icon, label and an optional
    count on the right in `text-2xs text-muted-foreground tabular-nums`. The
    active item uses the selected surface; item icons use one muted colour
@@ -104,11 +104,12 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 
 A popover anchored under the sidebar network row.
 
-- **Data:** `network.list` (name, nickname label, status, role, eero count,
-  online device count). Same rows as the sign-in network chooser in
-  [sign-in.md](sign-in.md) step 3: status dot plus label, role badge
-  (Owner or Admin), one muted detail line ("4 eeros · 31 devices online",
-  "last seen 2 days ago", "update available").
+- **Data:** `network.list` (name, status, ISP, last seen).
+- **Rows** match the sidebar row they open from: status dot, network name,
+  and one muted line, "status · ISP" ("Online · Ziply Fiber"), or
+  "Offline · last seen 2 days ago" for an offline network. No role badge and
+  no eero or device counts. The popover is the same width as the sidebar
+  row, and the current network's row uses the selected surface.
 - **Action:** choosing a row runs `network.select {networkId}` (app-local,
   remembered in `settings.json` so the CLI uses the same default). Every page
   reloads its queries for the new network; the current page is kept if it
