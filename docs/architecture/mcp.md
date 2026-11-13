@@ -39,7 +39,9 @@ with a message telling the user to sign in in the app.
 
 ## Tools
 
-One tool per command, generated from the registry at start-up.
+One tool per command, generated from the registry at start-up. The name and
+annotations come from `src/core/mcpNames.ts`, which the command palette's MCP
+preview uses too.
 
 - **Name**: the id with dots replaced by underscores: `device.pause` becomes
   `device_pause`, `settings.dns.set` becomes `settings_dns_set`.

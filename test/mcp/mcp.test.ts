@@ -7,7 +7,7 @@ import { createEngine } from "../../src/core/engine";
 import type { NetworkSummary } from "../../src/core/model";
 import { type AnyCommand, defineCommand } from "../../src/core/spec";
 import { version as appVersion } from "../../package.json";
-import { createMcpServer, type McpOptions, parseMcpArgs, toolName } from "../../src/cli/mcp";
+import { createMcpServer, type McpOptions, parseMcpArgs } from "../../src/cli/mcp";
 
 const network = (id: string, name: string): NetworkSummary => ({
   id,
@@ -135,7 +135,6 @@ describe("mcp tools", () => {
     expect(tools.map((t) => t.name).sort()).toEqual(
       ["app_info", "thing_list", "thing_names", "thing_remove", "thing_rename", "thing_restart", "wifi_password_get"].sort(),
     );
-    expect(toolName("settings.dns.set")).toBe("settings_dns_set");
   });
 
   it("builds title, description and input schema from the spec", async () => {
