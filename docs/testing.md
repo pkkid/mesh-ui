@@ -182,7 +182,63 @@ for looks.
   does not call `execute` with `confirm: true` until confirmed.
 - Screenshots of every page in the default theme, light and dark, saved for
   the milestone review. Compare against the mockups by eye; no pixel diffing.
-- To look at a change by hand, run `pnpm dev:demo`, never a real sign-in.
+- Agents look at the UI only with `pnpm ui:shot` (below), never with a
+  visible window: the maintainer is working on the same desktop. A person
+  looking at a change by hand runs `pnpm dev:demo`, never a real sign-in.
+
+### Screenshots with ui-shot
+
+`pnpm ui:shot` (`scripts/ui-shot.mjs`) builds `out/` when `src/` is newer
+(or reuses it), launches the app with no visible window, drives it over the
+DevTools protocol and saves PNGs with `Page.captureScreenshot`.
+
+```sh
+pnpm ui:shot --route '#/devices' --theme dark --out devices-dark.png
+pnpm ui:shot --before "document.querySelector('[aria-label=\"Switch network\"]').click()" --out switcher.png
+pnpm ui:shot --shots shots.json --out-dir shots/
+pnpm ui:shot --fake --route '#/overview' --out overview-fake.png
+pnpm ui:shot --help
+```
+
+Per shot: `--route` (default `#/overview`), `--theme light|dark`,
+`--theme-id <id>`, `--size 1200x780`, `--scale 1`, `--scenario <name>` (demo
+only, default `default`), `--before <js>` (awaited in the page before the
+shot: click, open a popover), `--wait <ms>` (settle time, default 600) and
+`--out <file.png>`. `--shots` takes a JSON array of objects with the same
+fields (`out`, `route`, `theme`, `themeId`, `size`, `scale`, `scenario`,
+`before`, `wait`), all taken in one app launch:
+
+```json
+[
+  { "out": "overview-dark.png", "route": "#/overview", "theme": "dark" },
+  { "out": "garage-offline.png", "route": "#/overview", "scenario": "eero_offline" }
+]
+```
+
+- **Demo by default.** Each shot starts from its scenario (`default` unless
+  given), so writes from an earlier shot or `--before` do not leak.
+- **`--fake`** uses a dev build in `node_modules/.cache/mesh-ui-shot` (the fake
+  redirect exists only in dev builds, and this one can never be packaged),
+  lets the app start the fake eero server, and signs in with the fake code
+  unless `--signed-out`.
+- **Isolated.** Every run uses a temp user data dir and `XDG_CONFIG_HOME`,
+  deleted afterwards (`--keep` keeps them), and a random DevTools port.
+- **Fails loudly.** It exits non-zero and prints the errors when the renderer
+  throws or logs an error, `--before` throws, or a route is not a page (the
+  router would otherwise quietly show the last route).
+
+How it stays invisible: the app runs with `MESH_UI_HEADLESS=1`, which
+`src/main/index.ts` reads to render the window offscreen (`offscreen: true`),
+never show it, and hide the macOS dock icon. On Linux the app also gets no
+`DISPLAY` or `WAYLAND_DISPLAY` and runs with `--ozone-platform=headless`
+(with `--ozone-override-screen-size`, since the headless screen is 1x1
+otherwise, and `--disable-gpu`), so it cannot reach the display server at
+all. Headless ozone segfaults when a window has a native `titleBarOverlay`,
+so the flag also drops the overlay. No Xvfb is needed.
+
+What headless cannot show: the native window controls (the Linux and
+Windows overlay, the macOS traffic lights) and native popups such as an open
+`<select>` list. Capture the in-page equivalent, or add a `MANUAL:` line.
 
 ## CI
 
