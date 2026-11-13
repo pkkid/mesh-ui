@@ -53,12 +53,14 @@ export function SpeedHistory() {
               <Average
                 icon={<ArrowDown className="size-[15px]" style={{ color: seriesColors.download }} />}
                 label="Download, 7-day average"
+                color={seriesColors.download}
                 value={avg?.downMbps ?? null}
                 plan={plan?.down ?? null}
               />
               <Average
                 icon={<ArrowUp className="size-[15px]" style={{ color: seriesColors.upload }} />}
                 label="Upload, 7-day average"
+                color={seriesColors.upload}
                 value={avg?.upMbps ?? null}
                 plan={plan?.up ?? null}
               />
@@ -90,7 +92,7 @@ export function SpeedHistory() {
   );
 }
 
-function Average({ icon, label, value, plan }: { icon: ReactNode; label: string; value: number | null; plan: number | null }) {
+function Average({ icon, label, color, value, plan }: { icon: ReactNode; label: string; color: string; value: number | null; plan: number | null }) {
   const share = value !== null && plan ? (value / plan) * 100 : null;
   return (
     <div>
@@ -101,7 +103,7 @@ function Average({ icon, label, value, plan }: { icon: ReactNode; label: string;
         </span>
         <span className="font-medium tabular-nums">{formatMbps(value)}</span>
       </div>
-      <Meter className="mt-2" value={plan ? value : null} max={plan ?? 100} label={`${label}, share of plan`} />
+      <Meter className="mt-2" value={plan ? value : null} max={plan ?? 100} color={color} label={`${label}, share of plan`} />
       <div className="mt-1 text-muted-foreground text-xs">{share === null ? (plan ? "-" : "No plan set") : `${formatPercent(share)} of plan`}</div>
     </div>
   );

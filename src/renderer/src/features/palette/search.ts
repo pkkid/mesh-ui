@@ -13,6 +13,7 @@ import { z } from "zod";
 import { toolName } from "../../../../core/mcpNames";
 import type { Device, Effect, Eero, Permissions, ProfileList } from "../../../../core/model";
 import type { CommandInfo, JsonSchema } from "../../../../core/registry";
+import { needsConfirm } from "../../../../core/spec";
 
 // ---------------------------------------------------------------------------
 // Items
@@ -462,7 +463,7 @@ export function missingRequired(schema: JsonSchema, params: Record<string, unkno
 // ---------------------------------------------------------------------------
 // CLI and MCP text
 
-export const needsConfirm = (effect: Effect): boolean => effect === "disruptive" || effect === "destructive";
+export { needsConfirm };
 
 /** The equivalent CLI line: `mesh-ui run device.list --params '{"status":"online"}'`. */
 export function cliLine(id: string, params: Record<string, unknown>, effect: Effect): string {
