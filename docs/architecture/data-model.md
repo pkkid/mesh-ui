@@ -109,7 +109,7 @@ type NetworkHealth = {
   mesh: { status: Status };
   eeros: { id: Id; location: string; status: Status; meshBars: number | null; weakLink: boolean }[];
   messages: string[];
-  issues: HealthIssue[];          // derived in core; [] until M2.5
+  issues: HealthIssue[];          // derived in core from eeros and devices (weak_link, eero_offline, network_offline)
 };
 
 type HealthIssue = {
@@ -196,8 +196,8 @@ type UsageBreakdown = {
 | `wanType` | `wan_type`, `lease.mode`, `pppoe_enabled` |
 | `ispGateway` | `gateway_ip` or `lease.dhcp.router` |
 | `dnsInUse`, `dnsMode` | `dns.parent.ips` or `dns.custom.ips`, `dns.mode` |
-| `leaseRenewsAt` | `lease` (shape unverified; mapped by M2.4, null until then) |
-| `verdict` | built in core from status, plan and the last speed test (M2.4; null until then) |
+| `leaseRenewsAt` | `lease.dhcp.renews_on`, else `expires_on` (field name unverified); null for a static WAN |
+| `verdict` | built in core from status, plan and the last speed test |
 | `gateway.wanPortSpeedMbps` | gateway eero `ethernet_status.statuses[isWanPort].speed` (`"P2500"` to 2500) |
 | `lastSpeedTest` | `speed.{date,down.value,up.value}` |
 | `SpeedTest` | `GET {net}/speedtest` rows `{date, down_mbps, up_mbps}`; `rating` vs `planMbps` in core |
@@ -294,9 +294,9 @@ type UpgradeReport = {
 | `upstream` | `wireless_upstream_node.url`, else the eero in `ethernet_status.statuses[].neighbor` with `isLeafWiredToUpstream` |
 | `clients` | `connected_clients_count`, `connected_wired_clients_count`, `connected_wireless_clients_count` |
 | `bands` | `bands[]` (`band_5GHz_low` and `_high` both map to `"5"`) |
-| `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}`; `txPowerDbm` from `tx_power` and `autoChannel` (M2.6; null until then) |
+| `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}`; `txPowerDbm` from `tx_power`; `autoChannel` is always null (no known eero field) |
 | `hop`, `meshQuality` | derived in core in `eero.list` and `eero.get` from `upstream`, `backhaul` and `meshBars` |
-| `subnet`, `gatewayIp` | mapped by M2.6 (null until then) |
+| `subnet`, `gatewayIp` | `subnet` from the network's custom DHCP settings (null in automatic DHCP); `gatewayIp` is the gateway eero's IP (null in bridge or passthrough) |
 | `led` | `led_on`, `led_brightness` |
 | `nightlight` | `nightlight` (`enabled` false = off; `schedule.enabled` picks schedule vs ambient) |
 | `ipv4`, `ipv6`, `mac`, `bssids` | `ip_address`, `ipv6_addresses[].address`, `mac_address`, `bssids_with_bands` |
@@ -366,7 +366,7 @@ type DeviceList = {
 | `category` | core table from `device_type` (phone and tablet, laptop and desktop, television and game console and media streamer, thermostat and plug and camera and so on) |
 | `privateMac` | `is_private` |
 | `ipv4`, `ipv6` | `ipv4` or `ip`, `ipv6_addresses[].address` |
-| `ipv6LinkLocal` | the `fe80::` entry of `ipv6_addresses` (M2.7; null until then) |
+| `ipv6LinkLocal` | the `fe80::` entry of `ipv6_addresses` |
 | `connected`, `lastActive`, `firstSeen` | `connected`, `last_active`, `first_active` |
 | `ssid` | `is_guest` (guest) else main; `subnet_kind` when present |
 | `eeroId` | `source.url` |
