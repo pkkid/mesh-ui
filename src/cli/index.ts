@@ -97,7 +97,7 @@ const subcommands: Record<string, Subcommand> = {
   help: runHelp,
   login: runLogin,
   logout: runLogout,
-  mcp: (argv, io) => import("./mcp").then((m) => m.runMcp(argv, io)),
+  mcp: (argv, io, ctx) => import("./mcp").then((m) => m.runMcp(argv, io, () => ctx.engine("mcp"))),
   run: runRun,
   status: runStatus,
 };
