@@ -98,8 +98,8 @@ function packagedBinary() {
 // DevTools protocol, just enough to read the window.
 
 /** Starts the app with remote debugging and resolves its browser endpoint. */
-function launchWindow(bin, args) {
-  const child = spawn(bin, [...args, "--remote-debugging-port=0"], { env, stdio: ["ignore", "pipe", "pipe"] });
+function launchWindow(bin, args, extraEnv = {}) {
+  const child = spawn(bin, [...args, "--remote-debugging-port=0"], { env: { ...env, ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] });
   let output = "";
   const endpoint = new Promise((done, reject) => {
     const timer = setTimeout(() => reject(new Error(`No DevTools endpoint after 30s\n${output}`)), 30_000);
@@ -195,13 +195,13 @@ async function packagedSmoke() {
   if (ver.code !== 0 || !ver.stdout.includes(version)) fail(`--cli --version: exit ${ver.code}\n${ver.stdout}${ver.stderr}`);
   log(`cli --version: ${ver.stdout.trim()}`);
 
-  const cmds = await run(bin, ["--cli", ...hostSwitches, "--demo", "commands"]);
+  const cmds = await run(bin, ["--cli", ...hostSwitches, "--demo", "commands"], { extraEnv: { MESH_UI_DEMO: "1" } });
   if (cmds.code !== 0) fail(`--cli --demo commands: exit ${cmds.code}\n${cmds.stderr}`);
   const list = JSON.parse(cmds.stdout);
   if (!Array.isArray(list)) fail("commands did not print a JSON array");
   log(`cli --demo commands: ${list.length} commands`);
 
-  const app = launchWindow(bin, ["--demo", ...hostSwitches]);
+  const app = launchWindow(bin, ["--demo", ...hostSwitches], { MESH_UI_DEMO: "1" });
   try {
     const page = await pageTarget(await app.endpoint);
     const session = cdp(page.webSocketDebuggerUrl);
@@ -229,6 +229,7 @@ async function packagedSmoke() {
           text: document.body.innerText.slice(0, 200),
           bridge: typeof window.mesh?.execute === "function",
           commands: typeof window.mesh?.commands === "function" ? (await window.mesh.commands()).length : null,
+          networks: typeof window.mesh?.execute === "function" ? await window.mesh.execute("network.list", {}) : null,
         }))()`,
       ).catch(() => null);
       if (state?.ready === "complete" && state.rendered && state.bridge) break;
@@ -236,9 +237,11 @@ async function packagedSmoke() {
     }
     if (!state?.rendered) fail(`The renderer did not render: ${JSON.stringify(state)}`);
     if (!state.bridge) fail("window.mesh is missing in the renderer");
+    // Demo fixtures answer network.list; a live engine would say not_signed_in.
+    if (!state.networks?.ok || !state.networks.result.length) fail(`network.list did not answer from demo fixtures: ${JSON.stringify(state.networks)}`);
     // Give late startup work a moment to log errors.
     await new Promise((r) => setTimeout(r, 1_000));
-    log(`window: title "${state.title}", ${state.commands} commands over IPC, text "${state.text.replace(/\s+/g, " ").trim().slice(0, 80)}"`);
+    log(`window: title "${state.title}", ${state.commands} commands over IPC, ${state.networks.result.length} demo networks, text "${state.text.replace(/\s+/g, " ").trim().slice(0, 80)}"`);
     if (errors.length) fail(`Renderer errors:\n${errors.join("\n")}`);
     if (screenshot) {
       const { data } = await session.send("Page.captureScreenshot", { format: "png" });
