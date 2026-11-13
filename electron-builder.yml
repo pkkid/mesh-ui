@@ -1,0 +1,60 @@
+# electron-builder config (docs/platform/build-and-release.md).
+# `pnpm dist` builds the installers for the current OS, `pnpm dist:dir` only
+# the unpacked app in dist/<os>-unpacked. Local builds are unsigned unless the
+# signing variables are set. Publishing is left to release.yml.
+
+# Never change after the first release: it keys the macOS keychain item, the
+# Windows AppUserModelID and the auto-update identity.
+appId: io.github.pkkid.meshui
+productName: Mesh UI
+
+directories:
+  output: dist
+  buildResources: build
+
+# electron-vite bundles the app into out/; zod and the MCP SDK stay external
+# and come from production dependencies.
+files:
+  - out/**
+  - package.json
+  - "!**/*.map"
+asar: true
+
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+      arch: universal
+    - target: zip
+      arch: universal
+  artifactName: Mesh-UI-${version}-${arch}.${ext}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  artifactName: Mesh-UI-Setup-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  executableName: mesh-ui
+  category: Network
+  synopsis: Desktop client for eero mesh networks
+  target:
+    - AppImage
+    - deb
+    - rpm
+  artifactName: Mesh-UI-${version}-${arch}.${ext}
+
+# electron-builder's default deb depends already include libsecret-1-0.
+deb:
+  artifactName: mesh-ui_${version}_${arch}.${ext}
+
+# The default rpm depends plus libsecret, so a keychain is usable.
+rpm:
+  depends: [gtk3, libnotify, nss, libXScrnSaver, "(libXtst or libXtst6)", xdg-utils, at-spi2-core, "(libuuid or libuuid1)", libsecret]
+  artifactName: mesh-ui-${version}.${arch}.${ext}

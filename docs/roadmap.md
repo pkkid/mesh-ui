@@ -162,7 +162,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: `usage.get` (scope network, eero, device, profile; Day and Week; hourly and daily cadence for the heatmap), `usage.breakdown` (by device, profile, eero), `events.list` (paging, type filter, `format: csv`), with mapping of `{series, values}` and `app_events`, and the 7-day limit enforced in core.
 - done when: demo and fake-server tests pass, including the 7-day clamp and CSV output.
 
-### M1.13 Package build and CI smoke ☐
+### M1.13 Package build and CI smoke ✅ (#31)
 - issue: [#13](https://github.com/pkkid/mesh-ui/issues/13)
 - after: M1.4, M1.5
 - docs: platform/build-and-release.md, testing.md (CI)
