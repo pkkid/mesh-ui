@@ -244,10 +244,12 @@ mesh-ui login
     session. A live request fails with "This build has no live backend".
     Settings go to `settings.json` in `--user-data-dir` (or
     `MESH_UI_USER_DATA_DIR`) when given, else stay in memory.
-- The live host is the Electron one: `src/main` builds the engine with the
-  Electron `SecretStore` and the app's settings paths and passes it to
-  `runCli` as a `CliHost`, so the paths and storage rules are identical to
-  the app. Not yet built in M1: the `--cli` hand-off in `src/main`.
+- The live host is the Electron one. `src/main/index.ts` sees `--cli`,
+  creates no window, and calls `cliMain` with `electronCliHost()`: `nodeHost`'s
+  terminal handling plus a `createEngine` that builds the live engine with
+  the Electron `SecretStore` and the app's settings paths, so the paths and
+  storage rules are identical to the app. Demo and fake runs there use the
+  real config dir only when `--user-data-dir` is given.
 - stdout carries only results (or, for `mcp`, the protocol). Logs and progress
   go to stderr.
 - Commands from the CLI and MCP are to be recorded in the audit log (see

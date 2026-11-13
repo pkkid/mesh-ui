@@ -227,7 +227,8 @@ stored, and there is no history to load.
 
 Command results are the data path. The only push channel carries host
 events that are not command results. The Electron host sends them on one
-outbound IPC channel; preload exposes `window.mesh.onEvent(cb)`.
+outbound IPC channel; preload exposes `window.mesh.on(listener)`, which returns an
+unsubscribe. Main forwards `engine.onEvent` to it (`src/main/ipc.ts`).
 
 ```ts
 type HostEvent =

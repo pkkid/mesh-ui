@@ -122,8 +122,7 @@ The MCP server can control the user's network, so:
 - `runMcp(argv, io, makeEngine)` parses the `mcp` flags and gets its engine
   from `makeEngine`. The `mcp` subcommand passes the CLI host's engine
   (`ctx.engine("mcp")`), so the server runs on whatever backend the host
-  serves (demo and fake today; live once the Electron host lands). Without
-  a factory it serves `--demo` only.
+  serves (live, demo or fake). Without a factory it serves `--demo` only.
 - `createMcpServer(engine, opts)` builds the tools from `engine.commands()`
   at start-up; there is no per-tool code. A new command appears as a tool
   automatically.

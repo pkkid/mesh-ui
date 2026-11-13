@@ -51,15 +51,17 @@ commands for everything else.
 
 ## The bridge: `window.mesh`
 
-The preload script exposes one object. Its type lives in `src/shared/` so main,
-preload and renderer agree.
+The preload script exposes one object. Its type (`MeshApi`) lives in
+`src/shared/types.ts` so main, preload and renderer agree. Both halves of
+the bridge (`createMeshBridge` for preload and the `ipcMain` handlers) are
+in `src/main/ipc.ts`, so they are tested together.
 
 ```ts
 type MeshApi = {
   platform: "darwin" | "linux" | "win32";
   execute(id: string, params?: unknown): Promise<Result>;   // the only data path
   commands(): Promise<CommandInfo[]>;                       // registry listing
-  onEvent(cb: (e: HostEvent) => void): () => void;          // session and update events
+  on(listener: (e: HostEvent) => void): () => void;         // host events; returns an unsubscribe
   setTitlebarColors(colors: TitlebarColors): void;          // window-only, not a command
 };
 type Result = { ok: true; result: unknown } | { ok: false; error: { code: string; message: string; detail?: unknown } };
@@ -74,18 +76,18 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   [Ref conventions](commands.md#params-conventions): `device`, `profile`,
   `eero` take an id or exact name, bulk actions take `devices: Ref[]`, and
   `networkId` is optional. The palette and confirm dialogs read it.
-- `onEvent` carries host events that are not command results:
-  `session.changed` (signed out or expired elsewhere, for example by the CLI),
-  `update.ready` (an app update is downloaded). No eero data travels on it.
+- `on` carries host events that are not command results, on the
+  `mesh:event` channel: `session.changed` (signed out or expired elsewhere,
+  for example by the CLI), `network.selected`, `update.ready` (an app
+  update is downloaded). No eero data travels on it.
 
-Not yet built in M1: the preload still exposes the pre-engine sign-in calls,
-not `execute`, `commands` or `onEvent` (that arrives with the Electron host,
-M1.4). The renderer codes against a local `MeshBridge` type in
-`app/useCommand.ts` (`execute`, `commands`, optional `on(listener)` for host
-events). While `window.mesh` has no `execute`, `bridge()` falls back to a
-stub that answers every call with `network_error` ("not connected to its
-engine yet") and an empty registry, so the shell renders its empty and
-missing states; `engineConnected()` reports which one is active.
+The renderer reads the bridge through a local `MeshBridge` type in
+`app/useCommand.ts` (`execute`, `commands`, optional `on`). If `window.mesh`
+has no `execute` (for example a renderer opened without the preload),
+`bridge()` falls back to a stub that answers every call with
+`network_error` ("not connected to its engine yet") and an empty registry,
+so the shell renders its empty and missing states; `engineConnected()`
+reports which one is active.
 
 ## Data access
 
