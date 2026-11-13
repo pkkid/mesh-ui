@@ -8,6 +8,9 @@
 
 export { routes as account } from "./account";
 export { routes as auth } from "./auth";
+export { routes as devices } from "./devices";
+export { routes as eeros } from "./eeros";
 export { routes as events } from "./events";
 export { routes as network } from "./network";
+export { routes as profiles } from "./profiles";
 export { routes as usage } from "./usage";
