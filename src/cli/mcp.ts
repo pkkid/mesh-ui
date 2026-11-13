@@ -8,6 +8,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, type CallToolResult, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
+import { version as appVersion } from "../../package.json";
 import { createDemoBackend } from "../core/demo";
 import { createEngine, type Engine } from "../core/engine";
 import type { Effect } from "../core/model";
@@ -95,8 +96,12 @@ const errorResult = (code: string, message: string): CallToolResult => ({
   content: [{ type: "text", text: JSON.stringify({ code, message }) }],
 });
 
-/** Builds the server for an engine. The caller connects it to a transport. */
-export function createMcpServer(engine: Engine, opts: McpOptions = {}, version = "0.0.0"): Server {
+/**
+ * Builds the server for an engine. The caller connects it to a transport.
+ * `serverInfo.version` is the app version from package.json, the same source
+ * the hosts give `app.info`.
+ */
+export function createMcpServer(engine: Engine, opts: McpOptions = {}, version = appVersion): Server {
   const exposed = exposedCommands(engine.commands(), opts);
   const byName = new Map(exposed.map((info) => [toolName(info.id), info]));
   const tools = exposed.map(toTool);
