@@ -23,7 +23,9 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      Gateway), a dashed link with its quality chip ("Excellent · 4 bars"),
      this eero, then any downstream eero with its own link chip ("Weak · 2
      bars", warning colour). For the gateway the upstream is the Internet
-     node and the link is the WAN ("10 Gbps WAN").
+     node and the link is the WAN ("10 Gbps WAN"). With more than one
+     downstream eero (the gateway, usually) they are listed under the row,
+     each with its link chip, instead of drawn inline.
 2. Two columns:
    - **Data usage**. Sub "All clients on Office, per hour". Day / Week toggle.
      Legend with totals (Download 101 GB, Upload 17 GB) and an area chart.
@@ -151,9 +153,13 @@ eeros stays active. `[` and `]` move to the previous and next eero.
   back needs the mobile app.
 - Location presets mirror the eero app's room list; Custom opens the input
   with the text selected.
-- Open question: whether `eero.firmware.history` has a real per-eero source.
-  If eero only exposes network-wide history, use `updates.get` history and
-  label it "Network updates".
+- Version history uses `eero.firmware.history {eero}` (per eero, from
+  M2.6). An empty list reads "No version history reported."; an error reads
+  "Version history isn't available." and the rest of the card still shows.
+- Read-only until the write commands land (M2.9): Location, Status light,
+  Nightlight, port actions, Blink, Restart and Remove show their current
+  values with disabled controls ("Coming soon"). The presets live in the
+  page for now and move to core with `eero.rename`.
 - MANUAL: rename one eero and turn its LED off and on | eero detail, edit
   Location, toggle Status light | name and LED change in the eero app too |
   risk: none.
