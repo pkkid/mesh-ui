@@ -189,6 +189,14 @@ eero tolerates roughly 100 requests a minute per account before answering 429.
   callers in the process. Requests beyond it wait.
 - **Concurrency.** At most 4 requests in flight; writes are serialised
   (one at a time, in order).
+- **Shared reads.** Identical session GETs (same URL and query) share one
+  request while it is in flight and for 5 s after it succeeds
+  (`READ_SHARE_MS`); each caller gets its own copy. One page load runs many
+  commands that each read `GET {net}`, its permissions or the account; without
+  sharing, two page loads used up the whole budget. Any write, sign-in or
+  sign-out drops shared answers, and failures are never shared. Tests that
+  inject an in-process `fetch` share only in-flight reads, since they change
+  fake server state between reads.
 - **429.** Honour `Retry-After` (seconds or HTTP date); without one, back off
   30 s. Also treat `meta.error` = `error.rate.limit` on any status as a 429.
 - **Retries.** Only `query` requests are retried: on 429 after the wait, and on

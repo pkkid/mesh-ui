@@ -10,16 +10,7 @@ import { Meter, meterTone } from "~/components/ui/meter";
 import { cn } from "~/lib/utils";
 import { formatCount, formatPercent, MISSING } from "../../../../core/format";
 import type { Eero, Radio } from "../../../../core/model";
-
-/** "Auto channel selection on", "Fixed channel on 5 GHz", or null when eero does not say. */
-export function autoChannelLine(radios: ReadonlyArray<Radio>): string | null {
-  const known = radios.filter((r) => r.autoChannel !== null);
-  if (known.length === 0) return null;
-  const fixed = known.filter((r) => r.autoChannel === false);
-  if (fixed.length === 0) return "Auto channel selection on";
-  if (fixed.length === known.length) return "Auto channel selection off";
-  return `Fixed channel on ${fixed.map((r) => bandLabel(r.band)).join(", ")}`;
-}
+import { autoChannelLine } from "./helpers";
 
 const PLACEHOLDER: Radio[] = (["2.4", "5"] as const).map((band) => ({
   band,

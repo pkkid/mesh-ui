@@ -20,6 +20,7 @@ import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { type Clock, formatPercent, MISSING } from "../../../../core/format";
 import type { Eero, FirmwareEntry, Updates } from "../../../../core/model";
+import { ipText, updateWindow } from "./helpers";
 
 const SOON = "Coming soon";
 
@@ -224,17 +225,6 @@ function Note({ children }: { children: ReactNode }) {
   );
 }
 
-/** "2 AM", "12 PM". */
-const hourWord = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h % 24 < 12 ? "AM" : "PM"}`;
-
-/** eero's update window: three hours from the preferred hour ("2 to 5 AM"). */
-export function updateWindow(hour: number | null): string | null {
-  if (hour === null) return null;
-  const from = hourWord(hour);
-  const to = hourWord((hour + 3) % 24);
-  return from.slice(-2) === to.slice(-2) ? `${from.slice(0, -3)} to ${to}` : `${from} to ${to}`;
-}
-
 const UPDATE_STATUS: Record<Updates["status"], { tone: StatusTone; label: string }> = {
   up_to_date: { tone: "success", label: "Up to date" },
   available: { tone: "info", label: "Available" },
@@ -295,12 +285,6 @@ function SoftwareCard({ eero, clock }: { eero: Eero | null; clock: Clock }) {
       </div>
     </SettingsCard>
   );
-}
-
-/** "IPv4 192.168.4.22" lines for every known address, for the card's copy button. */
-export function ipText(e: Pick<Eero, "ipv4" | "ipv6" | "subnet" | "gatewayIp">): string {
-  const rows: [string, string | null][] = [["IPv4", e.ipv4], ...e.ipv6.map((ip): [string, string] => ["IPv6", ip]), ["Subnet", e.subnet], ["Gateway", e.gatewayIp]];
-  return rows.flatMap(([k, v]) => (v ? [`${k} ${v}`] : [])).join("\n");
 }
 
 function CopyAll({ text }: { text: string }) {

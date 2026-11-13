@@ -6,6 +6,7 @@
 
 import { type AreaName, type Backend, type BackendAreas, composeBackend, type SecretStore } from "../../backend";
 import { EeroClient, type RequestLogEntry } from "../client";
+import type { RateLimiter } from "../ratelimit";
 
 export type EeroBackendOptions = {
   /** Host session store; the token never leaves this backend. */
@@ -16,6 +17,10 @@ export type EeroBackendOptions = {
   origin?: string;
   /** Tests only: an in-process fetch, e.g. the fake eero server's. */
   fetch?: typeof fetch;
+  /** Tests only: a limiter of their own instead of the default budget. */
+  limiter?: RateLimiter;
+  /** How long identical GETs share an answer; see READ_SHARE_MS. */
+  readShareMs?: number;
   onLog?: (entry: RequestLogEntry) => void;
   onSessionChange?: (signedIn: boolean) => void;
 };
