@@ -88,8 +88,9 @@ host `SecretStore` on first use and saved on every rotation
 ([eero-client.md](eero-client.md#token-custody)); the engine never holds
 it. It never appears in `Session`, results, events, errors or logs.
 
-- **Startup.** The engine calls `secrets.load()`. With a token it is
-  `signed_in` and loads the account lazily on the first command.
+- **Startup.** The eero client calls `secrets.load()` lazily, on its first
+  session-dependent call. With a token it is `signed_in` and loads the
+  account lazily on the first command.
 - **Sign in.** `auth.login.start` holds the unverified token in memory
   (`pending_code`). `auth.login.verify` promotes it and calls
   `secrets.save(token)`, which answers `keychain` or `memory`.
@@ -152,9 +153,12 @@ the backend while two views polling the same topic share one request.
 - Sensitive results (`wifi.password.get`, `wifi.share`, `guest.share`,
   `settings.thread.credentials`) are never cached.
 - After a write the invalidated topics are stale at once. Where eero is slow
-  to reflect a change (device pause, profile writes), the engine waits about
-  2 s before serving the next read of that topic from the backend
-  (`ctx.invalidate(topics, atMs)` with a future time).
+  to reflect a change (device pause, profile writes), the read after it
+  should wait about 2 s. The engine offers `ctx.invalidate(topics, atMs)`
+  with a future time: cached answers are served until then, and anything
+  fetched before it expires at that time. A cold read still fetches at
+  once. Not yet built in M1: no command uses it, and the engine's own
+  invalidation after a write is immediate.
 - A backend `not_signed_in` clears the whole cache and emits
   `session.changed`.
 - After a `disruptive` write that restarts eeros (`network.restart`,
@@ -202,10 +206,11 @@ only after a burst:
    has `next_burst`, about 12 s ahead. eero allows one burst per minute per
    network; core (not the eero client) keeps a per-network timestamp and a
    second call inside the minute returns the pending `nextBurstAt` without
-   calling eero.
+   calling eero. Not yet built in M1.
 2. The engine shortens the `devices` TTL until `next_burst` plus 2 s, so the
    next `device.list` after that point reads fresh `usage.down_mbps` and
-   `usage.up_mbps`.
+   `usage.up_mbps`. Not yet built in M1 (a spec's `ttl` may be a
+   function of params, which is where this will go).
 3. The mapper stamps each device's `rates` with the read time. Rates older
    than 90 s become `null`, which the UI shows as `-`, never `0`.
 4. `DeviceList.summary.rates` sums current rates and counts active devices
@@ -285,5 +290,5 @@ The limiter lives in the eero client; the full rules are in
 The app and a CLI or MCP process have separate buckets. A long CLI script
 should pace itself; the limiter still keeps each process under the budget.
 
-The demo backend skips the limiter but adds 50 to 300 ms of simulated
-latency so loading states stay visible.
+The demo backend skips the limiter. It is meant to add 50 to 300 ms of
+simulated latency so loading states stay visible; not yet built in M1.

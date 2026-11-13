@@ -76,7 +76,11 @@ gets them for free and both backends agree:
 - summaries such as `DeviceList.summary`, and composites such as
   `health.check` and `support.report`.
 
-The once-a-minute limit on `device.requestBurst` is also enforced in core.
+The once-a-minute limit on `device.requestBurst` also belongs in core.
+
+Not yet built in M1: the command registry is still empty, so nothing in core
+fills these fields or enforces the burst limit yet; the commands that read
+them do it as they land.
 
 ## eero backend
 
@@ -156,7 +160,8 @@ the open source clients' redacted fixtures, rewritten with invented values.
 `src/core/demo/` implements `Backend` over a mutable in-memory copy of the
 fixtures.
 
-- **Writes apply.** pausing a device flips the fixture,
+- **Writes apply** (not yet built in M1: the demo backend has only the M1
+  reads). Pausing a device flips the fixture,
   deleting a profile moves its devices to unassigned, and a new port
   forward appears in the routing list. Restarts set the network or eero to `updating`
   and back to `online` after a short simulated delay (5 s, not minutes), so
@@ -173,7 +178,8 @@ fixtures.
   totals add up across network, eero, profile and device scopes.
 - **Events.** A generated stream covering every `EventCategory`, with
   `nextCursor` paging.
-- **Errors on purpose.** A device named "Flaky Plug" fails writes with
+- **Errors on purpose** (not yet built in M1, as it needs writes). A
+  device named "Flaky Plug" fails writes with
   `eero_error` (`error.eero.offline`) so error states are reachable in the
   UI without a real network.
 - **Reset.** Each process starts from the pristine fixtures. Tests create a

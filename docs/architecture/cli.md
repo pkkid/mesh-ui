@@ -161,7 +161,7 @@ Errors in table format go to stderr as one line: `error needs_confirm: ...`.
 | 2 | Usage error | `unknown_command`, `bad_params`, bad flags, unreadable params file |
 | 3 | Needs confirmation | `needs_confirm` |
 | 4 | Not signed in | `not_signed_in` |
-| 5 | Rate limited | `rate_limited` (retry after `error.detail.retryAfter` seconds) |
+| 5 | Rate limited | `rate_limited` (retry after `error.detail.retryAfterSec` seconds) |
 | 10 | A script line failed (see Scripts) | any |
 | 130 | Interrupted (Ctrl C) | |
 

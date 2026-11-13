@@ -50,11 +50,12 @@ backend.
 ## Request pipeline
 
 Every request goes through one function, `client.request(spec)`, where `spec`
-is `{ method, path | url, version?, body?, encoding, effect }`.
+is a `RequestSpec`: `{ method, path, version?, query?, body?, encoding?, effect?, auth? }`.
 
 1. **Resolve the URL.** Prefer links the API hands back (`network.url`,
-   `resources.*`, item `url`) over building paths. Accept a bare id, a path or
-   an absolute URL. Rewrite the version prefix when the call needs one (below).
+   `resources.*`, item `url`) over building paths. `path` is a versioned API
+   path (`/2.2/...`) or a same-origin absolute URL; a bare id is refused.
+   Rewrite the version prefix when the call needs one (below).
 2. **Check the origin.** The final URL must be on the client's origin with a
    path under `/2.2/`, `/2.3/` or `/2.4/`. Anything else is refused before
    the request is built, so the token can never be sent elsewhere. The
@@ -62,8 +63,9 @@ is `{ method, path | url, version?, body?, encoding, effect }`.
    which is for dev and tests only: `checkOrigin` accepts nothing but the
    real API or a loopback `http` origin (`127.0.0.1`, `localhost`, `[::1]`)
    for the fake eero server.
-   The one exception is the firmware release notes manifest, fetched with a
-   separate unauthenticated call (no cookie, no token header).
+   The one exception is the firmware release notes manifest, to be fetched
+   with a separate unauthenticated call (no cookie, no token header). Not
+   yet built in M1.
 3. **Wait for budget** in the limiter (see [Rate limits](#rate-limits)).
 4. **Send** with the standard headers and a 30 s timeout. No redirects
    (`redirect: "error"`).
@@ -196,7 +198,7 @@ eero tolerates roughly 100 requests a minute per account before answering 429.
   blocking the caller.
 - **Burst reporter.** `POST {net}/burst_reporters` (behind
   `device.rates.refresh`) is allowed once a minute per network. Core
-  enforces this, not the limiter (see `DeviceBackend.requestBurst`); a second
+  enforces this, not the limiter (not yet built in M1) (see `DeviceBackend.requestBurst`); a second
   call inside the minute returns the last result's `nextBurst` without
   calling eero. Fresh `usage.down_mbps` /
   `up_mbps` appear on devices about 12 s after a burst.
