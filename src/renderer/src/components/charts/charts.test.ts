@@ -115,27 +115,34 @@ describe("monotone curve", () => {
   const toPoints = (values: number[], max: number): Point[] =>
     values.map((v, i) => ({ x: i * 40, y: valueToY(v, max) }));
 
-  /** Samples every segment and checks it stays inside its end points' y range. */
-  function expectNoOvershoot(values: number[]) {
+  /**
+   * Samples every segment and returns the first sample that leaves its end
+   * points' y range, dips below zero or folds back in x; null when none does.
+   * Plain comparisons, one expect per series: an expect per sample made the
+   * random-data test take seconds.
+   */
+  function firstOvershoot(values: number[]): string | null {
     const max = Math.max(...values, 1);
     const points = toPoints(values, max);
     const segments = smoothCurve(points);
-    expect(segments).toHaveLength(points.length - 1);
-    for (const s of segments) {
-      const lo = Math.min(s.from.y, s.to.y);
-      const hi = Math.max(s.from.y, s.to.y);
+    if (segments.length !== points.length - 1) return `expected ${points.length - 1} segments, got ${segments.length}`;
+    const eps = 1e-9;
+    for (const [i, s] of segments.entries()) {
+      const lo = Math.min(s.from.y, s.to.y) - eps;
+      const hi = Math.max(s.from.y, s.to.y) + eps;
       for (let t = 0; t <= 1; t += 1 / 64) {
         const p = pointAt(s, t);
-        expect(p.y).toBeGreaterThanOrEqual(lo - 1e-9);
-        expect(p.y).toBeLessThanOrEqual(hi + 1e-9);
-        // Below zero means below the bottom edge of the plot.
-        expect(p.y).toBeLessThanOrEqual(VIEW_HEIGHT + 1e-9);
-        // x must move forward, or the line would fold back on itself.
-        expect(p.x).toBeGreaterThanOrEqual(s.from.x - 1e-9);
-        expect(p.x).toBeLessThanOrEqual(s.to.x + 1e-9);
+        // y outside the end points overshoots; past VIEW_HEIGHT is below zero;
+        // x outside the segment means the line folds back on itself.
+        if (p.y < lo || p.y > hi || p.y > VIEW_HEIGHT + eps || p.x < s.from.x - eps || p.x > s.to.x + eps) {
+          return `segment ${i} at t=${t.toFixed(3)}: (${p.x}, ${p.y}) outside y ${lo}..${hi} in [${values.join(", ")}]`;
+        }
       }
     }
+    return null;
   }
+
+  const expectNoOvershoot = (values: number[]) => expect(firstOvershoot(values)).toBeNull();
 
   it("does not overshoot a spike or dip below zero after it", () => {
     // The classic Catmull-Rom failure: zeros around a spike swing negative.

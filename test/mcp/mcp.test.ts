@@ -6,6 +6,7 @@ import { composeBackend } from "../../src/core/backend";
 import { createEngine } from "../../src/core/engine";
 import type { NetworkSummary } from "../../src/core/model";
 import { type AnyCommand, defineCommand } from "../../src/core/spec";
+import { version as appVersion } from "../../package.json";
 import { createMcpServer, type McpOptions, parseMcpArgs, toolName } from "../../src/cli/mcp";
 
 const network = (id: string, name: string): NetworkSummary => ({
@@ -123,6 +124,12 @@ afterEach(async () => {
 const text = (res: Awaited<ReturnType<Client["callTool"]>>) => JSON.parse((res.content as { text: string }[])[0]?.text ?? "null");
 
 describe("mcp tools", () => {
+  it("reports the app version in serverInfo, not 0.0.0", async () => {
+    const info = (await connect()).getServerVersion();
+    expect(info).toMatchObject({ name: "mesh-ui", version: appVersion });
+    expect(appVersion).not.toBe("0.0.0");
+  });
+
   it("lists one tool per command, named from the id, without the sign-in and install commands", async () => {
     const { tools } = await (await connect()).listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(

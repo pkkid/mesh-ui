@@ -188,15 +188,15 @@ for looks.
 
 Kept deliberately light. GitHub Actions is used for two things only:
 
-1. **Cross-platform smoke** on pull requests to `main` (and on demand):
-   one job per OS (macOS, Windows, Linux) that installs, runs `pnpm typecheck`
-   and `pnpm test`, and builds. Its job is catching OS-specific breakage
+1. **Cross-platform smoke** on pull requests to `main` and `milestone/**`,
+   and on demand (`workflow_dispatch`): one job per OS (macOS, Windows,
+   Linux) that installs, runs `pnpm typecheck` and `pnpm test`, and builds. Its job is catching OS-specific breakage
    (paths, keychains, line endings), not being the main test signal.
 2. **Release builds** when a version tag is pushed, because signed macOS and
    Windows artifacts need those runners.
 
-UI tests, screenshots, the keychain-less run and packaging smoke tests run
-locally. CI has no eero credentials and needs none. Details in
+UI tests, screenshots, the keychain-less run (`pnpm test:keychainless`) and
+packaging smoke tests (`pnpm dist:dir`, then `pnpm dist:smoke`) run locally. CI has no eero credentials and needs none. Details in
 [build-and-release.md](platform/build-and-release.md#ci).
 
 ## Manual checks on the real network
