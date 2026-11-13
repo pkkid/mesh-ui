@@ -66,7 +66,7 @@ by M1.1, later stories only add to their area files), `src/core/commands/index.t
 `src/renderer/src/app/routes.ts` (registration files: one-line edits by
 anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 
-### M1.1 Core contracts and test tooling ☐
+### M1.1 Core contracts and test tooling ✅ (#18)
 - issue: [#1](https://github.com/pkkid/mesh-ui/issues/1)
 - after: (none)
 - docs: architecture/overview.md, architecture/commands.md, architecture/engine.md, architecture/backends.md, architecture/data-model.md, testing.md
