@@ -70,11 +70,13 @@ Plus two guards:
 
 ## Fixtures
 
-- Invented data only: network "Maple Street" (and "Lake Cabin" as a second,
-  shared network), owner "Alex Kim", family profiles Alex, Jamie, Mia and Leo,
-  eeros Living Room (gateway), Office, Upstairs Hall and Garage, devices on
-  `192.168.4.x`, MACs from a locally administered range, serials and ids
-  made up.
+- Invented data only, in `src/core/demo/fixtures.ts`: three networks for
+  account "Alex Kim". "Maple Street" (owner, the main one) has family
+  profiles Alex, Jamie, Mia and Leo, eeros Living Room (gateway), Office,
+  Upstairs Hall and Garage, and devices on `192.168.4.x`. "Lake Cabin"
+  (owner) is offline with 1 eero. "Mom's House" (admin role) is in bridge
+  mode with 2 eeros and no Thread or nightlight. MACs use a locally
+  administered prefix; serials and ids are made up.
 - Fixtures cover the states pages must handle: an offline eero, a weak
   wireless link, a paused profile, a scheduled profile, a blocked device, an
   update available, a network in bridge mode, a non-owner admin role, and a

@@ -23,10 +23,13 @@ engine.execute(id, params)
 
 - `EeroClient` knows HTTP, auth, versions, encodings, rate limits and error
   mapping. It returns raw `data` from the eero envelope.
-- `EeroBackend` implements `Backend` with one method per operation
-  (`listDevices`, `pauseDevice`, ...). It calls the client and maps raw
-  shapes into the model in `src/core/model.ts`. Mapping lives here and
-  nowhere else.
+- The eero backend (`createEeroBackend` in `backend/index.ts`) implements
+  `Backend` with one factory per area (`backend/<area>.ts`, typed
+  `EeroArea<"area">`). Each factory gets an `EeroContext`
+  (`{ options, client }`), calls eero only through `ctx.client`, and maps raw
+  shapes into the model in `src/core/model.ts`. Mapping lives there and
+  nowhere else. Areas not built yet answer "not available yet" (see
+  [backends.md](backends.md#composing-a-backend)).
 - Commands call `ctx.backend`, never the client. A command cannot see a raw
   eero response or the token.
 
@@ -34,27 +37,35 @@ engine.execute(id, params)
 
 | File | Holds |
 | --- | --- |
-| `src/core/eero/client.ts` | `EeroClient`: request pipeline, envelope parsing, token rotation, refresh-and-replay |
-| `src/core/eero/auth.ts` | Login start, verify, resend, logout, refresh |
-| `src/core/eero/limiter.ts` | Request budget, serial queue, 429 handling, per-network burst reporter timer |
-| `src/core/eero/errors.ts` | `EeroError` and the mapping from HTTP status and `meta.error` to engine error codes |
-| `src/core/eero/urls.ts` | Resource link resolution (`url`, `resources.*`), version rewriting, origin check |
-| `src/core/eero/raw.ts` | Raw response types, limited to fields we read |
-| `src/core/eero/backend.ts` | `EeroBackend`: implements `Backend`, maps raw to model |
+| `src/core/eero/client.ts` | `EeroClient`: request pipeline, envelope parsing, token custody and rotation, refresh-and-replay, sign-in (`startLogin`, `verifyLogin`, `resendLogin`, `logout`, `status`), and `mapError` from HTTP status and `meta.error` to `BackendError` codes |
+| `src/core/eero/ratelimit.ts` | `RateLimiter`: request budget, in-flight cap, serial writes, 429 pause; `parseRetryAfter` |
+| `src/core/eero/urls.ts` | Origin check (`checkOrigin`), URL resolution and version rewriting (`resolveUrl`), device write paths, ids from links, `Links`, path redaction |
+| `src/core/eero/raw.ts` | Raw response types, limited to fields we read; `asList`, `linkUrl` |
+| `src/core/eero/backend/index.ts` | `createEeroBackend`, `EeroContext`, `EeroArea`: composes the area factories |
+| `src/core/eero/backend/<area>.ts` | One area of `Backend`: calls `ctx.client`, maps raw to model (added per area) |
+
+`BackendError` itself lives in `src/core/errors.ts`, shared with the demo
+backend.
 
 ## Request pipeline
 
 Every request goes through one function, `client.request(spec)`, where `spec`
-is `{ method, path | url, version?, body?, encoding, effect }`.
+is a `RequestSpec`: `{ method, path, version?, query?, body?, encoding?, effect?, auth? }`.
 
 1. **Resolve the URL.** Prefer links the API hands back (`network.url`,
-   `resources.*`, item `url`) over building paths. Accept a bare id, a path or
-   an absolute URL. Rewrite the version prefix when the call needs one (below).
-2. **Check the origin.** The final URL must be `https://api-user.e2ro.com`
-   with a path under `/2.2/`, `/2.3/` or `/2.4/`. Anything else is refused
-   before the request is built, so the token can never be sent elsewhere.
-   The one exception is the firmware release notes manifest, fetched with a
-   separate unauthenticated call (no cookie, no token header).
+   `resources.*`, item `url`) over building paths. `path` is a versioned API
+   path (`/2.2/...`) or a same-origin absolute URL; a bare id is refused.
+   Rewrite the version prefix when the call needs one (below).
+2. **Check the origin.** The final URL must be on the client's origin with a
+   path under `/2.2/`, `/2.3/` or `/2.4/`. Anything else is refused before
+   the request is built, so the token can never be sent elsewhere. The
+   origin is `https://api-user.e2ro.com` unless the `origin` option is set,
+   which is for dev and tests only: `checkOrigin` accepts nothing but the
+   real API or a loopback `http` origin (`127.0.0.1`, `localhost`, `[::1]`)
+   for the fake eero server.
+   The one exception is the firmware release notes manifest, to be fetched
+   with a separate unauthenticated call (no cookie, no token header). Not
+   yet built in M1.
 3. **Wait for budget** in the limiter (see [Rate limits](#rate-limits)).
 4. **Send** with the standard headers and a 30 s timeout. No redirects
    (`redirect: "error"`).
@@ -65,7 +76,7 @@ is `{ method, path | url, version?, body?, encoding, effect }`.
    outside 200-299 is a failure. Bodies over 10 MiB are refused.
 7. **Refresh on demand.** On 401 with `meta.error` = `error.session.refresh`,
    run the refresh flow and replay the original request once.
-8. **Map errors** to an `EeroError` with an engine code (see
+8. **Map errors** to a `BackendError` with an engine code (see
    [Errors](#errors)).
 
 ### Headers
@@ -90,7 +101,7 @@ resource links to `/2.3/` for current UAs, and may throttle non-mobile clients
 harder. There is also `error.app.version.blocked` for refused UAs.
 
 - Default: an app-like string in the style of `eero-ios/2026.8.1 (iPhone; iOS 18.5)`.
-- Configurable through `settings.json` (`eero.userAgent`), read by both the
+- Configurable through `settings.json` (`userAgent`), read by both the
   app and the CLI. Not exposed as a UI control; it is an escape hatch for when
   eero blocks the default.
 - When `error.app.version.blocked` comes back, the error message tells the user
@@ -162,9 +173,10 @@ before it ran; this is the one case where a write is sent twice.
 
 ### Token custody
 
-The token lives in one place: the `Session` object inside the engine. The
-client asks the session for the current token on every request and reports
-rotations back to it. The session persists through the host's `SecretStore`
+The token lives in one place: a private field of the `EeroClient`. The
+client loads it from the host's `SecretStore` on first use, saves every
+rotation back to it, and clears it when the session ends (reporting the
+change through `onSessionChange`). It persists only through the `SecretStore`
 (see [security.md](security.md)). No command returns the token, no log line
 contains it, and errors are built from status and `meta.error`, never from
 request headers.
@@ -182,12 +194,13 @@ eero tolerates roughly 100 requests a minute per account before answering 429.
 - **Retries.** Only `query` requests are retried: on 429 after the wait, and on
   network errors or 5xx with backoff (1 s, 4 s), at most twice. Writes are
   never retried; a failed write returns its error. If the wait would exceed
-  20 s the request fails with `rate_limited` and `retryAfter` instead of
+  20 s the request fails with `rate_limited` and `retryAfterSec` instead of
   blocking the caller.
 - **Burst reporter.** `POST {net}/burst_reporters` (behind
-  `device.rates.refresh`) is allowed once a minute per network. The limiter
-  keeps a per-network timestamp; a second call inside the minute returns the
-  last result's `nextBurst` without calling eero. Fresh `usage.down_mbps` /
+  `device.rates.refresh`) is allowed once a minute per network. Core
+  enforces this, not the limiter (not yet built in M1) (see `DeviceBackend.requestBurst`); a second
+  call inside the minute returns the last result's `nextBurst` without
+  calling eero. Fresh `usage.down_mbps` /
   `up_mbps` appear on devices about 12 s after a burst.
 - **Polling.** Polling intervals are constants in `src/core/poll.ts`, shared by
   every surface. The renderer only polls while the window is visible.
@@ -209,10 +222,12 @@ for the current view.
 
 ## Errors
 
-The client throws `EeroError { code, status, eeroCode, message, retryAfter? }`.
-The engine catches it and returns `{ ok: false, error: { code, message } }`.
+The client throws `BackendError { code, message, detail? }` (from
+`src/core/errors.ts`); `mapError` in `client.ts` builds it. The engine
+catches it and returns `{ ok: false, error: { code, message, detail } }`.
 Engine codes are the fixed set from AGENTS.md; finer detail goes in
-`error.detail` (`{ status, eeroCode }`) so surfaces can choose wording.
+`error.detail` (`{ status, eeroError, retryAfterSec }`) so surfaces can
+choose wording.
 
 | eero answer | Engine `code` | Notes |
 | --- | --- | --- |
@@ -223,7 +238,7 @@ Engine codes are the fixed set from AGENTS.md; finer detail goes in
 | 403 | `eero_error` | `detail.status = 403`; UI says "Your role can't change this" |
 | 404 / 405, `error.eero.not.capable`, `error.network.unavailable` | `eero_error` | Not available on this network or model |
 | `error.eero.offline` | `eero_error` | The eero is offline |
-| 429, `error.rate.limit`, `error.too.many.resends` | `rate_limited` | `detail.retryAfter` in seconds |
+| 429, `error.rate.limit`, `error.too.many.resends` | `rate_limited` | `detail.retryAfterSec` |
 | `error.app.version.blocked` | `eero_error` | Suggests changing the User-Agent |
 | Other 4xx / 5xx | `eero_error` | Message includes status and `meta.error` |
 | DNS failure, TLS error, timeout, offline | `network_error` | Never `eero_error` |
