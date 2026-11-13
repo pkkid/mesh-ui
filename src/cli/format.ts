@@ -36,12 +36,17 @@ export function maskSensitive(value: unknown): unknown {
 
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
-/** One value as a table cell. Nested values are summarised; use json for detail. */
+/** One value as a table cell. Small flat objects show inline; other nested values are summarised; use json for detail. */
 export function cell(key: string, value: unknown, now: number): string {
   if (value === null || value === undefined || value === "") return MISSING;
   if (Array.isArray(value)) return `${value.length} ${value.length === 1 ? "item" : "items"}`;
   if (typeof value === "object") {
-    const n = Object.keys(value).length;
+    const entries = Object.entries(value);
+    // A small flat object reads inline: `downMbps 171 Mbps, upMbps 38 Mbps`.
+    if (entries.length > 0 && entries.length <= 6 && entries.every(([, v]) => isScalar(v))) {
+      return entries.map(([k, v]) => `${k} ${cell(k, v, now)}`).join(", ");
+    }
+    const n = entries.length;
     return `${n} ${n === 1 ? "field" : "fields"}`;
   }
   if (typeof value === "number") {
@@ -84,24 +89,45 @@ export function renderGrid(head: string[], rows: string[][], style: Style, right
   return `${out.join("\n")}\n`;
 }
 
-/** A command result as a table: arrays of objects as columns, objects as key value rows. */
+const isRow = (v: unknown) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
+const isRows = (v: unknown): v is Record<string, unknown>[] => Array.isArray(v) && v.length > 0 && v.every(isRow);
+
+function grid(rows: Record<string, unknown>[], style: Style, now: number): string {
+  const keys = columns(rows);
+  const cells = rows.map((r) => keys.map((k) => cell(k, r[k], now)));
+  const numeric = keys.map((k) => rows.every((r) => typeof r[k] === "number" || r[k] == null));
+  return renderGrid(keys.map(header), cells, style, numeric);
+}
+
+function keyValues(entries: [string, unknown][], style: Style, now: number): string {
+  if (entries.length === 0) return "No fields.\n";
+  const width = Math.max(...entries.map(([k]) => k.length));
+  return `${entries.map(([k, v]) => `${dim(k.padEnd(width), style)}  ${cell(k, v, now)}`).join("\n")}\n`;
+}
+
+/**
+ * A command result as a table: arrays of objects as columns, objects as key
+ * value rows. An object holding arrays of objects (`{ devices, summary }`)
+ * prints each array as its own grid, its other object fields as key value
+ * blocks and its scalars first, each section under a heading.
+ */
 export function renderTable(result: unknown, style: Style, now: number): string {
   if (Array.isArray(result)) {
     if (result.length === 0) return "No results.\n";
-    if (result.every((r) => r && typeof r === "object" && !Array.isArray(r))) {
-      const rows = result as Record<string, unknown>[];
-      const keys = columns(rows);
-      const cells = rows.map((r) => keys.map((k) => cell(k, r[k], now)));
-      const numeric = keys.map((k) => rows.every((r) => typeof r[k] === "number" || r[k] == null));
-      return renderGrid(keys.map(header), cells, style, numeric);
-    }
+    if (result.every(isRow)) return grid(result as Record<string, unknown>[], style, now);
     return `${result.map((v) => cell("", v, now)).join("\n")}\n`;
   }
   if (result && typeof result === "object") {
     const entries = Object.entries(result as Record<string, unknown>);
-    if (entries.length === 0) return "No fields.\n";
-    const width = Math.max(...entries.map(([k]) => k.length));
-    return `${entries.map(([k, v]) => `${dim(k.padEnd(width), style)}  ${cell(k, v, now)}`).join("\n")}\n`;
+    if (!entries.some(([, v]) => isRows(v))) return keyValues(entries, style, now);
+    const sections: string[] = [];
+    const scalars = entries.filter(([, v]) => !isRows(v) && !isRow(v));
+    if (scalars.length) sections.push(keyValues(scalars, style, now));
+    for (const [k, v] of entries) {
+      if (isRows(v)) sections.push(`${bold(`${header(k)} (${v.length})`, style)}\n${grid(v, style, now)}`);
+      else if (isRow(v)) sections.push(`${bold(header(k), style)}\n${keyValues(Object.entries(v as object), style, now)}`);
+    }
+    return sections.join("\n");
   }
   if (result === undefined) return "Done.\n";
   return `${cell("", result, now)}\n`;

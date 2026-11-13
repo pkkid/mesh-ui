@@ -42,6 +42,8 @@ const fail = (code) => async () => { throw new BackendError(code, "Test failure 
 
 export const commands = [
   defineCommand({ ...app, id: "test.list", label: "List test rows", effect: "query", params: z.object({}), run: async () => rows }),
+  defineCommand({ ...app, id: "test.nested", label: "List nested rows", effect: "query", params: z.object({}),
+    run: async () => ({ note: "Two rows", rows, summary: { total: 2, online: 1, byBand: { "2.4": 1, "5": 0 }, ids: ["a", "b"] } }) }),
   defineCommand({ id: "test.echo", label: "Echo params", effect: "query",
     params: z.object({ value: z.string().optional() }), run: async (c, p) => ({ ...p, networkId: c.networkId }) }),
   defineCommand({ ...app, id: "test.secret", label: "Show secret", effect: "query", sensitive: true,
@@ -162,7 +164,7 @@ describe("mcp", () => {
     // stdin closes at once, so the server lists its tools and exits.
     const r = await mesh(["mcp"]);
     expect(r.code).toBe(0);
-    expect(r.stderr).toContain("serving 9 tools on stdio");
+    expect(r.stderr).toContain("serving 10 tools on stdio");
   });
 });
 
@@ -173,6 +175,7 @@ describe("commands", () => {
     const list = JSON.parse(r.stdout) as { id: string; effect: string; params: { properties?: Record<string, unknown> } }[];
     expect(list.map((c) => c.id)).toEqual([
       "test.list",
+      "test.nested",
       "test.echo",
       "test.secret",
       "test.rename",
@@ -210,6 +213,22 @@ describe("run output", () => {
     expect(lines[1]).toContain("4.3 Mbps");
     expect(lines[1]).toContain("41.2 GB");
     expect(lines[2]).toMatch(/Test Printer\s+false\s+-\s+0 B/);
+  });
+
+  it("table renders an object's nested array of objects as a grid, with its other fields as key value blocks", async () => {
+    const r = await mesh(["run", "test.nested", "--format", "table"]);
+    expect(r.code).toBe(0);
+    const lines = r.stdout.trimEnd().split("\n");
+    expect(lines[0]).toMatch(/^note\s+Two rows$/);
+    expect(lines).toContain("ROWS (2)");
+    expect(r.stdout).toMatch(/^ID\s+NAME\s+CONNECTED\s+DOWN MBPS\s+USAGE BYTES$/m);
+    expect(r.stdout).toMatch(/Test Tablet\s+true\s+4\.3 Mbps\s+41\.2 GB/);
+    expect(r.stdout).toMatch(/Test Printer\s+false\s+-\s+0 B/);
+    expect(lines).toContain("SUMMARY");
+    expect(r.stdout).toMatch(/^total\s+2$/m);
+    expect(r.stdout).toMatch(/^byBand\s+5 0, 2\.4 1$/m);
+    expect(r.stdout).toMatch(/^ids\s+2 items$/m);
+    expect(r.stdout).not.toMatch(/rows\s+2 items/);
   });
 
   it("table renders objects as key value rows and masks sensitive fields unless --reveal", async () => {
