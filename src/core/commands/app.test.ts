@@ -20,6 +20,7 @@ describe("app.info", () => {
         os: process.platform,
         arch: process.arch,
         backend: "demo",
+        fakeServer: false,
         sessionStorage: "memory",
         keychainName: null,
         update: null,
@@ -39,8 +40,14 @@ describe("app.info", () => {
     const server = createFakeEero();
     const secrets: SecretStore = { load: async () => null, save: async () => "keychain", clear: async () => {}, storage: async () => "keychain" };
     const engine = createEngine({ backend: createEeroBackend({ secrets, origin: server.origin, fetch: server.fetch }), host });
-    expect(await engine.execute("app.info")).toMatchObject({ ok: true, result: { backend: "eero", sessionStorage: "keychain", keychainName: "Test Keychain" } });
+    expect(await engine.execute("app.info")).toMatchObject({ ok: true, result: { backend: "eero", fakeServer: true, sessionStorage: "keychain", keychainName: "Test Keychain" } });
     expect(server.log).toHaveLength(0);
+  });
+
+  it("reports fakeServer false for the live eero backend", async () => {
+    const secrets: SecretStore = { load: async () => null, save: async () => "memory", clear: async () => {}, storage: async () => "memory" };
+    const engine = createEngine({ backend: createEeroBackend({ secrets }), host });
+    expect(await engine.execute("app.info")).toMatchObject({ ok: true, result: { backend: "eero", fakeServer: false } });
   });
 });
 

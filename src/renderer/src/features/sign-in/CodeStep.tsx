@@ -7,10 +7,10 @@
 import { ArrowLeft, MailCheck, MessageSquareText, ShieldCheck } from "lucide-react";
 import { type ClipboardEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
-import { useCommand } from "~/app/useCommand";
+import { useCommand, useQuery } from "~/app/useCommand";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
-import type { AuthStatus } from "../../../../core/model";
+import type { AppInfo, AuthStatus } from "../../../../core/model";
 import { BigButton, ErrorLine, errorText, FootNote, Lead, type LoginKind, Title } from "./SignInView";
 
 /** eero's code length. The API accepts 4 to 10 digits; every code seen so far has 6. */
@@ -25,8 +25,8 @@ type CodeStepProps = {
   kind: LoginKind;
   onBack: () => void;
   onSwitchKind: () => void;
-  /** Signed in; `ms` is how long verify took. */
-  onVerified: (ms: number) => void;
+  /** Signed in; `ms` is how long verify took. The button stays busy until it settles. */
+  onVerified: (ms: number) => Promise<void> | void;
 };
 
 const isWrongCode = (e: ExecuteError) => e.code === "eero_error" && /code\.invalid|verification\./.test(e.detail?.eeroError ?? "");
@@ -34,12 +34,14 @@ const isWrongCode = (e: ExecuteError) => e.code === "eero_error" && /code\.inval
 export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: CodeStepProps) {
   const verify = useCommand<{ code: string }, AuthStatus>("auth.login.verify");
   const resend = useCommand<Record<string, never>, AuthStatus>("auth.login.resend");
+  const info = useQuery<AppInfo>("app.info");
   const [digits, setDigits] = useState<string[]>(() => Array(CODE_LENGTH).fill(""));
   const [wrong, setWrong] = useState(false);
   const [resendAt, setResendAt] = useState(() => Date.now() + RESEND_SEC * 1000);
   const [now, setNow] = useState(() => Date.now());
   const [resent, setResent] = useState(false);
   const [resendBlocked, setResendBlocked] = useState(false);
+  const [opening, setOpening] = useState(false);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => boxes.current[0]?.focus(), []);
@@ -52,10 +54,13 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
   const left = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
   const submit = async (value = code) => {
-    if (value.length !== CODE_LENGTH || verify.running) return;
+    if (value.length !== CODE_LENGTH || verify.running || opening) return;
     const started = performance.now();
     const res = await verify.run({ code: value });
-    if (res.ok) return onVerified(performance.now() - started);
+    if (res.ok) {
+      setOpening(true);
+      return onVerified(performance.now() - started);
+    }
     setWrong(isWrongCode(res.error));
     // The boxes were disabled while verifying; focus once they are back.
     setTimeout(() => boxes.current[CODE_LENGTH - 1]?.focus(), 0);
@@ -116,6 +121,9 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
   };
 
   const error = verify.error;
+  // No code is sent outside live mode; say what to type (docs/ux/sign-in.md).
+  const sandboxHint =
+    info.data?.backend === "demo" ? "Demo mode: no code is sent. Enter any 6 digits." : info.data?.fakeServer ? "Fake eero server: enter 123456." : null;
   const Icon = kind === "email" ? MailCheck : MessageSquareText;
 
   return (
@@ -152,7 +160,7 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
             autoComplete={i === 0 ? "one-time-code" : "off"}
             maxLength={1}
             value={d}
-            disabled={verify.running}
+            disabled={verify.running || opening}
             aria-invalid={wrong || undefined}
             onChange={(e) => fill(i, e.target.value.slice(-1))}
             onKeyDown={(e) => onKeyDown(i, e)}
@@ -165,6 +173,7 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
           />
         ))}
       </div>
+      {sandboxHint && <p className="mt-2 text-muted-foreground text-xs">{sandboxHint}</p>}
       {error && (
         <ErrorLine>
           {wrong ? (
@@ -182,7 +191,7 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
         </ErrorLine>
       )}
 
-      <BigButton className="mt-[18px]" busy={verify.running} disabled={code.length !== CODE_LENGTH} onClick={() => void submit()}>
+      <BigButton className="mt-[18px]" busy={verify.running || opening} disabled={code.length !== CODE_LENGTH} onClick={() => void submit()}>
         Verify
       </BigButton>
       <div className="mt-3 flex items-center justify-between gap-3 text-xs">

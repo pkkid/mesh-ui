@@ -1,6 +1,6 @@
 /**
  * Sign in (docs/ux/sign-in.md, mockup 18): Welcome, verification code,
- * choose network, then the first-run load before the dashboard. Every step
+ * then straight to the dashboard on the last used (or first) network. Every step
  * talks to the engine through commands; the token never reaches this code.
  *
  * The window stays the main window; the steps sit in a 460px column in the
@@ -9,20 +9,14 @@
 import {
   ArrowRight,
   AtSign,
-  Check,
   CircleAlert,
   FlaskConical,
-  Gauge,
   Info,
   Lock,
   LockOpen,
   Mail,
-  Minus,
-  MonitorSmartphone,
   Phone,
-  Router,
   Smartphone,
-  Users,
   Wifi,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -30,11 +24,11 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { execute, useCommand, useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Segmented } from "~/components/ui/segmented";
+import { Status } from "~/components/ui/status";
+import { hue } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
-import { formatMbps } from "../../../../core/format";
-import type { AppInfo, AuthStatus, Device, Eero, Network, NetworkHealth, NetworkSummary, Profile, SpeedHistory } from "../../../../core/model";
-import { ChooseNetwork } from "./ChooseNetwork";
+import type { Account, AppInfo, AuthStatus, NetworkSummary } from "../../../../core/model";
 import { CodeStep } from "./CodeStep";
 
 export type LoginKind = "email" | "phone";
@@ -42,7 +36,10 @@ export type LoginKind = "email" | "phone";
 /** What the user typed last, kept for this run so an expired session can prefill it. */
 let lastLogin: { kind: LoginKind; country: string; value: string } | null = null;
 
-type Step = { id: "welcome" } | { id: "code"; login: string } | { id: "choose" } | { id: "first-run"; network: NetworkSummary | null };
+type Step =
+  | { id: "welcome" }
+  | { id: "code"; login: string }
+  | { id: "no-networks"; error: ExecuteError | null };
 
 type SignInViewProps = {
   /** The session ended while the app was open (not a first launch). */
@@ -54,16 +51,25 @@ type SignInViewProps = {
 export function SignInView({ expired, onDone }: SignInViewProps) {
   const [step, setStep] = useState<Step>({ id: "welcome" });
   const [kind, setKind] = useState<LoginKind>(lastLogin?.kind ?? "email");
-  const [verifyMs, setVerifyMs] = useState<number | null>(null);
 
-  const afterVerify = async (ms: number) => {
-    setVerifyMs(ms);
-    if (expired) {
-      // Back to the network that was open, if this account still has it.
-      const list = await execute<NetworkSummary[]>("network.list");
-      if (!list.ok || list.result.some((n) => n.selected)) return onDone();
+  /**
+   * Opens the last used network (the engine's selection, from `lastNetworkId`)
+   * if the account still has it, else the first one, then shows the dashboard.
+   * `network.select` resolves before the dashboard mounts, so no network query
+   * runs too early. Switching later is the sidebar's network switcher.
+   */
+  const openNetwork = async () => {
+    const list = await execute<NetworkSummary[]>("network.list");
+    if (!list.ok) {
+      // A build without network.list falls back to the engine's choice.
+      if (list.error.code === "unknown_command") return onDone();
+      return setStep({ id: "no-networks", error: list.error });
     }
-    setStep({ id: "choose" });
+    const network = list.result.find((n) => n.selected) ?? list.result[0];
+    if (!network) return setStep({ id: "no-networks", error: null });
+    const select = await execute("network.select", { network: network.id });
+    if (!select.ok && select.error.code !== "unknown_command") return setStep({ id: "no-networks", error: select.error });
+    onDone();
   };
 
   return (
@@ -85,17 +91,67 @@ export function SignInView({ expired, onDone }: SignInViewProps) {
             setKind(kind === "email" ? "phone" : "email");
             setStep({ id: "welcome" });
           }}
-          onVerified={(ms) => void afterVerify(ms)}
+          onVerified={openNetwork}
         />
       )}
-      {step.id === "choose" && <ChooseNetwork onContinue={(network) => setStep({ id: "first-run", network })} />}
-      {step.id === "first-run" && <FirstRun network={step.network} signInMs={verifyMs} onDone={onDone} />}
+      {step.id === "no-networks" && <NoNetworks error={step.error} onRetry={() => void openNetwork()} />}
     </Frame>
   );
 }
 
+/**
+ * Signed in, but there is no network to open: the account has none, or the
+ * list could not be loaded (then the error and Retry show instead).
+ */
+function NoNetworks({ error, onRetry }: { error: ExecuteError | null; onRetry: () => void }) {
+  const account = useQuery<Account>("account.get");
+  const logout = useCommand("auth.logout");
+  const name = account.data?.name ?? null;
+  const contact = account.data?.email?.value ?? account.data?.phone?.value ?? null;
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <div className="flex items-center gap-3">
+        <div
+          aria-hidden
+          className="grid size-9 shrink-0 place-items-center rounded-full font-semibold text-background text-xs"
+          style={{ background: name ? hue("orange") : "var(--color-muted-foreground)" }}
+        >
+          {initials(name)}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate font-medium text-[13px]">{name ?? "-"}</div>
+          <div className="truncate text-2xs text-muted-foreground">{contact ?? "-"}</div>
+        </div>
+        <Status tone="success" className="ms-auto">
+          Signed in
+        </Status>
+      </div>
+
+      {error ? (
+        <>
+          <Title className="mt-[22px]">Couldn't load your networks</Title>
+          <ErrorLine>{errorText(error)}</ErrorLine>
+        </>
+      ) : (
+        <>
+          <Title className="mt-[22px]">No networks yet</Title>
+          <Lead>This account has no eero networks yet. Set one up in the eero mobile app, then come back.</Lead>
+        </>
+      )}
+      <div className="mt-5 flex gap-2">
+        {error && <Button onClick={onRetry}>Retry</Button>}
+        <Button variant="outline" disabled={logout.running} onClick={() => void logout.run({})}>
+          Sign out
+        </Button>
+      </div>
+      {logout.error && <ErrorLine>{errorText(logout.error)}</ErrorLine>}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Shared pieces (also used by CodeStep and ChooseNetwork)
+// Shared pieces (also used by CodeStep)
 
 /** The titlebar strip and the centred 460px column. */
 function Frame({ children }: { children: ReactNode }) {
@@ -369,177 +425,3 @@ function Welcome({
   );
 }
 
-// ---------------------------------------------------------------------------
-// 4. First run
-
-type RowState = { state: "waiting" | "running" | "done" | "skipped" | "failed"; ms: number | null };
-
-type Loaded = {
-  network?: Network;
-  health?: NetworkHealth;
-  eeros?: Eero[];
-  devices?: Device[];
-  profiles?: Profile[];
-  speed?: SpeedHistory;
-};
-
-const ROWS = ["signed-in", "network", "eeros", "devices", "usage"] as const;
-type RowId = (typeof ROWS)[number];
-
-/** A list result, bare or wrapped with a summary (`DeviceList` is `{ devices, summary }`). */
-function listOf<T>(value: unknown, key: string): T[] {
-  if (Array.isArray(value)) return value as T[];
-  const inner = value && typeof value === "object" ? (value as Record<string, unknown>)[key] : null;
-  return Array.isArray(inner) ? (inner as T[]) : [];
-}
-
-/** Runs commands in order; ok when all succeed, skipped when one is not in this build yet. */
-async function load(ids: [string, unknown][]): Promise<{ state: RowState["state"]; results: unknown[] }> {
-  const results: unknown[] = [];
-  for (const [id, params] of ids) {
-    const res = await execute(id, params);
-    if (!res.ok) return { state: res.error.code === "unknown_command" ? "skipped" : "failed", results };
-    results.push(res.result);
-  }
-  return { state: "done", results };
-}
-
-function FirstRun({ network, signInMs, onDone }: { network: NetworkSummary | null; signInMs: number | null; onDone: () => void }) {
-  const account = useQuery<{ name: string | null }>("account.get");
-  const [rows, setRows] = useState<Record<RowId, RowState>>(() => ({
-    "signed-in": { state: "done", ms: signInMs },
-    network: { state: "waiting", ms: null },
-    eeros: { state: "waiting", ms: null },
-    devices: { state: "waiting", ms: null },
-    usage: { state: "waiting", ms: null },
-  }));
-  const [data, setData] = useState<Loaded>({});
-
-  useEffect(() => {
-    let cancelled = false;
-    const step = async (row: RowId, ids: [string, unknown][], keep: (results: unknown[]) => Partial<Loaded>) => {
-      if (cancelled) return;
-      setRows((r) => ({ ...r, [row]: { state: "running", ms: null } }));
-      const started = performance.now();
-      const { state, results } = await load(ids);
-      if (cancelled) return;
-      setRows((r) => ({ ...r, [row]: { state, ms: state === "done" ? performance.now() - started : null } }));
-      if (state === "done") setData((d) => ({ ...d, ...keep(results) }));
-    };
-    void (async () => {
-      await step("network", [["network.get", {}], ["network.health", {}]], ([n, h]) => ({ network: n as Network, health: h as NetworkHealth }));
-      await step("eeros", [["eero.list", {}]], ([e]) => ({ eeros: e as Eero[] }));
-      await step("devices", [["device.list", {}], ["profile.list", {}]], ([d, p]) => ({
-        devices: listOf<Device>(d, "devices"),
-        profiles: listOf<Profile>(p, "profiles"),
-      }));
-      await step("usage", [["usage.get", { scope: "network", range: "week" }]], () => ({}));
-      const speed = await execute<SpeedHistory>("speedtest.history", { limit: 1 });
-      if (!cancelled && speed.ok) setData((d) => ({ ...d, speed: speed.result }));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const name = data.network?.name ?? network?.name ?? null;
-  const status = data.network?.status ?? network?.status ?? null;
-  const offline = status === "offline";
-  const firstName = account.data?.name?.split(/\s+/)[0] ?? null;
-  const ready = ROWS.slice(0, 4).every((r) => rows[r].state !== "waiting" && rows[r].state !== "running");
-
-  const lead = !name
-    ? "Your account is ready."
-    : offline
-      ? `${name} is offline. You can see its settings and history, but live data is unavailable.`
-      : status === "degraded" || data.health?.status === "degraded"
-        ? `${name} is online, but something needs a look.`
-        : status === "online"
-          ? `${name} is online and looking healthy.`
-          : `${name} is ready.`;
-
-  const eeroCount = data.eeros?.length ?? data.network?.counts.eeros ?? network?.eeroCount ?? null;
-  const devicesTotal = data.devices?.length ?? null;
-  const devicesOnline = data.devices ? data.devices.filter((d) => d.connected).length : (network?.devicesOnline ?? null);
-  const profiles = data.profiles?.length ?? data.network?.counts.profiles ?? null;
-  const lastDown = data.speed?.tests[0]?.downMbps ?? null;
-
-  const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-  const labels: Record<RowId, string> = {
-    "signed-in": "Signed in",
-    network: "Network and health",
-    eeros: eeroCount !== null ? `${plural(eeroCount, "eero")} and mesh links` : "eeros and mesh links",
-    devices:
-      devicesTotal !== null && profiles !== null
-        ? `${plural(devicesTotal, "device")} and ${plural(profiles, "profile")}`
-        : "Devices and profiles",
-    usage: "7 days of usage history",
-  };
-
-  const mac = window.mesh?.platform === "darwin";
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex flex-col items-center text-center">
-        <div className="grid size-[76px] place-items-center rounded-full border bg-muted text-success-foreground">
-          <Check className="size-9" />
-        </div>
-        <Title className="mt-[22px]">{firstName ? `You're all set, ${firstName}` : "You're all set"}</Title>
-        <Lead>{lead}</Lead>
-      </div>
-
-      <div className="mt-3.5 flex flex-wrap justify-center gap-1.5">
-        {eeroCount !== null && <Chip icon={<Router />}>{plural(eeroCount, "eero")}</Chip>}
-        {devicesOnline !== null && devicesTotal !== null && (
-          <Chip icon={<MonitorSmartphone />}>
-            {devicesOnline} of {plural(devicesTotal, "device")}
-          </Chip>
-        )}
-        {profiles !== null && <Chip icon={<Users />}>{plural(profiles, "profile")}</Chip>}
-        {lastDown !== null && <Chip icon={<Gauge />}>{formatMbps(lastDown)}</Chip>}
-      </div>
-
-      <div className="mt-[18px] rounded-(--card-radius) border bg-card px-3.5 py-2" aria-label="Loading your network">
-        {ROWS.map((id) => (
-          <LoadRow key={id} label={labels[id]} row={rows[id]} hideTime={offline && (id === "eeros" || id === "devices")} />
-        ))}
-      </div>
-
-      <BigButton className="mt-4" disabled={!ready} onClick={onDone}>
-        Open dashboard
-      </BigButton>
-      <FootNote className="mt-auto block pt-3.5">
-        <kbd className="me-1 rounded-[5px] border border-input px-1.5 py-px font-mono text-[10.5px]">{mac ? "⌘ K" : "Ctrl K"}</kbd>
-        runs any command. The same commands work from the <span className="font-mono">mesh-ui</span> CLI.
-      </FootNote>
-    </div>
-  );
-}
-
-function Chip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <span className="inline-flex h-6 items-center gap-1.5 rounded-md border bg-card px-2 font-medium text-xs tabular-nums [&_svg]:size-3.5 [&_svg]:text-muted-foreground">
-      {icon}
-      {children}
-    </span>
-  );
-}
-
-function LoadRow({ label, row, hideTime }: { label: string; row: RowState; hideTime: boolean }) {
-  const time = row.ms === null || hideTime ? null : row.ms < 100 ? "< 0.1 s" : `${(row.ms / 1000).toFixed(1)} s`;
-  return (
-    <div className={cn("flex items-center gap-2.5 py-1.5 text-[13px]", row.state === "waiting" || row.state === "skipped" ? "text-muted-foreground" : "")}>
-      <span className="grid size-5 shrink-0 place-items-center">
-        {row.state === "done" && <Check className="size-3 text-success-foreground" strokeWidth={3} />}
-        {row.state === "running" && <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-border border-t-muted-foreground" />}
-        {row.state === "waiting" && <span aria-hidden className="size-4 rounded-full border-2 border-border" />}
-        {row.state === "skipped" && <Minus className="size-3" />}
-        {row.state === "failed" && <CircleAlert className="size-3.5 text-warning-foreground" />}
-      </span>
-      {label}
-      <span className="ms-auto text-[11.5px] text-muted-foreground tabular-nums">
-        {row.state === "skipped" ? "Not available yet" : row.state === "failed" ? "Failed" : row.state === "done" ? (time ?? "-") : ""}
-      </span>
-    </div>
-  );
-}

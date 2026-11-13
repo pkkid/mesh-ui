@@ -1,13 +1,16 @@
 # Sign in
 
 First launch and signed-out flow: passwordless eero login with a one-time
-code, pick a network, then a short first-run load before the dashboard.
+code, then straight to the dashboard on the last used network. The steps
+are Welcome, Verification code, then the dashboard. There is no network
+chooser and no first-run screen: switching is the sidebar's network
+switcher, and the Overview sections show their own loading fade.
 
 Mockup: [../mockups/18-sign-in.html](../mockups/18-sign-in.html)
 
 The mockup shows four frames of a 460 x 640 window side by side. In the app
 this is one small window (no sidebar, no topbar beyond a titlebar with the
-app mark, "Mesh UI" and window controls) that steps through the frames, then
+app mark, "Mesh UI" and window controls) that steps through the first two frames, then
 grows into the main window. Shell rules are in [overview.md](overview.md).
 
 ## Layout
@@ -38,6 +41,11 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
 - "Enter code": six boxes, mono digits. Typing advances, Backspace goes back,
   pasting a 6-digit string fills all boxes. The active box has the primary
   border.
+- Sandbox hint: outside live mode no code is sent, so one quiet muted line
+  under the boxes says what to type. Demo: "Demo mode: no code is sent.
+  Enter any 6 digits." (111111 simulates a wrong code). Fake eero server
+  (`app.info` `fakeServer`): "Fake eero server: enter 123456." Live shows
+  nothing.
 - Wrong code state (shown in the mockup as a second row): all boxes take the
   destructive border and text, with "That code didn't work. 4 tries left
   before the account is locked."
@@ -47,34 +55,18 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
   email instead").
 - Footer: "Each code works once. Five wrong codes may lock the account."
 
-### 3. Choose network
+### 3. Open the dashboard (no screen)
 
-- Account header: avatar with initials, name ("Alex Kim"), email, and a
-  "Signed in" status on the right.
-- Title "Choose a network", lead "Your account has 3 networks. You can
-  switch any time from the sidebar."
-- Radio list of networks. Each row: radio, network icon, name (with the
-  owner's nickname label when it differs, "Mom's House · Kim Home"), one
-  detail line ("4 eeros · 31 devices online · Ziply Fiber", "1 eero · last
-  seen 2 days ago", "2 eeros · 9 devices online · update available"), and on
-  the right a status (Online / Offline) over a role badge (Owner / Admin).
-- Switch "Open this network on launch".
-- Primary full-width **Continue to Maple Street →** pinned to the bottom; its
-  label follows the selection.
+After verify the renderer runs `network.list` and selects the last used
+network (the engine's selection, read from `lastNetworkId`) if the account
+still has it, else the first network in `network.list` order, with
+`network.select`. Verify stays busy until that resolves, and the main window
+mounts only after it, so no network-scoped query runs before a network is
+selected. The dashboard then loads like any launch, each section with its
+own fade.
 
-### 4. First run
-
-- Success ring with a check, "You're all set, Alex", lead "Maple Street is
-  online and looking healthy." (or a plain status sentence when it is not).
-- Summary badges: "4 eeros", "31 of 38 devices", "4 profiles", "942 Mbps"
-  (last speed test download).
-- Load checklist card, one row per step with a check (or a spinner ring while
-  running) and the time it took on the right: Signed in, Network and health,
-  4 eeros and mesh links, 38 devices and 4 profiles, 7 days of usage history
-  (with a percent and a progress meter while loading).
-- Primary full-width **Open dashboard**.
-- Footer: "`Ctrl K` runs any command. The same commands work from the
-  `mesh-ui` CLI."
+The mockup's third and fourth frames (Choose network, First run) are no
+longer built.
 
 Page header in the mockup also notes "Session token kept in the system
 keychain"; in the app that line sits in the Welcome footer and reflects the
@@ -86,11 +78,9 @@ real storage state (see States).
 | --- | --- | --- |
 | Whether to show sign-in at all | `auth.status` | On launch and after any `not_signed_in` |
 | Version in footer | `app.info` | Once |
-| Network list (step 3) | `network.list` | Once after verify |
-| Account header (step 3) | `account.get` | Once after verify |
-| "Open this network on launch" | `app.settings.get` | Once |
-| First-run checklist rows | `network.get` + `network.health`, `eero.list`, `device.list` + `profile.list`, `usage.get {scope: "network", range: "week"}` | Each row once, in that order; timings measured in the renderer |
-| Summary badges | Results of the checklist queries, plus `speedtest.history` latest | Once |
+| Network to open (step 3) | `network.list` | Once after verify |
+| Account header (no networks) | `account.get` | Once, only on the no-networks screen |
+| Sandbox hint (step 2) | `app.info` (`backend`, `fakeServer`) | Once |
 
 ## Actions
 
@@ -98,22 +88,20 @@ real storage state (see States).
 | --- | --- | --- | --- | --- |
 | Email / Phone toggle | - (view state) | - | No | Switches field type |
 | Send code | `auth.login.start {login}` | write | No | Moves to step 2; starts the 60 s resend timer |
-| Try demo mode | - (host restarts the engine with the demo backend) | - | No | Skips to step 3 with demo networks; sidebar shows the Demo badge |
+| Try demo mode | - (host restarts the engine with the demo backend) | - | No | Signs in to the demo networks; sidebar shows the Demo badge |
 | Back | - | - | No | Back to step 1, pending login discarded |
-| Verify (or sixth digit) | `auth.login.verify {code}` | write | No | `ok`: step 3 (or step 4 if there is one network). Error: wrong-code state |
+| Verify (or sixth digit) | `auth.login.verify {code}` | write | No | `ok`: selects the last used or first network and opens the dashboard (step 3). Error: wrong-code state |
 | Resend code | `auth.login.resend` | write | No | Clears the boxes, restarts the 60 s timer, toast "New code sent" |
 | Use a phone number / email instead | - | - | No | Back to step 1 with the other tab selected |
-| Network radio | - (view state) | - | No | Updates Continue label |
-| Open this network on launch | `app.settings.set {openOnLaunch: networkId or null}` | write | No | Saved in `settings.json` |
-| Continue to <network> | `network.select {networkId}` | write | No | Step 4 |
-| Open dashboard | - | - | No | Main window opens on Overview |
+| (after verify) | `network.select {network}` | write | No | Main window opens on the last used or first network |
+| Retry (list failed) | `network.list`, `network.select` | write | No | Tries step 3 again |
 
 ## States
 
 - **Loading.** Send code and Verify show their label faded with the button
-  disabled while the command runs; no spinner on the page. Step 4's checklist
-  is itself the loading state; Open dashboard is enabled as soon as the first
-  four rows are done (usage history can finish in the background).
+  disabled while the command runs; no spinner on the page. Verify stays
+  busy until the network is selected; the dashboard then shows its own
+  loading fade.
 - **Wrong code.** Error row as in the mockup. The pending login is kept so
   the user can retry or resend. eero returns `error.code.invalid` or
   `error.verification.invalid`; the engine maps both to `eero_error` with a
@@ -122,15 +110,15 @@ real storage state (see States).
   disabled, message "Too many codes requested. Try again in a few minutes."
 - **Locked or unknown account.** Message from eero in the error row, with a
   link to eero support (opens in the system browser).
-- **Empty: no networks.** Step 3 shows "This account has no eero networks
+- **Empty: no networks.** Instead of the dashboard, a screen with the account
+  header shows "This account has no eero networks
   yet. Set one up in the eero mobile app, then come back." with Sign out and
   a small destructive link "I want to delete my account and data"
   (`account.delete`, destructive, type-to-confirm dialog).
-- **One network.** Step 3 is skipped; `network.select` runs automatically.
-- **Network offline.** Row shows Offline and "last seen ..."; it can still be
-  chosen. Step 4 then says "Lake Cabin is offline. You can see its settings
-  and history, but live data is unavailable." and skips the eeros and devices
-  rows' timing claims.
+- **Network list fails.** The same screen says "Couldn't load your
+  networks" with the error, Retry and Sign out.
+- **Network offline.** It is opened like any other; the dashboard shows
+  its offline state.
 - **Offline (this computer).** Send code fails with `network_error`: inline
   message "Can't reach eero. Check your internet connection." under the
   button.
@@ -140,9 +128,9 @@ real storage state (see States).
   is otherwise identical (see `AGENTS.md`, Security).
 - **Session expired later.** Any `not_signed_in` from a page returns here at
   step 1 with a note "Your session ended. Sign in again." and the last login
-  prefilled; after verify the previously selected network opens directly.
-- **No permission / capability / bridge mode.** Not applicable here; role
-  badges in step 3 are informational.
+  prefilled; after verify the previously selected network opens directly (else the
+  first network).
+- **No permission / capability / bridge mode.** Not applicable here.
 
 ## Notes
 

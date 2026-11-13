@@ -26,6 +26,7 @@ export const commands: AnyCommand[] = [
         os: (OS.has(process.platform) ? process.platform : "linux") as AppInfo["os"],
         arch: process.arch,
         backend: ctx.backend.kind,
+        fakeServer: ctx.backend.fake === true,
         sessionStorage: auth.storage,
         keychainName: auth.storage === "keychain" ? ctx.host.keychainName : null,
         update: null,

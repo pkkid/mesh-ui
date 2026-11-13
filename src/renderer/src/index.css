@@ -128,6 +128,12 @@
     user-select: text;
     -webkit-user-select: text;
   }
+  /* Native select popups: Chromium paints the list from the option styles,
+     so give them the popover surface or the list stays white in dark themes. */
+  select option {
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+  }
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

@@ -57,5 +57,7 @@ export function createEeroBackend(options: EeroBackendOptions): Backend {
   const ctx: EeroContext = { options, client };
   const built: Partial<Record<AreaName, unknown>> = {};
   for (const [name, factory] of Object.entries(areas) as [AreaName, EeroArea<AreaName>][]) built[name] = factory(ctx);
-  return composeBackend("eero", built as Partial<BackendAreas>);
+  const backend = composeBackend("eero", built as Partial<BackendAreas>);
+  // checkOrigin only admits loopback origins, so an injected origin is the fake server.
+  return options.origin === undefined ? backend : { ...backend, fake: true };
 }
