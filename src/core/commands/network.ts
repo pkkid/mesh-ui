@@ -18,6 +18,23 @@ import { knownDevices } from "./device";
 
 const empty = z.object({});
 
+/**
+ * Problems worth a banner, most serious first. A network that is not
+ * reporting gives one network_offline issue and nothing else; otherwise each
+ * offline eero (with the devices last seen on it), then each weak wireless
+ * link (with the devices connected through it now).
+ */
+export function healthIssues(health: Omit<M.NetworkHealth, "issues">, eeros: Pick<M.Eero, "id" | "upstream">[], devices: Pick<M.Device, "id" | "eeroId" | "connected">[]): M.HealthIssue[] {
+  if (health.status === "offline") return [{ kind: "network_offline", eeroId: null, upstreamId: null, deviceIds: devices.map((d) => d.id) }];
+  const upstream = new Map(eeros.map((e) => [e.id, e.upstream]));
+  const on = (id: M.Id, connectedOnly: boolean) => devices.filter((d) => d.eeroId === id && (!connectedOnly || d.connected)).map((d) => d.id);
+  const issue = (kind: M.HealthIssueKind, id: M.Id, connectedOnly: boolean): M.HealthIssue => ({ kind, eeroId: id, upstreamId: upstream.get(id) ?? null, deviceIds: on(id, connectedOnly) });
+  return [
+    ...health.eeros.filter((e) => e.status === "offline").map((e) => issue("eero_offline", e.id, false)),
+    ...health.eeros.filter((e) => e.status !== "offline" && e.weakLink).map((e) => issue("weak_link", e.id, true)),
+  ];
+}
+
 export const commands: AnyCommand[] = [
   defineCommand({
     id: "network.list",
@@ -78,8 +95,14 @@ export const commands: AnyCommand[] = [
     effect: "query",
     topic: "network",
     poll: POLL.network,
-    // issues: derived here from eeros and devices by M2.5.
-    run: async (ctx): Promise<M.NetworkHealth> => ({ ...(await ctx.backend.network.health(ctx.net)), issues: [] }),
+    async run(ctx): Promise<M.NetworkHealth> {
+      const health = await ctx.backend.network.health(ctx.net);
+      // Only read eeros and devices when there is something to report, so a healthy poll stays one call.
+      const needed = health.status === "offline" || health.eeros.some((e) => e.status === "offline" || e.weakLink);
+      if (!needed) return { ...health, issues: [] };
+      const [eeros, devices] = await Promise.all([ctx.backend.eero.list(ctx.net), ctx.backend.device.list(ctx.net)]);
+      return { ...health, issues: healthIssues(health, eeros, knownDevices(devices, ctx.now())) };
+    },
   }),
 
   defineCommand({
