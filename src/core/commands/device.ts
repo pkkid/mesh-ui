@@ -50,8 +50,12 @@ function fresh(d: M.Device, now: number): M.Device {
   return Number.isFinite(at) && now - at <= RATES_STALE_SEC * 1000 ? d : { ...d, rates: null };
 }
 
-/** Drops offline devices eero would have aged out; blocked ones stay. */
-function current(devices: M.Device[], now: number): M.Device[] {
+/**
+ * Drops offline devices eero would have aged out; blocked ones stay. This is
+ * the device.list population, so summary.total and network.get's
+ * counts.devices (the sidebar count) are the same number.
+ */
+export function knownDevices(devices: M.Device[], now: number): M.Device[] {
   return devices.filter((d) => {
     if (d.connected || d.blocked || !d.lastActive) return true;
     const at = Date.parse(d.lastActive);
@@ -59,9 +63,12 @@ function current(devices: M.Device[], now: number): M.Device[] {
   });
 }
 
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
 export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
   const byBand = Object.fromEntries(BANDS.map((b) => [b, 0])) as Record<M.Band, number>;
   const byCategory = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<M.DeviceCategory, number>;
+  const bandRates = Object.fromEntries(BANDS.map((b) => [b, { down: 0, up: 0 }])) as Record<M.Band, { down: number; up: number }>;
   let down = 0;
   let up = 0;
   let active = 0;
@@ -72,12 +79,15 @@ export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
     if (d.rates) {
       down += d.rates.downMbps;
       up += d.rates.upMbps;
+      if (d.connected && d.band) {
+        bandRates[d.band].down += d.rates.downMbps;
+        bandRates[d.band].up += d.rates.upMbps;
+      }
       if (d.rates.downMbps + d.rates.upMbps > 0) active++;
       const at = Date.parse(d.rates.at);
       if (Number.isFinite(at)) latest = Math.max(latest ?? at, at);
     }
   }
-  const round1 = (n: number) => Math.round(n * 10) / 10;
   const newThisWeek = devices
     .filter((d) => d.firstSeen && now - Date.parse(d.firstSeen) <= 7 * DAY_MS)
     .sort((a, b) => Date.parse(b.firstSeen ?? "") - Date.parse(a.firstSeen ?? ""))
@@ -91,8 +101,29 @@ export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
     byBand,
     byCategory,
     newThisWeek,
-    rates: latest === null ? null : { downMbps: round1(down), upMbps: round1(up), active, at: new Date(latest).toISOString() },
+    rates: latest === null ? null : { downMbps: round1(down), upMbps: round1(up), active, at: new Date(latest).toISOString(), ...bandShares(byBand, bandRates) },
   };
+}
+
+/**
+ * Per-band rate totals and shares of all traffic and of connected devices,
+ * plus the Wi-Fi band carrying the most traffic (wired is left out of the
+ * pick: the insight line is about how Wi-Fi bands share the load).
+ */
+function bandShares(counts: Record<M.Band, number>, rates: Record<M.Band, { down: number; up: number }>): Pick<M.DeviceRateTotals, "byBand" | "topBand"> {
+  const traffic = BANDS.reduce((s, b) => s + rates[b].down + rates[b].up, 0);
+  const connected = BANDS.reduce((s, b) => s + counts[b], 0);
+  const pct = (n: number, of: number) => (of > 0 ? Math.round((n / of) * 1000) / 10 : null);
+  let topBand: M.DeviceRateTotals["topBand"] = null;
+  for (const b of BANDS) {
+    if (b === "wired") continue;
+    const t = rates[b].down + rates[b].up;
+    if (t > 0 && (topBand === null || t > rates[topBand].down + rates[topBand].up)) topBand = b;
+  }
+  const byBand = Object.fromEntries(
+    BANDS.map((b) => [b, { downMbps: round1(rates[b].down), upMbps: round1(rates[b].up), trafficPct: pct(rates[b].down + rates[b].up, traffic), devicePct: pct(counts[b], connected) }]),
+  ) as M.DeviceRateTotals["byBand"];
+  return { byBand, topBand };
 }
 
 function matchesSearch(d: M.Device, q: string): boolean {
@@ -219,7 +250,7 @@ export const commands: AnyCommand[] = [
     params: deviceListParams,
     run: async (ctx, p): Promise<M.DeviceList | string> => {
       const now = ctx.now();
-      const all = current(await ctx.backend.device.list(ctx.net), now).map((d) => fresh(d, now));
+      const all = knownDevices(await ctx.backend.device.list(ctx.net), now).map((d) => fresh(d, now));
       let devices = await sort(ctx, await filter(ctx, all, p), p.sort);
       if (p.limit) devices = devices.slice(0, p.limit);
       if (p.format === "csv") return toDeviceCsv(ctx, devices);

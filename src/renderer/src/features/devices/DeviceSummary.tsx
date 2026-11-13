@@ -12,7 +12,7 @@ import { Card } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { entityColor, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { formatCount, formatRelative, mbpsParts } from "../../../../core/format";
+import { formatCount, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Device, DeviceCategory, DeviceSummary as Summary } from "../../../../core/model";
 
 import { CATEGORIES, CATEGORY_LABELS } from "./DeviceFilters";
@@ -80,7 +80,8 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
             "No live rates yet"
           )}
         </div>
-        <div className="mt-2 text-2xs text-muted-foreground/70">Sum of current device rates, refreshed every minute</div>
+        <BandInsight rates={s?.rates ?? null} />
+        <div className={cn("text-2xs text-muted-foreground/70", !s?.rates?.topBand && "mt-2")}>Sum of current device rates, refreshed every minute</div>
       </Cell>
 
       <Cell className={cn(fading && "opacity-40")}>
@@ -107,6 +108,19 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
         </div>
       </Cell>
     </Card>
+  );
+}
+
+/** "6 GHz carries 41% of traffic with 19% of devices": the busiest Wi-Fi band, from the summary. */
+function BandInsight({ rates }: { rates: Summary["rates"] }) {
+  const band = rates?.topBand;
+  if (!rates || !band) return null;
+  const { trafficPct, devicePct } = rates.byBand[band];
+  return (
+    <div className="mt-2 text-2xs text-muted-foreground/70">
+      {band} GHz carries <span className="tabular-nums">{formatPercent(trafficPct)}</span> of traffic with{" "}
+      <span className="tabular-nums">{formatPercent(devicePct)}</span> of devices
+    </div>
   );
 }
 

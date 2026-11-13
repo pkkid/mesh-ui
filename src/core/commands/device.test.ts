@@ -6,6 +6,7 @@ import { createEeroBackend } from "../eero/backend";
 import { deviceCategory, deviceName, mapDevice } from "../eero/map/device";
 import { createEngine } from "../engine";
 import type * as M from "../model";
+import { summarize } from "./device";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const LAKE = "5130264";
@@ -42,6 +43,34 @@ describe("device.list (demo)", () => {
     expect(l.summary.rates).toMatchObject({ active: rated.filter((d) => (d.rates?.downMbps ?? 0) + (d.rates?.upMbps ?? 0) > 0).length, at: new Date(NOW).toISOString() });
     const down = rated.reduce((s, d) => s + (d.rates?.downMbps ?? 0), 0);
     expect(l.summary.rates?.downMbps).toBeCloseTo(down, 1);
+  });
+
+  it("totals live rates per band with shares of traffic and connected devices", async () => {
+    const l = await list(demo().engine);
+    const rates = l.summary.rates;
+    if (!rates) throw new Error("fixture has rates");
+    const connected = l.devices.filter((d) => d.connected && d.band);
+    for (const band of ["2.4", "5", "6", "wired"] as const) {
+      const on = connected.filter((d) => d.band === band);
+      expect(rates.byBand[band].downMbps).toBeCloseTo(on.reduce((s, d) => s + (d.rates?.downMbps ?? 0), 0), 1);
+      expect(rates.byBand[band].upMbps).toBeCloseTo(on.reduce((s, d) => s + (d.rates?.upMbps ?? 0), 0), 1);
+    }
+    // 6 of 31 connected devices; shares are 0 to 100 and add up to 100.
+    expect(rates.byBand["6"].devicePct).toBe(19.4);
+    const traffic = Object.values(rates.byBand).reduce((s, b) => s + (b.trafficPct ?? 0), 0);
+    expect(traffic).toBeCloseTo(100, 0);
+    // The busiest Wi-Fi band, even though wired carries more.
+    expect(rates.topBand).toBe("6");
+    expect(rates.byBand.wired.trafficPct).toBeGreaterThan(rates.byBand["6"].trafficPct ?? 0);
+    expect(rates.byBand["6"].trafficPct).toBeGreaterThan(rates.byBand["5"].trafficPct ?? 0);
+  });
+
+  it("has no band shares or busiest band while nothing moves", async () => {
+    const l = await list(demo().engine);
+    const idle = l.devices.map((d) => (d.rates ? { ...d, rates: { ...d.rates, downMbps: 0, upMbps: 0 } } : d));
+    const rates = summarize(idle, NOW).rates;
+    expect(rates).toMatchObject({ downMbps: 0, upMbps: 0, active: 0, topBand: null });
+    expect(rates?.byBand["6"]).toEqual({ downMbps: 0, upMbps: 0, trafficPct: null, devicePct: 19.4 });
   });
 
   it("filters by status, keeping the summary for the whole network", async () => {
@@ -235,6 +264,13 @@ describe("device commands (fake eero server)", () => {
     vi.setSystemTime(start + 15_000);
     const l = await list(engine);
     expect(l.summary.rates).toMatchObject({ active: 6, at: new Date(start + 12_000).toISOString() });
+    // Fake rates: Alex's Phone (5 GHz) 10 down 1 up, among others; shares follow the per-band sums.
+    const r = l.summary.rates;
+    if (!r) throw new Error("rates");
+    const bandTraffic = (b: M.Band) => l.devices.filter((d) => d.connected && d.band === b).reduce((s, d) => s + (d.rates ? d.rates.downMbps + d.rates.upMbps : 0), 0);
+    const total = (["2.4", "5", "6", "wired"] as const).reduce((s, b) => s + bandTraffic(b), 0);
+    for (const b of ["2.4", "5", "6", "wired"] as const) expect(r.byBand[b].trafficPct).toBeCloseTo((bandTraffic(b) / total) * 100, 0);
+    expect(r.topBand).not.toBe("wired");
     expect(l.devices.find((d) => d.name === "Alex's Phone")?.rates).toEqual({ downMbps: 10, upMbps: 1, at: new Date(start + 12_000).toISOString() });
     expect(l.devices.find((d) => d.name === "Leo's Switch")?.rates).toBeNull();
 
