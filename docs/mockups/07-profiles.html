@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profiles · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .pcard { position: relative; overflow: hidden; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .pcard > * { position: relative; }
+  .pcard.paused { border-color: var(--border-2); }
+  .stack { display: flex; }
+  .stack .ico { width: 26px; height: 26px; border-radius: 8px; margin-right: -6px; box-shadow: 0 0 0 2px var(--card), inset 0 0 0 1px var(--border); background: var(--card-2); }
+  .stack .ico svg { width: 13px; height: 13px; }
+  .stack .ico.off { filter: grayscale(1); opacity: 0.55; }
+  .sched { display: grid; grid-template-columns: 120px 1fr; row-gap: 9px; align-items: center; }
+  .sched .lane { position: relative; height: 24px; border-radius: 7px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .sched .seg { position: absolute; top: 3px; bottom: 3px; border-radius: 5px; background: color-mix(in srgb, var(--muted) 40%, var(--card-2)); font-size: 10px; font-weight: 600; color: var(--fg); padding: 0 6px; display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
+  .sched .seg.future { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--muted) 22%, transparent) 0 5px, transparent 5px 10px); color: var(--fg); box-shadow: inset 0 0 0 1px var(--border-2); }
+  .sched .seg.manual { background: var(--warning); color: var(--bg); box-shadow: none; }
+  .sched .now { position: absolute; top: -5px; bottom: -5px; width: 2px; border-radius: 2px; background: var(--fg); z-index: 2; }
+  .sched .now-l { position: absolute; top: -20px; transform: translateX(-50%); font-size: 10px; font-weight: 600; color: var(--fg); }
+  .ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .udev { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-size: 12.5px; min-width: 0; }
+  .udev .grow { min-width: 0; }
+  .assign { margin-left: auto; display: flex; gap: 2px; }
+  .assign .avatar { width: 18px; height: 18px; font-size: 9px; opacity: 0.35; cursor: pointer; }
+  .assign .avatar:hover { opacity: 1; }
+</style>
+</head>
+<body data-page="profiles" data-crumbs="Profiles">
+
+<div id="actions">
+  <button class="btn sm primary"><i data-lucide="plus"></i>Add a profile</button>
+</div>
+
+<div id="page" class="page">
+
+
+  <!-- Profile cards -->
+  <section class="section">
+    <div class="section-h"><h2>Profiles</h2><span class="sub">Group devices by person to pause them together and see their usage</span>
+      <div class="tools"><button class="btn sm"><i data-lucide="pause"></i>Pause all</button><div class="seg"><span class="on"><i data-lucide="layout-grid"></i>Cards</span><span><i data-lucide="list"></i>List</span></div></div></div>
+    <div class="grid g4" style="gap:16px">
+
+      <a class="card pcard" href="#">
+        <div class="row-12"><span class="avatar lg" style="--c:var(--s-orange)">A</span><div class="grow"><div class="m" style="font-size:15px">Alex</div><div class="xs muted">6 devices · 6 online</div></div></div>
+        <div class="row between"><div class="stack"><span class="ico"><i data-lucide="laptop"></i></span><span class="ico"><i data-lucide="smartphone"></i></span><span class="ico"><i data-lucide="tablet"></i></span><span class="ico"><i data-lucide="watch"></i></span><span class="ico"><i data-lucide="monitor"></i></span><span class="ico"><i data-lucide="hard-drive"></i></span></div><span class="pill ok">Active</span></div>
+        <div><div class="row between" style="align-items:baseline"><span class="xs muted">Today</span><span class="m tnum" style="font-size:20px;letter-spacing:-0.02em">96 <span class="xs muted">GB</span></span></div><div id="sp-a" class="mt-4"></div></div>
+        <div class="row gap-8"><button class="btn sm grow" style="justify-content:center"><i data-lucide="pause"></i>Pause</button><button class="btn sm icon"><i data-lucide="ellipsis"></i></button></div>
+      </a>
+
+      <a class="card pcard" href="#">
+        <div class="row-12"><span class="avatar lg" style="--c:var(--s-blue)">J</span><div class="grow"><div class="m" style="font-size:15px">Jamie</div><div class="xs muted">5 devices · 3 online</div></div></div>
+        <div class="row between"><div class="stack"><span class="ico"><i data-lucide="smartphone"></i></span><span class="ico"><i data-lucide="laptop"></i></span><span class="ico"><i data-lucide="tablet"></i></span><span class="ico off"><i data-lucide="watch"></i></span><span class="ico off"><i data-lucide="bike"></i></span></div><span class="pill ok">Active</span></div>
+        <div><div class="row between" style="align-items:baseline"><span class="xs muted">Today</span><span class="m tnum" style="font-size:20px;letter-spacing:-0.02em">61 <span class="xs muted">GB</span></span></div><div id="sp-j" class="mt-4"></div></div>
+        <div class="row gap-8"><button class="btn sm grow" style="justify-content:center"><i data-lucide="pause"></i>Pause</button><button class="btn sm icon"><i data-lucide="ellipsis"></i></button></div>
+      </a>
+
+      <a class="card pcard" href="08-profile-detail.html">
+        <div class="row-12"><span class="avatar lg" style="--c:var(--s-red)">M</span><div class="grow"><div class="m" style="font-size:15px">Mia</div><div class="xs muted">4 devices · 3 online</div></div></div>
+        <div class="row between"><div class="stack"><span class="ico"><i data-lucide="tablet"></i></span><span class="ico"><i data-lucide="laptop"></i></span><span class="ico"><i data-lucide="book-open"></i></span><span class="ico off"><i data-lucide="smartphone"></i></span></div><span class="pill info">Scheduled</span></div>
+        <div><div class="row between" style="align-items:baseline"><span class="xs muted">Today</span><span class="m tnum" style="font-size:20px;letter-spacing:-0.02em">18 <span class="xs muted">GB</span></span></div><div id="sp-m" class="mt-4"></div></div>
+        <div class="row gap-8"><button class="btn sm grow" style="justify-content:center"><i data-lucide="pause"></i>Pause</button><button class="btn sm icon"><i data-lucide="ellipsis"></i></button></div>
+      </a>
+
+      <a class="card pcard paused" href="#">
+        <div class="row-12"><span class="avatar lg" style="--c:var(--s-aqua)">L</span><div class="grow"><div class="m" style="font-size:15px">Leo</div><div class="xs muted">3 devices · 2 online</div></div></div>
+        <div class="row between"><div class="stack"><span class="ico"><i data-lucide="gamepad-2"></i></span><span class="ico"><i data-lucide="tablet"></i></span><span class="ico off"><i data-lucide="laptop"></i></span></div><span class="pill warn">Paused</span></div>
+        <div><div class="row between" style="align-items:baseline"><span class="xs muted">Today</span><span class="m tnum" style="font-size:20px;letter-spacing:-0.02em">4.2 <span class="xs muted">GB</span></span></div><div id="sp-l" class="mt-4"></div></div>
+        <div class="row gap-8"><button class="btn sm primary grow" style="justify-content:center"><i data-lucide="play"></i>Resume</button><button class="btn sm icon"><i data-lucide="ellipsis"></i></button></div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Today's pauses timeline -->
+  <section class="section">
+    <div class="section-h"><h2>Today's pauses</h2><span class="sub">Thursday, Nov 12 · scheduled and manual, network time zone (Pacific)</span>
+      <div class="tools legend"><span><i class="sw" style="--c:color-mix(in srgb,var(--muted) 40%,var(--card-2))"></i>Scheduled</span><span><i class="sw" style="--c:var(--warning)"></i>Manual pause</span><span><i class="sw" style="background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 4px)"></i>Upcoming</span></div></div>
+    <div class="card pad" style="padding-top:28px">
+      <div class="sched" id="sched"></div>
+      <div class="sched" style="margin-top:6px"><div></div><div class="ticks"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+    </div>
+  </section>
+
+  <!-- Usage comparison -->
+  <section class="section">
+    <div class="section-h"><h2>Usage by profile</h2><span class="sub">Data used per day, last 7 days</span>
+      <div class="tools"><div class="seg"><span>Profiles</span><span class="on">Profiles + Unassigned</span></div><div class="seg"><span>Day</span><span class="on">Week</span></div></div></div>
+    <div class="grid g-side">
+      <div class="col gap-16">
+        <div><div class="big">2.71<small>TB</small></div><div class="xs muted mt-4">in 7 days</div></div>
+        <div class="col gap-12" id="plist"></div>
+      </div>
+      <div class="card pad"><div id="ch-prof"></div></div>
+    </div>
+  </section>
+
+  <!-- Unassigned -->
+  <section class="section">
+    <div class="section-h"><h2>Unassigned devices</h2><span class="sub">20 devices not in a profile · click an avatar to assign</span>
+      <div class="tools"><button class="btn sm"><i data-lucide="calendar-plus"></i>Schedule a pause</button><button class="btn sm"><i data-lucide="pause"></i>Pause unassigned</button></div></div>
+    <div class="note info"><i data-lucide="info"></i><div class="body">New devices and devices with private (randomized) MAC addresses land here. Pausing Unassigned asks for confirmation, since it includes the TV, printer and smart home gear.</div></div>
+    <div class="grid g4" style="gap:8px" id="ugrid"></div>
+  </section>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.spark("#sp-a", MU.series(24, { base: 5, spread: 5, seed: 61, daily: true }), "var(--s-orange)", { height: 34 });
+  MU.spark("#sp-j", MU.series(24, { base: 3, spread: 3, seed: 62, daily: true }), "var(--s-blue)", { height: 34 });
+  MU.spark("#sp-m", MU.series(24, { base: 1, spread: 1, seed: 63, daily: true }).map((v, i) => (i < 7 ? 0.02 : v)), "var(--s-red)", { height: 34 });
+  MU.spark("#sp-l", MU.series(24, { base: 0.4, spread: 0.4, seed: 64, daily: true }).map((v, i) => (i < 7 || i > 21 ? 0.01 : v)), "var(--s-aqua)", { height: 34 });
+
+  // Today's pauses
+  const rows = [
+    ["Alex", "var(--s-orange)", []],
+    ["Jamie", "var(--s-blue)", []],
+    ["Mia", "var(--s-red)", [[0, 7, "Bedtime"], [16, 18, "Homework", "future"], [21, 24, "Bedtime", "future"]]],
+    ["Leo", "var(--s-aqua)", [[0, 7, "Bedtime"], [14.08, 20, "Paused until resumed", "manual future"], [20, 24, "Bedtime", "future"]]],
+    ["Unassigned", "var(--s-gray)", []],
+  ];
+  const now = 14.08;
+  document.getElementById("sched").innerHTML = rows.map(([n, c, segs], ri) =>
+    `<div class="row-6 sm"><span class="avatar" style="--c:${c};width:20px;height:20px;font-size:10px">${n[0]}</span>${n}</div>
+     <div class="lane">${segs.map(([s, e, l, k]) => `<span class="seg ${k ?? ""}" style="--c:${c};left:${(s / 24) * 100}%;width:${((e - s) / 24) * 100}%">${l}</span>`).join("")}
+     ${segs.length ? "" : `<span class="xxs muted-2" style="position:absolute;left:10px;top:5px">No pauses today</span>`}
+     <span class="now" style="left:${(now / 24) * 100}%"></span>${ri === 0 ? `<span class="now-l" style="left:${(now / 24) * 100}%">2:05 PM</span>` : ""}</div>`).join("");
+
+  // Usage by profile, 7D
+  const P = [
+    ["Unassigned", "var(--s-gray)", 1540, MU.series(7, { base: 220, spread: 70, seed: 71 })],
+    ["Alex", "var(--s-orange)", 624, MU.series(7, { base: 89, spread: 30, seed: 72 })],
+    ["Jamie", "var(--s-blue)", 381, MU.series(7, { base: 54, spread: 20, seed: 73 })],
+    ["Mia", "var(--s-red)", 104, MU.series(7, { base: 15, spread: 6, seed: 74 })],
+    ["Leo", "var(--s-aqua)", 61, MU.series(7, { base: 9, spread: 5, seed: 75 })],
+  ];
+  document.getElementById("plist").innerHTML = P.map(([n, c, tot, v]) => `<div>
+    <div class="row between"><span class="row sm"><i class="dot" style="--c:${c}"></i>${n}</span><span class="sm m tnum">${MU.fmt.gb(tot)}</span></div>
+    <div class="xs muted mt-4" style="padding-left:15px">${Math.round((tot / 2710) * 100)}% of traffic · ${MU.fmt.gb(tot / 7)} a day</div></div>`).join("");
+  MU.bars("#ch-prof", {
+    labels: MU.labels.days(7), height: 300, format: MU.fmt.gb, label: "Data used per day by profile, last 7 days", gapPx: 26,
+    series: [...P].reverse().map(([name, color, , values]) => ({ name, color, values })),
+  });
+
+  // Unassigned devices
+  const U = [
+    ["Living Room TV", "tv", "var(--s-aqua)", "142 GB", 1], ["PlayStation 5", "gamepad-2", "var(--s-aqua)", "48 GB", 1], ["Apple TV Den", "cast", "var(--s-aqua)", "26 GB", 1],
+    ["Sonos Kitchen", "speaker", "var(--s-aqua)", "800 MB", 1], ["Sonos Living Room", "speaker", "var(--s-aqua)", "600 MB", 1], ["Grandma's iPad", "tablet", "var(--s-blue)", "2.7 GB", 1],
+    ["HP LaserJet", "printer", "var(--s-purple)", "20 MB", 1], ["Kitchen Echo", "mic", "var(--s-orange)", "340 MB", 1], ["Hue Bridge", "network", "var(--s-orange)", "45 MB", 1],
+    ["Nest Thermostat", "thermometer", "var(--s-orange)", "12 MB", 1], ["Office Plug", "plug", "var(--s-orange)", "3 MB", 1], ["Roborock S8", "bot", "var(--s-orange)", "86 MB", 1],
+    ["Bedroom Echo Dot", "mic", "var(--s-orange)", "210 MB", 1], ["Nest Protect", "siren", "var(--s-orange)", "2 MB", 1], ["Ring Doorbell", "bell-ring", "var(--s-orange)", "4.1 GB", 1],
+    ["MyQ Garage", "warehouse", "var(--s-orange)", "6 MB", 1], ["Rachio Sprinkler", "droplets", "var(--s-orange)", "4 MB", 1], ["Sam's Pixel", "smartphone", "var(--s-blue)", "-", 0],
+    ["android-7f3a", "circle-help", "var(--s-gray)", "Blocked", 0], ["ESP_3A9F21", "cpu", "var(--s-gray)", "Blocked", 0],
+  ];
+  const av = [["A", "var(--s-orange)"], ["J", "var(--s-blue)"], ["M", "var(--s-red)"], ["L", "var(--s-aqua)"]];
+  document.getElementById("ugrid").innerHTML = U.map(([n, ic, c, use, on]) => `<div class="udev" style="${on ? "" : "opacity:0.6"}">
+    <div class="ico sm"><i data-lucide="${ic}"></i></div>
+    <div class="grow"><div class="m trunc">${n}</div><div class="xxs muted">${on ? "Online · " + use + " today" : use === "Blocked" ? '<span class="danger">Blocked</span>' : "Offline · 3 days ago"}</div></div>
+    <div class="assign">${av.map(([l, col]) => `<span class="avatar" style="--c:${col}">${l}</span>`).join("")}</div></div>`).join("") +
+    `<div class="udev" style="border-style:dashed;justify-content:center;color:var(--muted)"><i data-lucide="user-round-plus" style="width:15px;height:15px"></i>New profile from selection</div>`;
+});
+</script>
+</body>
+</html>

@@ -27,3 +27,6 @@ Thumbs.db
 
 # Local agent state
 .claude/settings.local.json
+
+# Local research notes (not committed)
+notes/

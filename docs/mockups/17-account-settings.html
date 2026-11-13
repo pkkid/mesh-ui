@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App and account · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .g-set { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
+  /* Theme library cards, after T3 Code's settings */
+  .themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .tcard { border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; overflow: hidden; }
+  .tcard:hover { background: var(--card-2); }
+  .tcard.on { background: var(--card-2); box-shadow: inset 0 0 0 1px var(--muted-2); }
+  .tcard .orbs { display: flex; justify-content: center; gap: 10px; padding: 12px 12px 0; min-height: 64px; }
+  .tcard .orbw { position: relative; width: 68px; height: 68px; padding: 6px; border-radius: 99px; }
+  .tcard .orbw.on { box-shadow: inset 0 0 0 2px var(--fg-2); }
+  .tcard .orb { position: relative; display: block; width: 56px; height: 56px; border-radius: 99px; overflow: hidden; border: 2px solid var(--bg); }
+  .tcard .orb i { position: absolute; inset: 0; border-radius: 99px; filter: blur(3px); transform: scale(1.1); }
+  .tcard .mode { position: absolute; right: 2px; bottom: 2px; width: 20px; height: 20px; border-radius: 99px; display: grid; place-items: center; background: var(--bg); border: 1px solid var(--border-2); color: var(--fg); }
+  .tcard .mode svg { width: 11px; height: 11px; }
+  .tcard .tn { padding: 8px 14px 12px; font-size: 14px; font-weight: 500; }
+  .rows > .r .ctl { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .code { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--chrome); border: 1px solid var(--border); font-family: var(--font-mono); font-size: 12px; }
+  .code .p { color: var(--muted); }
+  .code .iconbtn { margin-left: auto; width: 26px; height: 26px; }
+  .eff { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; font-family: var(--font-mono); background: var(--card-2); border: 1px solid var(--border); }
+  .btn.solid-danger { background: var(--danger); border-color: var(--danger); color: var(--primary-fg); }
+  .btn.solid-danger svg { color: var(--primary-fg); }
+  .chk { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border-2); flex-shrink: 0; }
+  .grp-h { display: flex; align-items: center; gap: 10px; }
+  .grp-h h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
+</style>
+</head>
+<body data-page="account" data-crumbs="Settings / App & account" data-subtitle="This computer and your eero account">
+
+<div id="page" class="page">
+
+  <!-- Hero: who is signed in -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:start">
+      <div class="avatar" style="--c:var(--s-orange);width:64px;height:64px;font-size:24px;margin-top:6px">AK</div>
+      <div class="col gap-8">
+        <div class="row-12" style="align-items:baseline;gap:14px"><div style="font-size:26px;font-weight:650;letter-spacing:-0.02em">Alex Kim</div><span class="pill ok">Signed in</span></div>
+        <div class="col" style="gap:4px;font-size:15px;font-weight:550">
+          <div class="row-12">alex@example.com <span class="pill ok">Verified</span></div>
+          <div class="row-12 tnum">+1 (555) 010-0142 <span class="pill warn">Unverified</span></div>
+        </div>
+        <div class="row gap-8" style="margin-top:8px">
+          <button class="btn sm"><i data-lucide="pencil"></i>Edit name</button>
+          <button class="btn sm"><i data-lucide="mail"></i>Change email</button>
+          <button class="btn sm"><i data-lucide="smartphone"></i>Verify mobile</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g-set">
+    <div class="col" style="gap:28px">
+
+      <!-- Account -->
+      <section class="section">
+        <div class="section-h"><h2>Account</h2><span class="sub">Login and email preferences</span></div>
+        <div class="rows">
+          <div class="r"><div class="ico" style="--c:var(--s-yellow)"><i data-lucide="megaphone"></i></div><div class="grow"><div class="t">Stay up to date</div><div class="d">Product news and tips by email</div></div><span class="switch"></span></div>
+          <div class="r"><div class="ico" style="--c:var(--s-blue)"><i data-lucide="key-round"></i></div><div class="grow"><div class="t">Switch to Amazon login</div><div class="d">Permanent. Sign in with Amazon instead of email codes.</div></div><div class="val">Continue<span class="chev"></span></div></div>
+        </div>
+      </section>
+
+      <!-- Notifications -->
+      <section class="section">
+        <div class="section-h"><h2>Notifications</h2><span class="sub">Maple Street alerts · shown in the bell and as desktop notifications</span>
+          <div class="tools"><span class="xs muted">Desktop notifications</span><span class="switch on"></span></div></div>
+        <div class="rows">
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-purple)"><i data-lucide="plus-circle"></i></div><div class="grow"><div class="t">New device joins</div><div class="d">3 this week</div></div><span class="switch on"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--danger)"><i data-lucide="wifi-off"></i></div><div class="grow"><div class="t">Network goes offline</div><div class="d">Account push setting</div></div><span class="switch on"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="router"></i></div><div class="grow"><div class="t">An eero goes offline</div><div class="d">Account push setting</div></div><span class="switch on"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="calendar-clock"></i></div><div class="grow"><div class="t">Update scheduled, 12 hours before</div><div class="d">Early reminder</div></div><span class="switch on"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="alarm-clock"></i></div><div class="grow"><div class="t">Update scheduled, 15 minutes before</div><div class="d">Late reminder</div></div><span class="switch"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--success)"><i data-lucide="badge-check"></i></div><div class="grow"><div class="t">Update installed</div></div><span class="switch on"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-orange)"><i data-lucide="user-cog"></i></div><div class="grow"><div class="t">Admin permission changes</div></div><span class="switch on"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-red)"><i data-lucide="chart-column"></i></div><div class="grow"><div class="t">Weekly activity and data usage report</div></div><span class="switch"></span></div>
+            <div class="r" style="min-height:50px"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="scan-search"></i></div><div class="grow"><div class="t">New eero discovered or auto-added</div><div class="d">Simple Setup</div></div><span class="switch on"></span></div>
+          </div>
+      </section>
+
+      <!-- Networks -->
+      <section class="section">
+        <div class="section-h"><h2>Networks on this account</h2></div>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th style="width:50%">Network</th><th>Role</th><th>eeros</th><th class="r">Status</th></tr></thead>
+            <tbody>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="house"></i></div><div><div class="m">Maple Street</div><div class="xxs muted">Kim house · current</div></div></div></td><td><span class="pill neutral nodot">Owner</span></td><td class="tnum">4</td><td class="r"><span class="pill ok">Online</span></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="trees"></i></div><div><div class="m">Lake Cabin</div><div class="xxs muted">Rose's place · shared by Rose Kim</div></div></div></td><td><span class="pill info nodot">Admin</span></td><td class="tnum">2</td><td class="r"><span class="pill bad">Offline 2d</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CLI and agents -->
+      <section class="section">
+        <div class="section-h"><h2>Command line and agents</h2><span class="sub">Everything in this window is also a command</span>
+          <div class="tools"><span class="pill ok">MCP connected</span></div></div>
+        <div class="card pad col" style="gap:20px">
+          <div class="grid g2" style="gap:28px;align-items:start">
+            <div class="col" style="gap:18px">
+              <div class="col gap-8">
+                <div class="xs m">Command line</div>
+                <div class="code"><span class="p">$</span><span class="trunc">mesh-ui run device.list</span><button class="iconbtn"><i data-lucide="copy"></i></button></div>
+              </div>
+              <div class="col gap-8">
+                <div class="xs m">MCP server</div>
+                <div class="code"><span class="p">$</span><span class="trunc">claude mcp add mesh-ui -- mesh-ui mcp</span><button class="iconbtn"><i data-lucide="copy"></i></button></div>
+              </div>
+            </div>
+            <div class="col gap-8">
+              <div class="row between"><span class="xs m">This week</span><span class="xs muted">38 commands from the CLI and agents</span></div>
+              <div id="sp-cmd" style="height:30px"></div>
+              <div class="col xs mono" style="gap:8px;margin-top:6px">
+                <div class="row-6"><span class="grow trunc">eero.reboot Garage</span><span class="warning" style="font-family:var(--font-sans)">needs confirm</span><span class="muted" style="width:26px;text-align:right">1h</span></div>
+                <div class="row-6"><span class="grow trunc">profile.pause Leo</span><span class="muted" style="width:26px;text-align:right">1h</span></div>
+                <div class="row-6"><span class="grow trunc">usage.get --range week</span><span class="muted" style="width:26px;text-align:right">4m</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="row-6 xs muted"><i data-lucide="shield-check" style="width:14px;height:14px"></i>Agents never see your session token. Commands that restart eeros or can't be undone only run with <span class="mono">--confirm</span>.</div>
+        </div>
+      </section>
+
+      <!-- Themes -->
+      <section class="section">
+        <div class="section-h"><h2>Application Theme</h2><span class="sub">Pick a light and a dark look · stored on this computer only</span></div>
+        <div class="themes" id="themes"></div>
+      </section>
+    </div>
+
+    <!-- Side -->
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="info"></i></div><h3>About</h3></div>
+        <div class="panel-b col gap-12">
+          <div class="row-12"><div class="logo" style="width:40px;height:40px;border-radius:12px"><i data-lucide="wifi" style="width:20px;height:20px"></i></div><div><div class="m">Mesh UI</div><div class="xs muted">Version 0.1.0 · up to date</div></div></div>
+          <dl class="kv xs" style="gap:7px 16px">
+            <dt>Electron</dt><dd>38.2 · Linux x64</dd>
+            <dt>Network ID</dt><dd class="mono">4821907</dd>
+            <dt>Support ID</dt><dd class="mono">K4M9QZ</dd>
+          </dl>
+          <div class="col gap-4 sm">
+            <a class="row-6 info"><i data-lucide="scroll-text" style="width:14px;height:14px"></i>Release notes</a>
+            <a class="row-6 info"><i data-lucide="scale" style="width:14px;height:14px"></i>Open source licenses</a>
+            <a class="row-6 info"><i data-lucide="life-buoy" style="width:14px;height:14px"></i>eero support articles</a>
+            <a class="row-6 info"><i data-lucide="github" style="width:14px;height:14px"></i>Source and issues</a>
+          </div>
+          <div class="xxs muted">Mesh UI is an independent app and is not made by eero or Amazon.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm"><i data-lucide="log-out"></i></div><h3>Sign out and delete</h3></div>
+        <div class="panel-b col gap-16">
+          <div class="col gap-8">
+            <div class="xs muted">Your session is saved in GNOME Keyring and refreshes on its own. Signing out removes it; your networks keep running.</div>
+            <button class="btn sm" style="align-self:flex-start"><i data-lucide="log-out"></i>Sign out</button>
+          </div>
+          <div class="hr"></div>
+          <div class="col gap-8">
+            <div class="sm m row-6">Delete account and data <span class="badge c">Destructive</span></div>
+            <div class="xs muted">Closes your eero account and deletes personal data. Transfer or delete Maple Street first; you will lose admin access to Lake Cabin.</div>
+            <div class="row-6 xs" style="align-items:flex-start"><span class="chk" style="margin-top:1px"></span>I want to permanently close my account and delete my data</div>
+            <button class="btn sm solid-danger" style="align-self:flex-start;opacity:.55"><i data-lucide="trash-2"></i>Delete account</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.spark("#sp-cmd", [3, 7, 1, 5, 10, 3, 9], "var(--c-down)", { height: 30 });
+
+  // Theme cards: same preview orbs as T3 Code (canvas base, accent and action glows).
+  const T = [
+    ["Classic", ["#fcfcfc", "#f4f4f5", "#4f46e5"], ["#0a0a0a", "#1c1c1f", "#8b9cff"]],
+    ["Rose", ["oklch(0.982 0.010 325.7)", "oklch(0.592 0.218 0.6)", "oklch(0.592 0.218 0.6)"], ["oklch(0.228 0.020 307.5)", "oklch(0.461 0.185 4.1)", "oklch(0.461 0.185 4.1)"]],
+    ["Grove", ["oklch(0.972 0.005 157.2)", "oklch(0.523 0.112 158.1)", "oklch(0.535 0.106 77.5)"], ["oklch(0.261 0.022 162.8)", "oklch(0.796 0.133 157.3)", "oklch(0.792 0.130 83.3)"]],
+    ["Ocean", ["oklch(0.974 0.003 241.6)", "oklch(0.537 0.120 247.0)", "oklch(0.494 0.082 201.6)"], ["oklch(0.243 0.024 250.6)", "oklch(0.759 0.106 241.5)", "oklch(0.793 0.105 199.9)"]],
+    ["Ember", ["oklch(0.977 0.003 60.7)", "oklch(0.553 0.129 44.7)", "oklch(0.516 0.162 24.8)"], ["oklch(0.246 0.019 42.0)", "oklch(0.762 0.124 52.1)", "oklch(0.748 0.136 29.4)"]],
+    ["Iris", ["oklch(0.977 0.004 303.2)", "oklch(0.525 0.154 294.2)", "oklch(0.516 0.185 340.8)"], ["oklch(0.226 0.031 293.7)", "oklch(0.672 0.169 293.9)", "oklch(0.790 0.130 337.6)"]],
+    ["Gruvbox Hard", ["oklch(0.965 0.039 100.9)", "oklch(0.894 0.057 89.2)", "oklch(0.772 0.038 165.5)"], ["oklch(0.241 0.005 219.7)", "oklch(0.344 0.007 48.5)", "oklch(0.417 0.040 200.5)"]],
+  ];
+  const ACTIVE = { light: "Gruvbox Hard", dark: "Gruvbox Hard" }, CURRENT = "dark";
+  const orb = ([canvas, accent, action], mode) => {
+    const light = mode === "light", base = light ? "#ffffff" : "#09090b";
+    const ac = light ? "72% 22%" : "28% 78%", at = light ? "18% 82%" : "82% 18%", mid = light ? 72 : 62;
+    return `background-color:color-mix(in oklab, ${canvas} 80%, ${base});background-image:radial-gradient(circle at ${ac} in oklab, ${accent} 0%, color-mix(in oklab, ${accent} ${mid}%, transparent) 28%, transparent 58%),radial-gradient(circle at ${at} in oklab, color-mix(in oklab, ${action} 45%, transparent) 0%, transparent 55%)`;
+  };
+  document.getElementById("themes").innerHTML = T.map(([name, l, d]) => {
+    const pick = (mode) => ACTIVE[mode] === name && CURRENT === mode;
+    const w = (c, mode) => `<span class="orbw ${pick(mode) ? "on" : ""}" title="Use ${name} ${mode}"><span class="orb"><i style="${orb(c, mode)}"></i></span>${pick(mode) ? `<span class="mode"><i data-lucide="${mode === "light" ? "sun" : "moon"}"></i></span>` : ""}</span>`;
+    const on = ACTIVE.light === name || ACTIVE.dark === name;
+    return `<div class="tcard ${on ? "on" : ""}"><div class="orbs">${w(l, "light")}${w(d, "dark")}</div><div class="tn">${name}</div></div>`;
+  }).join("");
+  if (window.lucide) lucide.createIcons();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile detail · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .bigpause { display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-radius: 16px; border: 1px solid var(--border-2); cursor: pointer; color: var(--fg); text-align: left;
+    background: var(--card-2); }
+  .bigpause .ic { width: 44px; height: 44px; border-radius: 99px; display: grid; place-items: center; background: var(--card); box-shadow: inset 0 0 0 1px var(--border-2); }
+  .bigpause svg { width: 22px; height: 22px; }
+  .week { display: grid; grid-template-columns: 44px 1fr; row-gap: 7px; align-items: center; }
+  .week .d { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .week .d.today { color: var(--fg); }
+  .week .lane { position: relative; height: 30px; border-radius: 8px; background:
+      repeating-linear-gradient(90deg, transparent 0 calc(100% / 24 - 1px), var(--grid) calc(100% / 24 - 1px) calc(100% / 24)), var(--card-2);
+    box-shadow: inset 0 0 0 1px var(--border); }
+  .week .lane.today { box-shadow: inset 0 0 0 1px var(--muted-2); }
+  .week .seg { position: absolute; top: 4px; bottom: 4px; border-radius: 6px; background: color-mix(in srgb, var(--c) 78%, transparent); color: var(--bg); font-size: 10.5px; font-weight: 600; display: flex; align-items: center; gap: 4px; padding: 0 7px; white-space: nowrap; overflow: hidden; }
+  .week .seg svg { width: 11px; height: 11px; flex-shrink: 0; }
+  .week .seg.off { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--muted) 70%, transparent); color: var(--muted); }
+  .week .now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--fg); border-radius: 2px; z-index: 2; }
+  .week .now::before { content: "Now"; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); font-size: 9.5px; font-weight: 700; color: var(--fg); }
+  .ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .days { display: inline-flex; gap: 3px; }
+  .days span { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 10px; font-weight: 600; color: var(--muted-2); background: var(--card-2); border: 1px solid var(--border); }
+  .days span.on { color: var(--fg); background: var(--card); border-color: var(--muted-2); }
+  .days.lg span { width: 38px; height: 34px; border-radius: 10px; font-size: 12px; }
+  .ev { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; font-size: 12.5px; }
+  .ev + .ev { border-top: 1px solid var(--border); }
+  #overlay { display: none; }
+  #overlay.open { display: block; }
+  .sheet { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); width: 520px; z-index: 50; background: var(--popover); border: 1px solid var(--border-2); border-radius: 18px; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 70%); }
+  .sheet-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .sheet-b { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+  .sheet-f { display: flex; gap: 8px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--border); }
+  .field-l { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .timepick { display: flex; align-items: center; gap: 4px; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 8px 12px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--border-2); }
+  .timepick .ap { font-size: 13px; color: var(--muted); margin-left: 6px; }
+  .preview24 { position: relative; height: 12px; border-radius: 99px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .preview24 i { position: absolute; top: 0; bottom: 0; border-radius: 99px; background: var(--s-red); }
+</style>
+</head>
+<body data-page="profiles" data-crumbs="Profiles / Mia">
+
+  <button class="btn sm"><i data-lucide="pencil"></i>Rename</button>
+</div>
+
+<div id="page" class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:24px;align-items:start">
+      <div class="avatar" style="--c:var(--s-red);width:88px;height:88px;font-size:36px;margin-top:6px">M</div>
+      <div class="col gap-8">
+        <div><div class="row-12"><span style="font-size:30px;font-weight:650;letter-spacing:-0.02em">Mia</span><span class="iconbtn" style="width:26px;height:26px;border:1px dashed var(--border-2)"><i data-lucide="pencil" style="width:13px;height:13px"></i></span></div>
+          <div class="row-12 mt-8"><span class="pill ok">Active</span><span class="pill info">Scheduled</span><span class="xs muted">Homework pause starts at 4:00 PM, in 1h 55m</span></div></div>
+        <div class="row wrap" style="gap:10px 28px">
+          <div class="metric"><div class="l">Last 7 days</div><div class="v">104<small>GB</small></div></div>
+          <div class="metric"><div class="l">Scheduled off-time</div><div class="v">60<small>h / week</small></div></div>
+        </div>
+      </div>
+      <div class="col gap-8" style="align-items:stretch">
+        <button class="bigpause"><span class="ic"><i data-lucide="pause"></i></span><span><span style="display:block;font-size:17px;font-weight:650">Pause profile</span><span class="xs" style="opacity:0.85">Stops internet on Mia's 4 devices now</span></span></button>
+        <div class="xxs muted" style="max-width:280px">Resuming during a scheduled pause keeps Mia online until the next scheduled pause.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly timeline + schedule list -->
+  <div class="grid g-main-side" style="gap:28px;align-items:start">
+    <section class="section">
+      <div class="section-h"><h2>Scheduled pauses</h2><span class="sub">This week · network time zone (Pacific)</span>
+        <div class="tools legend"><span><i class="sw" style="--c:var(--s-red)"></i>Bedtime</span><span><i class="sw" style="--c:var(--c-sky)"></i>Homework</span><span><i class="sw" style="background:transparent;border:1.5px dashed var(--muted)"></i>Off</span></div></div>
+      <div class="card pad" style="padding-top:26px">
+        <div class="week" id="week"></div>
+        <div class="week" style="margin-top:6px"><div></div><div class="ticks"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h"><h2>Schedules</h2><div class="tools"><button class="btn sm" data-sheet><i data-lucide="plus"></i>Add a scheduled pause</button></div></div>
+      <div class="rows">
+        <div class="r" data-sheet style="cursor:pointer"><div class="ico"><i data-lucide="moon"></i></div>
+          <div class="grow"><div class="t">Bedtime</div><div class="d">9:00 PM to 7:00 AM</div>
+            <div class="days mt-4"><span class="on">S</span><span class="on">M</span><span class="on">T</span><span class="on">W</span><span class="on">T</span><span>F</span><span>S</span></div></div>
+          <span class="switch on"></span><i data-lucide="pencil" style="width:14px;height:14px;color:var(--muted)"></i></div>
+        <div class="r" data-sheet style="cursor:pointer"><div class="ico"><i data-lucide="book-open-check"></i></div>
+          <div class="grow"><div class="t">Homework</div><div class="d">4:00 PM to 6:00 PM</div>
+            <div class="days mt-4"><span>S</span><span class="on">M</span><span class="on">T</span><span class="on">W</span><span class="on">T</span><span class="on">F</span><span>S</span></div></div>
+          <span class="switch on"></span><i data-lucide="pencil" style="width:14px;height:14px;color:var(--muted)"></i></div>
+        <div class="r" data-sheet style="cursor:pointer;opacity:0.7"><div class="ico"><i data-lucide="bed"></i></div>
+          <div class="grow"><div class="t">Weekend lights out</div><div class="d">11:00 PM to 9:00 AM · off, kept for summer</div>
+            <div class="days mt-4"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span class="on">F</span><span class="on">S</span></div></div>
+          <span class="switch"></span><i data-lucide="pencil" style="width:14px;height:14px;color:var(--muted)"></i></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Usage + devices -->
+  <div class="grid g-main-side" style="gap:28px;align-items:start">
+    <div class="col" style="gap:28px">
+      <section class="section">
+        <div class="section-h"><h2>Data usage</h2><span class="sub">All of Mia's devices, per hour · markers show scheduled pauses</span><div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
+        <div class="card pad">
+          <div class="row" style="gap:28px;align-items:flex-end;margin-bottom:12px">
+            <div><div class="big">18<small>GB</small></div><div class="xs muted mt-4">busiest hour 7 PM · near zero during Bedtime</div></div>
+            <div class="legend ml-auto"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>16.7 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>1.3 GB</b></span></div>
+          </div>
+          <div id="ch-use"></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>Devices</h2><span class="sub">Data today</span><div class="tools"><button class="btn sm"><i data-lucide="plus"></i>Add a device</button></div></div>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th style="width:100%">Device</th><th class="r">Down</th><th class="r">Up</th><th class="r">Share</th><th>7 days</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><div class="row"><div class="ico sm"><i data-lucide="tablet"></i></div><div class="grow"><div class="row-6"><span class="m">Mia's iPad</span><span class="dot" style="--c:var(--success)" title="Online"></span></div><div class="xxs muted row-6"><span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span>Upstairs Hall · 5 GHz</div><div class="minibar"><i style="--c:var(--s-red);width:100%"></i></div></div></div></td><td class="r tnum">9.4 GB</td><td class="r tnum muted">0.4 GB</td><td class="r tnum">54%</td><td style="width:110px"><div id="sd1"></div></td><td><button class="iconbtn" title="Remove from profile"><i data-lucide="x"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm"><i data-lucide="laptop"></i></div><div class="grow"><div class="row-6"><span class="m">Mia's Chromebook</span><span class="dot" style="--c:var(--success)" title="Online"></span></div><div class="xxs muted row-6"><span class="bars" data-n="3"><i></i><i></i><i></i><i></i></span>Upstairs Hall · 5 GHz</div><div class="minibar"><i style="--c:var(--s-red);width:52%"></i></div></div></div></td><td class="r tnum">4.6 GB</td><td class="r tnum muted">0.5 GB</td><td class="r tnum">28%</td><td><div id="sd2"></div></td><td><button class="iconbtn" title="Remove from profile"><i data-lucide="x"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm"><i data-lucide="smartphone"></i></div><div class="grow"><div class="row-6"><span class="m">Mia's iPhone</span><span class="dot" style="--c:var(--muted-2)" title="Offline"></span></div><div class="xxs muted">Offline · last seen 2h ago on Upstairs Hall</div><div class="minibar"><i style="--c:var(--s-red);width:23%"></i></div></div></div></td><td class="r tnum">2.0 GB</td><td class="r tnum muted">0.3 GB</td><td class="r tnum">13%</td><td><div id="sd3"></div></td><td><button class="iconbtn" title="Remove from profile"><i data-lucide="x"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm"><i data-lucide="book-open"></i></div><div class="grow"><div class="row-6"><span class="m">Mia's Kindle</span><span class="dot" style="--c:var(--success)" title="Online"></span></div><div class="xxs muted row-6"><span class="bars" data-n="3"><i></i><i></i><i></i><i></i></span>Upstairs Hall · 2.4 GHz</div><div class="minibar"><i style="--c:var(--s-red);width:2%"></i></div></div></div></td><td class="r tnum">96 MB</td><td class="r tnum muted">4 MB</td><td class="r tnum">1%</td><td><div id="sd4"></div></td><td><button class="iconbtn" title="Remove from profile"><i data-lucide="x"></i></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="col" style="gap:28px">
+      <section class="section">
+        <div class="section-h"><h2>Recent activity</h2><div class="tools"><a class="btn sm ghost" href="10-activity.html">All<i data-lucide="arrow-right"></i></a></div></div>
+        <div class="card" style="padding:4px 18px">
+          <div class="ev"><div class="ico sm"><i data-lucide="sunrise"></i></div><div class="grow"><div>Bedtime ended, Mia back online</div><div class="xxs muted">Today, 7:00 AM · scheduled</div></div></div>
+          <div class="ev"><div class="ico sm"><i data-lucide="moon"></i></div><div class="grow"><div>Bedtime started, 4 devices paused</div><div class="xxs muted">Yesterday, 9:00 PM · scheduled</div></div></div>
+          <div class="ev"><div class="ico sm"><i data-lucide="play"></i></div><div class="grow"><div>Mia resumed during Homework</div><div class="xxs muted">Yesterday, 4:42 PM · overrides until Bedtime</div></div></div>
+          <div class="ev"><div class="ico sm"><i data-lucide="book-open-check"></i></div><div class="grow"><div>Homework started</div><div class="xxs muted">Yesterday, 4:00 PM · scheduled</div></div></div>
+          <div class="ev"><div class="ico sm"><i data-lucide="user-round-plus"></i></div><div class="grow"><div><b class="m">Mia's Chromebook</b> added to Mia</div><div class="xxs muted">Mon, 6:15 PM</div></div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2 class="danger">Delete profile</h2></div>
+        <div class="card pad" style="border-color:var(--border-2)">
+          <div class="sm fg2">Mia's 4 devices move to Unassigned, her 3 schedules are removed and any pause is lifted. Usage history stays with the devices.</div>
+          <div class="row gap-8 mt-12"><div class="input grow"><span class="ph">Type "Mia" to confirm</span></div><button class="btn danger"><i data-lucide="trash-2"></i>Delete profile</button></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule editor: opens from a schedule row or "Add a scheduled pause" (or ?sheet=1) -->
+<div id="overlay">
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet">
+    <div class="sheet-h"><div class="ico"><i data-lucide="moon"></i></div><div class="grow"><div class="m">Edit schedule</div><div class="xs muted">Mia · pauses all 4 devices automatically</div></div><button class="iconbtn" data-close><i data-lucide="x"></i></button></div>
+    <div class="sheet-b">
+      <div class="row between"><div><div class="sm m">Schedule on</div><div class="xs muted">Turn off to keep it without pausing</div></div><span class="switch on"></span></div>
+      <div><div class="field-l">Schedule name</div><div class="input">Bedtime</div></div>
+      <div class="grid g2" style="gap:14px">
+        <div><div class="field-l">Start time</div><div class="timepick">9 : 00<span class="ap">PM</span><i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--muted);margin-left:auto"></i></div></div>
+        <div><div class="field-l">End time</div><div class="timepick">7 : 00<span class="ap">AM</span><span class="xxs muted" style="margin-left:6px">next day</span><i data-lucide="chevron-down" style="width:14px;height:14px;color:var(--muted);margin-left:auto"></i></div></div>
+      </div>
+      <div><div class="field-l">Repeats on</div>
+        <div class="days lg"><span class="on">Sun</span><span class="on">Mon</span><span class="on">Tue</span><span class="on">Wed</span><span class="on">Thu</span><span>Fri</span><span>Sat</span></div>
+        <div class="row gap-8 mt-8"><span class="chip on">School nights</span><span class="chip">Weekdays</span><span class="chip">Weekends</span><span class="chip">Every day</span></div>
+      </div>
+      <div><div class="row between field-l"><span>Each day</span><span>10h paused · 50h a week</span></div>
+        <div class="preview24"><i style="left:0;width:29.2%"></i><i style="left:87.5%;width:12.5%"></i></div>
+        <div class="ticks mt-4"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+    </div>
+    <div class="sheet-f"><button class="btn danger"><i data-lucide="trash-2"></i>Delete schedule</button><span class="grow"></span><button class="btn" data-close>Cancel</button><button class="btn primary">Save</button></div>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  const ov = document.getElementById("overlay");
+  if (new URLSearchParams(location.search).get("sheet")) ov.classList.add("open");
+  document.querySelectorAll("[data-sheet]").forEach((b) => b.addEventListener("click", () => ov.classList.add("open")));
+  ov.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => ov.classList.remove("open")));
+
+  // Week timeline: Mon..Sun, today Thu
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const PINK = "var(--s-red)", SKY = "var(--c-sky)";
+  const segs = days.map(() => []);
+  const bedStart = ["Sun", "Mon", "Tue", "Wed", "Thu"];
+  days.forEach((d, i) => {
+    const prev = days[(i + 6) % 7];
+    if (bedStart.includes(prev)) segs[i].push([0, 7, "Bedtime", PINK, "moon"]);
+    if (i < 5) segs[i].push([16, 18, "Homework", SKY, "book-open-check"]);
+    if (bedStart.includes(d)) segs[i].push([21, 24, "Bedtime", PINK, "moon"]);
+    if (d === "Sat" || d === "Sun") segs[i].push([0, 9, "Lights out (off)", null]);
+    if (d === "Fri" || d === "Sat") segs[i].push([23, 24, "", null]);
+  });
+  const now = 14.08;
+  document.getElementById("week").innerHTML = days.map((d, i) =>
+    `<div class="d ${d === "Thu" ? "today" : ""}">${d}</div>
+     <div class="lane ${d === "Thu" ? "today" : ""}">${segs[i].map(([s, e, l, c, ic]) => `<span title="${l}" class="seg ${c ? "" : "off"}" style="--c:${c};left:calc(${(s / 24) * 100}% + 1px);width:calc(${((e - s) / 24) * 100}% - 2px)">${ic && e - s >= 3 ? `<i data-lucide="${ic}"></i>` : ""}${e - s >= 2 ? l : ""}</span>`).join("")}
+     ${d === "Thu" ? `<span class="now" style="left:${(now / 24) * 100}%"></span>` : ""}</div>`).join("");
+
+  // Data usage, 24 hourly buckets ending now (2 PM)
+  const hourAt = (i) => (15 + i) % 24;
+  const asleep = (i) => { const h = hourAt(i); return h >= 21 || h < 7; };
+  const dn = MU.series(24, { base: 1.3, spread: 1.1, seed: 81 }).map((v, i) => (asleep(i) ? 0.01 : hourAt(i) === 16 ? 0.4 : v));
+  const up = MU.series(24, { base: 0.1, spread: 0.08, seed: 82 }).map((v, i) => (asleep(i) ? 0.005 : hourAt(i) === 16 ? 0.03 : v));
+  dn[4] = 2.6;
+  MU.area("#ch-use", {
+    labels: MU.labels.hours(24, 14), height: 200, format: MU.fmt.gb, total: true, label: "Mia's data usage per hour, last 24 hours",
+    markers: [{ i: 1, color: "var(--c-sky)" }, { i: 6, color: "var(--s-red)" }, { i: 16, color: "var(--s-red)" }],
+    series: [
+      { name: "Download", color: "var(--c-down)", values: dn },
+      { name: "Upload", color: "var(--c-up)", values: up },
+    ],
+  });
+  [["#sd1", 9, 91], ["#sd2", 4, 92], ["#sd3", 2, 93], ["#sd4", 0.1, 94]].forEach(([s, b, seed]) => MU.spark(s, MU.series(7, { base: b, spread: b * 0.8, seed }), "var(--s-red)", { height: 22 }));
+});
+</script>
+</body>
+</html>

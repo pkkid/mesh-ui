@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reservations and ports · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .g-set { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
+  .ipmap { display: grid; grid-template-columns: repeat(64, minmax(0, 1fr)); gap: 2px; }
+  .ipmap i { aspect-ratio: 1; border-radius: 2px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .ipmap i.gw { background: var(--c-sky); box-shadow: none; }
+  .ipmap i.st { background: color-mix(in srgb, var(--c-orange) 22%, var(--card-2)); box-shadow: none; }
+  .ipmap i.rs { background: var(--c-teal); box-shadow: none; }
+  .ipmap i.ls { background: var(--c-down); box-shadow: none; }
+  .ipmap i.pl { background: color-mix(in srgb, var(--c-down) 12%, var(--card-2)); box-shadow: none; }
+  .maprow { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; align-items: center; }
+  .rangebar { position: relative; height: 26px; display: flex; gap: 2px; }
+  .rangebar > div { height: 100%; border-radius: 6px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 550; color: var(--bg); white-space: nowrap; overflow: hidden; }
+  .port { font-family: var(--font-mono); font-size: 12px; }
+  .proto { display: inline-flex; height: 19px; padding: 0 6px; border-radius: 5px; font-size: 10.5px; font-weight: 650; align-items: center; letter-spacing: 0.04em; }
+  .proto { color: var(--fg-2); background: var(--card-2); border: 1px solid var(--border); }
+  .sheet { position: fixed; top: 0; right: 0; bottom: 0; width: 460px; background: var(--popover); border-left: 1px solid var(--border-2); box-shadow: -30px 0 60px -20px rgb(0 0 0 / 60%); display: flex; flex-direction: column; z-index: 20; }
+  .sheet-h { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .sheet-b { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .sheet-f { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
+  .fl { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .sheet-backdrop { z-index: 19; }
+  #overlay { display: none; }
+  #overlay.open { display: block; }
+  .flow { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--border); }
+  .flow .nodebox { flex: 1; text-align: center; }
+  .flow .arrow { color: var(--muted); }
+</style>
+</head>
+<body data-page="ports" data-crumbs="Settings / Reservations & ports" data-subtitle="NAT mode">
+
+<div id="page" class="page">
+
+  <div class="g-set">
+    <div class="col" style="gap:28px">
+
+      <!-- Address map -->
+      <section class="section">
+        <div class="section-h"><h2>LAN address map</h2><span class="sub mono">192.168.4.0/22 · 1,024 addresses</span>
+          <div class="tools"><div class="legend"><span><i class="sw" style="--c:var(--c-sky)"></i>Gateway</span><span><i class="sw" style="--c:color-mix(in srgb, var(--c-orange) 45%, var(--card-2))"></i>Static range</span><span><i class="sw" style="--c:var(--c-teal)"></i>Reserved</span><span><i class="sw" style="--c:var(--c-down)"></i>Leased</span><span><i class="sw" style="--c:color-mix(in srgb, var(--c-down) 25%, var(--card-2))"></i>Free in pool</span></div></div></div>
+        <div class="card pad col gap-16">
+          <div class="rangebar">
+            <div style="flex:1;min-width:10px;background:var(--c-sky)" title=".4.1"></div>
+            <div style="flex:98;min-width:150px;background:color-mix(in srgb, var(--c-orange) 45%, var(--card-2));color:var(--fg)">Static .4.2 to .4.99</div>
+            <div style="flex:923;background:var(--c-down)">DHCP pool 192.168.4.100 to 192.168.7.254 · 923 addresses, 23 leased</div>
+          </div>
+          <div class="col" style="gap:2px" id="map"></div>
+          <div class="row xs muted"><i data-lucide="info" style="width:13px;height:13px"></i>Reservations sit in the static range so they never collide with DHCP leases. Hover a square for its address.</div>
+        </div>
+      </section>
+
+      <!-- Reservations -->
+      <section class="section">
+        <div class="section-h"><h2>IPv4 reservations</h2><span class="sub">Devices that always get the same address</span>
+          <div class="tools"><div class="input" style="width:200px;height:28px"><i data-lucide="search"></i><span class="ph">Filter</span></div><button class="btn sm"><i data-lucide="bookmark-plus"></i>Add a reservation</button></div></div>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th style="width:34%">Device</th><th>MAC address</th><th>Reserved IP</th><th>Connected to</th><th class="r">Ports</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-orange)"><i data-lucide="hard-drive"></i></div><div><div class="m">Synology NAS</div><div class="xxs muted">Wired · online</div></div></div></td><td class="mono xs muted">3c:22:fb:1a:07:4e</td><td class="mono sm">192.168.4.10</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-blue)"></i>Living Room</span></td><td class="r"><span class="badge c" style="--bc:var(--s-blue)">3</span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="gamepad-2"></i></div><div><div class="m">PlayStation 5</div><div class="xxs muted">Wired · online</div></div></div></td><td class="mono xs muted">3c:22:fb:5d:91:20</td><td class="mono sm">192.168.4.20</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-blue)"></i>Living Room</span></td><td class="r"><span class="badge c" style="--bc:var(--s-blue)">1</span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="printer"></i></div><div><div class="m">HP LaserJet</div><div class="xxs muted">2.4 GHz · online</div></div></div></td><td class="mono xs muted">3c:22:fb:c4:2e:63</td><td class="mono sm">192.168.4.30</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-purple)"></i>Office</span></td><td class="r muted">-</td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-yellow)"><i data-lucide="lightbulb"></i></div><div><div class="m">Hue Bridge</div><div class="xxs muted">Wired · online</div></div></div></td><td class="mono xs muted">3c:22:fb:88:10:b2</td><td class="mono sm">192.168.4.31</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-blue)"></i>Living Room</span></td><td class="r muted">-</td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-orange)"><i data-lucide="bell-ring"></i></div><div><div class="m">Ring Doorbell</div><div class="xxs muted">2.4 GHz · online</div></div></div></td><td class="mono xs muted">3c:22:fb:42:af:19</td><td class="mono sm">192.168.4.32</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-yellow)"></i>Garage</span></td><td class="r muted">-</td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr class="off"><td><div class="row"><div class="ico sm" style="--c:var(--s-gray)"><i data-lucide="speaker"></i></div><div><div class="m">Sonos Kitchen</div><div class="xxs muted">Offline 3h</div></div></div></td><td class="mono xs">3c:22:fb:9e:63:d1</td><td class="mono sm">192.168.4.33</td><td><span class="xs">-</span></td><td class="r">-</td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="tv"></i></div><div><div class="m">Living Room TV</div><div class="xxs muted">5 GHz · online</div></div></div></td><td class="mono xs muted">3c:22:fb:07:b8:5a</td><td class="mono sm">192.168.4.40</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-blue)"></i>Living Room</span></td><td class="r muted">-</td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td><div class="row"><div class="ico sm" style="--c:var(--s-purple)"><i data-lucide="laptop"></i></div><div><div class="m">Alex's MacBook Pro</div><div class="xxs muted">6 GHz · online</div></div></div></td><td class="mono xs muted">3c:22:fb:e1:3c:77</td><td class="mono sm">192.168.4.50</td><td><span class="row-6 xs"><i class="dot" style="--c:var(--s-purple)"></i>Office</span></td><td class="r"><span class="badge c" style="--bc:var(--s-blue)">1</span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Port forwards -->
+      <section class="section">
+        <div class="section-h"><h2>Port forwards</h2><span class="sub">Open to the internet on 203.0.113.48</span>
+          <div class="tools"><button class="btn sm primary" data-sheet><i data-lucide="plus"></i>Add port forward</button></div></div>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Name</th><th>Device</th><th>Internal IP</th><th class="r">External</th><th></th><th>Internal</th><th>Protocol</th><th class="r">Enabled</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="m nowrap">Plex Media Server</td><td class="nowrap">Synology NAS</td><td class="mono xs">192.168.4.10</td><td class="r port">32400</td><td class="muted"><i data-lucide="arrow-right" style="width:13px;height:13px"></i></td><td class="port">32400</td><td><span class="proto tcp">TCP</span></td><td class="r"><span class="switch on" style="display:inline-block;vertical-align:middle"></span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td class="m nowrap">DSM over HTTPS</td><td class="nowrap">Synology NAS</td><td class="mono xs">192.168.4.10</td><td class="r port">8443</td><td class="muted"><i data-lucide="arrow-right" style="width:13px;height:13px"></i></td><td class="port">5001</td><td><span class="proto tcp">TCP</span></td><td class="r"><span class="switch on" style="display:inline-block;vertical-align:middle"></span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td class="m nowrap">WireGuard</td><td class="nowrap">Synology NAS</td><td class="mono xs">192.168.4.10</td><td class="r port">51820</td><td class="muted"><i data-lucide="arrow-right" style="width:13px;height:13px"></i></td><td class="port">51820</td><td><span class="proto udp">UDP</span></td><td class="r"><span class="switch on" style="display:inline-block;vertical-align:middle"></span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr><td class="m nowrap">PSN party chat</td><td class="nowrap">PlayStation 5</td><td class="mono xs">192.168.4.20</td><td class="r port nowrap">3478-3480</td><td class="muted"><i data-lucide="arrow-right" style="width:13px;height:13px"></i></td><td class="port nowrap">3478-3480</td><td><span class="proto both nowrap">TCP+UDP</span></td><td class="r"><span class="switch on" style="display:inline-block;vertical-align:middle"></span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+              <tr class="off"><td class="m nowrap">Minecraft server</td><td class="nowrap">Alex's MacBook Pro</td><td class="mono xs">192.168.4.50</td><td class="r port">25565</td><td><i data-lucide="arrow-right" style="width:13px;height:13px"></i></td><td class="port">25565</td><td><span class="proto tcp" style="opacity:.6">TCP</span></td><td class="r"><span class="switch" style="display:inline-block;vertical-align:middle"></span></td><td class="r"><button class="iconbtn"><i data-lucide="ellipsis"></i></button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+        <section class="section">
+          <div class="section-h"><h2>IPv6 firewall rules</h2><span class="sub">Pinholes to one device</span><div class="tools"><button class="btn sm"><i data-lucide="plus"></i>Add</button></div></div>
+          <div class="rows">
+            <div class="r" style="min-height:52px"><div class="ico sm" style="--c:var(--s-orange)"><i data-lucide="hard-drive"></i></div><div class="grow"><div class="t">Synology NAS</div><div class="d mono">2001:db8:4a2c:10::a</div></div><span class="port">443</span><span class="proto tcp">TCP</span></div>
+            <div class="r" style="min-height:52px"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="gamepad-2"></i></div><div class="grow"><div class="t">PlayStation 5</div><div class="d mono">2001:db8:4a2c:10::14</div></div><span class="port">3074</span><span class="proto udp">UDP</span></div>
+          </div>
+        </section>
+    </div>
+
+    <!-- Side -->
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm" style="--c:var(--s-gray)"><i data-lucide="info"></i></div><h3>Good to know</h3></div>
+        <div class="panel-b col gap-8 xs fg2">
+          <div>A port forward needs a reservation. Picking a device that has none creates one.</div>
+          <div>Hairpin NAT is always on, so 203.0.113.48:32400 also works from inside the house.</div>
+          <div>Forwards and reservations are off in bridge mode. These changes apply instantly and never restart eeros.</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Add port forward sheet -->
+<div id="overlay">
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet">
+    <div class="sheet-h"><div class="ico" style="--c:var(--s-aqua)"><i data-lucide="arrow-left-right"></i></div><div class="grow"><div class="m">Add port forward</div><div class="xs muted">Open a port to a device on Maple Street</div></div><button class="iconbtn" data-close><i data-lucide="x"></i></button></div>
+    <div class="sheet-b">
+      <div><div class="fl">Device</div>
+        <div class="input select" style="height:42px"><div class="ico sm" style="--c:var(--s-purple)"><i data-lucide="laptop"></i></div><div class="grow"><div class="sm m">Alex's MacBook Pro</div></div><span class="mono xs muted">192.168.4.50</span></div>
+        <div class="xxs muted mt-4 row-6"><i data-lucide="bookmark-check" style="width:12px;height:12px;color:var(--success)"></i>Has a reservation, address will not change</div></div>
+      <div><div class="fl">Nickname</div><div class="input">Valheim server</div></div>
+      <div class="grid g2" style="gap:12px">
+        <div><div class="fl">External port</div><div class="input mono">2456-2458</div><div class="xxs muted mt-4">Single port or range</div></div>
+        <div><div class="fl">Internal port</div><div class="input mono">2456-2458</div><div class="xxs muted mt-4">Same as external</div></div>
+      </div>
+      <div><div class="fl">Protocol</div><div class="seg" style="width:100%"><span style="flex:1;justify-content:center">TCP</span><span class="on" style="flex:1;justify-content:center">UDP</span><span style="flex:1;justify-content:center">TCP + UDP</span></div></div>
+      <div class="row-12"><div class="grow"><div class="sm m">Enabled</div><div class="xxs muted">Turn off later without deleting it</div></div><span class="switch on"></span></div>
+      <div class="flow">
+        <div class="nodebox"><div class="ico" style="--c:var(--s-aqua);margin:0 auto"><i data-lucide="globe"></i></div><div class="xs m mt-4">Internet</div><div class="mono xxs muted">203.0.113.48:2456</div></div>
+        <i data-lucide="arrow-right" class="arrow"></i>
+        <div class="nodebox"><div class="ico" style="--c:var(--s-blue);margin:0 auto"><i data-lucide="router"></i></div><div class="xs m mt-4">Living Room</div><div class="xxs muted">gateway</div></div>
+        <i data-lucide="arrow-right" class="arrow"></i>
+        <div class="nodebox"><div class="ico" style="--c:var(--s-purple);margin:0 auto"><i data-lucide="laptop"></i></div><div class="xs m mt-4">MacBook Pro</div><div class="mono xxs muted">.4.50:2456</div></div>
+      </div>
+      <div class="col gap-4 xs">
+        <div class="row-6 success"><i data-lucide="circle-check" style="width:14px;height:14px"></i>No conflict with existing port forwards</div>
+        <div class="row-6 muted"><i data-lucide="info" style="width:14px;height:14px"></i>Applies instantly, no restart</div>
+      </div>
+    </div>
+    <div class="sheet-f"><button class="btn ghost" data-close>Cancel</button><span class="ml-auto"></span><button class="btn primary"><i data-lucide="check"></i>Save port forward</button></div>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  // The sheet opens from "Add port forward" (or ?sheet=1) and closes on Cancel, X or the backdrop.
+  const ov = document.getElementById("overlay");
+  if (new URLSearchParams(location.search).get("sheet") === "1") ov.classList.add("open");
+  document.querySelectorAll("[data-sheet]").forEach((b) => b.addEventListener("click", () => ov.classList.add("open")));
+  ov.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => ov.classList.remove("open")));
+  // Address map: 16 rows of 64 = 1024 addresses
+  const map = document.getElementById("map");
+  const reserved = new Set([10, 20, 30, 31, 32, 33, 40, 50]);
+  const r = MU.rng(91);
+  const leased = new Set();
+  while (leased.size < 23) leased.add(100 + Math.floor(r() * 140));
+  const base = ["192.168.4", "192.168.5", "192.168.6", "192.168.7"];
+  for (let row = 0; row < 16; row++) {
+    let cells = "";
+    for (let c = 0; c < 64; c++) {
+      const a = row * 64 + c;
+      const ip = `${base[Math.floor(a / 256)]}.${a % 256}`;
+      let k = "";
+      if (a === 0 || a === 1023) k = "";
+      else if (a === 1) k = "gw";
+      else if (reserved.has(a)) k = "rs";
+      else if (a < 100) k = "st";
+      else if (leased.has(a)) k = "ls";
+      else k = "pl";
+      cells += `<i class="${k}" title="${ip}"></i>`;
+    }
+    const label = row % 4 === 0 ? `<span class="mono xxs muted">${base[row / 4]}.0</span>` : "<span></span>";
+    map.insertAdjacentHTML("beforeend", `<div class="maprow">${label}<div class="ipmap">${cells}</div></div>`);
+  }
+});
+</script>
+</body>
+</html>

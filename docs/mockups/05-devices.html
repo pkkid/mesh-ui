@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devices · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .cb { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--border-2); display: grid; place-items: center; flex-shrink: 0; background: var(--card); }
+  .cb.on { background: var(--primary); border-color: var(--primary); }
+  .cb.on::after { content: ""; width: 7px; height: 4px; border-left: 1.8px solid var(--primary-fg); border-bottom: 1.8px solid var(--primary-fg); transform: rotate(-45deg) translate(1px, -1px); }
+  .cb.mixed { background: var(--primary); border-color: var(--primary); }
+  .cb.mixed::after { content: ""; width: 7px; height: 1.8px; background: var(--primary-fg); border-radius: 2px; }
+  .dt { font-size: 12.5px; }
+  .dt td { padding: 7px 10px; }
+  .dt th { padding: 9px 10px; }
+  .dt tr.sel td { background: var(--card-2); }
+  .dt tr.sel td:first-child { box-shadow: inset 2px 0 0 var(--muted-2); }
+  .dt tr.off td .ico { filter: grayscale(0.9); opacity: 0.6; }
+  .dt tr.group td { padding: 8px 10px; }
+  .dt tr.group .gcount { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted-2); margin-left: 6px; }
+  .dt th .sort { display: inline-flex; align-items: center; gap: 3px; color: var(--fg); font-weight: 500; }
+  .dt th .sort svg { width: 12px; height: 12px; }
+  .eero-c { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .rate { display: grid; grid-template-columns: 46px; align-items: center; }
+  .rate .n { font-size: 11px; line-height: 1.25; font-variant-numeric: tabular-nums; text-align: right; }
+  .rate .n .dn { color: var(--fg); }
+  .rate .n .upv { color: var(--muted); }
+  .addr .ip { font-family: var(--font-mono); font-size: 11.5px; }
+  .addr .mac { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted-2); }
+  .bulk {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 12px;
+    background: var(--card-2); border: 1px solid var(--border-2);
+  }
+  .sum { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; }
+  .sum > * { padding: 16px 18px; min-width: 0; }
+  .sum > * + * { border-left: 1px solid var(--border); }
+  .lbl { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .lbl svg { width: 13px; height: 13px; color: var(--muted); }
+  .newdev { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .filterbar .sep { width: 1px; height: 18px; background: var(--border-2); margin: 0 4px; }
+  .chip .sw { width: 7px; height: 7px; }
+  .dd { position: relative; }
+  .tbl-foot { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .newtag { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; padding: 1px 5px; border-radius: 4px; color: var(--fg-2); background: var(--card-2); border: 1px solid var(--border-2); }
+  .guesttag { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; padding: 1px 5px; border-radius: 4px; color: var(--muted); background: var(--card-2); border: 1px solid var(--border-2); }
+  .pop {
+    position: absolute; top: 32px; left: 0; z-index: 20; width: 248px; padding: 6px; border-radius: 12px;
+    background: var(--popover); border: 1px solid var(--border-2); box-shadow: 0 18px 40px -14px rgb(0 0 0 / 60%);
+  }
+  .pop .it { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; font-size: 12.5px; }
+  .pop .it:hover { background: var(--hover); }
+  .pop .it .n { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+  .pop .h { padding: 6px 8px 4px; font-size: 10px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-2); }
+</style>
+</head>
+<body data-page="devices" data-crumbs="Devices" data-subtitle="Updated 4s ago">
+
+<div id="actions">
+  <button class="btn sm"><i data-lucide="share-2"></i>Share Wi-Fi</button>
+</div>
+
+<div id="page" class="page">
+
+  <!-- Summary strip -->
+  <div class="card sum">
+    <div class="row gap-16" style="align-items:center">
+      <div id="dn-type"></div>
+      <div class="col gap-4 grow nowrap" style="font-size:11.5px">
+        <div class="lbl" style="margin-bottom:4px"><i data-lucide="shapes"></i>By type</div>
+        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-blue)"></i>Phones & tablets</span><b class="m tnum">12</b></div>
+        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-purple)"></i>Computers</span><b class="m tnum">7</b></div>
+        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-aqua)"></i>Entertainment</span><b class="m tnum">6</b></div>
+        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-orange)"></i>Smart home</span><b class="m tnum">10</b></div>
+        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-gray)"></i>Other</span><b class="m tnum">3</b></div>
+      </div>
+    </div>
+    <div>
+      <div class="lbl"><i data-lucide="activity"></i>Throughput now</div>
+      <div class="row mt-8" style="gap:14px;align-items:baseline">
+        <div><span class="mid tnum">186</span><span class="xs muted"> Mbps down</span></div>
+      </div>
+      <div class="xs muted"><span class="m tnum fg2">24 Mbps</span> up · 14 devices active</div>
+      <div class="xxs muted-2 mt-8">6 GHz carries 41% of traffic with 19% of devices</div>
+      <div class="xxs muted-2">Sum of current device rates, refreshed every minute</div>
+    </div>
+    <div>
+      <div class="lbl"><i data-lucide="sparkles"></i>New this week <span class="tnum" style="margin-left:auto;color:var(--fg);font-size:12px;letter-spacing:0">3</span></div>
+      <div class="col gap-8 mt-12">
+        <div class="newdev"><div class="ico sm"><i data-lucide="thermometer"></i></div><div class="grow trunc"><div class="m">Nest Thermostat</div><div class="xxs muted">48 min ago · Living Room</div></div></div>
+        <div class="newdev"><div class="ico sm"><i data-lucide="tablet"></i></div><div class="grow trunc"><div class="m">Grandma's iPad</div><div class="xxs muted">Tue · Living Room</div></div></div>
+        <div class="newdev"><div class="ico sm"><i data-lucide="cpu"></i></div><div class="grow trunc"><div class="m">ESP_3A9F21</div><div class="xxs danger">Mon · blocked</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <section class="section" style="gap:10px">
+    <div class="row gap-8">
+      <div class="input" style="width:340px"><i data-lucide="search"></i><span class="ph">Search by name, manufacturer, MAC or IP</span><span class="kbd">/</span></div>
+      <div class="seg"><span class="on">All networks</span><span>Main</span><span>Guest <span class="muted-2 tnum">1</span></span></div>
+      <div class="row gap-8 ml-auto">
+        <span class="xs muted">Group by</span>
+        <div class="input select" style="width:150px"><i data-lucide="layers"></i>Category</div>
+        <span class="xs muted">Sort</span>
+        <div class="input select" style="width:150px"><i data-lucide="arrow-down-a-z"></i>Name, A to Z</div>
+        <button class="btn icon" title="Columns"><i data-lucide="columns-3"></i></button>
+      </div>
+    </div>
+
+    <div class="filterbar">
+      <span class="chip on">All <span class="n">38</span></span>
+      <span class="chip"><i class="dot" style="--c:var(--success)"></i>Online <span class="n">31</span></span>
+      <span class="chip"><i class="dot" style="--c:var(--muted-2)"></i>Offline <span class="n">5</span></span>
+      <span class="chip"><i data-lucide="pause-circle"></i>Paused <span class="n">3</span></span>
+      <span class="chip"><i data-lucide="ban"></i>Blocked <span class="n">2</span></span>
+      <span class="sep"></span>
+      <span class="chip"><i data-lucide="cable"></i>Wired <span class="n">4</span></span>
+      <span class="chip">2.4 GHz <span class="n">11</span></span>
+      <span class="chip">5 GHz <span class="n">10</span></span>
+      <span class="chip">6 GHz <span class="n">6</span></span>
+      <span class="sep"></span>
+      <span class="dd"><span class="chip"><i data-lucide="router"></i>eero: Any<i data-lucide="chevron-down"></i></span></span>
+      <span class="chip"><i data-lucide="users"></i>Profile: Any<i data-lucide="chevron-down"></i></span>
+      <span class="chip"><i data-lucide="shapes"></i>Type: Any<i data-lucide="chevron-down"></i></span>
+      <span class="chip"><i data-lucide="factory"></i>Manufacturer<i data-lucide="chevron-down"></i></span>
+    </div>
+
+    <!-- Bulk action bar -->
+    <div class="bulk">
+      <span class="cb mixed"></span>
+      <span class="sm m">3 selected</span>
+      <span class="xs muted">PlayStation 5, Apple TV Den, Grandma's iPad</span>
+      <div class="row gap-8 ml-auto">
+        <button class="btn sm"><i data-lucide="pause"></i>Pause</button>
+        <button class="btn sm"><i data-lucide="play"></i>Resume</button>
+        <button class="btn sm"><i data-lucide="user-round-plus"></i>Assign profile<i data-lucide="chevron-down"></i></button>
+        <button class="btn sm danger"><i data-lucide="ban"></i>Block 3</button>
+        <span style="width:1px;height:18px;background:var(--border-2)"></span>
+        <button class="btn sm ghost"><i data-lucide="x"></i>Clear</button>
+      </div>
+    </div>
+
+    <!-- Device table -->
+    <div class="panel">
+      <table class="table dt">
+        <thead><tr>
+          <th style="width:28px"><span class="cb"></span></th>
+          <th><span class="sort">Device<i data-lucide="arrow-up"></i></span></th>
+          <th>Profile</th>
+          <th>Connected to</th>
+          <th>Band</th>
+          <th>Signal</th>
+          <th>IP · MAC</th>
+          <th>Now <span class="muted-2">down / up</span></th>
+          <th class="r">Today</th>
+          <th>Status</th>
+          <th style="width:24px"></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="tbl-foot">
+        <i data-lucide="info" style="width:14px;height:14px"></i>
+        Offline devices drop off the list after 7 days. Paused devices stay connected but have no internet.
+        <span class="ml-auto row-6"><span class="kbd">Shift</span>click to select a range</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  const P = { Alex: "var(--s-orange)", Jamie: "var(--s-blue)", Mia: "var(--s-red)", Leo: "var(--s-aqua)" };
+  // name, maker, icon, color group, profile, eero, band, bars, ip, mac, down, up, today GB, status, extra
+  const D = {
+    comp: [
+      ["Alex's MacBook Pro", "Apple · MacBook Pro", "laptop", "comp", "Alex", "Office", "6", 4, "192.168.4.23", "3c:22:fb:4a:91:0e", 38.4, 6.1, 86],
+      ["Alex's iPhone", "Apple · iPhone 17 Pro", "smartphone", "phone", "Alex", "Office", "6", 4, "192.168.4.31", "3c:22:fb:7d:02:a4", 2.1, 0.4, 7.4],
+      ["Alex's iPad Pro", "Apple · iPad Pro 13", "tablet", "phone", "Alex", "Office", "6", 4, "192.168.4.44", "3c:22:fb:11:6e:c9", 0.3, 0.1, 1.9],
+      ["Alex's Apple Watch", "Apple · Watch Ultra 3", "watch", "phone", "Alex", "Office", "5", 3, "192.168.4.52", "3c:22:fb:e0:5b:17", 0, 0, 0.2],
+      ["Office iMac", "Apple · iMac 24", "monitor", "comp", "Alex", "Office", "wired", 0, "192.168.4.20", "3c:22:fb:90:3a:72", 4.6, 1.2, 14],
+      ["Synology NAS", "Synology · DS923+", "hard-drive", "comp", "Alex", "Living Room", "wired", 0, "192.168.4.10", "00:11:32:9c:4e:01", 11.8, 22.3, 56],
+      ["Jamie's iPhone", "Apple · iPhone 16", "smartphone", "phone", "Jamie", "Living Room", "6", 4, "192.168.4.33", "3c:22:fb:5c:88:3d", 6.2, 0.8, 19],
+      ["Jamie's ThinkPad", "Lenovo · ThinkPad X1", "laptop", "comp", "Jamie", "Office", "5", 3, "192.168.4.27", "8c:16:45:2b:d1:6a", 12.4, 3.9, 31],
+      ["Jamie's iPad", "Apple · iPad Air", "tablet", "phone", "Jamie", "Upstairs Hall", "6", 4, "192.168.4.46", "3c:22:fb:a2:47:e8", 0.9, 0.1, 4.6],
+      ["Mia's iPad", "Apple · iPad 11", "tablet", "phone", "Mia", "Upstairs Hall", "5", 4, "192.168.4.61", "3c:22:fb:c3:19:5f", 5.4, 0.3, 9.8],
+      ["Mia's Chromebook", "Acer · Chromebook Spin", "laptop", "comp", "Mia", "Upstairs Hall", "5", 3, "192.168.4.62", "a4:5e:60:7b:20:9d", 1.2, 0.2, 5.1],
+      ["Mia's Kindle", "Amazon · Kindle Paperwhite", "book-open", "phone", "Mia", "Upstairs Hall", "2.4", 3, "192.168.4.63", "f0:27:2d:4e:aa:13", 0, 0, 0.1],
+      ["Leo's Fire HD", "Amazon · Fire HD 10", "tablet", "phone", "Leo", "Upstairs Hall", "5", 3, "192.168.4.71", "f0:27:2d:19:c2:77", 0, 0, 1.4, "paused"],
+      ["Grandma's iPad", "Apple · iPad mini", "tablet", "phone", null, "Living Room", "5", 4, "192.168.4.88", "3c:22:fb:d6:01:b2", 3.3, 0.2, 2.7, "new"],
+      ["HP LaserJet", "HP · LaserJet Pro M404", "printer", "comp", null, "Office", "2.4", 2, "192.168.4.15", "48:9e:bd:35:7c:40", 0, 0, 0.02],
+    ],
+    ent: [
+      ["Living Room TV", "Samsung · QN90D", "tv", "ent", null, "Living Room", "wired", 0, "192.168.4.12", "f4:7b:09:12:ae:58", 58.2, 0.6, 142],
+      ["PlayStation 5", "Sony · PS5 Slim", "gamepad-2", "ent", null, "Living Room", "5", 4, "192.168.4.14", "00:d9:d1:6f:4b:23", 0.4, 0.1, 48],
+      ["Apple TV Den", "Apple · Apple TV 4K", "cast", "ent", null, "Living Room", "6", 4, "192.168.4.16", "3c:22:fb:3e:70:c1", 24.6, 0.3, 26],
+      ["Sonos Kitchen", "Sonos · Era 100", "speaker", "ent", null, "Living Room", "5", 3, "192.168.4.17", "54:2a:1b:8d:0f:61", 0.3, 0, 0.8],
+      ["Sonos Living Room", "Sonos · Arc", "speaker", "ent", null, "Living Room", "5", 4, "192.168.4.18", "54:2a:1b:44:c7:0a", 0.2, 0, 0.6],
+      ["Leo's Switch", "Nintendo · Switch 2", "gamepad-2", "ent", "Leo", "Living Room", "5", 3, "192.168.4.72", "98:41:5c:2d:e6:94", 0, 0, 2.8, "paused"],
+    ],
+    off: [
+      ["Mia's iPhone", "Apple · iPhone 15", "smartphone", "phone", "Mia", "Upstairs Hall", "5", 0, "192.168.4.64", "3c:22:fb:08:d4:6b", 0, 0, 2.3, "offline", "2h ago"],
+      ["Jamie's Apple Watch", "Apple · Watch Series 11", "watch", "phone", "Jamie", "Living Room", "5", 0, "192.168.4.47", "3c:22:fb:b9:31:2e", 0, 0, 0.1, "offline", "40 min ago"],
+      ["Leo's Chromebook", "Lenovo · Chromebook Duet", "laptop", "comp", "Leo", "Upstairs Hall", "5", 0, "192.168.4.73", "8c:16:45:70:5a:e3", 0, 0, 0, "offline", "5h ago · paused"],
+      ["Jamie's Peloton", "Peloton · Bike+", "bike", "other", "Jamie", "Living Room", "5", 0, "192.168.4.49", "c8:2e:47:61:fb:0c", 0, 0, 0, "offline", "Yesterday"],
+      ["Sam's Pixel", "Google · Pixel 9", "smartphone", "phone", null, "Living Room", "5", 0, "192.168.4.201", "da:a1:19:5e:72:3b", 0, 0, 0, "offline", "3 days ago", "guest"],
+    ],
+    blk: [
+      ["android-7f3a", "Unknown manufacturer · random MAC", "circle-help", "other", null, "Garage", "2.4", 0, "-", "de:7f:3a:41:09:c8", 0, 0, 0, "blocked", "Blocked Oct 30"],
+      ["ESP_3A9F21", "Espressif", "cpu", "other", null, "Garage", "2.4", 0, "-", "24:6f:28:3a:9f:21", 0, 0, 0, "blocked", "Blocked Mon"],
+    ],
+  };
+  const selected = new Set(["PlayStation 5", "Apple TV Den", "Grandma's iPad"]);
+  const groups = [
+    ["Computers & Personal", D.comp, "laptop"],
+    ["Entertainment", D.ent, "tv"],
+    ["Home", null, "house", 10],
+    ["Other", null, "shapes", 0],
+    ["Recently online", D.off, "history"],
+    ["Blocked", D.blk, "ban"],
+  ];
+  const fmtGB = (v) => (v === 0 ? "-" : v < 1 ? Math.round(v * 1000) + " MB" : v < 10 ? v.toFixed(1) + " GB" : Math.round(v) + " GB");
+  const rate = (v) => (v >= 10 ? Math.round(v) : v.toFixed(1));
+  let html = "";
+  for (const [g, list, icon, collapsed] of groups) {
+    if (!list) {
+      html += `<tr class="group"><td colspan="11"><span class="row-6"><i data-lucide="chevron-right" style="width:13px;height:13px"></i><i data-lucide="${icon}" style="width:13px;height:13px"></i>${g}<span class="gcount">${collapsed ? collapsed + " devices · all online · Nest Thermostat, Hue Bridge, Ring Doorbell, Kitchen Echo, +6" : "No devices online"}</span>${collapsed ? `<span class="ml-auto" style="letter-spacing:0;text-transform:none;font-weight:500;color:var(--fg-2)">Expand</span>` : ""}</span></td></tr>`;
+      continue;
+    }
+    html += `<tr class="group"><td colspan="11"><span class="row-6"><i data-lucide="chevron-down" style="width:13px;height:13px"></i><i data-lucide="${icon}" style="width:13px;height:13px"></i>${g}<span class="gcount">${list.length}</span></span></td></tr>`;
+    for (const d of list) {
+      const [name, maker, ic, cg, prof, eero, band, bars, ip, mac, dn, up, today, st, last, tag] = d;
+      const off = st === "offline" || st === "blocked";
+      const sel = selected.has(name);
+      const prf = prof ? `<span class="row-6"><span class="avatar" style="--c:${P[prof]};width:20px;height:20px;font-size:10px">${prof[0]}</span><span class="xs">${prof}</span></span>` : `<span class="xs muted-2">Unassigned</span>`;
+      const bandB = band === "wired" ? `<span class="badge c"><i data-lucide="cable"></i>Wired</span>` : `<span class="badge c">${band} GHz</span>`;
+      const sig = band === "wired" ? `<span class="muted-2 xs">-</span>` : off ? `<span class="bars" data-n="0"><i></i><i></i><i></i><i></i></span>` : `<span class="bars" data-n="${bars}"><i></i><i></i><i></i><i></i></span>`;
+      const live = off || st === "paused" ? `<span class="xs muted-2">${st === "paused" ? "Paused" : last}</span>` :
+        `<div class="rate"><div class="n"><div class="dn">${rate(dn)}</div><div class="upv">${rate(up)}</div></div></div>`;
+      const pill = st === "paused" ? `<span class="pill warn">Paused</span>` : st === "offline" ? `<span class="pill neutral">Offline</span>` : st === "blocked" ? `<span class="pill bad">Blocked</span>` : `<span class="pill ok">Online</span>`;
+      const tagH = st === "new" ? ` <span class="newtag">NEW</span>` : tag === "guest" ? ` <span class="guesttag">GUEST</span>` : "";
+      const nameH = name === "Alex's MacBook Pro" ? `<a href="06-device-detail.html" class="m" style="text-decoration:underline;text-decoration-color:var(--border-2);text-underline-offset:3px">${name}</a>` : `<span class="m">${name}</span>`;
+      html += `<tr class="${off ? "off" : ""} ${sel ? "sel" : ""}">
+        <td><span class="cb ${sel ? "on" : ""}"></span></td>
+        <td><div class="row" style="gap:10px"><div class="ico sm" style="width:28px;height:28px"><i data-lucide="${ic}"></i></div><div class="grow"><div class="row-6">${nameH}${tagH}</div><div class="xxs muted trunc">${maker}</div></div></div></td>
+        <td>${prf}</td>
+        <td><span class="eero-c xs">${off ? `<span class="muted">${eero}</span>` : eero}</span></td>
+        <td>${off ? `<span class="xs muted-2">-</span>` : bandB}</td>
+        <td>${sig}</td>
+        <td class="addr"><div class="ip">${ip}</div><div class="mac">${mac}</div></td>
+        <td>${live}</td>
+        <td class="r tnum">${fmtGB(today)}</td>
+        <td>${pill}</td>
+        <td><i data-lucide="ellipsis" style="width:15px;height:15px;color:var(--muted)"></i></td>
+      </tr>`;
+    }
+  }
+  document.getElementById("rows").innerHTML = html;
+  MU.donut("#dn-type", [
+    { name: "Phones & tablets", color: "var(--s-blue)", value: 12 }, { name: "Computers", color: "var(--s-purple)", value: 7 },
+    { name: "Entertainment", color: "var(--s-aqua)", value: 6 }, { name: "Smart home", color: "var(--s-orange)", value: 10 }, { name: "Other", color: "var(--s-gray)", value: 3 },
+  ], { size: 84, thickness: 9 });
+});
+</script>
+</body>
+</html>

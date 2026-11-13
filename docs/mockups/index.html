@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesh UI mockups</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  body { overflow-y: auto; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 40px 32px 64px; }
+  .masthead { position: relative; overflow: hidden; border-radius: 22px; border: 1px solid var(--border); padding: 34px 36px;
+    background: var(--card); }
+  .masthead h1 { margin: 14px 0 6px; font-size: 34px; letter-spacing: -0.03em; }
+  .groups { display: flex; flex-direction: column; gap: 34px; margin-top: 34px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+  .shot { display: block; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: var(--card); transition: transform .15s, box-shadow .15s, border-color .15s; }
+  .shot:hover { transform: translateY(-2px); border-color: var(--border-2); box-shadow: 0 18px 40px -22px rgb(0 0 0 / 70%); }
+  .frame { position: relative; height: 200px; overflow: hidden; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .frame iframe { position: absolute; top: 0; left: 0; width: 1440px; height: 960px; border: 0; transform: scale(var(--s, 0.24)); transform-origin: 0 0; pointer-events: none; }
+  .frame .missing { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted-2); font-size: 12px; }
+  .meta { padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
+</style>
+</head>
+<body data-bare>
+<div id="page" class="wrap">
+  <div class="masthead">
+    <div class="row-12"><div class="logo" style="width:30px;height:30px;border-radius:9px"><i data-lucide="wifi"></i></div><span class="pill neutral nodot">Mockups · Nov 2026</span></div>
+    <h1>Mesh UI</h1>
+    <div class="muted" style="max-width:720px">A desktop dashboard for eero mesh networks. Static mockups of every view, built on the T3 Code look:
+      quiet surfaces, colourful data, smooth charts. Every action shown here is a command the CLI and agents can run too.
+      No eero Plus features.</div>
+    <div class="row gap-8 mt-16">
+      <a class="btn primary" href="01-overview.html"><i data-lucide="layout-dashboard"></i>Open the app</a>
+      <a class="btn" href="?theme=light" id="tl"><i data-lucide="sun"></i>Light theme</a>
+      <a class="btn" href="?theme=dark"><i data-lucide="moon"></i>Dark theme</a>
+    </div>
+  </div>
+  <div class="groups" id="groups"></div>
+</div>
+<script src="assets/mockup.js"></script>
+<script>
+const PAGES = [
+  { group: "Network", items: [
+    ["01-overview.html", "Overview", "Status hero, speed gauges, hourly data usage, eeros, top devices, profiles, busy hours, recent activity", "layout-dashboard"],
+    ["02-internet.html", "Internet", "WAN details, speed test history, data usage", "globe"],
+    ["03-eeros.html", "eeros", "Mesh topology map, nodes, bands and channels", "router"],
+    ["04-eero-detail.html", "eero detail", "One node: radios, ports, LED, firmware, actions", "router"],
+    ["05-devices.html", "Devices", "Filterable device table, live rates, bulk actions", "monitor-smartphone"],
+    ["06-device-detail.html", "Device detail", "Signal, usage, reservation, block", "laptop"],
+    ["07-profiles.html", "Profiles", "People, usage by profile, pause and schedules", "users"],
+    ["08-profile-detail.html", "Profile detail", "Weekly schedule timeline, devices, usage", "user"],
+    ["10-activity.html", "Activity", "Events by type, filters, event stream with unread events", "activity"],
+    ["11-guest.html", "Guest network", "Guest Wi-Fi, sharing, guests and usage", "ticket"],
+  ]},
+  { group: "Settings", items: [
+    ["12-wifi-settings.html", "Wi-Fi", "Name, password, encryption, bands", "wifi"],
+    ["13-advanced-networking.html", "Advanced networking", "WAN, IPv6, DHCP and NAT, DNS, UPnP, SQM, Thread", "sliders-horizontal"],
+    ["14-reservations-ports.html", "Reservations & ports", "IP reservations, port forwards, address map", "arrow-left-right"],
+    ["15-updates-admins.html", "Updates & admins", "eeroOS updates, admins and invites, transfer", "download"],
+    ["16-troubleshooting.html", "Troubleshooting", "Health check, coverage scan, tools", "stethoscope"],
+    ["17-account-settings.html", "App & account", "Themes, notifications, session, CLI and agents", "settings"],
+  ]},
+  { group: "Flows", items: [
+    ["18-sign-in.html", "Sign in", "Email or phone, code, choose network", "log-in"],
+    ["19-command-palette.html", "Command palette", "Everything is a command: UI, CLI, MCP", "command"],
+  ]},
+];
+MU.ready(() => {
+  const theme = document.documentElement.dataset.theme;
+  const g = document.getElementById("groups");
+  g.innerHTML = PAGES.map((grp) => `
+    <section class="section"><div class="section-h"><h2>${grp.group}</h2><span class="sub">${grp.items.length} views</span></div>
+      <div class="cards">${grp.items.map(([f, t, d, ic]) => `
+        <a class="shot" href="${f}">
+          <div class="frame"><iframe loading="lazy" src="${f}?theme=${theme}" tabindex="-1"></iframe></div>
+          <div class="meta"><div class="ico sm"><i data-lucide="${ic}"></i></div>
+            <div class="grow"><div class="sm m">${t}</div><div class="xs muted">${d}</div></div>
+            <span class="xxs muted-2 mono">${f.slice(0, 2)}</span></div>
+        </a>`).join("")}</div></section>`).join("");
+  const fit = () => document.querySelectorAll(".frame").forEach((fr) => fr.style.setProperty("--s", fr.clientWidth / 1440));
+  fit(); addEventListener("resize", fit);
+});
+</script>
+</body>
+</html>

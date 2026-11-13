@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device detail · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .livebox { padding: 14px 16px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--border); min-width: 300px; }
+  .livebox .v { font-size: 30px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .livebox .v small { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0; margin-left: 3px; }
+  .confirm { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-2); background: var(--card-2); }
+  .port { display: grid; grid-template-columns: 1fr 90px 72px 20px; gap: 10px; align-items: center; padding: 9px 0; font-size: 12.5px; }
+  .port + .port { border-top: 1px solid var(--border); }
+  .typegrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .typegrid .t { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--border); background: var(--card-2); cursor: pointer; }
+  .typegrid .t svg { width: 18px; height: 18px; }
+  .typegrid .t.on { color: var(--fg); border-color: var(--muted-2); background: var(--selected); }
+  .typegrid .t:hover { color: var(--fg); }
+  #overlay { display: none; }
+  #overlay.open { display: block; }
+  .sheet { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); width: 560px; z-index: 50; background: var(--popover); border: 1px solid var(--border-2); border-radius: 18px; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 70%); }
+  .sheet-h { display: flex; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .sheet-b { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+  .sheet-f { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 18px; border-top: 1px solid var(--border); }
+  .field-l { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+</style>
+</head>
+<body data-page="devices" data-crumbs="Devices / Alex's MacBook Pro">
+
+<div id="actions">
+  <button class="btn sm ghost"><i data-lucide="chevron-left"></i>Prev</button>
+  <button class="btn sm ghost">Next<i data-lucide="chevron-right"></i></button>
+</div>
+
+<div id="page" class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:24px;align-items:start">
+      <div class="ico xl" style="width:84px;height:84px;border-radius:22px;margin-top:6px"><i data-lucide="laptop" style="width:38px;height:38px"></i></div>
+      <div class="col gap-8">
+        <div><div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Alex's MacBook Pro</div>
+          <div class="row-12 mt-8"><span class="pill ok">Online</span><span class="xs muted">Laptop</span></div></div>
+        <div class="row wrap" style="gap:10px 24px;margin-top:4px">
+          <div class="metric"><div class="l">Profile</div><div class="v row-6" style="font-size:14px"><span class="avatar" style="--c:var(--s-orange);width:20px;height:20px;font-size:10px">A</span>Alex</div></div>
+          <div class="metric"><div class="l">Connected to</div><div class="v row-6" style="font-size:14px">Office</div></div>
+          <div class="metric"><div class="l">Signal</div><div class="v row-6" style="font-size:14px"><span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span>-52 dBm</div></div>
+        </div>
+        <div class="row gap-8 mt-4">
+          <button class="btn primary"><i data-lucide="pause"></i>Pause device</button>
+          <button class="btn" data-sheet><i data-lucide="pencil"></i>Appearance</button>
+          <button class="btn"><i data-lucide="user-round"></i>Change profile</button>
+          <button class="btn danger"><i data-lucide="ban"></i>Block</button>
+        </div>
+      </div>
+      <div class="livebox">
+        <div class="row between"><span class="xxs up muted b row-6"><span class="dot live" style="--c:var(--success)"></span>Now</span><span class="xxs muted">refreshes every minute</span></div>
+        <div class="row mt-8" style="gap:24px">
+          <div><div class="xs row-6 muted"><i data-lucide="arrow-down" style="width:13px;height:13px;color:var(--c-down)"></i>Download</div><div class="v">38.4<small>Mbps</small></div></div>
+          <div><div class="xs row-6 muted"><i data-lucide="arrow-up" style="width:13px;height:13px;color:var(--c-up)"></i>Upload</div><div class="v">6.1<small>Mbps</small></div></div>
+        </div>
+        <div class="xxs muted mt-8">Current rates while the device is active</div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="grid g-main-side" style="gap:28px;align-items:start">
+    <!-- Left column -->
+    <div class="col" style="gap:28px">
+      <section class="section">
+        <div class="section-h"><h2>Data usage</h2><span class="sub">Per hour, last 24 hours</span><div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
+        <div class="card pad">
+          <div class="row" style="gap:28px;align-items:flex-end;margin-bottom:12px">
+            <div><div class="big">86<small>GB</small></div><div class="xs muted mt-4">busiest hour 11 AM · 9.4 GB · #2 on the network</div></div>
+            <div class="legend ml-auto"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>64 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>22 GB</b></span></div>
+          </div>
+          <div id="ch-use"></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>Device information</h2></div>
+        <div class="card pad">
+          <dl class="kv" style="margin:0">
+            <dt>Manufacturer</dt><dd>Apple</dd>
+            <dt>Model</dt><dd>MacBook Pro 14 (M4 Pro)</dd>
+            <dt>Hostname</dt><dd class="mono" style="font-size:12px">Alexs-MacBook-Pro</dd>
+            <dt>MAC address</dt><dd class="mono" style="font-size:12px">3c:22:fb:4a:91:0e</dd>
+            <dt>Security</dt><dd class="row-6"><i data-lucide="shield-check" style="width:14px;height:14px;color:var(--success-fg)"></i>WPA3 Personal (SAE)</dd>
+            <dt>Wi-Fi standard</dt><dd>Wi-Fi 6E · 802.11ax</dd>
+            <dt>Channel</dt><dd>37 · 160 MHz · 6 GHz</dd>
+            <dt>Link rate</dt><dd>2401 Mbps rx · 2161 Mbps tx</dd>
+            <dt>SNR</dt><dd>41 dB · 0.2% retries</dd>
+            <dt>First seen</dt><dd>Mar 3, 2025</dd>
+          </dl>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right column -->
+    <div class="col" style="gap:28px">
+      <section class="section">
+        <div class="confirm">
+          <div class="row-6 sm m danger"><i data-lucide="triangle-alert" style="width:15px;height:15px"></i>Block Alex's MacBook Pro?</div>
+          <div class="xs fg2 mt-4">It will be disconnected from every eero and can't rejoin Maple Street until you unblock it from Devices &gt; Blocked.</div>
+          <div class="row gap-8 mt-12"><button class="btn sm danger"><i data-lucide="ban"></i>Block device</button><button class="btn sm ghost">Cancel</button></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>IP addresses</h2></div>
+        <div class="card pad">
+          <dl class="kv" style="margin:0">
+            <dt>IPv4</dt><dd class="row-6"><span class="mono" style="font-size:12px">192.168.4.23</span><span class="badge"><i data-lucide="lock"></i>Reserved</span><a class="xs info" href="14-reservations-ports.html">Edit</a></dd>
+            <dt>IPv6</dt><dd class="mono" style="font-size:12px">2001:db8::3e22:fbff:fe4a:910e</dd>
+            <dt></dt><dd class="mono" style="font-size:12px">2001:db8::8d1c:42a7:19e3:5b20</dd>
+            <dt>Link-local</dt><dd class="mono muted" style="font-size:12px">fe80::1c4f:9a2e:73b1:d0c8</dd>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>Port forwarding</h2><div class="tools"><a class="btn sm ghost" href="14-reservations-ports.html">All<i data-lucide="arrow-right"></i></a></div></div>
+        <div class="card pad" style="padding-top:14px;padding-bottom:10px">
+          <div class="port xs muted" style="padding-bottom:4px"><span>Port forward</span><span>Port</span><span>Protocol</span><span></span></div>
+          <div class="port"><span class="m">Web dev server</span><span class="mono tnum">8080</span><span class="badge">TCP</span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></div>
+          <div class="port"><span class="m">Syncthing</span><span class="mono tnum">22000</span><span class="badge">TCP+UDP</span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></div>
+          <div class="port"><span class="m muted">Game server</span><span class="mono tnum muted">27015-27030</span><span class="badge">UDP</span><span class="switch" style="transform:scale(0.75);margin-left:-8px" title="Disabled"></span></div>
+          <button class="btn sm mt-8" style="margin-bottom:6px"><i data-lucide="plus"></i>Open a port</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Appearance sheet: opens from the Appearance button (or ?sheet=1) -->
+<div id="overlay">
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet">
+    <div class="sheet-h"><div class="ico"><i data-lucide="laptop"></i></div><div class="grow"><div class="m">Appearance</div><div class="xs muted">Nickname and icon, shown everywhere in Mesh UI and the eero app</div></div><button class="iconbtn" data-close><i data-lucide="x"></i></button></div>
+    <div class="sheet-b">
+      <div><div class="field-l">Nickname</div><div class="input" style="border-color:var(--muted-2)">Alex's MacBook Pro<span style="width:1px;height:16px;background:var(--fg);margin-left:-6px"></span><span class="xxs muted ml-auto">18 / 32</span></div>
+        <div class="xxs muted mt-4">Hostname: Alexs-MacBook-Pro · reset to hostname</div></div>
+      <div>
+        <div class="row between"><div class="field-l">Device type</div><div class="xxs muted">Laptop</div></div>
+        <div class="typegrid" id="types"></div>
+      </div>
+    </div>
+    <div class="sheet-f"><button class="btn" data-close>Cancel</button><button class="btn primary">Save</button></div>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  // Overlay toggle
+  const ov = document.getElementById("overlay");
+  if (new URLSearchParams(location.search).get("sheet")) ov.classList.add("open");
+  document.querySelectorAll("[data-sheet]").forEach((b) => b.addEventListener("click", () => ov.classList.add("open")));
+  ov.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => ov.classList.remove("open")));
+  const types = ["laptop", "monitor", "smartphone", "tablet", "watch", "book-open", "hard-drive", "printer", "tv", "cast", "gamepad-2", "speaker", "mic", "thermometer", "lightbulb", "plug", "bell-ring", "cctv", "lock", "siren", "droplets", "bot", "bike", "car", "refrigerator", "washing-machine", "fan", "coffee", "network", "router", "cpu", "circle-help"];
+  document.getElementById("types").innerHTML = types.map((t) => `<div class="t ${t === "laptop" ? "on" : ""}" title="${t}"><i data-lucide="${t}"></i></div>`).join("");
+
+  MU.area("#ch-use", {
+    labels: MU.labels.hours(24, 14), height: 200, format: MU.fmt.gb, total: true, label: "Alex's MacBook Pro data usage per hour, last 24 hours",
+    series: [
+      { name: "Download", color: "var(--c-down)", values: MU.series(24, { base: 2.4, spread: 2, seed: 51, daily: true }).map((v, i) => (i === 20 ? 8.1 : v)) },
+      { name: "Upload", color: "var(--c-up)", values: MU.series(24, { base: 0.9, spread: 0.7, seed: 52, daily: true }).map((v, i) => (i === 20 ? 1.3 : v)) },
+    ],
+  });
+
+});
+</script>
+</body>
+</html>

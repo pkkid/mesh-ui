@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; }
+  .chk { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--border); }
+  .chk .st { width: 22px; height: 22px; border-radius: 99px; display: grid; place-items: center; flex-shrink: 0; }
+  .chk .st svg { width: 13px; height: 13px; }
+  .chk .st.ok { color: var(--success-fg); }
+  .chk .st.warn { color: var(--warning-fg); }
+  .chk .st.bad { color: var(--danger-fg); }
+  .chk .n { font-size: 12.5px; font-weight: 550; }
+  .chk .v { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tool { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; position: relative; }
+  .tool .h { display: flex; align-items: center; gap: 10px; }
+  .tool .h .t { font-size: 13.5px; font-weight: 600; }
+  .tool .h .d { font-size: 12px; color: var(--muted); }
+  .tool .foot { margin-top: auto; display: flex; align-items: center; gap: 8px; }
+  .tool.danger-zone { border-color: var(--border-2); }
+  .room { display: grid; grid-template-columns: 130px minmax(0, 1fr) 54px 110px; align-items: center; gap: 12px; padding: 7px 0; font-size: 12.5px; }
+  .room + .room { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+  .heat { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+  .heat i { height: 12px; border-radius: 3px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .heat i.f { box-shadow: none; background: var(--hc); }
+  .led { width: 18px; height: 18px; border-radius: 99px; flex-shrink: 0; background: var(--lc); }
+  .led.blink { background: var(--lc); box-shadow: inset 0 0 0 1.5px var(--lc), inset 0 0 0 4.5px var(--card); }
+  .led.wh { --lc: var(--primary-fg); outline: 1px solid var(--muted-2); outline-offset: 2px; }
+  [data-theme="light"] .led.wh { --lc: var(--border-2); }
+  .led.off { --lc: var(--muted-2); box-shadow: inset 0 0 0 1.5px var(--muted-2); background: transparent; }
+  .ledrow { display: flex; align-items: center; gap: 12px; padding: 7px 0; font-size: 12.5px; }
+  .ledrow + .ledrow { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+  .ledrow .k { width: 118px; font-weight: 550; flex-shrink: 0; }
+  .ledrow .m2 { color: var(--muted); font-size: 12px; }
+  .chan td { font-size: 12px; }
+  .chcell { display: flex; flex-direction: column; gap: 4px; min-width: 96px; }
+  .chcell .top { display: flex; align-items: baseline; gap: 6px; }
+  .chcell .top b { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+  .confirm { border: 1px solid var(--border-2); border-radius: 10px; padding: 10px 12px; background: var(--card-2); font-size: 12px; }
+  .timer { font-family: var(--font-mono); font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+</style>
+</head>
+<body data-page="troubleshoot" data-crumbs="Settings / Troubleshooting" data-subtitle="Last health check 2 min ago">
+
+<div id="page" class="page">
+
+  <!-- Health check hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:30px;align-items:start">
+      <div class="col gap-12" style="align-items:center">
+        <div id="score"></div>
+        <div class="row-6"><span class="pill ok">Good</span><span class="pill warn">1 warning</span></div>
+      </div>
+      <div class="col gap-16">
+        <div class="row" style="align-items:flex-start">
+          <div class="grow">
+            <div style="font-size:24px;font-weight:650;letter-spacing:-0.02em">Network health check</div>
+            <div class="sm muted mt-4">8 checks across internet, DNS, eeros, mesh links and firmware.</div>
+          </div>
+          <div class="row gap-8"><button class="btn primary"><i data-lucide="stethoscope"></i>Run again</button></div>
+        </div>
+        <div class="checks">
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="globe" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Internet</span><span class="v">Ziply up · 942 / 918 Mbps</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="book-open-check" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">DNS resolution</span><span class="v">ISP DNS</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Living Room</span><span class="v">gateway · 2.5 GbE WAN</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Office</span><span class="v">Online</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Upstairs Hall</span><span class="v">Online</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Garage</span><span class="v">Online</span></div>
+          <div class="chk"><span class="st warn"><i data-lucide="minus"></i></span><i data-lucide="waypoints" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Mesh links</span><span class="v warning">Garage 2 bars to Office</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="download" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Firmware</span><span class="v">7.12.1 · 7.13.0 tonight</span></div>
+        </div>
+        <div class="row wrap" style="gap:8px">
+          <span class="xs muted">Something specific?</span>
+          <span class="chip"><i data-lucide="unplug"></i>My connection drops</span>
+          <span class="chip"><i data-lucide="snail"></i>My internet is slow</span>
+          <span class="chip"><i data-lucide="wifi-off"></i>My internet is offline</span>
+          <span class="chip"><i data-lucide="circle-alert"></i>My eero's light is red</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick tools -->
+  <section class="section">
+    <div class="section-h"><h2>Tools</h2><span class="sub">Everything the eero app's Support tab offers, plus a few extras</span></div>
+    <div class="rows">
+      <div class="r"><div class="ico" style="--c:var(--s-aqua)"><i data-lucide="gauge"></i></div><div class="grow"><div class="t">Run speed test</div><div class="d">Uses the WAN for about 30 s</div></div><a class="btn sm ghost" href="02-internet.html">History</a><button class="btn sm primary"><i data-lucide="play"></i>Run</button></div>
+      <div class="r"><div class="ico" style="--c:var(--s-blue)"><i data-lucide="lightbulb"></i></div><div class="grow"><div class="t">Find an eero</div><div class="d">Cycle an eero's light for 30 s</div></div><div class="input select xs" style="width:180px"><i class="dot" style="--c:var(--s-yellow)"></i>Garage</div><button class="btn sm"><i data-lucide="sparkles"></i>Blink light</button></div>
+    </div>
+  </section>
+
+  <!-- Coverage + upgrade report -->
+  <div class="grid g-2-1" style="gap:28px">
+    <section class="section">
+      <div class="section-h"><h2>Coverage scan</h2><span class="sub">Scanned today 1:05 PM</span>
+        <div class="tools"><button class="btn sm"><i data-lucide="refresh-cw"></i>Scan again</button><div class="legend"><span><i class="sw" style="--c:var(--s-red)"></i>Poor</span><span><i class="sw" style="--c:var(--s-yellow)"></i>Fair</span><span><i class="sw" style="--c:var(--s-green)"></i>Good</span><span><i class="sw" style="--c:var(--s-green)"></i>Strong</span></div></div></div>
+      <div class="card pad">
+        <div class="note warn" style="margin-bottom:12px"><i data-lucide="move"></i><div class="body"><b>Adjust eero placement.</b> Garage sits too far from Office. Move it 3 to 5 m closer to the house, or run Ethernet to it, then scan again.</div></div>
+        <div class="room xxs muted" style="padding-top:0"><span>Room</span><span>Link quality (1 to 5)</span><span class="right">Devices</span><span>Served by</span></div>
+        <div id="rooms"></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-h"><h2>Upgrade report</h2><span class="sub">Wi-Fi generation scan</span></div>
+      <div class="card pad col gap-16">
+        <div class="row gap-16" style="align-items:center">
+          <div id="dn-gen"></div>
+          <div class="col gap-6 grow" style="gap:6px">
+            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--s-red)"></i><span class="muted">Wi-Fi 7</span></span><b class="m tnum">5</b></div>
+            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--s-purple)"></i><span class="muted">Wi-Fi 6E</span></span><b class="m tnum">6</b></div>
+            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--s-blue)"></i><span class="muted">Wi-Fi 6</span></span><b class="m tnum">11</b></div>
+            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--s-aqua)"></i><span class="muted">Wi-Fi 5</span></span><b class="m tnum">6</b></div>
+            <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--s-gray)"></i><span class="muted">Wi-Fi 4 or older</span></span><b class="m tnum">3</b></div>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="col gap-8">
+          <div class="row sm"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="router"></i></div><span class="grow">3 of 4 eeros are Wi-Fi 7</span><span class="pill ok">Great</span></div>
+          <div class="row sm"><div class="ico sm" style="--c:var(--s-yellow)"><i data-lucide="lamp"></i></div><span class="grow">Garage (eero Beacon) is Wi-Fi 6 and limits 2 Wi-Fi 6E devices</span></div>
+          <div class="row sm"><div class="ico sm" style="--c:var(--s-gray)"><i data-lucide="printer"></i></div><span class="grow">HP LaserJet and Hue Bridge are 2.4 GHz only, fine as is</span></div>
+        </div>
+        <div class="note info"><i data-lucide="sparkles"></i><div class="body">Replacing Garage with an eero 7 would give Ring Doorbell and the garage devices about 3x more headroom.</div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Channels -->
+  <section class="section">
+    <div class="section-h"><h2>Radio channels</h2><span class="sub">Current radio state per eero · auto channel selection</span></div>
+    <div class="panel">
+      <table class="table chan">
+        <thead><tr><th style="width:22%">eero</th><th><span class="row-6"><i class="sw" style="--c:var(--c-band24)"></i>2.4 GHz</span></th><th><span class="row-6"><i class="sw" style="--c:var(--c-band5)"></i>5 GHz low</span></th><th><span class="row-6"><i class="sw" style="--c:var(--c-band5)"></i>5 GHz high</span></th><th><span class="row-6"><i class="sw" style="--c:var(--c-band6)"></i>6 GHz</span></th><th class="r">Clients</th></tr></thead>
+        <tbody id="chan"></tbody>
+      </table>
+    </div>
+    <div class="xs muted">Busy is the current channel utilization each eero reports. Channels and width are chosen automatically by eero and are read-only.</div>
+  </section>
+
+  <!-- Action cards -->
+  <section class="section">
+    <div class="section-h"><h2>Fixes</h2><span class="sub">Temporary modes and restarts</span></div>
+    <div class="grid g3" style="align-items:stretch">
+
+      <div class="card tool">
+        <div class="h"><div class="ico" style="--c:var(--c-band24)"><i data-lucide="wifi"></i></div><div class="grow"><div class="t">Connect 2.4 GHz only devices</div><div class="d">Hide 5 and 6 GHz so a smart plug or printer can find the network</div></div><span class="badge c" style="--bc:var(--s-yellow)">Disruptive</span></div>
+        <div class="row between"><span class="xs muted">Pause 5 and 6 GHz for</span><div class="seg"><span>10 min</span><span class="on">15 min</span><span>30 min</span></div></div>
+        <div class="row gap-16" style="padding:10px 12px;border-radius:10px;background:var(--card-2);border:1px solid var(--border)">
+          <div><div class="xxs muted up b">Active</div><div class="timer tnum">11:42</div></div>
+          <div class="grow"><div class="meter"><i style="width:78%"></i></div><div class="xxs muted mt-4">5 and 6 GHz paused · 22 devices moved to 2.4 GHz · restores at 3:12 PM</div></div>
+        </div>
+        <div class="col gap-8">
+          <div class="xxs muted up b">Joined during this window</div>
+          <div class="row sm"><div class="ico sm" style="--c:var(--s-orange)"><i data-lucide="plug"></i></div><span class="grow">Kasa Smart Plug</span><span class="xxs muted">2.4 GHz · Office · 1 min ago</span><span class="pill ok">New</span></div>
+          <div class="row sm" style="opacity:.6"><div class="ico sm" style="--c:var(--s-gray)"><i data-lucide="loader"></i></div><span class="grow">Waiting for more devices...</span></div>
+        </div>
+        <div class="foot"><button class="btn sm">Restore now</button><span class="xs muted">Started 3 min ago</span></div>
+      </div>
+
+      <div class="card tool">
+        <div class="h"><div class="ico" style="--c:var(--s-blue)"><i data-lucide="history"></i></div><div class="grow"><div class="t">Connect devices that can't detect Wi-Fi 6</div><div class="d">Legacy mode helps old devices that can't see the network</div></div><span class="switch"></span></div>
+        <div class="note warn"><i data-lucide="triangle-alert"></i><div class="body">May reduce speeds for newer devices. Restarts the network for about 2 minutes.</div></div>
+        <div class="kv xs"><dt>Status</dt><dd>Off</dd><dt>Devices that may need it</dt><dd>Old Kindle (Wi-Fi 4)</dd></div>
+        <div class="foot"><button class="btn sm">Turn on legacy mode</button></div>
+      </div>
+
+      <div class="card tool">
+        <div class="h"><div class="ico" style="--c:var(--s-blue)"><i data-lucide="lightbulb"></i></div><div class="grow"><div class="t">Status light colors</div><div class="d">What your eero's light is telling you</div></div></div>
+        <div>
+          <div class="ledrow"><span class="led wh"></span><span class="k">Solid white</span><span class="m2">Online and working</span></div>
+          <div class="ledrow"><span class="led blink wh"></span><span class="k">Blinking white</span><span class="m2">Starting up or connecting</span></div>
+          <div class="ledrow"><span class="led blink" style="--lc:var(--s-blue)"></span><span class="k">Blinking blue</span><span class="m2">Ready for setup over Bluetooth</span></div>
+          <div class="ledrow"><span class="led" style="--lc:var(--s-blue)"></span><span class="k">Solid blue</span><span class="m2">Connected to the app during setup</span></div>
+          <div class="ledrow"><span class="led" style="--lc:var(--s-green)"></span><span class="k">Solid green</span><span class="m2">Power saving schedule is on</span></div>
+          <div class="ledrow"><span class="led" style="--lc:var(--s-red)"></span><span class="k">Solid red</span><span class="m2">No internet, check modem and cable</span></div>
+          <div class="ledrow"><span class="led off"></span><span class="k">Off</span><span class="m2">Light turned off in settings, or no power</span></div>
+        </div>
+      </div>
+
+      <div class="card tool">
+        <div class="h"><div class="ico" style="--c:var(--s-orange)"><i data-lucide="rotate-cw"></i></div><div class="grow"><div class="t">Restart a single eero</div><div class="d">Clients on that eero reconnect in about a minute</div></div></div>
+        <div class="rows" style="border-radius:10px">
+          <div class="r" style="min-height:44px;padding:8px 12px"><i class="dot" style="--c:var(--s-blue)"></i><span class="grow sm">Living Room <span class="badge">Gateway</span></span><span class="xxs warning">takes network offline</span><button class="btn sm">Restart</button></div>
+          <div class="r" style="min-height:44px;padding:8px 12px"><i class="dot" style="--c:var(--s-purple)"></i><span class="grow sm">Office</span><span class="xxs muted">Garage restarts too</span><button class="btn sm">Restart</button></div>
+          <div class="r" style="min-height:44px;padding:8px 12px"><i class="dot" style="--c:var(--s-aqua)"></i><span class="grow sm">Upstairs Hall</span><button class="btn sm">Restart</button></div>
+          <div class="r" style="min-height:44px;padding:8px 12px"><i class="dot" style="--c:var(--s-yellow)"></i><span class="grow sm">Garage</span><button class="btn sm">Restart</button></div>
+        </div>
+      </div>
+
+      <div class="card tool danger-zone">
+        <div class="h"><div class="ico" style="--c:var(--s-red)"><i data-lucide="power"></i></div><div class="grow"><div class="t">Restart network</div><div class="d">Restarts every eero at once</div></div><span class="badge c" style="--bc:var(--s-red)">Disruptive</span></div>
+        <div class="confirm col gap-8">
+          <div class="row-6 m danger"><i data-lucide="triangle-alert" style="width:14px;height:14px"></i>Restart all eeros?</div>
+          <div class="fg2">Maple Street will be offline for about 2 to 3 minutes. 31 devices will disconnect, including this computer if it is on Wi-Fi.</div>
+          <div class="row gap-8"><button class="btn sm">Cancel</button><button class="btn sm" style="background:var(--danger);border-color:var(--danger);color:var(--primary-fg)">Restart network</button></div>
+        </div>
+        <div class="xxs muted">Last restart Nov 11, 3:01 AM (firmware update)</div>
+      </div>
+
+      <div class="card tool">
+        <div class="h"><div class="ico" style="--c:var(--s-red)"><i data-lucide="life-buoy"></i></div><div class="grow"><div class="t">Get help</div><div class="d">eero support and your ISP</div></div></div>
+        <div class="col gap-8">
+          <div class="row sm"><i data-lucide="book-open" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Support center</span><i data-lucide="external-link" style="width:13px;height:13px;color:var(--muted)"></i></div>
+          <div class="row sm"><i data-lucide="mail" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Email support</span><i data-lucide="external-link" style="width:13px;height:13px;color:var(--muted)"></i></div>
+          <div class="row sm"><i data-lucide="phone" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Call eero</span><span class="mono xs muted">(877) 555-0142</span></div>
+          <div class="row sm"><i data-lucide="building-2" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Ziply Fiber support</span><span class="mono xs muted">(866) 555-0199</span></div>
+        </div>
+        <div class="row" style="padding:9px 11px;border-radius:10px;background:var(--card-2);border:1px solid var(--border)"><span class="xs muted">Support ID</span><span class="mono sm m">A1B2C3</span><button class="btn sm ml-auto"><i data-lucide="copy"></i>Copy</button></div>
+        <div class="foot"><button class="btn sm"><i data-lucide="clipboard-copy"></i>Copy diagnostics report</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  // Score ring
+  MU.donut("#score", [{ name: "Score", color: "var(--s-green)", value: 86 }, { name: "", color: "transparent", value: 14 }],
+    { size: 150, thickness: 14, gap: 0, center: `<div><div style="font-size:40px;font-weight:650;letter-spacing:-0.03em;line-height:1" class="tnum">86</div><div class="xxs muted up b mt-4">Health</div></div>` });
+
+  // Coverage rooms
+  const col = (v) => (v <= 1 ? "var(--s-red)" : v === 2 ? "var(--s-yellow)" : v === 3 ? "var(--s-green)" : "var(--s-green)");
+  const rooms = [
+    ["Living Room", 5, 9, "Living Room", "var(--s-blue)"], ["Kitchen", 5, 5, "Living Room", "var(--s-blue)"], ["Office", 5, 6, "Office", "var(--s-purple)"],
+    ["Primary bedroom", 4, 4, "Upstairs Hall", "var(--s-aqua)"], ["Mia's room", 4, 3, "Upstairs Hall", "var(--s-aqua)"], ["Leo's room", 3, 2, "Upstairs Hall", "var(--s-aqua)"],
+    ["Back patio", 3, 1, "Living Room", "var(--s-blue)"], ["Garage", 2, 2, "Garage", "var(--s-yellow)"], ["Driveway", 1, 1, "Garage", "var(--s-yellow)"],
+  ];
+  document.querySelector("#rooms").innerHTML = rooms.map(([n, v, d, e, c]) =>
+    `<div class="room"><span class="m">${n}</span><div class="heat">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= v ? "f" : ""}" style="--hc:${col(v)}"></i>`).join("")}</div><span class="right tnum">${d}</span><span class="row-6 xs muted"><i class="dot" style="--c:${c}"></i>${e}</span></div>`).join("");
+
+  MU.donut("#dn-gen", [
+    { name: "Wi-Fi 7", color: "var(--s-red)", value: 5 }, { name: "Wi-Fi 6E", color: "var(--s-purple)", value: 6 }, { name: "Wi-Fi 6", color: "var(--s-blue)", value: 11 },
+    { name: "Wi-Fi 5", color: "var(--s-aqua)", value: 6 }, { name: "Wi-Fi 4", color: "var(--s-gray)", value: 3 },
+  ], { size: 112, thickness: 12, center: `<div><div class="mid">31</div><div class="xxs muted">devices</div></div>` });
+
+  // Channel table
+  const cell = (ch, w, busy) => {
+    if (ch == null) return `<td class="muted xs">-</td>`;
+    const c = busy >= 75 ? "var(--danger)" : busy >= 55 ? "var(--warning)" : "var(--success)";
+    return `<td><div class="chcell"><div class="top"><b>${ch}</b><span class="xxs muted">${w} MHz</span></div><div class="meter" style="--c:${c};height:5px"><i style="width:${busy}%"></i></div><span class="xxs ${busy >= 55 ? "warning" : "muted"}">${busy}% busy</span></div></td>`;
+  };
+  const eeros = [
+    ["Living Room", "var(--s-blue)", "eero Max 7", [1, 20, 22], [44, 80, 18], [149, 160, 31], [37, 320, 6], 12],
+    ["Office", "var(--s-purple)", "eero Pro 7", [11, 20, 28], [36, 80, 24], [157, 80, 20], [101, 160, 9], 9],
+    ["Upstairs Hall", "var(--s-aqua)", "eero 7", [1, 20, 34], [44, 80, 21], [149, 160, 26], null, 7],
+    ["Garage", "var(--s-yellow)", "eero Beacon", [6, 20, 61], [40, 40, 38], null, null, 3],
+  ];
+  document.querySelector("#chan").innerHTML = eeros.map(([n, c, m, a, b, h, s, cl]) =>
+    `<tr><td><div class="row"><div class="ico sm" style="--c:${c}"><i data-lucide="router"></i></div><div><div class="m">${n}</div><div class="xxs muted">${m}</div></div></div></td>
+      ${cell(a?.[0], a?.[1], a?.[2])}${cell(b?.[0], b?.[1], b?.[2])}${cell(h?.[0], h?.[1], h?.[2])}${s ? cell(s[0], s[1], s[2]) : `<td class="xxs muted">No 6 GHz radio</td>`}
+      <td class="r tnum">${cl}</td></tr>`).join("");
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Updates and admins · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .g-set { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
+  .hours { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; align-items: end; height: 92px; position: relative; }
+  .hours i { display: block; border-radius: 3px 3px 1px 1px; background: color-mix(in srgb, var(--c-down) 35%, var(--card-2)); }
+  .hours i.sel { background: var(--c-sky); }
+  .hours-x { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; margin-top: 4px; font-size: 9.5px; color: var(--muted-2); text-align: center; }
+  .window { position: absolute; top: -6px; bottom: -4px; border-radius: 8px; border: 1.5px dashed var(--muted-2); background: transparent; pointer-events: none; }
+  .window span { white-space: nowrap; position: absolute; top: -9px; left: 8px; padding: 0 6px; font-size: 10px; font-weight: 600; color: var(--muted); background: var(--card); }
+  .qr { padding: 10px; border-radius: 12px; box-shadow: 0 0 0 1px var(--border-2); line-height: 0; flex-shrink: 0; }
+  .roles td, .roles th { text-align: center; }
+  .roles td:first-child, .roles th:first-child { text-align: left; }
+  .ck { width: 15px; height: 15px; color: var(--success); display: inline-block; }
+  .nx { width: 15px; height: 15px; color: var(--muted-2); display: inline-block; }
+  .step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; }
+  .step .n { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; font-size: 12px; font-weight: 650; border: 1px solid var(--border-2); color: var(--fg-2); background: var(--card-2); }
+  .btn.solid-danger { background: var(--danger); border-color: var(--danger); color: var(--primary-fg); }
+  .btn.solid-danger svg { color: var(--primary-fg); }
+  .fl { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .relnote li { margin: 4px 0; }
+  .relnote ul { margin: 6px 0 0; padding-left: 18px; }
+</style>
+</head>
+<body data-page="updates" data-crumbs="Settings / Updates & admins" data-subtitle="Checked for updates 2h ago">
+
+<div id="actions">
+  <button class="btn"><i data-lucide="refresh-cw"></i>Check for updates</button>
+</div>
+
+<div id="page" class="page">
+
+  <!-- Update hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:30px;align-items:start">
+      <div class="col gap-12">
+        <div>
+          <div class="row-12" style="align-items:baseline">
+            <div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">eeroOS 7.13.0</div>
+            <span class="mono sm muted">from 7.12.1</span>
+          </div>
+          <div class="row-12 mt-8"><span class="pill info">Update available</span><span class="xs muted">Released Nov 10, 2026 · gradual rollout, your network is eligible</span></div>
+        </div>
+        <div class="relnote sm fg2">
+          <div class="m">What's new</div>
+          <ul>
+            <li>Better multi-link operation for Wi-Fi 7 devices</li>
+            <li>Thread 1.4 border router support and quicker Matter commissioning</li>
+            <li>SQM improvements on fiber connections above 1 Gbps</li>
+            <li>Fixes a rare 2.4 GHz disconnect on eero Beacon</li>
+          </ul>
+        </div>
+        <div class="row gap-8 mt-4">
+          <button class="btn primary"><i data-lucide="download"></i>Install now</button>
+          <span class="badge c" style="--bc:var(--s-yellow)"><i data-lucide="rotate-ccw"></i>Disruptive · all eeros restart</span>
+        </div>
+      </div>
+      <div class="card pad col gap-12" style="background:var(--card-2)">
+        <div class="row"><div class="ico sm" style="--c:var(--s-blue)"><i data-lucide="calendar-clock"></i></div><div class="grow"><div class="sm m">Installs automatically</div><div class="xxs muted">Tonight, in your preferred update time</div></div></div>
+        <div class="mid tnum">11h 46m<small>to go</small></div>
+        <div class="meter"><i style="width:62%"></i></div>
+        <div class="row gap-8"><button class="btn sm ghost">Remind me</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g-set">
+    <div class="col" style="gap:28px">
+
+      <!-- Per eero -->
+      <section class="section">
+        <div class="rows">
+          <div class="r"><div class="ico"><i data-lucide="router"></i></div><div class="grow"><div class="t">Every eero updates together</div><div class="d">Living Room, Office, Upstairs Hall and Garage were last updated on Nov 11 at 3 AM</div></div></div>
+        </div>
+      </section>
+
+      <!-- Preferred update time -->
+      <section class="section">
+        <div class="section-h"><h2>Preferred update time</h2><span class="sub">Average data per hour, last 7 days</span>
+          <div class="tools"><div class="input select nowrap" style="width:190px">2:00 AM to 5:00 AM</div></div></div>
+        <div class="card pad">
+          <div class="hours" id="hours"><div class="window" style="left:calc(2 / 24 * 100%);width:calc(3 / 24 * 100% - 3px)"><span>Update window</span></div></div>
+          <div class="hours-x" id="hours-x"></div>
+          <div class="row mt-12 xs muted gap-16"><span class="row-6"><i class="sw" style="--c:var(--c-sky)"></i>Selected hours avg <b class="fg2 m">90 MB</b></span><span class="row-6"><i class="sw" style="--c:color-mix(in srgb, var(--c-down) 35%, var(--card-2))"></i>Busiest 8 PM avg <b class="fg2 m">4.1 GB</b></span><span class="ml-auto success row-6"><i data-lucide="circle-check" style="width:13px;height:13px"></i>Quietest window on your network</span></div>
+        </div>
+      </section>
+
+      <!-- Admins -->
+      <section class="section">
+        <div class="section-h"><h2>User permissions</h2><span class="sub">2 of 10 admin seats used</span></div>
+          <div class="rows">
+            <div class="r"><div class="avatar" style="--c:var(--s-orange)">AK</div><div class="grow"><div class="t row">Alex Kim <span class="xxs muted">(you)</span></div><div class="d">alex@example.com</div></div><span class="pill neutral nodot"><i data-lucide="crown" style="width:11px;height:11px"></i>Owner</span></div>
+            <div class="r"><div class="avatar" style="--c:var(--s-blue)">JK</div><div class="grow"><div class="t">Jamie Kim</div><div class="d">jamie@example.com</div></div><span class="pill info nodot">Admin</span><button class="iconbtn"><i data-lucide="ellipsis"></i></button></div>
+            <div class="r" style="background:var(--card-2)"><div class="avatar" style="--c:var(--s-gray);background:transparent;border:1.5px dashed var(--muted-2);color:var(--muted)"><i data-lucide="mail" style="width:13px;height:13px"></i></div><div class="grow"><div class="t">sam@example.com</div><div class="d">Invite pending</div></div><span class="pill warn">Pending</span><button class="btn sm ghost">Resend</button><button class="btn sm danger">Cancel</button></div>
+            <div class="r" style="min-height:44px;padding-top:9px;padding-bottom:9px"><div class="xs muted grow">Jamie's menu</div><div class="row gap-8"><button class="btn sm"><i data-lucide="pencil"></i>Nickname</button><button class="btn sm danger"><i data-lucide="user-minus"></i>Remove admin</button></div></div>
+          </div>
+        <div class="grid g2" style="gap:16px;align-items:start">
+          <div class="card pad col gap-12">
+            <div class="row"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="user-plus"></i></div><div class="m">Invite an admin</div><div class="seg ml-auto"><span class="on"><i data-lucide="qr-code"></i>QR</span><span><i data-lucide="mail"></i>Email</span></div></div>
+            <div class="row gap-16" style="align-items:flex-start">
+              <div class="qr" id="qr-inv"></div>
+              <div class="col gap-8 grow">
+                <div><div class="fl">Invitee nickname</div><div class="input">Grandma Rose</div></div>
+                <div><div class="fl">Or send to email</div><div class="input"><span class="ph">name@example.com</span></div></div>
+                <div class="xxs muted">Scan in the eero app or Mesh UI. Single use, 48 hours.</div>
+              </div>
+            </div>
+            <div class="row gap-8 wrap"><button class="btn sm"><i data-lucide="refresh-cw"></i>New code</button><button class="btn sm"><i data-lucide="link"></i>Copy link</button><button class="btn sm primary ml-auto"><i data-lucide="send"></i>Send invite</button></div>
+          </div>
+
+        <div class="panel">
+          <table class="table roles">
+            <thead><tr><th>What each role can do</th><th>Owner</th><th>Admin</th></tr></thead>
+            <tbody>
+              <tr><td>See devices, usage and eeros; pause profiles; share Wi-Fi</td><td><i data-lucide="check" class="ck"></i></td><td><i data-lucide="check" class="ck"></i></td></tr>
+              <tr><td>Change Wi-Fi, guest network and advanced networking</td><td><i data-lucide="check" class="ck"></i></td><td><i data-lucide="check" class="ck"></i></td></tr>
+              <tr><td>Install updates, restart eeros, add or remove eeros</td><td><i data-lucide="check" class="ck"></i></td><td><i data-lucide="check" class="ck"></i></td></tr>
+              <tr><td>Invite or remove admins</td><td><i data-lucide="check" class="ck"></i></td><td><i data-lucide="minus" class="nx"></i></td></tr>
+              <tr><td>Amazon Connected Home, transfer or delete the network</td><td><i data-lucide="check" class="ck"></i></td><td><i data-lucide="minus" class="nx"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+        </div>
+      </section>
+
+      <!-- Transfer -->
+      <section class="section">
+        <div class="section-h"><h2>Transfer network</h2><span class="badge c" style="--bc:var(--s-red)">Destructive · owner only</span><span class="sub">Hand Maple Street to someone else</span></div>
+        <div class="card pad col gap-16" style="border-color:var(--border-2)">
+          <div class="grid g4" style="gap:16px">
+            <div class="step"><span class="n">1</span><div><div class="sm m">Review</div><div class="xs muted">You become a regular user with no access unless invited back</div></div></div>
+            <div class="step"><span class="n">2</span><div><div class="sm m">Confirm</div><div class="xs muted">Type the network name to confirm the transfer</div></div></div>
+            <div class="step"><span class="n">3</span><div><div class="sm m">Share QR or link</div><div class="xs muted">Single use, valid 48 hours</div></div></div>
+            <div class="step"><span class="n">4</span><div><div class="sm m">Recipient accepts</div><div class="xs muted">They own the eeros, settings and profiles</div></div></div>
+          </div>
+          <div class="note bad"><i data-lucide="octagon-alert"></i><div class="body">This cannot be undone from your side. Admins and settings move with the network; subscriptions do not. Not available on ISP or installer managed networks.</div></div>
+          <div class="row gap-8"><div class="input" style="width:280px"><span class="ph">Type "Maple Street" to continue</span></div><button class="btn solid-danger" style="opacity:.55"><i data-lucide="arrow-right-left"></i>Start transfer</button></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Side -->
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm" style="--c:var(--warning)"><i data-lucide="info"></i></div><h3>During an update</h3></div>
+        <div class="panel-b col gap-8 xs fg2">
+          <div class="row-6"><i data-lucide="wifi-off" style="width:14px;height:14px;color:var(--warning)"></i>Internet and Wi-Fi drop for about 10 minutes</div>
+          <div class="row-6"><i data-lucide="router" style="width:14px;height:14px;color:var(--muted)"></i>eeros download, then restart together</div>
+          <div class="row-6"><i data-lucide="bell" style="width:14px;height:14px;color:var(--muted)"></i>Reminders 12 hours and 15 minutes before</div>
+          <div class="row-6"><i data-lucide="users" style="width:14px;height:14px;color:var(--muted)"></i>Right now: 31 devices online</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.qr("#qr-inv", 123, { label: "Admin invite QR code" });
+  const v = MU.series(24, { base: 120, spread: 90, seed: 71, daily: true });
+  v[2] = 8; v[3] = 7; v[4] = 12; v[20] = 412;
+  const max = Math.max(...v);
+  const h = document.getElementById("hours"), hx = document.getElementById("hours-x");
+  v.forEach((x, i) => {
+    h.insertAdjacentHTML("beforeend", `<i class="${i >= 2 && i < 5 ? "sel" : ""}" title="${i}:00 · ${MU.fmt.mb(x * 10)}" style="height:${Math.max(4, (x / max) * 100)}%"></i>`);
+    hx.insertAdjacentHTML("beforeend", `<span>${i % 3 === 0 ? (i === 0 ? "12a" : i === 12 ? "12p" : i < 12 ? i + "a" : i - 12 + "p") : ""}</span>`);
+  });
+});
+</script>
+</body>
+</html>

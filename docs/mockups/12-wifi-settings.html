@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wi-Fi · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .g-set { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
+  .fl { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .input.edited { border-color: var(--warning); }
+  .input .act { margin-left: auto; display: flex; gap: 2px; }
+  .input .act .iconbtn { width: 24px; height: 24px; }
+  .input .act .iconbtn svg { width: 14px; height: 14px; }
+  .qrblock { display: flex; align-items: flex-start; gap: 16px; }
+  .qr-actions { display: flex; flex-direction: column; gap: 6px; }
+  .qr-actions .btn { justify-content: flex-start; }
+  .qr-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .qr-box { line-height: 0; }
+  .bandc { position: relative; padding: 16px 18px; }
+  .encrow { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 18px; }
+  .encrow + .encrow { border-top: 1px solid var(--border); }
+  .seg span.dis { opacity: 0.4; cursor: not-allowed; }
+  .confirm-bar { position: sticky; bottom: 14px; z-index: 4; display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 16px; border-radius: 14px;
+    background: var(--popover); border: 1px solid var(--border-2);
+    box-shadow: 0 18px 40px -18px rgb(0 0 0 / 45%); }
+  .strength { display: flex; gap: 3px; }
+  .strength i { flex: 1; height: 4px; border-radius: 99px; background: var(--card-2); }
+  .strength i.on { background: var(--success); }
+  .avstack { display: flex; }
+  .avstack .ico { margin-left: -6px; box-shadow: 0 0 0 2px var(--card), inset 0 0 0 1px var(--border); background: var(--card-2); }
+  .avstack .ico:first-child { margin-left: 0; }
+</style>
+</head>
+<body data-page="wifi" data-crumbs="Settings / Wi-Fi">
+
+<div id="page" class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:start">
+      <div class="ico xl" style="margin-top:6px"><i data-lucide="wifi"></i></div>
+      <div class="col gap-8">
+        <div><div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Maple Street</div>
+          <div class="row-12 mt-8"><span class="pill ok">Broadcasting</span><span class="xs muted">One name on every band</span></div></div>
+        <div class="row wrap" style="gap:8px 26px">
+          <div class="metric"><div class="l">Wireless clients</div><div class="v">27<small>of 31 online</small></div></div>
+          <div class="metric"><div class="l">Password changed</div><div class="v">142<small>days ago</small></div></div>
+        </div>
+      </div>
+      <div class="qrblock">
+        <div class="qr-actions">
+          <button class="btn sm"><i data-lucide="copy"></i>Copy password</button>
+          <button class="btn sm"><i data-lucide="image-down"></i>Save QR</button>
+          <button class="btn sm"><i data-lucide="printer"></i>Print a card</button>
+        </div>
+        <div class="qr-col">
+          <div class="qr-box" id="qr"></div>
+          <div class="xs muted">Wi-Fi Network</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g-set">
+    <!-- LEFT: settings -->
+    <div class="col" style="gap:28px">
+
+      <section class="section">
+        <div class="section-h"><h2>Network name and password</h2><span class="sub">SSID and WPA passphrase for the main network</span></div>
+        <div class="card pad col gap-16">
+          <div class="grid g2">
+            <div>
+              <div class="fl"><i data-lucide="wifi" style="width:13px;height:13px"></i>Wi-Fi network name</div>
+              <div class="input">Maple Street<span class="act"><button class="iconbtn" title="Copy"><i data-lucide="copy"></i></button></span></div>
+              <div class="xxs muted mt-4">12 of 32 characters</div>
+            </div>
+            <div>
+              <div class="fl"><i data-lucide="key-round" style="width:13px;height:13px"></i>Wi-Fi password <span class="ml-auto warning xxs">edited</span></div>
+              <div class="input mono edited"><span>maple-lantern-42-orbit</span><span class="act"><button class="iconbtn" title="Hide"><i data-lucide="eye-off"></i></button><button class="iconbtn" title="Copy"><i data-lucide="copy"></i></button><button class="iconbtn" title="Generate"><i data-lucide="dices"></i></button></span></div>
+              <div class="row mt-8" style="gap:10px"><div class="strength grow"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div><span class="xxs success">Strong · 25 chars</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>Encryption</h2><span class="sub">WPA3 support per band</span>
+          <div class="tools"><span class="xs muted">WPA3</span><span class="switch on"></span></div></div>
+        <div class="panel">
+          <div class="encrow" style="background:var(--card-2)">
+            <span class="xxs muted up b">Band</span><span class="xxs muted up b">Security mode</span><span class="xxs muted up b right">WPA2 only</span>
+          </div>
+          <div class="encrow">
+            <div class="row"><span class="m">2.4 GHz</span></div>
+            <div class="seg"><span>Standard (WPA2)</span><span class="on"><i data-lucide="shield-half"></i>Hybrid (WPA2 + WPA3)</span><span>Enhanced (WPA3)</span></div>
+            <div class="right"><span class="m tnum">2</span><span class="muted"> devices</span></div>
+          </div>
+          <div class="encrow">
+            <div class="row"><span class="m">5 GHz</span></div>
+            <div class="seg"><span>Standard (WPA2)</span><span class="on"><i data-lucide="shield-half"></i>Hybrid (WPA2 + WPA3)</span><span>Enhanced (WPA3)</span></div>
+            <div class="right"><span class="m tnum">1</span><span class="muted"> device</span></div>
+          </div>
+          <div class="encrow">
+            <div class="row"><span class="m">6 GHz</span></div>
+            <div class="seg"><span class="dis">Standard (WPA2)</span><span class="dis">Hybrid (WPA2 + WPA3)</span><span class="on"><i data-lucide="shield-check"></i>Enhanced (WPA3)</span></div>
+            <div class="right"><span class="muted">-</span></div>
+          </div>
+          <div style="padding:0 18px 16px" class="col gap-12">
+            <div class="note info"><i data-lucide="info"></i><div class="body">6 GHz always uses Enhanced (WPA3). Choosing Enhanced on 2.4 or 5 GHz asks you to confirm: <b class="m">HP LaserJet, Ring Doorbell and Nest Thermostat</b> only speak WPA2 and would drop off. Hidden while Compatibility Mode is on.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>Bands</h2><span class="sub">All three radios on, managed by eero</span>
+          <div class="tools"><a class="btn sm" href="16-troubleshooting.html"><i data-lucide="radio"></i>2.4 GHz only devices</a></div></div>
+        <div class="grid g3">
+          <div class="card bandc">
+            <div class="row"><div class="ico"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">2.4 GHz</div><div class="xxs muted">Range, older devices</div></div><span class="pill ok">On</span></div>
+            <div class="mid mt-12">6<small>clients</small></div>
+            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>20 MHz</dd><dt>Channels</dt><dd class="mono">1, 6, 11</dd><dt>Share</dt><dd>22% of clients</dd></div>
+          </div>
+          <div class="card bandc">
+            <div class="row"><div class="ico"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">5 GHz</div><div class="xxs muted">Low and high radios</div></div><span class="pill ok">On</span></div>
+            <div class="mid mt-12">14<small>clients</small></div>
+            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>80 / 160 MHz</dd><dt>Channels</dt><dd class="mono">36, 149</dd><dt>Share</dt><dd>52% of clients</dd></div>
+          </div>
+          <div class="card bandc">
+            <div class="row"><div class="ico"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">6 GHz</div><div class="xxs muted">eero Max 7, Pro 7, 7</div></div><span class="pill ok">On</span></div>
+            <div class="mid mt-12">7<small>clients</small></div>
+            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>320 MHz</dd><dt>Channels</dt><dd class="mono">37</dd><dt>Share</dt><dd>26% of clients</dd></div>
+          </div>
+        </div>
+        <div class="xs muted">eero picks channels and bands automatically; there is no per-band SSID. The Garage eero Beacon has no 6 GHz radio.</div>
+      </section>
+
+      <section class="section">
+        <div class="section-h"><h2>Nickname and location</h2><span class="sub">Shown under the network name and in the network switcher</span></div>
+        <div class="card pad col gap-16">
+          <div class="grid g2">
+            <div>
+              <div class="fl"><i data-lucide="tag" style="width:13px;height:13px"></i>Network nickname</div>
+              <div class="input">Kim house</div>
+              <div class="xxs muted mt-4">Helps tell networks apart on accounts with more than one</div>
+            </div>
+            <div>
+              <div class="fl"><i data-lucide="clock" style="width:13px;height:13px"></i>Timezone <span class="ml-auto xxs success row-6"><i data-lucide="check" style="width:12px;height:12px"></i>saved</span></div>
+              <div class="input select">(UTC-08:00) Pacific Time · America/Los_Angeles</div>
+              <div class="xxs muted mt-4">Local time 2:14 PM · matches the location detected from your IP</div>
+            </div>
+          </div>
+          <div class="row-12">
+            <div class="ico"><i data-lucide="calendar-clock"></i></div>
+            <div class="grow sm">Schedules use this timezone: <b class="m">Mia bedtime</b> 9 PM to 7 AM, <b class="m">power saving</b> 1 AM to 6 AM, <b class="m">updates</b> 2 AM to 5 AM.</div>
+            <button class="btn sm primary">Save</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT: side panel -->
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm"><i data-lucide="unplug"></i></div><h3>Impact of saving</h3></div>
+        <div class="panel-b col gap-12">
+          <div class="row gap-16" style="align-items:flex-end">
+            <div><div class="mid warning">27</div><div class="xxs muted">devices disconnect</div></div>
+            <div><div class="mid">8</div><div class="xxs muted">need setup in their app</div></div>
+          </div>
+          <div class="avstack">
+            <div class="ico sm"><i data-lucide="thermometer"></i></div>
+            <div class="ico sm"><i data-lucide="bell-ring"></i></div>
+            <div class="ico sm"><i data-lucide="speaker"></i></div>
+            <div class="ico sm"><i data-lucide="lightbulb"></i></div>
+            <div class="ico sm"><i data-lucide="printer"></i></div>
+            <div class="ico sm"><i data-lucide="tv"></i></div>
+            <div class="ico sm"><i data-lucide="mic"></i></div>
+            <div class="ico sm"><span class="xxxs b">+1</span></div>
+          </div>
+          <div class="xs muted">Nest Thermostat, Ring Doorbell, Sonos Kitchen, Hue lights, HP LaserJet, Living Room TV, Kitchen Echo and 1 more join with a saved password.</div>
+          <div class="hr"></div>
+          <div class="xs fg2 col gap-4">
+            <div class="row-6"><i data-lucide="check" style="width:13px;height:13px;color:var(--success)"></i>Guest network is not affected</div>
+            <div class="row-6"><i data-lucide="check" style="width:13px;height:13px;color:var(--success)"></i>4 wired devices stay online</div>
+            <div class="row-6"><i data-lucide="check" style="width:13px;height:13px;color:var(--success)"></i>eeros do not restart</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm"><i data-lucide="lightbulb"></i></div><h3>Tips</h3></div>
+        <div class="panel-b col gap-8 xs fg2">
+          <div>Passwords need at least 8 characters. Four random words are easy to type on a TV remote and hard to guess.</div>
+          <div>Keep the old name and password for a smoother switch: change only the password and devices that already know the name prompt once.</div>
+          <div class="muted">Additional Wi-Fi networks (IoT, business) are only on eero Business and ISP-managed networks, so they do not appear here.</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Pending-change confirm bar -->
+  <div class="confirm-bar">
+    <div class="ico"><i data-lucide="triangle-alert" style="color:var(--warning-fg)"></i></div>
+    <div class="grow"><div class="sm m">1 unsaved change · Wi-Fi password</div><div class="xs muted">27 devices will disconnect and must rejoin with the new password</div></div>
+    <button class="btn ghost">Discard</button>
+    <button class="btn primary"><i data-lucide="save"></i>Save and reconnect</button>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+// Fake QR code: three finder squares plus seeded modules.
+MU.ready(() => {
+  MU.qr("#qr", 41, { label: "QR code for Maple Street" });
+});
+</script>
+</body>
+</html>

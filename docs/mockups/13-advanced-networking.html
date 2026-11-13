@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Advanced networking · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .g-set { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+  .side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
+  .grp-h { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+  .grp-h h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+  .rows > .r .ctl { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .rows > .r.stack { flex-direction: column; align-items: stretch; gap: 12px; }
+  .rows > .r.stack > .head { display: flex; align-items: center; gap: 14px; }
+  .sub-panel { margin-left: 46px; padding: 14px 16px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--border); }
+  .fl { font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .fields { display: grid; gap: 12px; }
+  .restart { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 550; white-space: nowrap;
+    color: var(--warning-fg); background: var(--card-2); border: 1px solid var(--border-2); }
+  .restart svg { width: 11px; height: 11px; }
+  .pending { box-shadow: inset 3px 0 0 var(--muted-2); }
+  .input.edited { border-color: var(--warning); }
+  .input.dis { opacity: 0.5; }
+  .dim { opacity: 0.5; }
+  .confirm-bar { position: sticky; bottom: 14px; z-index: 4; display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 16px; border-radius: 14px;
+    background: var(--popover); border: 1px solid var(--border-2);
+    box-shadow: 0 18px 40px -18px rgb(0 0 0 / 45%); }
+  .danger-zone { border-color: var(--border-2); }
+  .btn.solid-danger { background: var(--danger); border-color: var(--danger); color: var(--bg); }
+  .btn.solid-danger svg { color: var(--bg); }
+  .sched { position: relative; height: 22px; border-radius: 6px; background: var(--card); border: 1px solid var(--border); overflow: hidden; }
+  .sched i { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--c-lime) 35%, transparent); border-left: 2px solid var(--c-lime); border-right: 2px solid var(--c-lime); }
+  .sched-x { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted-2); margin-top: 3px; }
+  .step { display: flex; gap: 10px; align-items: flex-start; }
+  .step .n { width: 20px; height: 20px; border-radius: 99px; display: grid; place-items: center; font-size: 10.5px; font-weight: 650; background: var(--card-2); border: 1px solid var(--border-2); flex-shrink: 0; }
+</style>
+</head>
+<body data-page="advanced" data-crumbs="Settings / Advanced networking" data-subtitle="Changes apply to every eero">
+
+<div id="page" class="page">
+
+  <div class="g-set">
+    <div class="col" style="gap:30px">
+
+      <!-- INTERNET -->
+      <section class="section">
+        <div class="grp-h"><div class="ico sm"><i data-lucide="globe"></i></div><h2>Internet</h2><span class="xs muted">How the gateway eero talks to Ziply Fiber</span></div>
+        <div class="rows">
+          <div class="r"><div class="ico"><i data-lucide="earth"></i></div>
+            <div class="grow"><div class="t">WAN IP address</div><div class="d">Public address, not behind another router (no double NAT)</div></div>
+            <div class="ctl"><span class="mono sm">203.0.113.48</span><button class="iconbtn"><i data-lucide="copy"></i></button></div></div>
+
+          <div class="r stack">
+            <div class="head"><div class="ico"><i data-lucide="binary"></i></div>
+              <div class="grow"><div class="t row">IPv6 <span class="restart"><i data-lucide="rotate-ccw"></i>Restarts eeros</span></div><div class="d">Global IPv6 addresses for devices that support it</div></div>
+              <div class="ctl"><span class="pill ok">Active</span><span class="switch on"></span></div></div>
+            <div class="sub-panel">
+              <dl class="kv xs" style="grid-template-columns:max-content 1fr max-content 1fr;gap:7px 18px">
+                <dt>Delegated prefix</dt><dd class="mono">2001:db8:4a2c::/56</dd><dt>WAN IPv6</dt><dd class="mono">2001:db8:4a2c::1</dd>
+                <dt>LAN prefix</dt><dd class="mono">2001:db8:4a2c:10::/64</dd><dt>Devices with IPv6</dt><dd>24 of 31</dd>
+                <dt>IPv6 DNS</dt><dd class="mono">From ISP (2001:db8::1)</dd><dt>Firewall rules</dt><dd><a class="info" href="14-reservations-ports.html">2 pinholes</a></dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="r stack">
+            <div class="head"><div class="ico"><i data-lucide="cable"></i></div>
+              <div class="grow"><div class="t">ISP settings</div><div class="d">Only change these if Ziply asks you to. Wrong values take the network offline.</div></div>
+              <div class="ctl"><div class="seg"><span class="on">DHCP</span><span>Static IP</span><span>PPPoE</span></div></div></div>
+            <div class="sub-panel col gap-16">
+              <div class="row-12"><div class="grow"><div class="sm m">Uplink VLAN tag</div><div class="xxs muted">Tag WAN traffic with a VLAN ID (1 to 4094). eero 6 or newer.</div></div>
+                <div style="width:120px"><div class="input mono dis"><span class="ph">VLAN ID</span></div></div><span class="switch"></span></div>
+              <div class="row-12"><div class="grow"><div class="sm m">Multicast IPTV</div><div class="xxs muted">Only for ISP-provided TV service</div></div>
+                <div style="width:120px"><div class="input mono dis"><span class="ph">ID</span></div></div><span class="switch"></span></div>
+              <div class="hr"></div>
+              <div class="dim">
+                <div class="xxs up b muted" style="margin-bottom:8px">Static IP (when selected)</div>
+                <div class="fields g3">
+                  <div><div class="fl">IP address</div><div class="input mono"><span class="ph">From Ziply</span></div></div>
+                  <div><div class="fl">Subnet mask</div><div class="input mono"><span class="ph">255.255.255.0</span></div></div>
+                  <div><div class="fl">Router IP</div><div class="input mono"><span class="ph">From Ziply</span></div></div>
+                </div>
+                <div class="xxs up b muted" style="margin:14px 0 8px">PPPoE (when selected)</div>
+                <div class="fields g2">
+                  <div><div class="fl">Username</div><div class="input"><span class="ph">user@ziply</span></div></div>
+                  <div><div class="fl">Password</div><div class="input"><span class="ph">••••••••</span><i data-lucide="eye" class="ml-auto"></i></div></div>
+                </div>
+              </div>
+              <div class="row"><span class="xxs muted">DHCP lease from Ziply renewed 6h ago</span><button class="btn sm ml-auto" disabled>Save settings</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NETWORK SERVICES -->
+      <section class="section">
+        <div class="grp-h"><div class="ico sm"><i data-lucide="server-cog"></i></div><h2>Network services</h2><span class="xs muted">Addressing, DNS and traffic handling</span></div>
+        <div class="rows">
+          <div class="r"><div class="ico"><i data-lucide="plug-zap"></i></div>
+            <div class="grow"><div class="t">eero Simple Setup</div><div class="d">Adds new eero 6 or newer units automatically when they are plugged in by Ethernet</div></div>
+            <div class="ctl"><span class="switch on"></span></div></div>
+
+          <div class="r stack">
+            <div class="head"><div class="ico"><i data-lucide="network"></i></div>
+              <div class="grow"><div class="t row">DHCP and NAT <span class="restart"><i data-lucide="rotate-ccw"></i>Restarts eeros</span></div><div class="d">Who hands out addresses on your network</div></div>
+              <div class="ctl"><div class="seg"><span class="on"><i data-lucide="sparkles"></i>Automatic</span><span>Manual</span><span>Bridge</span></div></div></div>
+            <div class="sub-panel col gap-12">
+              <div class="fields g4">
+                <div><div class="fl">IP address prefix</div><div class="input mono select dis">192.168.0.0</div></div>
+                <div><div class="fl">Subnet IP</div><div class="input mono dis">192.168.4.0</div></div>
+                <div><div class="fl">Subnet mask</div><div class="input mono dis">255.255.252.0</div></div>
+                <div><div class="fl">Gateway</div><div class="input mono dis">192.168.4.1</div></div>
+                <div style="grid-column:span 2"><div class="fl">Starting IP</div><div class="input mono dis">192.168.4.100</div></div>
+                <div style="grid-column:span 2"><div class="fl">Ending IP</div><div class="input mono dis">192.168.7.254</div></div>
+              </div>
+              <div class="xxs muted">Choose Manual to edit the range. Bridge turns off eero's DHCP and NAT and disables profiles, port forwards and reservations. Hairpin NAT is always on.</div>
+              <div class="hr"></div>
+              <div class="row-12"><div class="grow"><div class="sm m row">NAT port mode <span class="restart"><i data-lucide="rotate-ccw"></i>Restarts eeros</span></div><div class="xxs muted">Randomized picks unpredictable outbound ports; Direct suits most games</div></div>
+                <div class="seg"><span class="on">Direct</span><span>Randomized</span></div></div>
+            </div>
+          </div>
+
+          <a class="r" href="14-reservations-ports.html"><div class="ico"><i data-lucide="arrow-left-right"></i></div>
+            <div class="grow"><div class="t">Reservations and port forwarding</div><div class="d">8 reservations · 5 port forwards (4 on)</div></div>
+            <div class="val">Manage<span class="chev"></span></div></a>
+
+          <div class="r stack pending">
+            <div class="head"><div class="ico"><i data-lucide="server"></i></div>
+              <div class="grow"><div class="t row">DNS <span class="restart"><i data-lucide="rotate-ccw"></i>Restarts eeros</span></div><div class="d">Name servers handed to every device</div></div>
+              <div class="ctl"><div class="seg"><span>ISP default</span><span class="on">Custom DNS</span></div></div></div>
+            <div class="sub-panel col gap-12">
+              <div class="fields g3">
+                <div><div class="fl">IPv4 nameserver 1</div><div class="input mono edited">192.168.4.10</div></div>
+                <div><div class="fl">IPv4 nameserver 2</div><div class="input mono edited">203.0.113.53</div></div>
+                <div><div class="fl">IPv6 nameserver</div><div class="input mono"><span class="ph">2001:db8::53 (optional)</span></div></div>
+              </div>
+              <div class="row-6 xxs muted"><i data-lucide="info" style="width:12px;height:12px"></i>Currently using ISP servers 203.0.113.1 and 203.0.113.2. 192.168.4.10 is your Synology NAS (reserved IP), so DNS stops if it goes offline.</div>
+            </div>
+          </div>
+
+          <div class="r"><div class="ico"><i data-lucide="database-zap"></i></div>
+            <div class="grow"><div class="t">Local DNS caching</div><div class="d">eeros remember lookups for faster browsing</div></div>
+            <div class="ctl"><span class="switch on"></span></div></div>
+
+          <div class="r"><div class="ico"><i data-lucide="waypoints"></i></div>
+            <div class="grow"><div class="t">UPnP</div><div class="d">Lets consoles and apps open ports on their own</div></div>
+            <div class="ctl"><span class="switch on"></span></div></div>
+
+          <div class="r"><div class="ico"><i data-lucide="gauge"></i></div>
+            <div class="grow"><div class="t">Optimize for conferencing and gaming (SQM)</div><div class="d">Smart queue management keeps calls smooth while others download. Not available in bridge mode.</div></div>
+            <div class="ctl"><span class="switch on"></span></div></div>
+
+          <div class="r stack">
+            <div class="head"><div class="ico"><i data-lucide="leaf"></i></div>
+              <div class="grow"><div class="t">Eco efficiency</div><div class="d">Use less power when nobody needs full speed</div></div></div>
+            <div class="sub-panel col gap-12">
+              <div class="row-12"><div class="grow"><div class="sm m">Adaptive Ethernet</div><div class="xxs muted">Matches the gateway WAN port speed to your 1.2 Gbps plan</div></div><span class="switch on"></span></div>
+              <div class="row-12"><div class="grow"><div class="sm m">Power saving schedule</div><div class="xxs muted">Radios drop to 1x1 and LEDs turn green. Wi-Fi blips for up to 5 seconds when it starts.</div></div><span class="switch on"></span></div>
+              <div>
+                <div class="row xs"><span class="m">Overnight</span><span class="muted">Every day · 1:00 AM to 6:00 AM</span><button class="btn sm ml-auto"><i data-lucide="plus"></i>Add schedule</button></div>
+                <div class="sched mt-8"><i style="left:4.17%;width:20.83%"></i></div>
+                <div class="sched-x"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WIRELESS -->
+      <section class="section">
+        <div class="grp-h"><div class="ico sm"><i data-lucide="wifi"></i></div><h2>Wireless</h2><span class="xs muted">Radio features across all eeros</span></div>
+        <div class="rows">
+          <div class="r"><div class="ico"><i data-lucide="link-2"></i></div>
+            <div class="grow"><div class="t row">Multi-link operation <span class="badge">Wi-Fi 7</span></div><div class="d">Wi-Fi 7 devices use several bands at once. Changing it restarts the network for about 2 minutes and may turn on WPA3.</div></div>
+            <div class="ctl"><span class="switch on"></span></div></div>
+          <div class="r"><div class="ico"><i data-lucide="shuffle"></i></div>
+            <div class="grow"><div class="t">Client steering</div><div class="d">Nudges devices to the best eero and band</div></div>
+            <div class="ctl"><span class="switch on"></span></div></div>
+
+          <div class="r stack">
+            <div class="head"><div class="ico"><i data-lucide="hexagon"></i></div>
+              <div class="grow"><div class="t row">Thread <span class="pill ok">Border router</span></div><div class="d">Low-power mesh for Matter and smart home accessories · 9 Thread devices</div></div>
+              <div class="ctl"><span class="switch on"></span></div></div>
+            <div class="sub-panel col gap-12">
+              <dl class="kv xs" style="grid-template-columns:max-content 1fr max-content 1fr;gap:7px 18px">
+                <dt>Network name</dt><dd class="mono">eero-thread-4c21</dd><dt>Channel</dt><dd class="mono">15</dd>
+                <dt>PAN ID</dt><dd class="mono">0x4c21</dd><dt>Extended PAN ID</dt><dd class="mono">3c22fb9a4c2107de</dd>
+                <dt>Network key</dt><dd class="mono">•••••••••••••••• <span class="info">Reveal</span></dd><dt>Border agent</dt><dd class="mono">192.168.4.1:49191</dd>
+              </dl>
+              <div class="row-12"><div class="grow"><div class="sm m">Share credentials with phone keychain</div><div class="xxs muted">Lets iOS and Android add Thread devices to this network</div></div><span class="switch on"></span></div>
+              <div class="row gap-8"><button class="btn sm"><i data-lucide="copy"></i>Copy dataset</button><button class="btn sm danger"><i data-lucide="refresh-cw"></i>Regenerate credentials</button><span class="xxs muted">Regenerating disconnects every Thread device</span></div>
+            </div>
+          </div>
+
+          <a class="r" href="12-wifi-settings.html"><div class="ico"><i data-lucide="shield-check"></i></div>
+            <div class="grow"><div class="t">WPA3</div><div class="d">Set per band on the Wi-Fi page</div></div>
+            <div class="val">Wi-Fi<span class="chev"></span></div></a>
+        </div>
+      </section>
+
+      <!-- INTEGRATIONS -->
+      <section class="section">
+        <div class="grp-h"><div class="ico sm"><i data-lucide="puzzle"></i></div><h2>Integrations</h2><span class="xs muted">Smart home platforms</span></div>
+        <div class="rows">
+          <div class="r" style="opacity:0.6"><div class="ico"><i data-lucide="house"></i></div>
+            <div class="grow"><div class="t">Apple HomeKit</div><div class="d">Not supported by eero Max 7, Pro 7, 7 or Beacon. HomeKit router mode needs eero, eero 6 or Pro 6.</div></div>
+            <div class="ctl"><span class="pill neutral">Unavailable</span></div></div>
+
+          <div class="r stack">
+            <div class="head"><div class="ico"><i data-lucide="speaker"></i></div>
+              <div class="grow"><div class="t row">Amazon Connected Home <span class="pill ok">Linked</span></div><div class="d">Linked to Alex Kim's Amazon account · owner only</div></div>
+              <div class="ctl"><button class="btn sm danger"><i data-lucide="unlink"></i>Unlink Amazon</button></div></div>
+            <div class="sub-panel col gap-12">
+              <div class="xxs up b muted">eero Built-in</div>
+              <div class="row-12"><div class="ico sm"><i data-lucide="speaker"></i></div><div class="grow"><div class="sm m">Kitchen Echo</div><div class="xxs muted">Extends the mesh · 2 clients</div></div><span class="switch on"></span></div>
+              <div class="row-12"><div class="ico sm"><i data-lucide="speaker"></i></div><div class="grow"><div class="sm m">Bedroom Echo Dot</div><div class="xxs muted">Not acting as an eero</div></div><span class="switch"></span></div>
+              <div class="hr"></div>
+              <div class="row-12"><div class="ico sm"><i data-lucide="zap"></i></div><div class="grow"><div class="sm m">Smart Home Hub</div><div class="xxs muted">Zigbee and Matter controller on the Living Room eero · 4 Zigbee devices</div></div><button class="btn sm"><i data-lucide="radar"></i>Discover Zigbee devices</button></div>
+              <div class="row-12"><div class="ico sm"><i data-lucide="wand-sparkles"></i></div><div class="grow"><div class="sm m">Frustration-Free Setup</div><div class="xxs muted">Syncs Wi-Fi and Thread credentials to Amazon for easy device setup</div></div><span class="switch on"></span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DANGER ZONE -->
+      <section class="section">
+        <div class="grp-h"><div class="ico sm"><i data-lucide="octagon-alert" style="color:var(--danger-fg)"></i></div><h2 class="danger">Danger zone</h2></div>
+        <div class="rows danger-zone">
+          <div class="r"><div class="ico"><i data-lucide="rotate-ccw"></i></div>
+            <div class="grow"><div class="t row">Restart network <span class="badge c">Disruptive</span></div><div class="d">Restarts every eero. Everything is offline for about 8 minutes.</div></div>
+            <button class="btn"><i data-lucide="rotate-ccw"></i>Restart network</button></div>
+          <div class="r"><div class="ico"><i data-lucide="trash-2" style="color:var(--danger-fg)"></i></div>
+            <div class="grow"><div class="t row">Delete network <span class="badge c">Destructive · owner</span></div><div class="d">Factory-resets every eero and removes Maple Street, its profiles, history and admins. Cannot be undone.</div></div>
+            <button class="btn solid-danger"><i data-lucide="trash-2"></i>Delete network</button></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SIDE -->
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-h"><div class="ico sm"><i data-lucide="clock-alert"></i></div><h3>Pending change</h3></div>
+        <div class="panel-b col gap-12">
+          <div class="sm"><b class="m">DNS</b> <span class="muted">ISP default</span> <i data-lucide="arrow-right" style="display:inline;width:13px;height:13px;vertical-align:-2px"></i> <b class="m">Custom</b></div>
+          <div class="xxs up b muted">What happens</div>
+          <div class="col gap-8 xs fg2">
+            <div class="step"><span class="n">1</span><div>Settings are saved to every eero</div></div>
+            <div class="step"><span class="n">2</span><div>eeros restart, gateway first. <span class="warning">Internet is down for about 8 min.</span></div></div>
+            <div class="step"><span class="n">3</span><div>31 devices rejoin and pick up the new DNS servers</div></div>
+          </div>
+          <div class="hr" style="margin:4px 0"></div>
+          <div class="xxs muted">Quietest hours today: 2 AM to 5 AM, by data used per hour</div>
+          <div id="ch-quiet"></div>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <div class="confirm-bar">
+    <div class="ico"><i data-lucide="rotate-ccw" style="color:var(--warning-fg)"></i></div>
+    <div class="grow"><div class="sm m">1 pending change · DNS to custom servers</div></div>
+    <button class="btn ghost">Discard</button>
+    <button class="btn"><i data-lucide="calendar-clock"></i>Apply at 2 AM</button>
+    <button class="btn primary"><i data-lucide="rotate-ccw"></i>Apply and restart</button>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  const v = MU.series(24, { base: 600, spread: 400, seed: 65, daily: true });
+  MU.bars("#ch-quiet", { labels: MU.labels.hours(24, 23), height: 64, gapPx: 2, yLabels: false, format: MU.fmt.mb, highlight: 3, xTicks: ["12 AM", "12 PM", "11 PM"], label: "Data used per hour today",
+    series: [{ name: "Data used", color: "var(--c-down)", values: v }] });
+});
+</script>
+</body>
+</html>

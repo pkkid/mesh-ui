@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command palette · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .sheet-backdrop { background: rgb(0 0 0 / 50%); backdrop-filter: blur(1.5px) saturate(0.85); z-index: 10; }
+  [data-theme="light"] .sheet-backdrop { background: rgb(60 56 54 / 30%); }
+  .pal {
+    position: fixed; z-index: 11; top: 40px; left: calc(50% + var(--sidebar) / 2); transform: translateX(-50%);
+    width: min(1080px, calc(100vw - var(--sidebar) - 48px)); border-radius: 18px; overflow: hidden;
+    background: var(--popover); border: 1px solid var(--border-2);
+    box-shadow: 0 30px 80px -30px rgb(0 0 0 / 55%);
+  }
+  .pal-in { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 18px; border-bottom: 1px solid var(--border); }
+  .pal-in > svg { width: 18px; height: 18px; color: var(--muted); }
+  .pal-in .q { font-size: 17px; font-weight: 500; display: flex; align-items: center; }
+  .pal-in .q .caret { width: 2px; height: 20px; background: var(--primary); margin-left: 2px; border-radius: 2px; }
+  .pal-in .hint { color: var(--muted-2); font-size: 13px; margin-left: 10px; }
+  .scopes { display: flex; gap: 6px; margin-left: auto; }
+  .pal-body { display: grid; grid-template-columns: minmax(0, 1fr) 440px; height: 680px; }
+  .list { overflow: hidden; padding: 6px 8px 8px; border-right: 1px solid var(--border); }
+  .grp { display: flex; align-items: center; gap: 8px; padding: 10px 10px 5px; font-size: 10.5px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-2); }
+  .grp .n { margin-left: auto; letter-spacing: 0; font-weight: 500; }
+  .it { display: flex; align-items: center; gap: 12px; padding: 7px 10px; border-radius: 10px; position: relative; }
+  .it:hover { background: var(--hover); }
+  .it.sel { background: var(--card-2); box-shadow: inset 0 0 0 1px var(--border-2); }
+  .it.sel::before { content: ""; position: absolute; left: -8px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--muted); }
+  .it .lb { font-size: 13.5px; font-weight: 500; }
+  .it .id { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .it .ctx { font-size: 11.5px; color: var(--muted); }
+  .it .r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  mark { background: none; color: var(--fg); font-weight: 650; text-decoration: underline; text-decoration-color: var(--muted-2); text-underline-offset: 2px; }
+  .eff { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 10.5px; font-weight: 600; font-family: var(--font-mono);
+    color: var(--fg-2); background: var(--card-2); border: 1px solid var(--border); white-space: nowrap; }
+  .eff::before { content: ""; width: 5px; height: 5px; border-radius: 99px; background: var(--ec); }
+  .eff.q { --ec: var(--s-aqua); } .eff.w { --ec: var(--s-blue); } .eff.d { --ec: var(--s-yellow); } .eff.x { --ec: var(--s-red); }
+  .keys { display: inline-flex; gap: 3px; }
+  .keys span { min-width: 20px; height: 20px; padding: 0 5px; display: inline-grid; place-items: center; border-radius: 5px; font-size: 10.5px; font-family: var(--font-mono); color: var(--muted); border: 1px solid var(--border-2); background: var(--card-2); box-shadow: 0 1px 0 var(--border-2); }
+  .keys.none { color: var(--muted-2); font-size: 11px; width: 54px; justify-content: flex-end; }
+  .prev { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;
+    background: var(--card); }
+  .lab { font-size: 10.5px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 7px; display: flex; align-items: center; gap: 8px; }
+  .lab .ml-auto { letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .pf { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px 12px; align-items: center; font-size: 12.5px; }
+  .pf .k { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-2); }
+  .pf .k small { color: var(--danger-fg); }
+  pre.cb { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--border); font: 11.5px/1.55 var(--font-mono); color: var(--fg-2); white-space: pre-wrap; word-break: break-word; position: relative; }
+  pre.cb .p { color: var(--muted-2); user-select: none; }
+  pre.cb .c { color: var(--s-orange); } pre.cb .s { color: var(--s-green); } pre.cb .k2 { color: var(--s-blue); } pre.cb .n2 { color: var(--s-yellow); } pre.cb .f { color: var(--s-purple); }
+  .surf { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .surf div { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--card-2); display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .surf div svg { width: 15px; height: 15px; color: var(--muted); }
+  .pal-foot { display: flex; align-items: center; gap: 16px; height: 42px; padding: 0 16px; border-top: 1px solid var(--border); background: var(--card-2); font-size: 11.5px; color: var(--muted); }
+  .pal-foot .grpk { display: inline-flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body data-page="overview" data-title="Overview" data-subtitle="Updated just now">
+
+<div id="page" class="page">
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:28px;align-items:center">
+      <div class="col gap-12">
+        <div><div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Maple Street</div>
+          <div class="row-12 mt-8"><span class="pill ok">Online</span><span class="xs muted">Gateway up 23 days, 4 hours</span></div></div>
+        <div class="row gap-8"><button class="btn primary"><i data-lucide="gauge"></i>Run speed test</button><button class="btn"><i data-lucide="pause-circle"></i>Pause a profile</button></div>
+      </div>
+      <div id="g-down"></div><div id="g-up"></div>
+    </div>
+  </div>
+  <section class="section">
+    <div class="section-h"><h2>Data usage</h2><span class="sub">Per hour, last 24 hours, all devices</span>
+      <div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
+    <div class="card pad"><div id="ch-tp"></div></div>
+  </section>
+</div>
+
+<div id="overlay">
+  <div class="sheet-backdrop"></div>
+  <div class="pal" role="dialog" aria-label="Command palette">
+    <div class="pal-in">
+      <i data-lucide="search"></i>
+      <span class="q">pause<span class="caret"></span></span>
+      <span class="hint">10 results</span>
+      <div class="scopes">
+        <span class="chip on" style="height:24px">All</span>
+        <span class="chip" style="height:24px"><i data-lucide="terminal"></i>Commands <span class="n">6</span></span>
+        <span class="chip" style="height:24px"><i data-lucide="monitor-smartphone"></i>Devices <span class="n">2</span></span>
+        <span class="chip" style="height:24px"><i data-lucide="users"></i>Profiles <span class="n">2</span></span>
+      </div>
+      <span class="keys"><span>Esc</span></span>
+    </div>
+
+    <div class="pal-body">
+      <div class="list">
+        <div class="grp"><i data-lucide="terminal" style="width:12px;height:12px"></i>Commands<span class="n">6</span></div>
+        <div class="it sel"><div class="ico" style="--c:var(--s-orange)"><i data-lucide="pause-circle"></i></div>
+          <div class="grow"><div class="lb"><mark>Pause</mark> profile...</div><div class="id">profile.pause</div></div>
+          <div class="r"><span class="eff w">write</span><span class="keys"><span>Ctrl</span><span>⇧</span><span>P</span></span></div></div>
+        <div class="it"><div class="ico" style="--c:var(--s-purple)"><i data-lucide="smartphone"></i></div>
+          <div class="grow"><div class="lb"><mark>Pause</mark> device...</div><div class="id">device.pause</div></div>
+          <div class="r"><span class="eff w">write</span><span class="keys"><span>Ctrl</span><span>⇧</span><span>D</span></span></div></div>
+        <div class="it"><div class="ico" style="--c:var(--c-band24)"><i data-lucide="wifi"></i></div>
+          <div class="grow"><div class="lb"><mark>Pause</mark> 5 and 6 GHz for 2.4 GHz setup</div><div class="id">wifi.band24_only.start</div></div>
+          <div class="r"><span class="eff d">disruptive</span><span class="keys none">-</span></div></div>
+        <div class="it"><div class="ico" style="--c:var(--s-red)"><i data-lucide="calendar-clock"></i></div>
+          <div class="grow"><div class="lb">Add a scheduled <mark>pause</mark>...</div><div class="id">profile.schedule.add</div></div>
+          <div class="r"><span class="eff w">write</span><span class="keys none">-</span></div></div>
+        <div class="it"><div class="ico" style="--c:var(--s-gray)"><i data-lucide="users"></i></div>
+          <div class="grow"><div class="lb"><mark>Pause</mark> unassigned devices</div><div class="id">profile.unassigned.pause</div></div>
+          <div class="r"><span class="eff w">write</span><span class="keys none">-</span></div></div>
+        <div class="it"><div class="ico" style="--c:var(--s-aqua)"><i data-lucide="list-filter"></i></div>
+          <div class="grow"><div class="lb">List <mark>pause</mark>d devices</div><div class="id">device.list <span class="muted-2">{"paused":true}</span></div></div>
+          <div class="r"><span class="eff q">query</span><span class="keys none">-</span></div></div>
+
+        <div class="grp"><i data-lucide="monitor-smartphone" style="width:12px;height:12px"></i>Devices<span class="n">2</span></div>
+        <div class="it"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="gamepad-2"></i></div>
+          <div class="grow row-6"><span class="lb">Leo's Switch</span><span class="pill warn">Paused</span><span class="ctx">· Leo · Upstairs Hall</span></div>
+          <div class="r"><span class="ctx">Unpause</span><span class="eff w">write</span></div></div>
+        <div class="it"><div class="ico sm" style="--c:var(--s-aqua)"><i data-lucide="gamepad-2"></i></div>
+          <div class="grow row-6"><span class="lb">PlayStation 5</span><span class="ctx">· Alex · Living Room · 48 GB today</span></div>
+          <div class="r"><span class="ctx"><mark>Pause</mark></span><span class="eff w">write</span></div></div>
+
+        <div class="grp"><i data-lucide="users" style="width:12px;height:12px"></i>Profiles<span class="n">2</span></div>
+        <div class="it"><div class="avatar" style="--c:var(--s-aqua);width:24px;height:24px;font-size:11px">L</div>
+          <div class="grow row-6"><span class="lb">Leo</span><span class="pill warn">Paused</span><span class="ctx">· 25 min · 3 devices</span></div>
+          <div class="r"><span class="ctx">Resume</span><span class="eff w">write</span></div></div>
+        <div class="it"><div class="avatar" style="--c:var(--s-red);width:24px;height:24px;font-size:11px">M</div>
+          <div class="grow row-6"><span class="lb">Mia</span><span class="pill info">Scheduled</span><span class="ctx">· Bedtime 9 PM to 7 AM</span></div>
+          <div class="r"><span class="ctx"><mark>Pause</mark> now</span><span class="eff w">write</span></div></div>
+        <div class="row-6 xs muted" style="margin:14px 10px 0;padding:10px 12px;border-radius:10px;border:1px dashed var(--border-2)"><i data-lucide="lightbulb" style="width:14px;height:14px;color:var(--muted)"></i>Type <span class="keys"><span>&gt;</span></span> to search all 64 commands by id, like <span class="mono fg2">&gt;eero.reboot</span></div>
+      </div>
+
+      <!-- Preview -->
+      <div class="prev">
+        <div class="row-12" style="align-items:flex-start">
+          <div class="ico lg" style="--c:var(--s-orange)"><i data-lucide="pause-circle"></i></div>
+          <div class="grow">
+            <div class="row-6"><span style="font-size:16px;font-weight:650">Pause profile</span><span class="eff w">write</span></div>
+            <div class="mono xs muted mt-4">profile.pause · src/core/commands/profile.ts</div>
+          </div>
+        </div>
+        <div class="sm fg2" style="margin-top:-4px">Cuts internet for every device in a profile, for a while or until resumed. Reversible, no confirm needed.</div>
+
+        <div>
+          <div class="lab">Params<span class="ml-auto muted xxs">zod schema · Tab to edit</span></div>
+          <div class="pf">
+            <span class="k">profile<small>*</small></span>
+            <div class="input select" style="height:30px"><span class="avatar" style="--c:var(--s-aqua);width:18px;height:18px;font-size:9.5px">L</span>Leo <span class="xxs warning">already paused, sets 30 min</span></div>
+            <span class="k">minutes</span>
+            <div class="seg" style="justify-self:start"><span>15</span><span class="on">30</span><span>60</span><span>Until resumed</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="lab"><i data-lucide="terminal" style="width:12px;height:12px;color:var(--muted)"></i>CLI<span class="ml-auto"><button class="btn sm ghost" style="height:20px"><i data-lucide="copy"></i>Copy</button></span></div>
+<pre class="cb"><span class="p">$ </span><span class="f">mesh-ui</span> run <span class="k2">profile.pause</span> --params <span class="s">'{"profile":"Leo","minutes":30}'</span></pre>
+        </div>
+
+        <div>
+          <div class="lab"><i data-lucide="bot" style="width:12px;height:12px;color:var(--muted)"></i>MCP tool <span class="mono" style="letter-spacing:0;text-transform:none;color:var(--fg-2)">profile_pause</span><span class="ml-auto row-6"><span class="badge">readOnly: false</span><span class="badge">destructive: false</span></span></div>
+<pre class="cb">{ <span class="k2">"name"</span>: <span class="s">"profile_pause"</span>, <span class="k2">"arguments"</span>: { <span class="k2">"profile"</span>: <span class="s">"Leo"</span>, <span class="k2">"minutes"</span>: <span class="n2">30</span> } }
+<span class="p">// same result the UI and CLI get</span>
+{ <span class="k2">"ok"</span>: <span class="c">true</span>, <span class="k2">"result"</span>: { <span class="k2">"profile"</span>: <span class="s">"Leo"</span>, <span class="k2">"paused"</span>: <span class="c">true</span>, <span class="k2">"until"</span>: <span class="s">"15:42"</span>, <span class="k2">"devices"</span>: <span class="n2">3</span> } }</pre>
+        </div>
+
+        <div class="surf">
+          <div><i data-lucide="app-window"></i><span>UI<br><span class="xxs muted">window.mesh</span></span></div>
+          <div><i data-lucide="square-terminal"></i><span>CLI<br><span class="xxs muted">mesh-ui run</span></span></div>
+          <div><i data-lucide="bot"></i><span>MCP<br><span class="xxs muted">mesh-ui mcp</span></span></div>
+        </div>
+        <div class="xxs muted" style="margin-top:-6px">One registry, one <span class="mono">engine.execute(id, params)</span>. Disruptive and destructive commands need <span class="mono">confirm: true</span> on every surface.</div>
+
+        <div class="row gap-8" style="margin-top:auto">
+          <button class="btn primary"><i data-lucide="play"></i>Pause Leo for 30 min<span class="keys" style="margin-left:4px"><span style="background:transparent;color:inherit;border-color:color-mix(in srgb, currentColor 35%, transparent);box-shadow:none">↵</span></span></button>
+          <button class="btn"><i data-lucide="file-json"></i>Add to script.jsonl</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pal-foot">
+      <span class="grpk"><span class="keys"><span>↑</span><span>↓</span></span>Navigate</span>
+      <span class="grpk"><span class="keys"><span>↵</span></span>Run</span>
+      <span class="grpk"><span class="keys"><span>Tab</span></span>Edit params</span>
+      <span class="grpk"><span class="keys"><span>Ctrl</span><span>C</span></span>Copy as CLI</span>
+      <span class="ml-auto grpk">Effects</span>
+      <span class="eff q">query</span><span class="eff w">write</span><span class="eff d">disruptive</span><span class="eff x">destructive</span>
+    </div>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.gauge("#g-down", { value: 942, max: 1200, color: "var(--c-down)", label: "Download", text: "942", unit: "Mbps", size: 150 });
+  MU.gauge("#g-up", { value: 918, max: 1200, color: "var(--c-up)", label: "Upload", text: "918", unit: "Mbps", size: 150 });
+  MU.area("#ch-tp", {
+    labels: MU.labels.hours(24, 14), height: 220, format: MU.fmt.gb, total: true, label: "Data used per hour, last 24 hours",
+    series: [
+      { name: "Download", color: "var(--c-down)", values: MU.series(24, { base: 14, spread: 11, seed: 11, daily: true, spikes: 0.05 }) },
+      { name: "Upload", color: "var(--c-up)", values: MU.series(24, { base: 2.5, spread: 2, seed: 12, daily: true, spikes: 0.04 }) },
+    ],
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Office eero · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .product { width: 150px; height: 150px; border-radius: 34px; display: grid; place-items: center; position: relative; color: var(--fg-2);
+    background: var(--card-2); border: 1px solid var(--border-2); }
+  .product svg { width: 64px; height: 64px; }
+  .product .led { position: absolute; top: 22px; left: 50%; width: 22px; height: 4px; margin-left: -11px; border-radius: 99px; background: var(--fg-2); }
+  .uplink { display: flex; align-items: center; gap: 0; }
+  .uplink .wire { flex: 1; height: 0; border-top: 3px dashed var(--success); position: relative; min-width: 140px; }
+  .uplink .wire span { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); white-space: nowrap; }
+  .slider { position: relative; height: 6px; border-radius: 99px; background: var(--card-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .slider i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--fg-2); }
+  .slider b { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 99px; background: var(--fg); box-shadow: 0 1px 3px rgb(0 0 0 / 30%); }
+  .port { border-radius: 12px; border: 1px solid var(--border); background: var(--card-2); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .jack { width: 46px; height: 38px; border-radius: 6px; position: relative; background: var(--bg); border: 2px solid var(--border-2); margin: 0 auto; }
+  .jack::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -2px; height: 9px; background: var(--card-2); border: 2px solid var(--border-2); border-bottom: 0; border-radius: 3px 3px 0 0; }
+  .jack .l1, .jack .l2 { position: absolute; top: 4px; width: 7px; height: 4px; border-radius: 1px; background: var(--border-2); }
+  .jack .l1 { left: 4px; } .jack .l2 { right: 4px; }
+  .jack.up .l1 { background: var(--success); } .jack.up .l2 { background: var(--fg-2); }
+  .disabled { opacity: .5; pointer-events: none; }
+</style>
+</head>
+<body data-page="eeros" data-crumbs="eeros / Office" data-subtitle="Updated 4s ago">
+
+
+<div id="page" class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:30px;align-items:start">
+      <div class="product" style="margin-top:6px"><span class="led"></span><i data-lucide="router"></i></div>
+      <div class="col gap-12">
+        <div><div style="font-size:30px;font-weight:650;letter-spacing:-0.02em">Office</div>
+          <div class="row-12 mt-8"><span class="pill ok">Online</span><span class="badge">eero Pro 7</span><span class="badge">Tri-band Wi-Fi 7</span><span class="xs muted">Up 1d 9h</span></div></div>
+        <div class="row wrap" style="gap:8px 26px">
+          <div class="metric"><div class="l">Devices</div><div class="v">9<small>1 wired</small></div></div>
+          <div class="metric"><div class="l">Data, 24h</div><div class="v">118<small>GB · 29% of network</small></div></div>
+        </div>
+      </div>
+      <div class="card pad col gap-12" style="min-width:360px;background:var(--card-2)">
+        <div class="row between"><span class="xs m">Uplink</span><span class="xxs muted">Wireless backhaul</span></div>
+        <div class="uplink" style="margin-top:22px">
+          <div class="col" style="align-items:center;gap:4px"><div class="ico lg"><i data-lucide="router"></i></div><span class="xs m">Living Room</span><span class="xxs muted">Gateway</span></div>
+          <div class="wire"><span class="badge c">Excellent · 4 bars</span></div>
+          <div class="col" style="align-items:center;gap:4px"><div class="ico lg"><i data-lucide="router"></i></div><span class="xs m">Office</span><span class="xxs muted">this eero</span></div>
+          <div class="wire" style="border-color:var(--warning);min-width:110px"><span class="badge c">Weak · 2 bars</span></div>
+          <div class="col" style="align-items:center;gap:4px"><div class="ico lg"><i data-lucide="lamp"></i></div><span class="xs m">Garage</span><span class="xxs muted">downstream</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data usage + radios -->
+  <div class="grid g-2-1" style="gap:28px">
+    <section class="section">
+      <div class="section-h"><h2>Data usage</h2><span class="sub">All clients on Office, per hour</span>
+        <div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
+      <div class="card pad">
+        <div class="legend" style="margin-bottom:10px"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>101 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>17 GB</b></span></div>
+        <div id="ch-tp"></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-h"><h2>Radios</h2><span class="sub">Auto channel selection on</span></div>
+      <div class="col gap-8" id="radios"></div>
+    </section>
+  </div>
+
+  <!-- Devices + ports -->
+  <div class="grid g-2-1" style="gap:28px">
+    <section class="section">
+      <div class="section-h"><h2>Connected devices</h2><div class="tools"><a class="btn sm" href="05-devices.html">All devices<i data-lucide="arrow-right"></i></a></div></div>
+      <div class="panel">
+        <table class="table">
+          <thead><tr><th style="width:100%">Device</th><th>Connection</th><th class="r">Signal</th><th class="r">Rate</th><th class="r">Data 24h</th></tr></thead>
+          <tbody id="tb-dev"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-h"><h2>Ethernet ports</h2><span class="sub">2 x 5 GbE, numbered left to right</span></div>
+      <div class="card pad col gap-12">
+        <div class="grid g2" style="gap:10px">
+          <div class="port">
+            <div class="row between"><span class="xs m">Port 1</span><span class="pill ok">Up</span></div>
+            <div class="jack up"><i class="l1"></i><i class="l2"></i></div>
+            <div class="center" style="text-align:center"><div class="mid" style="font-size:18px">2.5<small>Gbps</small></div><div class="xxs muted">of 5 Gbps supported</div></div>
+            <div class="row-6 xs" style="justify-content:center"><i data-lucide="laptop" style="width:13px;height:13px;color:var(--muted)"></i>Alex's MacBook Pro</div>
+          </div>
+          <div class="port">
+            <div class="row between"><span class="xs m">Port 2</span><span class="pill neutral">Empty</span></div>
+            <div class="jack"><i class="l1"></i><i class="l2"></i></div>
+            <div style="text-align:center"><div class="mid muted" style="font-size:18px">-</div><div class="xxs muted">no carrier</div></div>
+            <div class="row-6 xs muted" style="justify-content:center">Nothing plugged in</div>
+          </div>
+        </div>
+        <dl class="kv" style="font-size:12px">
+          <dt>Port 1 MAC</dt><dd class="mono">3c:22:fb:7a:10:01</dd>
+          <dt>Port 2 MAC</dt><dd class="mono">3c:22:fb:7a:10:02</dd>
+        </dl>
+        <div class="row gap-8"><button class="btn sm"><i data-lucide="power"></i>Disable port 1</button><span class="xxs muted">Disconnects the wired device</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Settings cards -->
+  <div class="grid g3" style="gap:16px">
+    <div class="card pad col gap-12">
+      <div class="row"><div class="ico"><i data-lucide="map-pin"></i></div><div class="grow"><div class="m">Location</div><div class="xs muted">Name shown everywhere for this eero</div></div></div>
+      <div class="input"><span>Office</span><i data-lucide="pencil" style="margin-left:auto"></i></div>
+      <div class="row wrap" style="gap:6px">
+        <span class="chip on">Office</span><span class="chip">Den</span><span class="chip">Bedroom</span><span class="chip">Kitchen</span><span class="chip">Basement</span><span class="chip"><i data-lucide="plus"></i>Custom</span>
+      </div>
+    </div>
+    <div class="card pad col gap-12">
+      <div class="row"><div class="ico"><i data-lucide="sun"></i></div><div class="grow"><div class="m">Status light</div><div class="xs muted">LED on the front of this eero</div></div><span class="switch on"></span></div>
+      <div>
+        <div class="row between xs"><span class="muted">Brightness</span><span class="m tnum">60%</span></div>
+        <div class="slider mt-8"><i style="width:60%"></i><b style="left:60%"></b></div>
+        <div class="row between xxxs muted mt-8 up"><span>Dim</span><span>Full</span></div>
+      </div>
+      <div class="xxs muted">Solid white means all is well. The LED returns to full brightness while offline, restarting or resetting.</div>
+    </div>
+    <div class="card pad col gap-12">
+      <div class="row"><div class="ico"><i data-lucide="moon"></i></div><div class="grow"><div class="m">Nightlight</div><div class="xs muted">Ambient or scheduled glow</div></div><span class="pill neutral nodot">Not available</span></div>
+      <div class="seg disabled" style="align-self:flex-start"><span class="on">Off</span><span>Ambient</span><span>Schedule</span></div>
+      <div class="note info"><i data-lucide="info"></i><div class="body">Nightlight is only on eero Beacon. Your <a href="#" style="text-decoration:underline">Garage</a> eero has one.</div></div>
+    </div>
+
+    <div class="card pad col gap-12">
+      <div class="row"><div class="ico"><i data-lucide="download"></i></div><div class="grow"><div class="m">Software</div><div class="xs muted">Updates install network-wide</div></div><span class="pill ok">Up to date</span></div>
+      <dl class="kv">
+        <dt>eeroOS</dt><dd>7.12.1</dd>
+        <dt>Update window</dt><dd>2 to 4 AM <a class="xs info" href="15-updates-admins.html">Change</a></dd>
+      </dl>
+      <div class="col gap-4 xs">
+        <div class="row between"><span class="row-6"><i class="dot" style="--c:var(--fg-2)"></i>7.12.1</span><span class="muted">Nov 11</span></div>
+        <div class="row between"><span class="row-6"><i class="dot" style="--c:var(--muted-2)"></i>7.11.4</span><span class="muted">Oct 14</span></div>
+        <div class="row between"><span class="row-6"><i class="dot" style="--c:var(--muted-2)"></i>7.10.2</span><span class="muted">Sep 9</span></div>
+      </div>
+    </div>
+    <div class="card pad col gap-12">
+      <div class="row"><div class="ico"><i data-lucide="network"></i></div><div class="grow"><div class="m">IP addresses</div><div class="xs muted">Assigned by the gateway</div></div><button class="btn sm icon"><i data-lucide="copy"></i></button></div>
+      <dl class="kv" style="font-size:12.5px">
+        <dt>IPv4</dt><dd class="mono">192.168.4.22</dd>
+        <dt>IPv6</dt><dd class="mono">2001:db8:4a1c:7e00::22</dd>
+        <dt>Subnet</dt><dd class="mono">192.168.4.0/22</dd>
+        <dt>Gateway</dt><dd class="mono">192.168.4.1</dd>
+      </dl>
+    </div>
+    <div class="card pad col gap-12">
+      <div class="row"><div class="ico"><i data-lucide="cpu"></i></div><div class="grow"><div class="m">Device information</div><div class="xs muted">Joined Mar 3, 2025</div></div></div>
+      <dl class="kv" style="font-size:12px">
+        <dt>Model number</dt><dd>S030001</dd>
+        <dt>Serial</dt><dd class="mono">GGC2P7Q4410392</dd>
+        <dt>MAC</dt><dd class="mono">3c:22:fb:7a:10:00</dd>
+        <dt>BSSID 2.4</dt><dd class="mono">3c:22:fb:7a:10:08</dd>
+        <dt>BSSID 5</dt><dd class="mono">3c:22:fb:7a:10:0c</dd>
+        <dt>BSSID 6</dt><dd class="mono">3c:22:fb:7a:10:0e</dd>
+      </dl>
+    </div>
+  </div>
+
+  <!-- More actions -->
+  <section class="section">
+    <div class="section-h"><h2>More actions</h2></div>
+    <div class="grid g3" style="gap:16px;align-items:start">
+      <div class="rows">
+        <div class="r"><div class="ico"><i data-lucide="lightbulb"></i></div><div class="grow"><div class="t">Blink LED</div><div class="d">Flashes blue and white for 30 s so you can find it</div></div><button class="btn sm">Blink</button></div>
+      </div>
+      <div class="rows">
+        <div class="r"><div class="ico"><i data-lucide="rotate-ccw"></i></div><div class="grow"><div class="t">Restart Office</div><div class="d">Its devices and Garage (downstream) drop for about 1 minute</div></div><div class="col gap-4" style="align-items:flex-end"><span class="pill warn nodot">Disruptive</span><button class="btn sm">Restart</button></div></div>
+      </div>
+      <div class="rows">
+        <div class="r" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div class="row-12"><div class="ico"><i data-lucide="trash-2"></i></div><div class="grow"><div class="t danger">Remove Office eero</div><div class="d">Owner only · resets this eero</div></div></div>
+          <div class="note bad"><i data-lucide="alert-octagon"></i><div class="body">Remove "Office" from Maple Street? Its devices move to other eeros if in range, and Garage loses its uplink and may go offline until it finds another path.
+            <div class="row gap-8 mt-8"><button class="btn sm danger">Remove from network</button><button class="btn sm ghost">Cancel</button></div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.area("#ch-tp", {
+    labels: MU.labels.hours(24, 14), height: 220, format: MU.fmt.gb, total: true, label: "Office data usage per hour, last 24 hours",
+    series: [
+      { name: "Download", color: "var(--c-down)", values: MU.series(24, { base: 4.2, spread: 3.8, seed: 71, daily: true, spikes: 0.06 }) },
+      { name: "Upload", color: "var(--c-up)", values: MU.series(24, { base: 0.7, spread: 0.6, seed: 72, daily: true }) },
+    ],
+  });
+
+  const R = [
+    ["2.4 GHz", "var(--c-band24)", 1, 20, "20 dBm", 2, 28],
+    ["5 GHz", "var(--c-band5)", 36, 160, "23 dBm", 4, 37],
+    ["6 GHz", "var(--c-band6)", 37, 320, "24 dBm", 2, 46],
+  ];
+  document.getElementById("radios").innerHTML = R.map((r) => `
+    <div class="card" style="padding:12px 14px">
+      <div class="row"><span class="badge c">${r[0]}</span><span class="sm m tnum">Ch ${r[2]}</span><span class="xs muted">${r[3]} MHz · tx ${r[4]}</span><span class="ml-auto xs"><b class="m tnum">${r[5]}</b> <span class="muted">clients</span></span></div>
+      <div class="mt-8"><div class="row between xxs muted"><span>Utilisation now</span><span class="tnum">${r[6]}%</span></div><div class="meter mt-4" style="--c:${r[1]}"><i style="width:${r[6]}%"></i></div></div>
+    </div>`).join("");
+
+  const D = [
+    ["Alex's MacBook Pro", "laptop", "var(--s-purple)", "wired", "Port 1", null, "2.5 Gbps", 64],
+    ["Jamie's Work Laptop", "laptop", "var(--s-blue)", "5", "Wi-Fi 6E", -58, "866 Mbps", 21],
+    ["Alex's iPhone 16", "smartphone", "var(--s-orange)", "6", "Wi-Fi 7", -48, "1.9 Gbps", 6.1],
+    ["Jamie's iPhone", "smartphone", "var(--s-red)", "5", "Wi-Fi 6", -61, "720 Mbps", 4.1],
+    ["Alex's iPad Pro", "tablet", "var(--s-aqua)", "6", "Wi-Fi 6E", -55, "1.2 Gbps", 3.4],
+    ["Office Echo Show", "speaker", "var(--s-blue)", "5", "Wi-Fi 5", -60, "433 Mbps", 1.2],
+    ["Kindle", "book-open", "var(--s-green)", "5", "Wi-Fi 5", -66, "200 Mbps", 0.2],
+    ["HP LaserJet", "printer", "var(--s-gray)", "2.4", "Wi-Fi 4", -57, "72 Mbps", 0.1],
+    ["Nest Thermostat", "thermometer", "var(--s-yellow)", "2.4", "Wi-Fi 4", -63, "65 Mbps", 0.05],
+  ];
+  const bcol = { wired: "var(--c-wired)", "2.4": "var(--c-band24)", "5": "var(--c-band5)", "6": "var(--c-band6)" };
+  const bars = (dbm) => { const n = dbm == null ? 4 : dbm > -55 ? 4 : dbm > -62 ? 3 : dbm > -70 ? 2 : 1; return `<span class="bars" data-n="${n}"><i></i><i></i><i></i><i></i></span>`; };
+  document.getElementById("tb-dev").innerHTML = D.map((d) => `<tr>
+    <td><div class="row"><div class="ico sm"><i data-lucide="${d[1]}"></i></div><div class="grow"><div class="m">${d[0]}</div><div class="minibar"><i style="--c:var(--c-down);width:${Math.max(3, (d[7] / 64) * 100)}%"></i></div></div></div></td>
+    <td class="nowrap"><span class="badge c">${d[3] === "wired" ? "Wired" : d[3] + " GHz"}</span> <span class="xxs muted">${d[4]}</span></td>
+    <td class="r">${d[5] == null ? '<span class="muted">-</span>' : `<span class="row-6" style="justify-content:flex-end"><span class="xs muted tnum">${d[5]}</span>${bars(d[5])}</span>`}</td>
+    <td class="r tnum">${d[6]}</td>
+    <td class="r tnum">${d[7] >= 1 ? MU.fmt.gb(d[7]) : Math.round(d[7] * 1000) + " MB"}</td></tr>`).join("");
+});
+</script>
+</body>
+</html>

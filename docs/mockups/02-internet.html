@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Internet · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body data-page="internet" data-title="Internet" data-subtitle="Updated just now">
+
+<div id="page" class="page">
+
+  <!-- Hero: connection + speed test -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:28px;align-items:center">
+      <div class="col gap-12">
+        <div>
+          <div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Ziply Fiber is fast and steady</div>
+          <div class="row-12 mt-8">
+            <span class="pill ok">Connected</span>
+            <span class="xs muted">Gateway up 23 days, 4 hours · since Oct 20, 9:41 AM</span>
+          </div>
+          <div class="sm muted mt-8">Last test 2 hours ago hit 78% of your 1.2 Gbps plan</div>
+        </div>
+        <div class="row gap-8">
+          <button class="btn primary"><i data-lucide="gauge"></i>Run speed test</button>
+          <button class="btn ghost"><i data-lucide="stethoscope"></i>Troubleshoot</button>
+        </div>
+      </div>
+      <div id="g-down"></div>
+      <div id="g-up"></div>
+    </div>
+  </div>
+
+  <!-- Connection details -->
+  <section class="section">
+    <div class="section-h"><h2>Connection</h2><span class="sub">Gateway: Living Room (eero Max 7), WAN port 10 GbE</span>
+      <div class="tools"><button class="btn sm"><i data-lucide="copy"></i>Copy details</button><a class="btn sm" href="13-advanced-networking.html"><i data-lucide="settings-2"></i>ISP settings<i data-lucide="arrow-right"></i></a></div></div>
+    <div class="grid g2">
+      <div class="card pad col gap-12">
+        <div class="row"><div class="ico"><i data-lucide="globe"></i></div><div class="grow"><div class="m">Internet provider</div><div class="xs muted">From geo IP lookup</div></div><span class="pill ok">ISP up</span></div>
+        <dl class="kv">
+          <dt>ISP</dt><dd>Ziply Fiber</dd>
+          <dt>Organisation</dt><dd>Northwest Fiber, LLC</dd>
+          <dt>ASN</dt><dd class="mono xs">AS20055</dd>
+          <dt>Location</dt><dd>Kirkland, WA · US</dd>
+          <dt>Plan</dt><dd>Fiber Gig 1.2 Gbps <span class="badge">set by you</span></dd>
+        </dl>
+      </div>
+      <div class="card pad col gap-12">
+        <div class="row"><div class="ico"><i data-lucide="network"></i></div><div class="grow"><div class="m">Addressing</div><div class="xs muted">WAN lease and DNS in use</div></div><span class="badge c">NAT mode</span></div>
+        <dl class="kv">
+          <dt>WAN type</dt><dd>DHCP <span class="xs muted">· lease renews in 9h</span></dd>
+          <dt>Public IPv4</dt><dd class="mono xs">203.0.113.48</dd>
+          <dt>Public IPv6</dt><dd class="mono xs">2001:db8:4a1c:7e00::1</dd>
+          <dt>IPv6 prefix</dt><dd class="mono xs">2001:db8:4a1c:7e00::/56</dd>
+          <dt>ISP gateway</dt><dd class="mono xs">203.0.113.1</dd>
+          <dt>DNS in use</dt><dd class="mono xs">203.0.113.53, 203.0.113.54 <span class="badge" style="font-family:var(--font-sans)">ISP auto</span></dd>
+          <dt>Double NAT</dt><dd class="success">Not detected</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- Speed test history -->
+  <section class="section">
+    <div class="section-h"><h2>Speed test history</h2><span class="sub">Last 7 days · 15 tests · automatic test every 1 to 3 days</span>
+      <div class="tools"><div class="seg"><span>Day</span><span class="on">Week</span></div></div></div>
+    <div class="grid g-side">
+      <div class="col gap-16">
+        <div class="col gap-12">
+          <div>
+            <div class="row between"><span class="row sm"><i data-lucide="arrow-down" style="width:15px;height:15px;color:var(--c-down)"></i>Download, 7-day average</span><span class="sm m tnum">921 Mbps</span></div>
+            <div class="meter mt-8" style="--c:var(--c-down)"><i style="width:77%"></i></div>
+            <div class="xs muted mt-4">77% of plan</div>
+          </div>
+          <div>
+            <div class="row between"><span class="row sm"><i data-lucide="arrow-up" style="width:15px;height:15px;color:var(--c-up)"></i>Upload, 7-day average</span><span class="sm m tnum">904 Mbps</span></div>
+            <div class="meter mt-8" style="--c:var(--c-up)"><i style="width:75%"></i></div>
+            <div class="xs muted mt-4">75% of plan</div>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="note info"><i data-lucide="info"></i><div class="body">Tests run from the gateway to your ISP, so they show what Ziply delivers, not Wi-Fi speed in a room.</div></div>
+      </div>
+      <div id="ch-st"></div>
+    </div>
+  </section>
+
+  <!-- Earlier tests -->
+  <section class="section">
+      <div class="section-h"><h2>Earlier tests</h2><span class="sub">Before the latest result above</span>
+        <div class="tools"><button class="btn sm"><i data-lucide="download"></i>Export CSV</button></div></div>
+      <div class="panel">
+        <table class="table">
+          <thead><tr><th>When</th><th style="width:50%">Download</th><th style="width:50%">Upload</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="nowrap"><div class="m">Nov 11, 3:12 AM</div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">948 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:79%"></i></div></div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">931 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:77%"></i></div></div></td><td><span class="pill ok nodot">Great</span></td></tr>
+            <tr><td class="nowrap"><div class="m">Nov 10, 6:40 PM</div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">914 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:76%"></i></div></div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">887 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:74%"></i></div></div></td><td><span class="pill ok nodot">Great</span></td></tr>
+            <tr><td class="nowrap"><div class="m">Nov 9, 8:02 PM</div></td>
+              <td><div class="row"><span class="tnum m warning" style="width:66px;flex-shrink:0">702 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:58%"></i></div></div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">846 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:70%"></i></div></div></td><td><span class="pill warn nodot">Below plan</span></td></tr>
+            <tr><td class="nowrap"><div class="m">Nov 8, 2:55 AM</div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">939 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:78%"></i></div></div></td>
+              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">922 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:77%"></i></div></div></td><td><span class="pill ok nodot">Great</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+  </section>
+
+  <!-- Data usage -->
+  <section class="section">
+    <div class="section-h"><h2>Data usage</h2><span class="sub">Internet (WAN) traffic only, local transfers excluded</span>
+      <div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
+    <div class="grid g-2-1" style="gap:16px">
+      <div class="card pad col gap-12">
+        <div class="row">
+          <span class="sm m">Per hour</span><span class="xs muted">last 24 hours</span>
+          <div class="legend ml-auto"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>351 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>61 GB</b></span></div>
+        </div>
+        <div id="ch-hourly"></div>
+        <div class="hr"></div>
+        <div class="row between"><span class="sm m">Using the most right now</span><span class="xs muted">current rate · refreshed every minute</span></div>
+        <div class="grid g3" style="gap:10px 24px">
+          <div class="row"><div class="ico sm"><i data-lucide="tv"></i></div><div class="grow"><div class="sm m trunc">Living Room TV</div><div class="xxs muted">Living Room · 5 GHz</div></div><span class="sm tnum m">112 <span class="xxs muted">Mbps</span></span></div>
+          <div class="row"><div class="ico sm"><i data-lucide="laptop"></i></div><div class="grow"><div class="sm m trunc">Alex's MacBook Pro</div><div class="xxs muted">Office · 6 GHz</div></div><span class="sm tnum m">38 <span class="xxs muted">Mbps</span></span></div>
+          <div class="row"><div class="ico sm"><i data-lucide="hard-drive"></i></div><div class="grow"><div class="sm m trunc">Synology NAS</div><div class="xxs muted">Living Room · Wired</div></div><span class="sm tnum m">21 <span class="xxs muted">Mbps</span></span></div>
+          <div class="row"><div class="ico sm"><i data-lucide="tablet"></i></div><div class="grow"><div class="sm m trunc">Mia's iPad</div><div class="xxs muted">Upstairs Hall · 5 GHz</div></div><span class="sm tnum m">9 <span class="xxs muted">Mbps</span></span></div>
+          <div class="row"><div class="ico sm"><i data-lucide="gamepad-2"></i></div><div class="grow"><div class="sm m trunc">PlayStation 5</div><div class="xxs muted">Living Room · Wired</div></div><span class="sm tnum muted">-</span></div>
+          <div class="row"><div class="ico sm"><i data-lucide="smartphone"></i></div><div class="grow"><div class="sm m trunc">Jamie's iPhone</div><div class="xxs muted">Office · 5 GHz</div></div><span class="sm tnum muted">-</span></div>
+        </div>
+      </div>
+      <div class="card pad col gap-12">
+        <div class="row between"><span class="sm m">Per day</span><span class="xs muted">avg 388 GB / day</span></div>
+        <div class="legend"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>2.31 TB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>402 GB</b></span></div>
+        <div id="ch-days"></div>
+        <div class="hr"></div>
+        <div class="row between"><div><div class="xs muted">Today so far</div><div class="mid">48.2<small>GB</small></div></div><div class="right"><div class="xs muted">Busiest day</div><div class="sm m">Sat Nov 8 · 512 GB</div></div></div>
+      </div>
+    </div>
+
+    <div class="grid g2" style="gap:16px">
+      <div class="panel">
+        <div class="panel-h"><h3>By device</h3><span class="xs muted">24h</span><a class="btn sm ghost ml-auto" href="05-devices.html">All devices<i data-lucide="arrow-right"></i></a></div>
+        <div class="panel-b">
+          <table class="table" style="margin:0 -12px;width:calc(100% + 24px)">
+            <thead><tr><th style="width:100%">Device</th><th class="r">Down</th><th class="r">Up</th><th class="r">Share</th></tr></thead>
+            <tbody id="tb-dev"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>By profile</h3><span class="xs muted">24h</span><a class="btn sm ghost ml-auto" href="07-profiles.html">Profiles<i data-lucide="arrow-right"></i></a></div>
+        <div class="panel-b">
+          <table class="table" style="margin:0 -12px;width:calc(100% + 24px)">
+            <thead><tr><th style="width:100%">Profile</th><th class="r">Down</th><th class="r">Up</th><th class="r">Share</th></tr></thead>
+            <tbody id="tb-prof"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.gauge("#g-down", { value: 942, max: 1200, color: "var(--c-down)", label: "Download", text: "942", unit: "Mbps", size: 164 });
+  MU.gauge("#g-up", { value: 918, max: 1200, color: "var(--c-up)", label: "Upload", text: "918", unit: "Mbps", size: 164 });
+
+  // Speed tests over 7 days (16 tests)
+  const tLabels = ["Nov 6, 2 AM","Nov 6, 7 PM","Nov 7, 11 PM","Nov 8, 3 AM","Nov 8, 1 PM","Nov 9, 2 AM","Nov 9, 8 PM","Nov 10, 4 AM","Nov 10, 7 PM","Nov 11, 3 AM","Nov 11, 1 PM","Nov 11, 9 PM","Nov 12, 4 AM","Nov 12, 9 AM","Nov 12, 12 PM"];
+  const down = [936, 902, 928, 939, 917, 944, 702, 931, 914, 948, 925, 868, 940, 933, 942];
+  const up   = [920, 896, 915, 922, 905, 930, 846, 918, 887, 931, 910, 872, 925, 921, 918];
+  MU.area("#ch-st", {
+    labels: tLabels, xTicks: ["Nov 6", "Nov 9", "Today"], height: 236, format: MU.fmt.mbps, label: "Speed test results, last 7 days",
+    max: 1200, ticks: [0, 300, 600, 900, 1200],
+    series: [
+      { name: "Download", color: "var(--c-down)", values: down },
+      { name: "Upload", color: "var(--c-up)", values: up },
+    ],
+  });
+
+  MU.area("#ch-hourly", {
+    labels: MU.labels.hours(24, 14), height: 150, format: MU.fmt.gb, total: true, label: "Data used per hour, last 24 hours",
+    series: [
+      { name: "Download", color: "var(--c-down)", values: MU.series(24, { base: 14, spread: 11, seed: 41, daily: true, spikes: 0.05 }) },
+      { name: "Upload", color: "var(--c-up)", values: MU.series(24, { base: 2.5, spread: 2, seed: 42, daily: true }) },
+    ],
+  });
+  MU.bars("#ch-days", {
+    labels: MU.labels.days(7), height: 132, format: MU.fmt.gb, gapPx: 12, highlight: 6, label: "Data used per day",
+    series: [
+      { name: "Download", color: "var(--c-down)", values: [318, 352, 441, 296, 371, 482, 41] },
+      { name: "Upload", color: "var(--c-up)", values: [52, 61, 71, 49, 58, 67, 7] },
+    ],
+  });
+
+  // Breakdowns
+  const dev = [
+    ["Living Room TV", "tv", "var(--s-blue)", 142, 1.2], ["Alex's MacBook Pro", "laptop", "var(--s-purple)", 64, 22], ["PlayStation 5", "gamepad-2", "var(--s-aqua)", 48, 3.1],
+    ["Synology NAS", "hard-drive", "var(--s-orange)", 29, 27], ["Jamie's iPhone", "smartphone", "var(--s-red)", 17, 2.4], ["Others (26)", "more-horizontal", "var(--s-gray)", 51, 5.3],
+  ];
+  const prof = [
+    ["Alex", "var(--s-orange)", 96, 31, "6 devices"], ["Jamie", "var(--s-blue)", 61, 9, "5 devices"], ["Mia", "var(--s-red)", 34, 4, "4 devices · bedtime 9 PM"],
+    ["Leo", "var(--s-aqua)", 18, 2, "3 devices · paused"], ["Other devices", "var(--s-gray)", 142, 15, "unassigned"],
+  ];
+  const tot = dev.reduce((s, d) => s + d[3] + d[4], 0), maxD = Math.max(...dev.slice(0, 5).map((d) => d[3] + d[4]));
+  document.getElementById("tb-dev").innerHTML = dev.map((d) => `<tr><td><div class="row"><div class="ico sm"><i data-lucide="${d[1]}"></i></div><div class="grow"><div class="m">${d[0]}</div><div class="minibar"><i style="--c:${d[2]};width:${Math.min(100, ((d[3] + d[4]) / maxD) * 100)}%"></i></div></div></div></td><td class="r tnum">${MU.fmt.gb(d[3])}</td><td class="r tnum muted">${MU.fmt.gb(d[4])}</td><td class="r tnum">${Math.round(((d[3] + d[4]) / tot) * 100)}%</td></tr>`).join("");
+  const ptot = prof.reduce((s, p) => s + p[2] + p[3], 0), pmax = Math.max(...prof.map((p) => p[2] + p[3]));
+  document.getElementById("tb-prof").innerHTML = prof.map((p) => `<tr><td><div class="row"><div class="avatar" style="--c:${p[1]};width:24px;height:24px;font-size:10px">${p[0] === "Other devices" ? "?" : p[0][0]}</div><div class="grow"><div class="m">${p[0]} <span class="xxs muted" style="font-weight:400">${p[4]}</span></div><div class="minibar"><i style="--c:${p[1]};width:${((p[2] + p[3]) / pmax) * 100}%"></i></div></div></div></td><td class="r tnum">${MU.fmt.gb(p[2])}</td><td class="r tnum muted">${MU.fmt.gb(p[3])}</td><td class="r tnum">${Math.round(((p[2] + p[3]) / ptot) * 100)}%</td></tr>`).join("");
+});
+</script>
+</body>
+</html>

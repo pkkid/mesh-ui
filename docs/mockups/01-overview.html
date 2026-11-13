@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+</head>
+<body data-page="overview" data-title="Overview" data-subtitle="Updated just now">
+
+<div id="page" class="page">
+
+  <!-- Status hero -->
+  <div class="hero">
+    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:28px;align-items:center">
+      <div class="col gap-12">
+        <div>
+          <div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Maple Street</div>
+          <div class="row-12 mt-8">
+            <span class="pill ok">Online</span>
+            <span class="xs muted">Gateway up 23 days, 4 hours</span>
+          </div>
+        </div>
+        <div class="row wrap gap-8" style="gap:8px 22px">
+          <div class="metric"><div class="l">ISP</div><div class="v">Ziply Fiber</div></div>
+          <div class="metric"><div class="l">Public IP</div><div class="v mono" style="font-size:14px">203.0.113.48</div></div>
+          <div class="metric"><div class="l">Last speed test</div><div class="v">2h ago</div></div>
+        </div>
+        <div class="row gap-8">
+          <button class="btn primary"><i data-lucide="gauge"></i>Run speed test</button>
+          <button class="btn"><i data-lucide="share-2"></i>Share Wi-Fi</button>
+          <button class="btn"><i data-lucide="pause-circle"></i>Pause a profile</button>
+          <button class="btn ghost"><i data-lucide="rotate-ccw"></i>Restart network</button>
+        </div>
+      </div>
+      <div id="g-down"></div>
+      <div id="g-up"></div>
+    </div>
+  </div>
+
+  <!-- Data usage per hour -->
+  <section class="section">
+    <div class="section-h"><h2>Data usage</h2><span class="sub">Per hour, last 24 hours, all devices</span>
+      <div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
+    <div class="grid g-side">
+      <div class="col gap-16">
+        <div>
+          <div class="big">412<small>GB</small></div>
+          <div class="xs muted mt-4">used in 24h · busiest hour 12 to 1 PM</div>
+          <div class="xs muted">48.2 GB so far today</div>
+        </div>
+        <div class="col gap-12">
+          <div>
+            <div class="row between"><span class="row sm"><i data-lucide="arrow-down" style="width:15px;height:15px;color:var(--c-down)"></i>Download</span><span class="sm m tnum">351 GB</span></div>
+            <div class="xs muted mt-4" style="padding-left:15px">85% of traffic</div>
+          </div>
+          <div>
+            <div class="row between"><span class="row sm"><i data-lucide="arrow-up" style="width:15px;height:15px;color:var(--c-up)"></i>Upload</span><span class="sm m tnum">61 GB</span></div>
+            <div class="xs muted mt-4" style="padding-left:15px">15% of traffic</div>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="col gap-8">
+          <div class="xs m">By eero</div>
+          <div class="share"><i style="--c:var(--s-blue);flex:212" title="Living Room · 212 GB · 51%"></i><i style="--c:var(--s-purple);flex:118" title="Office · 118 GB · 29%"></i><i style="--c:var(--s-aqua);flex:71" title="Upstairs Hall · 71 GB · 17%"></i><i style="--c:var(--s-yellow);flex:11" title="Garage · 11 GB · 3%"></i></div>
+          <div class="legend"><span><i class="sw" style="--c:var(--s-blue)"></i>Living Room <b>51%</b></span><span><i class="sw" style="--c:var(--s-purple)"></i>Office <b>29%</b></span><span><i class="sw" style="--c:var(--s-aqua)"></i>Upstairs Hall <b>17%</b></span><span><i class="sw" style="--c:var(--s-yellow)"></i>Garage <b>3%</b></span></div>
+        </div>
+      </div>
+      <div id="ch-tp"></div>
+    </div>
+  </section>
+
+  <!-- eeros + top devices -->
+  <div class="grid g2" style="gap:28px">
+    <section class="section">
+      <div class="section-h"><h2>eeros</h2><div class="tools"><a class="btn sm" href="03-eeros.html">Topology<i data-lucide="arrow-right"></i></a></div></div>
+      <div class="rows">
+        <div class="r"><div class="ico"><i data-lucide="router"></i></div>
+          <div class="grow"><div class="t row">Living Room <span class="badge">Gateway</span></div><div class="d">eero Max 7 · Ethernet · 12 devices</div></div>
+          <div style="width:110px" id="sp-e1"></div><span class="pill ok">Online</span></div>
+        <div class="r"><div class="ico"><i data-lucide="router"></i></div>
+          <div class="grow"><div class="t">Office</div><div class="d">eero Pro 7 · Wireless backhaul <span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span> · 9 devices</div></div>
+          <div style="width:110px" id="sp-e2"></div><span class="pill ok">Online</span></div>
+        <div class="r"><div class="ico"><i data-lucide="router"></i></div>
+          <div class="grow"><div class="t">Upstairs Hall</div><div class="d">eero 7 · Wireless <span class="bars" data-n="3"><i></i><i></i><i></i><i></i></span> · 7 devices</div></div>
+          <div style="width:110px" id="sp-e3"></div><span class="pill ok">Online</span></div>
+        <div class="r"><div class="ico"><i data-lucide="lamp"></i></div>
+          <div class="grow"><div class="t">Garage</div><div class="d">eero Beacon · Wireless <span class="bars" data-n="2"><i></i><i></i><i></i><i></i></span> · 3 devices</div></div>
+          <div style="width:110px" id="sp-e4"></div><span class="pill warn">Weak link</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-h"><h2>Top devices</h2><span class="sub">Data used, 24h · 31 online now</span><div class="tools"><a class="btn sm" href="05-devices.html">All devices<i data-lucide="arrow-right"></i></a></div></div>
+      <div class="panel">
+        <table class="table">
+          <thead><tr><th>#</th><th style="width:100%">Device</th><th class="r">Down</th><th class="r">Up</th></tr></thead>
+          <tbody>
+            <tr><td class="muted xs">1</td><td><div class="row"><div class="ico sm"><i data-lucide="tv"></i></div><div class="grow"><div class="m">Living Room TV</div><div class="minibar"><i style="--c:var(--c-down);width:100%"></i></div></div></div></td><td class="r tnum">142 GB</td><td class="r tnum muted">1.2 GB</td></tr>
+            <tr><td class="muted xs">2</td><td><div class="row"><div class="ico sm"><i data-lucide="laptop"></i></div><div class="grow"><div class="m">Alex's MacBook Pro</div><div class="minibar"><i style="--c:var(--c-down);width:46%"></i></div></div></div></td><td class="r tnum">64 GB</td><td class="r tnum muted">22 GB</td></tr>
+            <tr><td class="muted xs">3</td><td><div class="row"><div class="ico sm"><i data-lucide="gamepad-2"></i></div><div class="grow"><div class="m">PlayStation 5</div><div class="minibar"><i style="--c:var(--c-down);width:34%"></i></div></div></div></td><td class="r tnum">48 GB</td><td class="r tnum muted">3.1 GB</td></tr>
+            <tr><td class="muted xs">4</td><td><div class="row"><div class="ico sm"><i data-lucide="hard-drive"></i></div><div class="grow"><div class="m">Synology NAS</div><div class="minibar"><i style="--c:var(--c-down);width:21%"></i></div></div></div></td><td class="r tnum">29 GB</td><td class="r tnum muted">27 GB</td></tr>
+            <tr><td class="muted xs">5</td><td><div class="row"><div class="ico sm"><i data-lucide="smartphone"></i></div><div class="grow"><div class="m">Jamie's iPhone</div><div class="minibar"><i style="--c:var(--c-down);width:12%"></i></div></div></div></td><td class="r tnum">17 GB</td><td class="r tnum muted">2.4 GB</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Profiles, busy hours, recent activity -->
+  <div class="grid g3" style="gap:28px">
+    <section class="section">
+      <div class="section-h"><h2>Profiles</h2><div class="tools"><a class="btn sm" href="07-profiles.html">Manage</a></div></div>
+      <div class="rows">
+        <div class="r"><div class="avatar" style="--c:var(--s-orange)">A</div><div class="grow"><div class="t">Alex</div><div class="d">6 devices · 96 GB today</div></div><span class="pill ok">Active</span></div>
+        <div class="r"><div class="avatar" style="--c:var(--s-blue)">J</div><div class="grow"><div class="t">Jamie</div><div class="d">5 devices · 61 GB today</div></div><span class="pill ok">Active</span></div>
+        <div class="r"><div class="avatar" style="--c:var(--s-red)">M</div><div class="grow"><div class="t">Mia</div><div class="d">Bedtime 9:00 PM to 7:00 AM</div></div><span class="pill info">Scheduled</span></div>
+        <div class="r"><div class="avatar" style="--c:var(--s-aqua)">L</div><div class="grow"><div class="t">Leo</div><div class="d">Paused 25 min ago</div></div><span class="pill warn">Paused</span></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-h"><h2>When the network is busy</h2><span class="sub">This week</span></div>
+      <div class="card pad"><div id="hm"></div></div>
+    </section>
+    <section class="section">
+      <div class="section-h"><h2>Recent activity</h2><div class="tools"><a class="btn sm" href="10-activity.html">All</a></div></div>
+      <div class="rows">
+        <div class="r" style="min-height:50px"><div class="ico sm"><i data-lucide="plus-circle"></i></div><div class="grow"><div class="sm">New device joined: <b class="m">Nest Thermostat</b></div><div class="xxs muted">48 min ago</div></div></div>
+        <div class="r" style="min-height:50px"><div class="ico sm"><i data-lucide="calendar-clock"></i></div><div class="grow"><div class="sm">eeroOS <b class="m">7.13.0</b> scheduled for tonight</div><div class="xxs muted">3h ago</div></div></div>
+        <div class="r" style="min-height:50px"><div class="ico sm"><i data-lucide="download"></i></div><div class="grow"><div class="sm">eeroOS 7.12.1 installed on all eeros</div><div class="xxs muted">Yesterday, 3:04 AM</div></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  MU.gauge("#g-down", { value: 942, max: 1200, color: "var(--c-down)", label: "Download", text: "942", unit: "Mbps", size: 168 });
+  MU.gauge("#g-up", { value: 918, max: 1200, color: "var(--c-up)", label: "Upload", text: "918", unit: "Mbps", size: 168 });
+  MU.area("#ch-tp", {
+    labels: MU.labels.hours(24, 14), height: 236, format: MU.fmt.gb, total: true, label: "Data used per hour, last 24 hours",
+    series: [
+      { name: "Download", color: "var(--c-down)", values: MU.series(24, { base: 14, spread: 11, seed: 11, daily: true, spikes: 0.05 }) },
+      { name: "Upload", color: "var(--c-up)", values: MU.series(24, { base: 2.5, spread: 2, seed: 12, daily: true, spikes: 0.04 }) },
+    ],
+  });
+  ["#sp-e1", "#sp-e2", "#sp-e3", "#sp-e4"].forEach((s, i) =>
+    MU.spark(s, MU.series(24, { base: 40 - i * 8, spread: 25, seed: 20 + i, daily: true }), ["var(--s-blue)", "var(--s-purple)", "var(--s-aqua)", "var(--s-yellow)"][i], { height: 26 }));
+  MU.heat("#hm", { rows: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], values: MU.heatValues(7, 24, 9), color: "var(--s-blue)", cell: 13 });
+});
+</script>
+</body>
+</html>

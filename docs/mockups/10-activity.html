@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activity · Mesh UI mockup</title>
+<link rel="stylesheet" href="assets/mockup.css">
+<style>
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .filters .sel { width: auto; min-width: 150px; }
+  .filters .lbl { font-size: 11px; color: var(--muted); margin-right: -2px; }
+  .daybar { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--card-2); border-bottom: 1px solid var(--border); }
+  .daybar h3 { margin: 0; font-size: 12px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; }
+  .daybar .strip { flex: 1; max-width: 300px; margin-left: auto; }
+  .tl { position: relative; }
+  .ev { position: relative; display: grid; grid-template-columns: 62px 32px minmax(0, 1fr) auto; gap: 0 14px; align-items: start; padding: 11px 18px; }
+  .ev + .ev { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+  .ev:hover { background: var(--hover); }
+  .ev .tm { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); padding-top: 7px; text-align: right; font-variant-numeric: tabular-nums; }
+  .ev .tt { font-size: 13px; line-height: 1.4; padding-top: 1px; }
+  .ev .tt b { font-weight: 600; }
+  .ev .dd { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ev .dd .ent { margin-right: 4px; }
+  .ev .side { display: flex; align-items: center; gap: 6px; padding-top: 3px; }
+  .ev.unread::before { content: ""; position: absolute; left: 6px; top: 22px; width: 6px; height: 6px; border-radius: 99px; background: var(--fg-2); }
+  .ev.grp .ico { box-shadow: inset 0 0 0 1px var(--border), 3px 3px 0 -1px var(--border-2); }
+  .ev .sub { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; padding-left: 10px; border-left: 2px solid var(--border); }
+  .ev .sub div { font-size: 12px; color: var(--muted); }
+  .ev .sub span.mono { color: var(--fg-2); font-size: 11.5px; }
+  .ent { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--fg-2); }
+  .ent::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: var(--muted-2); }
+  .typelist .tr { cursor: pointer; border-radius: 6px; margin: 0 -6px; padding: 3px 6px !important; }
+  .typelist .tr:hover { background: var(--hover); }
+  .typelist .tr { display: grid; grid-template-columns: 12px 18px minmax(0,1fr) auto 44px; gap: 8px; align-items: center; font-size: 12.5px; padding: 3px 0; }
+  .typelist .tr svg { width: 14px; height: 14px; color: var(--muted); }
+  .typelist .tr .pct { text-align: right; color: var(--muted); font-size: 11.5px; }
+</style>
+</head>
+<body data-page="activity" data-title="Activity">
+
+<div id="actions">
+  <button class="btn sm"><i data-lucide="file-down"></i>Export CSV</button>
+</div>
+
+<div id="page" class="page">
+
+  <!-- Events per type chart -->
+  <section class="section">
+    <div class="section-h"><h2>Events by type</h2><span class="sub">Stacked per day · pick types to filter the stream</span>
+      <div class="tools"><div class="seg"><span class="on">Per day</span><span>Per hour</span></div></div></div>
+    <div class="grid g-side">
+      <div class="col gap-12">
+        <div>
+          <div class="big">410<small>events</small></div>
+          <div class="xs muted mt-4">59 a day on average · +12% vs prior week</div>
+        </div>
+        <div class="col typelist" role="group" aria-label="Event types shown">
+          <div class="tr" style="--c:var(--s-blue)"><i class="sw"></i><i data-lucide="smartphone"></i><span>Devices joined / left</span><b class="m tnum">168</b><span class="pct">41%</span></div>
+          <div class="tr" style="--c:var(--s-orange)"><i class="sw"></i><i data-lucide="pause-circle"></i><span>Paused / blocked</span><b class="m tnum">27</b><span class="pct">7%</span></div>
+          <div class="tr" style="--c:var(--s-red)"><i class="sw"></i><i data-lucide="calendar-clock"></i><span>Schedules</span><b class="m tnum">28</b><span class="pct">7%</span></div>
+          <div class="tr" style="--c:var(--s-yellow)"><i class="sw"></i><i data-lucide="router"></i><span>eero status</span><b class="m tnum">46</b><span class="pct">11%</span></div>
+          <div class="tr" style="--c:var(--s-aqua)"><i class="sw"></i><i data-lucide="gauge"></i><span>Speed tests</span><b class="m tnum">14</b><span class="pct">3%</span></div>
+          <div class="tr" style="--c:var(--s-blue)"><i class="sw"></i><i data-lucide="download"></i><span>Firmware</span><b class="m tnum">9</b><span class="pct">2%</span></div>
+          <div class="tr" style="--c:var(--s-purple)"><i class="sw"></i><i data-lucide="shield-check"></i><span>Admin actions</span><b class="m tnum">31</b><span class="pct">8%</span></div>
+          <div class="tr" style="--c:var(--s-green)"><i class="sw"></i><i data-lucide="cable"></i><span>Ports &amp; temperature</span><b class="m tnum">87</b><span class="pct">21%</span></div>
+        </div>
+      </div>
+      <div class="card pad"><div id="ch-types"></div></div>
+    </div>
+  </section>
+
+  <!-- Filters (event types are picked in the legend above) -->
+  <div class="card pad" style="padding:14px 16px">
+    <div class="filters">
+      <div class="input" style="width:200px"><i data-lucide="search"></i><span class="ph">Filter events</span></div>
+      <span class="lbl">Device</span><div class="input select sel"><i data-lucide="monitor-smartphone"></i>Any device</div>
+      <span class="lbl">eero</span><div class="input select sel"><i data-lucide="router"></i>Any eero</div>
+      <span class="lbl">Profile</span><div class="input select sel"><i data-lucide="users"></i>Any profile</div>
+      <span class="lbl">Range</span><div class="input select sel" style="min-width:190px"><i data-lucide="calendar"></i>Nov 6 to Nov 12, 2026</div>
+      <button class="btn sm ghost ml-auto"><i data-lucide="rotate-ccw"></i>Reset</button>
+    </div>
+  </div>
+
+  <!-- Event stream (unread events double as notifications) -->
+    <section class="section">
+      <div class="section-h"><h2>Event stream</h2><span class="badge c">4 unread</span><span class="sub">Newest first · polled every 60 s</span>
+        <div class="tools"><span class="row-6 xs muted"><i class="dot live" style="--c:var(--success)"></i>Live</span><div class="seg"><span class="on">Grouped</span><span>Raw</span></div><button class="btn sm"><i data-lucide="check-check"></i>Mark all read</button><a class="iconbtn" href="17-account-settings.html" title="Notification settings"><i data-lucide="settings-2"></i></a></div></div>
+
+      <div class="panel tl">
+        <div class="daybar"><h3>Today</h3><span class="xs muted">Thu, Nov 12 · 64 events</span><div class="strip" id="st-0"></div></div>
+
+        <div class="ev unread"><div class="tm">2:41 PM</div><div class="ico"><i data-lucide="plus-circle"></i></div>
+          <div><div class="tt">New device joined: <b>Kitchen Echo</b></div>
+            <div class="dd"><span class="ent">Living Room</span>· 5 GHz ch 149 · <span class="mono">3c:22:fb:7a:10:4e</span> · 192.168.4.83 · Unassigned</div></div>
+          <div class="side"><button class="btn sm">Assign profile</button><button class="iconbtn"><i data-lucide="more-horizontal"></i></button></div></div>
+
+        <div class="ev"><div class="tm">2:16 PM</div><div class="ico"><i data-lucide="pause-circle"></i></div>
+          <div><div class="tt">Profile <b>Leo</b> paused by <b>Alex Kim</b></div>
+            <div class="dd"><span class="ent">Leo</span>· 3 devices paused: Leo's Switch, Leo's Fire HD, Leo's Chromebook · until resumed</div></div>
+          <div class="side"><button class="btn sm"><i data-lucide="play"></i>Resume</button></div></div>
+
+        <div class="ev unread"><div class="tm">1:30 PM</div><div class="ico"><i data-lucide="download"></i></div>
+          <div><div class="tt">Update available: eeroOS <b>7.13.0</b></div>
+            <div class="dd">Installs tonight, 2 AM to 5 AM · network restarts</div></div>
+          <div class="side"><a class="btn sm" href="15-updates-admins.html">Updates</a></div></div>
+
+        <div class="ev"><div class="tm">12:04 PM</div><div class="ico"><i data-lucide="gauge"></i></div>
+          <div><div class="tt">Speed test: <b class="tnum">942</b> down / <b class="tnum">918</b> up Mbps</div>
+            <div class="dd">Ziply Fiber · run from Mesh UI</div></div>
+          <div class="side"><span class="pill ok">Fast</span></div></div>
+
+        <div class="ev grp unread"><div class="tm">11:02 AM</div><div class="ico"><i data-lucide="router"></i></div>
+          <div><div class="tt"><b>Garage</b> mesh link dropped to 2 bars <span class="badge c">2 events</span></div>
+            <div class="dd"><span class="ent">Garage</span>· upstream Office · 5 GHz backhaul</div>
+            <div class="sub"><div><span class="mono">11:02</span> signal 3 to 2 bars</div><div><span class="mono">10:46</span> 2.4 GHz channel changed 1 to 6</div></div></div>
+          <div class="side"><a class="btn sm" href="16-troubleshooting.html">Diagnose</a></div></div>
+
+        <div class="ev"><div class="tm">7:00 AM</div><div class="ico"><i data-lucide="sunrise"></i></div>
+          <div><div class="tt">Schedule ended: <b>Bedtime</b> for <b>Mia</b></div>
+            <div class="dd"><span class="ent">Mia</span>· 4 devices resumed · next start today 9:00 PM</div></div>
+          <div class="side"></div></div>
+
+        <div class="ev"><div class="tm">6:31 AM</div><div class="ico"><i data-lucide="user-plus"></i></div>
+          <div><div class="tt"><b>Alex Kim</b> invited <b>sam@example.com</b> as admin</div>
+            <div class="dd">Invite pending · expires Nov 14, 6:31 AM</div></div>
+          <div class="side"><span class="pill neutral nodot">Pending</span></div></div>
+
+        <div class="daybar"><h3>Yesterday</h3><span class="xs muted">Wed, Nov 11 · 71 events</span><div class="strip" id="st-1"></div></div>
+
+        <div class="ev"><div class="tm">9:00 PM</div><div class="ico"><i data-lucide="moon"></i></div>
+          <div><div class="tt">Schedule started: <b>Bedtime</b> for <b>Mia</b></div>
+            <div class="dd"><span class="ent">Mia</span>· 4 devices paused until 7:00 AM</div></div><div class="side"></div></div>
+
+        <div class="ev"><div class="tm">5:12 PM</div><div class="ico"><i data-lucide="ban"></i></div>
+          <div><div class="tt">Device blocked: <b>Unknown device</b> <span class="mono xs muted">3c:22:fb:e1:09:d2</span></div>
+            <div class="dd">Was on <span class="ent">Office</span> 2.4 GHz · blocked from all networks</div></div>
+          <div class="side"><button class="btn sm">Unblock</button></div></div>
+
+        <div class="ev"><div class="tm">3:04 AM</div><div class="ico"><i data-lucide="download"></i></div>
+          <div><div class="tt">eeroOS <b>7.12.1</b> installed on all 4 eeros</div>
+            <div class="dd">Scheduled update window 2 AM to 5 AM · network restarted</div></div>
+          <div class="side"><span class="pill ok">Installed</span></div></div>
+
+        <div class="ev"><div class="tm">3:01 AM</div><div class="ico"><i data-lucide="cable"></i></div>
+          <div><div class="tt">Ethernet port 1 on <b>Living Room</b> online at <b>2.5 Gbps</b></div>
+            <div class="dd"><span class="ent">Living Room</span>· WAN · after restart</div></div><div class="side"></div></div>
+
+        <div class="daybar"><h3>Tuesday</h3><span class="xs muted">Nov 10 · 58 events</span><div class="strip" id="st-2"></div></div>
+
+        <div class="ev"><div class="tm">2:21 AM</div><div class="ico"><i data-lucide="circle-check"></i></div>
+          <div><div class="tt"><b>Garage</b> is back online</div>
+            <div class="dd"><span class="ent">Garage</span>· offline for 4 min · 3 devices reconnected</div></div><div class="side"><span class="pill ok">Online</span></div></div>
+
+        <div class="ev"><div class="tm">2:17 AM</div><div class="ico"><i data-lucide="circle-off"></i></div>
+          <div><div class="tt"><b>Garage</b> went offline</div>
+            <div class="dd"><span class="ent">Garage</span>· last heartbeat 2:16 AM · eero Beacon</div></div><div class="side"><span class="pill bad">Offline</span></div></div>
+
+        <div class="daybar"><h3>Monday</h3><span class="xs muted">Nov 9 · 47 events</span><div class="strip" id="st-3"></div></div>
+
+        <div class="ev"><div class="tm">4:55 PM</div><div class="ico"><i data-lucide="key-round"></i></div>
+          <div><div class="tt"><b>Jamie Kim</b> changed the guest network password</div>
+            <div class="dd">Maple Street Guest · 2 guest devices disconnected</div></div><div class="side"></div></div>
+
+        <div class="ev"><div class="tm">8:10 AM</div><div class="ico"><i data-lucide="thermometer"></i></div>
+          <div><div class="tt"><b>Office</b> temperature high, back to normal after 22 min</div>
+            <div class="dd"><span class="ent">Office</span>· no throttling</div></div><div class="side"><span class="pill warn">Warm</span></div></div>
+
+        <div class="row" style="justify-content:center;padding:12px;border-top:1px solid var(--border)"><button class="btn sm"><i data-lucide="chevrons-down"></i>Load older events (Sun to Fri, 170)</button></div>
+      </div>
+    </section>
+</div>
+
+<script src="assets/mockup.js"></script>
+<script>
+MU.ready(() => {
+  const days = ["Fri Nov 6", "Sat Nov 7", "Sun Nov 8", "Mon Nov 9", "Tue Nov 10", "Wed Nov 11", "Thu Nov 12"];
+  MU.bars("#ch-types", {
+    labels: days, height: 226, label: "Events per type, last 7 days", gapPx: 26,
+    series: [
+      { name: "Devices", color: "var(--s-blue)", values: [22, 25, 31, 24, 21, 26, 19] },
+      { name: "Ports & temp", color: "var(--s-green)", values: [11, 13, 15, 10, 12, 18, 8] },
+      { name: "eero status", color: "var(--s-yellow)", values: [4, 5, 9, 4, 12, 7, 5] },
+      { name: "Admin", color: "var(--s-purple)", values: [3, 6, 8, 2, 5, 3, 4] },
+      { name: "Schedules", color: "var(--s-red)", values: [4, 4, 4, 4, 4, 4, 4] },
+      { name: "Paused / blocked", color: "var(--s-orange)", values: [2, 5, 11, 1, 2, 3, 3] },
+      { name: "Speed tests", color: "var(--s-aqua)", values: [2, 2, 3, 1, 2, 2, 2] },
+      { name: "Firmware", color: "var(--s-blue)", values: [0, 0, 0, 0, 0, 9, 0] },
+    ].map((s) => ({ ...s, values: s.values.slice() })),
+    format: (v) => Math.round(v) + "",
+  });
+  [0, 1, 2, 3].forEach((k) => MU.bars("#st-" + k, {
+    height: 18, yLabels: false, xAxis: false, gapPx: 1.5, label: "Events per hour",
+    series: [{ name: "Events", color: "var(--s-gray)", values: MU.series(24, { base: 3, spread: 3, seed: 40 + k, daily: true }).map((v, i) => (k === 0 && i > 14 ? 0 : v)) }],
+  }));
+});
+</script>
+</body>
+</html>
