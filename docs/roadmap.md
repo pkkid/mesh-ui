@@ -313,7 +313,7 @@ and get `MANUAL:` lines.
 - scope: The palette from mockup 19, opened by the titlebar search or `Ctrl K` / `Cmd K`. Data: commands from `window.mesh.commands()`, devices and profiles from cached `device.list` and `profile.list`, plus a Pages group from `ROUTES` (documented in the page doc). Behaviour: scope chips, `>` id mode, ranked matches with highlight, Up/Down and Tab, Esc closes. Preview: effect tag, description, a params form generated from the JSON Schema (entity pickers for `Ref` params, segmented controls for small enums, zod messages), CLI line with Copy, MCP tool name, hints and call JSON. Running: Enter on a page, device or profile navigates; Enter on a query command runs it through `window.mesh.execute` and shows the result JSON in the preview. Write, disruptive and destructive commands and device and profile row actions are dimmed with "Coming soon"; "Add to script.jsonl" is disabled. Not-signed-in and no-permission states. Port the dialog from T3 Code.
 - done when: unit tests cover ranking, `>` mode, scope counts and param-form defaults from a JSON Schema; `pnpm ui:shot --before` opening the palette with a query (`device`, `>eero.`) shows results and preview in light and dark; running `device.list {"status":"online"}` from the palette in demo shows the same JSON as the CLI.
 
-### M2.9 eero detail page ☐
+### M2.9 eero detail page ✅ (#PR)
 - issue: [#57](https://github.com/pkkid/mesh-ui/issues/57)
 - after: M2.5, M2.6
 - docs: ux/pages/eero-detail.md
