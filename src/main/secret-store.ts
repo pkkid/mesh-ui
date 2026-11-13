@@ -105,7 +105,13 @@ export function createSecretStore({ file, safeStorage, platform }: SecretStoreOp
       clear();
       return null;
     }
-    if (parsed.v === 1) save(token);
+    if (parsed.v === 1) {
+      try {
+        save(token);
+      } catch {
+        // The v1 file still holds the encrypted token; upgrade on the next save.
+      }
+    }
     return token;
   };
 
