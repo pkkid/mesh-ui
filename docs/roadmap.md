@@ -178,7 +178,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: The Overview from mockup 01 and its page doc: header with network name, status, ISP, public IP, last speed test and gauges; data usage chart with Day and Week, By eero share bar; eeros list; top devices; profiles; busy-hours heatmap; recent activity. Buttons that need later write commands (Run speed test, Share Wi-Fi, Pause a profile, Restart network) are shown disabled with "Coming soon" tooltips. All states from the page doc.
 - done when: matches the mockup in `pnpm dev:demo` and `pnpm dev:fake` in light and dark (screenshots in the PR); loading, empty and error states shown via `demo.scenario.set`.
 
-### M1.15 Devices page ☐
+### M1.15 Devices page ✅ (#37)
 - issue: [#15](https://github.com/pkkid/mesh-ui/issues/15)
 - after: M1.7, M1.8, M1.11
 - docs: ux/pages/devices.md
