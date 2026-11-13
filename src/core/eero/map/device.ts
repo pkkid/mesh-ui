@@ -121,8 +121,9 @@ function link(raw: RawDeviceFull): M.Device["link"] {
   return Object.values(out).every((v) => v === null) ? null : out;
 }
 
-const ipv6 = (list: RawDevice["ipv6_addresses"]): string[] =>
-  (list ?? []).map((a) => (typeof a === "string" ? a : a?.address)).filter((a): a is string => typeof a === "string" && a.length > 0);
+const ipv6All = (list: RawDevice["ipv6_addresses"]): string[] =>
+  (list ?? []).map((a) => (typeof a === "string" ? a : a?.address)).filter((a): a is string => typeof a === "string" && a.trim().length > 0).map((a) => a.trim());
+const isLinkLocal = (a: string) => /^fe[89ab][0-9a-f]:/i.test(a);
 
 /**
  * Maps one device. `rates` is the stamp for live rates: when eero sends
@@ -155,9 +156,9 @@ export function mapDevice(raw: RawDeviceFull, opts: { blocked?: boolean; ratesAt
     mac,
     privateMac: raw.is_private === true,
     ipv4: str(raw.ipv4) ?? str(raw.ip) ?? str(raw.ips?.[0]),
-    ipv6: ipv6(raw.ipv6_addresses),
-    // Mapped by M2.7.
-    ipv6LinkLocal: null,
+    // eero lists the fe80:: address among the others; it gets its own field.
+    ipv6: ipv6All(raw.ipv6_addresses).filter((a) => !isLinkLocal(a)),
+    ipv6LinkLocal: ipv6All(raw.ipv6_addresses).find(isLinkLocal) ?? null,
     connected,
     lastActive: str(raw.last_active),
     firstSeen: str(raw.first_active),

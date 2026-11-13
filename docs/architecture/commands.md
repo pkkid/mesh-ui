@@ -240,7 +240,7 @@ ENABLE_POE | DISABLE_POE | RESTART_POWER`. Node-wide
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `device.list` | Devices | `{ status?: "online" \| "offline" \| "paused" \| "blocked", connected?: boolean, paused?: boolean, blocked?: boolean, ssid?: "main" \| "guest", eero?: Ref, profile?: Ref \| null, band?: Band \| "wired", type?: DeviceCategory, manufacturer?: string, firstSeenSince?: string, search?: string, sort?: "name" \| "usage" \| "rate" \| "last_seen", limit?: number, format? }` | q | `GET {net}/devices` (`resources.devices`), `GET {net}/blacklist` | `DeviceList`: devices plus summary (counts by status, band, category; live rate totals, and per band the rate totals, `trafficPct` and `devicePct` with `topBand`, the busiest Wi-Fi band, for the band insight line). The summary always covers the whole network, not just the filtered rows, so the status segment and the Filters popover keep their counts (see [devices.md](../ux/pages/devices.md)). `summary.total` is every known device, and `network.get` `counts.devices` (the sidebar count) is the same number. `status` is the status segment's shorthand: `online` = connected (paused included), `offline` = not connected and not blocked. Offline devices older than 7 days are dropped (blocked ones stay). `profile: null` lists devices with no profile (Unassigned). |
-| `device.get` | Device | `{ device: Ref }` | q | `GET {device}`; reservation and forwards from the cached `routing` topic | `Device` with connectivity details, reservation, forwards. |
+| `device.get` | Device | `{ device: Ref }` | q | `GET {device}`, then `GET {net}/routing` for its reservation (matched on MAC; none in bridge mode or when routing fails) | `Device` with connectivity details, its reservation and `ipv6LinkLocal` (the fe80:: address eero lists among `ipv6_addresses`, kept out of `ipv6`). Forwards come from `forward.list {device}`. |
 | `device.rates.refresh` | Refresh live rates | `{}` | w | `POST {net}/burst_reporters` empty-JSON, then `GET {net}/devices` after `next_burst` | At most once a minute per network; a second call inside the window returns the pending `nextBurstAt` without calling eero. See engine.md. |
 | `device.pause` | Pause device | `{ devices: Ref[] }` | w | `PUT /2.3/networks/{id}/devices/{mac}` JSON `{paused: true}` | `/2.3/` required: `/2.2/` returns 200 and drops the change. |
 | `device.resume` | Resume device | `{ devices: Ref[] }` | w | same, `{paused: false}` | |
@@ -351,17 +351,22 @@ the UI never hard-codes a number.
 
 ### routing (`commands/routing.ts`)
 
-All three lists come from one `GET {net}/routing`, cached as the `routing`
-topic. Writes apply instantly and never restart eeros. Not available in
-bridge mode.
+All three lists come from one `GET {net}/routing` (pinned to `/2.2/`),
+cached as the `routing` topic; the LAN map comes from the network's `dhcp`
+settings (`dhcp.custom`, or eero's automatic 192.168.4.0/22 with the pool
+from .4.100 to .7.254). Core joins rows to devices by MAC (reservations) and
+IP (forwards) and counts leased addresses (connected devices with an IPv4
+and no reservation). Writes apply instantly and never restart eeros. Not
+available in bridge or IP passthrough mode: the reads answer empty lists
+with `unavailable` set to the reason, without calling eero's routing.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `reservation.list` | Reservations | `{}` | q | `GET {net}/routing` | `Reservation[]` joined to devices, plus `LanMap` (subnet, DHCP pool, static range, leased count). |
+| `reservation.list` | Reservations | `{}` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ reservations: Reservation[], lan: LanMap \| null, unavailable: string \| null }`: reservations A to Z, joined to devices, plus the LAN map (subnet, DHCP pool, static range, leased count). |
 | `reservation.add` | Add a reservation | `{ device?: Ref, mac?: string, ip: string, description?: string }` | w | `POST {net}/reservations` JSON `{description, mac, ip}` | One of `device` or `mac`. `error.reservation.ip.invalid` and `error.assignment.ip.unavailable` map to `bad_params`. |
 | `reservation.update` | Edit reservation | `{ reservation: Ref, ip?, description? }` | w | `PUT {reservation url}` | |
 | `reservation.remove` | Remove reservation | `{ reservation: Ref, removeForwards?: boolean }` | w | `DELETE {reservation url}?delete_forwards=` | |
-| `forward.list` | Port forwards | `{ device?: Ref }` | q | `GET {net}/routing` | `Forward[]`, optionally for one device (device detail). |
+| `forward.list` | Port forwards | `{ device?: Ref }` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ forwards: Forward[], unavailable: string \| null }`, by external port, optionally for one device (device detail). An unknown device is `bad_params`. |
 | `forward.add` | Add port forward | `{ device: Ref, externalPort: PortSpec, internalPort?: PortSpec, protocol: "tcp" \| "udp" \| "both", description: string, enabled?: boolean }` | w | `POST {net}/reservations` if the device has none, then `POST {net}/forwards` | Ranges (`"2456-2458"`) only when capability `port_forward_range`. Conflicts with existing forwards fail `bad_params`. |
 | `forward.validate` **(added)** | Check port forward | `{ device: Ref, externalPort: PortSpec, internalPort?: PortSpec, protocol: "tcp" \| "udp" \| "both", forward?: Ref }` | q | none (cached `routing` topic) | `{ ok, issues: { field, message }[], needsReservation }`. Same checks `forward.add` and `forward.update` run (overlap with forwards of the same protocol, port bounds, range capability). `forward` is the one being edited, excluded from the overlap check. |
 | `forward.update` | Edit port forward | `{ forward: Ref, ...same fields optional }` | w | `PUT {forward url}` | Also the enable toggle. |

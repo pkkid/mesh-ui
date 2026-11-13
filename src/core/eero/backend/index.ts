@@ -37,6 +37,7 @@ import { events } from "./events";
 import { internet } from "./internet";
 import { network } from "./network";
 import { profile } from "./profile";
+import { routing } from "./routing";
 import { updates } from "./updates";
 import { usage } from "./usage";
 
@@ -50,6 +51,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   internet,
   network,
   profile,
+  routing,
   updates,
   usage,
 };
