@@ -577,6 +577,8 @@ export type AppInfo = {
   os: "darwin" | "win32" | "linux";
   arch: string;
   backend: BackendKind;
+  /** The eero backend is talking to the local fake eero server (dev:fake, --fake). Always false for live and demo. */
+  fakeServer: boolean;
   sessionStorage: SessionStorageKind;
   /** "GNOME Keyring", "macOS Keychain", "Windows DPAPI". */
   keychainName: string | null;

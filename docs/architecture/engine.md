@@ -254,8 +254,10 @@ type HostEvent =
 
 - The selected network is held by the engine (`engine.selectedNetworkId()`),
   read lazily from and persisted as `lastNetworkId` in `settings.json` so the app and CLI start on the same
-  network. After the first sign in with several networks the UI shows the
-  chooser; with one network it selects it.
+  network. With no valid selection the engine falls back to the first
+  network, and sign in does the same: it opens the last used network if the
+  account still has it, else the first, via `network.select`. There is no
+  chooser; switching is the sidebar's network switcher.
 - `network.select` (app-local, no eero call) sets the id, saves it, and
   emits `network.selected`. The renderer drops its query state for the old
   network and re-runs its visible queries.
