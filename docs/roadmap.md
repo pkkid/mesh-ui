@@ -146,7 +146,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: `network.list`, `network.select`, `network.get`, `network.health`, `network.permissions`, `internet.get`, `speedtest.history`, with mapping from raw eero shapes, capability and permission gating fields, and fake routes for `account`, `{net}`, `{net}/speedtest`, `{net}/permissions`.
 - done when: each command has demo tests (including bad_params) and fake-server tests for mapping; switching networks emits `network.selected`.
 
-### M1.11 eero, device and profile read commands ☐
+### M1.11 eero, device and profile read commands ✅ (#29)
 - issue: [#11](https://github.com/pkkid/mesh-ui/issues/11)
 - after: M1.2, M1.3
 - docs: architecture/commands.md (eero, device, profile), ux/pages/devices.md

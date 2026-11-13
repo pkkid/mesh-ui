@@ -31,18 +31,24 @@ export type EeroArea<K extends AreaName> = (ctx: EeroContext) => BackendAreas[K]
 // Area imports, one line each, alphabetical: import { network } from "./network";
 import { account } from "./account";
 import { auth } from "./auth";
+import { device } from "./device";
+import { eero } from "./eero";
 import { events } from "./events";
 import { internet } from "./internet";
 import { network } from "./network";
+import { profile } from "./profile";
 import { usage } from "./usage";
 
 /** Area factories, one line each, alphabetical. */
 const areas: { [K in AreaName]?: EeroArea<K> } = {
   account,
   auth,
+  device,
+  eero,
   events,
   internet,
   network,
+  profile,
   usage,
 };
 
