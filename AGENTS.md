@@ -247,8 +247,11 @@ building a new chart; port from them rather than inventing a style.
   cross-platform smoke on PRs and the release builds. Do not add CI jobs.
 - Check behaviour headless first (`mesh-ui run --demo ...`); the window is for
   checking looks.
-- To see UI changes, run `pnpm dev:demo` (fixtures) or `pnpm dev:fake` (the
-  real eero client against the local fake eero server), never a real sign-in.
+- UI checks and screenshots run invisibly with `pnpm ui:shot` (demo fixtures,
+  or `--fake` for the real eero client against the local fake eero server; no
+  visible window). Never start a visible window (`pnpm dev`, `pnpm dev:demo`,
+  `pnpm dev:fake`, or Electron with a display) on the maintainer's machine
+  unless asked. Usage: `docs/testing.md#screenshots-with-ui-shot`.
 - See "Testing" for the sandbox rule and "Milestone runs" for how work is
   planned and reviewed.
 - Keep changes small and the model simple. Prefer one clear file over layers of
