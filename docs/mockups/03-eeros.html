@@ -29,7 +29,7 @@
   .opt:hover { background: var(--hover); }
 </style>
 </head>
-<body data-page="eeros" data-title="eeros" data-subtitle="eeroOS 7.12.1, up to date · updated 4s ago">
+<body data-page="eeros" data-title="eeros" data-subtitle="eeroOS 7.12.1, update available · updated 4s ago">
 
 
 <div id="page" class="page">
@@ -44,11 +44,11 @@
         <svg class="links" viewBox="0 0 1000 430" preserveAspectRatio="none">
           <!-- ONT to gateway: wired -->
           <path d="M80,215 L300,215" stroke="var(--c-wired)" stroke-width="3" fill="none" vector-effect="non-scaling-stroke"/>
-          <!-- gateway to Office: 4 bars -->
+          <!-- gateway to Office: 5 of 5 bars (4 drawn) -->
           <path d="M300,215 C430,215 470,105 610,105" stroke="var(--success)" stroke-width="3" fill="none" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
-          <!-- gateway to Upstairs Hall: 3 bars -->
+          <!-- gateway to Upstairs Hall: 4 of 5 bars (3 drawn) -->
           <path d="M300,215 C430,215 470,330 610,330" stroke="var(--success)" stroke-width="2.5" fill="none" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
-          <!-- Office to Garage: 2 bars -->
+          <!-- Office to Garage: 2 of 5 bars -->
           <path d="M610,105 C730,105 780,215 890,215" stroke="var(--warning)" stroke-width="2" fill="none" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"/>
           <!-- wired client hint -->
           <path d="M300,290 L300,370" stroke="var(--c-wired)" stroke-width="1.5" fill="none" opacity=".6" vector-effect="non-scaling-stroke"/>
@@ -59,7 +59,7 @@
         <div class="node sel" style="left:61%;top:24.4%"><div class="puck"><i data-lucide="router"></i></div><div class="nm">Office</div><div class="nd">eero Pro 7</div></div>
         <div class="node" style="left:61%;top:76.7%"><div class="puck"><i data-lucide="router"></i></div><div class="nm">Upstairs Hall</div><div class="nd">eero 7</div></div>
         <div class="node warn" style="left:89%;top:50%"><div class="puck"><i data-lucide="lamp"></i></div><div class="nm">Garage</div><div class="nd">eero Beacon</div></div>
-        <div class="node" style="left:30%;top:86%"><div class="row-6" style="padding:5px 10px;border-radius:10px;border:1px solid var(--border);background:var(--card-2)"><i data-lucide="cable" style="width:14px;height:14px;color:var(--c-wired)"></i><span class="xs">3 wired: NAS, PS5, Hue Bridge</span></div></div>
+        <div class="node" style="left:30%;top:86%"><div class="row-6" style="padding:5px 10px;border-radius:10px;border:1px solid var(--border);background:var(--card-2)"><i data-lucide="cable" style="width:14px;height:14px;color:var(--c-wired)"></i><span class="xs">3 wired: TV, NAS, Hue Bridge</span></div></div>
 
         <span class="lnk" style="left:19%;top:50%;--lc:var(--c-wired)"><i data-lucide="cable"></i>10 Gbps WAN</span>
         <span class="lnk" style="left:43%;top:39%;--lc:var(--success)"><i data-lucide="wifi"></i>Excellent <span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span></span>
@@ -68,7 +68,7 @@
 
         <div class="legend" style="position:absolute;left:16px;bottom:12px">
           <span><i class="sw" style="--c:var(--c-wired)"></i>Wired</span>
-          <span><i class="sw" style="--c:var(--success)"></i>Good (3 to 4 bars)</span>
+          <span><i class="sw" style="--c:var(--success)"></i>Good (4 to 5 bars)</span>
           <span><i class="sw" style="--c:var(--warning)"></i>Weak</span>
           <span><i class="sw" style="--c:var(--danger)"></i>Poor</span>
         </div>
@@ -78,7 +78,7 @@
       <div class="col gap-12">
         <div class="note warn" style="flex-direction:column;gap:8px">
           <div class="row-6 b"><i data-lucide="alert-triangle"></i>Garage has a weak link</div>
-          <div class="body xs">It reaches Office at only 2 of 4 bars, so the 3 devices connected through it get slower speeds than the rest of the mesh.</div>
+          <div class="body xs">It reaches Office at only 2 of 5 bars, so the 3 devices connected through it get slower speeds than the rest of the mesh.</div>
           <div class="col gap-6 xs body" style="gap:6px">
             <div class="row-6"><i data-lucide="move" style="width:14px;height:14px;color:var(--warning-fg)"></i>Move it 1 or 2 rooms closer to Office, ideally in line of sight</div>
             <div class="row-6"><i data-lucide="cable" style="width:14px;height:14px;color:var(--warning-fg)"></i>Or run Ethernet from Living Room for wired backhaul</div>
@@ -90,7 +90,7 @@
           <div class="row"><div class="ico"><i data-lucide="router"></i></div><div class="grow"><div class="m">Office</div><div class="xs muted">Selected · uplink to Living Room</div></div><a class="btn sm" href="04-eero-detail.html">Open<i data-lucide="arrow-right"></i></a></div>
           <dl class="kv xs" style="font-size:12px">
             <dt>Backhaul</dt><dd>Wireless</dd>
-            <dt>Mesh quality</dt><dd>4 of 4 bars <span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span></dd>
+            <dt>Mesh quality</dt><dd>5 of 5 bars <span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span></dd>
             <dt>Downstream</dt><dd>Garage</dd>
           </dl>
         </div>
@@ -111,7 +111,7 @@
       <div class="section-h"><h2>Data usage by eero</h2><span class="sub">Download and upload per hour, stacked</span>
         <div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
       <div class="card pad">
-        <div class="legend" style="margin-bottom:10px"><span><i class="sw" style="--c:var(--s-blue)"></i>Living Room <b>212 GB</b></span><span><i class="sw" style="--c:var(--s-purple)"></i>Office <b>118 GB</b></span><span><i class="sw" style="--c:var(--s-aqua)"></i>Upstairs Hall <b>71 GB</b></span><span><i class="sw" style="--c:var(--s-yellow)"></i>Garage <b>11 GB</b></span></div>
+        <div class="legend" style="margin-bottom:10px"><span><i class="sw" style="--c:var(--s-blue)"></i>Living Room <b>317 GB</b></span><span><i class="sw" style="--c:var(--s-purple)"></i>Office <b>139 GB</b></span><span><i class="sw" style="--c:var(--s-aqua)"></i>Upstairs Hall <b>19.0 GB</b></span><span><i class="sw" style="--c:var(--s-yellow)"></i>Garage <b>3.6 GB</b></span></div>
         <div id="ch-eero"></div>
       </div>
     </section>
@@ -122,9 +122,9 @@
           <div class="row gap-24" style="align-items:center">
             <div id="dn-band"></div>
             <div class="col gap-8 grow">
-              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band5)"></i><span class="muted">5 GHz</span></span><b class="m tnum">14</b></div>
-              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band24)"></i><span class="muted">2.4 GHz</span></span><b class="m tnum">9</b></div>
-              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band6)"></i><span class="muted">6 GHz</span></span><b class="m tnum">4</b></div>
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band24)"></i><span class="muted">2.4 GHz</span></span><b class="m tnum">11</b></div>
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band5)"></i><span class="muted">5 GHz</span></span><b class="m tnum">10</b></div>
+              <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-band6)"></i><span class="muted">6 GHz</span></span><b class="m tnum">6</b></div>
               <div class="row between sm"><span class="row-6"><i class="sw" style="--c:var(--c-wired)"></i><span class="muted">Wired</span></span><b class="m tnum">4</b></div>
             </div>
           </div>
@@ -149,13 +149,13 @@ MU.ready(() => {
 
   const E = [
     { name: "Living Room", model: "eero Max 7", icon: "router", c: "var(--s-blue)", gw: true, wired: 3, up: "23d 4h", ip: "192.168.4.1",
-      pill: '<span class="pill ok">Online</span>', bands: [["2.4", 6, 20, 3, 34], ["5", 149, 160, 4, 41], ["6", 37, 320, 2, 22]], gb: 212, seed: 51 },
+      pill: '<span class="pill ok">Online</span>', bands: [["2.4", 6, 20, 2, 34], ["5", 149, 80, 5, 21], ["6", 37, 160, 2, 9]], gb: 317, seed: 51 },
     { name: "Office", model: "eero Pro 7", icon: "router", c: "var(--s-purple)", wired: 1, up: "1d 9h", ip: "192.168.4.22",
-      pill: '<span class="pill ok">Online</span>', bands: [["2.4", 1, 20, 2, 28], ["5", 36, 160, 4, 37], ["6", 37, 320, 2, 46]], gb: 118, seed: 52, blink: true },
-    { name: "Upstairs Hall", model: "eero 7", icon: "router", c: "var(--s-aqua)", wired: 0, up: "1d 9h", ip: "192.168.4.37",
-      pill: '<span class="pill ok">Online</span>', bands: [["2.4", 11, 20, 2, 22], ["5", 149, 160, 5, 58]], gb: 71, seed: 53 },
-    { name: "Garage", model: "eero Beacon", icon: "lamp", c: "var(--s-yellow)", wired: 0, up: "4h 12m", ip: "192.168.4.41",
-      pill: '<span class="pill warn">Weak link</span>', bands: [["2.4", 6, 20, 2, 71], ["5", 44, 80, 1, 18]], gb: 11, seed: 54 },
+      pill: '<span class="pill ok">Online</span>', bands: [["2.4", 1, 20, 2, 34], ["5", 36, 80, 2, 21], ["6", 69, 160, 4, 9]], gb: 139, seed: 52, blink: true },
+    { name: "Upstairs Hall", model: "eero 7", icon: "router", c: "var(--s-aqua)", wired: 0, up: "23d 3h", ip: "192.168.4.24",
+      pill: '<span class="pill ok">Online</span>', bands: [["2.4", 11, 20, 4, 34], ["5", 44, 80, 3, 21]], gb: 19, seed: 53 },
+    { name: "Garage", model: "eero Beacon", icon: "lamp", c: "var(--s-yellow)", wired: 0, up: "2d 12h", ip: "192.168.4.26",
+      pill: '<span class="pill warn">Weak link</span>', bands: [["2.4", 1, 20, 3, 34], ["5", 36, 80, 0, 21]], gb: 3.6, seed: 54 },
   ];
   const bc = { "2.4": "var(--c-band24)", "5": "var(--c-band5)", "6": "var(--c-band6)" };
   document.getElementById("ecards").innerHTML = E.map((e) => `
@@ -187,8 +187,8 @@ MU.ready(() => {
   });
 
   MU.donut("#dn-band", [
-    { name: "5 GHz", color: "var(--c-band5)", value: 14 }, { name: "2.4 GHz", color: "var(--c-band24)", value: 9 },
-    { name: "6 GHz", color: "var(--c-band6)", value: 4 }, { name: "Wired", color: "var(--c-wired)", value: 4 },
+    { name: "2.4 GHz", color: "var(--c-band24)", value: 11 }, { name: "5 GHz", color: "var(--c-band5)", value: 10 },
+    { name: "6 GHz", color: "var(--c-band6)", value: 6 }, { name: "Wired", color: "var(--c-wired)", value: 4 },
   ], { size: 120, thickness: 13, center: `<div><div class="mid">31</div><div class="xxs muted">clients</div></div>` });
 });
 </script>

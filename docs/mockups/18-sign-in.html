@@ -44,19 +44,6 @@
     border: 1px solid var(--border-2); background: var(--card-2); }
   .code.err span { border-color: var(--danger); color: var(--danger-fg); }
   .code .gap { visibility: hidden; }
-  .net { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); }
-  .net + .net { margin-top: 8px; }
-  .net.sel { border-color: var(--muted); background: var(--card-2); }
-  .radio { width: 16px; height: 16px; border-radius: 99px; border: 1.5px solid var(--border-2); flex-shrink: 0; }
-  .net.sel .radio { border: 5px solid var(--fg); }
-  .load { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 6px 0; }
-  .load .ck { width: 20px; height: 20px; border-radius: 99px; display: grid; place-items: center; color: var(--success-fg); flex-shrink: 0; }
-  .load .ck svg { width: 12px; height: 12px; }
-  .load .ck.spin { background: transparent; border: 2px solid var(--border-2); border-top-color: var(--muted); }
-  .load .t2 { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .done-ring { width: 76px; height: 76px; border-radius: 99px; display: grid; place-items: center; color: var(--success-fg);
-    background: var(--card-2); border: 1px solid var(--border-2); }
-  .done-ring svg { width: 36px; height: 36px; }
   .foot-note { flex-shrink: 0; margin-top: auto; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); padding-top: 14px; border-top: 1px solid var(--border); }
   .foot-note svg { width: 13px; height: 13px; }
   .link { color: var(--info-fg); font-weight: 500; }
@@ -67,7 +54,7 @@
 
   <div class="head">
     <div class="logo"><i data-lucide="wifi"></i></div>
-    <div><div class="b" style="font-size:15px">Mesh UI · Sign in</div><div class="xs muted">First launch flow, passwordless eero login with a one-time code</div></div>
+    <div><div class="b" style="font-size:15px">Mesh UI · Sign in</div><div class="xs muted">Two steps, passwordless eero login with a one-time code, then straight to the dashboard</div></div>
     <div class="ml-auto row-6 xs muted"><i data-lucide="lock" style="width:13px;height:13px"></i>Session token kept in the system keychain</div>
   </div>
 
@@ -83,7 +70,7 @@
           <div class="lead">Manage Maple Street and your other eero networks from the desktop. We'll send you a one-time code, no password needed.</div>
           <div class="seg" style="margin-top:22px;align-self:flex-start"><span class="on"><i data-lucide="mail"></i>Email</span><span><i data-lucide="smartphone"></i>Phone</span></div>
           <div class="xs muted" style="margin-top:14px;margin-bottom:6px">Email address</div>
-          <div class="input bigfield focus"><i data-lucide="at-sign"></i>alex.kim@example.com<span class="caret" style="margin-left:0"></span></div>
+          <div class="input bigfield focus"><i data-lucide="at-sign"></i>alex@example.com<span class="caret" style="margin-left:0"></span></div>
           <button class="btn primary bigbtn" style="margin-top:14px">Send code<i data-lucide="arrow-right"></i></button>
           <div class="note info" style="margin-top:16px"><i data-lucide="info"></i><div class="body">Amazon login is not supported in Mesh UI. If you sign in to the eero app with Amazon, use an eero account that has admin access to your network.</div></div>
           <div class="foot-note"><i data-lucide="flask-conical"></i>Just looking? <a class="link">Try demo mode</a><span class="ml-auto">v0.1.0</span></div>
@@ -93,14 +80,14 @@
 
     <!-- 2. Verification code -->
     <div>
-      <div class="step"><span class="num">2</span><b class="m">Verification code</b><span class="arrow">auth.login.verify<i data-lucide="arrow-right"></i></span></div>
+      <div class="step"><span class="num">2</span><b class="m">Verification code</b><span class="arrow">auth.login.verify<i data-lucide="arrow-right"></i>Overview</span></div>
       <div class="win">
         <div class="wt"><div class="logo"><i data-lucide="wifi"></i></div><span class="sm m">Mesh UI</span><div class="ctl"><i data-lucide="minus"></i><i data-lucide="square"></i><i data-lucide="x"></i></div></div>
         <div class="wb">
           <a class="row-6 xs muted"><i data-lucide="arrow-left" style="width:14px;height:14px"></i>Back</a>
           <div class="ico lg" style="--c:var(--s-purple);margin-top:18px"><i data-lucide="mail-check"></i></div>
           <h2 style="margin-top:16px">Check your email</h2>
-          <div class="lead">We sent a 6-digit code to <b style="color:var(--fg)">alex.kim@example.com</b>. It can take a minute or two to arrive.</div>
+          <div class="lead">We sent a 6-digit code to <b style="color:var(--fg)">alex@example.com</b>. It can take a minute or two to arrive.</div>
 
           <div class="xs muted" style="margin-top:22px;margin-bottom:8px">Enter code</div>
           <div class="code"><span>4</span><span>8</span><span>2</span><span>9</span><span>1</span><span style="border-color:var(--primary)"><span class="caret" style="margin:0"></span></span></div>
@@ -115,64 +102,8 @@
         </div>
       </div>
     </div>
-
-    <!-- 3. Choose network -->
-    <div>
-      <div class="step"><span class="num">3</span><b class="m">Choose network</b><span class="arrow">network.list<i data-lucide="arrow-right"></i></span></div>
-      <div class="win">
-        <div class="wt"><div class="logo"><i data-lucide="wifi"></i></div><span class="sm m">Mesh UI</span><div class="ctl"><i data-lucide="minus"></i><i data-lucide="square"></i><i data-lucide="x"></i></div></div>
-        <div class="wb">
-          <div class="row"><div class="avatar" style="--c:var(--s-orange)">AK</div><div><div class="sm m">Alex Kim</div><div class="xxs muted">alex.kim@example.com</div></div><span class="pill ok ml-auto">Signed in</span></div>
-          <h2 style="margin-top:22px">Choose a network</h2>
-          <div class="lead">Your account has 3 networks. You can switch any time from the sidebar.</div>
-          <div style="margin-top:18px">
-            <div class="net sel"><span class="radio"></span><div class="ico" style="--c:var(--s-blue)"><i data-lucide="house"></i></div>
-              <div class="grow"><div class="sm m">Maple Street</div><div class="xxs muted">4 eeros · 31 devices online · Ziply Fiber</div></div>
-              <div class="col" style="align-items:flex-end;gap:4px"><span class="pill ok">Online</span><span class="badge">Owner</span></div></div>
-            <div class="net"><span class="radio"></span><div class="ico" style="--c:var(--s-aqua)"><i data-lucide="trees"></i></div>
-              <div class="grow"><div class="sm m">Lake Cabin</div><div class="xxs muted">1 eero · last seen 2 days ago</div></div>
-              <div class="col" style="align-items:flex-end;gap:4px"><span class="pill bad">Offline</span><span class="badge">Owner</span></div></div>
-            <div class="net"><span class="radio"></span><div class="ico" style="--c:var(--s-red)"><i data-lucide="heart-handshake"></i></div>
-              <div class="grow"><div class="sm m">Mom's House <span class="xxs muted">· Kim Home</span></div><div class="xxs muted">2 eeros · 9 devices online · update available</div></div>
-              <div class="col" style="align-items:flex-end;gap:4px"><span class="pill ok">Online</span><span class="badge c" style="--bc:var(--s-purple)">Admin</span></div></div>
-          </div>
-          <div class="row sm" style="margin-top:16px"><span class="switch on"></span>Open this network on launch</div>
-          <button class="btn primary bigbtn" style="margin-top:auto">Continue to Maple Street<i data-lucide="arrow-right"></i></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. First run -->
-    <div>
-      <div class="step"><span class="num">4</span><b class="m">First run</b><span class="arrow">network.get · eero.list · device.list</span></div>
-      <div class="win">
-        <div class="wt"><div class="logo"><i data-lucide="wifi"></i></div><span class="sm m">Mesh UI</span><div class="ctl"><i data-lucide="minus"></i><i data-lucide="square"></i><i data-lucide="x"></i></div></div>
-        <div class="wb" style="align-items:stretch">
-          <div class="col" style="align-items:center;text-align:center">
-            <div class="done-ring"><i data-lucide="check"></i></div>
-            <h2 style="margin-top:22px">You're all set, Alex</h2>
-            <div class="lead">Maple Street is online and looking healthy.</div>
-          </div>
-          <div class="row wrap" style="gap:6px;justify-content:center;margin-top:14px">
-            <span class="badge c" style="--bc:var(--s-blue)"><i data-lucide="router"></i>4 eeros</span>
-            <span class="badge c" style="--bc:var(--s-purple)"><i data-lucide="monitor-smartphone"></i>31 of 38 devices</span>
-            <span class="badge c" style="--bc:var(--s-orange)"><i data-lucide="users"></i>4 profiles</span>
-            <span class="badge c" style="--bc:var(--s-aqua)"><i data-lucide="gauge"></i>942 Mbps</span>
-          </div>
-          <div class="card" style="margin-top:18px;padding:8px 14px">
-            <div class="load"><span class="ck"><i data-lucide="check"></i></span>Signed in<span class="t2">0.4 s</span></div>
-            <div class="load"><span class="ck"><i data-lucide="check"></i></span>Network and health<span class="t2">0.6 s</span></div>
-            <div class="load"><span class="ck"><i data-lucide="check"></i></span>4 eeros and mesh links<span class="t2">0.8 s</span></div>
-            <div class="load"><span class="ck"><i data-lucide="check"></i></span>38 devices and 4 profiles<span class="t2">1.1 s</span></div>
-            <div class="load"><span class="ck spin"></span>7 days of usage history<span class="t2">62%</span></div>
-            <div class="meter" style="margin:4px 0 6px"><i style="width:62%"></i></div>
-          </div>
-          <button class="btn primary bigbtn" style="margin-top:16px">Open dashboard</button>
-          <div class="foot-note" style="display:block"><span class="kbd" style="margin:0 4px 0 0">Ctrl K</span>runs any command. The same commands work from the <span class="mono">mesh-ui</span> CLI.</div>
-        </div>
-      </div>
-    </div>
   </div>
+  <div class="xs muted" style="text-align:center;margin-top:24px">After Verify the app opens the last used network, else the first, on Overview. There is no network chooser: switch networks from the sidebar.</div>
 </div>
 <script src="assets/mockup.js"></script>
 </body>
