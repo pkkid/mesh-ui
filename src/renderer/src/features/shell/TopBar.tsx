@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation } from "~/app/router";
 import { routeById } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
+import { openPalette } from "~/features/palette/CommandPalette";
 import { toggleAppearance, useResolvedAppearance } from "~/lib/themes";
 import { cn } from "~/lib/utils";
 import type { NotificationPage } from "../../../../core/model";
@@ -90,9 +91,9 @@ export function TopBar() {
         <div ref={refs.actions} className="flex items-center gap-1 empty:hidden" />
         <button
           type="button"
-          disabled
-          title="The command palette is coming soon"
-          className="ms-2 flex h-7 w-[260px] items-center gap-2 rounded-[var(--control-radius)] border bg-card px-2.5 text-[12.5px] text-muted-foreground [&_svg]:size-3.5"
+          onClick={() => openPalette()}
+          aria-label="Search or run a command"
+          className="ms-2 flex h-7 w-[260px] cursor-pointer items-center gap-2 rounded-[var(--control-radius)] border bg-card px-2.5 text-[12.5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5"
         >
           <Search />
           <span>Search or run a command</span>
