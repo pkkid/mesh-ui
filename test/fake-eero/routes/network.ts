@@ -7,9 +7,30 @@
  */
 
 import { ok, type Route } from "../server";
-import type { FakeNetwork } from "../state";
+import type { FakeNetwork, FakeState } from "../state";
 
-const networkBody = (net: FakeNetwork) => ({ ...net.network, eeros: { count: net.eeros.length, data: net.eeros } });
+const LEASE_RENEW_MS = 9 * 3_600_000;
+
+/**
+ * `lease` as eero sends it on a DHCP WAN: the address, mask and router, and
+ * a renew time 9 hours after the server's clock (the field name is a guess
+ * until a real capture shows it). A seeded `lease` wins.
+ */
+function leaseOf(net: FakeNetwork, state: FakeState) {
+  const raw = net.network as FakeNetwork["network"] & { lease?: unknown };
+  if (raw.lease !== undefined) return raw.lease;
+  if (String(raw.wan_type ?? "").toLowerCase() !== "dhcp") return undefined;
+  return {
+    mode: "dhcp",
+    dhcp: { ip: raw.wan_ip, mask: "255.255.255.0", router: raw.gateway_ip, renews_on: new Date(state.now() + LEASE_RENEW_MS).toISOString() },
+  };
+}
+
+const networkBody = (net: FakeNetwork, state: FakeState) => ({
+  ...net.network,
+  lease: leaseOf(net, state),
+  eeros: { count: net.eeros.length, data: net.eeros },
+});
 
 const time = (v: string | null): number | null => {
   if (!v) return null;
@@ -23,7 +44,7 @@ export const routes: Route[] = [
     path: "/networks",
     handle: ({ state }) => ok([...state.networks.values()].map((n) => ({ url: n.network.url, name: n.network.name, created: n.network.created }))),
   },
-  { method: "GET", path: "/networks/:net", handle: ({ params, network }) => ok(networkBody(network(params.net ?? ""))) },
+  { method: "GET", path: "/networks/:net", handle: ({ params, network, state }) => ok(networkBody(network(params.net ?? ""), state)) },
   {
     method: "GET",
     path: "/networks/:net/speedtest",

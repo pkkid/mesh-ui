@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { type CsvColumn, formatMbps, MISSING, toCsv } from "../format";
+import { type CsvColumn, formatMbps, formatRelative, MISSING, toCsv } from "../format";
 import type * as M from "../model";
 import { POLL } from "../poll";
 import { type AnyCommand, defineCommand } from "../spec";
@@ -48,6 +48,32 @@ async function planFor(ctx: { settings: { get(): Promise<M.AppSettings> } }, net
 function average(values: (number | null)[]): number | null {
   const xs = values.filter((v): v is number => v !== null);
   return xs.length ? Math.round((xs.reduce((s, v) => s + v, 0) / xs.length) * 10) / 10 : null;
+}
+
+/**
+ * The hero line on the Internet page, from the connection status, the last
+ * test and the plan: "Ziply Fiber is down", "... is fast and steady" (last
+ * test great), "... is slower than your plan" (below plan or poor), or "... is
+ * up" when there is no test or no plan to compare with. `detail` words the
+ * last test ("Last test 2 h ago hit 78% of your 1.2 Gbps plan").
+ */
+export function internetVerdict(i: Omit<M.Internet, "verdict">, now: number): M.InternetVerdict {
+  const name = i.isp.name ?? "Your internet";
+  if (i.status === "offline") return { kind: "down", title: `${name} is down`, detail: null };
+  const test = i.lastSpeedTest;
+  if (!test) return { kind: "steady", title: `${name} is up`, detail: "No speed test yet" };
+  const when = `Last test ${formatRelative(test.at, now)}`;
+  const plan = i.planMbps;
+  const rating = speedRating(test, plan);
+  if (!plan || !rating) {
+    return { kind: "steady", title: `${name} is up`, detail: `${when} measured ${formatMbps(test.downMbps)} down, ${formatMbps(test.upMbps)} up` };
+  }
+  // Download when it was measured, else upload.
+  const [value, full] = test.downMbps !== null && plan.down > 0 ? [test.downMbps, plan.down] : [test.upMbps ?? 0, plan.up];
+  const detail = `${when} hit ${Math.round((value / full) * 100)}% of your ${formatMbps(full)} plan`;
+  return rating === "great"
+    ? { kind: "steady", title: `${name} is fast and steady`, detail }
+    : { kind: "slow", title: `${name} is slower than your plan`, detail };
 }
 
 const or = (v: string | number | null | undefined) => (v === null || v === undefined || v === "" ? MISSING : String(v));
@@ -101,8 +127,8 @@ export const commands: AnyCommand[] = [
     async run(ctx, p): Promise<M.Internet | string> {
       const net = ctx.net;
       const [raw, plan] = await Promise.all([ctx.backend.internet.get(net), planFor(ctx, net)]);
-      // verdict: built here by M2.4.
-      const internet: M.Internet = { ...raw, planMbps: plan, lastSpeedTest: raw.lastSpeedTest ? rate(raw.lastSpeedTest, plan) : null, verdict: null };
+      const rated = { ...raw, planMbps: plan, lastSpeedTest: raw.lastSpeedTest ? rate(raw.lastSpeedTest, plan) : null };
+      const internet: M.Internet = { ...rated, verdict: internetVerdict(rated, ctx.now()) };
       return p.format === "text" ? internetText(internet) : internet;
     },
   }),
