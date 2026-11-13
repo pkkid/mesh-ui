@@ -268,7 +268,7 @@ export function DeviceTable(props: DeviceTableProps) {
   } else {
     const groups = groupDevices(devices, groupBy, props.eeroName, props.profiles);
     body = groups.map((g) => {
-      if (g.devices.length === 0 && !(g.showEmpty && groupBy === "category")) return null;
+      if (g.devices.length === 0 && !(g.showEmpty && groupBy === "category" && !props.filtersActive)) return null;
       const key = `${groupBy}:${g.key}`;
       const isCollapsed = collapsed.has(key) && g.devices.length > 0;
       const Chevron = isCollapsed || g.devices.length === 0 ? ChevronRight : ChevronDown;

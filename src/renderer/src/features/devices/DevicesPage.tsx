@@ -118,6 +118,10 @@ export function DevicesPage() {
 
   const params = listParams(view.filters, view.sort);
   const list = useQuery<DeviceList>("device.list", params, { poll: true });
+  // A new filter is a new query: keep the last rows on screen (faded) until it answers.
+  const lastList = useRef<DeviceList | undefined>(undefined);
+  if (list.data) lastList.current = list.data;
+  const shown = list.data ?? lastList.current;
   // The whole network (same entry as `list` while nothing is filtered): new-this-week rows, manufacturer options.
   const all = useQuery<DeviceList>("device.list", {}, { poll: true });
   const guests = useQuery<DeviceList>("device.list", { ssid: "guest" }, { poll: true });
@@ -141,7 +145,7 @@ export function DevicesPage() {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [all.data]);
 
-  const summary = list.data?.summary ?? all.data?.summary;
+  const summary = shown?.summary ?? all.data?.summary;
   const newIds = useMemo(() => new Set(summary?.newThisWeek ?? []), [summary]);
   const filtersActive = JSON.stringify(view.filters) !== JSON.stringify(EMPTY_FILTERS);
   const resetFilters = () => {
@@ -198,7 +202,7 @@ export function DevicesPage() {
         />
         <BulkBar />
         <DeviceTable
-          devices={list.data?.devices}
+          devices={list.error && !list.data ? undefined : shown?.devices}
           groupBy={view.groupBy}
           hidden={hidden}
           eeroName={eeroName}
@@ -206,7 +210,7 @@ export function DevicesPage() {
           usage={usageById}
           newIds={newIds}
           ratesPending={ratesPending}
-          fading={list.fading}
+          fading={list.fading || (!list.data && !!shown)}
           error={list.error?.message ?? null}
           onRetry={() => void list.refetch()}
           filtersActive={filtersActive}
