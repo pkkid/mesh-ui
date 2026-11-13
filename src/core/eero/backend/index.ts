@@ -29,9 +29,14 @@ export type EeroContext = {
 export type EeroArea<K extends AreaName> = (ctx: EeroContext) => BackendAreas[K];
 
 // Area imports, one line each, alphabetical: import { network } from "./network";
+import { internet } from "./internet";
+import { network } from "./network";
 
 /** Area factories, one line each, alphabetical. */
-const areas: { [K in AreaName]?: EeroArea<K> } = {};
+const areas: { [K in AreaName]?: EeroArea<K> } = {
+  internet,
+  network,
+};
 
 export function createEeroBackend(options: EeroBackendOptions): Backend {
   const client = new EeroClient(options);
