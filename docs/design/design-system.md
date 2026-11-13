@@ -226,6 +226,12 @@ Hand-written SVG, no chart library. Shared pieces in
 (`UsagePage.tsx`, `UsageProviderChart.tsx`, `UsageShareBar.tsx`) and
 resource diagnostics. Port from them rather than inventing a style.
 
+In a dev build (`pnpm dev:demo`), `#/dev/charts` opens the chart gallery
+(`ChartGallery.tsx`): every chart in the kit with invented data, with a
+Live / Loading toggle. It is not linked from the sidebar and is left out of
+release builds. Check a chart change there in light and dark (the topbar
+toggle switches appearance).
+
 - **Geometry.** Fixed `viewBox` (960 x 260), `preserveAspectRatio="none"`,
   filling its box (`h-56` for a main chart). Every stroke uses
   `vectorEffect="non-scaling-stroke"`.

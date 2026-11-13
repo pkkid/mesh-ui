@@ -30,12 +30,16 @@ type SectionProps = Omit<React.ComponentProps<"section">, "title"> & {
   tools?: React.ReactNode;
 };
 
-/** A page section: heading row (title, subtitle, tools) over its body, 12px apart. */
+/**
+ * A page section: heading row (title, subtitle, tools) over its body, 12px
+ * apart. The row aligns on baselines and the title takes the row's 28px line,
+ * so a 14px title and a 12px subtitle share one baseline.
+ */
 function Section({ title, subtitle, tools, className, children, ...props }: SectionProps) {
   return (
     <section data-slot="section" className={cn("flex flex-col gap-3", className)} {...props}>
-      <div className="flex min-h-7 items-center gap-2.5">
-        <h2 className="font-medium text-foreground text-sm">{title}</h2>
+      <div className="flex min-h-7 items-baseline gap-2.5">
+        <h2 className="font-medium text-foreground text-sm leading-7">{title}</h2>
         {subtitle && <span className="truncate text-muted-foreground text-xs">{subtitle}</span>}
         {tools && <div className="ms-auto flex shrink-0 items-center gap-2">{tools}</div>}
       </div>

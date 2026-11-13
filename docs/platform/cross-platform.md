@@ -62,6 +62,9 @@ Never hard-code a separator; use `path.join`.
 
 - Titlebar height is 44px (`TITLEBAR_HEIGHT` in main, `--titlebar-height` in
   CSS); keep them equal.
+- On Windows and Linux the controls overlay is `TITLEBAR_HEIGHT - 1` (43px,
+  `OVERLAY_HEIGHT` in main), so the top bar's 1px bottom border, the last row
+  of the 44px strip, still shows under the window controls.
 - The top strip of each pane is a `drag-region`; interactive elements in it
   need `no-drag`.
 - On Linux under Wayland, the overlay needs Electron's Wayland support

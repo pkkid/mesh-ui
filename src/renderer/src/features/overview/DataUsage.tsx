@@ -10,13 +10,14 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { ShareBar } from "~/components/charts/ShareBar";
+import { Section } from "~/components/ui/card";
 import { Segmented } from "~/components/ui/segmented";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { bytesParts, formatBytes, formatPercent } from "../../../../core/format";
 import type { Eero, Network, UsageRange, UsageSeries } from "../../../../core/model";
 
-import { OverviewSection, SectionError } from "./OverviewView";
+import { SectionError } from "./OverviewView";
 
 const RANGES = [
   { value: "day", label: "Day" },
@@ -98,7 +99,7 @@ export function DataUsage() {
   const hero = bytesParts(hasData ? total : null);
 
   return (
-    <OverviewSection
+    <Section
       title="Data usage"
       subtitle={
         <span className={crossfade}>
@@ -165,7 +166,7 @@ export function DataUsage() {
           />
         </div>
       )}
-    </OverviewSection>
+    </Section>
   );
 }
 
