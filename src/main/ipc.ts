@@ -15,7 +15,7 @@
 import type { Engine } from "../core/engine";
 import type { ExecuteResult } from "../core/errors";
 import type { HostEvent } from "../core/model";
-import { IPC, type LegacyMeshApi, type MeshApi, type TitlebarColors } from "../shared/types";
+import { IPC, type MeshApi, type TitlebarColors } from "../shared/types";
 
 // ---------------------------------------------------------------------------
 // Main side
@@ -92,7 +92,7 @@ export interface IpcRendererLike {
   removeListener(channel: string, listener: (event: unknown, ...args: unknown[]) => void): unknown;
 }
 
-export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshApi & LegacyMeshApi {
+export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshApi {
   const execute = async <R>(id: string, params?: unknown): Promise<ExecuteResult<R>> => {
     try {
       return (await ipc.invoke(IPC.execute, id, params)) as ExecuteResult<R>;
@@ -119,9 +119,5 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
     setTitlebarColors: (colors) => ipc.send(IPC.titlebar, { color: colors.color, symbolColor: colors.symbolColor }),
   };
 
-  // Prototype calls (see LegacyMeshApi). They never reach eero.
-  const unavailable = () => Promise.reject(new Error("Sign-in is not available in this build yet."));
-  const legacy: LegacyMeshApi = { startLogin: unavailable, verify: unavailable };
-
-  return { ...api, ...legacy };
+  return api;
 }

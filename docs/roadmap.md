@@ -130,7 +130,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: Hand-written SVG charts per the AGENTS.md rules: monotone cubic curves, line plus 12% area, nice ticks, y gutter, start/middle/end x labels, hover line and glass tooltip, shared scale, loading fade and empty sentence, `role="img"` with aria labels, no load animations. Colours come from `chartColors.ts` props, not inline.
 - done when: unit tests cover nice ticks and that curves never overshoot data or go below zero; a demo gallery route (dev only) shows every chart in light and dark.
 
-### M1.9 Auth, account and app commands, and sign-in ☐
+### M1.9 Auth, account and app commands, and sign-in ✅ (#32)
 - issue: [#9](https://github.com/pkkid/mesh-ui/issues/9)
 - after: M1.2, M1.3, M1.4, M1.7
 - docs: ux/sign-in.md, architecture/commands.md (auth, account, app), architecture/security.md

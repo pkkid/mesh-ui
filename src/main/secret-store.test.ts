@@ -387,10 +387,4 @@ describe("window.mesh bridge", () => {
     expect(await mesh.execute("app.info")).toMatchObject({ ok: false, error: { code: "network_error" } });
     expect(await mesh.commands()).toEqual([]);
   });
-
-  it("keeps the prototype calls away from eero", async () => {
-    const { mesh } = await bridgeSetup();
-    await expect(mesh.startLogin("alex@example.com")).rejects.toThrow(/not available/);
-    await expect(mesh.verify("123456")).rejects.toThrow(/not available/);
-  });
 });

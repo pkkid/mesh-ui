@@ -6,6 +6,7 @@
  *   export { routes as devices } from "./devices";
  */
 
+export { routes as account } from "./account";
 export { routes as auth } from "./auth";
 export { routes as events } from "./events";
 export { routes as network } from "./network";
