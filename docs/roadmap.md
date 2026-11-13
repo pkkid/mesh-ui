@@ -289,7 +289,7 @@ and get `MANUAL:` lines.
 - scope: Core: `updates.get` (query) with demo and eero backends, mapping and fake route; `network.health` issues derived in core from eeros and devices (weak link with upstream and devices affected, eero offline, network offline). Page (mockup 03): topology Map and Tree with layout in `components/mesh/` for reuse by eero detail (Internet node, gateway, eeros by hop, solid wired links with speed, dashed wireless links with a quality chip, wired-clients chip, legend); weak link note and selected-eero card; eero cards Grid/List with the radio table, dual-band note and wired row; Data usage by eero, stacked, Day/Week, with legend toggles; Clients by band donut; Network actions; subtitle from `updates.get`. Find, Test placement and Restart network are disabled ("Coming soon"); Scan coverage links to Troubleshooting. Offline, one-eero-offline and single-eero states.
 - done when: demo tests for `updates.get` (incl. `bad_params`) and every health issue kind, and fake-server tests for updates mapping; `pnpm ui:shot --route '#/eeros'` Map and Tree, demo and `--fake`, light and dark, plus `eero_offline` and `network_offline`, are in the PR; `MANUAL: eeros topology | pnpm dev, open eeros | upstream links, bars and band channels match the eero app | none`; `MANUAL: updates.get shape | pnpm mesh-ui run updates.get | current, target and per-eero versions filled | none`.
 
-### M2.6 eero ports and firmware history reads ☐
+### M2.6 eero ports and firmware history reads ✅ (#64)
 - issue: [#54](https://github.com/pkkid/mesh-ui/issues/54)
 - after: M2.1
 - docs: architecture/commands.md (eero), eero-api/endpoints.md (connections, firmware history), ux/pages/eero-detail.md (Data)
