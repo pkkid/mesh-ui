@@ -21,14 +21,14 @@ import {
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
-import { Card, Empty, Section } from "~/components/ui/card";
+import { Card, Empty } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount } from "../../../../core/format";
 import type { DeviceCategory, DeviceList, UsageBreakdown } from "../../../../core/model";
 
-import { HeaderLink, SectionError } from "./OverviewView";
+import { HeaderLink, OverviewSection, SectionError } from "./OverviewView";
 
 const TOP = 5;
 
@@ -68,7 +68,7 @@ export function TopDevices() {
   const online = devices.data?.summary.online;
 
   return (
-    <Section
+    <OverviewSection
       title="Top devices"
       subtitle={`Data used, 24h · ${formatCount(online)} online now`}
       tools={<HeaderLink to={pathFor("devices")} arrow>All devices</HeaderLink>}
@@ -132,6 +132,6 @@ export function TopDevices() {
           </table>
         </Card>
       )}
-    </Section>
+    </OverviewSection>
   );
 }

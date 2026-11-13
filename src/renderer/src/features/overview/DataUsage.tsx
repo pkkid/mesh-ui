@@ -5,19 +5,18 @@
  * today" come from `usage.get`; this file only words and draws them.
  */
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { ShareBar } from "~/components/charts/ShareBar";
-import { Section } from "~/components/ui/card";
 import { Segmented } from "~/components/ui/segmented";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { bytesParts, formatBytes, formatPercent } from "../../../../core/format";
 import type { Eero, Network, UsageRange, UsageSeries } from "../../../../core/model";
 
-import { SectionError } from "./OverviewView";
+import { OverviewSection, SectionError } from "./OverviewView";
 
 const RANGES = [
   { value: "day", label: "Day" },
@@ -30,8 +29,31 @@ export function zoneFormat(tz: string, options: Intl.DateTimeFormatOptions) {
   return (iso: string) => f.format(Date.parse(iso));
 }
 
+/** Half of the Day / Week crossfade: fade out, swap, fade in over the same time. */
+const SWITCH_MS = 150;
+
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
 export function DataUsage() {
+  // `range` is what the figures show; `picked` is the toggle. While they
+  // differ the body fades out, then `range` follows and the body fades back
+  // in. Background polls never touch either, so they never crossfade.
   const [range, setRange] = useState<UsageRange>("day");
+  const [picked, setPicked] = useState<UsageRange>("day");
+  const switching = picked !== range;
+  useEffect(() => {
+    if (!switching) return;
+    const t = setTimeout(() => setRange(picked), SWITCH_MS);
+    return () => clearTimeout(t);
+  }, [switching, picked]);
+  const pick = (next: UsageRange) => {
+    setPicked(next);
+    if (reducedMotion()) setRange(next);
+  };
+  // Start loading the picked range during the fade-out (no poll: the shown
+  // range's queries below poll, and share these entries once it switches).
+  useQuery<UsageSeries>("usage.get", { scope: "network", range: picked });
+  useQuery<UsageSeries[]>("usage.get", { scope: "eero", range: picked });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const usage = useQuery<UsageSeries>("usage.get", { scope: "network", range }, { poll: true });
   const byEero = useQuery<UsageSeries[]>("usage.get", { scope: "eero", range }, { poll: true });
@@ -71,19 +93,24 @@ export function DataUsage() {
     color: colors[e.id ?? ""] ?? seriesColors.neutral,
   }));
 
+  const crossfade = cn("transition-opacity duration-150 motion-reduce:transition-none", switching && "opacity-0");
   const fade = usage.fading ? "opacity-40 transition-opacity" : "transition-opacity";
   const hero = bytesParts(hasData ? total : null);
 
   return (
-    <Section
+    <OverviewSection
       title="Data usage"
-      subtitle={day ? "Per hour, last 24 hours, all devices" : "Per day, last 7 days, all devices"}
-      tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
+      subtitle={
+        <span className={crossfade}>
+          {day ? "Per hour, last 24 hours, all devices" : "Per day, last 7 days, all devices"}
+        </span>
+      }
+      tools={<Segmented aria-label="Range" value={picked} onValueChange={pick} options={RANGES} />}
     >
       {usage.error && !s ? (
         <SectionError what="data usage" error={usage.error} onRetry={() => void usage.refetch()} />
       ) : (
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+        <div className={cn("grid gap-7 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]", crossfade)}>
           <div className="flex flex-col gap-4">
             <div className={fade}>
               <div className="font-semibold text-4xl tabular-nums tracking-tight">
@@ -138,7 +165,7 @@ export function DataUsage() {
           />
         </div>
       )}
-    </Section>
+    </OverviewSection>
   );
 }
 

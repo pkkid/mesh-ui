@@ -1,6 +1,7 @@
 /**
- * Overview "eeros": one row per eero with model, backhaul, device count, a
- * 24 h usage sparkline in that eero's series colour, and status.
+ * Overview "eeros": one row per eero with name and Gateway badge, model and
+ * backhaul, status with mesh bars and device count, and a 24 h usage
+ * sparkline in that eero's series colour.
  * docs/ux/pages/overview.md (Layout 3).
  */
 import { Lamp, Router } from "lucide-react";
@@ -41,7 +42,14 @@ export function EerosList() {
           <Empty>No eeros on this network.</Empty>
         </Card>
       ) : (
-        <RowList className={cn("transition-opacity", eeros.fading && "opacity-40")}>
+        // Rows share the list's columns (subgrid) so every sparkline has the
+        // same width: up to 110px, giving up width before the text does.
+        <RowList
+          className={cn(
+            "grid grid-cols-[auto_minmax(min-content,1fr)_minmax(0,110px)] transition-opacity",
+            eeros.fading && "opacity-40",
+          )}
+        >
           {list.map((e) => {
             const status =
               e.status === "offline"
@@ -51,39 +59,54 @@ export function EerosList() {
                   : networkStatus(e.status);
             const points = series.get(e.id)?.points ?? [];
             return (
-              <Row key={e.id} to={pathFor("eero", { eeroId: e.id })}>
-                <IconTile icon={/beacon/i.test(e.model ?? "") ? Lamp : Router} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 font-medium text-[13.5px]">
-                    <span className="truncate">{e.location}</span>
-                    {e.isGateway && <Badge variant="outline">Gateway</Badge>}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-1.5 text-muted-foreground text-xs">
-                    {e.model && <span>{e.model}</span>}
-                    {e.model && e.backhaul && <span>·</span>}
-                    {e.backhaul === "wired" && <span>Ethernet</span>}
-                    {e.backhaul === "wireless" && (
-                      <>
-                        <span>Wireless</span>
-                        <MeshBars bars={e.meshBars} />
-                      </>
-                    )}
-                    <span>·</span>
-                    <span>
-                      {formatCount(e.clients?.total)} {e.clients?.total === 1 ? "device" : "devices"}
-                    </span>
-                  </div>
+              // Three lines: name and Gateway badge; model and connection;
+              // status, mesh bars and devices. The sparkline sits right of
+              // lines 2 and 3 so line 1 keeps the full width for the name.
+              <Row
+                key={e.id}
+                to={pathFor("eero", { eeroId: e.id })}
+                className="col-span-3 grid grid-cols-subgrid grid-rows-[auto_auto_auto] gap-y-0.5"
+              >
+                <IconTile icon={/beacon/i.test(e.model ?? "") ? Lamp : Router} className="row-span-3" />
+                <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-[13.5px]">
+                  <span className="truncate">{e.location}</span>
+                  {e.isGateway && (
+                    <Badge variant="outline" className="shrink-0">
+                      Gateway
+                    </Badge>
+                  )}
                 </div>
-                <Sparkline
-                  className="h-[26px] w-16 shrink-0 xl:w-[110px]"
-                  values={points.map((p) => p.down + p.up)}
-                  color={colors[e.id] ?? seriesColors.neutral}
-                  loading={usage.fading}
-                  ariaLabel={`${e.location}: data used per hour, last 24 hours`}
-                />
-                <Status tone={status.tone} className="shrink-0">
-                  {status.label}
-                </Status>
+                <div className="flex items-center gap-x-1.5 whitespace-nowrap text-muted-foreground text-xs">
+                  {e.model && <span>{e.model}</span>}
+                  {e.model && e.backhaul && <span>·</span>}
+                  {e.backhaul === "wired" && <span>Ethernet</span>}
+                  {e.backhaul === "wireless" && <span>Wireless</span>}
+                </div>
+                {/* Hidden when the column leaves it under 40px (very narrow cards). */}
+                <div className="@container row-span-2 self-stretch">
+                  <Sparkline
+                    className="hidden h-full @min-[2.5rem]:block"
+                    values={points.map((p) => p.down + p.up)}
+                    color={colors[e.id] ?? seriesColors.neutral}
+                    loading={usage.fading}
+                    ariaLabel={`${e.location}: data used per hour, last 24 hours`}
+                  />
+                </div>
+                <div className="flex items-center gap-x-1.5 whitespace-nowrap text-muted-foreground text-xs">
+                  <Status tone={status.tone} className="shrink-0">
+                    {status.label}
+                  </Status>
+                  {e.backhaul === "wireless" && (
+                    <>
+                      <span>·</span>
+                      <MeshBars bars={e.meshBars} />
+                    </>
+                  )}
+                  <span>·</span>
+                  <span className="whitespace-nowrap">
+                    {formatCount(e.clients?.total)} {e.clients?.total === 1 ? "device" : "devices"}
+                  </span>
+                </div>
               </Row>
             );
           })}
