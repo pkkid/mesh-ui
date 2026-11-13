@@ -1,6 +1,7 @@
 /**
  * A ring split into segments (for example devices by band), with free
  * content in the middle. Fixed pixel size, so circles stay circles.
+ * Segments have straight (butt) ends with a small gap between them.
  */
 import { type ReactNode, useState } from "react";
 
@@ -39,12 +40,11 @@ export function Donut({
   const c = 2 * Math.PI * r;
   const visible = segments.filter((s) => Number.isFinite(s.value) && s.value > 0);
   const total = visible.reduce((sum, s) => sum + s.value, 0);
-  const segmentGap = visible.length > 1 ? gap + thickness : 0;
+  const segmentGap = visible.length > 1 ? gap : 0;
 
   let offset = 0;
   const arcs = visible.map((s, i) => {
     const length = (s.value / total) * c;
-    // Round caps add half the thickness at each end; take it back out of the dash.
     const dash = Math.max(0.01, length - segmentGap);
     const arc = { segment: s, index: i, dash, offset };
     offset += length;
@@ -79,7 +79,7 @@ export function Donut({
               fill="none"
               stroke={a.segment.color}
               strokeWidth={thickness}
-              strokeLinecap={visible.length > 1 ? "round" : "butt"}
+              strokeLinecap="butt"
               strokeDasharray={`${a.dash} ${c}`}
               strokeDashoffset={-(a.offset + segmentGap / 2)}
               className={cn("transition-opacity", hovered !== null && hovered !== a.index && "opacity-50")}
