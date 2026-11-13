@@ -13,6 +13,7 @@ import { z } from "zod";
 import type * as M from "../model";
 import { POLL } from "../poll";
 import { type AnyCommand, defineCommand, ref } from "../spec";
+import { knownDevices } from "./device";
 
 const empty = z.object({});
 
@@ -52,15 +53,18 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "network.get",
     label: "Network",
-    description: "One network: name, nickname, status, role, counts, capabilities, time zone and banner messages.",
+    description:
+      "One network: name, nickname, status, role, counts, capabilities, time zone and banner messages. counts.devices is every known device, the same number as device.list summary.total.",
     icon: "network",
     params: empty,
     effect: "query",
     topic: "network",
     poll: POLL.network,
     async run(ctx): Promise<M.Network> {
-      const n = await ctx.backend.network.get(ctx.net);
-      return { ...n, selected: n.id === ctx.selectedNetworkId };
+      const [n, devices] = await Promise.all([ctx.backend.network.get(ctx.net), ctx.backend.device.list(ctx.net)]);
+      // eero's clients.count is connected devices only; the sidebar count is every known device, as device.list counts them.
+      const counts = { ...n.counts, devices: knownDevices(devices, ctx.now()).length };
+      return { ...n, counts, selected: n.id === ctx.selectedNetworkId };
     },
   }),
 

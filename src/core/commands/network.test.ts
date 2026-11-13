@@ -74,6 +74,16 @@ describe("network commands (demo)", () => {
     expect((await ok(engine.execute<M.Network>("network.get"))).id).toBe(LAKE);
   });
 
+  it("network.get counts.devices equals device.list summary.total, aged-out devices left out", async () => {
+    const { engine } = demoEngine();
+    for (const networkId of [MAPLE, LAKE, MOM]) {
+      const net = await ok(engine.execute<M.Network>("network.get", { networkId }));
+      const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId }));
+      expect(net.counts.devices).toBe(devices.summary.total);
+    }
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: MAPLE }))).counts.devices).toBe(38);
+  });
+
   it("network.get, health and permissions return the model", async () => {
     const { engine } = demoEngine();
     const net = await ok(engine.execute<M.Network>("network.get", { networkId: MOM }));
@@ -189,9 +199,22 @@ describe("network commands (fake eero server)", () => {
       connectionMode: "nat",
       gatewayUptimeSec: 7 * 86_400,
       lastReboot: "2026-11-05T03:00:00.000Z",
-      counts: { eeros: 1, devices: 0, profiles: 0 },
+      // eero's clients.count is 0 (nothing connected); the count is every known device.
+      counts: { eeros: 1, devices: 2, profiles: 0 },
     });
     expect(net.capabilities).toMatchObject({ device_blacklist: true, thread_network: false });
+  });
+
+  it("network.get counts.devices equals device.list summary.total, blocklist-only devices included", async () => {
+    const { engine, fake } = fakeEngine();
+    fake.state.networks.get("100001")?.blacklist.push("0a:1b:2c:00:0f:ff");
+    for (const networkId of ["100001", "100002"]) {
+      const net = await ok(engine.execute<M.Network>("network.get", { networkId }));
+      const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId }));
+      expect(net.counts.devices).toBe(devices.summary.total);
+    }
+    // Maple: 8 known (7 connected, which is eero's clients.count) plus one blocklist-only MAC.
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).counts.devices).toBe(9);
   });
 
   it("network.health derives eero status and weak links from GET {net}", async () => {
