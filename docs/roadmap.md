@@ -15,7 +15,7 @@ the format follows the `milestone-plan` skill. The design lives in
 
 | Milestone | Goal | Status |
 |---|---|---|
-| M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ready ([milestone](https://github.com/pkkid/mesh-ui/milestone/1)) |
+| M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | later |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | later |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
@@ -186,7 +186,7 @@ anyone), `package.json` and `pnpm-lock.yaml` (small edits by anyone).
 - scope: The Devices page from mockup 05, read-only: summary strip, search, network and status filters, group by and sort, grouped table with current rates (via `device.rates.refresh` polling), offline and blocked groups. Selection and bulk actions are shown but disabled until M4. Row click goes to a `ComingSoon` device detail until M2.
 - done when: matches the mockup in demo and fake modes in light and dark (screenshots in the PR); filters and sort run through `device.list` params, not renderer logic.
 
-### M1.R Review ☐
+### M1.R Review ✅
 - issue: [#16](https://github.com/pkkid/mesh-ui/issues/16)
 - owner: maintainer
 - after: M1.1, M1.2, M1.3, M1.4, M1.5, M1.6, M1.7, M1.8, M1.9, M1.10, M1.11, M1.12, M1.13, M1.14, M1.15
