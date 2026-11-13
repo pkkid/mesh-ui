@@ -155,6 +155,8 @@ export const AREA_NAMES: readonly AreaName[] = [
 
 export interface Backend extends BackendAreas {
   readonly kind: M.BackendKind;
+  /** True when the eero backend talks to the local fake eero server (an injected origin). Unset for live and demo. */
+  readonly fake?: true;
 }
 
 /**

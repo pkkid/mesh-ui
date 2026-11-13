@@ -414,7 +414,7 @@ bridge mode.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `app.info` | About | `{}` | q | none | `AppInfo`: version, Electron, OS, arch, backend, session storage, update status, config dir. |
+| `app.info` | About | `{}` | q | none | `AppInfo`: version, Electron, OS, arch, backend, `fakeServer` (true only against the local fake eero server), session storage, update status, config dir. |
 | `app.settings.get` | App settings | `{}` | q | none | `AppSettings` from `settings.json`. |
 | `app.settings.set` | App settings | `Partial<AppSettings>` | w | none | User-Agent override, plan speed, desktop notifications, open on launch. |
 | `app.cli.install` | Install command line tool | `{}` | w | none | macOS symlink into `/usr/local/bin`, AppImage `~/.local/bin`. On Windows, deb and rpm it reports where the installer put it. |
