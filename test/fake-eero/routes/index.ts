@@ -13,4 +13,5 @@ export { routes as eeros } from "./eeros";
 export { routes as events } from "./events";
 export { routes as network } from "./network";
 export { routes as profiles } from "./profiles";
+export { routes as updates } from "./updates";
 export { routes as usage } from "./usage";
