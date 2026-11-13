@@ -94,6 +94,7 @@ export const page = (load: () => Promise<Record<string, unknown>>, name: string)
 // Built pages, one per line, e.g.
 //   overview: page(() => import("~/features/overview/OverviewView"), "OverviewView"),
 export const PAGES: Partial<Record<RouteId, Page>> = {
+  overview: page(() => import("~/features/overview/OverviewView"), "OverviewView"),
   account: page(() => import("~/features/settings/SettingsView"), "AccountPlaceholder"),
   devices: page(() => import("~/features/devices/DevicesPage"), "DevicesPage"),
   ...(import.meta.env.DEV ? { "dev-charts": page(() => import("~/components/charts/ChartGallery"), "ChartGallery") } : {}),
