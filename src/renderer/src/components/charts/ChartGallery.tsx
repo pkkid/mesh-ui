@@ -1,15 +1,21 @@
 /**
- * Dev-only gallery of every chart in the kit (plus the QR block and week
- * timeline), with invented data, so they can be checked in light and dark (the topbar toggle switches appearance).
+ * Dev-only gallery of every chart in the kit (plus the QR block, week
+ * timeline and the write kit: toasts, confirms, sheet, gated buttons), with invented data, so they can be checked in light and dark (the topbar toggle switches appearance).
  * Registered in app/routes.ts only when import.meta.env.DEV is true, at
  * #/dev/charts. Not linked from the sidebar.
  */
-import { BookOpenCheck, Moon, Printer } from "lucide-react";
+import { BookOpenCheck, Copy, Moon, Pencil, Printer, RotateCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { formatBytes, formatMbps } from "../../../../core/format";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { ConfirmDialog, InlineConfirm } from "~/components/ui/confirm";
+import { Input } from "~/components/ui/input";
+import { GatedButton } from "~/components/ui/page";
+import { Sheet, SheetField } from "~/components/ui/sheet";
+import { type Toast, ToastCard, toast } from "~/components/ui/toast";
+import { copyText } from "~/lib/clipboard";
 import { QrBlock } from "~/components/ui/qr";
 import { Segmented } from "~/components/ui/segmented";
 import { WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
@@ -97,6 +103,8 @@ export function ChartGallery() {
             ]}
           />
         </header>
+
+        <WriteKit />
 
         <Block title="Area chart, fixed max" note="Speed tests scaled to a 1,200 Mbps plan, not to the data">
           <AreaChart
@@ -305,6 +313,113 @@ export function ChartGallery() {
           </Block>
         </div>
     </div>
+  );
+}
+
+const SAMPLE_TOASTS: Toast[] = [
+  { id: -1, kind: "success", title: "Paused Leo", action: { label: "Undo", run: () => {} } },
+  { id: -2, kind: "progress", title: "Restarting Maple Street", detail: "About 2 to 3 minutes" },
+  { id: -3, kind: "error", title: "Couldn't rename Office", detail: "eero did not answer.", action: { label: "Retry", run: () => {} } },
+];
+
+/** The write kit (app/useWrite.ts): every piece with invented copy. Nothing here runs a command. */
+function WriteKit() {
+  const [dialog, setDialog] = useState<"restart" | "delete" | null>(null);
+  const [sheet, setSheet] = useState(false);
+  const [name, setName] = useState("Office");
+  const nameError = name.trim() === "" ? "Name the eero." : name.length > 32 ? "At most 32 characters." : undefined;
+
+  return (
+    <Section title="Write kit" subtitle="Toasts, confirms, the edit sheet and gated controls">
+      <Card padded className="flex flex-col gap-5">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="flex flex-col gap-2" data-gallery="toasts">
+            <div className="text-muted-foreground text-xs">Toasts: success with Undo, progress, error with Retry</div>
+            {SAMPLE_TOASTS.map((t) => (
+              <ToastCard key={t.id} t={t} onDismiss={() => {}} />
+            ))}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button size="xs" variant="outline" onClick={() => toast.success("Paused Leo", { action: { label: "Undo", run: () => toast.success("Undone") } })}>
+                Show success
+              </Button>
+              <Button size="xs" variant="outline" onClick={() => toast.progress("Restarting Maple Street", { detail: "About 2 to 3 minutes" })}>
+                Show progress
+              </Button>
+              <Button size="xs" variant="outline" onClick={() => toast.error("Couldn't rename Office", { detail: "eero did not answer." })}>
+                Show error
+              </Button>
+              <Button size="xs" variant="outline" onClick={() => void copyText("sunny-otter-42", { toast: "Copied password" })}>
+                <Copy />
+                Copy
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="text-muted-foreground text-xs">Inline confirm (disruptive), reading the needs_confirm message</div>
+            <InlineConfirm title="Restart Office?" confirmLabel="Restart" onConfirm={() => {}} onCancel={() => {}}>
+              Devices on it reconnect in about a minute.
+            </InlineConfirm>
+            <div className="pt-2 text-muted-foreground text-xs">Gated controls: allowed, no permission, bridge mode, capability</div>
+            <div className="flex flex-wrap gap-2">
+              <GatedButton size="xs" variant="outline" gate={{ allowed: true, reason: null }}>
+                Rename
+              </GatedButton>
+              <GatedButton size="xs" variant="outline" gate={{ allowed: false, reason: "Owner only" }}>
+                Restart
+              </GatedButton>
+              <GatedButton size="xs" variant="outline" gate={{ allowed: false, reason: "Off in bridge mode" }}>
+                Pause
+              </GatedButton>
+              <GatedButton size="xs" variant="outline" gate={{ allowed: false, reason: "Not available on this network" }}>
+                Nightlight
+              </GatedButton>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 border-t pt-4">
+          <Button size="sm" variant="outline" data-gallery="open-dialog" onClick={() => setDialog("restart")}>
+            <RotateCw />
+            Confirm dialog
+          </Button>
+          <Button size="sm" variant="outline" data-gallery="open-destructive" onClick={() => setDialog("delete")}>
+            <Trash2 />
+            Type-the-name dialog
+          </Button>
+          <Button size="sm" variant="outline" data-gallery="open-sheet" onClick={() => setSheet(true)}>
+            <Pencil />
+            Edit sheet
+          </Button>
+        </div>
+      </Card>
+
+      <ConfirmDialog
+        ask={
+          dialog === "restart"
+            ? { title: "Restart Maple Street?", message: "Everyone loses internet for about 2 to 3 minutes, including any calls in progress.", confirmLabel: "Yes, restart network" }
+            : dialog === "delete"
+              ? { title: "Delete Mia?", message: "Delete profile: this cannot be undone. Her 4 devices move to Unassigned.", confirmLabel: "Delete profile", typeToConfirm: "Mia" }
+              : null
+        }
+        onAnswer={() => setDialog(null)}
+      />
+      <Sheet
+        open={sheet}
+        onClose={() => {
+          setSheet(false);
+          setName("Office");
+        }}
+        icon={<Pencil />}
+        title="Rename eero"
+        subtitle="Office · shown in the app and the eero app"
+        dirty={name !== "Office"}
+        valid={nameError === undefined}
+        onSave={async () => ({ ok: false })}
+      >
+        <SheetField label="Name" htmlFor="gallery-eero-name" error={nameError} helper={`${name.length} / 32`}>
+          <Input id="gallery-eero-name" value={name} onChange={(e) => setName(e.target.value)} />
+        </SheetField>
+      </Sheet>
+    </Section>
   );
 }
 
