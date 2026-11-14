@@ -24,8 +24,8 @@ Topbar: title "Internet", subtitle freshness, no page actions.
    - **Internet provider** (globe icon, "From geo IP lookup", status "ISP
      up"): ISP, Organisation, ASN (mono), Location, Plan ("Fiber Gig 1.2
      Gbps" with a "set by you" badge).
-   - **Addressing** (network icon, "WAN lease and DNS in use", "NAT mode"
-     badge): WAN type ("DHCP · lease renews in 9h"), Public IPv4, Public IPv6,
+   - **Addressing** (network icon, "WAN address and DNS in use", "NAT mode"
+     badge): WAN type ("DHCP"; eero sends no lease time), Public IPv4, Public IPv6,
      IPv6 prefix, ISP gateway, DNS in use (with "ISP auto" badge), Double NAT
      ("Not detected" in success colour).
 3. **Speed test history**. Sub: "Last 7 days · 15 tests · automatic test
@@ -65,7 +65,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | --- | --- | --- |
 | Hero verdict, status, uptime, plan line | `internet.get` (connection, uptime, verdict) + `speedtest.history {limit: 1}` | 10 min, every 5 s during a test |
 | Gauges | `speedtest.history {limit: 1}` | As above |
-| Connection cards (ISP, ASN, location, WAN type, lease, IPv4, IPv6, prefix, ISP gateway, DNS in use, double NAT, NAT or bridge mode) | `internet.get` | 10 min |
+| Connection cards (ISP, ASN, location, WAN type, IPv4, IPv6, prefix, ISP gateway, DNS in use, double NAT, NAT or bridge mode) | `internet.get` | 10 min |
 | Gateway sub line | `eero.list` (gateway eero, WAN port speed) | 60 s |
 | Plan | `internet.get` (`plan` from `settings.json`) | On change |
 | Speed test chart, averages, count, table | `speedtest.history {range: "week"}` (or `"day"`) | 10 min, and after a test |
