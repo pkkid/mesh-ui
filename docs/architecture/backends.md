@@ -110,8 +110,8 @@ M5 writes (contracts from M5.1; each wave 2 story builds its eero side):
   resolves devices to MACs and addresses and validates ranges first.
 - `updates`: `install`, `setPreferredHour`.
 - `admins`: `createInvite` (`InviteCreated` with the invite url),
-  `cancelInvite`, `setNickname` (no member nickname endpoint is known),
-  `remove`, `transfer`.
+  `cancelInvite`, `remove`, `transfer` (no member nickname endpoint exists,
+  so there is no `setNickname`; M5.6).
 - `eero`: `portAction` (returns `EeroPorts`), `remove`, `placementTest`.
 - `diagnostics`: `run`, plus the `/2.4/` reads `coverageScan` and
   `upgradeReport`, listed with the writes so their eero side can land with

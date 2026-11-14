@@ -106,6 +106,10 @@ export type FakeNetwork = {
   members: RawMember[];
   /** `GET {net}/invites`; null: the route answers 403 (an admin cannot read them). */
   invites: RawInvite[] | null;
+  /** Set by `POST {net}/updates`: when (state.now()) the install finishes and `GET {net}/updates` reports it done. */
+  installUntil?: number | null;
+  /** The pending ownership transfer from `POST {net}/transfer` (`GET {net}/transfer` in the clients). */
+  transfer?: { recipient_name: string; recipient_email_address: string | null; recipient_phone_number: string | null; transfer_date: string } | null;
 };
 
 export type FakeState = {
@@ -419,6 +423,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       sqm: { capable: true },
       wpa3: { capable: true },
       historical_usage: { capable: true },
+      ownership_transfer: { capable: true },
     },
     resources: {
       devices: `${netUrl}/devices`,
@@ -429,6 +434,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       speedtest: `${netUrl}/speedtest`,
       guestnetwork: `${netUrl}/guestnetwork`,
       updates: `${netUrl}/updates`,
+      transfer: `${netUrl}/transfer`,
       device_blacklist: `${netUrl}/blacklist`,
       burst_reporters: `${netUrl}/burst_reporters`,
       routing: `${netUrl}/routing`,
@@ -446,10 +452,11 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     network,
     permissions: {
       role: seed.role,
+      // The admin keys as the real permissions name them (M5.6 capture).
       permissions:
         seed.role === "owner"
-          ? { eeros: full, network: full, "network.transfer": full, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": full }
-          : { eeros: full, network: full, "network.transfer": readOnly, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": readOnly },
+          ? { eeros: full, network: full, "network.transfer": full, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": full, "network.admin_invites": full, "network.standard_admins": full, "network.ownership_transfer": full }
+          : { eeros: full, network: full, "network.transfer": readOnly, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": readOnly, "network.admin_invites": readOnly, "network.standard_admins": readOnly, "network.ownership_transfer": readOnly },
     },
     eeros,
     devices,

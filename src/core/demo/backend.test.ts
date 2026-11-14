@@ -1022,7 +1022,7 @@ describe("writes (M5)", () => {
     await expect(b.updates.install(MAPLE)).rejects.toBeInstanceOf(BackendError);
   });
 
-  it("admins: invite, cancel, nickname, remove, and transfer", async () => {
+  it("admins: invite, cancel, remove, and transfer", async () => {
     const b = demo();
     const created = await b.admins.createInvite(MAPLE, { nickname: "Robin", email: null });
     expect(created.inviteUrl).toMatch(/^https:\/\/invite\.example\.com\//);
@@ -1030,7 +1030,6 @@ describe("writes (M5)", () => {
     await b.admins.cancelInvite(MAPLE, created.invite.id);
     expect((await b.admins.list(MAPLE)).invites.map((x) => x.id)).not.toContain(created.invite.id);
     const admin = (await b.admins.list(MAPLE)).admins.find((a) => a.role === "admin") as M.Admin;
-    expect((await b.admins.setNickname(MAPLE, admin.id, "J")).name).toBe("J");
     const owner = (await b.admins.list(MAPLE)).admins.find((a) => a.role === "owner") as M.Admin;
     await expect(b.admins.remove(MAPLE, owner.id)).rejects.toBeInstanceOf(BackendError);
     await b.admins.remove(MAPLE, admin.id);

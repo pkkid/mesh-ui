@@ -111,7 +111,8 @@ export function commandUnavailable(
   permissions: Permissions | null | undefined,
   network: Network | null | undefined,
 ): string | null {
-  if (info.effect === "destructive" && permissions && permissions.role !== "owner") return "Owner only";
+  // An unknown role (null: the real network sent none, M5.6 capture) is not treated as admin; the permission gate still applies.
+  if (info.effect === "destructive" && permissions?.role === "admin") return "Owner only";
   const gate = commandGate(info);
   return gate ? gateFor(gate, permissions ?? undefined, network ?? undefined).reason : null;
 }

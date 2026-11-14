@@ -184,6 +184,9 @@ const OWNER: M.Permissions = {
     "network.proxied_nodes": readUpdate,
     "network.smart_home_hub": full,
     "amazon.account": full,
+    // As the real permissions name them (M5.6 capture): removing admins and transferring.
+    "network.standard_admins": { read: true, create: false, update: false, delete: true },
+    "network.ownership_transfer": { read: true, create: true, update: false, delete: true },
   },
 };
 
@@ -202,6 +205,8 @@ const ADMIN: M.Permissions = {
     "network.proxied_nodes": readUpdate,
     "network.smart_home_hub": readUpdate,
     "amazon.account": readOnly,
+    "network.standard_admins": readOnly,
+    "network.ownership_transfer": { read: false, create: false, update: false, delete: false },
   },
 };
 

@@ -3,15 +3,18 @@
  * days, with eero's 3-hour update window drawn over the chart, the selected
  * window's average, the busiest hour, and whether the choice is the
  * quietest window. Figures come from `usage.quiet_hours` (built in core).
- * Changing the hour is "Coming soon" until `updates.hour.set` lands.
+ * The header select sets the hour with `updates.hour.set` (Undo puts the
+ * old one back), and "Use quietest" picks the quietest window core found.
  * docs/ux/pages/updates-admins.md (Layout 3).
  */
 import { CircleCheck } from "lucide-react";
 
 import { useQuery } from "~/app/useCommand";
+import { useWrite } from "~/app/useWrite";
 import { BarChart } from "~/components/charts/BarChart";
+import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { SectionError, useGate } from "~/components/ui/page";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatBytes } from "../../../../core/format";
@@ -24,7 +27,15 @@ const clockLabel = (h: number): string => hourLabel(h).replace(" ", ":00 ");
 /** Plot left edge: the Y label gutter (w-14) plus the gap-2 beside it. */
 const GUTTER = "4rem";
 
-export function QuietHours({ preferredHour }: { preferredHour: number | null | undefined }) {
+const selectClass =
+  "h-7 rounded-[var(--control-radius)] border border-input bg-card px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60";
+
+/** "2:00 AM to 5:00 AM", the window eero installs in. */
+export const windowLabel = (start: number, len = 3): string => `${clockLabel(start)} to ${clockLabel((start + len) % 24)}`;
+
+export function QuietHours({ preferredHour, canChange }: { preferredHour: number | null | undefined; canChange: boolean }) {
+  const gate = useGate("updates.hour.set");
+  const setHour = useWrite<{ hour: number }>("updates.hour.set");
   const start = preferredHour ?? undefined;
   const q = useQuery<QuietHoursData>("usage.quiet_hours", { range: "week", ...(start !== undefined ? { start } : {}) }, { enabled: preferredHour !== undefined });
   const d = q.data;
@@ -35,15 +46,47 @@ export function QuietHours({ preferredHour }: { preferredHour: number | null | u
   const isQuietest = d?.quietest && start !== undefined && d.quietest.start === start;
   // The window as one or two bands (it can wrap past midnight).
   const bands = start === undefined ? [] : start + len <= 24 ? [[start, len]] : [[start, 24 - start], [0, start + len - 24]];
+  const editable = canChange && gate.allowed && preferredHour !== undefined;
+
+  const choose = (hour: number) => {
+    if (hour === start) return;
+    const old = start;
+    void setHour.run(
+      { hour },
+      {
+        success: `Updates install from ${windowLabel(hour, len)}`,
+        undo: old === undefined ? undefined : { id: "updates.hour.set", params: { hour: old }, success: `Updates install from ${windowLabel(old, len)}` },
+        failure: "Couldn't change the update time",
+      },
+    );
+  };
 
   return (
     <Section
       title="Preferred update time"
       subtitle="Average data per hour, last 7 days"
       tools={
-        <ComingSoonButton size="xs" variant="outline">
-          {start === undefined ? "Not set" : `${clockLabel(start)} to ${clockLabel(start + len)}`}
-        </ComingSoonButton>
+        <span className="inline-flex items-center gap-2" title={canChange && !gate.allowed ? (gate.reason ?? undefined) : undefined}>
+          {editable && d?.quietest && d.quietest.start !== start && (
+            <Button size="xs" variant="ghost" disabled={setHour.running} onClick={() => d.quietest && choose(d.quietest.start)}>
+              Use quietest
+            </Button>
+          )}
+          <select
+            aria-label="Preferred update time"
+            className={selectClass}
+            value={start ?? ""}
+            disabled={!editable || setHour.running}
+            onChange={(e) => choose(Number(e.target.value))}
+          >
+            {start === undefined && <option value="">Not set</option>}
+            {Array.from({ length: 24 }, (_, h) => (
+              <option key={h} value={h}>
+                {windowLabel(h, len)}
+              </option>
+            ))}
+          </select>
+        </span>
       }
     >
       {q.error && !d ? (
@@ -92,7 +135,7 @@ export function QuietHours({ preferredHour }: { preferredHour: number | null | u
                   </>
                 ) : (
                   <>
-                    Quietest window <b className="font-medium text-foreground">{`${clockLabel(d.quietest.start)} to ${clockLabel(d.quietest.start + len)}`}</b>
+                    Quietest window <b className="font-medium text-foreground">{windowLabel(d.quietest.start, len)}</b>
                   </>
                 )}
               </span>

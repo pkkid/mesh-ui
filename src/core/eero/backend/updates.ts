@@ -2,7 +2,9 @@
  * eero backend, updates area: `GET {net}/updates` plus `GET {net}/eeros` for
  * the per-eero versions, which the updates object does not carry, and the
  * release notes from `updates.manifest_resource`, an absolute URL outside
- * the eero API that the client fetches without the session.
+ * the eero API that the client fetches without the session. Writes:
+ * `POST {net}/updates` (empty JSON, installs now) and
+ * `POST {net}/updates/preferred_update_hour` JSON `{preferred_update_hour}`.
  */
 
 import type * as M from "../../model";
@@ -79,8 +81,18 @@ export const updates: EeroArea<"updates"> = (ctx) => {
     return { raw, updates: mapUpdates(raw, asList<RawEeroFull>(eeros, "eeros").map((e) => mapEero(e))) };
   };
 
+  const updatesPath = (id: string) => links.get(`net:${id}.updates`, `${base(id)}/updates`);
+
   return {
     get: async (id) => (await read(id)).updates,
+    async install(id) {
+      // The clients send the literal empty-JSON body.
+      await ctx.client.request<unknown>({ method: "POST", path: updatesPath(id), encoding: "empty" });
+    },
+    async setPreferredHour(id, hour) {
+      await ctx.client.request<unknown>({ method: "POST", path: `${updatesPath(id)}/preferred_update_hour`, body: { preferred_update_hour: hour }, encoding: "json" });
+      return (await read(id)).updates;
+    },
     async notes(id) {
       const { raw, updates: u } = await read(id);
       const manifest = text(raw?.manifest_resource);
