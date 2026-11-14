@@ -892,12 +892,16 @@ describe("write contracts (M4)", () => {
 
   it("the eero backend answers 'not available yet' for each write it has not built", async () => {
     const secrets = { load: async () => "t", save: async () => "memory" as const, clear: async () => {}, storage: async () => "memory" as const };
-    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", fetch: (async () => new Response("{}", { status: 500 })) as typeof fetch });
+    let calls = 0;
+    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", fetch: (async () => (calls++, new Response("{}", { status: 500 }))) as typeof fetch });
     for (const [area, methods] of Object.entries(WRITE_METHODS)) {
       for (const m of methods) {
         const fn = (eero as unknown as Record<string, Record<string, (...a: unknown[]) => Promise<unknown>>>)[area]?.[m];
         if (!fn) throw new Error(`${area}.${m} missing`);
-        await expect(fn("1", "2", "3"), `${area}.${m}`).rejects.toThrow(`${area}.${m} is not available in the eero backend yet.`);
+        const before = calls;
+        const err = await fn("1", "2", "3").then(() => null, (e: unknown) => e);
+        // A write that reached eero is built (its story tests it); the rest say "not available yet".
+        if (calls === before) expect(String(err), `${area}.${m}`).toContain(`${area}.${m} is not available in the eero backend yet.`);
       }
     }
   });

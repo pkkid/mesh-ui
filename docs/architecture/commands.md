@@ -430,7 +430,7 @@ and eero alerts first and sends at most 5 per poll.
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `notifications.list` | Notifications | `{ cursor?: string }` | q | `GET {net}/notifications_history?limit=50&timestamp=`, `GET {net}/notifications/has_unread` | `NotificationPage`: newest first, `unread` from `has_unread`, `nextCursor` is the `created_at` of the last row of a full page. Only the first page is cached. The bell and desktop alerts, polled every 60 s. |
-| `notifications.mark_read` | Mark all read | `{}` | w | `POST {net}/notifications/mark_read` | Not built yet; the bell shows it disabled ("Coming soon"). |
+| `notifications.mark_read` | Mark all read | `{}` | w | `POST {net}/notifications/mark_read` (empty-JSON body) | Network-wide: clears `has_unread`, so the next `notifications.list` has `unread: false` and every row read. Returns `{ unread: false }`. Invalidates `notifications`. No undo (eero cannot mark anything unread). The bell footer and the Activity event stream. |
 | `notifications.settings.get` | Notification settings | `{}` | q | `GET {net}/notifications`, push from `GET /2.2/account` | `NotificationSettings`: eero keys as sent minus the eero Plus ones (`premium.*`, `backup.*`), the account's push choices, and desktop choices from `settings.json` `desktopNotifications` over the default `{ enabled: true }`. Desktop alerts are off when `enabled` is false. |
 | `notifications.settings.set` | Notification settings | `{ eero?: Record<string, boolean>, desktop?: Record<string, boolean> }` | w | `PUT {net}/notifications` with the full merged map | Not built yet. Keys contain dots (`device.new`); sent as-is. Desktop choices only touch `settings.json`. |
 

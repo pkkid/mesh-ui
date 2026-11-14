@@ -2,13 +2,16 @@
  * The bell popover's content (docs/ux/overview.md#notifications-bell): up to
  * 8 notifications newest first, each with an icon, its title and body on one
  * line each, a relative time and an unread marker, then the footer. "Mark all
- * read" is not built yet, so it is shown disabled.
+ * read" (`notifications.mark_read`) clears eero's network-wide unread flag;
+ * Activity's event stream uses the same control (MarkAllReadButton).
  */
 import { Bell, Globe, MonitorSmartphone, Router, Settings, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { Link } from "~/app/router";
 import { routeById } from "~/app/routes";
+import { useWrite } from "~/app/useWrite";
+import { GatedButton, useGate } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import { unreadCount } from "../../../../core/commands/notifications";
 import { formatRelative } from "../../../../core/format";
@@ -16,6 +19,34 @@ import type { Notification, NotificationPage } from "../../../../core/model";
 import { notificationPath } from "./useDesktopAlerts";
 
 export const MAX_ITEMS = 8;
+
+/**
+ * Mark all read for one network. Not undoable (eero cannot mark anything
+ * unread), so the toast has no Undo. Gated like the palette gates it
+ * (`network` update permission); `idle` when nothing is unread.
+ */
+export function useMarkAllRead(networkId: string | null, page: NotificationPage | undefined) {
+  const write = useWrite("notifications.mark_read", { success: "Marked all read" });
+  const gate = useGate({ area: "network", op: "update" });
+  const idle = !networkId || page?.unread !== true;
+  return {
+    gate,
+    running: write.running,
+    disabled: idle || write.running,
+    title: idle ? "Nothing unread" : undefined,
+    run: () => (networkId ? write.run({ networkId }) : undefined),
+  };
+}
+
+/** The Activity event stream's Mark all read, beside its Unread marker. */
+export function MarkAllReadButton({ networkId, page }: { networkId: string | null; page: NotificationPage | undefined }) {
+  const mark = useMarkAllRead(networkId, page);
+  return (
+    <GatedButton gate={mark.gate} size="xs" variant="outline" disabled={mark.disabled} title={mark.title} onClick={() => void mark.run()}>
+      Mark all read
+    </GatedButton>
+  );
+}
 
 const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   device: MonitorSmartphone,
@@ -47,9 +78,10 @@ function Item({ n, now, onOpen }: { n: Notification; now: number; onOpen: () => 
   );
 }
 
-type Props = { page: NotificationPage | undefined; error: boolean; onClose: () => void };
+type Props = { networkId: string | null; page: NotificationPage | undefined; error: boolean; onClose: () => void };
 
-export function NotificationList({ page, error, onClose }: Props) {
+export function NotificationList({ networkId, page, error, onClose }: Props) {
+  const mark = useMarkAllRead(networkId, page);
   const now = Date.now();
   const items = page?.notifications.slice(0, MAX_ITEMS) ?? [];
   const count = page ? unreadCount(page) : 0;
@@ -71,14 +103,16 @@ export function NotificationList({ page, error, onClose }: Props) {
         )}
       </div>
       <div className="mt-1 flex items-center gap-1 border-t px-1 pt-1">
-        <button
-          type="button"
-          disabled
-          title="Coming soon"
-          className="rounded-lg px-2 py-1.5 text-muted-foreground/60 text-xs disabled:cursor-not-allowed"
-        >
-          Mark all read
-        </button>
+        <span title={mark.gate.reason ?? mark.title} className="inline-flex">
+          <button
+            type="button"
+            disabled={mark.disabled || !mark.gate.allowed}
+            onClick={() => void mark.run()}
+            className="rounded-lg px-2 py-1.5 text-muted-foreground text-xs hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:text-muted-foreground/60"
+          >
+            Mark all read
+          </button>
+        </span>
         <Link
           to={routeById("activity").path}
           onClick={onClose}
