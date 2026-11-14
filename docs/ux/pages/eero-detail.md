@@ -40,9 +40,11 @@ eeros stays active. `[` and `]` move to the previous and next eero.
    - **Ethernet ports**. Sub "2 x 5 GbE, numbered left to right". A tile per
      port: name, status (Up, Empty), a jack drawing with link lights,
      negotiated speed ("2.5 Gbps", "of 5 Gbps supported", or `-` "no
-     carrier"), and what is attached ("Alex's MacBook Pro", "Nothing plugged
-     in"). Under the tiles, port MACs (mono), then a port action button with
-     its consequence ("Disable port 1", "Disconnects the wired device").
+     carrier"), and everything attached, one name per line ("Alex's MacBook
+     Pro"; a switch lists each device behind it; "Nothing plugged in";
+     "Turned off" for a disabled port). Under the tiles, port MACs (mono),
+     then a button per action eero lists for a port, with its consequence
+     ("Disable port 1", "Synology NAS loses its wired connection").
 4. Settings cards, a 3-column grid:
    - **Location** ("Name shown everywhere for this eero"): name input with a
      pencil, and preset chips (Office, Den, Bedroom, Kitchen, Basement,
@@ -85,7 +87,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Data usage chart | `usage.get {scope: "eero", id: eero, range}` | 5 min |
 | Radios (channel, width, tx power, clients, utilisation, auto channel) | `eero.get` | 60 s |
 | Connected devices | `device.list {eero}` | 30 s |
-| Ethernet ports (status, speeds, attached device, MACs, allowed actions) | `eero.ports.get {eero}` | 60 s |
+| Ethernet ports (status, speeds, attached devices, MACs, allowed actions) | `eero.ports.get {eero}` | 60 s |
 | Location presets | Static list in core (eero's room names) | - |
 | Status light | `eero.get` (`led.on`, `led.brightness`) | 60 s |
 | Nightlight | `eero.get` (`nightlight` support and settings) | 60 s |
@@ -100,7 +102,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Day / Week | - (re-queries `usage.get`) | - | No | Chart switches range |
 | Upstream or downstream eero in Uplink | - | - | No | That eero's detail |
 | Device row, All devices → | - | - | No | Device detail; Devices filtered to this eero |
-| Disable port N / Enable port N | `eero.port.action {eero, port, action}` | disruptive | Yes, inline ("Alex's MacBook Pro loses its wired connection.") | Port tile shows Disabled; toast with Undo (opposite action, also confirmed) |
+| Disable port N / Enable port N, Restart PoE, PoE and data on or off (whichever the port lists) | `eero.port.action {eero, port, action}` | disruptive | Yes, inline, in place of the action buttons (the engine's message names everything plugged in: "Turns off port 3 on Living Room. Living Room TV and Hue Bridge lose their wired connection.") | Port tile shows Disabled and "Turned off"; toast "Port 3 disabled on Living Room" with Undo (opposite action, also confirmed) |
 | Location input (Enter or blur), preset chip, + Custom | `eero.rename {eero, location}` | write | No | Name updates everywhere; toast with Undo |
 | Status light switch | `eero.led.set {eero, on}` | write | No | LED bar in hero follows |
 | Brightness slider (on release) | `eero.led.set {eero, brightness}` | write | No | Same |
@@ -110,7 +112,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Copy (IP addresses) | - (clipboard of the shown values) | - | No | Toast "IP addresses copied" |
 | Blink | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar pulses |
 | Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, inline (the engine's message: the gateway outage, or the eeros downstream that drop too) | Status Updating, progress toast "Restarting Office" with "Back in about 1 minute", refreshing every 5 s until the restarted eeros are back (see [eeros.md](eeros.md#built-so-far-m25-m48)) |
-| Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, inline | Toast "Office removed from Maple Street"; navigates to eeros |
+| Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, inline, type the eero's name (the engine's message names the eeros that lose their uplink) | Toast "Office removed from Maple Street"; navigates to eeros |
 
 ## States
 
@@ -136,7 +138,9 @@ eeros stays active. `[` and `]` move to the previous and next eero.
   absent. Placement and utilisation as on [eeros.md](eeros.md).
 - **Gateway.** Uplink shows Internet and the WAN link. Restart copy reads
   "Everyone on Maple Street loses internet for about 2 to 3 minutes". Remove is
-  not offered for the gateway (replace it with the mobile app instead).
+  not offered for the gateway while other eeros remain (replace it with the
+  mobile app instead); core refuses it too. A gateway that is the only eero
+  can be removed, which takes the network offline.
 - **Bridge mode.** No change on this page.
 
 ## Notes
@@ -163,9 +167,26 @@ eeros stays active. `[` and `]` move to the previous and next eero.
   toast with Undo (the previous value), except Blink and Restart. Writes
   dim with the reason when the eero is offline ("Office is offline") or
   restarting, or when `network.permissions` denies `eeros.update`; the
-  status light also needs the network's `led_action` capability. Port
-  actions and Remove stay "Coming soon" (M5). The presets stay in the page:
-  they are labels, not a rule core needs.
+  status light also needs the network's `led_action` capability. The presets
+  stay in the page: they are labels, not a rule core needs.
+- Built in M5.7: port actions (only the ones a port lists, gated by
+  `eeros.update`, dimmed "Office is offline" while the eero is offline) and
+  Remove (gated by `eeros.delete`, so admins see "Owner only"). Each port
+  tile lists every attachment (`attachments`), linked to its device or eero.
+  A down port reads `port_status` `DISCONNECTED`; a disabled one has not been
+  captured, so the fake server and mapper guess `DISABLED`.
+- MANUAL: restart PoE on a port with nothing critical | eero detail of an
+  eero whose port lists Restart PoE, Ethernet ports, Restart PoE on port N,
+  confirm | the device on that port power cycles and comes back; the eero app
+  agrees | risk: that port's device drops for a moment.
+- MANUAL: disable a port with nothing critical, then Undo | eero detail,
+  Ethernet ports, Disable port N, confirm, then Undo in the toast and confirm
+  | the port shows Disabled, then Up again; note the real `port_status` of a
+  disabled port | risk: that port's device loses its wired link until Undo.
+- MANUAL: remove an eero only if one is spare and can be re-added with the
+  eero app | eero detail, Remove, type the name, Remove from network | the
+  eero leaves the network and resets | destructive: cannot be undone from
+  Mesh UI; re-adding needs the eero app.
 - Nightlight on a non-Beacon fails `bad_params` in core ("Office has no
   nightlight. Only eero Beacon has one."), before any request. Its write
   shape is from the open source clients (every captured eero has

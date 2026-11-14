@@ -107,7 +107,7 @@ describe("eero.ports.get and eero.firmware.history (demo)", () => {
       expect(await engine.execute(id, { eero: "Office", bogus: 1 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
     }
     expect(await engine.execute("eero.firmware.history", { eero: "Office", limit: 0 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
-    expect(await engine.execute("eero.firmware.history", { eero: "Office", limit: 51 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("eero.firmware.history", { eero: "Office", limit: 201 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
   it("refuses an eero from another network", async () => {
@@ -199,10 +199,15 @@ describe("eero commands (fake eero server)", () => {
       [1, "WAN", "up", 2500, 2500, true, []],
       [2, "Port 2", "up", 1000, 2500, false, ["DISABLE_PORT", "RESTART_POWER"]],
     ]);
-    const tv = r.result.ports[1]?.attached;
+    // Port 2 has a switch: the TV (joined by url) and an unlisted device eero names only.
     const devices = await engine.execute<{ devices: M.Device[] }>("device.list");
     const tvDevice = devices.ok ? devices.result.devices.find((d) => d.name === "Living Room TV") : undefined;
-    expect(tv).toEqual({ deviceId: tvDevice?.id, eeroId: null, name: "Living Room TV" });
+    expect(r.result.ports[1]?.attachments).toEqual([
+      { deviceId: tvDevice?.id, eeroId: null, name: "Living Room TV" },
+      { deviceId: null, eeroId: null, name: "Desk Switch" },
+    ]);
+    expect(r.result.ports[1]?.attached).toEqual({ deviceId: null, eeroId: null, name: "2 devices" });
+    expect(r.result.ports[0]?.attachments).toEqual([]);
     expect(fake.log.map((l) => l.path)).toContain("/2.2/eeros/500001/connections");
   });
 
@@ -231,6 +236,11 @@ describe("eero commands (fake eero server)", () => {
     }
     const r = await engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Upstairs Hall" });
     expect(r.ok && r.result.ports[0]).toMatchObject({ status: "up", speedMbps: 10_000, attached: { deviceId: null, eeroId: "500002", name: "Office" } });
+    // Every attachment is listed, the eero first.
+    expect(r.ok && r.result.ports[0]?.attachments.map((a) => [a.eeroId, a.name])).toEqual([
+      ["500002", "Office"],
+      [null, "Printer"],
+    ]);
   });
 
   it("answers an empty port list for an eero that reports none", async () => {
@@ -337,9 +347,24 @@ describe("eero mapper", () => {
   it("maps odd port rows without throwing", () => {
     const r = mapPorts("1", { ports: { interfaces: [{ interface_number: 2, port_status: "disabled", poe_status: "ENABLED", actions: [{ type: "enable_port" }, { type: "ENABLE_PORT_SECURITY" }, {}] }, { port_status: "DATA_CONNECTED", negotiated_speed: "P1000", connection_status: { type: "MULTIPLE_DEVICES", metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: { url: "/2.2/networks/1/devices/aabbcc001122", display_name: "NAS" } }] } } } }, { interface_number: 3, port_status: "DISCONNECTED", negotiated_speed: "P1000", connection_status: { type: "MULTIPLE_DEVICES", metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: {} }, { type: "CLIENT_DEVICE", metadata: {} }] } } } }] } }, { devices: [], eeros: [] });
     expect(r.ports).toEqual([
-      { number: 2, name: null, status: "disabled", speedMbps: null, supportedMbps: null, isWan: false, poe: "on", mac: null, attached: null, actions: ["ENABLE_PORT"] },
-      { number: 2, name: null, status: "up", speedMbps: 1000, supportedMbps: null, isWan: false, poe: null, mac: null, attached: { deviceId: "aabbcc001122", eeroId: null, name: "NAS" }, actions: [] },
-      { number: 3, name: null, status: "down", speedMbps: null, supportedMbps: null, isWan: false, poe: null, mac: null, attached: { deviceId: null, eeroId: null, name: "2 devices" }, actions: [] },
+      { number: 2, name: null, status: "disabled", speedMbps: null, supportedMbps: null, isWan: false, poe: "on", mac: null, attached: null, attachments: [], actions: ["ENABLE_PORT"] },
+      { number: 2, name: null, status: "up", speedMbps: 1000, supportedMbps: null, isWan: false, poe: null, mac: null, attached: { deviceId: "aabbcc001122", eeroId: null, name: "NAS" }, attachments: [{ deviceId: "aabbcc001122", eeroId: null, name: "NAS" }], actions: [] },
+      {
+        number: 3,
+        name: null,
+        status: "down",
+        speedMbps: null,
+        supportedMbps: null,
+        isWan: false,
+        poe: null,
+        mac: null,
+        attached: { deviceId: null, eeroId: null, name: "2 devices" },
+        attachments: [
+          { deviceId: null, eeroId: null, name: null },
+          { deviceId: null, eeroId: null, name: null },
+        ],
+        actions: [],
+      },
     ]);
     expect(mapPorts("1", null, { devices: [], eeros: [] })).toEqual({ eeroId: "1", ports: [] });
   });
@@ -567,3 +592,180 @@ describe("eero writes (fake eero server)", () => {
   });
 });
 
+
+// ---------------------------------------------------------------------------
+// Port actions and remove (M5.7)
+
+describe("eero.port.action and eero.remove (demo)", () => {
+  it("declare their effects, gates and the topics they invalidate", () => {
+    const info = Object.fromEntries(demoEngine().commands().map((c) => [c.id, c]));
+    expect(info["eero.port.action"]).toMatchObject({ effect: "disruptive", gate: { area: "eeros", op: "update" } });
+    expect(info["eero.remove"]).toMatchObject({ effect: "destructive", gate: { area: "eeros", op: "delete" } });
+    const specs = Object.fromEntries(allCommands().map((c) => [c.id, c]));
+    expect(specs["eero.port.action"]?.invalidates).toEqual(["eero_ports", "eeros", "devices", "network"]);
+    expect(specs["eero.remove"]?.invalidates).toEqual(["eeros", "network", "eero_ports", "devices", "usage"]);
+  });
+
+  it("lists several attachments on one port (a switch) and sums them up", async () => {
+    const r = await ok(demoEngine().execute<M.EeroPorts>("eero.ports.get", { eero: "Living Room" }));
+    const port3 = r.ports.find((p) => p.number === 3);
+    expect(port3?.attachments.map((a) => a.name)).toEqual(["Living Room TV", "Hue Bridge"]);
+    expect(port3?.attached).toEqual({ deviceId: null, eeroId: null, name: "2 devices" });
+    // The fastest link behind the switch is the port's speed.
+    expect(port3).toMatchObject({ status: "up", speedMbps: 1000 });
+    expect(r.ports.find((p) => p.number === 4)).toMatchObject({ status: "down", attached: null, attachments: [] });
+  });
+
+  it("asks before a port action, naming everything plugged in", async () => {
+    const engine = demoEngine();
+    const r = await engine.execute("eero.port.action", { eero: "Living Room", port: 3, action: "DISABLE_PORT" });
+    expect(r).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Turns off port 3 on Living Room. Living Room TV and Hue Bridge lose their wired connection." } });
+    const one = await engine.execute("eero.port.action", { eero: "Office", port: 1, action: "DISABLE_PORT" });
+    expect(one).toMatchObject({ error: { code: "needs_confirm", message: "Turns off port 1 on Office. Office iMac loses its wired connection." } });
+    const empty = await engine.execute("eero.port.action", { eero: "Upstairs Hall", port: 2, action: "RESTART_POWER" });
+    expect(empty).toMatchObject({ error: { code: "needs_confirm", message: "Power-cycles PoE on port 2 on Upstairs Hall. Nothing is plugged in." } });
+    // Nothing changed.
+    expect((await ok(engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Living Room" }))).ports.find((p) => p.number === 3)?.status).toBe("up");
+  });
+
+  it("disables a port with confirm, the next read shows it, and the opposite action undoes it", async () => {
+    const engine = demoEngine();
+    await ok(engine.execute("eero.ports.get", { eero: "Office" }));
+    const r = await ok(engine.execute<M.EeroPorts>("eero.port.action", { eero: "Office", port: 1, action: "DISABLE_PORT", confirm: true }));
+    expect(r.ports[0]).toMatchObject({ number: 1, status: "disabled", attached: null, attachments: [], actions: ["ENABLE_PORT"] });
+    expect(Object.keys(r.ports[0] ?? {})).toEqual(["number", "name", "status", "speedMbps", "supportedMbps", "isWan", "poe", "mac", "attached", "attachments", "actions"]);
+    // eero_ports was invalidated: the cached read shows the change.
+    expect((await ok(engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Office" }))).ports[0]).toMatchObject({ status: "disabled", actions: ["ENABLE_PORT"] });
+    // The action it replaced is no longer allowed.
+    expect(await engine.execute("eero.port.action", { eero: "Office", port: 1, action: "DISABLE_PORT", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    const back = await ok(engine.execute<M.EeroPorts>("eero.port.action", { eero: "Office", port: 1, action: "ENABLE_PORT", confirm: true }));
+    expect(back.ports[0]).toMatchObject({ status: "up", attached: { name: "Office iMac" }, actions: ["DISABLE_PORT"] });
+  });
+
+  it("restarts PoE on a port that lists it, and turns PoE off and on", async () => {
+    const engine = demoEngine();
+    const before = await ok(engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Upstairs Hall" }));
+    expect(before.ports[1]).toMatchObject({ poe: "on", actions: ["DISABLE_PORT", "DISABLE_POE", "RESTART_POWER"] });
+    await ok(engine.execute("eero.port.action", { eero: "Upstairs Hall", port: 2, action: "RESTART_POWER", confirm: true }));
+    const off = await ok(engine.execute<M.EeroPorts>("eero.port.action", { eero: "Upstairs Hall", port: 2, action: "DISABLE_POE", confirm: true }));
+    expect(off.ports[1]).toMatchObject({ poe: "off", actions: ["DISABLE_PORT", "ENABLE_POE", "RESTART_POWER"] });
+  });
+
+  it("refuses actions the port does not list, unknown ports and bad params, without confirm", async () => {
+    const engine = demoEngine();
+    const code = async (params: unknown) => (await engine.execute("eero.port.action", params)) as { ok: boolean; error?: { code: string; message: string } };
+    expect(await code({ eero: "Office", port: 1, action: "RESTART_POWER", confirm: true })).toMatchObject({ error: { code: "bad_params", message: "Port 1 on Office does not allow RESTART_POWER. It allows DISABLE_PORT." } });
+    expect(await code({ eero: "Living Room", port: 1, action: "DISABLE_PORT" })).toMatchObject({ error: { code: "bad_params", message: "Port 1 on Living Room does not allow DISABLE_PORT. eero lists no actions for it." } });
+    expect(await code({ eero: "Office", port: 9, action: "DISABLE_PORT" })).toMatchObject({ error: { code: "bad_params", message: "Office has no port 9. Ports: 1, 2." } });
+    expect(await code({ eero: "Garage", port: 1, action: "DISABLE_PORT" })).toMatchObject({ error: { code: "bad_params", message: "Garage has no Ethernet ports." } });
+    expect((await code({ eero: "Office", port: 1, action: "REBOOT" })).error?.code).toBe("bad_params");
+    expect((await code({ eero: "Office", port: 0, action: "DISABLE_PORT" })).error?.code).toBe("bad_params");
+    expect((await code({ eero: "Office", action: "DISABLE_PORT" })).error?.code).toBe("bad_params");
+    expect((await code({ eero: "Attic", port: 1, action: "DISABLE_PORT" })).error?.code).toBe("bad_params");
+  });
+
+  it("asks before removing, naming the eeros that lose their uplink", async () => {
+    const engine = demoEngine();
+    expect(await engine.execute("eero.remove", { eero: "Office" })).toMatchObject({
+      ok: false,
+      error: { code: "needs_confirm", message: "Removes Office from Maple Street and resets it. Its devices move to other eeros if in range. Garage loses its uplink and may go offline until it finds another path. This cannot be undone; adding it back needs the eero app." },
+    });
+    expect((await ok(engine.execute<M.Eero[]>("eero.list"))).map((e) => e.location)).toContain("Office");
+  });
+
+  it("refuses the gateway while other eeros remain, even with confirm", async () => {
+    const engine = demoEngine();
+    const msg = "Living Room is the gateway. Remove the other eeros first, or replace the gateway in the eero app.";
+    expect(await engine.execute("eero.remove", { eero: "Living Room" })).toMatchObject({ ok: false, error: { code: "bad_params", message: msg } });
+    expect(await engine.execute("eero.remove", { eero: "Living Room", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params", message: msg } });
+    expect((await ok(engine.execute<M.Eero[]>("eero.list"))).map((e) => e.location)).toContain("Living Room");
+  });
+
+  it("removes a gateway that is the only eero, with confirm", async () => {
+    const engine = demoEngine();
+    const lake = "5130264";
+    expect(await engine.execute("eero.remove", { eero: "Great Room", networkId: lake })).toMatchObject({ error: { code: "needs_confirm", message: expect.stringContaining("It is the only eero, so Lake Cabin goes offline.") } });
+    expect(await ok(engine.execute("eero.remove", { eero: "Great Room", networkId: lake, confirm: true }))).toEqual({ networkId: lake, eeroId: "81021", location: "Great Room" });
+    expect(await ok(engine.execute<M.Eero[]>("eero.list", { networkId: lake }))).toEqual([]);
+  });
+
+  it("removes a leaf with confirm, and the next read (cached before) no longer lists it", async () => {
+    const engine = demoEngine();
+    await ok(engine.execute("eero.list"));
+    expect(await ok(engine.execute("eero.remove", { eero: "Upstairs Hall", confirm: true }))).toEqual({ networkId: MAPLE, eeroId: "80013", location: "Upstairs Hall" });
+    expect((await ok(engine.execute<M.Eero[]>("eero.list"))).map((e) => e.location)).toEqual(["Living Room", "Garage", "Office"]);
+    expect(await engine.execute("eero.remove", { eero: "Upstairs Hall", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("eero.remove", {})).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("reads firmware history past 50 entries", async () => {
+    const engine = demoEngine();
+    expect((await ok(engine.execute<M.FirmwareEntry[]>("eero.firmware.history", { eero: "Office", limit: 200 }))).length).toBeGreaterThan(0);
+  });
+});
+
+describe("eero.port.action and eero.remove (fake eero server)", () => {
+  let close: (() => Promise<void>) | null = null;
+  afterEach(async () => {
+    await close?.();
+    close = null;
+  });
+
+  it("port action needs confirm, then posts JSON {action} to {eero}/ports/{n}/action; the next read shows it", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    await ok(engine.execute("eero.ports.get", { eero: "Living Room" }));
+    expect(await engine.execute("eero.port.action", { eero: "Living Room", port: 2, action: "DISABLE_PORT" })).toMatchObject({
+      ok: false,
+      error: { code: "needs_confirm", message: "Turns off port 2 on Living Room. Living Room TV and Desk Switch lose their wired connection." },
+    });
+    expect(fake.writes).toHaveLength(0);
+    const r = await ok(engine.execute<M.EeroPorts>("eero.port.action", { eero: "Living Room", port: 2, action: "DISABLE_PORT", confirm: true }));
+    expect(fake.writes).toEqual([expect.objectContaining({ method: "POST", path: "/2.2/eeros/500001/ports/2/action", encoding: "json", body: { action: "DISABLE_PORT" }, status: 200 })]);
+    expect(r.ports[1]).toMatchObject({ status: "disabled", attachments: [], actions: ["ENABLE_PORT", "RESTART_POWER"] });
+    // eero_ports was invalidated: the next read asks eero again and shows the change.
+    const before = fake.log.length;
+    expect((await ok(engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Living Room" }))).ports[1]?.status).toBe("disabled");
+    expect(fake.log.slice(before).map((l) => l.path)).toContain("/2.2/eeros/500001/connections");
+    // Undo: the opposite action brings the link and the attachments back.
+    const back = await ok(engine.execute<M.EeroPorts>("eero.port.action", { eero: "Living Room", port: 2, action: "ENABLE_PORT", confirm: true }));
+    expect(back.ports[1]).toMatchObject({ status: "up", attached: { name: "2 devices" }, actions: ["DISABLE_PORT", "RESTART_POWER"] });
+  });
+
+  it("refuses an action the port does not list before any write", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    expect(await engine.execute("eero.port.action", { eero: "Living Room", port: 1, action: "DISABLE_PORT", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("eero.port.action", { eero: "Living Room", port: 7, action: "DISABLE_PORT", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("remove needs confirm, refuses the gateway, then sends DELETE {eero}; the next list leaves it out", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    await ok(engine.execute("eero.list"));
+    expect(await engine.execute("eero.remove", { eero: "Upstairs Hall" })).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+    expect(await engine.execute("eero.remove", { eero: "Living Room", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(fake.writes).toHaveLength(0);
+    expect(await ok(engine.execute("eero.remove", { eero: "Upstairs Hall", confirm: true }))).toEqual({ networkId: "100001", eeroId: "500003", location: "Upstairs Hall" });
+    expect(fake.writes).toEqual([expect.objectContaining({ method: "DELETE", path: "/2.2/eeros/500003", status: 200 })]);
+    const before = fake.log.length;
+    expect((await ok(engine.execute<M.Eero[]>("eero.list"))).map((e) => e.location)).not.toContain("Upstairs Hall");
+    expect(fake.log.length).toBeGreaterThan(before);
+  });
+
+  it("pages firmware history past 50 rows with offset", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    const net = fake.state.networks.get("100001");
+    if (!net) throw new Error("fixture");
+    const start = Date.parse("2020-01-01T00:00:00Z");
+    // 120 rows, oldest first, so the newest are only on the last page.
+    net.firmwareHistory["500002"] = Array.from({ length: 120 }, (_, i) => ({ firmware_version: `v7.${i}.0-1+build`, finished_at: new Date(start + i * 86_400_000).toISOString(), outcome: "Success" }));
+    const r = await ok(engine.execute<M.FirmwareEntry[]>("eero.firmware.history", { eero: "Office", limit: 200 }));
+    expect(r).toHaveLength(120);
+    expect(r[0]?.version).toBe("v7.119.0-1");
+    const offsets = fake.log.filter((l) => l.path.endsWith("/firmware_update/history")).map((l) => new URLSearchParams(l.query).get("offset"));
+    expect(offsets).toEqual(["0", "50", "100"]);
+  });
+});

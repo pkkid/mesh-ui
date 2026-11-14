@@ -3,7 +3,7 @@
  * null, never a throw. Sources: docs/architecture/data-model.md#eeros.
  */
 
-import type * as M from "../../model";
+import * as M from "../../model";
 import { type RawEero, type RawFirmwareHistoryEntry, type RawNetwork, type RawPortConnection, type RawPortInterface, linkUrl } from "../raw";
 import { compactMac, idFromUrl } from "../urls";
 import { speedMbps } from "./device";
@@ -197,7 +197,7 @@ export function portSpeed(v: unknown): number | null {
   return n > 0 ? n : null;
 }
 
-/** Real values: "DATA_CONNECTED", "WAN". "DISABLED" is a guess; anything else is down. */
+/** Real values (captures 2026-11-13, 2026-11-14): "DATA_CONNECTED", "WAN", "DISCONNECTED" (down). "DISABLED" is a guess; anything else is down. */
 function portStatus(v: unknown): M.EeroPort["status"] {
   const s = typeof v === "string" ? v.toUpperCase() : "";
   if (s === "DISABLED") return "disabled";
@@ -216,7 +216,7 @@ function poe(v: unknown): M.EeroPort["poe"] {
 export type PortJoin = { devices: Pick<M.Device, "id" | "mac" | "name">[]; eeros: Pick<M.Eero, "id" | "mac" | "location">[] };
 
 /** One device behind a port, joined to the network's eeros or devices by its url (or MAC, if sent). */
-function joinOne(c: RawPortConnection, join: PortJoin): NonNullable<M.EeroPort["attached"]> | null {
+function joinOne(c: RawPortConnection, join: PortJoin): M.PortAttachment {
   const meta = (c.metadata ?? {}) as NonNullable<RawPortConnection["metadata"]> & { mac?: string };
   const mac = str(meta.mac) ? compactMac(meta.mac as string) : null;
   const url = linkUrl(meta.url);
@@ -229,7 +229,8 @@ function joinOne(c: RawPortConnection, join: PortJoin): NonNullable<M.EeroPort["
   const d = join.devices.find((x) => x.id === urlId || (mac && compactMac(x.mac) === mac));
   const deviceId = d?.id ?? urlId ?? mac;
   const name = d?.name ?? str(meta.display_name);
-  return deviceId || name ? { deviceId, eeroId: null, name } : null;
+  // An entry eero sends without a link or name still counts: it is something plugged in.
+  return { deviceId, eeroId: null, name };
 }
 
 /** What eero says is behind a port: none, one, or several (behind a switch). WAN_SOURCE is the internet, not a device. */
@@ -242,22 +243,19 @@ export function portConnections(p: RawPortInterface): RawPortConnection[] {
   return cs.metadata?.url ? [{ type: cs.type, metadata: cs.metadata }] : [];
 }
 
-/**
- * The one thing the model shows per port: an eero if one is behind it (a
- * wired backhaul matters most), else the only device, else "N devices" with
- * no id (a switch with several).
- */
-function attached(p: RawPortInterface, join: PortJoin): M.EeroPort["attached"] {
+const isEeroConn = (c: RawPortConnection) => (c.type?.toUpperCase().startsWith("EERO") ?? false) || (linkUrl(c.metadata?.url)?.includes("/eeros/") ?? false);
+
+/** Everything behind a port, eeros first (a wired backhaul matters most). */
+function attachments(p: RawPortInterface, join: PortJoin): M.PortAttachment[] {
   const list = portConnections(p);
-  const eeroConn = list.find((c) => c.type?.toUpperCase().startsWith("EERO") || linkUrl(c.metadata?.url)?.includes("/eeros/"));
-  if (eeroConn) return joinOne(eeroConn, join);
-  if (list.length === 1 && list[0]) return joinOne(list[0], join);
-  return list.length > 1 ? { deviceId: null, eeroId: null, name: `${list.length} devices` } : null;
+  const ordered = [...list.filter(isEeroConn), ...list.filter((c) => !isEeroConn(c))];
+  return ordered.map((c) => joinOne(c, join));
 }
 
 export function mapPorts(eeroId: M.Id, raw: { ports?: { interfaces?: RawPortInterface[] } } | null | undefined, join: PortJoin): M.EeroPorts {
   const ports = (raw?.ports?.interfaces ?? []).map((p, i): M.EeroPort => {
     const status = portStatus(p.port_status);
+    const all = attachments(p, join);
     return {
       number: num(p.interface_number) ?? i + 1,
       name: str(p.name),
@@ -268,7 +266,8 @@ export function mapPorts(eeroId: M.Id, raw: { ports?: { interfaces?: RawPortInte
       isWan: [p.network_type, p.port_status, p.connection_status?.type].some((v) => /^WAN(_SOURCE)?$/i.test(v ?? "")),
       poe: poe(p.poe_status),
       mac: str(p.ethernet_address),
-      attached: attached(p, join),
+      attached: M.portSummary(all),
+      attachments: all,
       actions: (p.actions ?? []).map((a) => a?.type?.toUpperCase()).filter((t): t is M.PortAction => !!t && PORT_ACTIONS.has(t as M.PortAction)),
     };
   });

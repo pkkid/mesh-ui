@@ -49,6 +49,7 @@ const port = (number: number, supportedMbps: number | null, name: string | null 
   poe: null,
   mac: null,
   attached: null,
+  attachments: [],
   actions: [],
 });
 

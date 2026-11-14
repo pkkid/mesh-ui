@@ -287,6 +287,9 @@ export type Eero = {
   messages: string[];
 };
 
+/** A device or eero behind a port. */
+export type PortAttachment = { deviceId: Id | null; eeroId: Id | null; name: string | null };
+
 export type EeroPort = {
   number: number;
   name: string | null;
@@ -296,12 +299,23 @@ export type EeroPort = {
   isWan: boolean;
   poe: "on" | "off" | null;
   mac: string | null;
-  attached: { deviceId: Id | null; eeroId: Id | null; name: string | null } | null;
+  /** One-line summary: the eero behind it, else the only device, else "N devices" with no ids. */
+  attached: PortAttachment | null;
+  /** Everything behind the port (several behind a switch), eeros first. Empty when nothing is plugged in or for the WAN port. */
+  attachments: PortAttachment[];
   /** PortAction values eero allows on this port. */
   actions: PortAction[];
 };
 
 export type EeroPorts = { eeroId: Id; ports: EeroPort[] };
+
+/** A port's one-line summary from its attachments: an eero if one is there, else the only device, else "N devices" with no ids. */
+export function portSummary(list: ReadonlyArray<PortAttachment>): PortAttachment | null {
+  const eero = list.find((a) => a.eeroId !== null);
+  if (eero) return eero;
+  if (list.length === 1 && list[0]) return list[0];
+  return list.length > 1 ? { deviceId: null, eeroId: null, name: `${list.length} devices` } : null;
+}
 
 export type MeshQuality = "excellent" | "good" | "weak" | "poor";
 

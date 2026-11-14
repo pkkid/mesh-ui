@@ -186,7 +186,7 @@ export type RawPortConnection = {
 export type RawPortInterface = {
   interface_number?: number;
   name?: string | null;
-  /** "DATA_CONNECTED", "WAN" seen; other values (down, disabled) not yet. */
+  /** "DATA_CONNECTED", "WAN" and "DISCONNECTED" (down) seen; a disabled value not yet. */
   port_status?: string;
   /** "P2500", "P1000"; absent when the link is down. */
   negotiated_speed?: string | null;

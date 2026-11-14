@@ -1,37 +1,70 @@
 /**
  * eero detail "Ethernet ports": a tile per port (status, a jack with link
- * lights, negotiated and supported speed, what is plugged in), the port MACs,
- * and the port actions eero lists, disabled until `eero.port.action` lands.
- * docs/ux/pages/eero-detail.md (Layout 3). Data: `eero.ports.get {eero}`.
+ * lights, negotiated and supported speed, everything plugged in), the port
+ * MACs, and the port actions eero lists (`eero.port.action`, disruptive: the
+ * engine's confirm inline, then a toast with Undo running the opposite
+ * action, also confirmed). docs/ux/pages/eero-detail.md (Layout 3).
+ * Data: `eero.ports.get {eero}`.
  */
 import { Power } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
+import { useWrite, type WriteRequest } from "~/app/useWrite";
 import { linkSpeed } from "~/components/mesh/LinkChip";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { KvList } from "~/components/ui/kv-list";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { WriteConfirm } from "~/components/ui/confirm";
+import { GatedButton, SectionError, useGate } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import { MISSING } from "../../../../core/format";
-import type { EeroPort, EeroPorts as Ports, PortAction } from "../../../../core/model";
+import { type Eero, type EeroPort, INVERSE_PORT_ACTION, type EeroPorts as Ports, type PortAction } from "../../../../core/model";
 import { portName, portsLine } from "./helpers";
 
-const ACTION: Partial<Record<PortAction, { label: (n: string) => string; consequence: (attached: string | null) => string }>> = {
-  DISABLE_PORT: { label: (n) => `Disable ${n.toLowerCase()}`, consequence: (a) => (a ? `${a} loses its wired connection` : "Nothing is plugged in") },
-  ENABLE_PORT: { label: (n) => `Enable ${n.toLowerCase()}`, consequence: () => "Turns the port back on" },
-  DISABLE_DATA: { label: (n) => `Disable data on ${n.toLowerCase()}`, consequence: () => "Keeps PoE power, stops data" },
-  ENABLE_DATA: { label: (n) => `Enable data on ${n.toLowerCase()}`, consequence: () => "Turns data back on" },
-  DISABLE_POE: { label: (n) => `Turn off PoE on ${n.toLowerCase()}`, consequence: () => "Cuts power to the device" },
-  ENABLE_POE: { label: (n) => `Turn on PoE on ${n.toLowerCase()}`, consequence: () => "Powers the device again" },
-  RESTART_POWER: { label: (n) => `Restart PoE on ${n.toLowerCase()}`, consequence: () => "Power-cycles the device" },
+/** Button label, toast and a short consequence per action. `n` is the port name ("Port 3"). */
+const ACTION: Record<PortAction, { label: (n: string) => string; done: (n: string) => string; consequence: (attached: string | null) => string }> = {
+  DISABLE_PORT: { label: (n) => `Disable ${n.toLowerCase()}`, done: (n) => `${n} disabled`, consequence: (a) => (a ? `${a} loses its wired connection` : "Nothing is plugged in") },
+  ENABLE_PORT: { label: (n) => `Enable ${n.toLowerCase()}`, done: (n) => `${n} enabled`, consequence: () => "Turns the port back on" },
+  DISABLE_DATA: { label: (n) => `Disable data on ${n.toLowerCase()}`, done: (n) => `Data off on ${n.toLowerCase()}`, consequence: () => "Keeps PoE power, stops data" },
+  ENABLE_DATA: { label: (n) => `Enable data on ${n.toLowerCase()}`, done: (n) => `Data on for ${n.toLowerCase()}`, consequence: () => "Turns data back on" },
+  DISABLE_POE: { label: (n) => `Turn off PoE on ${n.toLowerCase()}`, done: (n) => `PoE off on ${n.toLowerCase()}`, consequence: () => "Cuts power to the device" },
+  ENABLE_POE: { label: (n) => `Turn on PoE on ${n.toLowerCase()}`, done: (n) => `PoE on for ${n.toLowerCase()}`, consequence: () => "Powers the device again" },
+  RESTART_POWER: { label: (n) => `Restart PoE on ${n.toLowerCase()}`, done: (n) => `PoE restarted on ${n.toLowerCase()}`, consequence: () => "Power-cycles the device" },
 };
+
+type PortParams = { eero: string; port: number; action: PortAction };
+
+/** One port action as a write request: confirm copy from core, success toast, and Undo with the opposite action. */
+function portRequest(eeroId: string, port: EeroPort, action: PortAction, location: string): WriteRequest<PortParams, Ports> {
+  const name = portName(port);
+  const words = ACTION[action];
+  const inverse = INVERSE_PORT_ACTION[action];
+  return {
+    id: "eero.port.action",
+    params: { eero: eeroId, port: port.number, action },
+    confirm: { title: `${words.label(name)} on ${location}?`, confirmLabel: words.label(name) },
+    success: `${words.done(name)} on ${location}`,
+    failure: `Couldn't ${words.label(name).charAt(0).toLowerCase()}${words.label(name).slice(1)}`,
+    // Undo is the opposite action; it asks again, since it is disruptive too.
+    // Built lazily: the undo's own undo is this action again.
+    undo: inverse ? () => portRequest(eeroId, port, inverse, location) as WriteRequest : undefined,
+  };
+}
 
 export function EeroPorts({ eeroId, offline }: { eeroId: string; offline: boolean }) {
   const ports = useQuery<Ports>("eero.ports.get", { eero: eeroId }, { poll: true, enabled: eeroId !== "" });
+  // The page reads the same eero, so this shares its cached answer.
+  const location = useQuery<Eero>("eero.get", { eero: eeroId }, { enabled: eeroId !== "" }).data?.location ?? "this eero";
+  const write = useWrite<PortParams, Ports>("eero.port.action");
+  const gate = useGate("eero.port.action");
+  const actionGate = offline ? { allowed: false, reason: `${location} is offline` } : gate;
   const list = ports.data?.ports;
-  const actions = (list ?? []).flatMap((p) => p.actions.flatMap((a) => (ACTION[a] ? [{ port: p, action: a, words: ACTION[a] }] : [])));
+  const actions = (list ?? []).flatMap((p) => p.actions.map((a) => ({ port: p, action: a, words: ACTION[a] })));
+  const run = (port: EeroPort, action: PortAction) => {
+    const { params, ...options } = portRequest(eeroId, port, action, location);
+    void write.run(params, options);
+  };
 
   return (
     <Section title="Ethernet ports" subtitle={list ? portsLine(list) : null}>
@@ -54,15 +87,19 @@ export function EeroPorts({ eeroId, offline }: { eeroId: string; offline: boolea
               items={list.map((p) => ({ label: `${portName(p)} MAC`, value: p.mac, mono: true }))}
             />
           )}
-          {actions.map(({ port, action, words }) => (
-            <div key={`${port.number}-${action}`} className="flex items-center gap-2">
-              <ComingSoonButton size="xs" variant="outline">
-                <Power />
-                {words.label(portName(port))}
-              </ComingSoonButton>
-              <span className="text-2xs text-muted-foreground">{words.consequence(port.attached?.name ?? null)}</span>
-            </div>
-          ))}
+          {write.asking ? (
+            <WriteConfirm write={write}>{null}</WriteConfirm>
+          ) : (
+            actions.map(({ port, action, words }) => (
+              <div key={`${port.number}-${action}`} className="flex items-center gap-2">
+                <GatedButton size="xs" variant="outline" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
+                  <Power />
+                  {words.label(portName(port))}
+                </GatedButton>
+                <span className="text-2xs text-muted-foreground">{words.consequence(port.attached?.name ?? null)}</span>
+              </div>
+            ))
+          )}
         </Card>
       )}
     </Section>
@@ -81,13 +118,7 @@ function PortTile({ port: p, offline }: { port: EeroPort | null; offline: boolea
   const speed = up ? linkSpeed(p?.speedMbps) : null;
   const supported = linkSpeed(p?.supportedMbps);
   const [value, unit] = speed ? speed.split(" ") : [MISSING, ""];
-  const attached = p?.isWan ? "Internet" : (p?.attached?.name ?? null);
-  const to = p?.attached?.deviceId
-    ? pathFor("device", { deviceId: p.attached.deviceId })
-    : p?.attached?.eeroId
-      ? pathFor("eero", { eeroId: p.attached.eeroId })
-      : null;
-
+  const attachments = p?.isWan ? [] : (p?.attachments ?? []);
   return (
     <div className="flex flex-col gap-2.5 rounded-[10px] border p-3">
       <div className="flex items-center justify-between">
@@ -102,10 +133,39 @@ function PortTile({ port: p, offline }: { port: EeroPort | null; offline: boolea
         </div>
         <div className="text-2xs text-muted-foreground">{speed ? (supported ? `of ${supported} supported` : "negotiated") : up ? "speed not reported" : "no carrier"}</div>
       </div>
-      <div className={cn("truncate text-center text-xs", !attached && "text-muted-foreground")}>
-        {offline || !p ? MISSING : attached ? (to ? <Link to={to} className="hover:underline">{attached}</Link> : attached) : up ? "Unknown device" : "Nothing plugged in"}
+      <div className={cn("flex flex-col items-center text-center text-xs", !p?.isWan && attachments.length === 0 && "text-muted-foreground")}>
+        {offline || !p ? (
+          MISSING
+        ) : p.isWan ? (
+          "Internet"
+        ) : attachments.length > 0 ? (
+          attachments.map((a, i) => <Attachment key={a.deviceId ?? a.eeroId ?? i} attachment={a} />)
+        ) : up ? (
+          "Unknown device"
+        ) : p.status === "disabled" ? (
+          "Turned off"
+        ) : (
+          "Nothing plugged in"
+        )}
       </div>
     </div>
+  );
+}
+
+/** One thing behind a port, linked to its device or eero page when known. */
+function Attachment({ attachment: a }: { attachment: EeroPort["attachments"][number] }) {
+  const name = a.name ?? "Unknown device";
+  const to = a.deviceId ? pathFor("device", { deviceId: a.deviceId }) : a.eeroId ? pathFor("eero", { eeroId: a.eeroId }) : null;
+  return (
+    <span className="max-w-full truncate" title={name}>
+      {to ? (
+        <Link to={to} className="hover:underline">
+          {name}
+        </Link>
+      ) : (
+        name
+      )}
+    </span>
   );
 }
 

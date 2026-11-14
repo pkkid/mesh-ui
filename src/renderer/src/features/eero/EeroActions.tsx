@@ -2,18 +2,20 @@
  * eero detail "More actions": Blink LED (`eero.find`, counts down while
  * blinking), Restart (`eero.restart`, disruptive: the engine's confirm
  * inline, naming the gateway outage or the eeros downstream, then a progress
- * toast until they are back) and Remove (disabled, "Coming soon" until
- * `eero.remove` lands in M5). docs/ux/pages/eero-detail.md (Layout 5,
- * Actions, States).
+ * toast until they are back) and Remove (`eero.remove`, destructive: the
+ * engine's confirm inline with type-the-name, then back to eeros). The
+ * gateway is offered only when it is the only eero, as core refuses it
+ * otherwise. docs/ux/pages/eero-detail.md (Layout 5, Actions, States).
  */
 import { Lightbulb, RotateCcw, Trash2 } from "lucide-react";
 
+import { navigate, pathFor } from "~/app/router";
 import { useWrite } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Section } from "~/components/ui/card";
 import { WriteConfirm } from "~/components/ui/confirm";
 import { IconTile } from "~/components/ui/hero";
-import { ComingSoonButton, GatedButton, Row, RowList, useGate } from "~/components/ui/page";
+import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
 import { FindButton } from "~/features/eeros/EeroCards";
 import { watchRestart } from "~/features/eeros/NetworkActions";
 import type { RestartResult } from "../../../../core/commands/network";
@@ -29,6 +31,19 @@ export function EeroActions({ eero, eeros, networkName, offline }: { eero: Eero 
   const restarting = eero?.status === "updating";
   const blocked = offline ? `${name} is offline` : restarting ? `${name} is restarting` : null;
   const actionGate = blocked ? { allowed: false, reason: blocked } : gate;
+  const remove = useWrite<{ eero: string }, { location: string }>("eero.remove", {
+    confirm: { title: `Remove "${name}" from ${networkName}?`, confirmLabel: "Remove from network", typeToConfirm: name },
+    success: (r) => `${r.location} removed from ${networkName}`,
+    failure: `Couldn't remove ${name}`,
+  });
+  const removeGate = useGate("eero.remove");
+  // Core refuses the gateway while other eeros remain; the eero app replaces it.
+  const removable = !!eero && (!eero.isGateway || eeros.length <= 1);
+  const runRemove = async () => {
+    if (!eero) return;
+    const r = await remove.run({ eero: eero.id });
+    if (r?.ok) navigate(pathFor("eeros", {}));
+  };
   const runRestart = async () => {
     if (!eero) return;
     const r = await restart.run({ eero: eero.id });
@@ -82,15 +97,20 @@ export function EeroActions({ eero, eeros, networkName, offline }: { eero: Eero 
             <div className="min-w-0 flex-1">
               <div className="font-medium text-[13px] text-destructive-foreground">Remove {name} eero</div>
               <div className="text-muted-foreground text-xs">
-                {eero?.isGateway ? "The gateway can't be removed here; replace it in the eero app" : "Owner only · resets this eero"}
+                {eero && !removable ? "The gateway can't be removed while other eeros use it; replace it in the eero app" : "Owner only · resets this eero"}
               </div>
             </div>
-            {!eero?.isGateway && (
-              <ComingSoonButton size="xs" variant="outline">
+            {removable && !remove.asking && (
+              <GatedButton size="xs" variant="outline" gate={removeGate} disabled={remove.running} onClick={() => void runRemove()}>
                 Remove
-              </ComingSoonButton>
+              </GatedButton>
             )}
           </Row>
+          {remove.asking && (
+            <div className="px-4 pb-3">
+              <WriteConfirm write={remove}>{null}</WriteConfirm>
+            </div>
+          )}
         </RowList>
       </div>
     </Section>
