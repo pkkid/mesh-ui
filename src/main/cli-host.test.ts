@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { CLI_CRASH_EXIT, crashLine, guardCliHost } from "./cli-host";
 
@@ -81,7 +82,7 @@ describe("dev launcher (scripts/mesh-ui-dev.mjs)", () => {
 
   it("uses a scratch user data dir unless one is given", async () => {
     const plan = (await launchPlan())({ main: "m", args: [], env: {}, platform: "linux", tmp: "/scratch" });
-    expect(plan.argv).toContain("--user-data-dir=/scratch/mesh-ui-dev-cli");
+    expect(plan.argv).toContain(`--user-data-dir=${join("/scratch", "mesh-ui-dev-cli")}`);
     const given = (await launchPlan())({ main: "m", args: ["--user-data-dir=/x"], env: {}, platform: "linux", tmp: "/scratch" });
     expect(given.userDataDir).toBeNull();
   });
