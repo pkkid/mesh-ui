@@ -1,15 +1,16 @@
 /**
  * Wi-Fi: the main network's name, password (revealed only on request), QR
  * block, security per band, bands and their clients, nickname and time zone.
- * Read-only for now: every change is a disabled "Coming soon" control until
- * the write commands land. Layout, data and states: docs/ux/pages/wifi.md and
- * docs/mockups/12-wifi-settings.html.
+ * Name, password, security and 2.4 GHz only change through the write kit
+ * (M4.7); nickname and time zone are still "Coming soon". Layout, data and
+ * states: docs/ux/pages/wifi.md and docs/mockups/12-wifi-settings.html.
  *
  * The password comes from `wifi.password.get` (reveal or copy) and the QR
  * payload from `wifi.share` ("Show code"), each run with `execute` only when
  * asked, held only in this page's state and dropped on a network switch or
  * when the page unmounts. They never enter the query
- * store, so nothing polls them.
+ * store, so nothing polls them. A name or password change drops them too, so
+ * the next reveal reads the new ones (with M4.2's credential bypass).
  */
 import { CalendarClock, Clock, Tag } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -102,7 +103,15 @@ export function WifiPage(_props: PageProps) {
         <SectionError what="Wi-Fi settings" error={wifi.error} onRetry={() => void wifi.refetch()} />
       ) : (
         <>
-          <WifiNamePassword wifi={data} password={password} />
+          <WifiNamePassword
+            wifi={data}
+            password={password}
+            offline={offline}
+            onSaved={() => {
+              password.clear();
+              share.clear();
+            }}
+          />
           <WifiSecurity wifi={data} devices={devices.data?.devices ?? null} offline={offline} />
           <WifiBands wifi={data} offline={offline} fading={wifi.fading} />
         </>

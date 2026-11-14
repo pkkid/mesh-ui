@@ -21,3 +21,4 @@ export { routes as routing } from "./routing";
 export { routes as settings } from "./settings";
 export { routes as updates } from "./updates";
 export { routes as usage } from "./usage";
+export { routes as wifi } from "./wifi";

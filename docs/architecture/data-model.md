@@ -478,6 +478,19 @@ type WifiSettings = {
 };
 
 type WifiShare = { ssid: string; password: string | null; security: "WPA" | "nopass"; qr: string };
+
+// wifi.impact (type in commands/wifi.ts): who a Wi-Fi change affects, computed in core.
+type ImpactDevice = { id: Id; name: string; band: WirelessBand | null; category: DeviceCategory };
+type WifiImpact = {
+  change: "name" | "password" | "security" | "hide5g";
+  reconnect: ImpactDevice[];   // connected wireless devices that drop and rejoin
+  drop: ImpactDevice[];        // WPA2 only devices on a band moving to WPA3
+  needsSetup: ImpactDevice[];  // estimate: smart home devices among `reconnect` (name, password)
+  guestAffected: boolean;
+  wiredAffected: boolean;
+  restart: string | null;      // "about 2 to 3 minutes" for a security change
+  summary: string;             // also the writes' needs_confirm message
+};
 ```
 
 | Model | eero source |
@@ -487,7 +500,8 @@ type WifiShare = { ssid: string; password: string | null; security: "WPA" | "nop
 | `security` | `GET {net}/wpa3_per_band` (`band_2_4_ghz`, `band_5_ghz`, case normalised; a real network sends no 6 GHz key, and 6 GHz is always WPA3) |
 | `WifiShare` password | network `password` (in the clear in `GET {net}`) or `GET {net}/password`; sensitive reads only |
 | `bands` | merged `radio_channel_stats` across eeros, clients from devices |
-| `hide5g` | `temporary_flags.hide_5g.{value,expires_on}` (or a bare bool) |
+| `hide5g` | `temporary_flags.hide_5g.{value,expires_on}` (or a bare bool); on while it is set and not past `expires_on` |
+| `WifiImpact` | `wifi.get` and the device list; no eero call of its own |
 | `WifiShare.qr` | `WIFI:T:WPA;S:<ssid>;P:<password>;;` with `\`, `;`, `,`, `:` escaped |
 
 ## Settings and routing

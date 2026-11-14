@@ -8,7 +8,7 @@ Shared patterns (hero, QR block, settings column plus side panel, confirm bar) a
 
 ## Built in M3.9 (read view)
 
-The page is read-only until the write commands land; every change is a disabled "Coming soon" control.
+In M3.9 the page was read-only; M4.7 (below) added the writes. The rest of this section is still how the read view works.
 
 - **Hero:** SSID, `Broadcasting` / `Not broadcasting` / `Offline`, "One name on every band" (or on the one band), **Wireless clients** and **Bands on** (`3 of 3`). "Password changed" is not shown: no response carries that date.
 - **QR block:** an empty muted frame with a **Show code** button (eye icon, neutral outline) centred in it; nothing is read until it is clicked, then it runs `wifi.share` and the code replaces the button where it was. There is no separate Show code button beside the frame. **Copy password** and **Save QR** work from then on. **Print a card** is "Coming soon".
@@ -17,6 +17,16 @@ The page is read-only until the write commands land; every change is a disabled 
 - **Bands:** a card per band any eero offers (a single-band network shows one card), with On or Off, clients, widths, channels and share of clients, the 2.4 GHz only state with its expiry, and the **2.4 GHz only devices** link to Troubleshooting.
 - **Nickname and location:** nickname and time zone from `network.get`, with the local time there. Edit is "Coming soon".
 - Not yet: the impact panel and confirm bar (with the write commands), WPA3 master switch, compatibility mode hiding, schedule list.
+
+## Built in M4.7 (writes)
+
+Name, password, security and 2.4 GHz only now change through the write kit; every save is disruptive and asks inline first, with the engine's `needs_confirm` message (the `wifi.impact` summary). Nickname, time zone and Print a card are still "Coming soon". Controls dim with the "no permission" tooltip when `network.permissions` denies `settings` updates, and while the network is offline.
+
+- **Name and password sheet** (**Change**): the name with a live byte count (32 bytes), and a new password that starts empty (the current one is never read to fill it; empty keeps it), with show and **Generate** (`wifi.password.generate`). The impact panel sits under the fields. **Save and reconnect** runs `wifi.name.set`, then `wifi.password.set`, each after an inline confirm in the sheet; a progress toast while it runs, then a success toast. After either, the revealed password and QR are dropped, so the next reveal reads the new ones (M4.2's credential bypass). No Undo: these writes are disruptive and the old password is never held.
+- **Encryption:** 2.4 and 5 GHz segments stage a change (`edited` marker); a staged change shows the impact panel (devices that disconnect, WPA2 only devices that can not rejoin a WPA3 band, the restart estimate) with **Discard** and **Save and restart**, which asks inline before `wifi.security.set`. 6 GHz stays Enhanced (WPA3).
+- **2.4 GHz only** (in Bands): **Turn on** asks inline with the impact (devices on 5 and 6 GHz that move); while on, a mono countdown to eero's own expiry and **Turn off**. The task brief put this switch here, so the Troubleshooting note below changed.
+- **Impact panel** (`WifiImpact.tsx`): reads `wifi.impact` for the pending change; two figures (devices disconnect in warning colour; may need their own app, or can't rejoin for security), the summary from core with the names, and a check list of what stays fine.
+- Not yet: the side panel layout and sticky confirm bar from the mockup (the impact panel sits with each control instead), WPA3 master switch, "Password changed".
 
 ## Layout
 
@@ -47,12 +57,12 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | Password for reveal or copy | `wifi.password.get` | on demand only |
 | QR payload | `wifi.share` | on demand only |
 | Wireless clients metric | `device.list` `{connected: true}` | every 60 s |
-| WPA2 only device counts and names | `wifi.impact` `{change: "security", band, security}` | when the selection changes |
+| WPA2 only device counts and names | `wifi.impact` `{change: "security", band24?, band5?}` | when the selection changes |
 | Band cards (width, channels, clients, share) | `wifi.get` (bands) with `eero.list` (radio stats) | every 60 s |
 | Nickname | `network.get` | on load |
 | Timezone and local time | `settings.get` | on load |
 | Schedules that use the timezone | `profile.list`, `settings.get` (power saving), `updates.get` | on load |
-| Impact of saving | `wifi.impact` `{change: "name" or "password" or "security"}` | whenever the pending edit changes |
+| Impact of saving | `wifi.impact` `{change: "name" or "password" or "security" or "hide5g"}` | whenever the pending edit changes |
 
 ## Actions
 
@@ -63,7 +73,8 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | Password hide, copy | `wifi.password.get` | query | no | |
 | Password generate | `wifi.password.generate` | query | no | Fills the field; marks it edited |
 | WPA3 master switch | stages `wifi.security.set` for all bands | disruptive | confirm bar | |
-| Band security segment | stages `wifi.security.set` `{band24?, band5?}` | disruptive | confirm bar; Enhanced on 2.4 or 5 GHz adds a dialog naming the WPA2 only devices | |
+| Band security segment | stages `wifi.security.set` `{band24?, band5?}` | disruptive | inline confirm naming the WPA2 only devices that can not rejoin | |
+| 2.4 GHz only Turn on / Turn off | `wifi.hide5g.set` `{enabled}` | disruptive | inline confirm with the impact | Countdown to `hide5g.expiresAt` |
 | 2.4 GHz only devices | none (navigation) | | | Opens the fix on [Troubleshooting](troubleshooting.md) |
 | Nickname Save | `network.nickname.set` `{nickname}` | write | no | `saved` marker; sidebar switcher updates |
 | Timezone select | `settings.timezone.set` `{timezone}` | write | no | Saves on change, `saved` marker |
@@ -87,6 +98,7 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 - Order matters when saving several changes: name, then password, then security, so devices see one final state as quickly as possible. Consider one combined write if the API allows it (open question).
 - "Password changed N days ago" needs a timestamp we have not seen in a response. If eero does not expose it, drop the metric (MANUAL check).
 - "Need setup in their app" is a heuristic in core: device types that usually cannot be rejoined from a phone (IoT, speakers, printers). Label it as an estimate.
-- `wifi.hide5g.set` lives on [Troubleshooting](troubleshooting.md), not here.
+- `wifi.hide5g.set` is on this page (Bands, since M4.7) and may also be offered from [Troubleshooting](troubleshooting.md).
 - Timezone auto saves per the eero app. The Save button in that section is for the nickname only; consider moving it beside the nickname field so this is obvious.
-- Commands added: `wifi.impact` q `{change, band?, security?}`, `wifi.password.generate` q, `settings.timezone.set` w.
+- The SSID goes through `PUT {net}/settings` form `name` (FF live-verified); some clients use `PUT {net}`. Real behaviour is a MANUAL check.
+- Commands added: `wifi.impact` q `{change, band24?, band5?}`, `wifi.password.generate` q, `settings.timezone.set` w.
