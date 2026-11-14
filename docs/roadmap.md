@@ -736,7 +736,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: The palette runs `write` commands on Enter with a toast, `disruptive` ones after the inline confirm and `destructive` ones through the dialog, all with `useWrite`. Commands dim by capability, bridge mode and role with the reason (Carried from M2). Works for every write command as it lands, with no per-command code.
 - done when: tests for running a write, the confirm path and dimming; `pnpm ui:shot` of the palette confirming `network.restart` and running `device.pause`, light and dark; `pnpm check` passes.
 
-### M4.11 Mark all read ☐
+### M4.11 Mark all read ✅ (#153)
 - issue: [#133](https://github.com/pkkid/mesh-ui/issues/133)
 - after: M4.1, M4.2, M4.3
 - docs: ux/overview.md (notifications), architecture/commands.md (notifications)
