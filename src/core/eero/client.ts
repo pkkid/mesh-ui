@@ -58,6 +58,13 @@ export type RequestSpec = {
   effect?: RequestEffect;
   /** Default: session. */
   auth?: AuthMode;
+  /**
+   * false: never take an answer that already came back; join only a read
+   * still in flight (started at most a moment ago), else send a new one,
+   * which later identical reads then share. For credential reads, so a
+   * password changed elsewhere shows on the next reveal. Default true.
+   */
+  share?: boolean;
 };
 
 /** One line per HTTP attempt. Never holds a token, cookie, header or body. */
@@ -318,6 +325,8 @@ export class EeroClient {
     const now = Date.now();
     for (const [k, e] of this.shared) if (e.expires <= now) this.shared.delete(k);
     let entry = this.shared.get(key);
+    // A credential read never takes a finished answer, only one still in flight.
+    if (entry && spec.share === false && entry.expires !== Number.POSITIVE_INFINITY) entry = undefined;
     if (!entry) {
       const fresh: SharedRead = { promise: this.withRetries<unknown>(spec, "query"), expires: Number.POSITIVE_INFINITY };
       entry = fresh;
@@ -340,6 +349,7 @@ export class EeroClient {
     const auth = spec.auth ?? "session";
     let retries = 0;
     let refreshed = false;
+    let reread = false;
     for (;;) {
       const token = await this.tokenFor(auth);
       const started = Date.now();
@@ -375,6 +385,15 @@ export class EeroClient {
         if (!canRetry) throw err;
         retries++;
         continue;
+      }
+
+      // Another process (the app or a CLI) may have rotated the session: adopt the stored token and replay once.
+      if (auth === "session" && (status === 401 || status === 419) && token && !reread) {
+        reread = true;
+        if (await this.adoptStored(token)) {
+          this.log(spec, status, eeroError, started, "retry");
+          continue;
+        }
       }
 
       if (auth === "session" && status === 401 && eeroError && REFRESH_ERRORS.has(eeroError) && !refreshed && token) {
@@ -504,6 +523,27 @@ export class EeroClient {
     if (next === this.token || RETIRED_TOKEN.test(next)) return;
     this.token = next;
     await this.secrets.save(next);
+  }
+
+  /**
+   * Re-reads the SecretStore after a 401. True when a different token is now
+   * current (saved by another process, or already replaced here), so the
+   * request should replay with it before refreshing or giving up.
+   */
+  private async adoptStored(usedToken: string): Promise<boolean> {
+    if (this.token !== null && this.token !== usedToken) return true;
+    let saved: string | null;
+    try {
+      saved = await this.secrets.load();
+    } catch {
+      return false;
+    }
+    if (!saved || saved === usedToken || RETIRED_TOKEN.test(saved)) return false;
+    // Another request may have changed the token while the store was read.
+    if (this.token !== usedToken) return this.token !== null;
+    this.token = saved;
+    this.shared.clear();
+    return true;
   }
 
   private async endSession(): Promise<void> {

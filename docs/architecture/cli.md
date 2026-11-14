@@ -274,6 +274,7 @@ mesh-ui login
   real config dir only when `--user-data-dir` is given.
 - stdout carries only results (or, for `mcp`, the protocol). Logs and progress
   go to stderr.
-- Commands from the CLI and MCP are to be recorded in the audit log (see
-  [security.md](security.md#audit-log)). Not yet built in M1: there is no
-  audit log yet.
+- Every command the CLI runs (`run`, each script line, `status`, `login`,
+  `logout`) is recorded in the audit log by `engine.execute` (see
+  [security.md](security.md#audit-log)), with secret params removed and
+  never the result. Demo and fake runs are not audited.
