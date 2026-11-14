@@ -146,7 +146,8 @@ export const routes: Route[] = [
         .map((d) => ({ d, s: sum([d], w.start, w.end, now) }))
         .filter(({ s }) => s.down + s.up > 0)
         .map(({ d, s }) => ({ url: d.url, mac: d.mac, nickname: d.nickname, display_name: d.display_name, hostname: d.hostname, device_type: d.device_type, download: s.down, upload: s.up }));
-      const profiles = net.profiles.map((p) => {
+      // Only people's profiles: eero's default (Unassigned) group is the remainder the backend adds.
+      const profiles = net.profiles.filter((p) => p.default !== true).map((p) => {
         const s = sum(
           net.devices.filter((d) => d.profile?.url === p.url),
           w.start,

@@ -134,7 +134,7 @@ type Permissions = {
 | `connectionMode` | `connection.mode` |
 | `gatewayUptimeSec` | gateway eero `uptime.since_last_reboot_s` |
 | `capabilities` | `capabilities.<name>.capable` |
-| `counts` | `eeros.count`, `profiles.count`; `devices` is every known device, the same number as `device.list` `summary.total` (eero's `clients.count` counts connected devices only, so it is not used) |
+| `counts` | `eeros.count`; `profiles` is the length of `profile.list` (a real network sends no `profiles.count`; the list leaves out eero's default profile); `devices` is every known device, the same number as `device.list` `summary.total` (eero's `clients.count` counts connected devices only, so it is not used) |
 | `health.internet` | `health.internet.{status,isp_up}` |
 | `health.mesh` | `health.eero_network.status` |
 | `weakLink` | wireless eero with `mesh_quality_bars <= 2` |
@@ -374,7 +374,7 @@ type DeviceList = {
 | `wiredPort` | `connectivity.ethernet_status` |
 | `security` | `auth` |
 | `paused`, `blocked` | `paused`, `blocked` or `blacklisted`, or present in `GET {net}/blacklist` |
-| `profileId` | `profile.url` |
+| `profileId` | `profile.url`; `null` (Unassigned) when the device has no profile or its profile is eero's default profile (see Profiles) |
 | `rates` | `usage.{down_mbps,up_mbps}` after a burst, stamped with the read time |
 
 Blocked devices may be missing from `devices`; the backend merges
@@ -413,6 +413,39 @@ type Schedule = {
 | `nextChange` | computed in core from schedules and the network time zone |
 
 `premium_dns` and `unified_content_filters` are ignored (Plus).
+
+**The default profile.** On a real network (eeroOS 7.12.4+) eero's own
+Unassigned group comes back from `GET {net}/profiles` as a profile with
+`default: true`, and every device without a person's profile points at it
+(no device has `profile: null`). It is not a `Profile`: the eero backend's
+profile list leaves it out (`eero/backend/profile.ts`), and core treats any
+profile id that list does not have as Unassigned. So `device.list` and
+`device.get` give those devices `profileId: null` (the `{profile: null}`
+filter and `summary.byProfile` see them as Unassigned), `profile.list` counts
+them in `unassigned`, and `network.get` `counts.profiles` is the list's
+length. The fake eero server seeds one default profile per network.
+
+`profile.list` returns a `ProfileList`:
+
+```ts
+type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices; today: PausesToday };
+type UnassignedDevices = { deviceIds: Id[]; devicesOnline: number; paused: boolean };
+
+// Today's pauses per profile, and Unassigned (profileId null), for the Profiles page lanes.
+type PausesToday = {
+  date: string;                   // "YYYY-MM-DD" in the network time zone
+  timezone: string | null;        // IANA zone the minutes are in; null = none (then UTC)
+  now: number;                    // minutes after midnight when computed
+  lanes: { profileId: Id | null; segments: PauseSegment[] }[];
+};
+
+// One pause on today's lane, in minutes after midnight (start < end, 0 to 1440).
+type PauseSegment = { start: number; end: number; kind: "scheduled" | "manual"; label: string; scheduleId: Id | null };
+```
+
+`today` is computed in core from each profile's enabled schedules (a span
+that wraps past midnight starts yesterday's lane) and, for a paused profile,
+a manual segment from now until the next scheduled segment starts (or midnight).
 
 ## Guest and Wi-Fi
 
@@ -549,6 +582,7 @@ type NetworkEvent = {
   title: string;
   detail: string | null;
   refs: { deviceId?: Id; eeroId?: Id; profileId?: Id; adminId?: Id };
+  grouped?: NetworkEvent[];       // events.list {grouped: true}: older same type and title, newest first
 };
 
 type EventPage = { events: NetworkEvent[]; nextCursor: string | null; counts: Record<EventCategory, number> };
@@ -569,8 +603,8 @@ type NotificationSettings = { eero: Record<string, boolean>; push: { networkOffl
 
 | Model | eero source |
 | --- | --- |
-| `NetworkEvent` | `GET {net}/app_events`. A real network answers `{events: [{hash, timestamp_ms, description, category}]}` (capture, 2026-11-13), not the clients' `{event_type, title or message, created}`; mapping it is M3.6. `category` from a core table, unknown values go to `other` |
-| `nextCursor` | `created` of the last event (the `timestamp` param) |
+| `NetworkEvent` | `GET {net}/app_events`, mapped on the real shape `{events: [{hash, timestamp_ms, description, category}]}` (capture, 2026-11-13), not the clients' `{event_type, title or message, created}`: `id` from `hash`, `at` from `timestamp_ms`, `type` is eero's `category`, `title` is `description`, `detail` is null. Real events carry no device, eero or profile links, so `refs` is empty. Our `category` comes from a core table on eero's category and the description; unknown values go to `other` |
+| `nextCursor` | `at` of the last event in a full page of 50 (sent back as the `timestamp` param) |
 | `Notification` | `notifications_history` `{notifications: [{uuid, category, title, body, created_at, meta{device_url?, network_url}}]}`; eero sends no read flag per row (how `read` is derived is M3.7's call) |
 | `unread` | `notifications/has_unread` (object or bare bool) |
 | `NotificationSettings.eero` | `GET {net}/notifications` flat map, keys kept as-is (`device.new`) |
