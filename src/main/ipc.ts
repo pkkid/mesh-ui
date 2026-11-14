@@ -77,7 +77,7 @@ export function checkSaveRequest(name: unknown, text: unknown): { name: string; 
     .slice(0, 120);
   const ext = base.includes(".") ? base.slice(base.lastIndexOf(".") + 1).toLowerCase() : "";
   if (!base || base.startsWith(".")) return { refused: "The file needs a name." };
-  if (!(ext in SAVE_EXTS)) return { refused: "Only text files can be saved." };
+  if (!Object.hasOwn(SAVE_EXTS, ext)) return { refused: "Only text files can be saved." };
   return { name: base, ext: ext as SaveExt };
 }
 

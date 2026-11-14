@@ -450,7 +450,7 @@ describe("window.mesh.saveFile", () => {
     expect(checkSaveRequest("../../etc/passwd.csv", "x")).toEqual({ name: "passwd.csv", ext: "csv" });
     expect(checkSaveRequest("C:\\Windows\\evil.JSON", "x")).toEqual({ name: "evil.JSON", ext: "json" });
     expect(checkSaveRequest('re<po>rt:"1".txt', "x")).toEqual({ name: "report1.txt", ext: "txt" });
-    for (const name of ["run.sh", "app.exe", "page.html", "noext", ".bashrc", "", "dir/", 7]) {
+    for (const name of ["run.sh", "app.exe", "page.html", "noext", ".bashrc", "", "dir/", 7, "x.constructor", "x.__proto__", "x.toString"]) {
       expect(checkSaveRequest(name, "x")).toHaveProperty("refused");
     }
   });
