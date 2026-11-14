@@ -89,7 +89,21 @@ process-wide like this.
 - Fixtures cover the states pages must handle: an offline eero, a weak
   wireless link, a paused profile, a scheduled profile, a blocked device, an
   update available, a network in bridge mode, a non-owner admin role, and a
-  capability missing (no nightlight, no Thread).
+  capability missing (no nightlight, no Thread). From M3 also: a guest
+  network on (Maple Street), open (Lake Cabin) and off (Mom's House, bridge
+  mode), WPA2-only devices, a power saving schedule, IPv6 pinholes on
+  reserved devices, unread notifications, a diagnostics warning, support
+  contacts, two admins and a pending invite, and integrations on and
+  unavailable. `src/core/demo/backend.test.ts` checks they agree with each
+  other (guests are on the guest network, pinholes and forwards point at
+  reserved devices, the unread flag matches the unread rows).
+- Demo scenarios (`demo.scenario.set`, `src/core/demo/scenario.ts`):
+  `default`, `signed_out`, `no_networks`, `network_offline`, `eero_offline`,
+  `empty_network`, plus `slow` (every read waits about 1.5 s) and `errors`
+  (every read fails with `eero_error`) for loading and error states. Sign-in
+  and switching scenarios keep working in both. A CLI run is one process,
+  so set the scenario and read in one script:
+  `mesh-ui --demo run steps.jsonl` with a `demo.scenario.set` line first.
 - Fixtures live in one place and are typed against `src/core/model.ts` (demo)
   or `src/core/eero/raw.ts` (fake server), so model changes break them at
   compile time.

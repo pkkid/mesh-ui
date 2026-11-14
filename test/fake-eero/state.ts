@@ -10,18 +10,30 @@
 
 import type {
   RawAccount,
+  RawAcCompat,
+  RawAppEvent,
   RawConnections,
   RawDevice,
   RawEero,
+  RawDiagnostics,
   RawEvent,
+  RawFastTransition,
   RawFirmwareHistoryEntry,
+  RawInvite,
+  RawMember,
   RawNetwork,
+  RawNotification,
+  RawNotificationSettings,
   RawPermissions,
   RawPortInterface,
+  RawPowerSavingSchedule,
   RawProfile,
   RawRouting,
   RawSpeedTest,
+  RawSupport,
+  RawThread,
   RawUpdates,
+  RawWpa3PerBand,
 } from "../../src/core/eero/raw";
 
 /** The one code the fake sign-in accepts. */
@@ -54,6 +66,34 @@ export type FakeNetwork = {
   routing: RawRouting;
   /** `GET {net}/updates`; the network's embedded `updates` is the same object. */
   updates: RawUpdates;
+  // M3 reads, seeded in the shapes captured on a real network (2026-11-13). Routes come with each story.
+  // The guest network (`GET {net}/guestnetwork`) is the network's embedded `guest_network`, password included.
+  /** `GET {net}/wpa3_per_band`. */
+  wpa3PerBand: RawWpa3PerBand;
+  /** `GET {net}/fast_transition`. */
+  fastTransition: RawFastTransition;
+  /** `GET {net}/power_saving/schedules` answers `{schedules}`. */
+  powerSavingSchedules: RawPowerSavingSchedule[];
+  /** `GET {net}/thread`, secrets included; null: the route answers 404. */
+  thread: RawThread | null;
+  /** `GET {net}/ac_compat`. */
+  acCompat: RawAcCompat;
+  /** `GET {net}/app_events` rows in the captured shape, newest first. `events` above is the older guessed shape the current route serves until M3.6 moves to these. */
+  appEvents: RawAppEvent[];
+  /** `GET {net}/notifications_history` rows, newest first. */
+  notificationsHistory: RawNotification[];
+  /** `GET {net}/notifications/has_unread`. */
+  hasUnread: boolean;
+  /** `GET {net}/notifications`. */
+  notificationSettings: RawNotificationSettings;
+  /** `GET {net}/diagnostics`. */
+  diagnostics: RawDiagnostics;
+  /** `GET {net}/support` (`/2.2/`). */
+  support: RawSupport;
+  /** `GET {net}/members` answers `{members}`. */
+  members: RawMember[];
+  /** `GET {net}/invites`; null: the route answers 403 (an admin cannot read them). */
+  invites: RawInvite[] | null;
 };
 
 export type FakeState = {
@@ -299,8 +339,32 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     wpa3: false,
     sqm: false,
     thread: seed.id === "100001",
-    power_saving: false,
-    guest_network: { url: `${netUrl}/guestnetwork`, name: `${seed.name} Guest`, enabled: false },
+    power_saving: maple,
+    power_saving_schedule_enabled: maple,
+    password: maple ? "fake-main-pass-01" : "fake-cabin-pass-02",
+    mlo_mode: maple ? "multi" : undefined,
+    wireless_mode: "auto",
+    auto_setup_mode: "enabled",
+    nat_port_randomization: false,
+    ipv6: { name_servers: { mode: "automatic", custom: [] } },
+    pppoe_enabled: null,
+    pppoe_username: null,
+    vlan: null,
+    temporary_flags: {},
+    homekit: null,
+    amazon_account_linked: maple,
+    ffs: true,
+    alexa_skill: false,
+    proxied_nodes: {
+      enabled: maple,
+      devices: maple
+        ? [{ url: `${netUrl}/proxied_nodes/${compact(mac(990))}`, client_device_url: `${netUrl}/devices/${compact(mac(990))}`, mac_address: mac(990), ip_address: "192.168.4.190", display_name: "Kitchen Echo", model_name: "Echo (4th Gen)", manufacturer: "Example Corp", status: "connected", enabled: true, is_meshing: true, is_guest: false, blocked: false, paused: false, serial: "FAKEECHO0001", os: "FireOS", os_version: "1.0", first_seen: iso("01T12:00:00") }]
+        : [],
+    },
+    // As eero sends it: the password is in the clear here and in GET {net}/guestnetwork.
+    guest_network: maple
+      ? { url: `${netUrl}/guestnetwork`, name: `${seed.name} Guest`, password: "fake-guest-pass-01", enabled: true, resources: { password: `${netUrl}/guestnetwork/password` } }
+      : { url: `${netUrl}/guestnetwork`, name: `${seed.name} Guest`, password: "fake-guest-pass-02", enabled: false, resources: { password: `${netUrl}/guestnetwork/password` } },
     updates,
     capabilities: {
       device_blacklist: { capable: true },
@@ -365,6 +429,55 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     ),
     routing: seedRouting(netUrl, maple ? devices : []),
     updates,
+    wpa3PerBand: maple ? { band_2_4_ghz: "WPA2_WPA3", band_5_ghz: "WPA2_WPA3" } : { band_2_4_ghz: "WPA2", band_5_ghz: "WPA2" },
+    fastTransition: { fast_transition: maple },
+    powerSavingSchedules: maple ? [{ url: `${netUrl}/power_saving/schedules/1`, id: 1, name: "Overnight", days: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"], start_time: "01:00", end_time: "06:00", enabled: true }] : [],
+    thread: maple
+      ? { url: `${netUrl}/thread`, enabled: true, enable_credential_syncing: true, name: "FakeThread", xpan_id: "fa4efa4efa4efa4e", pan_id: "0xfa4e", channel: 15, master_key: "fake-thread-master-key-0000000001", commissioning_credential: "fake-thread-pskc-0000000000000001", border_agent: { ip: "192.168.4.1", port: 49191 } }
+      : null,
+    acCompat: { enabled: false },
+    appEvents: maple
+      ? [
+          { hash: "fake-ev-3", timestamp_ms: Date.parse(iso("12T17:50:00")), description: "Alex's Phone connected", category: "device" },
+          { hash: "fake-ev-2", timestamp_ms: Date.parse(iso("12T16:00:00")), description: "Leo was paused", category: "profile" },
+          { hash: "fake-ev-1", timestamp_ms: Date.parse(iso("12T09:15:00")), description: "Garage went offline", category: "eero" },
+        ]
+      : [],
+    notificationsHistory: maple
+      ? [
+          { uuid: "fake-nt-2", category: "device", title: "New device joined", body: "Alex's Laptop joined Maple Street.", created_at: iso("12T17:40:00"), meta: { device_url: devices[1]?.url, network_url: netUrl } },
+          { uuid: "fake-nt-1", category: "eero", title: "Garage is offline", body: "Garage stopped checking in.", created_at: iso("12T09:15:00"), meta: { network_url: netUrl } },
+        ]
+      : [{ uuid: "fake-nt-3", category: "network", title: "Lake Cabin is offline", body: "Lake Cabin stopped checking in.", created_at: iso("10T08:00:00"), meta: { network_url: netUrl } }],
+    hasUnread: maple,
+    // Every key the capture showed, eero Plus ones included (core leaves those out).
+    notificationSettings: {
+      "device.new": true,
+      "device.restrict.new.private": false,
+      "network.updated": true,
+      "premium.activity.weeklyReport": false,
+      "network.dataUsageReport": false,
+      "permissions.updates": true,
+      "backup.internet.status.change": false,
+      "backup.wan.change": false,
+      "port.security.blocked": true,
+      "network.scheduledUpdate.earlyNotification": true,
+      "network.scheduledUpdate.lateNotification": false,
+    },
+    // Only `status` came back from a real network that had not run diagnostics.
+    diagnostics: { status: maple ? "completed" : "idle" },
+    support: { support_phone: "+18775550123", contact_url: "https://support.example.com/contact", help_url: "https://support.example.com/help", email_web_form_url: "https://support.example.com/email", name: "eero" },
+    members: maple
+      ? [
+          { user_id: 1001, user_role: "owner", user_name: "Alex Kim", user_tags: [] },
+          { user_id: 1002, user_role: "admin", user_name: "Jamie Kim", user_tags: [] },
+        ]
+      : [
+          { user_id: 1003, user_role: "owner", user_name: "Rose Kim", user_tags: [] },
+          { user_id: 1001, user_role: "admin", user_name: "Alex Kim", user_tags: [] },
+        ],
+    // Lake Cabin is an admin network for the fake account: invites answer 403 there.
+    invites: maple ? [{ invite_id: "fake-inv-1", invite_nickname: "Sam", created: iso("12T14:30:00") }] : null,
   };
 }
 

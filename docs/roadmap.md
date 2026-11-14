@@ -424,7 +424,7 @@ notifications history is free; how `updates.notes` fetches the manifest
 (absolute URL, no cookie); the QR encoder (a small pinned dependency or a
 port, decided in M3.2).
 
-### M3.1 Core contracts, captured shapes and fixtures for M3 ☐
+### M3.1 Core contracts, captured shapes and fixtures for M3 ✅ (#98)
 - issue: [#82](https://github.com/pkkid/mesh-ui/issues/82)
 - after: M2.R
 - docs: architecture/data-model.md, architecture/backends.md, architecture/commands.md (guest, wifi, settings, routing, activity, diagnostics, admins, integrations), testing.md (Fixtures, demo scenarios), eero-api/endpoints.md

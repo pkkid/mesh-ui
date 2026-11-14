@@ -124,16 +124,10 @@ export function Connection() {
     },
   ];
 
-  const lease = i?.leaseRenewsAt ? ` · lease renews ${formatRelative(i.leaseRenewsAt, now, n?.timezone ?? "UTC")}` : "";
   const addressing: KvItem[] = [
     {
       label: "WAN type",
-      value: i?.wanType ? (
-        <>
-          {WAN_LABEL[i.wanType]}
-          {lease && <span className="text-muted-foreground text-xs">{lease}</span>}
-        </>
-      ) : null,
+      value: i?.wanType ? WAN_LABEL[i.wanType] : null,
     },
     { label: "Public IPv4", value: i?.publicIpv4, mono: true, copy: true },
     { label: "Public IPv6", value: v6(i?.publicIpv6), mono: !v6Off, copy: v6Off ? false : true },
@@ -181,7 +175,7 @@ export function Connection() {
         <ConnectionCard
           icon={NetworkIcon}
           title="Addressing"
-          sub={asOf ?? "WAN lease and DNS in use"}
+          sub={asOf ?? "WAN address and DNS in use"}
           badge={n?.connectionMode ? <Badge>{bridged ? "Bridge mode" : "NAT mode"}</Badge> : null}
           items={addressing}
         />
