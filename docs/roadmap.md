@@ -456,7 +456,7 @@ port, decided in M3.2).
 - scope: Core: map schedules from `{profile}/schedules` on the captured shape; profile state (active, paused, scheduled) and next schedule computed in core in the network time zone; the `unassigned` summary. Page (mockup 07): profile cards with state, devices online, usage today and next schedule; Unassigned card; usage by profile Day/Week; the week schedule overview on the shared timeline. Pause, resume, add and edit are disabled ("Coming soon"). Empty, offline, `slow`, `errors` and bridge states.
 - done when: demo tests for state and next schedule across midnight and a DST change, `bad_params`, and fake-server tests for schedule mapping; a real shape check of `profile.list` in the PR; page-load budget test; `pnpm ui:shot --route '#/profiles'` in demo and `--fake`, light and dark, plus `empty_network` and `errors`; `MANUAL: Profiles on the real network | pnpm dev, open Profiles | states, devices and schedules match the eero app | none`.
 
-### M3.5 Profile detail ✅ (#PRNUM)
+### M3.5 Profile detail ✅ (#109)
 - issue: [#86](https://github.com/pkkid/mesh-ui/issues/86)
 - after: M3.4
 - docs: ux/pages/profile-detail.md
