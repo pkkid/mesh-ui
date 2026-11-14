@@ -8,6 +8,9 @@
  * is false. Sign-in uses it to open the last used network, else the first,
  * before any network-scoped command runs (which would auto-pick the first
  * network).
+ *
+ * `network.restart` (M4.8) restarts every eero; its confirm and result quote
+ * RESTART_ESTIMATE, the outage estimates the eero commands share.
  */
 
 import { z } from "zod";
@@ -17,6 +20,17 @@ import { type AnyCommand, defineCommand, ref } from "../spec";
 import { knownDevices } from "./device";
 
 const empty = z.object({});
+
+/** Outage estimates for restarts (docs/architecture/commands.md#restart-estimates, eero app copy). */
+export const RESTART_ESTIMATE = {
+  /** network.restart, or restarting the gateway eero. */
+  network: "about 2 to 3 minutes",
+  /** Restarting a leaf eero. */
+  eero: "about 1 minute",
+} as const;
+
+/** What a restart returns: the eeros that go down and how long for. */
+export type RestartResult = { eeroIds: M.Id[]; estimate: string };
 
 /**
  * Problems worth a banner, most serious first. A network that is not
@@ -119,5 +133,24 @@ export const commands: AnyCommand[] = [
     effect: "query",
     topic: "permissions",
     run: (ctx): Promise<M.Permissions> => ctx.backend.network.permissions(ctx.net),
+  }),
+
+  defineCommand({
+    id: "network.restart",
+    label: "Restart network",
+    description: `Restarts every eero on the network. Every device loses internet for ${RESTART_ESTIMATE.network}. Answers once eero accepts it, not when the eeros are back; returns the eeros that restart.`,
+    icon: "rotate-ccw",
+    params: empty,
+    effect: "disruptive",
+    invalidates: ["network", "eeros"],
+    async confirmMessage(ctx) {
+      const name = (await ctx.backend.network.get(ctx.net).catch(() => null))?.name;
+      return `Restarts every eero on ${name ?? "the network"}. Every device loses internet for ${RESTART_ESTIMATE.network}.`;
+    },
+    async run(ctx): Promise<RestartResult> {
+      const eeros = await ctx.backend.eero.list(ctx.net).catch(() => [] as M.Eero[]);
+      await ctx.backend.network.restart(ctx.net);
+      return { eeroIds: eeros.map((e) => e.id), estimate: RESTART_ESTIMATE.network };
+    },
   }),
 ];

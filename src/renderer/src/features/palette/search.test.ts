@@ -144,7 +144,7 @@ describe("search", () => {
     expect(r.groups.map((g) => g.kind)).toEqual(["command"]);
     expect(r.counts.device + r.counts.page + r.counts.profile).toBe(0);
     const ids = r.flat.map((h) => (h.item.kind === "command" ? h.item.info.id : ""));
-    expect(ids.slice(0, 2).sort()).toEqual(["eero.get", "eero.list"]);
+    expect(ids.slice(0, 3).sort()).toEqual(["eero.find", "eero.get", "eero.list"]);
     expect(r.flat[0]?.idRanges[0]).toEqual([0, 5]);
     // No fuzzy matches in id mode: "eero." is not demo.scenario.set.
     expect(ids).not.toContain("demo.scenario.set");
@@ -217,7 +217,7 @@ function writeSpecs(kit: Kit): AnyCommand[] {
       run: async () => ({ restarts: ++kit.restarts }),
     }),
     defineCommand({
-      id: "eero.reboot",
+      id: "eero.restart",
       label: "Restart eero",
       effect: "disruptive",
       params: z.object({ eero: ref("eero") }),
@@ -283,10 +283,10 @@ describe("dimming writes", () => {
     const on = (permissions: Permissions, net: Network = network) => ({ signedIn: true, permissions, network: net });
     const av = (id: string, ctx: ReturnType<typeof on>) => availability(info(t.commands, id), ctx);
 
-    for (const id of ["device.pause", "device.block", "network.restart", "eero.reboot", "profile.delete"]) {
+    for (const id of ["device.pause", "device.block", "network.restart", "eero.restart", "profile.delete"]) {
       expect(av(id, on(owner))).toBeNull();
     }
-    expect(av("eero.reboot", on(admin))).toBe("Owner only");
+    expect(av("eero.restart", on(admin))).toBe("Owner only");
     expect(av("profile.delete", on(admin))).toBe("Owner only");
     expect(av("device.pause", on(member))).toBe(NO_PERMISSION);
     const bridged = { ...network, connectionMode: "bridged" as const };
@@ -413,11 +413,11 @@ describe("CLI and MCP text", () => {
     expect(cliLine("device.get", { device: "Leo's Switch" }, "query")).toBe(
       `mesh-ui run device.get --params '{"device":"Leo'\\''s Switch"}'`,
     );
-    expect(cliLine("eero.reboot", { eero: "x" }, "disruptive")).toBe(`mesh-ui run eero.reboot --params '{"eero":"x"}' --confirm`);
+    expect(cliLine("eero.restart", { eero: "x" }, "disruptive")).toBe(`mesh-ui run eero.restart --params '{"eero":"x"}' --confirm`);
   });
 
   it("builds the MCP tools/call with the core tool name, adding confirm when needed", () => {
     expect(mcpCall("device.list", { status: "online" }, "query")).toEqual({ name: "device_list", arguments: { status: "online" } });
-    expect(mcpCall("eero.reboot", { eero: "x" }, "disruptive")).toEqual({ name: "eero_reboot", arguments: { eero: "x", confirm: true } });
+    expect(mcpCall("eero.restart", { eero: "x" }, "disruptive")).toEqual({ name: "eero_restart", arguments: { eero: "x", confirm: true } });
   });
 });

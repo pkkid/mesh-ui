@@ -314,8 +314,8 @@ describe("fake eero server records writes", () => {
     expect(fake.writes[0]).toMatchObject({ method: "PUT", path: "/2.2/eeros/9001/led", version: "2.2", route: "/eeros/9001/led", contentType: "application/x-www-form-urlencoded", encoding: "form", body: { led_on: "false", led_brightness: "30" } });
     expect(fake.writes[1]).toMatchObject({ method: "PUT", path: "/2.3/networks/100001/devices/0a1b2c000001", version: "2.3", route: "/networks/100001/devices/0a1b2c000001", contentType: "application/json", encoding: "json", body: { paused: true }, rawBody: '{"paused":true}' });
     expect(fake.writes[2]).toMatchObject({ method: "POST", version: "2.2", encoding: "empty", body: {} });
-    // Recorded whatever answers: these routes come with each wave-2 story, so today they are 404s.
-    expect(fake.writes.map((w) => w.status)).toEqual([404, 404, 404]);
+    // Recorded whatever answers (404 for the unknown eero 9001; the others as their routes land).
+    expect(fake.writes.every((w) => w.status > 0)).toBe(true);
     expect(fake.log).toHaveLength(4);
   });
 

@@ -1,7 +1,8 @@
 /**
  * Fake network routes: the account (with its network refs), the `/networks`
- * fallback list, one network with its embedded eeros, speed test history and
- * permissions. See docs/eero-api/endpoints.md.
+ * fallback list, one network with its embedded eeros, speed test history,
+ * permissions and restart (`POST {net}/reboot`, empty JSON). See
+ * docs/eero-api/endpoints.md.
  *
  * `GET /account`, which network.list also reads, lives in ./account.ts.
  */
@@ -59,4 +60,14 @@ export const routes: Route[] = [
     },
   },
   { method: "GET", path: "/networks/:net/permissions", handle: ({ params, network }) => ok(network(params.net ?? "").permissions) },
+  {
+    method: "POST",
+    path: "/networks/:net/reboot",
+    handle: ({ params, network, state }) => {
+      const net = network(params.net ?? "");
+      const at = new Date(state.now()).toISOString();
+      for (const e of net.eeros) if (e.status !== "red") e.last_reboot = at;
+      return ok(null);
+    },
+  },
 ];
