@@ -1,7 +1,7 @@
 /**
  * Wi-Fi hero: the SSID, whether it is broadcasting, wireless clients and
- * bands, and the QR block. The code stays an empty frame until "Show code"
- * runs `wifi.share`; Copy password and Save QR work from then on (copy reads
+ * bands, and the QR block. The code stays an empty frame, with a "Show code"
+ * button centred in it, until that button runs `wifi.share`; Copy password and Save QR work from then on (copy reads
  * `wifi.password.get`).
  * docs/ux/pages/wifi.md (Layout 1).
  */
@@ -64,19 +64,23 @@ export function WifiHero({
           copyLabel="Copy password"
           copyText={async () => (await password.load())?.password ?? null}
           fileName={`${ssid ?? "Wi-Fi"} QR.png`}
+          placeholder={
+            <Button
+              size="xs"
+              variant="outline"
+              disabled={!wifi || share.loading}
+              aria-label={ssid ? `Show the QR code to join ${ssid}` : "Show the Wi-Fi QR code"}
+              onClick={() => void share.load()}
+            >
+              <Eye />
+              Show code
+            </Button>
+          }
           actions={
-            <>
-              {!share.value && (
-                <Button size="sm" variant="outline" disabled={!wifi || share.loading} onClick={() => void share.load()}>
-                  <Eye />
-                  Show code
-                </Button>
-              )}
-              <ComingSoonButton size="sm" variant="outline">
-                <Printer />
-                Print a card
-              </ComingSoonButton>
-            </>
+            <ComingSoonButton size="sm" variant="outline">
+              <Printer />
+              Print a card
+            </ComingSoonButton>
           }
         />
       }
