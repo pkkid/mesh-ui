@@ -85,13 +85,13 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   signal: "Signal",
   addr: "IP · MAC",
   now: "Now",
-  today: "Today",
+  today: "24h",
 };
 
 const SORT_LABELS: Record<SortKey, string> = {
   name: "Name",
   rate: "Live rate",
-  usage: "Data today",
+  usage: "Data, 24h",
   last_seen: "Last seen",
 };
 

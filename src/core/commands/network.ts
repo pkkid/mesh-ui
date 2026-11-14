@@ -72,16 +72,21 @@ export const commands: AnyCommand[] = [
     id: "network.get",
     label: "Network",
     description:
-      "One network: name, nickname, status, role, counts, capabilities, time zone and banner messages. counts.devices is every known device, the same number as device.list summary.total.",
+      "One network: name, nickname, status, role, counts, capabilities, time zone and banner messages. counts.devices is every known device, the same number as device.list summary.total; counts.profiles is the number of profiles profile.list lists.",
     icon: "network",
     params: empty,
     effect: "query",
     topic: "network",
     poll: POLL.network,
     async run(ctx): Promise<M.Network> {
-      const [n, devices] = await Promise.all([ctx.backend.network.get(ctx.net), ctx.backend.device.list(ctx.net)]);
+      const [n, devices, profiles] = await Promise.all([
+        ctx.backend.network.get(ctx.net),
+        ctx.backend.device.list(ctx.net),
+        ctx.backend.profile.list(ctx.net).catch(() => null),
+      ]);
       // eero's clients.count is connected devices only; the sidebar count is every known device, as device.list counts them.
-      const counts = { ...n.counts, devices: knownDevices(devices, ctx.now()).length };
+      // A real network sends no profile count; it is profile.list's, which leaves out eero's default (Unassigned) profile.
+      const counts = { ...n.counts, devices: knownDevices(devices, ctx.now()).length, profiles: profiles ? profiles.length : n.counts.profiles };
       return { ...n, counts, selected: n.id === ctx.selectedNetworkId };
     },
   }),
