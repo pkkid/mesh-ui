@@ -1,6 +1,7 @@
 /**
  * Advanced networking groups: Internet, Network services, Wireless and the
- * Danger zone, plus the row pieces PowerSaving and Integrations share.
+ * Danger zone, plus the row pieces PowerSaving, ThreadCard and Integrations
+ * share.
  *
  * Internet and Network services are live (M5.2): IPv6, UPnP, SQM and DNS
  * caching are switches; DHCP, NAT port mode and DNS are segmented choices;
@@ -10,8 +11,11 @@
  * and the side panel shows the pending change. Gates come from each
  * command's spec (`useGate(id)`), plus offline. In bridge mode the NAT-only
  * rows (NAT port mode, DNS, caching, UPnP, SQM) are hidden.
- * Wireless, Thread and the danger zone stay read only until M5.3 ("Coming
- * soon"). Layout: docs/ux/pages/advanced-networking.md, mockup 13.
+ * Wireless (M5.3): multi-link operation (segmented, inline confirm), client
+ * steering, fast roaming, legacy device mode (inline confirm) and the Thread
+ * card (ThreadCard.tsx); Simple Setup is a live switch with Undo. The danger
+ * zone lives in DangerZone.tsx. Layout: docs/ux/pages/advanced-networking.md,
+ * mockup 13.
  */
 import { Cable, Network, Pencil, RotateCcw, Server } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -22,15 +26,18 @@ import { Badge } from "~/components/ui/badge";
 import { Card, Section } from "~/components/ui/card";
 import { WriteConfirm } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
+import { useQuery } from "~/app/useCommand";
 import { ComingSoonButton, GatedButton, useGate } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet, SheetField } from "~/components/ui/sheet";
-import { Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import { dhcpProblem, IMPACT, isIpv4, isIpv6, wanStaticProblem } from "../../../../core/commands/settings";
 import { MISSING } from "../../../../core/format";
-import type { Internet, NetworkSettings } from "../../../../core/model";
+import type { Internet, Network as NetworkData, NetworkSettings } from "../../../../core/model";
 import { ImpactPanel, usePendingImpact } from "./ImpactPanel";
+import { ThreadCard } from "./ThreadCard";
+
+export { DangerZone } from "./DangerZone";
 
 const SOON = "Coming soon";
 
@@ -145,6 +152,11 @@ const onOff = (v: boolean | null | undefined) => (v === true ? "On" : v === fals
 /** Writes are blocked while the network is offline: they cannot reach the eeros. */
 export const OFFLINE = "Your network is offline, changes cannot reach the eeros";
 
+/** Whether the network is offline, from the cached network.get the page already reads. */
+export function useOffline(): boolean {
+  return useQuery<NetworkData>("network.get").data?.status === "offline";
+}
+
 type SettingsWrite<P> = { gate: Gate; write: WriteState<P, NetworkSettings> };
 
 /**
@@ -153,7 +165,7 @@ type SettingsWrite<P> = { gate: Gate; write: WriteState<P, NetworkSettings> };
  * core's IMPACT table. While its confirm waits, the side panel shows its
  * impact as the pending change.
  */
-function useSettingsWrite<P>(id: string, what: string, offline: boolean, opts: WriteOptions<P, NetworkSettings> & { confirmIn?: "inline" | "dialog" } = {}): SettingsWrite<P> {
+export function useSettingsWrite<P>(id: string, what: string, offline: boolean, opts: WriteOptions<P, NetworkSettings> & { confirmIn?: "inline" | "dialog" } = {}): SettingsWrite<P> {
   const base = useGate(id);
   const gate = base.allowed && offline ? { allowed: false, reason: OFFLINE } : base;
   const rule = IMPACT[id];
@@ -166,7 +178,7 @@ function useSettingsWrite<P>(id: string, what: string, offline: boolean, opts: W
 }
 
 /** A write's inline confirm, shown under its row while it waits. */
-function Asking<P>({ write }: { write: WriteState<P, NetworkSettings> }) {
+export function Asking<P>({ write }: { write: WriteState<P, NetworkSettings> }) {
   if (!write.asking) return null;
   return <WriteConfirm write={write}>{null}</WriteConfirm>;
 }
@@ -196,8 +208,8 @@ export function WriteSwitch({ on, label, gate, busy = false, onToggle }: { on: b
   );
 }
 
-/** A row whose switch runs one `{enabled}` write. UPnP and SQM offer Undo; restarting ones confirm inline. */
-function ToggleRow({
+/** A row whose switch runs one `{enabled}` write. Live ones offer Undo; restarting ones confirm inline. */
+export function ToggleRow({
   id,
   value,
   title,
@@ -476,7 +488,14 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
       subtitle="Addressing, DNS and traffic handling"
       hint={bridged ? "In bridge mode another router handles addressing, so NAT, DNS, UPnP, SQM and reservations are off here." : undefined}
     >
-      <Row title="eero Simple Setup" description="Adds new eero 6 or newer units automatically when they are plugged in by Ethernet" control={<ReadSwitch on={s?.simpleSetup} label="eero Simple Setup" />} />
+      <ToggleRow
+        id="settings.simple_setup.set"
+        value={s?.simpleSetup}
+        title="eero Simple Setup"
+        what="eero Simple Setup"
+        description="Adds new eero 6 or newer units automatically when they are plugged in by Ethernet"
+        offline={offline}
+      />
       <Row
         title="DHCP and NAT"
         badge={<RestartBadge />}
@@ -720,84 +739,63 @@ function DnsSheet({ open, onClose, settings, offline }: { open: boolean; onClose
 // ---------------------------------------------------------------------------
 // Wireless
 
-const MLO_LABEL = { disabled: "Off", single: "Single link", multi: "Multi-link" } as const;
+const MLO_OPTIONS = [
+  { value: "disabled", label: "Off" },
+  { value: "single", label: "Single link" },
+  { value: "multi", label: "Multi-link" },
+] as const;
+
+type MloMode = NonNullable<NetworkSettings["mlo"]>;
 
 export function WirelessGroup({ settings }: { settings: NetworkSettings | undefined }) {
   const s = settings;
-  const t = s?.thread ?? null;
+  const offline = useOffline();
+  const mlo = useSettingsWrite<{ mode: MloMode }>("settings.mlo.set", "multi-link operation", offline);
   return (
     <Group title="Wireless" subtitle="Radio features across all eeros">
       {s?.mlo !== null && (
         <Row
           title="Multi-link operation"
-          badge={<Badge variant="outline">Wi-Fi 7</Badge>}
-          description="Wi-Fi 7 devices use several bands at once. Changing it restarts the network for about 2 minutes and may turn on WPA3."
-          control={
+          badge={
             <>
-              {s && <span className="text-muted-foreground text-xs">{MLO_LABEL[s.mlo]}</span>}
-              <ReadSwitch on={s ? s.mlo !== "disabled" : undefined} label="Multi-link operation" />
+              <Badge variant="outline">Wi-Fi 7</Badge>
+              <RestartBadge />
             </>
           }
-        />
-      )}
-      <Row title="Client steering" description="Nudges devices to the best eero and band" control={<ReadSwitch on={s?.bandSteering} label="Client steering" />} />
-      <Row title="Fast roaming (802.11r)" description="Phones and laptops hand over between eeros faster" control={<ReadSwitch on={s?.fastTransition} label="Fast roaming" />} />
-      <Row
-        title="Legacy device mode"
-        description="Connects older devices that cannot detect Wi-Fi 6. Changing it restarts the network."
-        control={<ReadSwitch on={s?.legacyMode} label="Legacy device mode" />}
-      />
-      {s && !t ? (
-        <Row title="Thread" description="This network does not report a Thread border router" dim control={<Status tone="muted">Unavailable</Status>} />
-      ) : (
-        <Row
-          title="Thread"
-          badge={t?.enabled ? <Status tone="success">Border router</Status> : undefined}
-          description="Low-power mesh for Matter and smart home accessories"
-          control={<ReadSwitch on={t?.enabled} label="Thread" />}
-        >
-          {t && (
-            <SubPanel className="flex flex-col gap-3.5">
-              <Fields
-                items={[
-                  { label: "Network name", value: t.name, mono: false },
-                  { label: "Channel", value: t.channel === null ? null : String(t.channel) },
-                  { label: "PAN ID", value: t.panId },
-                  { label: "Extended PAN ID", value: t.xpanId },
-                  {
-                    label: "Network key",
-                    value: (
-                      <span className="flex items-center gap-2">
-                        <span className="tracking-[0.18em]">••••••••••••••••</span>
-                        <ComingSoonButton size="xs" variant="outline">
-                          Reveal
-                        </ComingSoonButton>
-                      </span>
-                    ),
-                  },
-                  { label: "Border agent", value: t.borderAgent },
-                ]}
+          description="Wi-Fi 7 devices use several bands at once. Changing it restarts the network and may turn on WPA3."
+          control={
+            <span title={mlo.gate.reason ?? undefined}>
+              <Segmented<MloMode>
+                aria-label="Multi-link operation"
+                value={(s?.mlo ?? "") as MloMode}
+                onValueChange={(v) => s && v !== s.mlo && void mlo.write.run({ mode: v }, { success: `Multi-link operation set to ${MLO_OPTIONS.find((o) => o.value === v)?.label.toLowerCase()}` })}
+                options={MLO_OPTIONS.map((o) => ({ ...o, disabled: !s || (o.value !== s.mlo && (!mlo.gate.allowed || mlo.write.running)) }))}
               />
-              <div className="flex items-center gap-3 border-t pt-3">
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="font-medium text-xs">Share credentials with phone keychain</span>
-                  <span className="text-2xs text-muted-foreground">Lets iOS and Android add Thread devices to this network</span>
-                </div>
-                <ReadSwitch on={t.credentialSync} label="Share credentials with phone keychain" />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-                <ComingSoonButton size="xs" variant="outline">
-                  Copy dataset
-                </ComingSoonButton>
-                <ComingSoonButton size="xs" variant="outline" className="text-destructive-foreground">
-                  Regenerate credentials
-                </ComingSoonButton>
-                <span className="text-2xs text-muted-foreground">Regenerating disconnects every Thread device</span>
-              </div>
-            </SubPanel>
-          )}
+            </span>
+          }
+        >
+          <Asking write={mlo.write} />
         </Row>
       )}
+      <ToggleRow id="settings.band_steering.set" value={s?.bandSteering} title="Client steering" what="Client steering" description="Nudges devices to the best eero and band" offline={offline} />
+      <ToggleRow
+        id="settings.fast_transition.set"
+        value={s?.fastTransition}
+        title="Fast roaming (802.11r)"
+        what="Fast roaming"
+        description="Phones and laptops hand over between eeros faster"
+        offline={offline}
+      />
+      <ToggleRow
+        id="settings.legacy_mode.set"
+        value={s?.legacyMode}
+        title="Legacy device mode"
+        what="Legacy device mode"
+        badge={<RestartBadge />}
+        description="Connects older devices that cannot detect Wi-Fi 6"
+        offline={offline}
+      />
+      <ThreadCard settings={s} offline={offline} />
       <Row
         title="WPA3"
         description="Set per band on the Wi-Fi page"
@@ -805,36 +803,6 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
           <Link to={pathFor("wifi")} className="rounded-(--control-radius) border px-2 py-1 font-medium text-xs hover:bg-muted/50">
             Wi-Fi
           </Link>
-        }
-      />
-    </Group>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Danger zone
-
-export function DangerZone({ owner, networkName }: { owner: boolean; networkName: string | null }) {
-  return (
-    <Group title="Danger zone" subtitle="Cannot be undone from here">
-      <Row
-        title="Restart network"
-        badge={<Badge variant="warning">Disruptive</Badge>}
-        description="Restarts every eero. Everything is offline for about 8 minutes."
-        control={
-          <ComingSoonButton size="sm" variant="outline">
-            Restart network
-          </ComingSoonButton>
-        }
-      />
-      <Row
-        title="Delete network"
-        badge={<Badge variant="error">Destructive · owner</Badge>}
-        description={`Factory-resets every eero and removes ${networkName ?? "this network"}, its profiles, history and admins. Cannot be undone.`}
-        control={
-          <ComingSoonButton size="sm" variant="destructive" title={owner ? SOON : "Owner only"}>
-            Delete network
-          </ComingSoonButton>
         }
       />
     </Group>
