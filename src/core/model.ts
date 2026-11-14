@@ -683,7 +683,13 @@ export type Check = {
   detail: string | null;
 };
 
-export type HealthReport = { overall: "good" | "warning" | "problem"; checks: Check[]; at: Iso };
+export type HealthReport = {
+  overall: "good" | "warning" | "problem";
+  /** 0 to 100, built in core from the check statuses. */
+  score: number;
+  checks: Check[];
+  at: Iso;
+};
 
 export type DiagnosticsResult = {
   status: string | null;

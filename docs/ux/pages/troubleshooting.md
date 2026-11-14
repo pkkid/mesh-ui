@@ -76,7 +76,8 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 
 ## Notes
 
-- `health.check` is composite and built in core from `network.get` (health), `eero.list`, `updates.get` and the last speed test; the score formula lives in core so the CLI and MCP get the same number.
+- `health.check` is composite and built in core from `network.health` (with its issues), `internet.get` (with the last speed test), `eero.list` and `updates.get`; it runs no active probes and does not post a diagnostics run. The score formula lives in core (100 minus 14 per warning, 30 per problem, 5 per unknown, so one warning gives 86) so the CLI and MCP get the same number. The hero word is "Good" for good or warning and "Needs attention" with any problem.
+- Built so far (M3.12): the health check hero and checks grid, Tools and restarts (all disabled, "Coming soon"), coverage scan and upgrade report placeholders (disabled, "No scan yet"; no fixtures until M5), and Get help with Copy diagnostics report. The symptom chips are disabled until `diagnostics.run`. Radio channels and the Fixes cards (2.4 GHz mode, legacy mode, status lights) come with their commands.
 - `diagnostics.run` posts to `{net}/diagnostics` with a symptom, then reads `GET {net}/diagnostics` until it has results.
 - Coverage scan and upgrade report are `GET /2.4/networks/{id}/placement/...`; they read only but may take a while, so show progress.
 - Busy percent comes from `radio_channel_stats.channel_utilization` on each eero, a current value that free accounts get. Historical channel analytics (`channel_utilization` endpoint) is an eero Plus feature and is not used.
