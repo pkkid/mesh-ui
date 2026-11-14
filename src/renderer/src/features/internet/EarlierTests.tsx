@@ -1,21 +1,22 @@
 /**
  * Internet "Earlier tests": the week's tests before the latest one, each
  * direction with a meter of the plan, and the verdict core rated it.
- * Export CSV copies `speedtest.history {format: "csv"}` to the clipboard
- * until the host has a save dialog. docs/ux/pages/internet.md (Layout 4).
+ * Export CSV saves `speedtest.history {format: "csv"}` through the host's
+ * save dialog (`lib/saveFile.ts`). docs/ux/pages/internet.md (Layout 4).
  */
-import { Download } from "lucide-react";
+import { Check, Download } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { execute, useQuery } from "~/app/useCommand";
+import { Button } from "~/components/ui/button";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { Meter } from "~/components/ui/meter";
 import { SectionError } from "~/components/ui/page";
 import { seriesColors } from "~/lib/chartColors";
+import { datedName, saveTextFile } from "~/lib/saveFile";
 import { cn } from "~/lib/utils";
 import { formatMbps, networkClock } from "../../../../core/format";
 import type { Internet, Network, PlanSpeed, SpeedHistory, SpeedTest } from "../../../../core/model";
-
-import { CopyCommandButton } from "./Connection";
 
 const VERDICT: Record<NonNullable<SpeedTest["rating"]>, { label: string; className: string }> = {
   great: { label: "Great", className: "text-foreground/80" },
@@ -40,17 +41,7 @@ export function EarlierTests() {
   const plan = internet.data?.planMbps ?? null;
   const rows = history.data?.tests.slice(1);
 
-  const tools = (
-    <CopyCommandButton
-      icon={<Download />}
-      idle="Export CSV"
-      done="CSV copied"
-      load={async () => {
-        const r = await execute<string>("speedtest.history", { range: "week", format: "csv" });
-        return r.ok ? r.result : null;
-      }}
-    />
-  );
+  const tools = <ExportCsvButton network={network.data?.name ?? null} />;
 
   return (
     <Section title="Earlier tests" subtitle="Before the latest result above" tools={tools}>
@@ -110,5 +101,44 @@ function SpeedCell({ value, plan, label, color, className }: { value: number | n
         {plan ? <Meter value={value} max={plan} color={color} label={`${label}, share of plan`} /> : null}
       </div>
     </td>
+  );
+}
+
+/** "speed-tests-maple-street" from the network name; letters and digits only. */
+function fileStem(stem: string, network: string | null): string {
+  const slug = (network ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return slug ? `${stem}-${slug}` : stem;
+}
+
+/** Export CSV: the week's tests as CSV from core, saved where the user picks. */
+function ExportCsvButton({ network }: { network: string | null }) {
+  const [state, setState] = useState<{ kind: "idle" | "busy" } | { kind: "saved"; name: string } | { kind: "failed"; message: string }>({ kind: "idle" });
+  useEffect(() => {
+    if (state.kind !== "saved" && state.kind !== "failed") return;
+    const t = setTimeout(() => setState({ kind: "idle" }), 2400);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  const run = async () => {
+    setState({ kind: "busy" });
+    const r = await execute<string>("speedtest.history", { range: "week", format: "csv" });
+    if (!r.ok) return setState({ kind: "failed", message: r.error.message });
+    const saved = await saveTextFile(datedName(fileStem("speed-tests", network), "csv"), r.result);
+    if (saved.status === "saved") setState({ kind: "saved", name: saved.name });
+    else if (saved.status === "failed") setState({ kind: "failed", message: saved.message });
+    else setState({ kind: "idle" });
+  };
+
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      disabled={state.kind === "busy"}
+      title={state.kind === "saved" ? `Saved ${state.name}` : state.kind === "failed" ? state.message : undefined}
+      onClick={() => void run()}
+    >
+      {state.kind === "saved" ? <Check /> : <Download />}
+      {state.kind === "saved" ? "CSV saved" : state.kind === "failed" ? "Couldn't save" : "Export CSV"}
+    </Button>
   );
 }

@@ -35,7 +35,8 @@ Topbar: title "Internet", subtitle freshness, no page actions.
    - Rule, then info note: "Tests run from the gateway to your ISP, so they
      show what Ziply delivers, not Wi-Fi speed in a room."
    - Main chart: one point per test, download and upload lines, fixed y
-     scale to the plan (0, 300, 600, 900, 1200), x labels "Nov 6", "Nov 9",
+     scale to the plan (`AreaChart max`, nice ticks up to at least the
+     plan), x labels "Nov 6", "Nov 9",
      "Today", tooltip per test with date and time.
 4. **Earlier tests** table. Sub "Before the latest result above". Tool:
    **Export CSV**. Columns: When, Download (value plus meter of plan), Upload
@@ -84,7 +85,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | ISP settings → | - | - | No | Advanced networking, WAN section |
 | Plan value (click the "set by you" row) | `internet.plan.set {down, up, label?}` | write | No | Small popover with download and upload Mbps and an optional name; gauges, meters and verdicts recompute |
 | Day / Week (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart and averages switch range |
-| Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog, file `speed-tests-maple-street-2026-11-12.csv`. Until the host has a save dialog (M2.4), the CSV is copied to the clipboard and the button reads "CSV copied" |
+| Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog (`window.mesh.saveFile`), file `speed-tests-maple-street-2026-11-12.csv`; the button reads "CSV saved" for a moment, or "Couldn't save" with eero's or the host's message as its tooltip |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
 | Device in "Using the most" or By device | - | - | No | Device detail |
 | All devices → | - | - | No | Devices sorted by data today |
@@ -142,10 +143,10 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 - Built in M2.4: Run speed test and the plan popover are disabled
   ("Coming soon") until `speedtest.run` and `internet.plan.set` land. There
   is no toast yet, so Copy details and Export CSV confirm on the button
-  ("Details copied", "CSV copied"). The Per day card always shows the last 7
+  ("Details copied", "CSV saved"). The Per day card always shows the last 7
   days (one bar for Day would say nothing); the Day / Week toggle switches the
-  Per hour chart and both tables. The speed test chart scales to the results,
-  not to the plan, until the shared chart takes a fixed maximum.
+  Per hour chart and both tables. Since M3.2 the speed test chart scales to
+  the plan (`AreaChart max`), or to the results when no plan is set.
 - Open question: "Gateway up ... since Oct 20, 9:41 AM" uses the gateway's
   `last_reboot`; WAN uptime might differ from gateway uptime if the ISP link
   dropped without a reboot. Show gateway uptime and label it as such.

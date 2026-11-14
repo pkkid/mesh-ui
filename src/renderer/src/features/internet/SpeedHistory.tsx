@@ -81,6 +81,7 @@ export function SpeedHistory() {
             labels={tests.map((t) => clock.day(t.at))}
             tooltipLabels={tests.map((t) => clock.dateTime(t.at))}
             format={(v) => formatMbps(v)}
+            max={plan ? Math.max(plan.down, plan.up) : null}
             total={false}
             loading={history.loading && (!history.data || history.fading)}
             emptyText="No speed tests in this window."
