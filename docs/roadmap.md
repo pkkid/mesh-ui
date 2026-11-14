@@ -504,7 +504,7 @@ port, decided in M3.2).
 - scope: Core: `settings.get` (DNS, DHCP, IPv6, WAN, connection mode, UPnP, SQM, band steering, fast roaming, MLO, power saving with schedules, legacy mode, Thread without secrets) and `integrations.get` (each with `available` and `enabled`; a 403 or 404 is unavailable, not an error). Page (mockup 13): every group as read-only values, power saving schedules on the shared timeline, integrations. Every toggle is disabled ("Coming soon"); `settings.impact` waits for M5. Bridge and offline states.
 - done when: demo tests incl. `bad_params` and Thread secrets never in the result; fake-server tests on the captured shapes; real shape checks of both commands in the PR; page-load budget test; `pnpm ui:shot --route '#/advanced'` demo and `--fake`, light and dark, plus Mom's House (bridge).
 
-### M3.11 Reservations & ports read view ☐
+### M3.11 Reservations & ports read view ✅ (#110)
 - issue: [#92](https://github.com/pkkid/mesh-ui/issues/92)
 - after: M3.1, M3.2
 - docs: ux/pages/reservations-ports.md, architecture/commands.md (routing)

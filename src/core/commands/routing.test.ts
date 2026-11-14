@@ -6,7 +6,7 @@ import { createEeroBackend } from "../eero/backend";
 import { mapLan, mapRouting } from "../eero/map/routing";
 import { createEngine } from "../engine";
 import type * as M from "../model";
-import type { ForwardList, ReservationList } from "./routing";
+import type { ForwardList, PinholeList, ReservationList } from "./routing";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const KIM = "6092118";
@@ -39,6 +39,13 @@ describe("reservation.list (demo)", () => {
     expect(r.lan).toMatchObject({ subnet: "192.168.4.0/22", size: 1024, gateway: "192.168.4.1", staticRange: { start: "192.168.4.2", end: "192.168.4.99" } });
     // Reserved devices sit in the static range; the other connected main-network clients hold pool leases (.4.100 up). Guests (Grandma's iPad) do not.
     expect(r.lan?.pool.leased).toBe(22);
+    // The leased addresses behind the count, for the address map: unique, in address order, all inside the pool.
+    expect(r.leases).toHaveLength(22);
+    expect(new Set(r.leases).size).toBe(22);
+    const num = (ip: string) => ip.split(".").reduce((a, n) => a * 256 + Number(n), 0);
+    expect(r.leases.map(num)).toEqual([...r.leases.map(num)].sort((a, b) => a - b));
+    for (const ip of r.leases) expect(num(ip) >= num("192.168.4.100") && num(ip) <= num("192.168.7.254")).toBe(true);
+    for (const x of r.reservations) expect(r.leases).not.toContain(x.ip);
   });
 
   it("counts leases as connected main-network devices inside the pool without a reservation", async () => {
@@ -82,6 +89,7 @@ describe("reservation.list (demo)", () => {
     expect(await ok<ReservationList>(engine, "reservation.list", { networkId: KIM })).toEqual({
       reservations: [],
       lan: null,
+      leases: [],
       unavailable: "Reservations and port forwards are off while the network is in bridge mode.",
     });
   });
@@ -127,6 +135,49 @@ describe("forward.list (demo)", () => {
   });
 });
 
+describe("pinhole.list (demo)", () => {
+  it("lists IPv6 pinholes by port, each joined to a device with its IPv6 address", async () => {
+    const { engine } = demo();
+    const r = await ok<PinholeList>(engine, "pinhole.list");
+    const devices = (await ok<M.DeviceList>(engine, "device.list")).devices;
+    expect(r.unavailable).toBeNull();
+    expect(r.pinholes.map((p) => [devices.find((d) => d.id === p.deviceId)?.name, p.port, p.protocol])).toEqual([
+      ["Synology NAS", "443", "tcp"],
+      ["PlayStation 5", "3074", "udp"],
+    ]);
+    for (const p of r.pinholes) expect(devices.find((d) => d.id === p.deviceId)?.ipv6).toContain(p.address);
+    expect(engine.commands().find((c) => c.id === "pinhole.list")).toMatchObject({ effect: "query", label: "IPv6 firewall rules" });
+  });
+
+  it("joins a pinhole named by MAC and fills a missing address from the device", async () => {
+    const { backend } = demo();
+    const devices = await backend.device.list("4821907");
+    const nas = devices.find((d) => d.name === "Synology NAS");
+    if (!nas) throw new Error("fixture");
+    const get = backend.routing.get;
+    const routing = { ...backend.routing, get: async (net: M.Id) => ({ ...(await get(net)), pinholes: [{ id: "1", deviceId: nas.mac.replace(/:/g, "").toUpperCase(), address: null, port: "22", protocol: "tcp" as const }] }) };
+    const engine = createEngine({ backend: { ...backend, routing }, clock: () => NOW });
+    expect((await ok<PinholeList>(engine, "pinhole.list")).pinholes).toEqual([{ id: "1", deviceId: nas.id, address: nas.ipv6[0] ?? null, port: "22", protocol: "tcp" }]);
+  });
+
+  it("fails bad_params for unknown params or an unknown network", async () => {
+    const { engine } = demo();
+    expect(await engine.execute("pinhole.list", { device: "Synology NAS" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("pinhole.list", { networkId: "Nowhere" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("answers empty with a reason in bridge mode, and empty on a network with none", async () => {
+    const { engine } = demo();
+    expect(await ok<PinholeList>(engine, "pinhole.list", { networkId: KIM })).toEqual({
+      pinholes: [],
+      unavailable: "Reservations and port forwards are off while the network is in bridge mode.",
+    });
+    const nets = (await ok<M.NetworkSummary[]>(engine, "network.list")).filter((n) => n.id !== KIM && n.id !== "4821907");
+    expect(nets.length).toBeGreaterThan(0);
+    for (const n of nets) expect(await ok<PinholeList>(engine, "pinhole.list", { networkId: n.id })).toEqual({ pinholes: [], unavailable: null });
+  });
+});
+
 describe("device.get reservation (demo)", () => {
   it("carries the reservation and link-local address", async () => {
     const d = await ok<M.Device>(demo().engine, "device.get", { device: "Alex's MacBook Pro" });
@@ -152,6 +203,13 @@ function fakeEngine() {
     routing: live.routing,
   });
   return { fake, engine: createEngine({ backend }) };
+}
+
+/** A fresh engine over the same fake server, so nothing is cached. */
+function createEngineFor(fake: ReturnType<typeof createFakeEero>) {
+  const token = fake.signIn();
+  const secrets: SecretStore = { load: async () => token, save: async () => "memory", clear: async () => {}, storage: async () => "memory" };
+  return createEngine({ backend: createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch }) });
 }
 
 describe("routing commands (fake eero server)", () => {
@@ -185,6 +243,36 @@ describe("routing commands (fake eero server)", () => {
     ]);
     expect((await ok<ForwardList>(engine, "forward.list", { device: "Living Room TV" })).forwards.map((x) => x.id)).toEqual(["400"]);
     expect(fake.log.some((e) => e.method === "GET" && e.path === "/2.2/networks/100001/routing")).toBe(true);
+  });
+
+  it("maps GET {net}/routing pinholes, joined to devices by MAC", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    const r = await ok<PinholeList>(engine, "pinhole.list");
+    expect(r).toEqual({ pinholes: [{ id: "500", deviceId: "0a1b2c000002", address: "2001:db8:100:1::22", port: "443", protocol: "tcp" }], unavailable: null });
+    const laptop = (await ok<M.DeviceList>(engine, "device.list")).devices.find((d) => d.id === r.pinholes[0]?.deviceId);
+    expect(laptop?.name).toBe("Alex's Laptop");
+    // An empty pinhole list, as the real capture showed.
+    const maple = fake.state.networks.get("100001");
+    if (!maple) throw new Error("fixture");
+    maple.routing = { ...maple.routing, pinholes: { url: "/2.2/networks/100001/pinholes", data: [] } };
+    expect(await ok<PinholeList>(createEngineFor(fake), "pinhole.list")).toEqual({ pinholes: [], unavailable: null });
+  });
+
+  it("loads the Reservations & ports page with one routing read", async () => {
+    const fake = createFakeEero();
+    close = fake.close;
+    const token = fake.signIn();
+    const secrets: SecretStore = { load: async () => token, save: async () => "memory", clear: async () => {}, storage: async () => "memory" };
+    const engine = createEngine({ backend: createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch }) });
+    // docs/ux/pages/reservations-ports.md, Data: every read at once, as React mounts them, with the shell's.
+    const page: [string, unknown?][] = [["auth.status"], ["account.get"], ["network.list"], ["network.get"], ["internet.get"], ["device.list"], ["reservation.list"], ["forward.list"], ["pinhole.list"]];
+    const results = await Promise.all(page.map(([id, params]) => engine.execute(id, params)));
+    expect(results.flatMap((x, i) => (x.ok ? [] : [`${page[i]?.[0]}: ${x.error.message}`]))).toEqual([]);
+    // The three lists share one GET {net}/routing; the whole page stays a handful of requests.
+    expect(fake.log.filter((e) => e.path.endsWith("/routing")).length).toBe(1);
+    expect(fake.log.filter((e) => e.path.endsWith("/devices")).length).toBeLessThanOrEqual(2);
+    expect(fake.log.length).toBeLessThanOrEqual(14);
   });
 
   it("does not count a blocked device as leased", async () => {

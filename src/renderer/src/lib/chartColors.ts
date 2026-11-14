@@ -65,3 +65,14 @@ export const effectColors: Readonly<Record<Effect, string>> = {
   disruptive: hue("yellow"),
   destructive: hue("red"),
 };
+
+/** LAN address map (Reservations & ports): one colour per kind of address, in the map, its range bar and legend. */
+export const lanColors = {
+  gateway: hue("purple"),
+  staticRange: "color-mix(in srgb, var(--series-orange) 40%, var(--color-card))",
+  reserved: hue("aqua"),
+  leased: hue("blue"),
+  free: "color-mix(in srgb, var(--series-blue) 22%, var(--color-card))",
+  /** Network and broadcast addresses: not usable. */
+  none: "color-mix(in srgb, var(--color-foreground) 8%, var(--color-card))",
+} as const;
