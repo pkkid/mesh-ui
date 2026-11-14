@@ -103,6 +103,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   eero: page(() => import("~/features/eero/EeroPage"), "EeroPage"),
   guest: page(() => import("~/features/guest/GuestPage"), "GuestPage"),
   advanced: page(() => import("~/features/advanced/AdvancedPage"), "AdvancedPage"),
+  updates: page(() => import("~/features/updates/UpdatesPage"), "UpdatesPage"),
   profiles: page(() => import("~/features/profiles/ProfilesPage"), "ProfilesPage"),
   activity: page(() => import("~/features/activity/ActivityPage"), "ActivityPage"),
   profile: page(() => import("~/features/profile/ProfilePage"), "ProfilePage"),

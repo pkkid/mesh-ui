@@ -684,7 +684,6 @@ describe("eero backend", () => {
     const calls: [string, () => Promise<unknown>][] = [
       ["wifi.get", () => b.wifi.get("1")],
       ["diagnostics.latest", () => b.diagnostics.latest("1")],
-      ["admins.list", () => b.admins.list("1")],
     ];
     for (const [name, call] of calls) {
       await expect(call()).rejects.toMatchObject({ code: "eero_error", message: `${name} is not available in the eero backend yet.` });

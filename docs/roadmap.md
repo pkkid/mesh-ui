@@ -520,7 +520,7 @@ port, decided in M3.2).
 - scope: Core: `health.check` (internet, DNS, each eero, mesh links, firmware, each good, warning or problem with one line, from cached topics and `network.health` issues; no active probes), `support.info` (eero and ISP contacts, support ID) and `support.report` (plain-text report with MACs, IPs, names and serials redacted to the last four characters, built in core). Page (mockup 16): health check list, Copy diagnostics report, support contacts. Diagnose, restarts and coverage scan are disabled ("Coming soon"). Healthy, warning, offline and `errors` states.
 - done when: demo tests for every check status, the redaction (no full MAC, IP or serial in the report) and `bad_params`; fake-server mapping tests; real shape checks of `health.check` and `support.info` in the PR; page-load budget test; `pnpm ui:shot --route '#/troubleshooting'` demo and `--fake`, light and dark, plus `eero_offline` and `network_offline`.
 
-### M3.13 Updates & admins read view ☐
+### M3.13 Updates & admins read view ✅ (#107)
 - issue: [#94](https://github.com/pkkid/mesh-ui/issues/94)
 - after: M3.1, M3.2, M3.8
 - docs: ux/pages/updates-admins.md, architecture/commands.md (updates, admins, usage)

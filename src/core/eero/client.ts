@@ -31,6 +31,8 @@ export const DEFAULT_RETRY_AFTER_MS = 30_000;
  * (60 s and up), and any write or session change drops it.
  */
 export const READ_SHARE_MS = 5_000;
+/** Cap on a public (cookieless) answer such as the release notes manifest. */
+export const MAX_PUBLIC_BYTES = 1024 * 1024;
 
 export type Method = "GET" | "POST" | "PUT" | "DELETE";
 /** json: JSON object; form: x-www-form-urlencoded; empty: the literal body `""`; none: no body. */
@@ -146,6 +148,62 @@ export class EeroClient {
   /** Sends one request (with refresh, retries and rate limits) and returns eero's `data`. */
   async request<T = unknown>(spec: RequestSpec): Promise<T> {
     return (await this.exchange<T>(spec)).data;
+  }
+
+  /**
+   * GETs a public JSON document outside eero's API, such as the release notes
+   * manifest (`updates.manifest_resource`). It never carries the session:
+   * no cookie, no token header. https only (the fake server's own loopback
+   * origin is the one exception, for dev and tests), no credentials in the
+   * URL, no redirects, the usual timeout and a 1 MB cap that stops reading
+   * as soon as it is passed. Not rate limited: it is not the eero API.
+   */
+  async fetchPublic<T = unknown>(target: string): Promise<T> {
+    let url: URL;
+    try {
+      url = new URL(target);
+    } catch {
+      throw publicRefused();
+    }
+    const fakeOrigin = this.origin !== EERO_ORIGIN && url.origin === this.origin;
+    if ((url.protocol !== "https:" && !fakeOrigin) || url.username || url.password) throw publicRefused();
+    const started = Date.now();
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, this.timeoutMs);
+    let status: number | null = null;
+    try {
+      const headers = { Accept: "application/json", "User-Agent": this.userAgent };
+      const response = await this.fetchFn(url.href, { method: "GET", headers, credentials: "omit", redirect: "error", signal: controller.signal });
+      status = response.status;
+      if (!isOk(response.status)) {
+        await response.body?.cancel().catch(() => undefined);
+        throw new BackendError("eero_error", `eero's release notes answered ${response.status}.`, { status: response.status });
+      }
+      const text = await readCapped(response, MAX_PUBLIC_BYTES);
+      let parsed: T;
+      try {
+        parsed = JSON.parse(text) as T;
+      } catch {
+        throw new BackendError("eero_error", "eero sent release notes Mesh UI could not read.");
+      }
+      this.onLog?.({ method: "GET", path: url.origin, status, eeroError: null, ms: Date.now() - started, outcome: "ok" });
+      return parsed;
+    } catch (err) {
+      const e =
+        err instanceof BackendError
+          ? err
+          : timedOut
+            ? new BackendError("network_error", `eero's release notes did not answer within ${Math.round(this.timeoutMs / 1000)} s.`)
+            : new BackendError("network_error", "Could not reach eero's release notes.");
+      this.onLog?.({ method: "GET", path: url.origin, status, eeroError: null, ms: Date.now() - started, outcome: "error", code: e.code, message: e.message });
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -535,6 +593,34 @@ async function readBody(response: Response): Promise<string> {
   const text = await response.text();
   if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw tooLarge();
   return text;
+}
+
+/** Reads at most `max` bytes, cancelling the stream as soon as it is passed. */
+async function readCapped(response: Response, max: number): Promise<string> {
+  const declared = Number(response.headers.get("content-length") ?? "0");
+  if (declared > max) {
+    await response.body?.cancel().catch(() => undefined);
+    throw tooLarge();
+  }
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => undefined);
+      throw tooLarge();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+function publicRefused(): BackendError {
+  return new BackendError("eero_error", "Refused to fetch release notes from an address that is not https.");
 }
 
 function tooLarge(): BackendError {

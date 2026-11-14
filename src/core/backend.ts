@@ -131,6 +131,8 @@ export interface RoutingBackend {
 
 export interface UpdatesBackend {
   get(net: M.Id): Promise<M.Updates>;
+  /** Release notes of the target (or current) eeroOS; null when eero names no manifest. */
+  notes(net: M.Id): Promise<M.ReleaseNotes | null>;
 }
 
 export type EventChunk = { events: M.NetworkEvent[]; nextCursor: string | null };
