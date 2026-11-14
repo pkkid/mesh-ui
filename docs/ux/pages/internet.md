@@ -23,7 +23,8 @@ Topbar: title "Internet", subtitle freshness, no page actions.
    10 GbE". Tools: **Copy details**, **ISP settings →**. Two cards:
    - **Internet provider** (globe icon, "From geo IP lookup", status "ISP
      up"): ISP, Organisation, ASN (mono), Location, Plan ("Fiber Gig 1.2
-     Gbps" with a "set by you" badge).
+     Gbps" with a "set by you" badge and a **Change** link, or "Not set" with
+     **Set your plan**; both open the plan sheet).
    - **Addressing** (network icon, "WAN address and DNS in use", "NAT mode"
      badge): WAN type ("DHCP"; eero sends no lease time), Public IPv4, Public IPv6,
      IPv6 prefix, ISP gateway, DNS in use (with "ISP auto" badge), Double NAT
@@ -83,7 +84,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | Troubleshoot | - | - | No | Troubleshooting page |
 | Copy details | `internet.get {format: "text"}` | query | No | Copies a plain-text block of both cards (formatted in core); toast "Connection details copied" |
 | ISP settings → | - | - | No | Advanced networking, WAN section |
-| Set plan / Edit plan (the plan line under the gauges; Overview "Set your plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
+| Set plan / Edit plan (the plan line under the gauges, the Connection card's Plan row; Overview "Set your plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
 | Day / Week (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart and averages switch range |
 | Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog (`window.mesh.saveFile`), file `speed-tests-maple-street-2026-11-12.csv`; the button reads "CSV saved" for a moment, or "Couldn't save" with eero's or the host's message as its tooltip |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
@@ -144,8 +145,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
   no Month range.
 - Built in M4.9: Run speed test (here, Overview and Troubleshooting share
   one runner and toast) and the plan sheet. The plan sheet opens from the
-  plan line under the gauges; the Connection card's Plan row still only
-  shows the value. Built in M2.4: there was no toast yet, so Copy details and Export CSV confirm on the button
+  plan line under the gauges and the Connection card's Plan row. Built in M2.4: there was no toast yet, so Copy details and Export CSV confirm on the button
   ("Details copied", "CSV saved"). The Per day card always shows the last 7
   days (one bar for Day would say nothing); the Day / Week toggle switches the
   Per hour chart and both tables. Since M3.2 the speed test chart scales to

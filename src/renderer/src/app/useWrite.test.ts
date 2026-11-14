@@ -14,7 +14,7 @@ import { allCommands } from "../../../core/registry";
 import { type AnyCommand, defineCommand } from "../../../core/spec";
 import { toast } from "../components/ui/toast";
 import { resetRegistry } from "./useCommand";
-import { BRIDGE_OFF, type ConfirmAsk, fieldErrors, gateFor, NO_PERMISSION, NOT_AVAILABLE, performWrite, type WriteDeps } from "./useWrite";
+import { BRIDGE_OFF, type ConfirmAsk, errorText, fieldErrors, gateFor, NO_PERMISSION, NOT_AVAILABLE, performWrite, type WriteDeps } from "./useWrite";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 
@@ -245,6 +245,23 @@ describe("performWrite: errors", () => {
     expect(res).toMatchObject({ ok: false, error: { code: "bad_params" } });
     expect(toast.list()).toEqual([]);
     expect(fieldErrors(res && !res.ok ? res.error : null)).toEqual({ name: "Name the profile." });
+  });
+
+  it("a rate_limited from core shows core's message (a second speed test)", async () => {
+    const t = setup();
+    const first = await performWrite({ id: "speedtest.run" }, t.deps);
+    expect(first).toMatchObject({ ok: true });
+    const second = await performWrite({ id: "speedtest.run" }, t.deps);
+    expect(second).toMatchObject({ ok: false, error: { code: "rate_limited" } });
+    const err = toast.list().find((x) => x.kind === "error");
+    expect(err?.detail).toBe("A speed test is already running on this network. Its result shows in about a minute.");
+  });
+
+  it("a rate_limited with no message falls back to the generic eero line", () => {
+    expect(errorText("x.y", { code: "rate_limited", message: "", detail: { retryAfterSec: 30 } })).toBe(
+      "eero is rate limiting requests. Try again in 30 s.",
+    );
+    expect(errorText("x.y", { code: "rate_limited", message: "" })).toBe("eero is rate limiting requests. Try again shortly.");
   });
 
   it("an unknown command says Mesh UI could not run it", async () => {
