@@ -5,9 +5,9 @@ import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
 import { eventCategory, mapEvent } from "../eero/backend/events";
 import { createEngine } from "../engine";
-import type { RawEvent } from "../eero/raw";
+import type { RawAppEvent } from "../eero/raw";
 import type * as M from "../model";
-import { EVENT_CATEGORIES, MAX_PAGES_PER_CALL } from "./activity";
+import { EVENT_CATEGORIES, GROUP_WINDOW_MS, groupEvents, MAX_PAGES_PER_CALL, MAX_SUMMARY_PAGES } from "./activity";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -103,6 +103,14 @@ describe("events.list on the demo backend", () => {
     expect(window.nextCursor).toBeNull();
   });
 
+  it("exports up to 1,000 events as CSV in one call", async () => {
+    const { engine, backend } = demoEngine();
+    const all = await allEvents(backend);
+    const csv = await ok(engine.execute<string>("events.list", { limit: 1000, format: "csv" }));
+    expect(csv.trimEnd().split("\r\n")).toHaveLength(all.length + 1);
+    expect(await engine.execute("events.list", { limit: 1001, format: "csv" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
   it("exports the page as CSV", async () => {
     const { engine } = demoEngine();
     const json = await ok(engine.execute<M.EventPage>("events.list", { limit: 5 }));
@@ -156,6 +164,162 @@ describe("events.list on the demo backend", () => {
   });
 });
 
+describe("events.list grouping", () => {
+  const ev = (id: string, min: number, title = "Garage mesh link dropped to 2 bars", type = "eero_mesh_quality_changed"): M.NetworkEvent => ({
+    id,
+    at: new Date(NOW - min * 60_000).toISOString(),
+    category: "eero_status",
+    type,
+    title,
+    detail: null,
+    refs: {},
+  });
+
+  it("folds repeats of the same type and title within the window into the newest row", () => {
+    const rows = groupEvents([ev("a", 0), ev("b", 5, "Other"), ev("c", 30), ev("d", 30 + GROUP_WINDOW_MS / 60_000 + 1)]);
+    expect(rows.map((r) => [r.id, r.grouped?.map((g) => g.id)])).toEqual([
+      ["a", ["c"]],
+      ["b", undefined],
+      ["d", undefined],
+    ]);
+  });
+
+  it("groups the demo's repeated mesh link drop and keeps every event in the page", async () => {
+    const { engine } = demoEngine();
+    const raw = await ok(engine.execute<M.EventPage>("events.list", { eero: "Garage" }));
+    const grouped = await ok(engine.execute<M.EventPage>("events.list", { eero: "Garage", grouped: true }));
+    const drop = grouped.events.find((e) => e.title === "Garage mesh link dropped to 2 bars");
+    expect(drop?.grouped).toHaveLength(1);
+    const flat = grouped.events.flatMap((e) => [e, ...(e.grouped ?? [])]);
+    expect(flat.map((e) => e.id).sort()).toEqual(raw.events.map((e) => e.id).sort());
+    expect(grouped.events.length).toBeLessThan(raw.events.length);
+    expect(grouped.nextCursor).toBe(raw.nextCursor);
+    // CSV stays one line per event.
+    const csv = await ok(engine.execute<string>("events.list", { eero: "Garage", grouped: true, format: "csv" }));
+    expect(csv.trimEnd().split("\r\n")).toHaveLength(raw.events.length + 1);
+  });
+});
+
+describe("events.summary on the demo backend", () => {
+  it("counts the week by category and by day, with the daily average", async () => {
+    const { engine, backend } = demoEngine();
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week" }));
+    const from = Date.parse(s.from);
+    const inWeek = (await allEvents(backend)).filter((e) => Date.parse(e.at) >= from && Date.parse(e.at) <= NOW);
+    expect(s.bucket).toBe("day");
+    expect(s.total).toBe(inWeek.length);
+    expect(s.total).toBeGreaterThan(300);
+    expect(s.dailyAverage).toBeCloseTo(s.total / 7);
+    for (const c of EVENT_CATEGORIES) expect(s.counts[c]).toBe(inWeek.filter((e) => e.category === c).length);
+    expect(s.buckets).toHaveLength(7);
+    expect(s.buckets.reduce((n, b) => n + b.total, 0)).toBe(s.total);
+    for (const b of s.buckets) expect(Object.values(b.counts).reduce((n, v) => n + v, 0)).toBe(b.total);
+    // Demo history is 7 days, so the week before is unknown.
+    expect(s.prior).toBeNull();
+    expect(s.change).toBeNull();
+    expect(s.partial).toBe(false);
+    const hourly = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week", bucket: "hour" }));
+    expect(hourly.buckets.length).toBeGreaterThanOrEqual(6 * 24 + 1);
+    expect(hourly.total).toBe(s.total);
+  });
+
+  it("compares the last day with the day before it", async () => {
+    const { engine, backend } = demoEngine();
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "day" }));
+    const from = Date.parse(s.from);
+    const priorFrom = from - (NOW - from);
+    const all = await allEvents(backend);
+    const day = all.filter((e) => Date.parse(e.at) >= from && Date.parse(e.at) <= NOW).length;
+    const before = all.filter((e) => Date.parse(e.at) >= priorFrom && Date.parse(e.at) < from).length;
+    expect(s.bucket).toBe("hour");
+    expect(s.buckets).toHaveLength(24);
+    expect(s.total).toBe(day);
+    expect(s.dailyAverage).toBe(day);
+    expect(s.prior).toBe(before);
+    expect(before).toBeGreaterThan(0);
+    expect(s.change).toBeCloseTo((day - before) / before);
+  });
+
+  it("applies type, device, eero and profile filters", async () => {
+    const { engine, backend } = demoEngine();
+    const all = await allEvents(backend);
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week" }));
+    const from = Date.parse(s.from);
+    const week = all.filter((e) => Date.parse(e.at) >= from);
+    const fw = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week", type: ["firmware"] }));
+    expect(fw.total).toBe(week.filter((e) => e.category === "firmware").length);
+    expect(fw.counts.devices).toBe(0);
+    const garage = (await backend.eero.list(MAPLE)).find((e) => e.location === "Garage") as M.Eero;
+    const byEero = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week", eero: "Garage" }));
+    expect(byEero.total).toBe(week.filter((e) => e.refs.eeroId === garage.id).length);
+    const byProfile = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week", profile: "Mia" }));
+    expect(byProfile.total).toBeGreaterThan(0);
+    const byDevice = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week", device: "Nest Thermostat" }));
+    expect(byDevice.total).toBeGreaterThan(0);
+  });
+
+  it("counts no device events on the empty_network scenario, and zeros for a filter with no matches", async () => {
+    const { engine } = demoEngine();
+    await ok(engine.execute("demo.scenario.set", { scenario: "empty_network" }));
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week" }));
+    expect(s.counts.devices + s.counts.pause_block + s.counts.schedules).toBe(0);
+    const none = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week", type: ["devices"] }));
+    expect(none.total).toBe(0);
+    expect(none.buckets.every((b) => b.total === 0)).toBe(true);
+    expect(none.change).toBeNull();
+  });
+
+  it("rejects bad params", async () => {
+    const { engine } = demoEngine();
+    for (const params of [{}, { range: "month" }, { range: "week", bucket: "minute" }, { range: "week", type: [] }, { range: "week", type: ["parties"] }, { range: "week", device: "No Such Device" }, { range: "week", extra: 1 }]) {
+      expect(await engine.execute("events.summary", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    }
+  });
+
+  it("stops at the page budget and says the counts are partial", async () => {
+    let calls = 0;
+    const demo = createDemoBackend({ clock: () => NOW });
+    const backend = composeBackend("demo", {
+      auth: demo.auth,
+      network: demo.network,
+      events: {
+        list: async (_net, cursor) => {
+          calls++;
+          const n = cursor ? Number(cursor) : 0;
+          // One event a second: the budget runs out long before a day back.
+          const events = Array.from({ length: 50 }, (_, i): M.NetworkEvent => ({ id: `e${n + i}`, at: new Date(NOW - (n + i) * 1000).toISOString(), category: "other", type: "x", title: "Busy", detail: null, refs: {} }));
+          return { events, nextCursor: String(n + 50) };
+        },
+      },
+    });
+    const engine = createEngine({ backend, clock: () => NOW });
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "day" }));
+    expect(calls).toBe(MAX_SUMMARY_PAGES);
+    expect(s.partial).toBe(true);
+    expect(s.total).toBe(MAX_SUMMARY_PAGES * 50);
+    expect(s.change).toBeNull();
+  });
+});
+
+describe("filters on events without refs (the real eero stream)", () => {
+  it("match a device, eero or profile by name in the event text", async () => {
+    const demo = createDemoBackend({ clock: () => NOW });
+    const at = (m: number) => new Date(NOW - m * 60_000).toISOString();
+    const events: M.NetworkEvent[] = [
+      { id: "1", at: at(1), category: "devices", type: "device", title: "Nest Thermostat connected", detail: null, refs: {} },
+      { id: "2", at: at(2), category: "eero_status", type: "eero", title: "Garage went offline", detail: null, refs: {} },
+      { id: "3", at: at(3), category: "pause_block", type: "profile", title: "Mia was paused", detail: null, refs: {} },
+      { id: "4", at: at(4), category: "devices", type: "device", title: "Something else", detail: null, refs: { eeroId: "nope" } },
+    ];
+    const backend = composeBackend("demo", { ...demo, events: { list: async () => ({ events, nextCursor: null }) } });
+    const engine = createEngine({ backend, clock: () => NOW });
+    const ids = async (params: object) => (await ok(engine.execute<M.EventPage>("events.list", params))).events.map((e) => e.id);
+    expect(await ids({ device: "Nest Thermostat" })).toEqual(["1"]);
+    expect(await ids({ eero: "Garage" })).toEqual(["2"]);
+    expect(await ids({ profile: "Mia" })).toEqual(["3"]);
+  });
+});
+
 describe("event categories", () => {
   it("maps every demo event type to the category the demo gives it", async () => {
     const { backend } = demoEngine();
@@ -164,36 +328,33 @@ describe("event categories", () => {
     }
   });
 
-  it("maps dotted eero types and sends unknown ones to other", () => {
+  it("maps dotted types, the real stream's bare nouns by their description, and sends unknown ones to other", () => {
     expect(eventCategory("device.connected")).toBe("devices");
     expect(eventCategory("profile.paused")).toBe("pause_block");
     expect(eventCategory("eero.offline")).toBe("eero_status");
     expect(eventCategory("speed_test.completed")).toBe("speed_tests");
     expect(eventCategory("something_new")).toBe("other");
+    expect(eventCategory("device", "Alex's Phone connected")).toBe("devices");
+    expect(eventCategory("profile", "Leo was paused")).toBe("pause_block");
+    expect(eventCategory("eero", "Garage went offline")).toBe("eero_status");
+    expect(eventCategory("network", "eeroOS 7.13.0 installed")).toBe("firmware");
+    expect(eventCategory("profile", "Bedtime schedule started")).toBe("schedules");
+    expect(eventCategory("mystery", "Something happened")).toBe("other");
   });
 
-  it("maps a raw event's refs, title and detail, and skips events without a time", () => {
-    const raw: RawEvent = {
-      id: 9,
-      event_type: "device.connected",
-      title: "Phone connected",
-      message: "Living Room · 5 GHz",
-      created: "2026-11-12T17:50:00Z",
-      device: { mac: "0A:1B:2C:00:00:01" },
-      eero: { url: "/2.2/eeros/500001" },
-      profile: { url: "/2.2/networks/100001/profiles/700" },
-    };
+  it("maps a real app_events row and skips rows without a time", () => {
+    const raw: RawAppEvent = { hash: "abc123", timestamp_ms: Date.parse("2026-11-12T17:50:00Z"), description: "Phone connected", category: "device" };
     expect(mapEvent(raw)).toEqual({
-      id: "9",
+      id: "abc123",
       at: "2026-11-12T17:50:00.000Z",
       category: "devices",
-      type: "device.connected",
+      type: "device",
       title: "Phone connected",
-      detail: "Living Room · 5 GHz",
-      refs: { deviceId: "0a1b2c000001", eeroId: "500001", profileId: "700" },
+      detail: null,
+      refs: {},
     });
-    expect(mapEvent({ event_type: "x", message: "Only a message", timestamp: "2026-11-12T17:50:00Z" })).toMatchObject({ title: "Only a message", detail: null, id: "x@2026-11-12T17:50:00.000Z" });
-    expect(mapEvent({ event_type: "x", title: "No time" })).toBeNull();
+    expect(mapEvent({ timestamp_ms: Date.parse("2026-11-12T17:50:00Z") })).toMatchObject({ title: "unknown", id: "unknown@2026-11-12T17:50:00.000Z", category: "other" });
+    expect(mapEvent({ description: "No time", category: "device" })).toBeNull();
   });
 });
 
@@ -227,9 +388,9 @@ describe("events.list on the fake eero server", () => {
     const { fake, engine } = fakeEngine();
     const page = await ok(engine.execute<M.EventPage>("events.list", {}));
     expect(page.events.map((e) => [e.title, e.category, e.type])).toEqual([
-      ["Alex's Phone connected", "devices", "device.connected"],
-      ["Leo was paused", "pause_block", "profile.paused"],
-      ["Garage went offline", "eero_status", "eero.offline"],
+      ["Alex's Phone connected", "devices", "device"],
+      ["Leo was paused", "pause_block", "profile"],
+      ["Garage went offline", "eero_status", "eero"],
     ]);
     expect(page.nextCursor).toBeNull();
     const [req] = eventRequests(fake);
@@ -237,11 +398,11 @@ describe("events.list on the fake eero server", () => {
     expect(Object.fromEntries(new URLSearchParams(req?.query))).toEqual({ page_size: "50" });
   });
 
-  it("pages with the created time of the last event as the timestamp cursor", async () => {
+  it("pages with the time of the last event as the timestamp cursor", async () => {
     const { fake, engine } = fakeEngine();
     const net = fake.state.networks.get(FAKE_NET);
     for (let i = 0; i < 120; i++) {
-      net?.events.push({ id: 100 + i, event_type: "eero.channel_changed", title: `Filler ${i}`, created: new Date(Date.parse("2026-11-11T00:00:00Z") - i * 60_000).toISOString() });
+      net?.appEvents.push({ hash: `filler-${i}`, category: "eero", description: `Filler ${i}`, timestamp_ms: Date.parse("2026-11-11T00:00:00Z") - i * 60_000 });
     }
     const ids: string[] = [];
     let cursor: string | null = null;
@@ -260,8 +421,68 @@ describe("events.list on the fake eero server", () => {
 
   it("exports CSV from eero events with the formula guard", async () => {
     const { fake, engine } = fakeEngine();
-    fake.state.networks.get(FAKE_NET)?.events.push({ id: 99, event_type: "device.renamed", title: "=HYPERLINK(\"x\")", created: "2026-11-12T18:00:00Z" });
+    fake.state.networks.get(FAKE_NET)?.appEvents.push({ hash: "x99", category: "device", description: "=HYPERLINK(\"x\")", timestamp_ms: Date.parse("2026-11-12T18:00:00Z") });
     const csv = await ok(engine.execute<string>("events.list", { limit: 1, format: "csv" }));
-    expect(csv).toBe('Time,Category,Type,Title,Detail\r\n2026-11-12T18:00:00.000Z,devices,device.renamed,"\'=HYPERLINK(""x"")",\r\n');
+    expect(csv).toBe('Time,Category,Type,Title,Detail\r\n2026-11-12T18:00:00.000Z,devices,device,"\'=HYPERLINK(""x"")",\r\n');
+  });
+});
+
+describe("events.summary on the fake eero server", () => {
+  /** A busy week: one event every `stepMin` minutes for `days` days before FAKE_NOW. */
+  function seedWeek(fake: FakeEero, stepMin: number, days: number) {
+    const net = fake.state.networks.get(FAKE_NET);
+    if (!net) throw new Error("no fake network");
+    net.appEvents = [];
+    for (let m = 1; m <= days * 24 * 60; m += stepMin) {
+      net.appEvents.push({ hash: `h${m}`, category: m % 3 ? "device" : "eero", description: m % 3 ? "Phone connected" : "Garage went offline", timestamp_ms: FAKE_NOW - m * 60_000 });
+    }
+    return net.appEvents.length;
+  }
+
+  it("pages back to the range start with the timestamp cursor and counts every event once", async () => {
+    const { fake, engine } = fakeEngine();
+    seedWeek(fake, 30, 9); // 48 a day, 432 in 9 days
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week" }));
+    const from = Date.parse(s.from);
+    const net = fake.state.networks.get(FAKE_NET);
+    const expected = (net?.appEvents ?? []).filter((e) => (e.timestamp_ms ?? 0) >= from).length;
+    expect(s.total).toBe(expected);
+    expect(s.counts.devices + s.counts.eero_status).toBe(expected);
+    expect(s.partial).toBe(false);
+    // Stops once past the prior week's start (9 days of history: fewer pages than the whole log).
+    const reqs = eventRequests(fake);
+    expect(reqs.length).toBeLessThanOrEqual(Math.ceil(432 / 50));
+    expect(reqs.length).toBeLessThanOrEqual(MAX_SUMMARY_PAGES);
+    const stamps = reqs.map((e) => new URLSearchParams(e.query).get("timestamp"));
+    expect(stamps[0]).toBeNull();
+    expect(new Set(stamps).size).toBe(stamps.length);
+  });
+
+  it("keeps a very busy week within the page budget", async () => {
+    const { fake, engine } = fakeEngine();
+    seedWeek(fake, 5, 8); // 288 a day, about 2,300 events
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "week" }));
+    expect(eventRequests(fake)).toHaveLength(MAX_SUMMARY_PAGES);
+    expect(s.partial).toBe(true);
+    expect(s.total).toBe(MAX_SUMMARY_PAGES * 50);
+  });
+
+  it("loads the Activity page well under the request budget", async () => {
+    const { fake, engine } = fakeEngine();
+    seedWeek(fake, 30, 7);
+    // What ActivityPage mounts at once: chart, day strips, the grouped stream.
+    const page: [string, unknown][] = [
+      ["events.summary", { range: "week", bucket: "day" }],
+      ["events.summary", { range: "week", bucket: "hour" }],
+      ["events.list", { grouped: true }],
+    ];
+    const results = await Promise.all(page.map(([id, params]) => engine.execute(id, params)));
+    expect(results.every((r) => r.ok)).toBe(true);
+    const first = fake.log.length;
+    // Seven pages of 50 for the week, at most twice (the two summaries) plus the stream's first page.
+    expect(first).toBeLessThanOrEqual(2 * 8 + 2);
+    // A poll inside the summary TTL reads only what is stale.
+    await Promise.all(page.map(([id, params]) => engine.execute(id, params)));
+    expect(fake.log.length - first).toBeLessThanOrEqual(1);
   });
 });

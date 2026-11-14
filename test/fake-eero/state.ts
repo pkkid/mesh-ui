@@ -16,7 +16,6 @@ import type {
   RawDevice,
   RawEero,
   RawDiagnostics,
-  RawEvent,
   RawFastTransition,
   RawFirmwareHistoryEntry,
   RawInvite,
@@ -55,7 +54,6 @@ export type FakeNetwork = {
   devices: RawDevice[];
   profiles: RawProfile[];
   speedtests: RawSpeedTest[];
-  events: RawEvent[];
   /** Blocked MACs. */
   blacklist: string[];
   /** `GET {eero}/connections` per eero id. */
@@ -78,7 +76,7 @@ export type FakeNetwork = {
   thread: RawThread | null;
   /** `GET {net}/ac_compat`. */
   acCompat: RawAcCompat;
-  /** `GET {net}/app_events` rows in the captured shape, newest first. `events` above is the older guessed shape the current route serves until M3.6 moves to these. */
+  /** `GET {net}/app_events` rows in the captured shape, newest first. */
   appEvents: RawAppEvent[];
   /** `GET {net}/notifications_history` rows, newest first. */
   notificationsHistory: RawNotification[];
@@ -415,11 +413,6 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       { date: "2026-11-12T03:00:00+0000", down_mbps: 912.4, up_mbps: 40.2 },
       { date: "2026-11-11T03:00:00+0000", down_mbps: 884.1, up_mbps: 39.7 },
       { date: "2026-11-10T03:00:00+0000", down_mbps: 901.9, up_mbps: 41.0 },
-    ],
-    events: seed.id !== "100001" ? [] : [
-      { id: 1, event_type: "device.connected", title: "Alex's Phone connected", created: iso("12T17:50:00") },
-      { id: 2, event_type: "profile.paused", title: "Leo was paused", created: iso("12T16:00:00") },
-      { id: 3, event_type: "eero.offline", title: "Garage went offline", created: iso("12T09:15:00") },
     ],
     blacklist: [],
     connections: Object.fromEntries(seed.eeros.map((e, i) => [e.id, seedConnections(e, i, devices)])),
