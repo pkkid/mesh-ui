@@ -1,8 +1,9 @@
 /**
  * The palette preview (docs/ux/pages/command-palette.md#layout): what the
  * selected result is, its params form, and the same call as a CLI line and
- * an MCP tool call, so every surface reads the same. After a query runs, its
- * result JSON shows under the MCP call.
+ * an MCP tool call, so every surface reads the same. After a command runs,
+ * its result JSON shows under the MCP call. A disruptive command's inline
+ * confirm takes the place of the run button.
  */
 import { AppWindow, Bot, Check, Copy, FileJson, Play, SquareTerminal, Terminal } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -34,6 +35,11 @@ type Props = {
   blocked: string | null;
   runLabel: string;
   onCopy: () => Promise<boolean>;
+  /** Runs the selected device or profile's row action (Pause, Resume). */
+  onAction: () => void;
+  actionRunning: boolean;
+  /** The inline confirm waiting on the person, shown instead of the footer buttons. */
+  confirm: ReactNode;
 };
 
 export function PalettePreview(props: Props) {
@@ -41,26 +47,34 @@ export function PalettePreview(props: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-card">
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-5 py-4">
-        {item.kind === "command" ? <CommandPreview {...props} item={item} /> : <EntityPreview item={item} />}
+        {item.kind === "command" ? (
+          <CommandPreview {...props} item={item} />
+        ) : (
+          <EntityPreview item={item} onAction={props.onAction} running={props.actionRunning} confirm={props.confirm} />
+        )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3">
-        <span title={props.blocked ?? undefined} className="inline-flex">
-          <Button size="sm" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
-            <Play />
-            {props.runLabel}
-            <Keys keys={["↵"]} className="ms-1 opacity-70 [&_kbd]:border-current/35 [&_kbd]:bg-transparent [&_kbd]:text-current [&_kbd]:shadow-none" />
-          </Button>
-        </span>
-        {item.kind === "command" && (
-          <span title="Coming soon" className="inline-flex">
-            <Button size="sm" variant="outline" disabled>
-              <FileJson />
-              Add to script.jsonl
+      {item.kind === "command" && props.confirm ? (
+        <div className="shrink-0 border-t px-5 py-3">{props.confirm}</div>
+      ) : (
+        <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3">
+          <span title={props.blocked ?? undefined} className="inline-flex">
+            <Button size="sm" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
+              <Play />
+              {props.runLabel}
+              <Keys keys={["↵"]} className="ms-1 opacity-70 [&_kbd]:border-current/35 [&_kbd]:bg-transparent [&_kbd]:text-current [&_kbd]:shadow-none" />
             </Button>
           </span>
-        )}
-        {props.blocked && <span className="truncate text-muted-foreground text-xs">{props.blocked}</span>}
-      </div>
+          {item.kind === "command" && (
+            <span title="Coming soon" className="inline-flex">
+              <Button size="sm" variant="outline" disabled>
+                <FileJson />
+                Add to script.jsonl
+              </Button>
+            </span>
+          )}
+          {props.blocked && <span className="truncate text-muted-foreground text-xs">{props.blocked}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -125,7 +139,7 @@ function CommandPreview({
       <p className="-mt-1 text-[13px] text-foreground/85">
         {info.description ? `${info.description} ` : ""}
         <span className="text-muted-foreground">{confirmNote}</span>
-        {item.unavailable && <span className="text-muted-foreground"> {item.unavailable} in the palette.</span>}
+        {item.unavailable && <span className="text-muted-foreground"> Can't run here: {item.unavailable}.</span>}
       </p>
 
       <div data-params>
@@ -213,7 +227,17 @@ function Surface({ icon: Icon, name, detail }: { icon: typeof Terminal; name: st
   );
 }
 
-function EntityPreview({ item }: { item: Exclude<Item, { kind: "command" }> }) {
+function EntityPreview({
+  item,
+  onAction,
+  running,
+  confirm,
+}: {
+  item: Exclude<Item, { kind: "command" }>;
+  onAction: () => void;
+  running: boolean;
+  confirm: ReactNode;
+}) {
   const what = item.kind === "page" ? "Page" : item.kind === "device" ? "Device" : "Profile";
   return (
     <>
@@ -239,18 +263,20 @@ function EntityPreview({ item }: { item: Exclude<Item, { kind: "command" }> }) {
       {(item.kind === "device" || item.kind === "profile") && (
         <div>
           <Label>Actions</Label>
-          <div className="flex items-center gap-2">
-            <span title="Coming soon" className="inline-flex">
-              <Button size="sm" variant="outline" disabled>
-                {item.action}
-              </Button>
-            </span>
-            <span className="font-mono text-muted-foreground text-xs">
-              {item.kind}.{item.action.toLowerCase()}
-            </span>
-            <EffectTag effect="write" />
-            <span className="text-muted-foreground text-xs">Coming soon</span>
-          </div>
+          {confirm || (
+            <div className="flex items-center gap-2">
+              <span title={item.actionBlocked ?? undefined} className="inline-flex">
+                <Button size="sm" variant="outline" disabled={Boolean(item.actionBlocked) || running} onClick={onAction}>
+                  {item.action}
+                </Button>
+              </span>
+              <span className="font-mono text-muted-foreground text-xs">
+                {item.kind}.{item.action.toLowerCase()}
+              </span>
+              <EffectTag effect="write" />
+              {item.actionBlocked && <span className="text-muted-foreground text-xs">{item.actionBlocked}</span>}
+            </div>
+          )}
         </div>
       )}
     </>

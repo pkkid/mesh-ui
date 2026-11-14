@@ -728,7 +728,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `speedtest.run` (202, then the result read after about 60 s and the `speedtest` topic invalidated; at most one at a time per network) and `internet.plan.set` (app-local, invalidates network and speedtest). Run speed test on Overview, Internet and Troubleshooting with a progress toast; the plan sheet on Internet. Runs after M4.8, which also edits `test/fake-eero/routes/network.ts` and `NetworkHero.tsx`.
 - done when: demo and fake-server tests for the run and result, one at a time, and the plan set and clear; `pnpm ui:shot` of the running and finished states and the plan sheet, light and dark; `MANUAL: run a speed test | ... | a new result appears and matches the eero app | uses the WAN for about 30 s`.
 
-### M4.10 Palette runs write commands ☐
+### M4.10 Palette runs write commands ✅ (#152)
 - issue: [#132](https://github.com/pkkid/mesh-ui/issues/132)
 - after: M4.3
 - docs: ux/pages/command-palette.md, architecture/ui.md
