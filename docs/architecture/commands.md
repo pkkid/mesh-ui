@@ -364,7 +364,8 @@ the UI never hard-codes a number.
 ### routing (`commands/routing.ts`)
 
 All three lists come from one `GET {net}/routing` (pinned to `/2.2/`),
-cached as the `routing` topic; the LAN map comes from the network's `dhcp`
+cached as the `routing` topic, so the Reservations & ports page makes one
+routing read; the LAN map comes from the network's `dhcp`
 settings (`dhcp.custom`, or eero's automatic 192.168.4.0/22 with the pool
 from .4.100 to .7.254). Core joins rows to devices by MAC (reservations) and
 IP (forwards) and counts leased addresses: connected, unblocked
@@ -376,7 +377,7 @@ with `unavailable` set to the reason, without calling eero's routing.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `reservation.list` | Reservations | `{}` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ reservations: Reservation[], lan: LanMap \| null, unavailable: string \| null }`: reservations A to Z, joined to devices, plus the LAN map (subnet, DHCP pool, static range, leased count). |
+| `reservation.list` | Reservations | `{}` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ reservations: Reservation[], lan: LanMap \| null, leases: string[], unavailable: string \| null }`: reservations A to Z, joined to devices, plus the LAN map (subnet, DHCP pool, static range, leased count) and `leases`, the addresses behind the leased count in address order, for the address map. |
 | `reservation.add` | Add a reservation | `{ device?: Ref, mac?: string, ip: string, description?: string }` | w | `POST {net}/reservations` JSON `{description, mac, ip}` | One of `device` or `mac`. `error.reservation.ip.invalid` and `error.assignment.ip.unavailable` map to `bad_params`. |
 | `reservation.update` | Edit reservation | `{ reservation: Ref, ip?, description? }` | w | `PUT {reservation url}` | |
 | `reservation.remove` | Remove reservation | `{ reservation: Ref, removeForwards?: boolean }` | w | `DELETE {reservation url}?delete_forwards=` | |
@@ -385,7 +386,7 @@ with `unavailable` set to the reason, without calling eero's routing.
 | `forward.validate` **(added)** | Check port forward | `{ device: Ref, externalPort: PortSpec, internalPort?: PortSpec, protocol: "tcp" \| "udp" \| "both", forward?: Ref }` | q | none (cached `routing` topic) | `{ ok, issues: { field, message }[], needsReservation }`. Same checks `forward.add` and `forward.update` run (overlap with forwards of the same protocol, port bounds, range capability). `forward` is the one being edited, excluded from the overlap check. |
 | `forward.update` | Edit port forward | `{ forward: Ref, ...same fields optional }` | w | `PUT {forward url}` | Also the enable toggle. |
 | `forward.remove` | Remove port forward | `{ forward: Ref }` | w | `DELETE {forward url}` | |
-| `pinhole.list` | IPv6 firewall rules | `{}` | q | `GET {net}/routing` | `Pinhole[]`. |
+| `pinhole.list` | IPv6 firewall rules | `{}` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ pinholes: Pinhole[], unavailable: string \| null }`, by port. Each pinhole is joined to its device by id or MAC; a missing address takes the device's first global IPv6. Empty on a real network so far ([endpoints.md section 17](../eero-api/endpoints.md)). |
 | `pinhole.add` | Add IPv6 rule | `{ device: Ref, protocol: "tcp" \| "udp" \| "both", port: PortSpec }` | w | `POST {net}/ipv6/pinholes` JSON `{device: url, protocol, port}` | |
 | `pinhole.remove` | Remove IPv6 rule | `{ pinhole: Ref }` | w | `DELETE {pinhole url}` | |
 
