@@ -103,15 +103,17 @@ reports which one is active.
 
 ## Data access
 
-`app/useCommand.ts` wraps `execute` in two hooks. No page calls
-`window.mesh` directly.
+`app/useCommand.ts` wraps `execute` for reads, and `app/useWrite.ts` (the
+write kit, [design-system.md#write-kit](../design/design-system.md#write-kit))
+runs every write. No page calls `window.mesh` directly.
 
 ```ts
 const devices = useQuery("device.list", { profile: null }, { poll: true });
-const pause = useCommand("device.pause");
-await pause.run({ devices: [device.id] });   // Ref[]: ids or exact names
-const pauseProfile = useCommand("profile.pause");
-await pauseProfile.run({ profile: "Leo" });
+const pause = useWrite("profile.pause", {
+  success: "Paused Leo",
+  undo: { id: "profile.resume", params: { profile: "Leo" } },
+});
+await pause.run({ profile: "Leo" });   // Ref: an id or exact name
 ```
 
 - **`useQuery(id, params, opts)`** caches by `id + params` (key order does
@@ -123,24 +125,39 @@ await pauseProfile.run({ profile: "Leo" });
   seconds, and `enabled: false` skips the query. While the window is hidden
   polls stretch to at least 5 minutes, and it refetches at once when shown;
   a `rate_limited` error waits at least `retryAfterSec`.
-- **`useCommand(id)`** runs a command on demand and returns `{ run, running,
-  result, error, reset }`. Confirmation is the caller's job: show the
-  confirm flow (below) first, then pass `confirm: true`; a `needs_confirm`
-  error comes back like any other. After a successful write it invalidates
-  the queries `affectedBy(id)` names: the command's own area, `network.get`
-  and related areas (a device write also refetches `profile.*` and
-  `eero.*`), mirroring the "re-read after write" habit of mature eero
-  clients.
+- **`useWrite(id, options)`** is how a control runs a write. It returns
+  `{ run, running, error, asking, confirming, answer }` and handles what
+  every page would otherwise repeat: the confirm flow (below), a progress
+  toast while a confirmed disruptive command runs, a success toast with Undo
+  when the options name the inverse write, an error toast with Retry, and
+  `bad_params` under form fields (`form: true`, `fieldErrors`). After a
+  successful write it invalidates the queries `affectedBy(id)` names: the
+  command's own area, `network.get` and related areas (a device write also
+  refetches `profile.*` and `eero.*`), mirroring the "re-read after write"
+  habit of mature eero clients. Surfaces with no room for an inline note
+  (the palette, bulk bars) call `performWrite` directly.
+- **Gates.** `useGate({ area, op, capability, bridgeOff })` and
+  `GatedButton` (`components/ui/page.tsx`) dim a write control with the
+  reason (no permission, bridge mode, not available) from
+  `network.permissions` and `network.get`; `gateFor` is the pure check the
+  palette's gate table uses. The engine still has the last word.
+- **Sheets.** Forms open in `Sheet` (`components/ui/sheet.tsx`) with
+  `SheetField`s; Save runs the write through `useWrite` with `form: true`.
+- **`useCommand(id)`** runs a command on demand without the kit (a query the
+  person asks for, such as Copy details) and returns `{ run, running,
+  result, error, reset }`.
 - **`followHostEvents()`**, called once by `App.tsx`, ends the session on a
   `session.changed` sign-out and refetches every query on
   `network.selected`. Any command answering `not_signed_in` also ends the
   session (`onSessionEnded`).
-- **Optimistic updates** only for cheap toggles whose result is certain
-  (pause, LED on). Roll back on error.
-- **Errors** show inline where the data would be, with a Retry button.
-  `not_signed_in` anywhere sends the app to the sign-in screen.
-  `rate_limited` shows "eero is rate limiting requests, retrying in 20 s" and
-  pauses polling for `retryAfterSec`.
+- **No optimistic updates.** A control keeps its old state until the write
+  answers, then the refetch shows the new one.
+- **Errors.** A failed read shows inline where the data would be, with a
+  Retry button; a failed write shows an error toast with Retry
+  (`errorText`). `not_signed_in` anywhere sends the app to the sign-in
+  screen. `rate_limited` shows the message core wrote ("A speed test is
+  already running on this network...", "eero is limiting requests. Try again
+  in 20 s.") and pauses polling for `retryAfterSec`.
 
 ## Shell
 
@@ -182,6 +199,12 @@ Every page follows the same top-to-bottom shape (details per page in
 ## Confirm flow
 
 `disruptive` and `destructive` commands never run on the first click.
+`useWrite` drives it: it runs the command without `confirm`, shows the
+engine's `needs_confirm` message (so the copy lives in core) in the confirm,
+and runs again with `confirm: true` only after the person confirms. The
+pieces are in `components/ui/confirm.tsx`: `WriteConfirm` and
+`InlineConfirm` for the inline note, and `ConfirmHost`, the app-wide dialog
+behind `useWrite(id, { confirmIn: "dialog" })` and `performWrite`.
 
 - **Inline confirm** for single-target disruptive actions (restart one eero,
   change guest password): the button turns into a short sentence plus
@@ -191,8 +214,10 @@ Every page follows the same top-to-bottom shape (details per page in
   DHCP changes, remove eero, delete profile, transfer network, delete
   account). The dialog names the effect and outage, and destructive ones need
   a checkbox or typed name before the button enables.
-- After confirming, the UI calls `execute(id, { ...params, confirm: true })`.
-  The UI never adds `confirm` on its own without one of these steps.
+- After confirming, the kit calls `execute(id, { ...params, confirm: true })`.
+  The UI never adds `confirm` on its own without one of these steps. A
+  `write` the UI confirms itself (block a device) passes `askFirst` and never
+  sends `confirm`.
 
 ## Command palette
 

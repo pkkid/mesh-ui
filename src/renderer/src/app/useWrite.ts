@@ -204,6 +204,8 @@ export async function performWrite<P, R>(
 export function errorText(id: string, error: ExecuteError): string {
   if (error.code === "unknown_command") return `Mesh UI could not run ${id}.`;
   if (error.code === "rate_limited") {
+    // Core writes the message for people ("A speed test is already running..."); keep it.
+    if (error.message) return error.message;
     const sec = error.detail?.retryAfterSec;
     return sec ? `eero is rate limiting requests. Try again in ${sec} s.` : "eero is rate limiting requests. Try again shortly.";
   }

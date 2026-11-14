@@ -3,14 +3,15 @@
  * initial in the profile colour, devices and how many are online, device
  * type icons, state, the next scheduled change, and today's usage with a
  * 24 h sparkline. Pause and Resume per card, Pause all, and a menu with
- * Rename and Delete. docs/ux/pages/profiles.md (Layout 1, Actions).
+ * Rename, Add a scheduled pause (the schedule sheet from profile detail)
+ * and Delete. docs/ux/pages/profiles.md (Layout 1, Actions).
  *
  * Also the profile write pieces shared with profile detail and Overview:
  * ProfilePauseButton, ProfileSheet (add, rename, devices) and
  * useDeleteProfile.
  */
 import { Popover } from "@base-ui/react/popover";
-import { Ellipsis, LayoutGrid, List, Pause, Pencil, Play, Plus, Trash2, UserRoundPlus } from "lucide-react";
+import { CalendarPlus, Ellipsis, LayoutGrid, List, Pause, Pencil, Play, Plus, Trash2, UserRoundPlus } from "lucide-react";
 import { useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
@@ -30,6 +31,7 @@ import { cn } from "~/lib/utils";
 import { bytesParts, formatBytes, MISSING, networkClock } from "../../../../core/format";
 import type { Device, DeviceList, Profile, ProfileList, UsageSeries } from "../../../../core/model";
 import { nameList, pauseAllMessage, pickerRows } from "../profile/helpers";
+import { ScheduleSheet } from "../profile/ScheduleSheet";
 
 import type { ProfileColor } from "./ProfilesPage";
 
@@ -82,11 +84,13 @@ type Props = {
 export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Props) {
   const [view, setView] = useState<"cards" | "list">("cards");
   const [sheet, setSheet] = useState<SheetMode | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const createGate = useGate({ ...PROFILE_GATE, op: "create" });
   const list = profiles.data?.profiles ?? [];
   const byId = new Map((devices ?? []).map((d) => [d.id, d]));
   const series = new Map((usage ?? []).map((s) => [s.id, s]));
   const loading = !profiles.data;
+  const scheduleProfile = list.find((p) => p.id === scheduleFor);
 
   const items = (loading ? PLACEHOLDERS : list).map((p) => ({
     profile: p,
@@ -122,7 +126,15 @@ export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Pr
       ) : view === "cards" ? (
         <div className={cn("grid gap-4 sm:grid-cols-2 xl:grid-cols-4", profiles.fading && "opacity-40 transition-opacity")}>
           {items.map((x) => (
-            <ProfileCard key={x.profile.id} {...x} placeholder={loading} color={colorOf(x.profile.id)} timezone={timezone} onRename={() => setSheet({ kind: "rename", profile: x.profile })} />
+            <ProfileCard
+              key={x.profile.id}
+              {...x}
+              placeholder={loading}
+              color={colorOf(x.profile.id)}
+              timezone={timezone}
+              onRename={() => setSheet({ kind: "rename", profile: x.profile })}
+              onSchedule={() => setScheduleFor(x.profile.id)}
+            />
           ))}
         </div>
       ) : (
@@ -133,6 +145,7 @@ export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Pr
         </Card>
       )}
       <ProfileSheet mode={sheet} onClose={() => setSheet(null)} />
+      {scheduleProfile && <ScheduleSheet profile={scheduleProfile} mode={{ kind: "add" }} onClose={() => setScheduleFor(null)} />}
     </Section>
   );
 }
@@ -190,7 +203,7 @@ function PauseButton({ profile, className }: { profile: Profile; className?: str
   return <ProfilePauseButton profile={profile} size="sm" variant={profile.paused ? "default" : "outline"} className={cn("w-full", className)} />;
 }
 
-function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder, onRename }: CardProps & { placeholder: boolean; onRename: () => void }) {
+function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder, onRename, onSchedule }: CardProps & { placeholder: boolean; onRename: () => void; onSchedule: () => void }) {
   const to = pathFor("profile", { profileId: p.id });
   const state = PROFILE_STATE[p.state];
   const next = placeholder ? null : nextLine(p, timezone);
@@ -232,7 +245,7 @@ function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder,
       </div>
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
         <div className="min-w-0 flex-1 [&>span]:flex">{!placeholder && <PauseButton profile={p} />}</div>
-        {!placeholder && <ProfileMenu profile={p} onRename={onRename} />}
+        {!placeholder && <ProfileMenu profile={p} onRename={onRename} onSchedule={onSchedule} />}
       </div>
     </Card>
   );
@@ -367,8 +380,8 @@ export function useDeleteProfile(onDeleted?: () => void) {
   };
 }
 
-/** The `...` menu on a card: Rename and Delete. */
-function ProfileMenu({ profile: p, onRename }: { profile: Profile; onRename: () => void }) {
+/** The `...` menu on a card: Rename, Add a scheduled pause and Delete. */
+function ProfileMenu({ profile: p, onRename, onSchedule }: { profile: Profile; onRename: () => void; onSchedule: () => void }) {
   const gate = useGate(PROFILE_GATE);
   const [open, setOpen] = useState(false);
   const del = useDeleteProfile();
@@ -387,7 +400,7 @@ function ProfileMenu({ profile: p, onRename }: { profile: Profile; onRename: () 
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-          <Popover.Popup className="w-44 rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
+          <Popover.Popup className="w-48 rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
             <button
               type="button"
               className={item}
@@ -398,6 +411,17 @@ function ProfileMenu({ profile: p, onRename }: { profile: Profile; onRename: () 
             >
               <Pencil />
               Rename
+            </button>
+            <button
+              type="button"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                onSchedule();
+              }}
+            >
+              <CalendarPlus />
+              Add a scheduled pause
             </button>
             <button
               type="button"

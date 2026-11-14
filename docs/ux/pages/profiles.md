@@ -91,7 +91,8 @@ Built in M4.5: Add a profile (sheet with name and a device picker:
 unassigned first, then others with "Moves from Alex"; Save opens the new
 profile), Pause all (dialog; one toast with Undo that resumes them all; off
 with "Every profile is paused" when there is nothing to pause), Pause and
-Resume per card with Undo, the `...` menu (Rename sheet and Delete
+Resume per card with Undo, the `...` menu (Rename sheet, Add a scheduled pause, which opens the
+schedule sheet from [profile-detail.md](profile-detail.md), and Delete
 profile...), and Pause unassigned (inline confirm naming up to three
 devices, online first; the button becomes Resume unassigned). Unassigned
 devices has an **Open** link to the Unassigned page
@@ -100,7 +101,7 @@ Every write control dims by the `profiles` permission and bridge mode.
 
 Avatars on unassigned tiles run `device.profile.set` (M4.4) with an Undo
 toast, dimmed by the `devices` permission and bridge mode. Still "Coming
-soon": tile selection and New profile from selection, and the menu's Add a scheduled pause (M4.12). Card clicks, lane
+soon": tile selection and New profile from selection. Card clicks, lane
 segments and tile double-clicks navigate as described.
 
 ## States

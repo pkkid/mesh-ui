@@ -267,6 +267,7 @@ describe("dimming writes", () => {
     expect(at("profile.create")).toMatchObject({ area: "profiles", op: "create", bridgeOff: true });
     expect(at("profile.delete", "destructive")).toMatchObject({ area: "profiles", op: "delete" });
     expect(at("wifi.name.set", "disruptive")).toMatchObject({ area: "settings", op: "update", bridgeOff: false });
+    expect(at("guest.enable")).toMatchObject({ area: "settings", op: "update", bridgeOff: true });
     expect(at("device.list", "query")).toBeNull();
     expect(commandGate({ id: "network.select", effect: "write", scope: "account" })).toBeNull();
   });
@@ -292,6 +293,12 @@ describe("dimming writes", () => {
     const bridged = { ...network, connectionMode: "bridged" as const };
     expect(av("device.pause", on(owner, bridged))).toBe(BRIDGE_OFF);
     expect(av("network.restart", on(owner, bridged))).toBeNull();
+    // Guest network writes are off in bridge mode, as on the Guest page; reading it is not.
+    for (const id of ["guest.enable", "guest.disable", "guest.rename", "guest.password.set"]) {
+      expect(av(id, on(owner, bridged))).toBe(BRIDGE_OFF);
+      expect(av(id, on(owner))).toBeNull();
+    }
+    expect(av("guest.get", on(owner, bridged))).toBeNull();
     const noBlock = { ...network, capabilities: { ...network.capabilities, device_blacklist: false } };
     expect(av("device.block", on(owner, noBlock))).toBe(NOT_AVAILABLE);
     expect(av("device.pause", on(owner, noBlock))).toBeNull();

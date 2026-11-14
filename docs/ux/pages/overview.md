@@ -82,8 +82,8 @@ actions.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Run speed test | `speedtest.run` | write | No | Button reads "Testing..." and gauges fade to 40%; after about a minute the new result lands and "Last speed test" reads "Just now". Toast "Speed test: 942 down / 918 up Mbps" |
-| Share Wi-Fi | `wifi.share` | query | No | Opens the Share Wi-Fi sheet: QR code, network name, Show password, Copy password, Print. Same sheet as Devices and Wi-Fi |
-| Pause a profile | - then `profile.pause {profile}` | write | No | Opens the command palette preset to `profile.pause` with the profile picker focused; Run pauses and toasts with Undo (`profile.resume`) |
+| Share Wi-Fi | - then `wifi.share` | query | No | Opens the Wi-Fi page, whose QR block runs `wifi.share` on Show code (QR, Copy password, Save QR). A Share Wi-Fi sheet shared with Devices is later work |
+| Pause a profile | `profile.list` then `profile.pause {profile}` | write | No | A menu of the profiles not yet paused (name and device count; "Every profile is paused", or a link to Profiles when there are none); picking one pauses it and toasts "Paused Leo" with Undo (`profile.resume`). Dims by the `profiles` permission |
 | Restart network | `network.restart {confirm: true}` | disruptive | Yes, inline | Reveals the inline note "Everyone loses internet for about 2 to 3 minutes, including every connected device and any calls in progress." with "Yes, restart network" and Cancel. On run: progress toast, hero status Restarting, faster polling until Online |
 | Day / Week (Data usage) | - (view state; re-queries `usage.get` with the range) | - | No | Chart, hero and share bar switch range |
 | Topology → | - | - | No | eeros page |
@@ -137,7 +137,7 @@ actions.
 - Gauge max is the plan speed the user set on Internet (stored in
   `settings.json`, see [internet.md](internet.md)); eero does not know the
   plan.
-- The "Pause a profile" button deliberately reuses the palette instead of a
-  bespoke picker.
+- "Pause a profile" is a small menu of profiles rather than the palette:
+  one click picks and pauses, and the Undo toast is the same as on Profiles.
 - Live rates are not shown here, so this page never triggers
   `device.rates.refresh`.

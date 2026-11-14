@@ -119,6 +119,7 @@ const BRIDGE_OFF: ReadonlyArray<string> = [
   "device.resume",
   "device.unblock",
   "forward",
+  "guest",
   "profile",
   "reservation",
   "settings.sqm",
