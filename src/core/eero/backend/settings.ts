@@ -14,8 +14,10 @@
  * M5.3 writes: `band_steering` and `timezone{value}` through the same
  * `PUT {net}/settings`; `PUT {net}/fast_transition`, `{net}/mlo_mode`,
  * `{net}/ac_compat` (form), `{net}/power_saving` (`enable`,
- * `power_saving_schedule_enabled`), `{net}/auto_setup_mode` (`{mode}`),
- * `{net}/thread` (`thread_enable`, `enable_credential_syncing`); `POST
+ * `power_saving_schedule_enabled`), `{net}/auto_setup_mode` (`{mode}`: `ZTS`
+ * on, `DEFAULT` off, as eero's app sends), `{thread}/enable` (`{enabled}`,
+ * Thread on or off; `thread_enable` on `{thread}` answers 200 and changes
+ * nothing), `{thread}` (`enable_credential_syncing`); `POST
  * {net}/thread` regenerates the Thread credentials; power saving schedules
  * are `POST`, `PUT` and `DELETE` under `{net}/power_saving/schedules`.
  * See docs/architecture/commands.md (settings) and docs/eero-api/endpoints.md
@@ -111,14 +113,12 @@ export const settings: EeroArea<"settings"> = (ctx) => {
         ...(input.enabled === undefined ? {} : { enable: input.enabled }),
         ...(input.scheduleEnabled === undefined ? {} : { power_saving_schedule_enabled: input.scheduleEnabled }),
       }),
-    // LD: `PUT {net}/auto_setup_mode` JSON `{mode}`; LTS is what a real network reads while on, OFF is LD's off (MANUAL check).
-    setSimpleSetup: (id, enabled) => own(id, "PUT", "auto_setup_mode", { mode: enabled ? "LTS" : "OFF" }),
+    // eero's app sends ZTS for on and DEFAULT for off (eero stores DEFAULT as LTS). See map/settings.ts simpleSetup.
+    setSimpleSetup: (id, enabled) => own(id, "PUT", "auto_setup_mode", { mode: enabled ? "ZTS" : "DEFAULT" }),
     async setThread(id, input) {
-      const body = {
-        ...(input.enabled === undefined ? {} : { thread_enable: input.enabled }),
-        ...(input.credentialSync === undefined ? {} : { enable_credential_syncing: input.credentialSync }),
-      };
-      await ctx.client.request({ method: "PUT", path: threadPath(id), body, encoding: "json" });
+      // Two endpoints: on or off is `{thread}/enable` (SX, Eeronaut); `thread_enable` on `{thread}` is ignored by eero.
+      if (input.enabled !== undefined) await ctx.client.request({ method: "PUT", path: `${threadPath(id)}/enable`, body: { enabled: input.enabled }, encoding: "json" });
+      if (input.credentialSync !== undefined) await ctx.client.request({ method: "PUT", path: threadPath(id), body: { enable_credential_syncing: input.credentialSync }, encoding: "json" });
       return area.get(id);
     },
     async resetThread(id) {

@@ -399,7 +399,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     password: maple ? "fake-main-pass-01" : "fake-cabin-pass-02",
     mlo_mode: maple ? "multi" : undefined,
     wireless_mode: "auto",
-    auto_setup_mode: "enabled",
+    // ZTS is eero Simple Setup on; LTS is what a network with it off reads (M5 review).
+    auto_setup_mode: maple ? "ZTS" : "LTS",
     nat_port_randomization: false,
     ipv6: { name_servers: { mode: "automatic", custom: [] } },
     pppoe_enabled: null,
@@ -425,6 +426,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       device_blacklist: { capable: true },
       led_action: { capable: true },
       thread_network: { capable: seed.id === "100001" },
+      ffs: { capable: maple },
       port_forward_range: { capable: seed.id === "100001" },
       sqm: { capable: true },
       wpa3: { capable: true },

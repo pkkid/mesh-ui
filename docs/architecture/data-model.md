@@ -597,7 +597,7 @@ type Routing = { reservations: Reservation[]; forwards: Forward[]; pinholes: Pin
 | `thread` | `GET {net}/thread` minus `master_key` and `commissioning_credential` (`borderAgent` is `border_agent.ip:port`; no device count is sent) |
 | `ThreadCredentials` | those two fields; `dataset` from `active_operational_dataset`, which a real network did not send (null) |
 | `powerSaving.schedules` | `GET {net}/power_saving/schedules` `{schedules: [{url, id, name, days, start_time, end_time, enabled}]}` (fields from the clients: the real list was empty) |
-| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings). A real network sends `auto_setup_mode: "LTS"` (M5.1 capture, the one value printed), read as on; LD's other policies `DEFAULT` and `ZTS` read as on and `OFF` as off (M5.3); clear off words are false, anything else null |
+| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings). eero Simple Setup is on only at `ZTS` (zero-touch setup); `LTS`, `DEFAULT` and `OFF` are off, anything else null. A real network reads `LTS` while eero's app says Off (M5 review); eero's app writes `ZTS` for on and `DEFAULT` for off, stored as `LTS` (Eeronaut) |
 | `Reservation`, `Forward`, `Pinhole` | `GET {net}/routing` `reservations.data[]`, `forwards.data[]`, `pinholes.data[]`, joined to devices by MAC or IP |
 | `LanMap` | `dhcp.custom` (or defaults), reservations and connected device count |
 
@@ -723,7 +723,7 @@ type Integrations = Record<IntegrationId, Integration>;
 | `amazon` | network `amazon_account_linked` (the linked name is never mapped) |
 | `builtin` | network `proxied_nodes{enabled, devices[]}`; `GET {net}/proxied_nodes` is a 404 on a real network |
 | `smart_home_hub` | capability only (Zigbee radio); shape unverified |
-| `ffs` | network `ffs` |
+| `ffs` | network `ffs`; unavailable when the `ffs` capability is false |
 
 A 403 or 404 makes one integration unavailable (`enabled: null`), never an
 error for the whole read.

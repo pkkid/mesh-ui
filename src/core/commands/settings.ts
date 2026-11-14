@@ -363,6 +363,15 @@ async function liveToggle(ctx: CommandContext, pick: (s: M.NetworkSettings) => b
   return withoutSecrets(await write());
 }
 
+/**
+ * eero can answer 200 to a write it did not apply (Thread and Simple Setup did
+ * in the M5 review). The write's own read-back is the proof: if it still
+ * shows the old value, fail instead of reporting success.
+ */
+function landed<T>(after: T | null | undefined, want: T, what: string): void {
+  if (after !== want) throw new CommandError("eero_error", `eero accepted the change but did not apply it. ${what} is still ${after === true ? "on" : after === false ? "off" : "unknown"}.`);
+}
+
 /** Thread, or bad_params on a network without it. */
 function withThread(s: M.NetworkSettings): NonNullable<M.NetworkSettings["thread"]> {
   if (!s.thread) throw new CommandError("bad_params", "This network has no Thread border router.");
@@ -766,7 +775,12 @@ export const commands: AnyCommand[] = [
     effect: "write",
     gate: { area: "settings" },
     invalidates: ["settings"],
-    run: (ctx, p) => liveToggle(ctx, (s) => s.simpleSetup, "eero Simple Setup", p.enabled, () => ctx.backend.settings.setSimpleSetup(ctx.net, p.enabled)),
+    run: (ctx, p) =>
+      liveToggle(ctx, (s) => s.simpleSetup, "eero Simple Setup", p.enabled, async () => {
+        const after = await ctx.backend.settings.setSimpleSetup(ctx.net, p.enabled);
+        landed(after.simpleSetup, p.enabled, "eero Simple Setup");
+        return after;
+      }),
   }),
   defineCommand({
     id: "settings.thread.set",
@@ -792,7 +806,10 @@ export const commands: AnyCommand[] = [
         ...(p.credentialSync !== undefined && p.credentialSync !== t.credentialSync ? { credentialSync: p.credentialSync } : {}),
       };
       if (Object.keys(input).length === 0) return withoutSecrets(s);
-      return withoutSecrets(await ctx.backend.settings.setThread(ctx.net, input));
+      const after = await ctx.backend.settings.setThread(ctx.net, input);
+      if (input.enabled !== undefined) landed(after.thread?.enabled, input.enabled, "Thread");
+      if (input.credentialSync !== undefined) landed(after.thread?.credentialSync, input.credentialSync, "Credential sharing");
+      return withoutSecrets(after);
     },
   }),
   defineCommand({

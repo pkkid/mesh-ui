@@ -152,6 +152,10 @@ describe("integrations.get (fake eero server)", () => {
     expect(s.fake.log.map((l) => l.path)).not.toContain("/2.2/networks/100001/proxied_nodes");
     const lake = await ok(s.engine.execute<M.Integrations>("integrations.get", { networkId: "100002" }));
     expect(lake).toMatchObject({ amazon: { available: true, enabled: false }, builtin: { available: true, enabled: false, detail: null } });
+    // Lake Cabin sends `ffs: true` with an `ffs` capability of false: eero does not offer it there.
+    expect(lake.ffs).toEqual({ available: false, enabled: null, detail: "Not offered for this network" });
+    expect(await code(s.engine.execute("integrations.ffs.set", { networkId: "100002", enabled: false }))).toBe("bad_params");
+    expect(s.fake.writes).toHaveLength(0);
   });
 
   it("maps HomeKit when eero sends it", async () => {

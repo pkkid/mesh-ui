@@ -1,8 +1,9 @@
 /**
  * Smart home integrations from `integrations.get`: each with its state, or
  * "Unavailable" (dimmed, read only, with eero's reason) when eero does not
- * report it here. The eero Built-in and Frustration-Free Setup switches,
- * Discover Zigbee devices and Unlink Amazon (destructive: the type-the-name
+ * report it here. Frustration-Free Setup is shown read only: eero reports it,
+ * but eero's own app has no switch for it (M5 review), so neither do we. The
+ * eero Built-in switch, Discover Zigbee devices and Unlink Amazon (destructive: the type-the-name
  * dialog) run through the write kit, gated by their command specs.
  * docs/ux/pages/advanced-networking.md (Integrations), mockup 13.
  */
@@ -20,7 +21,7 @@ const COPY: Record<IntegrationId, { title: string; description: string }> = {
   amazon: { title: "Amazon Connected Home", description: "Alexa and Echo features for this network" },
   builtin: { title: "eero Built-in", description: "Lets compatible Echo devices extend the mesh, for the whole network" },
   smart_home_hub: { title: "Smart Home Hub", description: "Zigbee and Matter controller on an eero" },
-  ffs: { title: "Frustration-Free Setup", description: "Syncs Wi-Fi and Thread credentials to Amazon for easy device setup" },
+  ffs: { title: "Frustration-Free Setup", description: "Syncs Wi-Fi and Thread credentials to Amazon for easy device setup · set from your Amazon account" },
 };
 
 const ORDER: IntegrationId[] = ["homekit", "amazon", "builtin", "smart_home_hub", "ffs"];
@@ -56,7 +57,7 @@ function Switch({ on, label, gate, onChange }: { on: boolean | null | undefined;
 }
 
 /** A switch row's control: `integrations.<id>.set`, with a toast and Undo. */
-function IntegrationSwitch({ id, on }: { id: "builtin" | "ffs"; on: boolean | null | undefined }) {
+function IntegrationSwitch({ id, on }: { id: "builtin"; on: boolean | null | undefined }) {
   const command = `integrations.${id}.set`;
   const gate = useGate(command);
   const write = useWrite<{ enabled: boolean }, IntegrationsData>(command);
@@ -137,7 +138,8 @@ export function Integrations({ query }: { query: QueryState<IntegrationsData>; o
             <span className="text-muted-foreground text-xs">Link in the eero app</span>
           ) : null;
         else if (id === "smart_home_hub") control = i ? <DiscoverZigbee /> : null;
-        else if (id === "builtin" || id === "ffs") control = <IntegrationSwitch id={id} on={i?.enabled} />;
+        else if (id === "builtin") control = <IntegrationSwitch id={id} on={i?.enabled} />;
+        else if (id === "ffs") control = i?.enabled === true ? <Status tone="success">On</Status> : i?.enabled === false ? <Status tone="muted">Off</Status> : null;
         // HomeKit has no write: eero sets it up from the Home app.
         else control = <Switch on={i?.enabled} label={COPY[id].title} gate={{ allowed: false, reason: "Set up in the Apple Home app" }} onChange={() => {}} />;
         return (
