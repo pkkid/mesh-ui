@@ -235,6 +235,13 @@ describe("notifications.settings.set (demo)", () => {
     expect(findDesktopAlerts(seen, next, (await get(engine)).desktop).alerts).toEqual([]);
   });
 
+  it("caps only allowed alerts, so turned-off kinds cannot crowd out the rest", () => {
+    const offline = Array.from({ length: MAX_ALERTS_PER_POLL }, (_, i) => note(`off${i}`, i, { category: "eero", title: "Garage is offline" }));
+    const found = findDesktopAlerts(new Set(["old"]), page(...offline, note("dev", 9)), { offline: false });
+    expect(found.alerts.map((n) => n.id)).toEqual(["dev"]);
+    expect(found.seen.size).toBe(MAX_ALERTS_PER_POLL + 2);
+  });
+
   it("sorts each notification into one desktop kind", () => {
     expect(desktopAllows({ enabled: true }, note("a", 1))).toBe(true);
     expect(desktopAllows({ enabled: true, devices: false }, note("a", 1))).toBe(false);

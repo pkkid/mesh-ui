@@ -44,7 +44,26 @@ const changed = (from: Record<string, boolean>, to: Record<string, boolean>): Re
 /** The sheet, or nothing while closed. `networkId` is the bell's network. */
 export function NotificationSettingsSheet({ networkId, networkName, open, onClose }: { networkId: string; networkName: string | null; open: boolean; onClose: () => void }) {
   const settings = useQuery<Settings>("notifications.settings.get", { networkId }, { enabled: open });
-  if (!open || !settings.data) return null;
+  if (!open) return null;
+  if (!settings.data) {
+    // Open at once: loading, or the read failed with a Retry.
+    return (
+      <Sheet open onClose={onClose} icon={<BellRing />} title="Notification settings" dirty={false} onSave={async () => null}>
+        <p className="py-4 text-center text-muted-foreground text-xs">
+          {settings.error ? (
+            <>
+              Could not load notification settings.{" "}
+              <button type="button" className="underline hover:text-foreground" onClick={() => void settings.refetch()}>
+                Retry
+              </button>
+            </>
+          ) : (
+            "Loading notification settings."
+          )}
+        </p>
+      </Sheet>
+    );
+  }
   return <SettingsForm networkId={networkId} networkName={networkName} saved={settings.data} onClose={onClose} />;
 }
 

@@ -59,13 +59,14 @@ export type NewNotifications = {
  * after a network switch), which alerts nothing and only remembers the ids.
  * After that, every id not seen before is new, read or not.
  */
-export function findNewNotifications(seen: ReadonlySet<string> | null, page: M.NotificationPage): NewNotifications {
+export function findNewNotifications(seen: ReadonlySet<string> | null, page: M.NotificationPage, allow: (n: M.Notification) => boolean = () => true): NewNotifications {
   const next = new Set(seen ?? []);
   const fresh: M.Notification[] = [];
   for (const n of page.notifications) {
     if (next.has(n.id)) continue;
     next.add(n.id);
-    if (seen) fresh.push(n);
+    // Every id is remembered; only allowed ones count toward the per-poll cap.
+    if (seen && allow(n)) fresh.push(n);
   }
   fresh.sort((a, b) => Number(isOfflineAlert(b)) - Number(isOfflineAlert(a)) || b.at.localeCompare(a.at));
   return { alerts: fresh.slice(0, MAX_ALERTS_PER_POLL), seen: next };
@@ -78,8 +79,7 @@ export function findNewNotifications(seen: ReadonlySet<string> | null, page: M.N
  * does not replay old items.
  */
 export function findDesktopAlerts(seen: ReadonlySet<string> | null, page: M.NotificationPage, desktop: Record<string, boolean> | null | undefined): NewNotifications {
-  const found = findNewNotifications(seen, page);
-  return { alerts: found.alerts.filter((n) => desktopAllows(desktop, n)), seen: found.seen };
+  return findNewNotifications(seen, page, (n) => desktopAllows(desktop, n));
 }
 
 export const commands: AnyCommand[] = [
