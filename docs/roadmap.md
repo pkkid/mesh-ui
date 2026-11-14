@@ -464,7 +464,7 @@ port, decided in M3.2).
 - scope: Page (mockup 08), read-only: hero with state and next schedule; schedules on the shared timeline with a list; devices with status and usage; usage Day/Week with top devices; `[` `]` move between profiles. Every write is disabled ("Coming soon"). Paused, scheduled, empty-profile, gone and bridge states.
 - done when: helper tests; `pnpm ui:shot` of an active, a paused and a scheduled profile, demo and `--fake`, light and dark, plus a gone profile; page-load budget test; `MANUAL: profile detail on the real network | pnpm dev, open each profile | schedules and devices match the eero app | none`.
 
-### M3.6 Activity page and event summary ☐
+### M3.6 Activity page and event summary ✅ (#103)
 - issue: [#87](https://github.com/pkkid/mesh-ui/issues/87)
 - after: M3.1, M3.2
 - docs: ux/pages/activity.md, architecture/commands.md (activity)

@@ -605,12 +605,38 @@ export type NetworkEvent = {
   title: string;
   detail: string | null;
   refs: { deviceId?: Id; eeroId?: Id; profileId?: Id; adminId?: Id };
+  /** `events.list {grouped: true}`: older events of the same type and title folded into this row, newest first. */
+  grouped?: NetworkEvent[];
 };
 
 export type EventPage = {
   events: NetworkEvent[];
   nextCursor: string | null;
   counts: Record<EventCategory, number>;
+};
+
+export type EventSummaryRange = "day" | "week";
+export type EventBucket = "hour" | "day";
+
+/** `events.summary`: totals for the Activity hero, legend and chart. */
+export type EventSummary = {
+  range: EventSummaryRange;
+  bucket: EventBucket;
+  /** Window start (network time zone aligned) and end (now). */
+  from: Iso;
+  to: Iso;
+  total: number;
+  /** total over the days in the range (1 or 7). */
+  dailyAverage: number;
+  /** Events in the same length of time just before `from`; null when history does not reach back that far. */
+  prior: number | null;
+  /** (total - prior) / prior, as a fraction; null when prior is null or 0. */
+  change: number | null;
+  counts: Record<EventCategory, number>;
+  /** One per hour or day of the window, oldest first; `at` is the bucket start. */
+  buckets: { at: Iso; total: number; counts: Record<EventCategory, number> }[];
+  /** The page budget ran out before the window start, so counts are a lower bound. */
+  partial: boolean;
 };
 
 export type Notification = {

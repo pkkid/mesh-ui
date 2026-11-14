@@ -365,18 +365,6 @@ export type RawBreakdownRow = {
 };
 export type RawBreakdown = { devices?: RawBreakdownRow[]; profiles?: RawBreakdownRow[]; eeros?: RawBreakdownRow[] };
 
-export type RawEvent = {
-  id?: string | number;
-  event_type?: string;
-  title?: string;
-  message?: string;
-  created?: string;
-  timestamp?: string;
-  device?: RawRef & { mac?: string };
-  eero?: RawRef & { serial?: string };
-  profile?: RawRef;
-};
-
 // ---------------------------------------------------------------------------
 // Guest, Wi-Fi and settings reads (real capture, 2026-11-13: key paths and types only)
 
