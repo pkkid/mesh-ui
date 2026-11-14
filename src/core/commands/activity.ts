@@ -196,13 +196,13 @@ export function eventAction(e: Pick<M.NetworkEvent, "type" | "title" | "category
 
 /**
  * Fills in refs by name for events without any, and sets each row's action.
- * Only the newest row per action and target keeps it, so a page shows one
- * Resume for Leo, not one per pause. Grouped rows are linked as their head.
+ * Only the newest row per action and target keeps it, so the stream shows one
+ * Resume for Leo, not one per pause; `seen` carries the targets already given
+ * one across pages (in the cursor). Grouped rows are linked as their head.
  */
-async function linkEvents(ctx: CommandContext, events: M.NetworkEvent[]): Promise<M.NetworkEvent[]> {
+async function linkEvents(ctx: CommandContext, events: M.NetworkEvent[], seen: Set<string>): Promise<M.NetworkEvent[]> {
   // Links are a nicety: when a list cannot be read the rows still come back, unlinked.
   const index = events.some((e) => Object.keys(e.refs).length === 0) ? await nameIndex(ctx).catch(() => null) : null;
-  const seen = new Set<string>();
   return events.map((e) => {
     const refs = index && Object.keys(e.refs).length === 0 ? refsByName(e.title, index.names, index.shared) : e.refs;
     const out: M.NetworkEvent = { ...e, refs };
@@ -216,8 +216,11 @@ async function linkEvents(ctx: CommandContext, events: M.NetworkEvent[]): Promis
   });
 }
 
-/** Where the next page starts: a backend page cursor and how many events of that page were already handed out. */
-type Cursor = { c: string | null; o: number };
+/**
+ * Where the next page starts: a backend page cursor, how many events of that
+ * page were already handed out, and the action targets earlier pages offered.
+ */
+type Cursor = { c: string | null; o: number; a?: string[] };
 
 function encodeCursor(c: Cursor): string {
   return Buffer.from(JSON.stringify(c), "utf8").toString("base64url");
@@ -227,8 +230,9 @@ function decodeCursor(s: string): Cursor {
   try {
     const v: unknown = JSON.parse(Buffer.from(s, "base64url").toString("utf8"));
     if (v && typeof v === "object") {
-      const { c, o } = v as Record<string, unknown>;
-      if ((c === null || typeof c === "string") && typeof o === "number" && Number.isInteger(o) && o >= 0) return { c, o };
+      const { c, o, a } = v as Record<string, unknown>;
+      const actions = a === undefined ? [] : Array.isArray(a) && a.every((x) => typeof x === "string") ? (a as string[]) : null;
+      if ((c === null || typeof c === "string") && typeof o === "number" && Number.isInteger(o) && o >= 0 && actions) return { c, o, a: actions };
     }
   } catch {
     // Falls through to the error below.
@@ -280,7 +284,7 @@ const eventsList = defineCommand({
     const filter = await eventFilter(ctx, p);
     const matches = (e: M.NetworkEvent): boolean => (until === null || Date.parse(e.at) <= until) && filter(e);
 
-    const start = p.cursor ? decodeCursor(p.cursor) : { c: null, o: 0 };
+    const start: Cursor = p.cursor ? decodeCursor(p.cursor) : { c: null, o: 0 };
     const out: M.NetworkEvent[] = [];
     let next: Cursor | null = null;
     let page = start.c;
@@ -315,8 +319,9 @@ const eventsList = defineCommand({
     if (p.format === "csv") return toCsv(out, EVENTS_CSV);
     const counts = emptyCounts();
     for (const e of out) counts[e.category]++;
-    const rows = await linkEvents(ctx, p.grouped ? groupEvents(out) : out);
-    return { events: rows, nextCursor: next ? encodeCursor(next) : null, counts };
+    const seen = new Set(start.a);
+    const rows = await linkEvents(ctx, p.grouped ? groupEvents(out) : out, seen);
+    return { events: rows, nextCursor: next ? encodeCursor({ ...next, a: seen.size ? [...seen] : undefined }) : null, counts };
   },
 });
 

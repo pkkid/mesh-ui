@@ -537,6 +537,20 @@ describe("row actions on the demo backend", () => {
     const page = await ok(engine.execute<M.EventPage>("events.list", {}));
     expect(page.events.map((e) => e.action ?? null)).toEqual(["resume", null, null]);
   });
+
+  it("keeps one action per target across pages", async () => {
+    const leoPauses = (es: M.NetworkEvent[]) => es.filter((e) => e.action === "resume").length;
+    const demo = createDemoBackend({ clock: () => NOW });
+    const at = (m: number) => new Date(NOW - m * 60_000).toISOString();
+    const events: M.NetworkEvent[] = [1, 2, 3].map((m) => ({ id: `p${m}`, at: at(m), category: "pause_block", type: "profile_paused", title: "Profile Leo paused", detail: null, refs: { profileId: "9104" } }));
+    const backend = composeBackend("demo", { ...demo, events: { list: async () => ({ events, nextCursor: null }) } });
+    const paged = createEngine({ backend, clock: () => NOW });
+    const p1 = await ok(paged.execute<M.EventPage>("events.list", { limit: 1 }));
+    const p2 = await ok(paged.execute<M.EventPage>("events.list", { limit: 2, cursor: p1.nextCursor as string }));
+    expect(leoPauses(p1.events)).toBe(1);
+    expect(p2.events.map((e) => e.id)).toEqual(["p2", "p3"]);
+    expect(leoPauses(p2.events)).toBe(0);
+  });
 });
 
 describe("refsByName (events without refs)", () => {
