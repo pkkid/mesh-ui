@@ -512,7 +512,7 @@ port, decided in M3.2).
 - scope: Core: `pinhole.list` on the captured shape, from the same cached routing read. Page (mockup 14): LAN map with the pool and leased count, reservations, port forwards, IPv6 rules, each joined to devices. Add, edit, toggle and remove are disabled ("Coming soon"). Bridge, empty and offline states.
 - done when: demo tests for `pinhole.list` incl. `bad_params` and bridge; fake-server mapping tests; a real shape check of `pinhole.list` in the PR; page-load budget test (one routing read for the page); `pnpm ui:shot --route '#/ports'` demo and `--fake`, light and dark, plus bridge and empty.
 
-### M3.12 Troubleshooting health check ☐
+### M3.12 Troubleshooting health check ✅ (#117)
 - issue: [#93](https://github.com/pkkid/mesh-ui/issues/93)
 - after: M3.1, M3.2
 - docs: ux/pages/troubleshooting.md, architecture/commands.md (diagnostics)
