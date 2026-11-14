@@ -90,7 +90,7 @@ Profiles stays active.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Rename (topbar), pencil by the name | `profile.rename {profile, name}` | write | No | Name becomes an inline input; Enter saves; toast with Undo |
+| Rename (topbar) | `profile.rename {profile, name}` | write | No | Rename sheet (name, 32 characters, a taken name shows under the field); toast with Undo |
 | Pause profile | `profile.pause {profile}` | write | No | Status Paused; button becomes **Resume profile**; a manual segment appears on today's lane |
 | Resume profile | `profile.resume {profile}` | write | No | Active; during a scheduled pause Mia stays online until the next scheduled start (hero line says so) |
 | + Add a scheduled pause | - | - | No | Opens the sheet empty (name "New schedule", 9:00 PM to 7:00 AM, School nights) |
@@ -130,12 +130,16 @@ Profiles stays active.
   schedules still listed (they run on the eeros).
 - **No permission.** Admins may manage profiles; denied permissions disable
   controls with the reason.
-- **Unassigned.** Opened from Profiles, the same layout lists
-  `device.list {profile: null}`: no Rename, no Delete section, no Add a
-  device (devices land here by leaving other profiles). Pause and Resume use
-  `profile.unassigned.pause` / `.resume`; the schedules section is left out,
-  since Unassigned schedules have no known endpoint (see
-  [profiles.md](profiles.md#notes)).
+- **Unassigned** (`#/profiles/unassigned`, built in M4.5,
+  `UnassignedPage.tsx`). Opened from Profiles (Unassigned devices, **Open**).
+  A hero (devices and online from `profile.list` `unassigned`, last 24 hours
+  from `usage.breakdown`, Paused or Active) with **Pause unassigned** (inline
+  confirm) or **Resume unassigned**, and the devices table with status and
+  data in the last 24 hours. No Rename, no Delete section, no Add a device
+  (devices land here by leaving other profiles); the schedules section is
+  left out, since Unassigned schedules have no known endpoint (see
+  [profiles.md](profiles.md#notes)). The route shares `/profiles/:profileId`
+  (profile ids are numbers).
 - **Capability missing.** None specific beyond Unassigned support (eeroOS
   7.12.4+).
 - **Bridge mode.** Not reachable; shows the bridge note with a link back.
@@ -165,12 +169,16 @@ Profiles stays active.
   eero app; deleting removes it there too | risk: brief outage for that
   profile's devices.
 
-## Built so far (M3.5)
+## Built so far (M3.5, M4.5)
 
-The read-only page (`src/renderer/src/features/profile/`). Every write
-above (Rename, Pause and Resume, schedule add, edit, switch and delete, Add
-a device, Remove, Delete profile) shows as a disabled "Coming soon" control
-until its command lands; the schedule sheet is not built yet.
+The page lives in `src/renderer/src/features/profile/`. M4.5 wired Rename
+(sheet), Pause and Resume (hero, with Undo), Add a device (the devices
+picker sheet, `profile.devices.set`), Remove (x on a row, with Undo) and
+Delete profile (type-the-name dialog with the engine's message; toast
+"Deleted Mia", then Profiles). Controls dim by the `profiles` permission and
+bridge mode. Schedule add, edit, switch and delete stay "Coming soon" until
+M4.12; `profile.get` already returns `today` (this profile's segments, a
+manual pause included) for the week timeline to draw.
 
 - **Hero.** State and the next change come from `profile.get` (`state`,
   `nextChange`, computed in core); the page only words them. In a scheduled

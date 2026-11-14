@@ -688,7 +688,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `device.pause`, `device.resume`, `device.rename`, `device.type.set`, `device.profile.set` (to `null` means eero's default profile; capture first), `device.block`, `device.unblock`, all on `/2.3/` where eero needs it. Device detail: pause, rename sheet, type, profile picker, block with Undo. Devices page: row actions and multi-select bulk pause, resume, profile and block. Writes refresh `network.get` counts.
 - done when: demo and fake-server tests for every command (method, `/2.3/` path, body, invalidated topics, Unassigned as the default profile); a capture of a device's profile link; `pnpm ui:shot` of device detail and Devices bulk select, light and dark, plus a toast; `MANUAL: pause and resume one device | ... | the device drops and returns, the eero app agrees | brief loss for that device`.
 
-### M4.5 Profile writes ☐
+### M4.5 Profile writes ✅ (#155)
 - issue: [#127](https://github.com/pkkid/mesh-ui/issues/127)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/profiles.md, ux/pages/profile-detail.md, architecture/commands.md (profile)

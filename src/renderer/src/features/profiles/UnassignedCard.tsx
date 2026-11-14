@@ -1,22 +1,25 @@
 /**
  * "Unassigned devices": a tile per device in no profile with its icon, name
  * and "Online · 142 GB in 24h", "Offline · 3 days ago" or "Blocked", plus a
- * faint avatar per profile to assign it. Assigning and pausing are writes
- * from a later milestone, so they show disabled ("Coming soon").
- * docs/ux/pages/profiles.md (Layout 4).
+ * faint avatar per profile to assign it (assigning comes with
+ * `device.profile.set`, M4.4). Pause unassigned asks inline first; Resume
+ * unassigned undoes it. docs/ux/pages/profiles.md (Layout 4).
  */
-import { Info, Pause, UserRoundPlus } from "lucide-react";
+import { Info, Pause, Play, UserRoundPlus } from "lucide-react";
 
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
+import { useWrite } from "~/app/useWrite";
+import { WriteConfirm } from "~/components/ui/confirm";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError, useNow } from "~/components/ui/page";
+import { GatedButton, HeaderLink, SectionError, useGate, useNow } from "~/components/ui/page";
+import { unassignedPauseMessage } from "~/features/profile/helpers";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatRelative } from "../../../../core/format";
 import type { Device, DeviceList, ProfileList, UsageBreakdown } from "../../../../core/model";
 
-import { Avatar } from "./ProfileCards";
+import { Avatar, PROFILE_GATE } from "./ProfileCards";
 import type { ProfileColor } from "./ProfilesPage";
 
 type Props = {
@@ -40,6 +43,8 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
   const today = new Map((usage?.rows ?? []).map((r) => [r.id, r.down + r.up]));
   const loaded = !!devices.data && !!profiles;
   const empty = loaded && list.length === 0;
+  const paused = profiles?.unassigned.paused ?? false;
+  const pausable = list.filter((d) => !d.blocked);
 
   const detail = (d: Device) => {
     if (d.blocked) return <span className="text-destructive-foreground">Blocked</span>;
@@ -54,10 +59,12 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
       subtitle={loaded && !empty ? `${list.length} ${list.length === 1 ? "device" : "devices"} not in a profile` : undefined}
       tools={
         !loaded || empty ? null : (
-          <ComingSoonButton size="xs" variant="outline">
-            <Pause />
-            Pause unassigned
-          </ComingSoonButton>
+          <>
+            <UnassignedPauseButton paused={paused} devices={pausable} />
+            <HeaderLink to={pathFor("profile", { profileId: "unassigned" })} arrow>
+              Open
+            </HeaderLink>
+          </>
         )
       }
     >
@@ -113,5 +120,41 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
         </>
       )}
     </Section>
+  );
+}
+
+/**
+ * Pause unassigned (asks inline first: it includes the TV, printer and smart
+ * home gear) or Resume unassigned. Shared with the Unassigned page.
+ */
+export function UnassignedPauseButton({ paused, devices, size = "xs" }: { paused: boolean; devices: ReadonlyArray<Device>; size?: "xs" | "lg" }) {
+  const gate = useGate(PROFILE_GATE);
+  const copy = unassignedPauseMessage(devices);
+  const pause = useWrite("profile.unassigned.pause", {
+    askFirst: true,
+    confirm: { ...copy, confirmLabel: "Pause unassigned" },
+    success: "Paused unassigned devices",
+    undo: { id: "profile.unassigned.resume", success: "Resumed unassigned devices" },
+  });
+  const resume = useWrite("profile.unassigned.resume", {
+    success: "Resumed unassigned devices",
+    undo: { id: "profile.unassigned.pause", success: "Paused unassigned devices" },
+  });
+  const write = paused ? resume : pause;
+  const label = paused ? "Resume unassigned" : "Pause unassigned";
+  return (
+    <WriteConfirm write={pause} className="max-w-sm">
+      <GatedButton
+        gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
+        size={size}
+        variant={paused ? "default" : "outline"}
+        className={size === "lg" ? "w-full" : undefined}
+        disabled={write.running}
+        onClick={() => void write.run()}
+      >
+        {paused ? <Play /> : <Pause />}
+        {label}
+      </GatedButton>
+    </WriteConfirm>
   );
 }

@@ -13,12 +13,16 @@ import {
   heroLine,
   hoursLine,
   inScheduledPause,
+  nameList,
   neighbour,
+  pauseAllMessage,
+  pickerRows,
   scheduledHoursPerWeek,
   scheduleIcon,
   spanMinutes,
   timeRange,
   todayIn,
+  unassignedPauseMessage,
   untilText,
   usageMarkers,
   weekInput,
@@ -177,5 +181,57 @@ describe("page load against the fake eero server", () => {
     // Identical reads are shared; no /schedules reads (a 404 on real eero); about 18 requests, well under the 80 a minute budget.
     expect(fake.log.some((e) => e.path.endsWith("/schedules"))).toBe(false);
     expect(fake.log.length).toBeLessThanOrEqual(20);
+  });
+});
+
+describe("write helpers", () => {
+  const dev = (id: string, name: string, over: Partial<Device> = {}) => ({ id, name, profileId: null, blocked: false, ssid: "main", connected: true, ...over }) as Device;
+  const profiles = [
+    { id: "1", name: "Alex" },
+    { id: "2", name: "Mia" },
+  ];
+
+  it("lists names in English", () => {
+    expect([[], ["A"], ["A", "B"], ["A", "B", "C"]].map(nameList)).toEqual(["", "A", "A and B", "A, B and C"]);
+  });
+
+  it("orders the picker: own devices, unassigned, then others, saying where each is", () => {
+    const devices = [
+      dev("a", "Zed TV"),
+      dev("b", "Mia Phone", { profileId: "2" }),
+      dev("c", "Alex Phone", { profileId: "1" }),
+      dev("d", "Guest Phone", { ssid: "guest" }),
+      dev("e", "Blocked", { blocked: true }),
+      dev("f", "Apple TV", { profileId: "default-790" }),
+    ];
+    expect(pickerRows(devices, profiles, "1").map((r) => [r.name, r.note])).toEqual([
+      ["Alex Phone", null],
+      ["Apple TV", "Unassigned"],
+      ["Zed TV", "Unassigned"],
+      ["Mia Phone", "Moves from Mia"],
+    ]);
+    // A new profile: unassigned devices carry no note.
+    expect(pickerRows(devices, profiles, null).map((r) => [r.name, r.note])).toEqual([
+      ["Apple TV", null],
+      ["Zed TV", null],
+      ["Alex Phone", "Moves from Alex"],
+      ["Mia Phone", "Moves from Mia"],
+    ]);
+  });
+
+  it("writes the Pause all and Pause unassigned confirms", () => {
+    expect(
+      pauseAllMessage([
+        { name: "Alex", deviceIds: ["1", "2"] },
+        { name: "Mia", deviceIds: ["3"] },
+      ]),
+    ).toEqual({ title: "Pause Alex and Mia?", message: "3 devices lose internet until you resume them." });
+    expect(pauseAllMessage([{ name: "Leo", deviceIds: ["1"] }])).toEqual({ title: "Pause Leo?", message: "1 device loses internet until you resume it." });
+    const tv = { name: "Living Room TV", connected: true };
+    expect(unassignedPauseMessage([{ name: "Old Printer", connected: false }, tv])).toEqual({
+      title: "Pause 2 unassigned devices?",
+      message: "This includes Living Room TV and Old Printer. They lose internet until you resume them.",
+    });
+    expect(unassignedPauseMessage([tv, tv, tv, tv, tv]).message).toBe("This includes Living Room TV, Living Room TV, Living Room TV and 2 more. They lose internet until you resume them.");
   });
 });

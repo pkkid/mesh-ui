@@ -255,18 +255,22 @@ ENABLE_POE | DISABLE_POE | RESTART_POWER`. Node-wide
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `profile.list` | Profiles | `{}` | q | `GET {net}/profiles` (schedules from each profile's `schedule[]`) | `ProfileList`: `Profile[]` with state, device counts and next schedule, all computed in core in the network time zone. State: `paused` for a manual pause, else `scheduled` when an enabled schedule exists (or eero says so), else `active`. Also returns an `unassigned` summary (device ids, online count, paused state; it is not a profile and has no id) and `today`: the date, zone and minute it was computed, and one lane per profile plus Unassigned (`profileId: null`) of `PauseSegment`s in minutes after midnight (today's schedule spans, the end of yesterday's overnight ones, and a manual pause from now to the next scheduled start or midnight). |
-| `profile.get` | Profile | `{ profile: Ref }` | q | `GET {profile}` | `Profile` with devices and schedules. Schedules come from the profile's own `schedule[]`: `GET {profile}/schedules` is a 404 on a real network although `resources.schedules` names it ([endpoints.md section 17](../eero-api/endpoints.md)). |
-| `profile.create` | Add a profile | `{ name: string(1..32), devices?: Ref[] }` | w | `POST {net}/profiles` JSON `{name, paused: false, devices: [{url}]}` | |
-| `profile.rename` | Rename profile | `{ profile: Ref, name: string(1..32) }` | w | `PUT {profile}` JSON `{name}` | |
+| `profile.get` | Profile | `{ profile: Ref }` | q | `GET {profile}` | `ProfileDetail`: `Profile` with devices and schedules, plus `today` (date, zone, minute and this profile's `PauseSegment`s, as in `profile.list`), so profile detail can draw a manual pause. Schedules come from the profile's own `schedule[]`: `GET {profile}/schedules` is a 404 on a real network although `resources.schedules` names it ([endpoints.md section 17](../eero-api/endpoints.md)). |
+| `profile.create` | Add a profile | `{ name: string(1..32), devices?: Ref[] }` | w | `POST {net}/profiles` JSON `{name, paused: false, devices: [{url}]}` | Names are trimmed and unique (case-insensitive, since names are refs): a taken name is `bad_params` on `name`. |
+| `profile.rename` | Rename profile | `{ profile: Ref, name: string(1..32) }` | w | `PUT {profile}` JSON `{name}` | Same name rule as create. |
 | `profile.pause` | Pause profile | `{ profile: Ref }` | w | `PUT {profile}` JSON `{paused: true}` | Lasts until resumed. eero has no timed pause, so Mesh UI offers none and the engine keeps no resume timers. |
 | `profile.resume` | Resume profile | `{ profile: Ref }` | w | `PUT {profile}` JSON `{paused: false}` | During a scheduled pause, eero keeps the profile online until the next schedule. |
 | `profile.devices.set` | Profile devices | `{ profile: Ref, devices: Ref[] }` | w | `PUT {profile}` JSON `{devices: [{url}]}` | Replaces the whole list. |
-| `profile.delete` | Delete profile | `{ profile: Ref }` | x | `DELETE {profile}` | Devices become unassigned, schedules go, pause lifts. |
+| `profile.delete` | Delete profile | `{ profile: Ref }` | x | `DELETE {profile}` | Devices become unassigned, schedules go, pause lifts. The `needs_confirm` message names the profile and its device count; result `{deleted, name}`. |
 | `profile.schedule.add` | Add a scheduled pause | `{ profile: Ref, name: string, days: Day[], start: "HH:MM", end: "HH:MM", enabled?: boolean }` | w | `POST {profile}/schedules` JSON | `end` before `start` wraps past midnight. Days sent as `MON`..`SUN` (LD form; MANUAL check against FF's lowercase). |
 | `profile.schedule.update` | Edit schedule | `{ profile: Ref, schedule: Ref, name?, days?, start?, end?, enabled? }` | w | `PUT {schedule url}` | |
 | `profile.schedule.remove` | Delete schedule | `{ profile: Ref, schedule: Ref }` | w | `DELETE {schedule url}` | |
-| `profile.unassigned.pause` **(added)** | Pause unassigned devices | `{}` | w | `PUT /2.3/networks/{id}/devices/{mac}` `{paused: true}` per unprofiled device | Profiles page and palette. UI asks first because it includes TVs and smart home gear; the engine does not require `confirm`. |
-| `profile.unassigned.resume` **(added)** | Resume unassigned devices | `{ all?: boolean }` | w | same, `{paused: false}` | Resumes only devices this command paused (tracked in session) unless `all: true`. |
+| `profile.unassigned.pause` **(added)** | Pause unassigned devices | `{}` | w | `PUT {default profile}` JSON `{paused: true}` (the `default: true` row of `GET {net}/profiles`); a network without one (eeroOS before 7.12.4) gets `PUT /2.3/networks/{id}/devices/{mac}` `{paused: true}` per unprofiled device | Profiles page, Unassigned page and palette. UI asks first because it includes TVs and smart home gear; the engine does not require `confirm`. Result `{paused}`. |
+| `profile.unassigned.resume` **(added)** | Resume unassigned devices | `{}` | w | same, `{paused: false}` | Resumes every unassigned device (eero keeps one pause flag on its default profile, so there is nothing per device to track). |
+
+Every profile write invalidates `profiles`, `devices` and `network`. The
+default profile is never a `Profile`: refs to it (by id or by the name
+"Unassigned") fail with `bad_params` on every profile command.
 
 Unassigned devices are handled by `profile.unassigned.pause` and
 `.resume`, `device.list {profile: null}` and `device.profile.set` with

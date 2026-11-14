@@ -445,6 +445,12 @@ type PausesToday = {
 type PauseSegment = { start: number; end: number; kind: "scheduled" | "manual"; label: string; scheduleId: Id | null };
 ```
 
+`profile.get` returns a `ProfileDetail`, the profile plus its own lane:
+
+```ts
+type ProfileDetail = Profile & { today: { date: string; timezone: string | null; now: number; segments: PauseSegment[] } };
+```
+
 `today` is computed in core from each profile's enabled schedules (a span
 that wraps past midnight starts yesterday's lane) and, for a paused profile,
 a manual segment from now until the next scheduled segment starts (or midnight).
