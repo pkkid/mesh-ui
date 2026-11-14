@@ -3,13 +3,19 @@
  * `GET {net}/blacklist`, `GET {device}`, and `POST {net}/burst_reporters`.
  * The once-a-minute burst rule is enforced in core (commands/device.ts);
  * this area only remembers when bursts happened, to stamp live rates.
+ *
+ * Writes (M4.4): pause, nickname, type and profile are one JSON
+ * `PUT /2.3/networks/{id}/devices/{mac}` each (`/2.2/` answers 200 and drops
+ * them). "No profile" is eero's `default: true` profile, so it sends that
+ * profile's url. Block is `POST {net}/blacklist` form `mac`, unblock
+ * `DELETE {net}/blacklist/{mac}`.
  */
 
 import { BackendError } from "../../errors";
 import type * as M from "../../model";
 import { mapDevice, type RawDeviceFull } from "../map/device";
-import { asList, type RawBurstResult } from "../raw";
-import { compactMac, idFromUrl, networkPath } from "../urls";
+import { asList, linkUrl, type RawBlockWrite, type RawBurstResult, type RawDeviceWrite, type RawProfile } from "../raw";
+import { compactMac, deviceWritePath, idFromUrl, networkPath } from "../urls";
 import type { EeroArea } from "./index";
 import { fetchRouting } from "./routing";
 
@@ -84,6 +90,28 @@ export const device: EeroArea<"device"> = (ctx) => {
     return found;
   };
 
+  /** A device id is its compact MAC on eero; anything else is looked up. */
+  const macOf = async (net: M.Id, id: M.Id): Promise<string> => (/^[0-9a-f]{12}$/i.test(id) ? id.toLowerCase() : (await getOne(net, id)).mac);
+
+  /** One device write; the answer is mapped when eero sends the device back, else read again. */
+  const write = async (net: M.Id, id: M.Id, body: RawDeviceWrite): Promise<M.Device> => {
+    const mac = await macOf(net, id);
+    const raw = await client.request<RawDeviceFull>({ method: "PUT", path: deviceWritePath(net, mac), body, encoding: "json" });
+    if (raw && typeof raw === "object" && (raw.url || raw.mac)) {
+      const blocked = raw.blocked === true || raw.blacklisted === true;
+      return mapDevice(raw, { blocked, ratesAt: ratesAt(net) });
+    }
+    return getOne(net, mac);
+  };
+
+  /** eero's own Unassigned group: the profile flagged `default: true`. */
+  const defaultProfileUrl = async (net: M.Id): Promise<string> => {
+    const profiles = asList<RawProfile>(await client.request({ method: "GET", path: networkPath(net, "profiles") }), "profiles");
+    const url = linkUrl(profiles.find((p) => p?.default === true)?.url);
+    if (!url) throw new BackendError("eero_error", "This network has no Unassigned group to move the device to.");
+    return url;
+  };
+
   return {
     list,
 
@@ -99,6 +127,27 @@ export const device: EeroArea<"device"> = (ctx) => {
       const prev = bursts.get(net);
       bursts.set(net, { last: next, prev: prev ? (prev.last <= Date.now() ? prev.last : prev.prev) : null });
       return { nextBurstAt: new Date(next).toISOString() };
+    },
+
+    setPaused: (net, id, paused) => write(net, id, { paused }),
+    rename: (net, id, nickname) => write(net, id, { nickname }),
+    setType: (net, id, type) => write(net, id, { device_type: type }),
+
+    async setProfile(net, id, profile) {
+      const url = profile === null ? await defaultProfileUrl(net) : networkPath(net, `profiles/${encodeURIComponent(profile)}`);
+      return write(net, id, { profile: { url } });
+    },
+
+    async setBlocked(net, id, blocked) {
+      const d = await getOne(net, id);
+      if (!d.mac) throw new BackendError("eero_error", "That device has no MAC address to block.");
+      if (blocked) {
+        const body: RawBlockWrite = { mac: d.mac };
+        await client.request({ method: "POST", path: networkPath(net, "blacklist"), body, encoding: "form" });
+      } else {
+        await client.request({ method: "DELETE", path: networkPath(net, `blacklist/${compactMac(d.mac)}`), encoding: "none" });
+      }
+      return getOne(net, d.id);
     },
   };
 };

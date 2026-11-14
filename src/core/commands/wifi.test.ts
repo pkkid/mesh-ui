@@ -345,9 +345,9 @@ describe("fake eero server records writes", () => {
     expect(put.status).toBe(200);
     const after = (await (await fake.fetch(`${fake.origin}/2.2/networks/100001/devices/0a1b2c000001`, { headers })).json()) as { data: { paused: boolean } };
     expect(after.data.paused).toBe(true);
-    // This route is /2.3/ only, so the same PUT on /2.2/ is a 404 here (eero answers 200 and drops it); either way the version is recorded.
+    // On /2.2/ the fake's own device route answers 200 and drops the change, as eero does; either way the version is recorded.
     await fake.fetch(`${fake.origin}/2.2/networks/100001/devices/0a1b2c000001`, { method: "PUT", headers, body: JSON.stringify({ paused: false }) });
-    expect(fake.writes.map((w) => [w.version, w.status])).toEqual([["2.3", 200], ["2.2", 404]]);
+    expect(fake.writes.map((w) => [w.version, w.status])).toEqual([["2.3", 200], ["2.2", 200]]);
   });
 
 });

@@ -64,6 +64,48 @@ const CATEGORY: Record<string, M.DeviceCategory> = {
   pet_device: "smart_home",
 };
 
+/**
+ * eero `device_type` values a person can pick (device.type.set), in the
+ * Appearance grid's fixed order, with English labels. "generic" is eero's
+ * own "Other". Every entry maps to a category through CATEGORY.
+ */
+export const DEVICE_TYPES: ReadonlyArray<{ type: string; label: string }> = [
+  { type: "phone", label: "Phone" },
+  { type: "tablet", label: "Tablet" },
+  { type: "watch", label: "Watch" },
+  { type: "e_reader", label: "E-reader" },
+  { type: "laptop_computer", label: "Laptop" },
+  { type: "desktop_computer", label: "Desktop" },
+  { type: "hard_drive", label: "Storage" },
+  { type: "printer", label: "Printer" },
+  { type: "television", label: "TV" },
+  { type: "media_streamer", label: "Streamer" },
+  { type: "game_console", label: "Game console" },
+  { type: "audio", label: "Speaker" },
+  { type: "cable_box", label: "Cable box" },
+  { type: "remote", label: "Remote" },
+  { type: "security_camera", label: "Camera" },
+  { type: "door_bell", label: "Doorbell" },
+  { type: "door_lock", label: "Lock" },
+  { type: "thermostat", label: "Thermostat" },
+  { type: "light", label: "Light" },
+  { type: "plug", label: "Plug" },
+  { type: "hub", label: "Hub" },
+  { type: "digital_assistant", label: "Assistant" },
+  { type: "smoke_detector", label: "Smoke alarm" },
+  { type: "alarm_system", label: "Alarm" },
+  { type: "garage_door", label: "Garage" },
+  { type: "sprinkler", label: "Sprinkler" },
+  { type: "vacuum", label: "Vacuum" },
+  { type: "air_purifier", label: "Air purifier" },
+  { type: "fan", label: "Fan" },
+  { type: "washer_dryer", label: "Washer" },
+  { type: "pet_device", label: "Pet" },
+  { type: "generic", label: "Other" },
+];
+
+export const DEVICE_TYPE_IDS = DEVICE_TYPES.map((t) => t.type) as [string, ...string[]];
+
 export function deviceCategory(type: string | null | undefined): M.DeviceCategory {
   return (type && CATEGORY[type]) || "other";
 }

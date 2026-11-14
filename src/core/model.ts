@@ -399,6 +399,12 @@ export type DeviceList = { devices: Device[]; summary: DeviceSummary };
 /** Result of device.rates.refresh. */
 export type BurstResult = { nextBurstAt: Iso };
 
+/** One device a bulk write could not change; `device` is the ref as given. */
+export type DeviceWriteFailure = { device: string; id: Id | null; name: string | null; code: string; message: string };
+
+/** A bulk device write (pause, resume, profile, block, unblock): the changed devices, in order, and the ones that failed. */
+export type DeviceBulkResult = { devices: Device[]; failed: DeviceWriteFailure[] };
+
 // ---------------------------------------------------------------------------
 // Profiles
 
