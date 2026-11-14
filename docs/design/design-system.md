@@ -241,6 +241,54 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 milestone), `SectionError` (what failed, eero's message, Retry; other
 sections keep working) and `useNow` (a ticking clock for relative times).
 
+
+`useGate({ area, op, capability, bridgeOff })` and `GatedButton` gate write
+controls: from `network.permissions` and `network.get`, a closed gate
+renders the button disabled with a tooltip ("Owner only", "You don't have
+permission to change this", "Off in bridge mode", "Not available on this
+network"). `gateFor` in `app/useWrite.ts` is the pure check. Replace `ComingSoonButton` with a
+gated control once the page's write command exists.
+
+### Write kit
+
+Every write control uses the same pieces (M4.3):
+
+- **`useWrite(id, options)`** (`app/useWrite.ts`): `run(params, options)`
+  runs the command without `confirm`; on `needs_confirm` it shows the
+  confirm with the engine's message, and only after the person confirms runs
+  it again with `confirm: true`. A confirmed disruptive write shows a
+  progress toast (`progress`), replaced by the result. Success refetches the
+  affected queries and shows the `success` toast, with Undo when `undo`
+  names the inverse write. Errors show an error toast with Retry (no second
+  confirm) and the control keeps its old state; `form: true` sends
+  `bad_params` to the fields instead (`fieldErrors(error)`). `askFirst`
+  covers writes the UI confirms on its own (block a device) and never sends
+  `confirm`. `confirmIn: "inline"` (default) holds the confirm in the hook
+  for `WriteConfirm`; `"dialog"` uses the app's confirm dialog.
+  `performWrite(request)` is the same flow without React, for the palette.
+- **Toasts** (`ui/toast.tsx`): `toast.success`, `toast.progress`,
+  `toast.error`, `toast.update`; glass cards bottom right, at most 3,
+  `aria-live`. Success closes after 4 s; progress and error stay.
+- **Confirm** (`ui/confirm.tsx`): `InlineConfirm` and `WriteConfirm` for the
+  note in place, `ConfirmDialog` (type-to-confirm when given a name) and
+  `ConfirmHost`, mounted once by the shell.
+- **Sheet** (`ui/sheet.tsx`): `Sheet` and `SheetField`, as in
+  [overview.md](../ux/overview.md#sheets).
+
+```tsx
+const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });
+const restart = useWrite("eero.reboot", { confirmIn: "inline" });
+
+<WriteConfirm write={restart}>
+  <GatedButton gate={useGate({ area: "eeros" })}
+    onClick={() => restart.run({ eero: id }, { success: `Restarted ${name}`, progress: `Restarting ${name}` })}>
+    Restart
+  </GatedButton>
+</WriteConfirm>
+```
+
+The dev gallery's Write kit section shows each piece.
+
 ## Charts
 
 Hand-written SVG, no chart library. Shared pieces in
@@ -249,11 +297,12 @@ Hand-written SVG, no chart library. Shared pieces in
 resource diagnostics. Port from them rather than inventing a style.
 
 In a dev build (`pnpm dev:demo`), `#/dev/charts` opens the chart gallery
-(`ChartGallery.tsx`): every chart in the kit, the QR block and the week
-timeline, with invented data, with a
+(`ChartGallery.tsx`): the write kit, every chart in the kit, the QR block
+and the week timeline, with invented data, with a
 Live / Loading toggle. It is not linked from the sidebar and is left out of
 release builds. Check a chart change there in light and dark (the topbar
-toggle switches appearance).
+toggle switches appearance). Headless: `pnpm ui:shot --fake --route
+'#/dev/charts'` (the dev route needs the dev build `--fake` makes).
 
 - **Geometry.** Fixed `viewBox` (960 x 260), `preserveAspectRatio="none"`,
   filling its box (`h-56` for a main chart). Every stroke uses

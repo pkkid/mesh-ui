@@ -1,16 +1,20 @@
 /**
  * Small pieces every page shares: row lists, header links, the per-section
- * error note, disabled "Coming soon" buttons and a ticking clock for relative
- * times. Moved here from the Overview page (M2.2) so every M2 page reuses them.
+ * error note, disabled "Coming soon" buttons, write gating (`useGate`,
+ * `GatedButton`) and a ticking clock for relative times. Moved here from the
+ * Overview page (M2.2) so every M2 page reuses them.
  */
 import { ArrowRight } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { Link } from "~/app/router";
+import { useQuery } from "~/app/useCommand";
+import { type Gate, type GateOptions, gateFor } from "~/app/useWrite";
 import { Button, type ButtonProps } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
+import type { Network, Permissions } from "../../../../core/model";
 
 /** The current time, refreshed every `everyMs`, for relative times that count up. */
 export function useNow(everyMs = 30_000): number {
@@ -36,6 +40,27 @@ export function HeaderLink({ to, children, arrow = false }: { to: string; childr
 export function ComingSoonButton({ title = "Coming soon", ...props }: ButtonProps & { title?: string }) {
   return (
     <span title={title} className="inline-flex">
+      <Button {...props} disabled />
+    </span>
+  );
+}
+
+/**
+ * Whether a write control can be used, from network.permissions and
+ * network.get (docs/ux/overview.md#permission-gating, #capability-gating,
+ * #bridge-mode). Allowed while they load: the engine is still the gate.
+ */
+export function useGate(opts: GateOptions): Gate {
+  const permissions = useQuery<Permissions>("network.permissions", undefined, { enabled: opts.area !== undefined });
+  const network = useQuery<Network>("network.get", undefined, { enabled: opts.capability !== undefined || opts.bridgeOff === true });
+  return gateFor(opts, permissions.data, network.data);
+}
+
+/** A write button that dims with a tooltip saying why when its gate is closed. */
+export function GatedButton({ gate, title, ...props }: ButtonProps & { gate: Gate; title?: string }) {
+  if (gate.allowed) return <Button title={title} {...props} />;
+  return (
+    <span title={gate.reason ?? undefined} className="inline-flex">
       <Button {...props} disabled />
     </span>
   );

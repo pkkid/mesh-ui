@@ -672,7 +672,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: Carried from M1 and M3. A write invalidates the topics its spec lists, after a short settle delay so the next read sees eero's new state; burst cooldown and the devices TTL after a burst; the engine cache keeps only the last two networks; the eero client re-reads the SecretStore on a 401 before refreshing, so app and CLI share one session; credential reads (`wifi.password.get`, `wifi.share`, `guest.share`) and every write bypass or clear the 5 s shared `GET {net}`; writes are never retried (429 or otherwise). Audit log in core: one line per CLI and MCP command (time, surface, id, effect, ok or error code, params with sensitive fields and passwords removed), stored in the user data dir with a size cap; no token, password or `WIFI:` payload ever.
 - done when: engine tests for invalidation after settle, the two-network cache and burst cooldown; client tests against the fake server for the SecretStore re-read on 401, the credential bypass (a password changed on the fake shows on the next reveal) and no retry of a write on 429; audit tests show CLI and MCP calls logged and a `wifi.password.set` or `guest.password.set` line with no password; `pnpm check` passes.
 
-### M4.3 Renderer write kit ☐
+### M4.3 Renderer write kit ✅ (#150)
 - issue: [#125](https://github.com/pkkid/mesh-ui/issues/125)
 - after: M3.R
 - docs: ux/overview.md (Toasts, Sheets, Loading, empty and error), design/design-system.md, architecture/ui.md
