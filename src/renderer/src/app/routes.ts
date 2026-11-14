@@ -102,6 +102,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   device: page(() => import("~/features/device/DevicePage"), "DevicePage"),
   eero: page(() => import("~/features/eero/EeroPage"), "EeroPage"),
   guest: page(() => import("~/features/guest/GuestPage"), "GuestPage"),
+  profiles: page(() => import("~/features/profiles/ProfilesPage"), "ProfilesPage"),
   ...(import.meta.env.DEV ? { "dev-charts": page(() => import("~/components/charts/ChartGallery"), "ChartGallery") } : {}),
 };
 

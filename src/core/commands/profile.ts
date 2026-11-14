@@ -1,6 +1,6 @@
 /**
- * profile commands (read side). `nextChange` and the Unassigned summary are
- * computed here, in core. See docs/architecture/commands.md#profile-commandsprofilets.
+ * profile commands (read side). `state`, `nextChange`, today's pauses and
+ * the Unassigned summary are computed here, in core. See docs/architecture/commands.md#profile-commandsprofilets.
  */
 
 import { z } from "zod";
@@ -73,6 +73,49 @@ export function nextChange(profile: Pick<M.Profile, "paused" | "schedules">, now
   return best;
 }
 
+/**
+ * State in core: a manual pause wins, then enabled schedules make a profile
+ * "scheduled" (eero's own `state.value` says the same when it has them).
+ */
+export function stateOf(profile: Pick<M.Profile, "paused" | "state" | "schedules">): M.Profile["state"] {
+  if (profile.paused) return "paused";
+  return profile.schedules.some((s) => s.enabled) || profile.state === "scheduled" ? "scheduled" : "active";
+}
+
+const DAY_MIN = 24 * 60;
+
+/**
+ * Today's pauses for one lane, in minutes after midnight in the network time
+ * zone: today's schedule spans (an overnight one stops at midnight), the end
+ * of yesterday's overnight spans, and a manual pause from now until the next
+ * scheduled start (or midnight), since a manual pause lasts until resumed.
+ */
+export function pausesToday(lane: Pick<M.Profile, "paused" | "schedules">, now: number, tz: string | null): M.PauseSegment[] {
+  const today = wallMs(now, tz ?? "UTC");
+  const minute = Math.floor((today % 86_400_000) / MIN_MS);
+  const day = WEEKDAYS[new Date(today).getUTCDay()];
+  const yesterday = WEEKDAYS[new Date(today - 86_400_000).getUTCDay()];
+  const out: M.PauseSegment[] = [];
+  for (const s of lane.schedules) {
+    if (!s.enabled) continue;
+    const start = hm(s.start) / MIN_MS;
+    const end = hm(s.end) / MIN_MS;
+    const wraps = end <= start;
+    const base = { kind: "scheduled" as const, label: s.name, scheduleId: s.id };
+    if (day && s.days.includes(day)) out.push({ ...base, start, end: wraps ? DAY_MIN : end });
+    if (wraps && end > 0 && yesterday && s.days.includes(yesterday)) out.push({ ...base, start: 0, end });
+  }
+  out.sort((a, b) => a.start - b.start || a.end - b.end);
+  if (lane.paused) {
+    const next = out.find((x) => x.start > minute)?.start ?? DAY_MIN;
+    out.push({ kind: "manual", label: "Paused until resumed", scheduleId: null, start: minute, end: Math.max(next, minute + 1) });
+  }
+  return out;
+}
+
+/** "YYYY-MM-DD" of an instant in `tz`. */
+const dateIn = (now: number, tz: string | null) => new Date(wallMs(now, tz ?? "UTC")).toISOString().slice(0, 10);
+
 async function timezone(ctx: CommandContext): Promise<string | null> {
   try {
     return (await ctx.backend.network.get(ctx.net)).timezone;
@@ -82,14 +125,14 @@ async function timezone(ctx: CommandContext): Promise<string | null> {
   }
 }
 
-const withNext = (p: M.Profile, now: number, tz: string | null): M.Profile => ({ ...p, nextChange: nextChange(p, now, tz) });
+const withNext = (p: M.Profile, now: number, tz: string | null): M.Profile => ({ ...p, state: stateOf(p), nextChange: nextChange(p, now, tz) });
 
 export const commands: AnyCommand[] = [
   defineCommand({
     id: "profile.list",
     label: "Profiles",
     description:
-      "Lists profiles with state (active, paused, scheduled), devices, schedules and the next scheduled change, plus an Unassigned summary for devices with no profile.",
+      "Lists profiles with state (active, paused, scheduled), devices, schedules and the next scheduled change, an Unassigned summary for devices with no profile, and today's pauses per profile in the network time zone.",
     icon: "users",
     effect: "query",
     topic: "profiles",
@@ -99,13 +142,28 @@ export const commands: AnyCommand[] = [
       const [profiles, devices, tz] = await Promise.all([ctx.backend.profile.list(ctx.net), ctx.backend.device.list(ctx.net), timezone(ctx)]);
       const now = ctx.now();
       const owned = new Set(profiles.flatMap((p) => p.deviceIds));
-      const unassigned = devices.filter((d) => !d.blocked && !d.profileId && !owned.has(d.id));
+      const listed = new Set(profiles.map((p) => p.id));
+      // No profile, or eero's own Unassigned group (a `default` profile the list leaves out).
+      const unassigned = devices.filter((d) => !d.blocked && !owned.has(d.id) && (!d.profileId || !listed.has(d.profileId)));
+      const sorted = profiles.map((p) => withNext(p, now, tz)).sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+      const unassignedPaused = unassigned.length > 0 && unassigned.every((d) => d.paused);
+      const today = wallMs(now, tz ?? "UTC");
       return {
-        profiles: profiles.map((p) => withNext(p, now, tz)).sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" })),
+        profiles: sorted,
         unassigned: {
           deviceIds: unassigned.map((d) => d.id),
           devicesOnline: unassigned.filter((d) => d.connected).length,
-          paused: unassigned.length > 0 && unassigned.every((d) => d.paused),
+          paused: unassignedPaused,
+        },
+        today: {
+          date: dateIn(now, tz),
+          timezone: tz,
+          now: Math.floor((today % 86_400_000) / MIN_MS),
+          lanes: [
+            ...sorted.map((p) => ({ profileId: p.id, segments: pausesToday(p, now, tz) })),
+            // Unassigned schedules are not readable (no endpoint), so only a manual pause shows.
+            { profileId: null, segments: pausesToday({ paused: unassignedPaused, schedules: [] }, now, tz) },
+          ],
         },
       };
     },

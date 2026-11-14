@@ -427,8 +427,29 @@ export type Profile = {
 /** Devices with no profile. Not a profile and has no id. */
 export type UnassignedDevices = { deviceIds: Id[]; devicesOnline: number; paused: boolean };
 
+/** One pause on today's lane, in minutes after midnight in the network time zone (`start < end`, 0 to 1440). */
+export type PauseSegment = {
+  start: number;
+  end: number;
+  /** A schedule's span, or a manual pause that lasts until resumed. */
+  kind: "scheduled" | "manual";
+  label: string;
+  scheduleId: Id | null;
+};
+
+/** Today's pauses per profile (and Unassigned, `profileId: null`), for the Profiles page lanes. */
+export type PausesToday = {
+  /** Today's date in the network time zone, "YYYY-MM-DD". */
+  date: string;
+  /** IANA zone the minutes are in; null when the network has none (then UTC). */
+  timezone: string | null;
+  /** Minutes after midnight when this was computed. */
+  now: number;
+  lanes: { profileId: Id | null; segments: PauseSegment[] }[];
+};
+
 /** Result of profile.list. */
-export type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices };
+export type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices; today: PausesToday };
 
 // ---------------------------------------------------------------------------
 // Guest and Wi-Fi
