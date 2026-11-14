@@ -489,10 +489,16 @@ LD only and need a MANUAL check before shipping.
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `integrations.get` **(added)** | Integrations | `{}` | q | `GET {net}` only (shared): `homekit`, `amazon_account_linked`, embedded `proxied_nodes`, `ffs`, `capabilities` | `Integrations`: HomeKit, Amazon linked, eero Built-in, Smart Home Hub, Frustration-Free Setup, each with `available` and `enabled`. `GET {net}/proxied_nodes` answers 404 on a real network, so eero Built-in is the network's embedded `proxied_nodes`. A missing or null field is unavailable, not an error (`homekit: null` is unavailable). Smart Home Hub is available only when a `smart_home_hub` or `zigbee` capability says so. |
-| `integrations.amazon.unlink` **(added)** | Unlink Amazon | `{}` | x | `POST /2.2/amazon/networks/{id}/account_unlink` | Owner only. Linking needs Amazon sign-in in a browser and is out of scope. |
-| `integrations.builtin.set` **(added)** | eero Built-in | `{ enabled: boolean }` | w | `PUT {net}/proxied_nodes` JSON `{enabled}` | Network-wide switch; eero has no per-device toggle. |
-| `integrations.zigbee.discover` **(added)** | Discover Zigbee devices | `{}` | w | `POST /2.3/networks/{id}/shh/start_zigbee_discovery` | `/2.3/` only. Pairing finishes in the Alexa app. Open question whether Smart Home Hub is free. |
-| `integrations.ffs.set` **(added)** | Frustration-Free Setup | `{ enabled: boolean }` | w | `PUT {net}/settings` JSON `{ffs}` | |
+| `integrations.amazon.unlink` **(added)** | Unlink Amazon | `{}` | x | `POST /2.2/amazon/networks/{id}/account_unlink` | Owner only; gate `amazon.account` delete. The type-the-name dialog asks for the network name. Refuses with `bad_params` when nothing is linked, before the confirm. Linking needs Amazon sign-in in a browser and is out of scope. Returns `Integrations`; invalidates integrations, network. |
+| `integrations.builtin.set` **(added)** | eero Built-in | `{ enabled: boolean }` | w | `PUT {net}/proxied_nodes` JSON `{enabled}` | Network-wide switch; eero has no per-device toggle. Gate `network.proxied_nodes`, off in bridge mode. Returns `Integrations`; invalidates integrations, devices (Echo-connected devices move). |
+| `integrations.zigbee.discover` **(added)** | Discover Zigbee devices | `{}` | w | `POST /2.3/networks/{id}/shh/start_zigbee_discovery` | `/2.3/` only. Gate `network.smart_home_hub`. Returns `{ started: true }`; pairing finishes in the Alexa app. Open question whether Smart Home Hub is free. |
+| `integrations.ffs.set` **(added)** | Frustration-Free Setup | `{ enabled: boolean }` | w | `PUT {net}/settings` JSON `{ffs}` | Gate `network` (eero has no FFS permission key). Returns `Integrations`; invalidates integrations. |
+
+Every write reads `integrations.get` first and refuses an integration that
+is not available here with `bad_params` and eero's reason ("eero Built-in
+is not available on this network: Not available in bridge mode."), so
+nothing is sent. The gates use the `{net}/permissions` keys a real network
+sends for these features (capture, 2026-11-14).
 
 ### demo (`src/core/backends/demo`, demo backend only) (added)
 

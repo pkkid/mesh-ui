@@ -14,6 +14,7 @@ export { routes as diagnostics } from "./diagnostics";
 export { routes as eeros } from "./eeros";
 export { routes as events } from "./events";
 export { routes as guest } from "./guest";
+export { routes as integrations } from "./integrations";
 export { routes as network } from "./network";
 export { routes as notifications } from "./notifications";
 export { routes as profiles } from "./profiles";

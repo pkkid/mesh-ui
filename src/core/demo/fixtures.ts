@@ -181,6 +181,9 @@ const OWNER: M.Permissions = {
     updates: full,
     "network.admin_invites": full,
     "network.transfer": full,
+    "network.proxied_nodes": readUpdate,
+    "network.smart_home_hub": full,
+    "amazon.account": full,
   },
 };
 
@@ -196,6 +199,9 @@ const ADMIN: M.Permissions = {
     updates: readOnly,
     "network.admin_invites": readOnly,
     "network.transfer": { read: false, create: false, update: false, delete: false },
+    "network.proxied_nodes": readUpdate,
+    "network.smart_home_hub": readUpdate,
+    "amazon.account": readOnly,
   },
 };
 
@@ -810,7 +816,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       homekit: integration(true, false),
       amazon: integration(true, true, "Linked to an Amazon account"),
       builtin: integration(true, true, "1 Echo extends your network"),
-      smart_home_hub: integration(false, null, "Needs an eero with a Zigbee radio"),
+      smart_home_hub: integration(true, null),
       ffs: integration(true, true),
     },
     notifications: toNotifications(

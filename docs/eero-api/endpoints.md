@@ -346,8 +346,8 @@ Backup internet (`$` rows) is eero Plus and out of scope. Multi-WAN and multi st
 | Method | Path | Kind | Clients | Notes |
 |---|---|---|---|---|
 | GET / PUT | `{net}/simple_setup/vendors[/{vendor_id}]` (form `enabled`) | R/W | LD | Connected-device setup vendors. |
-| POST | `/2.2/amazon/networks/{id}/account_unlink` | **D** | LD | Unlink Amazon account. |
-| POST | `/2.3/networks/{id}/shh/start_zigbee_discovery` | W | LD | Amazon smart home hub. |
+| POST | `/2.2/amazon/networks/{id}/account_unlink` | **D** | LD | Unlink Amazon account. Used by `integrations.amazon.unlink` (M5.4). Permission key `amazon.account`. |
+| POST | `/2.3/networks/{id}/shh/start_zigbee_discovery` | W | LD | Amazon smart home hub. Used by `integrations.zigbee.discover` (M5.4). Permission key `network.smart_home_hub`. |
 | GET / DELETE | `{net}/accessories/setup/status`, `{net}/accessories/{serial}`, `{net}/sip_config_associations/{eero_id}` | R/W | LD | Accessories / cellular. |
 | GET / POST / PUT | `/2.2/conversations*` | R/W | LD | eero AI assistant chat (streaming). |
 
