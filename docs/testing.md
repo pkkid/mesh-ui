@@ -197,6 +197,15 @@ stays in memory.
 Behaviour is checked headless first (`mesh-ui --demo run ...`); the window is
 for looks.
 
+The CLI is always headless, so `pnpm mesh-ui` is safe to run on the
+maintainer's desktop. On Linux the dev launcher (`scripts/mesh-ui-dev.mjs`)
+drops `DISPLAY` and `WAYLAND_DISPLAY` from the child and adds
+`--ozone-platform=headless --disable-gpu`; on every OS the `--cli` host
+prints error boxes and uncaught errors to stderr and exits 1 instead of
+showing a dialog (`src/main/cli-host.ts`, tested in `cli-host.test.ts` with
+`dialog` stubbed). The keychain still works, since Secret Service talks over
+the D-Bus session bus, not the display.
+
 - Launch Electron with `MESH_UI_DEMO=1` and a temp `--user-data-dir`.
 - Each page loads without console errors, shows its main sections, and
   handles its empty and error states (fixtures switched with

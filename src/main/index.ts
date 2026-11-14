@@ -4,6 +4,8 @@
  * and keeps every web contents locked down. With `--cli` it creates no
  * window and hands the argv after the flag to `cliMain` with the Electron
  * CLI host, which builds the same engines (docs/architecture/cli.md#how-the-cli-runs).
+ * A CLI host never shows a dialog: error boxes and uncaught errors print to
+ * stderr and exit non-zero (`guardCliHost`).
  *
  * Backends:
  * - live: the eero backend against api-user.e2ro.com.
@@ -40,6 +42,7 @@ import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
 import { registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import type { NotifyHost } from "./notify";
+import { guardCliHost } from "./cli-host";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 
@@ -55,6 +58,8 @@ const OVERLAY_HEIGHT = TITLEBAR_HEIGHT - 1;
 const argv = process.argv;
 const cliIndex = argv.indexOf("--cli");
 const isCli = cliIndex !== -1;
+// The CLI is always headless: errors go to stderr, never a native dialog.
+if (isCli) guardCliHost({ dialog, process, stderr: (text) => process.stderr.write(text), exit: (code) => process.exit(code) });
 const isDemo = process.env.MESH_UI_DEMO === "1" || (!isCli && argv.includes("--demo"));
 const isFake = import.meta.env.DEV && !isCli && process.env.MESH_UI_FAKE === "1";
 const isHeadless = !isCli && process.env.MESH_UI_HEADLESS === "1";
