@@ -198,7 +198,9 @@ export function scrub(text: string, secrets: (string | null | undefined)[]): str
   let out = text;
   for (const s of known) {
     if (!out.includes(s)) continue;
-    held.push(IS_MAC.test(s) ? redactMac(s) : redact(s));
+    const cut = IS_MAC.test(s) ? redactMac(s) : redact(s);
+    // A kept suffix that is itself another known value ("Room" inside "Living Room") would show it whole.
+    held.push(known.some((k) => k !== s && cut.slice(3).includes(k)) ? "***" : cut);
     out = out.split(s).join(`\u0000${held.length - 1}\u0000`);
   }
   out = out.replace(MAC_RE, redactMac).replace(IPV6_RE, (m) => redact(m)).replace(IPV4_RE, (m) => redact(m));
@@ -213,6 +215,8 @@ export type ReportInputs = {
   health: HealthInputs | null;
   report: M.HealthReport | null;
   devices: { online: number; total: number } | null;
+  /** Only scrubbed out of free text (health messages, cloud diagnostics); never listed. */
+  deviceList: M.Device[];
   diagnostics: M.DiagnosticsResult | null;
 };
 
@@ -228,6 +232,7 @@ function secretsOf(r: ReportInputs): (string | null | undefined)[] {
     out.push(e.location, e.serial, e.mac, e.ipv4, e.subnet, e.gatewayIp, ...e.ipv6, ...e.bssids.map((b) => b.mac));
   }
   if (i) out.push(i.publicIpv4, i.publicIpv6, i.ipv6Prefix, i.ispGateway, ...i.dnsInUse);
+  for (const d of r.deviceList) out.push(d.name, d.nickname, d.hostname, d.mac, d.id, d.ipv4, d.ipv6LinkLocal, ...d.ipv6, d.reservation?.ip);
   return out;
 }
 
@@ -364,6 +369,7 @@ export const commands: AnyCommand[] = [
         health: inputs,
         report: inputs ? healthReport(inputs, now) : null,
         devices: known ? { online: known.filter((d) => d.connected).length, total: known.length } : null,
+        deviceList: devices ?? [],
         diagnostics,
       });
     },

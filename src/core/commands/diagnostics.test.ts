@@ -9,7 +9,7 @@ import { mapDiagnostics, mapSupport } from "../eero/map/diagnostics";
 import { RateLimiter } from "../eero/ratelimit";
 import { createEngine, type Engine } from "../engine";
 import type * as M from "../model";
-import { healthScore, overallStatus, redact, redactMac, scrub } from "./diagnostics";
+import { healthScore, overallStatus, redact, redactMac, scrub, supportReport } from "./diagnostics";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -169,6 +169,30 @@ describe("redaction", () => {
     expect(redact("Den")).toBe("***");
     expect(redact("abcd")).toBe("***");
     expect(redactMac("0A:1B:2C:3D:4E:5F")).toBe("***4e5f");
+  });
+
+  it("never keeps a suffix that is another known name whole", () => {
+    expect(scrub("Living Room and Room", ["Living Room", "Room"])).toBe("*** and ***");
+  });
+
+  it("scrubs a device named in free text (cloud diagnostics details)", async () => {
+    const { backend } = demo();
+    const devices = await backend.device.list(MAPLE);
+    const d = devices.find((x) => x.name.length > 8 && x.ipv4);
+    if (!d) throw new Error("no demo device");
+    const text = supportReport({
+      now: NOW,
+      app: { version: "0.0.0", backend: "demo" },
+      supportId: null,
+      network: null,
+      health: null,
+      report: null,
+      devices: null,
+      deviceList: devices,
+      diagnostics: { status: "completed", issueArea: "device", results: [{ name: "Device", status: "warning", detail: `${d.name} at ${d.ipv4} keeps dropping` }] },
+    });
+    expect(text).not.toContain(d.name);
+    expect(text).toContain(`${redact(d.name)} at ***`);
   });
 
   it("scrubs known values first, then any MAC or IP pattern", () => {
