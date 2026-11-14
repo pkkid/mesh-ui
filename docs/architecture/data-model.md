@@ -616,7 +616,7 @@ table starts from what the clients log and grows as MANUAL captures come in.
 
 ```ts
 type Check = { id: string; label: string; status: "good" | "warning" | "problem" | "unknown"; detail: string | null };
-type HealthReport = { overall: "good" | "warning" | "problem"; checks: Check[]; at: Iso };
+type HealthReport = { overall: "good" | "warning" | "problem"; score: number /* 0 to 100, core */; checks: Check[]; at: Iso };
 
 type DiagnosticsResult = { status: string | null; issueArea: string | null; results: { name: string; status: string; detail: string | null }[] };
 
@@ -630,7 +630,7 @@ type SupportInfo = {
 
 | Model | eero source |
 | --- | --- |
-| `HealthReport` | composed in core from `NetworkHealth`, `Internet`, `Eero[]`, `Updates` and `GET {net}/diagnostics` |
+| `HealthReport` | composed in core from `NetworkHealth` (with issues), `Internet`, `Eero[]` and `Updates`; `score` is built in core |
 | `DiagnosticsResult` | `GET {net}/diagnostics`: a real network that has not run diagnostics sends only `{status}`; `issue_area` and `results[]` per the clients after a run |
 | `SupportInfo` | `GET {net}/support` (2.2: `support_phone`, `contact_url`, `help_url`, `email_web_form_url`, `name`, all strings), account `log_id` |
 

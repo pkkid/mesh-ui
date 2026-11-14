@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { BackendError, type UsageQuery } from "../backend";
 import type * as M from "../model";
 import { createDemoBackend, type DemoBackend, dayStart, EVENT_PAGE_SIZE, isDemoBackend } from "./backend";
-import { createEeroBackend } from "../eero/backend";
 import { createFixtures } from "./fixtures";
 import { SCENARIO_NAMES } from "./scenario";
 
@@ -678,14 +677,3 @@ describe("wave 2 reads (M3)", () => {
   });
 });
 
-describe("eero backend", () => {
-  it("answers not available yet for the M3 areas until their stories land", async () => {
-    const b = createEeroBackend({ secrets: { load: async () => "t", save: async () => "memory", clear: async () => {}, storage: async () => "memory" }, fetch: async () => Promise.reject(new Error("no network in tests")) });
-    const calls: [string, () => Promise<unknown>][] = [
-      ["diagnostics.latest", () => b.diagnostics.latest("1")],
-    ];
-    for (const [name, call] of calls) {
-      await expect(call()).rejects.toMatchObject({ code: "eero_error", message: `${name} is not available in the eero backend yet.` });
-    }
-  });
-});
