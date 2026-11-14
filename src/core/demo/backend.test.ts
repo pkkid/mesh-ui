@@ -939,6 +939,8 @@ describe("writes (M5)", () => {
     expect((await b.network.get(MAPLE)).status).toBe("updating");
     s = await b.settings.setDhcp(MAPLE, { mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", startIp: "10.20.0.100", endIp: "10.20.0.200" });
     expect(s.dhcp).toMatchObject({ mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", startIp: "10.20.0.100", endIp: "10.20.0.200" });
+    expect(s.dhcp.gateway).toBe("10.20.0.1");
+    expect((await b.routing.get(MAPLE)).lan?.gateway).toBe("10.20.0.1");
     s = await b.settings.setWan(MAPLE, { mode: "pppoe", static: null, pppoe: { username: "user@isp.example", password: "secret-pw" }, vlan: 35 });
     expect(s.wan).toEqual({ mode: "pppoe", static: null, pppoeUsername: "user@isp.example", vlan: 35 });
     expect(JSON.stringify(s)).not.toContain("secret-pw");

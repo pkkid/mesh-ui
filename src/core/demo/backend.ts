@@ -175,6 +175,11 @@ function ipNumber(ip: string): number {
   return ip.split(".").reduce((n, part) => n * 256 + Number(part), 0);
 }
 
+/** An unsigned number as a dotted IPv4 address. */
+function ipString(n: number): string {
+  return [24, 16, 8, 0].map((s) => Math.floor(n / 2 ** s) % 256).join(".");
+}
+
 const WIRELESS: M.WirelessBand[] = ["2.4", "5", "6"];
 const uniqueSorted = (xs: (number | null)[]) => [...new Set(xs.filter((x): x is number => x !== null))].sort((a, b) => a - b);
 
@@ -1005,6 +1010,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
             const bits = maskBits(dhcp.subnetMask);
             data.lan.subnet = `${dhcp.subnetIp}/${bits}`;
             data.lan.size = 2 ** (32 - bits);
+            // eero's router takes the first address of the new subnet.
+            data.lan.gateway = ipString(ipNumber(dhcp.subnetIp) + 1);
             data.lan.pool = { ...data.lan.pool, start: dhcp.startIp, end: dhcp.endIp, size: ipNumber(dhcp.endIp) - ipNumber(dhcp.startIp) + 1 };
           }
           restartNetwork(data);
