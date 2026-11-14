@@ -728,8 +728,10 @@ describe("writes (M4)", () => {
     await b.profile.setPaused(MAPLE, p.id, false);
     expect((await b.device.get(MAPLE, d1.id)).paused).toBe(false);
     await b.profile.setPaused(MAPLE, p.id, true);
+    // The profile is paused: d2 joins paused, d1 leaves unpaused.
     expect((await b.profile.setDevices(MAPLE, p.id, [d2.id])).deviceIds).toEqual([d2.id]);
-    expect((await b.device.get(MAPLE, d1.id)).profileId).toBeNull();
+    expect(await b.device.get(MAPLE, d1.id)).toMatchObject({ profileId: null, paused: false });
+    expect((await b.device.get(MAPLE, d2.id)).paused).toBe(true);
 
     const s = await b.profile.addSchedule(MAPLE, p.id, { name: "Bedtime", days: ["MON", "TUE"], start: "21:00", end: "07:00", enabled: true });
     expect((await b.profile.get(MAPLE, p.id)).schedules).toEqual([s]);
@@ -739,9 +741,10 @@ describe("writes (M4)", () => {
     expect((await b.profile.get(MAPLE, p.id)).schedules).toEqual([]);
     await expect(b.profile.removeSchedule(MAPLE, p.id, s.id)).rejects.toMatchObject({ code: "eero_error" });
 
+    // Deleting the still paused profile lifts its pause.
     await b.profile.remove(MAPLE, p.id);
     expect((await b.profile.list(MAPLE)).map((x) => x.id)).not.toContain(p.id);
-    expect((await b.device.get(MAPLE, d2.id)).profileId).toBeNull();
+    expect(await b.device.get(MAPLE, d2.id)).toMatchObject({ profileId: null, paused: false });
   });
 
   it("pauses and resumes the Unassigned devices", async () => {

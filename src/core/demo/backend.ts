@@ -410,12 +410,17 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     return profileView(data, p);
   };
 
-  /** Exactly `deviceIds` in the profile; devices that leave become Unassigned. */
-  const assign = (data: NetworkData, profileId: M.Id, deviceIds: M.Id[]) => {
+  /** Exactly `deviceIds` in the profile; devices that leave become Unassigned. A paused profile's pause goes with it. */
+  const assign = (data: NetworkData, profileId: M.Id, deviceIds: M.Id[], paused = false) => {
     for (const deviceId of deviceIds) deviceIn(data, deviceId);
     for (const d of data.devices) {
-      if (deviceIds.includes(d.id)) d.profileId = profileId;
-      else if (d.profileId === profileId) d.profileId = null;
+      if (deviceIds.includes(d.id)) {
+        if (paused && d.profileId !== profileId) d.paused = true;
+        d.profileId = profileId;
+      } else if (d.profileId === profileId) {
+        d.profileId = null;
+        if (paused) d.paused = false;
+      }
     }
   };
 
@@ -723,11 +728,11 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
           p.paused = paused;
           for (const d of data.devices) if (d.profileId === p.id) d.paused = paused;
         }),
-      setDevices: async (id, profileId, deviceIds) => changeProfile(id, profileId, (p, data) => assign(data, p.id, deviceIds)),
+      setDevices: async (id, profileId, deviceIds) => changeProfile(id, profileId, (p, data) => assign(data, p.id, deviceIds, p.paused)),
       remove: async (id, profileId) => {
         const data = net(id);
         const p = profileIn(data, profileId);
-        assign(data, p.id, []);
+        assign(data, p.id, [], p.paused);
         data.profiles = data.profiles.filter((x) => x.id !== p.id);
       },
       setUnassignedPaused: async (id, paused) => {
