@@ -134,7 +134,8 @@ export type SpeedTest = {
   rating: "great" | "below_plan" | "poor" | null;
 };
 
-export type PlanSpeed = { down: number; up: number };
+/** The plan speed the person set (Mbps), with an optional name such as "Fiber Gig". */
+export type PlanSpeed = { down: number; up: number; label?: string };
 
 export type Internet = {
   status: Status;
@@ -170,9 +171,14 @@ export type InternetVerdict = {
   detail: string | null;
 };
 
+/** A speed test this app started that has no result yet (`speedtest.run`). */
+export type SpeedTestRun = { networkId: Id; startedAt: Iso; resultAt: Iso };
+
 export type SpeedHistory = {
   tests: SpeedTest[];
   avg7d: { downMbps: number | null; upMbps: number | null };
+  /** The test started from this process that is still waiting for its result, else null. */
+  running: SpeedTestRun | null;
 };
 
 /** Bytes moved in one bucket. */

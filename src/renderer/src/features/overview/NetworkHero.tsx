@@ -1,11 +1,12 @@
 /**
  * The Overview status hero: network name and status, gateway uptime, ISP,
- * public IP, last speed test, the action row (Restart network confirms
- * inline, then a progress toast until the eeros are back) and the two speed
- * gauges.
+ * public IP, last speed test, the action row (Run speed test with a
+ * progress toast until the result lands; Restart network confirms inline,
+ * then a progress toast until the eeros are back) and the two speed gauges
+ * ("Set your plan" opens the plan sheet).
  * docs/ux/pages/overview.md (Layout 1, States).
  */
-import { Gauge as GaugeIcon, PauseCircle, RotateCcw, Share2, TriangleAlert } from "lucide-react";
+import { PauseCircle, RotateCcw, Share2, TriangleAlert } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
@@ -20,6 +21,8 @@ import { seriesColors } from "~/lib/chartColors";
 import { formatDuration, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, SpeedHistory } from "../../../../core/model";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
+import { RunSpeedTestButton, useRunningSpeedTest } from "~/features/internet/InternetHero";
+import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
 
 export function NetworkHero() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -28,6 +31,7 @@ export function NetworkHero() {
   const history = useQuery<SpeedHistory>("speedtest.history", undefined, { poll: true });
   const now = useNow();
   const restart = useRestartNetwork();
+  const testing = useRunningSpeedTest(network.data?.id) !== null;
 
   const n = network.data;
   const tz = n?.timezone ?? "UTC";
@@ -49,7 +53,8 @@ export function NetworkHero() {
   // No plan set: the gauge max falls back to the best result in history.
   const best = Math.max(0, ...(history.data?.tests ?? []).flatMap((t) => [t.downMbps ?? 0, t.upMbps ?? 0]));
   const fallbackMax = best > 0 ? Math.ceil(best / 100) * 100 : 1000;
-  const gaugesLoading = history.loading && !history.data;
+  // The gauges fade while a test runs and fill in with its result.
+  const gaugesLoading = (history.loading && !history.data) || testing;
 
   return (
     <div className="flex flex-col gap-3">
@@ -80,10 +85,7 @@ export function NetworkHero() {
         }
         actions={
           <>
-            <ComingSoonButton>
-              <GaugeIcon />
-              Run speed test
-            </ComingSoonButton>
+            <RunSpeedTestButton />
             <ComingSoonButton variant="outline">
               <Share2 />
               Share Wi-Fi
@@ -122,9 +124,9 @@ export function NetworkHero() {
             </div>
             {!plan && internet.data && (
               <div className="text-center text-3xs text-muted-foreground">
-                <Link to={pathFor("internet")} className="hover:text-foreground hover:underline">
+                <button type="button" className="hover:text-foreground hover:underline" onClick={openPlanSheet}>
                   Set your plan
-                </Link>{" "}
+                </button>{" "}
                 to scale the gauges
               </div>
             )}
@@ -142,6 +144,7 @@ export function NetworkHero() {
           </Button>
         </Card>
       )}
+      <PlanSheet />
     </div>
   );
 }

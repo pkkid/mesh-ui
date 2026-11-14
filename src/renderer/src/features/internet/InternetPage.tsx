@@ -15,6 +15,7 @@ import { Connection } from "./Connection";
 import { EarlierTests } from "./EarlierTests";
 import { InternetHero } from "./InternetHero";
 import { InternetUsage } from "./InternetUsage";
+import { PlanSheet } from "./PlanSheet";
 import { SpeedHistory } from "./SpeedHistory";
 
 export function InternetPage(_props: PageProps) {
@@ -29,6 +30,7 @@ export function InternetPage(_props: PageProps) {
       <SpeedHistory />
       <EarlierTests />
       <InternetUsage />
+      <PlanSheet />
     </>
   );
 }

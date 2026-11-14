@@ -1,16 +1,20 @@
 /**
  * Internet connection and speed test commands. Plan speed comes from app
- * settings (set by the user, eero does not know it) and speed test ratings
- * are computed here against it, so every surface agrees.
+ * settings (set by the user with `internet.plan.set`, eero does not know it)
+ * and speed test ratings are computed here against it, so every surface
+ * agrees. `speedtest.run` starts a test (one at a time per network); its
+ * result shows in the history about a minute later.
  * See docs/architecture/commands.md (internet, speed tests and usage) and
  * docs/ux/pages/internet.md.
  */
 
 import { z } from "zod";
+import type { Backend } from "../backend";
+import { CommandError } from "../errors";
 import { type CsvColumn, formatMbps, formatRelative, MISSING, toCsv } from "../format";
 import type * as M from "../model";
 import { POLL } from "../poll";
-import { type AnyCommand, defineCommand } from "../spec";
+import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -23,6 +27,84 @@ export const POOR_SHARE = 0.4;
 
 /** The most tests one history call asks eero for (the 7-day window). */
 export const SPEEDTEST_FETCH_LIMIT = 200;
+
+/** About how long eero takes to post a result after `POST {net}/speedtest`. */
+export const SPEEDTEST_RESULT_MS = 60_000;
+
+/** A test with no result by then has failed; another may start. */
+export const SPEEDTEST_GIVE_UP_MS = 3 * 60_000;
+
+/** While a test runs, a history read without its result is kept only this long. */
+const PENDING_RECHECK_MS = 5_000;
+
+/** A result dated up to this long before the start still counts (eero's clock against ours). */
+const CLOCK_SKEW_MS = 10_000;
+
+/** What `speedtest.run` returns (and `speedtest.history` while it runs). */
+export type SpeedTestRun = M.SpeedTestRun;
+
+/**
+ * Tests started and not yet seen in the history: backend to network to the
+ * start time (engine clock) and the newest result read before it, which
+ * cannot be this test's.
+ */
+const running = new WeakMap<Backend, Map<M.Id, { since: number; after: number }>>();
+
+/** The newest result each history read saw, per backend and network. */
+const newestSeen = new WeakMap<Backend, Map<M.Id, number>>();
+
+const perBackend = <V>(map: WeakMap<Backend, Map<M.Id, V>>, backend: Backend): Map<M.Id, V> => {
+  let m = map.get(backend);
+  if (!m) map.set(backend, (m = new Map()));
+  return m;
+};
+
+const runOf = (net: M.Id, since: number): SpeedTestRun => ({
+  networkId: net,
+  startedAt: new Date(since).toISOString(),
+  resultAt: new Date(since + SPEEDTEST_RESULT_MS).toISOString(),
+});
+
+/** When the running test on `net` started, or null (none, or it gave up). */
+function runningSince(ctx: CommandContext, net: M.Id): number | null {
+  const tests = running.get(ctx.backend);
+  const test = tests?.get(net);
+  if (test === undefined) return null;
+  if (ctx.now() - test.since >= SPEEDTEST_GIVE_UP_MS) {
+    tests?.delete(net);
+    return null;
+  }
+  return test.since;
+}
+
+/**
+ * Called by every history read: once the running test's result is in, the
+ * test is over and internet.get (its last test) is stale. Until then the
+ * read expires after a few seconds, so the result shows soon after it lands.
+ */
+function checkRunning(ctx: CommandContext, net: M.Id, tests: M.SpeedTest[]): SpeedTestRun | null {
+  const since = runningSince(ctx, net);
+  const after = running.get(ctx.backend)?.get(net)?.after ?? Number.NEGATIVE_INFINITY;
+  const newest = tests[0] ? Date.parse(tests[0].at) : null;
+  if (newest !== null) perBackend(newestSeen, ctx.backend).set(net, newest);
+  if (since === null) return null;
+  if (tests.some((t) => Date.parse(t.at) >= since - CLOCK_SKEW_MS && Date.parse(t.at) > after)) {
+    running.get(ctx.backend)?.delete(net);
+    ctx.invalidate(["network"]);
+    return null;
+  }
+  ctx.invalidate(["speedtest"], ctx.now() + PENDING_RECHECK_MS);
+  return runOf(net, since);
+}
+
+const PLAN_MAX_MBPS = 100_000;
+const mbps = (dir: string) =>
+  z
+    .number()
+    .positive(`The ${dir} speed must be more than 0 Mbps.`)
+    .max(PLAN_MAX_MBPS, `The ${dir} speed is ${PLAN_MAX_MBPS.toLocaleString("en-US")} Mbps at most.`)
+    .optional()
+    .describe(`${dir[0]?.toUpperCase()}${dir.slice(1)} speed of the plan, in Mbps.`);
 
 /**
  * "great" when every measured direction reaches 75% of the plan, "poor"
@@ -136,7 +218,8 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "speedtest.history",
     label: "Speed test history",
-    description: "Speed tests newest first for the last day or week, rated against your plan, plus 7-day averages. `format: \"csv\"` returns the Export CSV file.",
+    description:
+      "Speed tests newest first for the last day or week, rated against your plan, plus 7-day averages and `running` (a test started with speedtest.run that has no result yet, else null). `format: \"csv\"` returns the Export CSV file.",
     icon: "gauge",
     params: z.object({
       range: z.enum(["day", "week"]).default("week"),
@@ -154,13 +237,76 @@ export const commands: AnyCommand[] = [
         planFor(ctx, net),
       ]);
       const sorted = [...week].sort((a, b) => b.at.localeCompare(a.at));
+      const pending = checkRunning(ctx, net, sorted);
       const since = p.range === "day" ? now - DAY_MS : from;
       const tests = sorted.filter((t) => Date.parse(t.at) >= since).slice(0, p.limit).map((t) => rate(t, plan));
       if (p.format === "csv") return toCsv(tests, SPEED_CSV);
       return {
         tests,
         avg7d: { downMbps: average(sorted.map((t) => t.downMbps)), upMbps: average(sorted.map((t) => t.upMbps)) },
+        running: pending,
       };
+    },
+  }),
+
+  defineCommand({
+    id: "speedtest.run",
+    label: "Run speed test",
+    description:
+      "Starts a speed test from the gateway to the internet; it uses the WAN for about 30 s. Answers once eero accepts it: the result shows in speedtest.history and internet.get about a minute later (resultAt). One test at a time per network; another start is refused with rate_limited until the result shows or 3 minutes pass.",
+    icon: "gauge",
+    params: z.object({}),
+    effect: "write",
+    invalidates: ["speedtest", "network"],
+    async run(ctx): Promise<SpeedTestRun> {
+      const net = ctx.net;
+      const since = runningSince(ctx, net);
+      if (since !== null) {
+        const retryAfterSec = Math.max(1, Math.ceil((since + SPEEDTEST_GIVE_UP_MS - ctx.now()) / 1000));
+        throw new CommandError("rate_limited", "A speed test is already running on this network. Its result shows in about a minute.", { retryAfterSec });
+      }
+      await ctx.backend.internet.runSpeedTest(net);
+      const now = ctx.now();
+      perBackend(running, ctx.backend).set(net, { since: now, after: newestSeen.get(ctx.backend)?.get(net) ?? Number.NEGATIVE_INFINITY });
+      // Reads made before the result is due expire when it is.
+      ctx.invalidate(["speedtest", "network"], now + SPEEDTEST_RESULT_MS);
+      return runOf(net, now);
+    },
+  }),
+
+  defineCommand({
+    id: "internet.plan.set",
+    label: "Set internet plan",
+    description:
+      "Saves the plan speed you pay for (download and up Mbps, optional name) for this network, or `clear: true` removes it. Stored in Mesh UI's settings, not on eero; gauges, meters and speed test ratings compare against it. Returns the plan, or null after clear.",
+    icon: "gauge",
+    params: z.object({
+      down: mbps("download"),
+      up: mbps("upload"),
+      label: z.string().trim().max(40, "The plan name is 40 characters at most.").optional().describe('A name for the plan, e.g. "Fiber Gig".'),
+      clear: z.literal(true).optional().describe("Removes the plan instead of setting it."),
+    }),
+    effect: "write",
+    invalidates: ["network", "speedtest"],
+    async run(ctx, p): Promise<M.PlanSpeed | null> {
+      const net = ctx.net;
+      const { [net]: previous, ...others } = (await ctx.settings.get()).planMbps;
+      if (p.clear) {
+        if (p.down !== undefined || p.up !== undefined || p.label !== undefined) {
+          throw new CommandError("bad_params", "Pass either clear, or down and up, not both.");
+        }
+        if (previous) await ctx.settings.update({ planMbps: others });
+        return null;
+      }
+      const missing = (["down", "up"] as const).filter((k) => p[k] === undefined);
+      if (missing.length) {
+        throw new CommandError("bad_params", "Pass both down and up (Mbps), or clear: true.", {
+          issues: missing.map((k) => ({ path: k, message: `Enter the ${k === "down" ? "download" : "upload"} speed.` })),
+        });
+      }
+      const plan: M.PlanSpeed = { down: p.down as number, up: p.up as number, ...(p.label ? { label: p.label } : {}) };
+      await ctx.settings.update({ planMbps: { ...others, [net]: plan } });
+      return plan;
     },
   }),
 ];

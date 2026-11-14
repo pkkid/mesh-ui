@@ -7,7 +7,7 @@ import { mapInternet, mapSpeedTests } from "../eero/map/network";
 import { createEngine, memorySettings } from "../engine";
 import type * as M from "../model";
 import type { SettingsStore } from "../spec";
-import { internetText, internetVerdict, speedRating } from "./internet";
+import { commands as internetCommands, internetText, internetVerdict, SPEEDTEST_GIVE_UP_MS, SPEEDTEST_RESULT_MS, type SpeedTestRun, speedRating } from "./internet";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const HOUR = 3_600_000;
@@ -336,5 +336,206 @@ describe("internet mapping", () => {
     expect(text).toContain("ISP: -");
     expect(text).toContain("Double NAT: -");
     expect(text).toContain("Gateway: -");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Writes (M4.9): speedtest.run and internet.plan.set
+
+describe("speedtest.run and internet.plan.set (demo)", () => {
+  const clocked = (start = NOW) => {
+    const clock = { t: start };
+    const engine = createEngine({ backend: createDemoBackend({ clock: () => clock.t }), clock: () => clock.t, settings: memorySettings() });
+    return { clock, engine };
+  };
+
+  it("registers both as writes with the topics they invalidate", () => {
+    const specs = Object.fromEntries(internetCommands.map((c) => [c.id, c]));
+    expect([specs["speedtest.run"], specs["internet.plan.set"]].map((s) => [s?.effect, s?.invalidates])).toEqual([
+      ["write", ["speedtest", "network"]],
+      ["write", ["network", "speedtest"]],
+    ]);
+  });
+
+  it("speedtest.run shows the new result in the next history and internet.get reads", async () => {
+    const { engine } = clocked();
+    // Cached reads from before the test.
+    const before = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }));
+    await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }));
+    const run = await ok(engine.execute<SpeedTestRun>("speedtest.run", { networkId: MAPLE }));
+    expect(run).toEqual({ networkId: MAPLE, startedAt: new Date(NOW).toISOString(), resultAt: new Date(NOW + SPEEDTEST_RESULT_MS).toISOString() });
+    const after = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }));
+    expect(before.running).toBeNull();
+    // The demo posts the result at once, so the test is already over.
+    expect(after.running).toBeNull();
+    expect(after.tests).toHaveLength(before.tests.length + 1);
+    expect(after.tests[0]?.at).toBe(run.startedAt);
+    const internet = await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }));
+    expect(internet.lastSpeedTest?.at).toBe(run.startedAt);
+    expect(internet.verdict?.detail).toMatch(/^Last test just now/);
+  });
+
+  it("runs one test at a time per network until its result is read or 3 minutes pass", async () => {
+    const { clock, engine } = clocked();
+    await ok(engine.execute("speedtest.run", { networkId: MAPLE }));
+    const second = await engine.execute("speedtest.run", { networkId: MAPLE });
+    expect(second.ok).toBe(false);
+    if (!second.ok) expect(second.error).toMatchObject({ code: "rate_limited", message: expect.stringMatching(/already running/), detail: { retryAfterSec: 180 } });
+    // Another network is not blocked.
+    await ok(engine.execute("speedtest.run", { networkId: LAKE }));
+    // Reading the result ends the test (the demo posts it at once).
+    await ok(engine.execute("speedtest.history", { networkId: MAPLE }));
+    await ok(engine.execute("speedtest.run", { networkId: MAPLE }));
+    // With no result read, the lock gives up after 3 minutes.
+    clock.t += SPEEDTEST_GIVE_UP_MS - 1000;
+    expect(await code(engine.execute("speedtest.run", { networkId: MAPLE }))).toBe("rate_limited");
+    clock.t += 1000;
+    await ok(engine.execute("speedtest.run", { networkId: MAPLE }));
+    // Lake Cabin's test is still waiting for its history read.
+    clock.t = NOW + 1000;
+    expect(await code(engine.execute("speedtest.run", { networkId: LAKE }))).toBe("rate_limited");
+  });
+
+  it("speedtest.run rejects params and needs a session", async () => {
+    expect(await code(demoEngine().execute("speedtest.run", { networkId: MAPLE, fast: true }))).toBe("bad_params");
+    expect(await code(demoEngine({ scenario: "signed_out" }).execute("speedtest.run", {}))).toBe("not_signed_in");
+  });
+
+  it("internet.plan.set saves the plan, rates against it, and clears it", async () => {
+    const settings = memorySettings({ planMbps: { [LAKE]: { down: 300, up: 20 } } });
+    const engine = demoEngine({ settings });
+    // Cached before the plan.
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }))).planMbps).toBeNull();
+    expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }))).tests[0]?.rating).toBeNull();
+
+    const plan = await ok(engine.execute("internet.plan.set", { networkId: MAPLE, down: 1200, up: 1200, label: " Fiber Gig " }));
+    expect(plan).toEqual({ down: 1200, up: 1200, label: "Fiber Gig" });
+    const rated = await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }));
+    expect(rated.planMbps).toEqual({ down: 1200, up: 1200, label: "Fiber Gig" });
+    expect(rated.verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber is fast and steady" });
+    expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }))).tests[0]?.rating).toBe("great");
+    expect((await settings.get()).planMbps).toEqual({ [LAKE]: { down: 300, up: 20 }, [MAPLE]: { down: 1200, up: 1200, label: "Fiber Gig" } });
+
+    // A slower plan without a name replaces it.
+    expect(await ok(engine.execute("internet.plan.set", { networkId: MAPLE, down: 500, up: 50 }))).toEqual({ down: 500, up: 50 });
+
+    expect(await ok(engine.execute("internet.plan.set", { networkId: MAPLE, clear: true }))).toBeNull();
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }))).planMbps).toBeNull();
+    expect((await settings.get()).planMbps).toEqual({ [LAKE]: { down: 300, up: 20 } });
+    // Clearing again is fine.
+    expect(await ok(engine.execute("internet.plan.set", { networkId: MAPLE, clear: true }))).toBeNull();
+  });
+
+  it("internet.plan.set rejects bad params with the field that is wrong", async () => {
+    const engine = demoEngine();
+    const err = async (params: Record<string, unknown>) => {
+      const r = await engine.execute("internet.plan.set", { networkId: MAPLE, ...params });
+      return r.ok ? null : r.error;
+    };
+    expect(await err({ down: 1000 })).toMatchObject({ code: "bad_params", detail: { issues: [{ path: "up", message: "Enter the upload speed." }] } });
+    expect(await err({})).toMatchObject({ code: "bad_params", detail: { issues: [{ path: "down" }, { path: "up" }] } });
+    expect((await err({ down: 0, up: 10 }))?.detail?.issues?.[0]).toMatchObject({ path: "down", message: "The download speed must be more than 0 Mbps." });
+    expect((await err({ down: 100, up: -1 }))?.detail?.issues?.[0]?.path).toBe("up");
+    expect((await err({ down: 100_001, up: 10 }))?.code).toBe("bad_params");
+    expect((await err({ down: "1000", up: 10 }))?.code).toBe("bad_params");
+    expect((await err({ down: 100, up: 10, label: "x".repeat(41) }))?.detail?.issues?.[0]?.path).toBe("label");
+    expect(await err({ clear: true, down: 100 })).toMatchObject({ code: "bad_params", message: "Pass either clear, or down and up, not both." });
+    expect((await err({ clear: false }))?.code).toBe("bad_params");
+    expect((await err({ down: 100, up: 10, plan: "x" }))?.code).toBe("bad_params");
+  });
+});
+
+describe("speedtest.run and internet.plan.set (fake eero server)", () => {
+  const clockedFake = () => {
+    const clock = { t: NOW };
+    const fake = createFakeEero({ now: () => clock.t });
+    const eero = createEeroBackend({ secrets: secretsWith(fake.signIn()), origin: fake.origin, fetch: fake.fetch });
+    const backend: Backend = { ...eero, auth: { ...eero.auth, status: async () => signedIn } };
+    return { clock, fake, engine: createEngine({ backend, clock: () => clock.t, settings: memorySettings() }) };
+  };
+  const historyGets = (fake: FakeEero) => fake.log.filter((l) => l.method === "GET" && l.path === "/2.2/networks/100001/speedtest").length;
+
+  it("posts {net}/speedtest empty (202), then reads the result once it lands about a minute later", async () => {
+    const { clock, fake, engine } = clockedFake();
+    const before = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
+    const run = await ok(engine.execute<SpeedTestRun>("speedtest.run", { networkId: "100001" }));
+    expect(run.resultAt).toBe(new Date(NOW + 60_000).toISOString());
+    expect(fake.writes).toEqual([expect.objectContaining({ method: "POST", path: "/2.2/networks/100001/speedtest", version: "2.2", encoding: "empty", status: 202 })]);
+
+    // The write made the cached history stale: it is read again, without the result yet.
+    const gets = historyGets(fake);
+    const early = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
+    expect(historyGets(fake)).toBe(gets + 1);
+    expect(early.tests).toEqual(before.tests);
+    expect(early.running).toEqual(run);
+    // A second start is refused locally and never reaches eero.
+    expect(await code(engine.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    expect(fake.writes).toHaveLength(1);
+
+    // While the test runs, a read without the result expires after a few seconds.
+    clock.t += 30_000;
+    await ok(engine.execute("speedtest.history", { networkId: "100001" }));
+    expect(historyGets(fake)).toBe(gets + 2);
+    clock.t += 4_000;
+    await ok(engine.execute("speedtest.history", { networkId: "100001" }));
+    expect(historyGets(fake)).toBe(gets + 2);
+    clock.t += 30_000;
+    const done = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
+    expect(historyGets(fake)).toBe(gets + 3);
+    expect(done.tests[0]).toEqual({ at: run.resultAt, downMbps: 909.3, upMbps: 40.8, rating: null });
+    expect(done.running).toBeNull();
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: "100001" }))).lastSpeedTest).toMatchObject({ at: run.resultAt, downMbps: 909.3 });
+
+    // The result ends the test: history is cached normally again, and another test may start.
+    clock.t += 60_000;
+    await ok(engine.execute("speedtest.history", { networkId: "100001" }));
+    expect(historyGets(fake)).toBe(gets + 3);
+    await ok(engine.execute("speedtest.run", { networkId: "100001" }));
+    expect(fake.writes).toHaveLength(2);
+  });
+
+  it("a result from before the start never finishes the next test", async () => {
+    const { clock, fake, engine } = clockedFake();
+    const first = await ok(engine.execute<SpeedTestRun>("speedtest.run", { networkId: "100001" }));
+    clock.t += 65_000;
+    expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }))).tests[0]?.at).toBe(first.resultAt);
+    // Run again 5 s after the first result is dated: inside the clock skew allowance.
+    clock.t = Date.parse(first.resultAt) + 5_000;
+    const second = await ok(engine.execute<SpeedTestRun>("speedtest.run", { networkId: "100001" }));
+    const h = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
+    expect(h.tests[0]?.at).toBe(first.resultAt);
+    expect(h.running).toEqual(second);
+    expect(await code(engine.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    expect(fake.writes).toHaveLength(2);
+  });
+
+  it("uses the speedtest link eero handed back for the start", async () => {
+    const { fake, engine } = clockedFake();
+    const net = fake.state.networks.get("100001");
+    if (net?.network.resources) net.network.resources.speedtest = "/2.4/networks/100001/speedtest";
+    await ok(engine.execute("internet.get", { networkId: "100001" }));
+    await ok(engine.execute("speedtest.run", { networkId: "100001" }));
+    expect(fake.writes.map((w) => `${w.method} ${w.path}`)).toEqual(["POST /2.4/networks/100001/speedtest"]);
+  });
+
+  it("an eero error starts no test, so a retry is allowed", async () => {
+    const { fake, engine } = clockedFake();
+    fake.scenarios.fail(400, "error.speedtest.busy", { method: "POST", path: "/networks/100001/speedtest" });
+    expect(await code(engine.execute("speedtest.run", { networkId: "100001" }))).toBe("eero_error");
+    await ok(engine.execute("speedtest.run", { networkId: "100001" }));
+  });
+
+  it("internet.plan.set changes no eero state and refreshes cached reads", async () => {
+    const { fake, engine } = clockedFake();
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: "100001" }))).planMbps).toBeNull();
+    await ok(engine.execute("speedtest.history", { networkId: "100001" }));
+    await ok(engine.execute("internet.plan.set", { networkId: "100001", down: 1000, up: 50 }));
+    const internet = await ok(engine.execute<M.Internet>("internet.get", { networkId: "100001" }));
+    expect(internet.planMbps).toEqual({ down: 1000, up: 50 });
+    expect(internet.lastSpeedTest?.rating).toBe("great");
+    expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }))).tests.map((t) => t.rating)).toEqual(["great", "great", "great"]);
+    await ok(engine.execute("internet.plan.set", { networkId: "100001", clear: true }));
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: "100001" }))).planMbps).toBeNull();
+    expect(fake.writes).toHaveLength(0);
   });
 });

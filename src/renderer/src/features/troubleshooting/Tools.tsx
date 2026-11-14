@@ -1,14 +1,17 @@
 /**
- * Tools, restarts and the scan reports. Each runs a write (speed test, blink,
- * restarts) or reads a 2.4 placement report with no fixtures yet, so every
- * control here is disabled ("Coming soon") until those commands land.
+ * Tools, restarts and the scan reports. Run speed test works (the shared
+ * runner from the Internet hero: a progress toast until the result lands).
+ * The others run a write (blink, restarts) or read a 2.4 placement report
+ * with no fixtures yet, so they stay disabled ("Coming soon") until those
+ * commands are wired here.
  * docs/ux/pages/troubleshooting.md (Tools, Coverage scan, Upgrade report, Fixes).
  */
 import type { ReactNode } from "react";
 
 import { pathFor } from "~/app/router";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, HeaderLink } from "~/components/ui/page";
+import { ComingSoonButton, GatedButton, HeaderLink } from "~/components/ui/page";
+import { useSpeedTest } from "~/features/internet/InternetHero";
 import type { Eero } from "../../../../core/model";
 
 function ToolRow({ title, detail, children }: { title: string; detail: string; children: ReactNode }) {
@@ -25,14 +28,15 @@ function ToolRow({ title, detail, children }: { title: string; detail: string; c
 
 export function Tools({ eeros }: { eeros: Eero[] | undefined }) {
   const gateway = eeros?.find((e) => e.isGateway)?.location ?? null;
+  const speedTest = useSpeedTest();
   return (
     <Section title="Tools" subtitle="Speed test, find an eero and restarts">
       <Card className="divide-y">
         <ToolRow title="Run speed test" detail="Uses the WAN for about 30 s">
           <HeaderLink to={pathFor("internet")}>History</HeaderLink>
-          <ComingSoonButton size="xs" variant="outline">
-            Run
-          </ComingSoonButton>
+          <GatedButton gate={speedTest.gate} size="xs" variant="outline" onClick={() => void speedTest.run()}>
+            {speedTest.testing ? "Testing..." : "Run"}
+          </GatedButton>
         </ToolRow>
         <ToolRow title="Find an eero" detail="Cycle an eero's light for 30 s">
           <ComingSoonButton size="xs" variant="outline">

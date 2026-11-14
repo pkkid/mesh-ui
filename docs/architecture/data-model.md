@@ -157,7 +157,7 @@ type Internet = {
   dnsMode: "automatic" | "custom" | null;
   doubleNat: boolean | null;
   gateway: { eeroId: Id; location: string; model: string | null; wanPortSpeedMbps: number | null } | null;
-  planMbps: { down: number; up: number } | null;   // from app settings, "set by you"
+  planMbps: { down: number; up: number; label?: string } | null;   // from app settings, "set by you" (internet.plan.set)
   lastSpeedTest: SpeedTest | null;
   verdict: { kind: "steady" | "slow" | "down"; title: string; detail: string | null } | null;  // built in core
 };
@@ -165,7 +165,12 @@ type Internet = {
 // rating vs plan, in core: great when every direction is at least 75%, poor when any is under 40%, else below_plan
 type SpeedTest = { at: Iso; downMbps: number | null; upMbps: number | null; rating: "great" | "below_plan" | "poor" | null };
 
-type SpeedHistory = { tests: SpeedTest[]; avg7d: { downMbps: number | null; upMbps: number | null } };
+type SpeedTestRun = { networkId: Id; startedAt: Iso; resultAt: Iso };   // speedtest.run; resultAt about 60 s later
+type SpeedHistory = {
+  tests: SpeedTest[];
+  avg7d: { downMbps: number | null; upMbps: number | null };
+  running: SpeedTestRun | null;   // a test this process started that has no result yet
+};
 
 type UsagePoint = { at: Iso; down: number; up: number };   // bytes in the bucket
 type UsageSeries = {
@@ -699,7 +704,7 @@ type AppInfo = {
 type AppSettings = {
   lastNetworkId: Id | null;
   userAgent: string | null;       // null = default app-like UA
-  planMbps: Record<Id, { down: number; up: number }>;
+  planMbps: Record<Id, { down: number; up: number; label?: string }>;
   desktopNotifications: Record<string, boolean>;
   openOnLaunch: Id | null;
 };
