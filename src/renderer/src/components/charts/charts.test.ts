@@ -13,6 +13,7 @@ import {
   slotIndex,
   valueToY,
 } from "./scale";
+import { formatMinute, layoutWeek, type TimelineBlock } from "../ui/timeline";
 
 /** Every tick step must be 1, 2 or 5 times a power of ten. */
 function isNiceStep(step: number): boolean {
@@ -205,5 +206,82 @@ describe("axis helpers", () => {
     expect(heatStrength(0)).toBe(8);
     expect(heatStrength(1)).toBe(96);
     expect(heatStrength(2)).toBe(96);
+  });
+});
+
+describe("seriesScale with a fixed max (AreaChart `max`)", () => {
+  it("scales to the max, not the data, when the data sits below it", () => {
+    const data = [[931, 925, 948], [912, 905, 931]];
+    expect(seriesScale(data).max).toBe(1000);
+    const planned = seriesScale(data, false, 1200);
+    expect(planned.max).toBeGreaterThanOrEqual(1200);
+    expect(planned.ticks.at(-1)).toBe(planned.max);
+    expect(planned.labeled).toBe(true);
+    // The scale is the same whatever the tests were, so the chart does not jump.
+    expect(seriesScale([[10, 20]], false, 1200)).toEqual(planned);
+  });
+
+  it("still fits values above the max, so nothing is clipped", () => {
+    const s = seriesScale([[100, 1500]], false, 1200);
+    expect(s.max).toBeGreaterThanOrEqual(1500);
+  });
+
+  it("ignores a missing or invalid max and keeps placeholders with no data", () => {
+    const data = [[3, 7]];
+    expect(seriesScale(data, false, null)).toEqual(seriesScale(data));
+    expect(seriesScale(data, false, 0)).toEqual(seriesScale(data));
+    expect(seriesScale(data, false, Number.NaN)).toEqual(seriesScale(data));
+    expect(seriesScale([[0, 0]], false, 1200)).toBe(PLACEHOLDER_SCALE);
+  });
+});
+
+describe("layoutWeek (week timeline)", () => {
+  const base = { color: "var(--series-blue)" };
+  const spans = (lane: TimelineBlock[]) => lane.map((b) => [b.schedule.id, b.start, b.end, b.fromPreviousDay, b.intoNextDay]);
+
+  it("keeps a same-day span on its day", () => {
+    const lanes = layoutWeek([{ ...base, id: "hw", label: "Homework", days: [0, 4], start: 960, end: 1080 }]);
+    expect(spans(lanes[0]!)).toEqual([["hw", 960, 1080, false, false]]);
+    expect(spans(lanes[4]!)).toEqual([["hw", 960, 1080, false, false]]);
+    expect(lanes.filter((l) => l.length === 0)).toHaveLength(5);
+  });
+
+  it("splits a span that wraps past midnight across two days, Sunday into Monday", () => {
+    const lanes = layoutWeek([{ ...base, id: "bed", label: "Bedtime", days: [2, 6], start: 21 * 60, end: 7 * 60 }]);
+    expect(spans(lanes[2]!)).toEqual([["bed", 1260, 1440, false, true]]);
+    expect(spans(lanes[3]!)).toEqual([["bed", 0, 420, true, false]]);
+    expect(spans(lanes[6]!)).toEqual([["bed", 1260, 1440, false, true]]);
+    expect(spans(lanes[0]!)).toEqual([["bed", 0, 420, true, false]]);
+  });
+
+  it("ends at midnight without a zero-width block the next day", () => {
+    const lanes = layoutWeek([{ ...base, id: "late", label: "Late", days: [4], start: 23 * 60, end: 0 }]);
+    expect(spans(lanes[4]!)).toEqual([["late", 1380, 1440, false, false]]);
+    expect(lanes[5]).toEqual([]);
+  });
+
+  it("treats start equal to end as a full 24 hours, and sorts each lane by start", () => {
+    const lanes = layoutWeek([
+      { ...base, id: "all", label: "All day", days: [1], start: 600, end: 600 },
+      { ...base, id: "early", label: "Early", days: [2], start: 60, end: 120 },
+    ]);
+    expect(spans(lanes[1]!)).toEqual([["all", 600, 1440, false, true]]);
+    expect(spans(lanes[2]!)).toEqual([
+      ["all", 0, 600, true, false],
+      ["early", 60, 120, false, false],
+    ]);
+  });
+
+  it("drops invalid days and duplicate days", () => {
+    const lanes = layoutWeek([{ ...base, id: "x", label: "X", days: [0, 0, 7, -1, 1.5], start: 0, end: 60 }]);
+    expect(lanes[0]).toHaveLength(1);
+    expect(lanes.flat()).toHaveLength(1);
+  });
+
+  it("formats minutes as clock times", () => {
+    expect(formatMinute(0)).toBe("12:00 AM");
+    expect(formatMinute(21 * 60)).toBe("9:00 PM");
+    expect(formatMinute(12 * 60 + 5)).toBe("12:05 PM");
+    expect(formatMinute(1440)).toBe("12:00 AM");
   });
 });

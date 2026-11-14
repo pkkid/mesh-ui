@@ -9,6 +9,7 @@ import { Lamp, Router } from "lucide-react";
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Sparkline } from "~/components/charts/Sparkline";
+import { MeshBars } from "~/components/mesh/LinkChip";
 import { Badge } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
@@ -112,19 +113,5 @@ export function EerosList() {
         </RowList>
       )}
     </Section>
-  );
-}
-
-/** Four mesh signal bars; 1 bar reads as destructive, 2 as warning (status colours). */
-function MeshBars({ bars }: { bars: number | null }) {
-  // eero reports 0 to 5; the mockup draws four.
-  const n = bars === null ? 0 : Math.max(0, Math.min(4, Math.round((bars / 5) * 4)));
-  const on = n === 1 ? "bg-destructive" : n === 2 ? "bg-warning" : "bg-foreground/70";
-  return (
-    <span className="inline-flex h-3 items-end gap-0.5" role="img" aria-label={bars === null ? "Mesh signal unknown" : `Mesh signal ${bars} of 5`}>
-      {[4, 6.5, 9, 12].map((h, i) => (
-        <i key={h} className={cn("w-[3px] rounded-[1px]", i < n ? on : "bg-border")} style={{ height: h }} />
-      ))}
-    </span>
   );
 }

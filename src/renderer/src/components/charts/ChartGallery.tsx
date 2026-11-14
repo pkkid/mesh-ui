@@ -1,14 +1,18 @@
 /**
- * Dev-only gallery of every chart in the kit, with invented data, so charts
- * can be checked in light and dark (the topbar toggle switches appearance).
+ * Dev-only gallery of every chart in the kit (plus the QR block and week
+ * timeline), with invented data, so they can be checked in light and dark (the topbar toggle switches appearance).
  * Registered in app/routes.ts only when import.meta.env.DEV is true, at
  * #/dev/charts. Not linked from the sidebar.
  */
+import { BookOpenCheck, Moon, Printer } from "lucide-react";
 import { useState } from "react";
 
 import { formatBytes, formatMbps } from "../../../../core/format";
+import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { QrBlock } from "~/components/ui/qr";
 import { Segmented } from "~/components/ui/segmented";
+import { WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
 import { bandColor, entityColor, seriesColors } from "~/lib/chartColors";
 
 import { AreaChart } from "./AreaChart";
@@ -62,6 +66,15 @@ const devices = [
 const heat = DAYS.map((_, d) => rhythm(24, d >= 5 ? 1.3 : 1, 10 + d));
 const zeros = Array.from({ length: 24 }, () => 0);
 
+const hm = (h: number, m = 0) => h * 60 + m;
+const schedules: WeekSchedule[] = [
+  // Sun to Thu nights, wrapping past midnight (Sunday's lands on Monday).
+  { id: "bedtime", label: "Bedtime", color: entityColor(1), icon: <Moon />, days: [6, 0, 1, 2, 3], start: hm(21), end: hm(7) },
+  { id: "homework", label: "Homework", color: entityColor(0), icon: <BookOpenCheck />, days: [0, 1, 2, 3, 4], start: hm(16), end: hm(18) },
+  { id: "lights-out", label: "Lights out", color: entityColor(2), days: [5, 6], start: hm(0), end: hm(9), enabled: false },
+  { id: "late", label: "Late", color: entityColor(3), days: [4, 5], start: hm(23), end: hm(0) },
+];
+
 type Mode = "live" | "loading";
 
 export function ChartGallery() {
@@ -84,6 +97,22 @@ export function ChartGallery() {
             ]}
           />
         </header>
+
+        <Block title="Area chart, fixed max" note="Speed tests scaled to a 1,200 Mbps plan, not to the data">
+          <AreaChart
+            ariaLabel="Speed test results scaled to the plan"
+            series={[
+              { id: "down", label: "Download", color: seriesColors.download, values: [931, 925, 948, 914, 936, 702, 921] },
+              { id: "up", label: "Upload", color: seriesColors.upload, values: [912, 905, 931, 887, 919, 846, 902] },
+            ]}
+            labels={DAYS}
+            format={formatMbps}
+            max={1200}
+            total={false}
+            loading={loading}
+            heightClassName="h-36"
+          />
+        </Block>
 
         <Block title="Area chart" note="Download and upload per hour, overlapping, shared scale">
           <AreaChart
@@ -221,6 +250,38 @@ export function ChartGallery() {
             loading={loading}
           />
         </Block>
+
+        <Block title="Week timeline" note="Schedules by day and hour; Bedtime wraps past midnight, Sunday into Monday">
+          <WeekTimeline
+            ariaLabel="Scheduled pauses this week: Bedtime 9 PM to 7 AM Sunday to Thursday, Homework 4 PM to 6 PM weekdays"
+            schedules={schedules}
+            today={3}
+            now={hm(14, 5)}
+            loading={loading}
+          />
+        </Block>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Block title="QR block" note="Copy, Save QR and page actions">
+            <QrBlock
+              value={loading ? null : "WIFI:T:WPA;S:Maple Street Guest;P:sunny-otter-42;;"}
+              ariaLabel="QR code to join Maple Street Guest"
+              caption="Guest Network"
+              copyLabel="Copy password"
+              copyText="sunny-otter-42"
+              fileName="maple-street-guest-qr.png"
+              actions={
+                <Button size="sm" variant="outline" disabled>
+                  <Printer />
+                  Print a card
+                </Button>
+              }
+            />
+          </Block>
+          <Block title="QR loading" note="An empty frame until the payload arrives">
+            <QrBlock value={null} ariaLabel="QR code to join Maple Street Guest" caption="Guest Network" copyLabel="Copy password" fileName="guest-qr.png" />
+          </Block>
+        </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Block title="Loading, no data yet" note="Unlabelled placeholder gridlines">

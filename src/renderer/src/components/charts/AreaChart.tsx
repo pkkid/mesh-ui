@@ -34,6 +34,11 @@ export type AreaChartProps = {
   ariaLabel: string;
   /** Stack series on top of each other instead of overlapping them. */
   stacked?: boolean;
+  /**
+   * A fixed top for the y scale (for example the internet plan), so the
+   * chart does not rescale with every point. Values above it still fit.
+   */
+  max?: number | null;
   /** Add a Total row to the tooltip. Defaults to on for two or more series. */
   total?: boolean;
   loading?: boolean;
@@ -56,6 +61,7 @@ export function AreaChart({
   format,
   ariaLabel,
   stacked = false,
+  max,
   total,
   loading,
   emptyText = "No activity in this window.",
@@ -66,7 +72,7 @@ export function AreaChart({
 }: AreaChartProps) {
   const count = Math.max(labels.length, ...series.map((s) => s.values.length));
   const values = series.map((s) => Array.from({ length: count }, (_, i) => clean(s.values[i])));
-  const scale = seriesScale(values, stacked);
+  const scale = seriesScale(values, stacked, max);
   const empty = !hasData(values);
   const stepX = count < 2 ? 0 : VIEW_WIDTH / (count - 1);
   const toY = (v: number) => valueToY(v, scale.max);

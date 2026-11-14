@@ -16,7 +16,7 @@ import { BackendError } from "../core/errors";
 import type { HostEvent } from "../core/model";
 import { defineCommand } from "../core/spec";
 import { IPC } from "../shared/types";
-import { createMeshBridge, type IpcMainLike, type IpcRendererLike, registerIpc } from "./ipc";
+import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, registerIpc, SAVE_MAX_CHARS, type SaveFileHost } from "./ipc";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName, type SafeStorageLike, storageKind } from "./secret-store";
 
@@ -386,5 +386,72 @@ describe("window.mesh bridge", () => {
     unregister();
     expect(await mesh.execute("app.info")).toMatchObject({ ok: false, error: { code: "network_error" } });
     expect(await mesh.commands()).toEqual([]);
+  });
+});
+
+describe("window.mesh.saveFile", () => {
+  /** A bridge with a save host that records what main was asked, standing in for the native dialog. */
+  function saveSetup(choice: string | null = "/home/al/Downloads/picked.csv") {
+    const ipc = fakeIpc();
+    const asked: Array<{ name: string; ext: string }> = [];
+    const written: Array<{ path: string; text: string }> = [];
+    const host: SaveFileHost = {
+      choosePath: async (name, ext) => {
+        asked.push({ name, ext });
+        return choice;
+      },
+      write: async (p, text) => void written.push({ path: p, text }),
+    };
+    registerIpc(ipc.main, {
+      engine: createEngine({ backend: composeBackend("demo", {}), host: { configDir: dir, keychainName: null }, commands: [] }),
+      isAppUrl: (u) => u.startsWith("file:///app/renderer/"),
+      broadcast: () => {},
+      setTitlebarColors: () => {},
+      saveFile: host,
+    });
+    return { ipc, asked, written, mesh: createMeshBridge(ipc.renderer, "linux") };
+  }
+
+  it("saves text where the user chose and returns only the file name, never the path", async () => {
+    const { mesh, asked, written, ipc } = saveSetup();
+    const r = await mesh.saveFile("speed-tests-2026-11-13.csv", "at,down\n1,2\n");
+    expect(r).toEqual({ status: "saved", name: "picked.csv" });
+    expect(asked).toEqual([{ name: "speed-tests-2026-11-13.csv", ext: "csv" }]);
+    expect(written).toEqual([{ path: "/home/al/Downloads/picked.csv", text: "at,down\n1,2\n" }]);
+    expect(JSON.stringify(ipc.payloads)).not.toContain("/home/al");
+  });
+
+  it("reports a canceled dialog and writes nothing", async () => {
+    const { mesh, written } = saveSetup(null);
+    expect(await mesh.saveFile("a.csv", "x")).toEqual({ status: "canceled" });
+    expect(written).toEqual([]);
+  });
+
+  it("refuses non-text in the preload and again in main, before any dialog", async () => {
+    const { mesh, ipc, asked } = saveSetup();
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(await mesh.saveFile("a.csv", bytes as unknown as string)).toMatchObject({ status: "failed" });
+    // A renderer that skips the preload check reaches main, which refuses too.
+    for (const text of [bytes, { a: 1 }, 42, null]) {
+      expect(await ipc.renderer.invoke(IPC.saveFile, "a.csv", text)).toMatchObject({ status: "failed", message: "Only text can be saved." });
+    }
+    expect(await ipc.renderer.invoke(IPC.saveFile, "a.csv", "x".repeat(SAVE_MAX_CHARS + 1))).toMatchObject({ status: "failed" });
+    expect(asked).toEqual([]);
+  });
+
+  it("refuses requests from pages that are not the app", async () => {
+    const { mesh, ipc, asked } = saveSetup();
+    ipc.setSender("https://evil.example/");
+    expect(await mesh.saveFile("a.csv", "x")).toMatchObject({ status: "failed" });
+    expect(asked).toEqual([]);
+  });
+
+  it("suggests only a bare file name with a text extension", () => {
+    expect(checkSaveRequest("../../etc/passwd.csv", "x")).toEqual({ name: "passwd.csv", ext: "csv" });
+    expect(checkSaveRequest("C:\\Windows\\evil.JSON", "x")).toEqual({ name: "evil.JSON", ext: "json" });
+    expect(checkSaveRequest('re<po>rt:"1".txt', "x")).toEqual({ name: "report1.txt", ext: "txt" });
+    for (const name of ["run.sh", "app.exe", "page.html", "noext", ".bashrc", "", "dir/", 7]) {
+      expect(checkSaveRequest(name, "x")).toHaveProperty("refused");
+    }
   });
 });
