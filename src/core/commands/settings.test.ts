@@ -652,3 +652,277 @@ describe("internet-side settings writes (fake eero server)", () => {
     expect(sent(s.fake)).toEqual([{ ...put({ name: "Maple Renamed" }), encoding: "form" }]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Wireless, mesh and Thread writes (M5.3)
+
+/** A valid call per M5.3 write on the demo's Maple Street, each a change, and how the next read shows it. */
+const M53: [string, Record<string, unknown>, (s: M.NetworkSettings) => unknown, unknown][] = [
+  ["settings.band_steering.set", { enabled: false }, (s) => s.bandSteering, false],
+  ["settings.fast_transition.set", { enabled: false }, (s) => s.fastTransition, false],
+  ["settings.mlo.set", { mode: "single" }, (s) => s.mlo, "single"],
+  ["settings.legacy_mode.set", { enabled: true }, (s) => s.legacyMode, true],
+  ["settings.power_saving.set", { enabled: false, scheduleEnabled: false }, (s) => [s.powerSaving.enabled, s.powerSaving.scheduleEnabled], [false, false]],
+  ["settings.timezone.set", { timezone: "Europe/Berlin" }, (s) => s.timezone, "Europe/Berlin"],
+  ["settings.simple_setup.set", { enabled: false }, (s) => s.simpleSetup, false],
+  ["settings.thread.set", { enabled: false, credentialSync: false }, (s) => [s.thread?.enabled, s.thread?.credentialSync], [false, false]],
+];
+const M53_DISRUPTIVE = ["settings.mlo.set", "settings.legacy_mode.set"];
+const m53conf = (id: string) => (M53_DISRUPTIVE.includes(id) ? { confirm: true } : {});
+const THREAD_KEY = "00112233445566778899aabbccddeeff";
+
+describe("wireless, mesh and Thread settings writes (demo)", () => {
+  it.each(M53)("%s shows in the next settings.get", async (id, params, pick, want) => {
+    const engine = demoEngine();
+    await settingsOf(engine, MAPLE); // cached: the read after proves the write invalidates settings
+    const result = await ok(engine.execute<M.NetworkSettings>(id, { networkId: MAPLE, ...params, ...m53conf(id) }));
+    expect(pick(result)).toEqual(want);
+    expect(pick(await settingsOf(engine, MAPLE))).toEqual(want);
+  });
+
+  it("MLO and legacy mode need confirm with the settings.impact summary; the live toggles do not", async () => {
+    const engine = demoEngine();
+    const impact = await ok(engine.execute<M.SettingsImpact>("settings.impact", { networkId: MAPLE, changes: [{ id: "settings.mlo.set" }] }));
+    expect(await engine.execute("settings.mlo.set", { networkId: MAPLE, mode: "single" })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: impact.summary } });
+    const legacy = await engine.execute("settings.legacy_mode.set", { networkId: MAPLE, enabled: true });
+    expect(legacy).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^Legacy device mode turns on\. Every eero restarts .*about 2 to 3 minutes\.$/) } });
+    expect(await engine.execute("settings.mlo.set", { networkId: MAPLE, mode: "multi" })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Nothing changes, so nothing restarts." } });
+    for (const [id, params] of M53.filter(([id]) => !M53_DISRUPTIVE.includes(id))) expect((await engine.execute(id, { networkId: MAPLE, ...params })).ok, id).toBe(true);
+  });
+
+  it("a change that changes nothing returns the settings as they are", async () => {
+    const engine = demoEngine();
+    const before = await settingsOf(engine, MAPLE);
+    for (const [id, params] of [
+      ["settings.band_steering.set", { enabled: true }],
+      ["settings.power_saving.set", { enabled: true }],
+      ["settings.timezone.set", { timezone: before.timezone }],
+      ["settings.thread.set", { enabled: true }],
+      ["settings.mlo.set", { mode: "multi", confirm: true }],
+    ] as const) {
+      expect(await ok(engine.execute<M.NetworkSettings>(id, { networkId: MAPLE, ...params }))).toEqual(before);
+    }
+  });
+
+  it("bad_params for what the network lacks, bad values and empty changes", async () => {
+    const engine = demoEngine();
+    const bad = async (id: string, params: Record<string, unknown>) => expect(await code(engine.execute(id, { networkId: MAPLE, ...params })), `${id} ${JSON.stringify(params)}`).toBe("bad_params");
+    await bad("settings.power_saving.set", {});
+    await bad("settings.thread.set", {});
+    await bad("settings.timezone.set", { timezone: "Mars/Olympus" });
+    await bad("settings.timezone.set", { timezone: "" });
+    await bad("settings.mlo.set", { mode: "max", confirm: true });
+    await bad("settings.band_steering.set", { enabled: "yes" });
+    // Mom's House reports no MLO, power saving or Thread.
+    expect(await code(engine.execute("settings.mlo.set", { networkId: MOM, mode: "single", confirm: true }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.power_saving.set", { networkId: MOM, enabled: true }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.power_schedule.add", { networkId: MOM, name: "Night", days: ["MON"], start: "22:00", end: "06:00" }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.thread.set", { networkId: MOM, enabled: true }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.thread.credentials", { networkId: MOM }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.thread.reset", { networkId: MOM, confirm: true }))).toBe("bad_params");
+  });
+
+  it("power saving schedules: add one past midnight, edit, remove, with field errors", async () => {
+    const engine = demoEngine();
+    await settingsOf(engine, MAPLE);
+    const added = await ok(engine.execute<M.Schedule>("settings.power_schedule.add", { networkId: MAPLE, name: "Late night", days: ["SUN", "FRI", "SAT"], start: "22:30", end: "06:15" }));
+    expect(added).toMatchObject({ name: "Late night", days: ["FRI", "SAT", "SUN"], start: "22:30", end: "06:15", enabled: true });
+    // End before start: kept as given, the timeline wraps it into the next day.
+    expect((await settingsOf(engine, MAPLE)).powerSaving.schedules.find((s) => s.id === added.id)).toEqual(added);
+
+    const edited = await ok(engine.execute<M.Schedule>("settings.power_schedule.update", { networkId: MAPLE, schedule: "late night", end: "07:00", enabled: false }));
+    expect(edited).toEqual({ ...added, end: "07:00", enabled: false });
+
+    const fails = async (id: string, params: Record<string, unknown>, path: string) => {
+      const r = await engine.execute(id, { networkId: MAPLE, ...params });
+      expect(r, `${id} ${JSON.stringify(params)}`).toMatchObject({ ok: false, error: { code: "bad_params", detail: { issues: expect.arrayContaining([expect.objectContaining({ path: expect.stringMatching(new RegExp(`^${path}`)) })]) } } });
+    };
+    await fails("settings.power_schedule.add", { name: "Same", days: ["MON"], start: "08:00", end: "08:00" }, "end");
+    await fails("settings.power_schedule.add", { name: "Overnight", days: ["MON"], start: "08:00", end: "09:00" }, "name");
+    await fails("settings.power_schedule.add", { name: "Bad", days: [], start: "08:00", end: "09:00" }, "days");
+    await fails("settings.power_schedule.add", { name: "Bad", days: ["MON"], start: "24:00", end: "09:00" }, "start");
+    await fails("settings.power_schedule.update", { schedule: "Nope", end: "09:00" }, "schedule");
+
+    const removed = await ok(engine.execute<{ removed: string; schedule: M.Schedule }>("settings.power_schedule.remove", { networkId: MAPLE, schedule: added.id }));
+    expect(removed).toEqual({ removed: added.id, schedule: edited });
+    expect((await settingsOf(engine, MAPLE)).powerSaving.schedules.map((s) => s.name)).toEqual(["Overnight", "Weekday daytime"]);
+  });
+
+  it("Thread credentials: a sensitive, uncached query; settings.get never carries them; reset needs confirm and makes new ones", async () => {
+    const engine = demoEngine();
+    const info = engine.commands().find((c) => c.id === "settings.thread.credentials");
+    expect(info).toMatchObject({ effect: "query", sensitive: true });
+    const creds = await ok(engine.execute<M.ThreadCredentials>("settings.thread.credentials", { networkId: MAPLE }));
+    expect(creds.networkKey).toBe(THREAD_KEY);
+
+    expect(engine.commands().find((c) => c.id === "settings.thread.reset")).toMatchObject({ effect: "destructive" });
+    expect(await engine.execute("settings.thread.reset", { networkId: MAPLE })).toMatchObject({
+      ok: false,
+      error: { code: "needs_confirm", message: "Makes new credentials for MapleThread. Every Thread accessory must be paired again. This cannot be undone." },
+    });
+    expect((await ok(engine.execute<M.ThreadCredentials>("settings.thread.credentials", { networkId: MAPLE }))).networkKey).toBe(THREAD_KEY);
+    expect(await ok(engine.execute("settings.thread.reset", { networkId: MAPLE, confirm: true }))).toEqual({ networkId: MAPLE, reset: true });
+    const fresh = await ok(engine.execute<M.ThreadCredentials>("settings.thread.credentials", { networkId: MAPLE }));
+    expect(fresh.networkKey).not.toBe(THREAD_KEY);
+    const s = JSON.stringify(await settingsOf(engine, MAPLE));
+    expect(s).not.toContain(fresh.networkKey);
+    expect(s).not.toMatch(SECRET_WORDS);
+  });
+
+  it("Thread credentials stay out of the audit log and the CLI table without --reveal", async () => {
+    const audit = memoryAudit();
+    const host: CliHost = { ...nodeHost(), createEngine: ({ surface }) => createEngine({ backend: createDemoBackend({ clock: () => NOW }), surface, audit, clock: () => NOW }) };
+    const run = async (args: string[]) => {
+      let out = "";
+      const io = { stdout: (s: string) => void (out += s), stderr: (s: string) => void (out += s) };
+      expect(await runCli(args, io, host)).toBe(0);
+      return out;
+    };
+    const table = await run(["--no-color", "--format", "table", "run", "settings.thread.credentials"]);
+    expect(table).not.toContain(THREAD_KEY);
+    expect(table).not.toContain("445f2b5ca6f2a93a55ce570a70efeecb");
+    expect(table).toContain("********");
+    expect(await run(["--no-color", "--format", "table", "--reveal", "run", "settings.thread.credentials"])).toContain(THREAD_KEY);
+    await run(["--no-color", "run", "settings.thread.reset", "--confirm"]);
+    expect(JSON.stringify(audit.entries)).not.toContain(THREAD_KEY);
+    expect(audit.entries.map((e) => e.id)).toEqual(["settings.thread.credentials", "settings.thread.credentials", "settings.thread.reset"]);
+  });
+
+  it("declares effects, gates and the topics each write invalidates", () => {
+    const info = (id: string) => allCommands().find((c) => c.id === id);
+    const rows = Object.fromEntries(
+      [...M53.map(([id]) => id), "settings.power_schedule.add", "settings.power_schedule.update", "settings.power_schedule.remove", "settings.thread.reset"].map((id) => [id, [info(id)?.effect, info(id)?.gate, info(id)?.invalidates]]),
+    );
+    const g = (op?: string) => (op ? { area: "settings", op } : { area: "settings" });
+    expect(rows).toEqual({
+      "settings.band_steering.set": ["write", g(), ["settings"]],
+      "settings.fast_transition.set": ["write", g(), ["settings"]],
+      "settings.mlo.set": ["disruptive", g(), ["settings", "network", "wifi"]],
+      "settings.legacy_mode.set": ["disruptive", g(), ["settings", "network", "wifi"]],
+      "settings.power_saving.set": ["write", g(), ["settings"]],
+      "settings.timezone.set": ["write", g(), ["settings", "network", "profiles"]],
+      "settings.simple_setup.set": ["write", g(), ["settings"]],
+      "settings.thread.set": ["write", g(), ["settings"]],
+      "settings.power_schedule.add": ["write", g(), ["settings"]],
+      "settings.power_schedule.update": ["write", g(), ["settings"]],
+      "settings.power_schedule.remove": ["write", g("delete"), ["settings"]],
+      "settings.thread.reset": ["destructive", g(), ["settings"]],
+    });
+  });
+});
+
+describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
+  let fake: FakeEero | null = null;
+  afterEach(async () => {
+    await fake?.close();
+    fake = null;
+  });
+  const N = "100001";
+  const base = `/2.2/networks/${N}`;
+  const sent = (f: FakeEero) => f.writes.map(({ method, path, encoding, body, status }) => ({ method, path, encoding, body, status }));
+  const req = (method: string, path: string, body: Record<string, unknown>, encoding = "json") => ({ method, path: `${base}${path}`, encoding, body, status: 200 });
+
+  // The fake's Maple Street: steering, fast roaming, MLO multi, power saving on, Simple Setup on, Thread on.
+  const CASES: [string, Record<string, unknown>, ReturnType<typeof req>, (s: M.NetworkSettings) => unknown, unknown][] = [
+    ["settings.band_steering.set", { enabled: false }, req("PUT", "/settings", { band_steering: false }), (s) => s.bandSteering, false],
+    ["settings.timezone.set", { timezone: "Europe/Berlin" }, req("PUT", "/settings", { timezone: { value: "Europe/Berlin" } }), (s) => s.timezone, "Europe/Berlin"],
+    ["settings.fast_transition.set", { enabled: false }, req("PUT", "/fast_transition", { fast_transition: false }), (s) => s.fastTransition, false],
+    ["settings.mlo.set", { mode: "disabled" }, req("PUT", "/mlo_mode", { mlo_mode: "disabled" }), (s) => s.mlo, "disabled"],
+    ["settings.legacy_mode.set", { enabled: true }, req("PUT", "/ac_compat", { enabled: "true" }, "form"), (s) => s.legacyMode, true],
+    ["settings.power_saving.set", { scheduleEnabled: false }, req("PUT", "/power_saving", { power_saving_schedule_enabled: false }), (s) => [s.powerSaving.enabled, s.powerSaving.scheduleEnabled], [true, false]],
+    ["settings.power_saving.set", { enabled: false }, req("PUT", "/power_saving", { enable: false }), (s) => s.powerSaving.enabled, false],
+    ["settings.simple_setup.set", { enabled: false }, req("PUT", "/auto_setup_mode", { mode: "OFF" }), (s) => s.simpleSetup, false],
+    ["settings.thread.set", { enabled: false }, req("PUT", "/thread", { thread_enable: false }), (s) => s.thread?.enabled, false],
+    ["settings.thread.set", { credentialSync: false }, req("PUT", "/thread", { enable_credential_syncing: false }), (s) => s.thread?.credentialSync, false],
+  ];
+
+  it.each(CASES)("%s sends its request once, and the next (cached) read shows it", async (id, params, request, pick, want) => {
+    const s = fakeEngine();
+    fake = s.fake;
+    await settingsOf(s.engine, N);
+    const result = await ok(s.engine.execute<M.NetworkSettings>(id, { networkId: N, ...params, ...m53conf(id) }));
+    expect(sent(s.fake)).toEqual([request]);
+    expect(pick(result)).toEqual(want);
+    expect(pick(await settingsOf(s.engine, N))).toEqual(want);
+  });
+
+  it("Simple Setup on sends LTS, the value a real network reads", async () => {
+    const s = fakeEngine((f) => void (f.state.networks.get(N)!.network.auto_setup_mode = "OFF"));
+    fake = s.fake;
+    expect((await settingsOf(s.engine, N)).simpleSetup).toBe(false);
+    await ok(s.engine.execute("settings.simple_setup.set", { networkId: N, enabled: true }));
+    expect(sent(s.fake)).toEqual([req("PUT", "/auto_setup_mode", { mode: "LTS" })]);
+    expect((await settingsOf(s.engine, N)).simpleSetup).toBe(true);
+  });
+
+  it("power saving schedules: POST, PUT and DELETE on the schedule, past midnight", async () => {
+    const s = fakeEngine();
+    fake = s.fake;
+    const added = await ok(s.engine.execute<M.Schedule>("settings.power_schedule.add", { networkId: N, name: "Late night", days: ["SAT", "SUN"], start: "23:00", end: "05:30" }));
+    expect(added).toEqual({ id: "2", name: "Late night", days: ["SAT", "SUN"], start: "23:00", end: "05:30", enabled: true });
+    expect((await settingsOf(s.engine, N)).powerSaving.schedules.map((x) => [x.name, x.start, x.end])).toEqual([["Overnight", "01:00", "06:00"], ["Late night", "23:00", "05:30"]]);
+    await ok(s.engine.execute("settings.power_schedule.update", { networkId: N, schedule: "Late night", enabled: false }));
+    await ok(s.engine.execute("settings.power_schedule.remove", { networkId: N, schedule: "2" }));
+    const body = { name: "Late night", days: ["SAT", "SUN"], start_time: "23:00", end_time: "05:30", enabled: true };
+    expect(sent(s.fake)).toEqual([
+      req("POST", "/power_saving/schedules", body),
+      req("PUT", "/power_saving/schedules/2", { ...body, enabled: false }),
+      { method: "DELETE", path: `${base}/power_saving/schedules/2`, encoding: "empty", body: {}, status: 200 },
+    ]);
+    expect((await settingsOf(s.engine, N)).powerSaving.schedules.map((x) => x.name)).toEqual(["Overnight"]);
+  });
+
+  it("Thread credentials come from GET {net}/thread, uncached; reset is one POST {net}/thread after confirm", async () => {
+    const s = fakeEngine();
+    fake = s.fake;
+    const before = await ok(s.engine.execute<M.ThreadCredentials>("settings.thread.credentials", { networkId: N }));
+    expect(before.networkKey).toBe("fake-thread-master-key-0000000001");
+    expect(await code(s.engine.execute("settings.thread.reset", { networkId: N }))).toBe("needs_confirm");
+    expect(s.fake.writes).toEqual([]);
+    await ok(s.engine.execute("settings.thread.reset", { networkId: N, confirm: true }));
+    expect(sent(s.fake)).toEqual([{ method: "POST", path: `${base}/thread`, encoding: "empty", body: {}, status: 200 }]);
+    const after = await ok(s.engine.execute<M.ThreadCredentials>("settings.thread.credentials", { networkId: N }));
+    expect(after.networkKey).not.toBe(before.networkKey);
+    expect(JSON.stringify(await settingsOf(s.engine, N))).not.toContain(after.networkKey);
+  });
+
+  it("the client request log never carries Thread secrets", async () => {
+    const log: RequestLogEntry[] = [];
+    const s = fakeEngine(undefined, (e) => log.push(e));
+    fake = s.fake;
+    await ok(s.engine.execute("settings.thread.credentials", { networkId: N }));
+    await ok(s.engine.execute("settings.thread.reset", { networkId: N, confirm: true }));
+    expect(log.length).toBeGreaterThan(0);
+    expect(JSON.stringify(log)).not.toMatch(/fake-thread-(master-key|pskc)/);
+  });
+
+  it("the fake answers 400 for bad bodies and 404 for Thread on a network without it", async () => {
+    const f = createFakeEero({ now: () => NOW });
+    fake = f;
+    const token = f.signIn();
+    const send = (method: string, path: string, body: unknown, form = false) =>
+      f.fetch(`${f.origin}/2.2/networks/${path}`, {
+        method,
+        headers: { "content-type": form ? "application/x-www-form-urlencoded" : "application/json", cookie: `s=${token}` },
+        body: form ? String(body) : JSON.stringify(body),
+      });
+    const before = structuredClone(f.state.networks.get(N)!.network);
+    for (const [path, body] of [
+      ["settings", { band_steering: "on" }],
+      ["settings", { timezone: { value: "not a zone" } }],
+      ["fast_transition", { fast_transition: 1 }],
+      ["mlo_mode", { mlo_mode: "max" }],
+      ["power_saving", { enable: "yes" }],
+      ["power_saving", {}],
+      ["auto_setup_mode", { mode: "MANUAL" }],
+      ["thread", { thread_enable: "no" }],
+    ] as const) {
+      expect((await send("PUT", `${N}/${path}`, body)).status, `${path} ${JSON.stringify(body)}`).toBe(400);
+    }
+    expect((await send("POST", `${N}/power_saving/schedules`, { name: "x", days: [], start_time: "01:00", end_time: "02:00" })).status).toBe(400);
+    expect((await send("PUT", `${N}/ac_compat`, "enabled=maybe", true)).status).toBe(400);
+    expect(f.state.networks.get(N)!.network).toEqual(before);
+    expect((await send("PUT", "100002/thread", { thread_enable: true })).status).toBe(404);
+    expect((await send("POST", "100002/thread", "")).status).toBe(404);
+  });
+});

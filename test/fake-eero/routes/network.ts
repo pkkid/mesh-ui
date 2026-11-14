@@ -3,12 +3,13 @@
  * fallback list, one network with its embedded eeros, speed test history,
  * starting a speed test (`POST {net}/speedtest`, 202; like eero, the result
  * lands about a minute later), permissions and restart (`POST {net}/reboot`,
- * empty JSON). See docs/eero-api/endpoints.md.
+ * empty JSON) and delete (`DELETE {net}`, owner only, M5.3). See
+ * docs/eero-api/endpoints.md.
  *
  * `GET /account`, which network.list also reads, lives in ./account.ts.
  */
 
-import { ok, type Route } from "../server";
+import { fail, ok, type Route } from "../server";
 import type { FakeNetwork } from "../state";
 
 /**
@@ -90,6 +91,22 @@ export const routes: Route[] = [
       const r = (n: number) => Math.round(n * 10) / 10;
       net.speedtests.unshift({ date: at, down_mbps: r((last?.down_mbps ?? 500) - 3.1), up_mbps: r((last?.up_mbps ?? 50) + 0.6) });
       return ok(null, 202);
+    },
+  },
+  {
+    // M5.3: deleting a network drops it from the account and the list. Owner only, as eero.
+    method: "DELETE",
+    path: "/networks/:net",
+    handle: ({ params, network, state }) => {
+      const net = network(params.net ?? "");
+      if (net.permissions.role !== "owner") return fail(403, "error.network.forbidden");
+      state.networks.delete(net.id);
+      const refs = state.account.networks;
+      if (refs && Array.isArray(refs.data)) {
+        refs.data = refs.data.filter((r) => r.url !== net.network.url);
+        refs.count = refs.data.length;
+      }
+      return ok(null);
     },
   },
   { method: "GET", path: "/networks/:net/permissions", handle: ({ params, network }) => ok(network(params.net ?? "").permissions) },

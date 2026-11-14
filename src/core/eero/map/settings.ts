@@ -45,13 +45,15 @@ export function mloMode(v: unknown): M.NetworkSettings["mlo"] {
 /**
  * `auto_setup_mode` is a string enum eero does not document. A real network
  * with Simple Setup at its default sends `LTS` (M5.1 capture, 2026-11-14),
- * read as on; otherwise only clear on and off words count.
+ * read as on. LD lists `DEFAULT`, `ZTS`, `LTS` and `OFF` for `PUT
+ * {net}/auto_setup_mode`: the policies read as on, `OFF` as off (M5.3);
+ * otherwise only clear on and off words count.
  */
 export function simpleSetup(v: unknown): boolean | null {
   if (typeof v === "boolean") return v;
   if (typeof v !== "string") return null;
   const s = v.toLowerCase().replace(/[^a-z]/g, "");
-  if (s === "lts") return true;
+  if (s === "lts" || s === "zts" || s === "default") return true;
   if (s.includes("disab") || s === "off" || s === "false" || s === "manual" || s === "none") return false;
   if (s.includes("enab") || s === "on" || s === "true" || s.startsWith("auto") || s === "wired") return true;
   return null;

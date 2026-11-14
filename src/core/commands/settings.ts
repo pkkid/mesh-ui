@@ -11,16 +11,19 @@
  * Every disruptive one confirms with its `settings.impact` summary. The
  * address rules (`ipv4`, `dhcpProblem`, `wanStaticProblem`) are exported so
  * the page's sheets show the same messages before saving.
- * Wireless, mesh and Thread writes land with M5.3. See
+ * Wireless, mesh and Thread writes (M5.3): client steering, fast roaming,
+ * MLO, legacy mode, power saving and its schedules, time zone, Simple Setup
+ * and Thread, with `settings.thread.credentials` (sensitive, never cached)
+ * and `settings.thread.reset` (destructive). See
  * docs/architecture/commands.md#settings-commandssettingsts and
  * #restart-estimates, and docs/ux/pages/advanced-networking.md.
  */
 
 import { z } from "zod";
 import { CommandError } from "../errors";
-import type { DhcpInput, DnsInput, WanInput } from "../backend";
+import type { DhcpInput, DnsInput, PowerSavingInput, ThreadInput, WanInput } from "../backend";
 import type * as M from "../model";
-import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
+import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { RESTART_ESTIMATE } from "./network";
 
 /** Drops anything secret-looking a backend might add to Thread, so the result is safe to cache, log and show. */
@@ -350,6 +353,73 @@ async function confirmText(ctx: CommandContext, id: string, unchanged: boolean, 
   return `${lead}${(await impactOf(ctx, id)).summary}`;
 }
 
+// ---------------------------------------------------------------------------
+// Wireless, mesh and Thread helpers (M5.3)
+
+/** A live toggle: refuse a setting eero does not report, skip an unchanged one. */
+async function liveToggle(ctx: CommandContext, pick: (s: M.NetworkSettings) => boolean | null, what: string, enabled: boolean, write: () => Promise<M.NetworkSettings>): Promise<M.NetworkSettings> {
+  const s = await ctx.backend.settings.get(ctx.net);
+  if (reported(pick(s), what) === enabled) return withoutSecrets(s);
+  return withoutSecrets(await write());
+}
+
+/** Thread, or bad_params on a network without it. */
+function withThread(s: M.NetworkSettings): NonNullable<M.NetworkSettings["thread"]> {
+  if (!s.thread) throw new CommandError("bad_params", "This network has no Thread border router.");
+  return s.thread;
+}
+
+/** An IANA time zone this runtime knows ("America/New_York", "UTC"). */
+export function isTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(tz);
+  } catch {
+    return false;
+  }
+}
+
+const DAY_ORDER: M.Day[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const hhmmParam = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM, 00:00 to 23:59.");
+/** The same schedule rules as profile.schedule.* (commands/profile.ts). */
+const scheduleFields = {
+  name: z.string().trim().min(1, "Enter a name.").max(32, "Use 32 characters or fewer.").describe("Schedule name, 1 to 32 characters."),
+  days: z
+    .array(z.enum(DAY_ORDER))
+    .min(1, "Pick at least one day.")
+    .max(14)
+    .transform((days) => DAY_ORDER.filter((d) => days.includes(d)))
+    .describe("Days the schedule starts on, MON to SUN. Order and repeats do not matter."),
+  start: hhmmParam.describe("When power saving starts, HH:MM in the network time zone."),
+  end: hhmmParam.describe("When it ends, HH:MM. Before start wraps past midnight (into the next day)."),
+};
+
+const fieldError = (path: string, message: string) => new CommandError("bad_params", message, { issues: [{ path, message }] });
+
+/** The settings, or bad_params when the network has no power saving. */
+async function powerSaving(ctx: CommandContext): Promise<M.NetworkSettings> {
+  const s = await ctx.backend.settings.get(ctx.net);
+  if (s.powerSaving.enabled === null && s.powerSaving.scheduleEnabled === null) throw new CommandError("bad_params", "Power saving is not available on this network.");
+  return s;
+}
+
+function findPowerSchedule(list: M.Schedule[], ref: string): M.Schedule {
+  const r = ref.trim();
+  const byId = list.find((s) => s.id === r);
+  if (byId) return byId;
+  const named = list.filter((s) => s.name.toLowerCase() === r.toLowerCase());
+  if (named.length === 1 && named[0]) return named[0];
+  if (named.length > 1) throw fieldError("schedule", `${named.length} power saving schedules are named ${r}; use the id.`);
+  throw fieldError("schedule", `No power saving schedule ${r}.`);
+}
+
+/** Start and end must differ, and names are unique (a changed name only). */
+function checkPowerSchedule(list: M.Schedule[], input: M.ScheduleInput, self: M.Schedule | null): void {
+  if (input.start === input.end) throw fieldError("end", "End must differ from start.");
+  if (self && self.name.toLowerCase() === input.name.toLowerCase()) return;
+  if (list.some((s) => s.id !== self?.id && s.name.toLowerCase() === input.name.toLowerCase())) throw fieldError("name", `A power saving schedule is already named ${input.name}.`);
+}
+
 export const commands: AnyCommand[] = [
   defineCommand({
     id: "settings.get",
@@ -532,6 +602,231 @@ export const commands: AnyCommand[] = [
       const s = await routedSettings(ctx, "SQM");
       if (reported(s.sqm, "SQM") === p.enabled) return withoutSecrets(s);
       return withoutSecrets(await ctx.backend.settings.setSqm(ctx.net, p.enabled));
+    },
+  }),
+  // --- Wireless, mesh and Thread writes (M5.3) -------------------------------
+  defineCommand({
+    id: "settings.band_steering.set",
+    label: "Turn client steering on or off",
+    description: "Client steering nudges devices to the best eero and band. Applies without a restart; some devices may roam.",
+    icon: "waypoints",
+    params: toggle("client steering"),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: (ctx, p) => liveToggle(ctx, (s) => s.bandSteering, "Client steering", p.enabled, () => ctx.backend.settings.setBandSteering(ctx.net, p.enabled)),
+  }),
+  defineCommand({
+    id: "settings.fast_transition.set",
+    label: "Turn fast roaming on or off",
+    description: "Fast roaming (802.11r) lets phones and laptops hand over between eeros faster. A few older devices may not connect with it on. Applies without a restart.",
+    icon: "fast-forward",
+    params: toggle("fast roaming"),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: (ctx, p) => liveToggle(ctx, (s) => s.fastTransition, "Fast roaming", p.enabled, () => ctx.backend.settings.setFastTransition(ctx.net, p.enabled)),
+  }),
+  defineCommand({
+    id: "settings.mlo.set",
+    label: "Change multi-link operation",
+    description: `Wi-Fi 7 multi-link operation: disabled, single or multi. Only on networks that report it. Every eero restarts, ${RESTART_ESTIMATE.network}.`,
+    icon: "layers",
+    params: z.object({ mode: z.enum(["disabled", "single", "multi"]).describe("disabled, single (one link) or multi (several bands at once).") }),
+    effect: "disruptive",
+    gate: { area: "settings" },
+    invalidates: ["settings", "network", "wifi"],
+    confirmMessage: async (ctx, p) => confirmText(ctx, "settings.mlo.set", reported((await ctx.backend.settings.get(ctx.net)).mlo, "Multi-link operation") === p.mode),
+    run: async (ctx, p): Promise<M.NetworkSettings> => {
+      const s = await ctx.backend.settings.get(ctx.net);
+      if (reported(s.mlo, "Multi-link operation") === p.mode) return withoutSecrets(s);
+      return withoutSecrets(await ctx.backend.settings.setMlo(ctx.net, p.mode));
+    },
+  }),
+  defineCommand({
+    id: "settings.legacy_mode.set",
+    label: "Turn legacy device mode on or off",
+    description: `Connects older devices that cannot detect Wi-Fi 6 (802.11ac compatibility). Every eero restarts, ${RESTART_ESTIMATE.network}.`,
+    icon: "history",
+    params: toggle("legacy device mode"),
+    effect: "disruptive",
+    gate: { area: "settings" },
+    invalidates: ["settings", "network", "wifi"],
+    confirmMessage: async (ctx, p) =>
+      confirmText(ctx, "settings.legacy_mode.set", reported((await ctx.backend.settings.get(ctx.net)).legacyMode, "Legacy device mode") === p.enabled, p.enabled ? "Legacy device mode turns on. " : "Legacy device mode turns off. "),
+    run: async (ctx, p): Promise<M.NetworkSettings> => {
+      const s = await ctx.backend.settings.get(ctx.net);
+      if (reported(s.legacyMode, "Legacy device mode") === p.enabled) return withoutSecrets(s);
+      return withoutSecrets(await ctx.backend.settings.setLegacyMode(ctx.net, p.enabled));
+    },
+  }),
+  defineCommand({
+    id: "settings.power_saving.set",
+    label: "Change power saving",
+    description: "Eco efficiency (`enabled`) and the power saving schedule (`scheduleEnabled`). Omitted fields keep their value. Applies without a restart; Wi-Fi blips for a few seconds when a schedule starts.",
+    icon: "leaf",
+    params: z
+      .object({
+        enabled: z.boolean().optional().describe("Eco efficiency on or off."),
+        scheduleEnabled: z.boolean().optional().describe("Run the power saving schedules."),
+      })
+      .refine((p) => p.enabled !== undefined || p.scheduleEnabled !== undefined, { message: "Give enabled, scheduleEnabled or both." }),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: async (ctx, p): Promise<M.NetworkSettings> => {
+      const s = await ctx.backend.settings.get(ctx.net);
+      const ps = s.powerSaving;
+      if (p.enabled !== undefined) reported(ps.enabled, "Power saving");
+      if (p.scheduleEnabled !== undefined) reported(ps.scheduleEnabled, "The power saving schedule");
+      const input: PowerSavingInput = {
+        ...(p.enabled !== undefined && p.enabled !== ps.enabled ? { enabled: p.enabled } : {}),
+        ...(p.scheduleEnabled !== undefined && p.scheduleEnabled !== ps.scheduleEnabled ? { scheduleEnabled: p.scheduleEnabled } : {}),
+      };
+      if (Object.keys(input).length === 0) return withoutSecrets(s);
+      return withoutSecrets(await ctx.backend.settings.setPowerSaving(ctx.net, input));
+    },
+  }),
+  defineCommand({
+    id: "settings.power_schedule.add",
+    label: "Add power saving schedule",
+    description: "Adds a power saving schedule: radios drop to 1x1 from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
+    icon: "calendar-plus",
+    params: z.object({ ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without running it.") }),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: async (ctx, p): Promise<M.Schedule> => {
+      const s = await powerSaving(ctx);
+      const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
+      checkPowerSchedule(s.powerSaving.schedules, input, null);
+      return ctx.backend.settings.addPowerSavingSchedule(ctx.net, input);
+    },
+  }),
+  defineCommand({
+    id: "settings.power_schedule.update",
+    label: "Edit power saving schedule",
+    description: "Changes a power saving schedule by id or name. Fields left out keep their value; enabled: false keeps it without running it.",
+    icon: "calendar-clock",
+    params: z.object({
+      schedule: ref("schedule"),
+      name: scheduleFields.name.optional(),
+      days: scheduleFields.days.optional(),
+      start: scheduleFields.start.optional(),
+      end: scheduleFields.end.optional(),
+      enabled: z.boolean().optional(),
+    }),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: async (ctx, p): Promise<M.Schedule> => {
+      const list = (await powerSaving(ctx)).powerSaving.schedules;
+      const s = findPowerSchedule(list, p.schedule);
+      const input: M.ScheduleInput = { name: p.name ?? s.name, days: p.days ?? s.days, start: p.start ?? s.start, end: p.end ?? s.end, enabled: p.enabled ?? s.enabled };
+      checkPowerSchedule(list, input, s);
+      return ctx.backend.settings.updatePowerSavingSchedule(ctx.net, s.id, input);
+    },
+  }),
+  defineCommand({
+    id: "settings.power_schedule.remove",
+    label: "Delete power saving schedule",
+    description: "Removes a power saving schedule by id or name. The result holds the removed schedule, so it can be added back.",
+    icon: "calendar-x",
+    params: z.object({ schedule: ref("schedule") }),
+    effect: "write",
+    gate: { area: "settings", op: "delete" },
+    invalidates: ["settings"],
+    run: async (ctx, p): Promise<{ removed: M.Id; schedule: M.Schedule }> => {
+      const s = findPowerSchedule((await powerSaving(ctx)).powerSaving.schedules, p.schedule);
+      await ctx.backend.settings.removePowerSavingSchedule(ctx.net, s.id);
+      return { removed: s.id, schedule: s };
+    },
+  }),
+  defineCommand({
+    id: "settings.timezone.set",
+    label: "Change time zone",
+    description: "Sets the network time zone (IANA, like America/New_York). Schedules (pauses, power saving) and the network clock follow it. Applies without a restart.",
+    icon: "clock",
+    params: z.object({ timezone: z.string().trim().min(1).refine(isTimeZone, "Not a time zone. Use an IANA name like America/New_York.").describe("IANA time zone, like America/New_York.") }),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings", "network", "profiles"],
+    run: async (ctx, p): Promise<M.NetworkSettings> => {
+      const s = await ctx.backend.settings.get(ctx.net);
+      if (s.timezone === p.timezone) return withoutSecrets(s);
+      return withoutSecrets(await ctx.backend.settings.setTimezone(ctx.net, p.timezone));
+    },
+  }),
+  defineCommand({
+    id: "settings.simple_setup.set",
+    label: "Turn eero Simple Setup on or off",
+    description: "eero Simple Setup adds new eero 6 or newer units automatically when they are plugged in by Ethernet. Applies without a restart.",
+    icon: "wand-sparkles",
+    params: toggle("eero Simple Setup"),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: (ctx, p) => liveToggle(ctx, (s) => s.simpleSetup, "eero Simple Setup", p.enabled, () => ctx.backend.settings.setSimpleSetup(ctx.net, p.enabled)),
+  }),
+  defineCommand({
+    id: "settings.thread.set",
+    label: "Change Thread",
+    description:
+      "Turns the Thread border router on or off (`enabled`) and sharing Thread credentials with phone keychains (`credentialSync`). Omitted fields keep their value. Thread accessories lose their border router while Thread is off.",
+    icon: "share-2",
+    params: z
+      .object({
+        enabled: z.boolean().optional().describe("Thread border router on or off."),
+        credentialSync: z.boolean().optional().describe("Share Thread credentials with iOS and Android keychains."),
+      })
+      .refine((p) => p.enabled !== undefined || p.credentialSync !== undefined, { message: "Give enabled, credentialSync or both." }),
+    effect: "write",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    run: async (ctx, p): Promise<M.NetworkSettings> => {
+      const s = await ctx.backend.settings.get(ctx.net);
+      const t = withThread(s);
+      if (p.credentialSync !== undefined) reported(t.credentialSync, "Credential sharing");
+      const input: ThreadInput = {
+        ...(p.enabled !== undefined && p.enabled !== t.enabled ? { enabled: p.enabled } : {}),
+        ...(p.credentialSync !== undefined && p.credentialSync !== t.credentialSync ? { credentialSync: p.credentialSync } : {}),
+      };
+      if (Object.keys(input).length === 0) return withoutSecrets(s);
+      return withoutSecrets(await ctx.backend.settings.setThread(ctx.net, input));
+    },
+  }),
+  defineCommand({
+    id: "settings.thread.credentials",
+    label: "Reveal Thread credentials",
+    description:
+      "Sensitive: the Thread network key, PSKc and active operational dataset (null when eero does not send one), to add a Thread device by hand or copy the dataset. Never cached or logged; the CLI table masks them without --reveal.",
+    icon: "key-round",
+    params: z.object({}),
+    effect: "query",
+    sensitive: true,
+    run: async (ctx): Promise<M.ThreadCredentials> => {
+      const creds = await ctx.backend.settings.threadCredentials(ctx.net);
+      if (!creds) throw new CommandError("bad_params", "This network has no Thread credentials.");
+      return creds;
+    },
+  }),
+  defineCommand({
+    id: "settings.thread.reset",
+    label: "Regenerate Thread credentials",
+    description: "Makes a new Thread network key. Every Thread accessory must be paired again. Cannot be undone.",
+    icon: "key-round",
+    params: z.object({}),
+    effect: "destructive",
+    gate: { area: "settings" },
+    invalidates: ["settings"],
+    confirmMessage: async (ctx) => {
+      const t = withThread(await ctx.backend.settings.get(ctx.net));
+      return `Makes new credentials for ${t.name ?? "the Thread network"}. ${(await impactOf(ctx, "settings.thread.reset")).summary} This cannot be undone.`;
+    },
+    run: async (ctx): Promise<{ networkId: M.Id; reset: true }> => {
+      withThread(await ctx.backend.settings.get(ctx.net));
+      await ctx.backend.settings.resetThread(ctx.net);
+      return { networkId: ctx.net, reset: true };
     },
   }),
 ];
