@@ -440,7 +440,7 @@ port, decided in M3.2).
 - scope: Renderer and host pieces wave 2 reuses. QR block (encoder decided here: a small pinned dependency or a port, with its licence noted) with Copy and Save PNG. Week timeline for schedules (days by hours, blocks that wrap past midnight), shared by profiles and power saving. A host save dialog over the one IPC bridge (`window.mesh.saveFile(name, text)`), never a command, locked to text and the user's chosen path; Internet Export CSV uses it. Carried from M2: Section header no longer wraps with a long subtitle; `EerosList` imports `MeshBars` from `components/mesh/LinkChip`; `AreaChart` takes a fixed `max` and the Internet speed chart scales to the plan.
 - done when: `pnpm check` passes with tests for the timeline's wrap-past-midnight layout and the chart `max`; `pnpm ui:shot` of the chart gallery shows the QR and timeline in light and dark; Internet Export CSV writes a file through the save dialog in `ui:shot` (to a scratch path) and Overview, Internet and eero detail look unchanged apart from the listed fixes (before and after in the PR); the save bridge refuses non-text and never exposes a path to the renderer beyond the user's choice.
 
-### M3.3 Mockups match the M3 fixtures ☐
+### M3.3 Mockups match the M3 fixtures ✅ (#101)
 - issue: [#84](https://github.com/pkkid/mesh-ui/issues/84)
 - after: M3.1
 - docs: architecture/backends.md (demo)

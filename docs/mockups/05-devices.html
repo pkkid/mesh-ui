@@ -79,10 +79,10 @@
     <div>
       <div class="lbl"><i data-lucide="activity"></i>Throughput now</div>
       <div class="row mt-8" style="gap:14px;align-items:baseline">
-        <div><span class="mid tnum">186</span><span class="xs muted"> Mbps down</span></div>
+        <div><span class="mid tnum">171</span><span class="xs muted"> Mbps down</span></div>
       </div>
-      <div class="xs muted"><span class="m tnum fg2">24 Mbps</span> up · 14 devices active</div>
-      <div class="xxs muted-2 mt-8">6 GHz carries 41% of traffic with 19% of devices</div>
+      <div class="xs muted"><span class="m tnum fg2">38 Mbps</span> up · 18 devices active</div>
+      <div class="xxs muted-2 mt-8">6 GHz carries 39% of traffic with 19% of devices</div>
       <div class="xxs muted-2">Sum of current device rates, refreshed every minute</div>
     </div>
     <div>
@@ -99,7 +99,7 @@
   <section class="section" style="gap:10px">
     <div class="row gap-8">
       <div class="input" style="width:340px"><i data-lucide="search"></i><span class="ph">Search by name, manufacturer, MAC or IP</span><span class="kbd">/</span></div>
-      <div class="seg"><span class="on">All networks</span><span>Main</span><span>Guest <span class="muted-2 tnum">1</span></span></div>
+      <div class="seg"><span class="on">All networks</span><span>Main</span><span>Guest <span class="muted-2 tnum">2</span></span></div>
       <div class="row gap-8 ml-auto">
         <span class="xs muted">Group by</span>
         <div class="input select" style="width:150px"><i data-lucide="layers"></i>Category</div>
@@ -176,40 +176,40 @@ MU.ready(() => {
   // name, maker, icon, color group, profile, eero, band, bars, ip, mac, down, up, today GB, status, extra
   const D = {
     comp: [
-      ["Alex's MacBook Pro", "Apple · MacBook Pro", "laptop", "comp", "Alex", "Office", "6", 4, "192.168.4.23", "3c:22:fb:4a:91:0e", 38.4, 6.1, 86],
-      ["Alex's iPhone", "Apple · iPhone 17 Pro", "smartphone", "phone", "Alex", "Office", "6", 4, "192.168.4.131", "3c:22:fb:7d:02:a4", 2.1, 0.4, 7.4],
-      ["Alex's iPad Pro", "Apple · iPad Pro 13", "tablet", "phone", "Alex", "Office", "6", 4, "192.168.4.144", "3c:22:fb:11:6e:c9", 0.3, 0.1, 1.9],
-      ["Alex's Apple Watch", "Apple · Watch Ultra 3", "watch", "phone", "Alex", "Office", "5", 3, "192.168.4.152", "3c:22:fb:e0:5b:17", 0, 0, 0.2],
-      ["Office iMac", "Apple · iMac 24", "monitor", "comp", "Alex", "Office", "wired", 0, "192.168.4.20", "3c:22:fb:90:3a:72", 4.6, 1.2, 14],
-      ["Synology NAS", "Synology · DS923+", "hard-drive", "comp", "Alex", "Living Room", "wired", 0, "192.168.4.10", "00:11:32:9c:4e:01", 11.8, 22.3, 56],
-      ["Jamie's iPhone", "Apple · iPhone 16", "smartphone", "phone", "Jamie", "Living Room", "6", 4, "192.168.4.133", "3c:22:fb:5c:88:3d", 6.2, 0.8, 19],
-      ["Jamie's ThinkPad", "Lenovo · ThinkPad X1", "laptop", "comp", "Jamie", "Office", "5", 3, "192.168.4.127", "8c:16:45:2b:d1:6a", 12.4, 3.9, 31],
-      ["Jamie's iPad", "Apple · iPad Air", "tablet", "phone", "Jamie", "Upstairs Hall", "6", 4, "192.168.4.146", "3c:22:fb:a2:47:e8", 0.9, 0.1, 4.6],
-      ["Mia's iPad", "Apple · iPad 11", "tablet", "phone", "Mia", "Upstairs Hall", "5", 4, "192.168.4.161", "3c:22:fb:c3:19:5f", 5.4, 0.3, 9.8],
-      ["Mia's Chromebook", "Acer · Chromebook Spin", "laptop", "comp", "Mia", "Upstairs Hall", "5", 3, "192.168.4.162", "a4:5e:60:7b:20:9d", 1.2, 0.2, 5.1],
-      ["Mia's Kindle", "Amazon · Kindle Paperwhite", "book-open", "phone", "Mia", "Upstairs Hall", "2.4", 3, "192.168.4.163", "f0:27:2d:4e:aa:13", 0, 0, 0.1],
-      ["Leo's Fire HD", "Amazon · Fire HD 10", "tablet", "phone", "Leo", "Upstairs Hall", "5", 3, "192.168.4.171", "f0:27:2d:19:c2:77", 0, 0, 1.4, "paused"],
-      ["Grandma's iPad", "Apple · iPad mini", "tablet", "phone", null, "Living Room", "5", 4, "192.168.4.188", "3c:22:fb:d6:01:b2", 3.3, 0.2, 2.7, "new"],
-      ["HP LaserJet", "HP · LaserJet Pro M404", "printer", "comp", null, "Office", "2.4", 2, "192.168.4.15", "48:9e:bd:35:7c:40", 0, 0, 0.02],
+      ["Alex's MacBook Pro", "Apple · MacBook Pro", "laptop", "comp", "Alex", "Office", "6", 4, "192.168.4.23", "02:4d:55:10:00:01", 38.4, 6.1, 85],
+      ["Alex's iPhone", "Apple · iPhone 17 Pro", "smartphone", "phone", "Alex", "Office", "6", 4, "192.168.4.131", "02:4d:55:10:00:02", 2.1, 0.4, 5.9],
+      ["Alex's iPad Pro", "Apple · iPad Pro 13", "tablet", "phone", "Alex", "Office", "6", 4, "192.168.4.144", "02:4d:55:10:00:03", 0.3, 0.1, 1.6],
+      ["Alex's Apple Watch", "Apple · Watch Ultra 3", "watch", "phone", "Alex", "Office", "5", 3, "192.168.4.152", "02:4d:55:10:00:04", 0, 0, 0.17],
+      ["Office iMac", "Apple · iMac 24", "monitor", "comp", "Alex", "Office", "wired", 0, "192.168.4.20", "02:4d:55:10:00:05", 4.6, 1.2, 13],
+      ["Synology NAS", "Synology · DS923+", "hard-drive", "comp", "Alex", "Living Room", "wired", 0, "192.168.4.10", "02:4d:55:10:00:06", 11.8, 22.3, 64],
+      ["Jamie's iPhone", "Apple · iPhone 16", "smartphone", "phone", "Jamie", "Living Room", "6", 4, "192.168.4.133", "02:4d:55:10:00:07", 6.2, 0.8, 21],
+      ["Jamie's ThinkPad", "Lenovo · ThinkPad X1", "laptop", "comp", "Jamie", "Office", "5", 3, "192.168.4.127", "02:4d:55:10:00:08", 12.4, 3.9, 31],
+      ["Jamie's iPad", "Apple · iPad Air", "tablet", "phone", "Jamie", "Office", "6", 4, "192.168.4.146", "02:4d:55:10:00:09", 0.9, 0.1, 4.2],
+      ["Mia's iPad", "Apple · iPad 11", "tablet", "phone", "Mia", "Upstairs Hall", "5", 4, "192.168.4.161", "02:4d:55:10:00:0a", 5.4, 0.3, 11],
+      ["Mia's Chromebook", "Acer · Chromebook Spin", "laptop", "comp", "Mia", "Upstairs Hall", "5", 3, "192.168.4.162", "02:4d:55:10:00:0b", 1.2, 0.2, 4.3],
+      ["Mia's Kindle", "Amazon · Kindle Paperwhite", "book-open", "phone", "Mia", "Upstairs Hall", "2.4", 3, "192.168.4.163", "02:4d:55:10:00:0c", 0, 0, 0.1],
+      ["Leo's Fire HD", "Amazon · Fire HD 10", "tablet", "phone", "Leo", "Upstairs Hall", "5", 3, "192.168.4.171", "02:4d:55:10:00:0d", 0, 0, 1.3, "paused"],
+      ["Grandma's iPad", "Apple · iPad mini", "tablet", "phone", null, "Living Room", "5", 4, "192.168.4.188", "02:4d:55:10:00:0e", 3.3, 0.2, 2.9, "new"],
+      ["HP LaserJet", "HP · LaserJet Pro M404", "printer", "comp", null, "Office", "2.4", 2, "192.168.4.15", "02:4d:55:10:00:0f", 0, 0, 0.02],
     ],
     ent: [
-      ["Living Room TV", "Samsung · QN90D", "tv", "ent", null, "Living Room", "wired", 0, "192.168.4.12", "f4:7b:09:12:ae:58", 58.2, 0.6, 142],
-      ["PlayStation 5", "Sony · PS5 Slim", "gamepad-2", "ent", null, "Living Room", "5", 4, "192.168.4.14", "00:d9:d1:6f:4b:23", 0.4, 0.1, 48],
-      ["Apple TV Den", "Apple · Apple TV 4K", "cast", "ent", null, "Living Room", "6", 4, "192.168.4.116", "3c:22:fb:3e:70:c1", 24.6, 0.3, 26],
-      ["Sonos Kitchen", "Sonos · Era 100", "speaker", "ent", null, "Living Room", "5", 3, "192.168.4.117", "54:2a:1b:8d:0f:61", 0.3, 0, 0.8],
-      ["Sonos Living Room", "Sonos · Arc", "speaker", "ent", null, "Living Room", "5", 4, "192.168.4.118", "54:2a:1b:44:c7:0a", 0.2, 0, 0.6],
-      ["Leo's Switch", "Nintendo · Switch 2", "gamepad-2", "ent", "Leo", "Living Room", "5", 3, "192.168.4.172", "98:41:5c:2d:e6:94", 0, 0, 2.8, "paused"],
+      ["Living Room TV", "Samsung · QN90D", "tv", "ent", null, "Living Room", "wired", 0, "192.168.4.12", "02:4d:55:10:00:10", 58.2, 0.6, 148],
+      ["PlayStation 5", "Sony · PS5 Slim", "gamepad-2", "ent", null, "Living Room", "5", 4, "192.168.4.14", "02:4d:55:10:00:11", 0.4, 0.1, 43],
+      ["Apple TV Den", "Apple · Apple TV 4K", "cast", "ent", null, "Living Room", "6", 4, "192.168.4.116", "02:4d:55:10:00:12", 24.6, 0.3, 30],
+      ["Sonos Kitchen", "Sonos · Era 100", "speaker", "ent", null, "Living Room", "5", 3, "192.168.4.117", "02:4d:55:10:00:13", 0.3, 0, 0.83],
+      ["Sonos Living Room", "Sonos · Arc", "speaker", "ent", null, "Living Room", "5", 4, "192.168.4.118", "02:4d:55:10:00:14", 0.2, 0, 0.49],
+      ["Leo's Switch", "Nintendo · Switch 2", "gamepad-2", "ent", "Leo", "Living Room", "5", 3, "192.168.4.172", "02:4d:55:10:00:15", 0, 0, 2.9, "paused"],
     ],
     off: [
-      ["Mia's iPhone", "Apple · iPhone 15", "smartphone", "phone", "Mia", "Upstairs Hall", "5", 0, "192.168.4.164", "3c:22:fb:08:d4:6b", 0, 0, 2.3, "offline", "2h ago"],
-      ["Jamie's Apple Watch", "Apple · Watch Series 11", "watch", "phone", "Jamie", "Living Room", "5", 0, "192.168.4.147", "3c:22:fb:b9:31:2e", 0, 0, 0.1, "offline", "40 min ago"],
-      ["Leo's Chromebook", "Lenovo · Chromebook Duet", "laptop", "comp", "Leo", "Upstairs Hall", "5", 0, "192.168.4.173", "8c:16:45:70:5a:e3", 0, 0, 0, "offline", "5h ago · paused"],
-      ["Jamie's Peloton", "Peloton · Bike+", "bike", "other", "Jamie", "Living Room", "5", 0, "192.168.4.149", "c8:2e:47:61:fb:0c", 0, 0, 0, "offline", "Yesterday"],
-      ["Sam's Pixel", "Google · Pixel 9", "smartphone", "phone", null, "Living Room", "5", 0, "192.168.4.201", "da:a1:19:5e:72:3b", 0, 0, 0, "offline", "3 days ago", "guest"],
+      ["Mia's iPhone", "Apple · iPhone 15", "smartphone", "phone", "Mia", "Upstairs Hall", "5", 0, "192.168.4.164", "02:4d:55:10:00:20", 0, 0, 1.5, "offline", "2h ago"],
+      ["Jamie's Apple Watch", "Apple · Watch Series 11", "watch", "phone", "Jamie", "Living Room", "5", 0, "192.168.4.147", "02:4d:55:10:00:21", 0, 0, 0.09, "offline", "40 min ago"],
+      ["Leo's Chromebook", "Lenovo · Chromebook Duet", "laptop", "comp", "Leo", "Upstairs Hall", "5", 0, "192.168.4.173", "02:4d:55:10:00:22", 0, 0, 0, "offline", "5h ago · paused"],
+      ["Jamie's Peloton", "Peloton · Bike+", "bike", "other", "Jamie", "Living Room", "5", 0, "192.168.4.149", "02:4d:55:10:00:23", 0, 0, 0, "offline", "Yesterday"],
+      ["Sam's Pixel", "Google · Pixel 9", "smartphone", "phone", null, "Living Room", "5", 0, "192.168.4.201", "06:4d:55:10:00:24", 0, 0, 0, "offline", "3 days ago", "guest"],
     ],
     blk: [
-      ["android-7f3a", "Unknown manufacturer · random MAC", "circle-help", "other", null, "Garage", "2.4", 0, "-", "de:7f:3a:41:09:c8", 0, 0, 0, "blocked", "Blocked Oct 30"],
-      ["ESP_3A9F21", "Espressif", "cpu", "other", null, "Garage", "2.4", 0, "-", "24:6f:28:3a:9f:21", 0, 0, 0, "blocked", "Blocked Mon"],
+      ["android-7f3a", "Unknown manufacturer · random MAC", "circle-help", "other", null, "Garage", "2.4", 0, "-", "06:4d:55:10:00:25", 0, 0, 0, "blocked", "Blocked Oct 30"],
+      ["ESP_3A9F21", "Espressif", "cpu", "other", null, "Garage", "2.4", 0, "-", "02:4d:55:10:00:26", 0, 0, 0, "blocked", "Blocked Mon"],
     ],
   };
   const selected = new Set(["PlayStation 5", "Apple TV Den", "Grandma's iPad"]);

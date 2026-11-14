@@ -65,7 +65,7 @@
         <div class="checks">
           <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="globe" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Internet</span><span class="v">Ziply up · 942 / 918 Mbps</span></div>
           <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="book-open-check" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">DNS resolution</span><span class="v">ISP DNS</span></div>
-          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Living Room</span><span class="v">gateway · 2.5 GbE WAN</span></div>
+          <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Living Room</span><span class="v">gateway · 10 GbE WAN</span></div>
           <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Office</span><span class="v">Online</span></div>
           <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Upstairs Hall</span><span class="v">Online</span></div>
           <div class="chk"><span class="st ok"><i data-lucide="check"></i></span><i data-lucide="router" style="width:15px;height:15px;color:var(--muted)"></i><span class="n">Garage</span><span class="v">Online</span></div>
@@ -162,7 +162,7 @@
       <div class="card tool">
         <div class="h"><div class="ico" style="--c:var(--s-blue)"><i data-lucide="history"></i></div><div class="grow"><div class="t">Connect devices that can't detect Wi-Fi 6</div><div class="d">Legacy mode helps old devices that can't see the network</div></div><span class="switch"></span></div>
         <div class="note warn"><i data-lucide="triangle-alert"></i><div class="body">May reduce speeds for newer devices. Restarts the network for about 2 minutes.</div></div>
-        <div class="kv xs"><dt>Status</dt><dd>Off</dd><dt>Devices that may need it</dt><dd>Old Kindle (Wi-Fi 4)</dd></div>
+        <div class="kv xs"><dt>Status</dt><dd>Off</dd><dt>Devices that may need it</dt><dd>Mia's Kindle (Wi-Fi 4)</dd></div>
         <div class="foot"><button class="btn sm">Turn on legacy mode</button></div>
       </div>
 
@@ -196,7 +196,7 @@
           <div class="fg2">Maple Street will be offline for about 2 to 3 minutes. 31 devices will disconnect, including this computer if it is on Wi-Fi.</div>
           <div class="row gap-8"><button class="btn sm">Cancel</button><button class="btn sm" style="background:var(--danger);border-color:var(--danger);color:var(--primary-fg)">Restart network</button></div>
         </div>
-        <div class="xxs muted">Last restart Nov 11, 3:01 AM (firmware update)</div>
+        <div class="xxs muted">Last restart Oct 21, 11:30 AM</div>
       </div>
 
       <div class="card tool">
@@ -204,10 +204,10 @@
         <div class="col gap-8">
           <div class="row sm"><i data-lucide="book-open" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Support center</span><i data-lucide="external-link" style="width:13px;height:13px;color:var(--muted)"></i></div>
           <div class="row sm"><i data-lucide="mail" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Email support</span><i data-lucide="external-link" style="width:13px;height:13px;color:var(--muted)"></i></div>
-          <div class="row sm"><i data-lucide="phone" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Call eero</span><span class="mono xs muted">(877) 555-0142</span></div>
-          <div class="row sm"><i data-lucide="building-2" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Ziply Fiber support</span><span class="mono xs muted">(866) 555-0199</span></div>
+          <div class="row sm"><i data-lucide="phone" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Call eero</span><span class="mono xs muted">(877) 555-0123</span></div>
+          <div class="row sm"><i data-lucide="building-2" style="width:15px;height:15px;color:var(--muted)"></i><span class="grow">Ziply Fiber support</span><span class="mono xs muted">(866) 555-0144</span></div>
         </div>
-        <div class="row" style="padding:9px 11px;border-radius:10px;background:var(--card-2);border:1px solid var(--border)"><span class="xs muted">Support ID</span><span class="mono sm m">A1B2C3</span><button class="btn sm ml-auto"><i data-lucide="copy"></i>Copy</button></div>
+        <div class="row" style="padding:9px 11px;border-radius:10px;background:var(--card-2);border:1px solid var(--border)"><span class="xs muted">Support ID</span><span class="mono sm m">K4M9QZ</span><button class="btn sm ml-auto"><i data-lucide="copy"></i>Copy</button></div>
         <div class="foot"><button class="btn sm"><i data-lucide="clipboard-copy"></i>Copy diagnostics report</button></div>
       </div>
     </div>
@@ -243,10 +243,10 @@ MU.ready(() => {
     return `<td><div class="chcell"><div class="top"><b>${ch}</b><span class="xxs muted">${w} MHz</span></div><div class="meter" style="--c:${c};height:5px"><i style="width:${busy}%"></i></div><span class="xxs ${busy >= 55 ? "warning" : "muted"}">${busy}% busy</span></div></td>`;
   };
   const eeros = [
-    ["Living Room", "var(--s-blue)", "eero Max 7", [1, 20, 22], [44, 80, 18], [149, 160, 31], [37, 320, 6], 12],
-    ["Office", "var(--s-purple)", "eero Pro 7", [11, 20, 28], [36, 80, 24], [157, 80, 20], [101, 160, 9], 9],
-    ["Upstairs Hall", "var(--s-aqua)", "eero 7", [1, 20, 34], [44, 80, 21], [149, 160, 26], null, 7],
-    ["Garage", "var(--s-yellow)", "eero Beacon", [6, 20, 61], [40, 40, 38], null, null, 3],
+    ["Living Room", "var(--s-blue)", "eero Max 7", [6, 20, 34], null, [149, 80, 21], [37, 160, 9], 12],
+    ["Office", "var(--s-purple)", "eero Pro 7", [1, 20, 34], [36, 80, 21], null, [69, 160, 9], 9],
+    ["Upstairs Hall", "var(--s-aqua)", "eero 7", [11, 20, 34], [44, 80, 21], null, null, 7],
+    ["Garage", "var(--s-yellow)", "eero Beacon", [1, 20, 34], [36, 80, 21], null, null, 3],
   ];
   document.querySelector("#chan").innerHTML = eeros.map(([n, c, m, a, b, h, s, cl]) =>
     `<tr><td><div class="row"><div class="ico sm" style="--c:${c}"><i data-lucide="router"></i></div><div><div class="m">${n}</div><div class="xxs muted">${m}</div></div></div></td>
