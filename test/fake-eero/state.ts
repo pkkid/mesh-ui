@@ -94,6 +94,8 @@ export type FakeNetwork = {
   wpa3PerBand: RawWpa3PerBand;
   /** `GET {net}/fast_transition`. */
   fastTransition: RawFastTransition;
+  /** Tests only: a time zone write answers 200 and keeps the old zone, as a real network did (M5.R-fix4). */
+  ignoreTimezone?: boolean;
   /** `GET {net}/power_saving/schedules` answers `{schedules}`. */
   powerSavingSchedules: RawPowerSavingSchedule[];
   /** `GET {net}/thread`, secrets included; null: the route answers 404. */
@@ -442,6 +444,9 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       wpa3: { capable: true },
       historical_usage: { capable: true },
       ownership_transfer: { capable: true },
+      // As a real network without the hardware sends them: capable false (M5.R-fix4 capture).
+      power_saving: { capable: maple },
+      scheduled_power_saving: { capable: maple },
     },
     resources: {
       devices: `${netUrl}/devices`,

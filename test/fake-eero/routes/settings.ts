@@ -128,7 +128,7 @@ function applySettings(net: FakeNetwork, body: Record<string, unknown>): Record<
   if ("timezone" in body) {
     const tz = obj(body.timezone)?.value;
     if (typeof tz !== "string" || !/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(tz)) bad("error.timezone.invalid");
-    n.timezone = { ...(obj(n.timezone) ?? {}), value: tz as string };
+    if (!net.ignoreTimezone) n.timezone = { ...(obj(n.timezone) ?? {}), value: tz as string };
   }
   net.network = n;
   return body;
@@ -152,6 +152,15 @@ function scheduleOf(body: Record<string, unknown>): { name: string; days: string
   if (enabled !== undefined && !isBool(enabled)) bad("error.schedule.enabled.invalid");
   return { name: name as string, days: days as string[], start_time: start_time as string, end_time: end_time as string, enabled: enabled !== false };
 }
+
+/**
+ * Whether the network's hardware can do it. A real network whose eeros lack
+ * power saving reports `capabilities.power_saving` and
+ * `scheduled_power_saving` as not capable (M5.R-fix4 capture), answers
+ * `enable` with 403 and a new schedule with 400 `error.form.errors`, while
+ * the schedule switch and deletes still answer 200.
+ */
+const capable = (net: FakeNetwork, name: string) => net.network.capabilities?.[name]?.capable !== false;
 
 const AUTO_SETUP_MODES = new Set(["DEFAULT", "ZTS", "LTS", "OFF"]);
 
@@ -200,7 +209,9 @@ export const routes: Route[] = [
       const body = jsonBody(ctx);
       const keys = Object.keys(body);
       if (keys.length === 0 || keys.some((k) => k !== "enable" && k !== "power_saving_schedule_enabled") || !keys.every((k) => isBool(body[k]))) bad("error.power_saving.invalid");
-      const n = ctx.network(ctx.params.net ?? "").network;
+      const net = ctx.network(ctx.params.net ?? "");
+      if ("enable" in body && !capable(net, "power_saving")) throw new FakeAnswer(fail(403, "error.network.forbidden"));
+      const n = net.network;
       if (isBool(body.enable)) n.power_saving = body.enable;
       if (isBool(body.power_saving_schedule_enabled)) n.power_saving_schedule_enabled = body.power_saving_schedule_enabled;
       return ok({ power_saving: n.power_saving, power_saving_schedule_enabled: n.power_saving_schedule_enabled });
@@ -211,6 +222,7 @@ export const routes: Route[] = [
     path: "/networks/:net/power_saving/schedules",
     handle: (ctx) => {
       const net = ctx.network(ctx.params.net ?? "");
+      if (!capable(net, "scheduled_power_saving")) bad("error.form.errors");
       const s = scheduleOf(jsonBody(ctx));
       const id = Math.max(0, ...net.powerSavingSchedules.map((x) => Number(x.id) || 0)) + 1;
       const saved = { url: `${net.network.url}/power_saving/schedules/${id}`, id, ...s };

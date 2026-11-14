@@ -690,7 +690,8 @@ export function mapError(status: number, eeroError: string | null, method: strin
   if (status === 402 || e.startsWith("error.premium")) {
     return new BackendError("eero_error", "This needs eero Plus, which Mesh UI does not support.", detail);
   }
-  if (status === 403) return new BackendError("eero_error", "Your role on this network can't change this.", detail);
+  // Not only roles: eero also answers 403 for a feature this hardware lacks (power_saving on an incapable network).
+  if (status === 403) return new BackendError("eero_error", "eero refused this change: your role or this eero hardware does not allow it.", detail);
   if (status === 404 || status === 405 || NOT_AVAILABLE_ERRORS.has(e)) {
     return new BackendError("eero_error", "This isn't available on this network or eero model.", detail);
   }

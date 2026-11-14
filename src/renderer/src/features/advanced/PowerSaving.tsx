@@ -7,12 +7,13 @@
  * runs `.remove` with an Undo that adds it back. An end before the start
  * wraps past midnight ("next day"). Validation is core's (bad_params lands
  * under the field). docs/ux/pages/advanced-networking.md (Network services),
- * mockup 13.
+ * mockup 13. On hardware eero reports as not capable (`power_saving`,
+ * `scheduled_power_saving`), the gates dim both rows and the first says why.
  */
 import { CalendarPlus, Leaf, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { fieldErrors, useWrite } from "~/app/useWrite";
+import { fieldErrors, NOT_AVAILABLE, useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { InlineConfirm } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
@@ -68,8 +69,10 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   const clock = networkClock(timezone);
   const parts = clock.parts(now);
   const minute = parts.hour * 60 + Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone ?? "UTC", minute: "numeric" }).format(now));
-  const unsupported = settings !== undefined && ps?.enabled === null && ps.scheduleEnabled === null;
   const eco = useSettingsWrite<PowerParams>("settings.power_saving.set", "Eco efficiency", offline);
+  // eero reports power_saving not capable on hardware without it (and refuses the write): say so, keep the rows dim.
+  const incapable = eco.gate.reason === NOT_AVAILABLE;
+  const unsupported = incapable || (settings !== undefined && ps?.enabled === null && ps.scheduleEnabled === null);
   const sched = useSettingsWrite<PowerParams>("settings.power_saving.set", "the power saving schedule", offline);
   const baseGate = useGate("settings.power_schedule.add");
   const addGate = baseGate.allowed && offline ? { allowed: false, reason: OFFLINE } : baseGate;
@@ -85,7 +88,7 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
     <>
       <Row
         title="Eco efficiency"
-        description="Use less power when nobody needs full speed"
+        description={incapable ? "Your eero hardware does not support power saving" : "Use less power when nobody needs full speed"}
         dim={unsupported}
         control={<WriteSwitch on={ps?.enabled} label="Eco efficiency" gate={eco.gate} busy={eco.write.running} onToggle={flip(eco, "enabled", "Eco efficiency")} />}
       />

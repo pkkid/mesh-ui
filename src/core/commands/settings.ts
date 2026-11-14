@@ -412,6 +412,23 @@ async function powerSaving(ctx: CommandContext): Promise<M.NetworkSettings> {
   return s;
 }
 
+/** What eero says this hardware cannot do, by `network.get` capability (the spec gate's). */
+export const POWER_CAPABILITY_REFUSED: Record<string, string> = {
+  power_saving: "This network's eero hardware does not support Eco efficiency (eero reports power_saving not capable).",
+  scheduled_power_saving: "This network's eero hardware does not support power saving schedules (eero reports scheduled_power_saving not capable).",
+};
+
+/**
+ * bad_params when eero reports the capability as not capable. A real network
+ * whose hardware lacks it sends `power_saving: false` and answers the write
+ * with 403 (Eco efficiency) or 400 `error.form.errors` (a new schedule), so
+ * say why before eero does. An absent capability is left to eero.
+ */
+async function needCapability(ctx: CommandContext, capability: string): Promise<void> {
+  const n = await ctx.backend.network.get(ctx.net);
+  if (n.capabilities[capability] === false) throw new CommandError("bad_params", POWER_CAPABILITY_REFUSED[capability] ?? `${capability} is not available on this network.`);
+}
+
 function findPowerSchedule(list: M.Schedule[], ref: string): M.Schedule {
   const r = ref.trim();
   const byId = list.find((s) => s.id === r);
@@ -681,9 +698,10 @@ export const commands: AnyCommand[] = [
       })
       .refine((p) => p.enabled !== undefined || p.scheduleEnabled !== undefined, { message: "Give enabled, scheduleEnabled or both." }),
     effect: "write",
-    gate: { area: "settings" },
+    gate: { area: "settings", capability: "power_saving" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.NetworkSettings> => {
+      await needCapability(ctx, "power_saving");
       const s = await ctx.backend.settings.get(ctx.net);
       const ps = s.powerSaving;
       if (p.enabled !== undefined) reported(ps.enabled, "Power saving");
@@ -703,9 +721,10 @@ export const commands: AnyCommand[] = [
     icon: "calendar-plus",
     params: z.object({ ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without running it.") }),
     effect: "write",
-    gate: { area: "settings" },
+    gate: { area: "settings", capability: "scheduled_power_saving" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.Schedule> => {
+      await needCapability(ctx, "scheduled_power_saving");
       const s = await powerSaving(ctx);
       const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
       checkPowerSchedule(s.powerSaving.schedules, input, null);
@@ -726,9 +745,10 @@ export const commands: AnyCommand[] = [
       enabled: z.boolean().optional(),
     }),
     effect: "write",
-    gate: { area: "settings" },
+    gate: { area: "settings", capability: "scheduled_power_saving" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.Schedule> => {
+      await needCapability(ctx, "scheduled_power_saving");
       const list = (await powerSaving(ctx)).powerSaving.schedules;
       const s = findPowerSchedule(list, p.schedule);
       const input: M.ScheduleInput = { name: p.name ?? s.name, days: p.days ?? s.days, start: p.start ?? s.start, end: p.end ?? s.end, enabled: p.enabled ?? s.enabled };
@@ -763,7 +783,12 @@ export const commands: AnyCommand[] = [
     run: async (ctx, p): Promise<M.NetworkSettings> => {
       const s = await ctx.backend.settings.get(ctx.net);
       if (s.timezone === p.timezone) return withoutSecrets(s);
-      return withoutSecrets(await ctx.backend.settings.setTimezone(ctx.net, p.timezone));
+      const saved = await ctx.backend.settings.setTimezone(ctx.net, p.timezone);
+      // eero has answered 200 and kept the old zone (M5.R-fix4): never report that as saved.
+      if (saved.timezone !== p.timezone) {
+        throw new CommandError("eero_error", `eero accepted the time zone but still reports ${saved.timezone ?? "none"}, not ${p.timezone}. Check again in a minute; if it has not changed, eero did not save it.`);
+      }
+      return withoutSecrets(saved);
     },
   }),
   defineCommand({

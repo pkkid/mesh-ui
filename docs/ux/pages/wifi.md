@@ -30,7 +30,7 @@ Name, password, security and 2.4 GHz only now change through the write kit; ever
 
 ## Built in M5 (time zone)
 
-- **Time zone sheet** (Nickname and location > **Edit**, `TimezoneSheet.tsx`): a select of IANA zones (the runtime's list, plus the current zone if missing), the local time in the chosen zone, and the `settings.impact` panel ("Nothing restarts; schedules follow the new time zone"). **Save** runs `settings.timezone.set` (a `write`, no confirm), then a toast "Time zone set to ..." with **Undo**, which sets the old zone back. Edit dims with the gate's reason (settings permission) and while the network is offline.
+- **Time zone sheet** (Nickname and location > **Edit**, `TimezoneSheet.tsx`): a select of IANA zones (the runtime's list, plus the current zone if missing), the local time in the chosen zone, and the `settings.impact` panel ("Nothing restarts; schedules follow the new time zone"). **Save** runs `settings.timezone.set` (a `write`, no confirm), then a toast "Time zone set to ..." with **Undo**, which sets the old zone back. If eero answers but keeps the old zone, the command fails with that reason (an error toast with Retry), so the toast never names a zone eero did not save. Edit dims with the gate's reason (settings permission) and while the network is offline.
 - The network nickname stays read only: no command sets it yet (M6). **Print a card** is still "Coming soon" (M6).
 
 ## Layout

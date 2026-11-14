@@ -412,6 +412,22 @@ describe("dimming writes on the real permissions shape", () => {
     expect(commandUnavailable(del, null, { ...network, role: null })).toBeNull();
   });
 
+  // M5.R-fix4: the owner's Eco efficiency was refused by eero (403), not by this gate: the demo network
+  // reported power_saving capable, so the capability half of the gate never ran on a real-shaped network.
+  // A real network whose hardware lacks it sends power_saving and scheduled_power_saving capable false.
+  it("on a real-shaped network without power saving hardware, the owner sees Not available, never a role reason", async () => {
+    const t = writeSetup();
+    const demo = await read<Network>(t.engine, "network.get");
+    const network: Network = { ...demo, role: "owner", capabilities: { ...demo.capabilities, power_saving: false, scheduled_power_saving: false } };
+    for (const id of ["settings.power_saving.set", "settings.power_schedule.add", "settings.power_schedule.update"]) {
+      expect(commandUnavailable(info(t.commands, id), REAL_OWNER, network), id).toBe(NOT_AVAILABLE);
+    }
+    expect(commandUnavailable(info(t.commands, "settings.power_schedule.remove"), REAL_OWNER, network)).toBeNull();
+    expect(commandUnavailable(info(t.commands, "settings.timezone.set"), REAL_OWNER, network)).toBeNull();
+    const reasons = t.commands.filter((c) => c.effect !== "query" && c.scope === "network").map((c) => commandUnavailable(c, REAL_OWNER, network));
+    expect(reasons.filter((r) => r === NO_PERMISSION || r === "Owner only")).toEqual([]);
+  });
+
   it("a page (useGate by id) and the palette agree on the real shape", async () => {
     const t = writeSetup();
     const network = await read<Network>(t.engine, "network.get");
