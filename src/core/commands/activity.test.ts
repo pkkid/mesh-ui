@@ -103,6 +103,14 @@ describe("events.list on the demo backend", () => {
     expect(window.nextCursor).toBeNull();
   });
 
+  it("exports up to 1,000 events as CSV in one call", async () => {
+    const { engine, backend } = demoEngine();
+    const all = await allEvents(backend);
+    const csv = await ok(engine.execute<string>("events.list", { limit: 1000, format: "csv" }));
+    expect(csv.trimEnd().split("\r\n")).toHaveLength(all.length + 1);
+    expect(await engine.execute("events.list", { limit: 1001, format: "csv" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
   it("exports the page as CSV", async () => {
     const { engine } = demoEngine();
     const json = await ok(engine.execute<M.EventPage>("events.list", { limit: 5 }));

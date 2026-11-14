@@ -36,6 +36,9 @@ export const MAX_PAGES_PER_CALL = 10;
  */
 export const MAX_SUMMARY_PAGES = 20;
 
+/** The most events one CSV export holds (Export CSV asks for the whole filtered range). */
+export const MAX_CSV_ROWS = 1000;
+
 /** Seconds a summary is kept; the Activity page polls it with the stream. */
 export const SUMMARY_TTL = 120;
 
@@ -153,7 +156,7 @@ const eventsList = defineCommand({
   icon: "activity",
   params: z.object({
     cursor: z.string().min(1).optional().describe("nextCursor from the previous page."),
-    limit: z.number().int().min(1).max(50).default(50),
+    limit: z.number().int().min(1).max(MAX_CSV_ROWS).optional().describe(`Events per page, 1 to 50 (default 50); up to ${MAX_CSV_ROWS} with format csv.`),
     type: z.array(z.enum(EVENT_CATEGORIES)).min(1).optional().describe("Only these categories."),
     device: ref("device").optional(),
     eero: ref("eero").optional(),
@@ -173,6 +176,9 @@ const eventsList = defineCommand({
     const since = p.since ? Date.parse(p.since) : null;
     const until = p.until ? Date.parse(p.until) : null;
     if (since !== null && until !== null && since > until) throw new CommandError("bad_params", "since must be before until.");
+    const limit = p.limit ?? 50;
+    if (p.format === "json" && limit > 50) throw new CommandError("bad_params", `limit is 1 to 50; up to ${MAX_CSV_ROWS} only with format csv.`);
+    const pageBudget = p.format === "csv" ? MAX_SUMMARY_PAGES : MAX_PAGES_PER_CALL;
     const filter = await eventFilter(ctx, p);
     const matches = (e: M.NetworkEvent): boolean => (until === null || Date.parse(e.at) <= until) && filter(e);
 
@@ -193,14 +199,14 @@ const eventsList = defineCommand({
         }
         if (!matches(e)) continue;
         out.push(e);
-        if (out.length === p.limit) {
+        if (out.length === limit) {
           next = i + 1 < chunk.events.length ? { c: page, o: i + 1 } : chunk.nextCursor ? { c: chunk.nextCursor, o: 0 } : null;
           done = true;
           break;
         }
       }
       if (done || !chunk.nextCursor) break;
-      if (pages >= MAX_PAGES_PER_CALL) {
+      if (pages >= pageBudget) {
         next = { c: chunk.nextCursor, o: 0 };
         break;
       }
