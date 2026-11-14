@@ -154,8 +154,17 @@ export const settings: EeroArea<"settings"> = (ctx) => {
   }
 };
 
-/** `{name, days, start_time, end_time, enabled}` as FF and LD send it. */
-export const scheduleBody = (s: M.ScheduleInput) => ({ name: s.name, days: s.days, start_time: s.start, end_time: s.end, enabled: s.enabled });
+/** eero's day names for power saving schedules: capitalized, full. */
+export const POWER_DAY_NAMES: Record<M.Day, string> = { MON: "Monday", TUE: "Tuesday", WED: "Wednesday", THU: "Thursday", FRI: "Friday", SAT: "Saturday", SUN: "Sunday" };
+
+/**
+ * `{name, days, start_time, end_time, enabled}`. Days go as capitalized full
+ * names ("Monday"): eero answers `MON` (FF and LD's form, never verified)
+ * and "monday" with a bare 400 `error.form.errors`, and takes "Monday"
+ * (Bretteroo/Eeronaut, checked on a live network; M5.R-fix4).
+ */
+/** Tolerates a missing input so the request (and eero's error) still happens. */
+export const scheduleBody = ({ name, days, start, end, enabled } = {} as M.ScheduleInput) => ({ name, days: Array.from(days ?? [], (d) => POWER_DAY_NAMES[d] ?? d), start_time: start, end_time: end, enabled });
 
 /**
  * Deleting the network (`DELETE {net}`), joined to the network area in

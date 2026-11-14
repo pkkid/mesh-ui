@@ -128,7 +128,7 @@ function applySettings(net: FakeNetwork, body: Record<string, unknown>): Record<
   if ("timezone" in body) {
     const tz = obj(body.timezone)?.value;
     if (typeof tz !== "string" || !/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(tz)) bad("error.timezone.invalid");
-    n.timezone = { ...(obj(n.timezone) ?? {}), value: tz as string };
+    if (!net.ignoreTimezone) n.timezone = { ...(obj(n.timezone) ?? {}), value: tz as string };
   }
   net.network = n;
   return body;
@@ -140,18 +140,28 @@ function jsonBody(ctx: RouteContext): Record<string, unknown> {
   return ctx.req.body;
 }
 
-const DAYS = new Set(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
+/** As eero takes them on power saving schedules: "Monday" only; `MON` and "monday" are 400 `error.form.errors` (Eeronaut, live). */
+const DAYS = new Set(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** A power saving schedule body (`{name, days, start_time, end_time, enabled}`), or 400. */
 function scheduleOf(body: Record<string, unknown>): { name: string; days: string[]; start_time: string; end_time: string; enabled: boolean } {
   const { name, days, start_time, end_time, enabled } = body;
   if (typeof name !== "string" || name.trim() === "") bad("error.schedule.name.invalid");
-  if (!Array.isArray(days) || days.length === 0 || !days.every((d) => typeof d === "string" && DAYS.has(d))) bad("error.schedule.days.invalid");
+  if (!Array.isArray(days) || days.length === 0 || !days.every((d) => typeof d === "string" && DAYS.has(d))) bad("error.form.errors");
   if (typeof start_time !== "string" || !HHMM.test(start_time) || typeof end_time !== "string" || !HHMM.test(end_time)) bad("error.schedule.time.invalid");
   if (enabled !== undefined && !isBool(enabled)) bad("error.schedule.enabled.invalid");
   return { name: name as string, days: days as string[], start_time: start_time as string, end_time: end_time as string, enabled: enabled !== false };
 }
+
+/**
+ * Whether the network's hardware can do it. A real network whose gateway
+ * lacks power saving reports `capabilities.power_saving` and
+ * `scheduled_power_saving` as not capable (M5.R-fix4 capture) and answers
+ * `enable` with 403, while the schedule switch and schedule deletes still
+ * answer 200.
+ */
+const capable = (net: FakeNetwork, name: string) => net.network.capabilities?.[name]?.capable !== false;
 
 const AUTO_SETUP_MODES = new Set(["DEFAULT", "ZTS", "LTS", "OFF"]);
 
@@ -200,7 +210,9 @@ export const routes: Route[] = [
       const body = jsonBody(ctx);
       const keys = Object.keys(body);
       if (keys.length === 0 || keys.some((k) => k !== "enable" && k !== "power_saving_schedule_enabled") || !keys.every((k) => isBool(body[k]))) bad("error.power_saving.invalid");
-      const n = ctx.network(ctx.params.net ?? "").network;
+      const net = ctx.network(ctx.params.net ?? "");
+      if ("enable" in body && !capable(net, "power_saving")) throw new FakeAnswer(fail(403, "error.network.forbidden"));
+      const n = net.network;
       if (isBool(body.enable)) n.power_saving = body.enable;
       if (isBool(body.power_saving_schedule_enabled)) n.power_saving_schedule_enabled = body.power_saving_schedule_enabled;
       return ok({ power_saving: n.power_saving, power_saving_schedule_enabled: n.power_saving_schedule_enabled });

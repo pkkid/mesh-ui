@@ -412,6 +412,20 @@ async function powerSaving(ctx: CommandContext): Promise<M.NetworkSettings> {
   return s;
 }
 
+export const ECO_NOT_CAPABLE = "This network's eero hardware does not support Eco efficiency (eero reports power_saving not capable).";
+
+/**
+ * Turning Eco efficiency on or off needs the `power_saving` capability. A
+ * real network whose gateway lacks it reports capable false and answers
+ * `enable` with 403 (M5.R-fix4), so say why before eero does. The schedule
+ * switch and the schedules still answer there, so only `enabled` is refused;
+ * an absent capability is left to eero.
+ */
+async function needEco(ctx: CommandContext): Promise<void> {
+  const n = await ctx.backend.network.get(ctx.net);
+  if (n.capabilities.power_saving === false) throw new CommandError("bad_params", ECO_NOT_CAPABLE);
+}
+
 function findPowerSchedule(list: M.Schedule[], ref: string): M.Schedule {
   const r = ref.trim();
   const byId = list.find((s) => s.id === r);
@@ -684,6 +698,7 @@ export const commands: AnyCommand[] = [
     gate: { area: "settings" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.NetworkSettings> => {
+      if (p.enabled !== undefined) await needEco(ctx);
       const s = await ctx.backend.settings.get(ctx.net);
       const ps = s.powerSaving;
       if (p.enabled !== undefined) reported(ps.enabled, "Power saving");
@@ -763,7 +778,12 @@ export const commands: AnyCommand[] = [
     run: async (ctx, p): Promise<M.NetworkSettings> => {
       const s = await ctx.backend.settings.get(ctx.net);
       if (s.timezone === p.timezone) return withoutSecrets(s);
-      return withoutSecrets(await ctx.backend.settings.setTimezone(ctx.net, p.timezone));
+      const saved = await ctx.backend.settings.setTimezone(ctx.net, p.timezone);
+      // eero has answered 200 and kept the old zone (M5.R-fix4): never report that as saved.
+      if (saved.timezone !== p.timezone) {
+        throw new CommandError("eero_error", `eero accepted the time zone but still reports ${saved.timezone ?? "none"}, not ${p.timezone}. Check again in a minute; if it has not changed, eero did not save it.`);
+      }
+      return withoutSecrets(saved);
     },
   }),
   defineCommand({
