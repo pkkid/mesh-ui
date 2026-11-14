@@ -263,11 +263,11 @@ describe("network commands (fake eero server)", () => {
     expect(health.eeros).toEqual([
       { id: "500001", location: "Living Room", status: "online", meshBars: null, weakLink: false },
       { id: "500002", location: "Office", status: "online", meshBars: 5, weakLink: false },
-      { id: "500003", location: "Upstairs Hall", status: "online", meshBars: 4, weakLink: false },
+      { id: "500003", location: "Upstairs Hall", status: "online", meshBars: null, weakLink: false },
       { id: "500004", location: "Garage", status: "degraded", meshBars: 1, weakLink: true },
     ]);
     // Garage is weak, so the issue reads eeros (upstream) and devices; a healthy network stays one call.
-    expect(health.issues).toEqual([{ kind: "weak_link", eeroId: "500004", upstreamId: "500001", deviceIds: [] }]);
+    expect(health.issues).toEqual([{ kind: "weak_link", eeroId: "500004", upstreamId: "500002", deviceIds: [] }]);
     expect(fake.log.map((l) => l.path)).toContain("/2.2/networks/100001/eeros");
     expect(fake.log.map((l) => l.path)).toContain("/2.2/networks/100001/devices");
 

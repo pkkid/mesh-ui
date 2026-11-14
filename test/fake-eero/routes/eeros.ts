@@ -46,10 +46,11 @@ export const routes: Route[] = [
       const id = params.id ?? "";
       const net = owner(state, id);
       if (!net) return fail(404, "error.eero.not.found");
-      // Stored oldest first; served in that order so the client must sort.
+      // eero wraps the rows: `{data: [...], meta: {has_more}}`, newest first.
       const offset = Number(req.query.get("offset") ?? 0) || 0;
       const limit = Number(req.query.get("limit") ?? 20) || 20;
-      return ok((net.firmwareHistory[id] ?? []).slice(offset, offset + limit));
+      const rows = net.firmwareHistory[id] ?? [];
+      return ok({ data: rows.slice(offset, offset + limit), meta: { has_more: offset + limit < rows.length } });
     },
   },
 ];

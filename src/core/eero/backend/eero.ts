@@ -7,7 +7,7 @@
 import { BackendError } from "../../errors";
 import type * as M from "../../model";
 import { mapDevice, type RawDeviceFull } from "../map/device";
-import { type Lan, lanOf, mapEero, mapFirmwareHistory, mapPorts, type RawEeroFull } from "../map/eero";
+import { type Lan, lanOf, mapEero, mapFirmwareHistory, mapPorts, portConnections, type RawEeroFull } from "../map/eero";
 import { asList, linkUrl, type RawConnections, type RawEero, type RawFirmwareHistoryEntry, type RawNetwork } from "../raw";
 import { idFromUrl, networkPath } from "../urls";
 import type { EeroArea } from "./index";
@@ -44,15 +44,19 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
     async list(net) {
       const [raws, rawNet] = await Promise.all([rawList(net), network(net)]);
       const lan = lanOf(rawNet, raws);
-      return raws.map((r) => mapEero(r, lan));
+      return raws.map((r) => mapEero(r, lan, raws));
     },
 
     async get(net, id) {
-      const [raw, rawNet] = await Promise.all([rawGet(net, id), network(net)]);
+      // The list names a wireless parent (eero sends only its location); eero.get reads it too, so the client shares the read.
+      const [raw, rawNet, peers] = await Promise.all([rawGet(net, id), network(net), rawList(net).catch((err: unknown) => {
+        if (err instanceof BackendError && err.code === "eero_error") return [] as RawEeroFull[];
+        throw err;
+      })]);
       // The gateway address comes from the gateway eero; a single read only knows it when this is the gateway.
       // eero.get fills it from the list for the others.
       const lan: Lan = lanOf(rawNet, [raw as RawEero]);
-      return mapEero(raw, lan);
+      return mapEero(raw, lan, peers);
     },
 
     async ports(net, id) {
@@ -62,7 +66,7 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
       const owner = mapEero(raw).id || id;
       const interfaces = conn?.ports?.interfaces ?? [];
       // Join only when something is plugged in: two more reads otherwise wasted.
-      if (!interfaces.some((p) => p.neighbor)) return mapPorts(owner, conn, { devices: [], eeros: [] });
+      if (!interfaces.some((p) => portConnections(p).length > 0)) return mapPorts(owner, conn, { devices: [], eeros: [] });
       const [devices, eeros] = await Promise.all([
         client.request({ method: "GET", path: networkPath(net, "devices") }).then((d) => asList<RawDeviceFull>(d, "devices").map((r) => mapDevice(r))),
         rawList(net).then((list) => list.map((e) => mapEero(e))),

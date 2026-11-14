@@ -73,7 +73,7 @@ Internet / WAN
 | `ip_settings` | obj | `{public_ip: "203.0.113.9", double_nat: false}` | Public IP, double-NAT warning |
 | `gateway_ip`, `wan_ip`, `wan_type` | str | "192.0.2.1", "DHCP" | WAN card |
 | `connection.mode` | str | "nat", "bridged", "ipPassthrough" | Mode; gates profiles/forwards |
-| `lease` | obj | `{mode: "dhcp", dhcp:{ip, mask, router}, static}` | WAN lease |
+| `lease` | obj | `{mode: "dhcp", dhcp:{ip, mask, router}, static}` | WAN lease. Confirmed on a real DHCP WAN (2026-11-13): `dhcp.{ip, mask, router}: string`, `static: null`, and no lease or renew time anywhere in `GET {net}` |
 | `ipv6_lease`, `upstream[]` | any | | |
 | `pppoe_enabled`, `pppoe_username`, `vlan` | bool/str | | ISP settings |
 | `backup_internet_enabled` | bool | | Out of scope (Plus) |
@@ -136,8 +136,8 @@ Business: `network_customer_type` / `network_type`, `organization`, `image_asset
 | `bands[]` | list | "band_2_4GHz", "band_5GHz_low", "band_5GHz_high", "band_6GHz" | Band chips |
 | `wired`, `connection_type`, `using_wan` | bool, str | true, "WIRED" | **Backhaul type** |
 | `mesh_quality_bars` | int 1-5 | 5 | **Mesh signal bars** (wireless backhaul) |
-| `wireless_upstream_node` | obj | | **Topology**: parent node for wireless backhaul |
-| `ethernet_status` | `{wiredInternet, segmentId, statuses:[{interfaceNumber, hasCarrier, speed "P1000", isWanPort, isLte, isLeafWiredToUpstream, power_saving, original_speed, derated_reason, lldpInfo[], neighbor:{type: "EERO", metadata:{location,...}}}]}` | | **Topology** for wired backhaul, port speeds |
+| `wireless_upstream_node` | obj or null | `{name: string, primary_mesh_radio: string, node_or_proxied_node_id: number, is_proxied_node: bool}` | **Topology**: parent of a wireless eero. Real capture (2026-11-13): no `url`; `name` equals the parent's `location`; `node_or_proxied_node_id` matches no eero id. Null on wired eeros |
+| `ethernet_status` | `{wiredInternet, segmentId, statuses:[{interfaceNumber, hasCarrier, speed "P1000", isWanPort, isLte, isLeafWiredToUpstream, power_saving, original_speed, derated_reason, lldpInfo[], port_name, port_security, poe, bandwidth_usage{tx_bytes, rx_bytes}, port_flap_info, neighbor:{type: "EERO", metadata:{port: number, port_name, location, url "/2.2/eeros/{id}"}}}]}` | | **Topology** for wired backhaul, port speeds. Real capture (2026-11-13): `isLeafWiredToUpstream` false on every port, the wired satellite's uplink included; that uplink is the `isWanPort` port, with the parent as `neighbor`. A port without carrier still reports `speed` `"P10"`. The gateway's WAN port has no `neighbor` |
 | `port_details[]` | `[{ethernet_address, port_name, position}]` | | Port labels |
 | `connected_clients_count`, `connected_wired_clients_count`, `connected_wireless_clients_count` | int | 5, 2, 3 | **Clients per node** |
 | `radio_channel_stats` | `{band_2_4GHz:{channel, channel_width, tx_power, channel_utilization, client_count}, band_5GHz_low:{...}, band_5GHz_high:{...}, band_6GHz:{...}}` | | **Channel / utilization panel** |
@@ -152,6 +152,26 @@ Business: `network_customer_type` / `network_type`, `organization`, `image_asset
 | `resources` | `{led_action, reboot, connections, ...}` | | Action URLs |
 
 Connections (`GET resources.connections`): `ports.interfaces[]` with `interface_number, name, port_status, negotiated_speed, supported_speed, network_type, poe_status, ethernet_address, actions[{type}]`, plus `node_actions[{type}]` and `wireless_devices[{type, metadata{display_name, device_type}}]`. Drives a per-node **port map** and "what's plugged in".
+
+Confirmed on a real gateway (2026-11-13), paths and types:
+
+| Path | Type | Seen |
+|---|---|---|
+| `ports.layout` | object | `{layout_type: "TWO_PORT_A", position_rank_order: number[]}` |
+| `ports.interfaces[].interface_number` | number | |
+| `ports.interfaces[].port_status` | string | `DATA_CONNECTED`, `WAN` |
+| `ports.interfaces[].network_type` | string | `UNKNOWN` on both ports, the WAN port included |
+| `ports.interfaces[].negotiated_speed`, `supported_speed` | string | `P1000` |
+| `ports.interfaces[].is_upstream` | boolean | true on the WAN port |
+| `ports.interfaces[].connection_status.type` | string | `WAN_SOURCE` (metadata `{advanced_attributes{connection_type}}`), `MULTIPLE_DEVICES` |
+| `ports.interfaces[].connection_status.metadata.multiple_devices.connections[]` | array | `{type: "EERO_DEVICE", metadata{location, model, model_name, url, advanced_attributes}}` or `{type: "CLIENT_DEVICE", metadata{display_name, device_type, url, advanced_attributes}}` |
+| `ports.interfaces[].actions[]` | array | `{type: "DISABLE_PORT", position: number}` |
+| `ports.interfaces[].port_security` | object | `{capable, enabled, status, display_status}` |
+| `ports.interfaces[].capable_protocols`, `disabled_protocols` | string[] | |
+| `ports.interfaces[].is_sfp`, `sfp`, `providing_power`, `port_flap_info` | boolean, null | |
+| `wireless_devices[]` | array | `{type: "CLIENT_DEVICE", metadata{display_name, device_type, url}}` |
+
+There is no `neighbor` on a connections port; `poe_status` was absent.
 
 ## Device / client (`GET {network}/devices`)
 

@@ -10,14 +10,9 @@ import type { RawAccount, RawEero, RawNetwork, RawPermissions, RawSpeedTest, Raw
 import { idFromUrl } from "../urls";
 
 /** Fields read here that raw.ts does not list yet (shapes partly unverified). */
-type RawEeroWan = RawEero & {
-  ethernet_status?: { statuses?: { isWanPort?: boolean; speed?: string; hasCarrier?: boolean }[] };
-};
 type RawNetworkWan = RawNetwork & {
-  pppoe_enabled?: boolean;
+  pppoe_enabled?: boolean | null;
   ipv6_lease?: { ip?: string; address?: string; prefix?: string; prefix_delegation?: string; ipv6_prefix?: string } | null;
-  /** The renew time is unverified: `renews_on` if eero sends it, else `expires_on`. */
-  lease?: { mode?: string; dhcp?: { ip?: string; mask?: string; router?: string; renews_on?: string; expires_on?: string } };
 };
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v : null);
@@ -235,11 +230,13 @@ function wanType(raw: RawNetworkWan): M.Internet["wanType"] {
   return null;
 }
 
-/** When the WAN DHCP lease renews, from `lease.dhcp`; null off DHCP or when eero sends no time. */
-export function leaseRenewsAt(raw: RawNetworkWan): M.Iso | null {
-  if (wanType(raw) !== "dhcp") return null;
-  const dhcp = raw.lease?.dhcp;
-  return toIso(dhcp?.renews_on) ?? toIso(dhcp?.expires_on);
+/**
+ * When the WAN DHCP lease renews. eero sends no lease time: a real DHCP WAN
+ * has only `lease.dhcp.{ip, mask, router}`, and no other date in `GET {net}`
+ * is about the lease (capture of 2026-11-13). Always null from the live API.
+ */
+export function leaseRenewsAt(_raw: RawNetwork): M.Iso | null {
+  return null;
 }
 
 /** `speed` on the network: the latest test. `rating` is left for core. */
@@ -257,8 +254,9 @@ export function mapInternet(raw: RawNetwork, eeros: RawEero[] = eerosOf(raw)): O
   const wanIp = str(raw.ip_settings?.public_ip) ?? str(raw.wan_ip);
   const dnsMode = raw.dns?.mode === "custom" ? "custom" : raw.dns?.mode === "automatic" ? "automatic" : null;
   const dnsIps = (dnsMode === "custom" ? raw.dns?.custom?.ips : raw.dns?.parent?.ips) ?? [];
-  const gw = gatewayOf(eeros) as RawEeroWan | null;
-  const wanPort = gw?.ethernet_status?.statuses?.find((s) => s.isWanPort === true);
+  const gw = gatewayOf(eeros);
+  // A port without carrier still reports a speed ("P10"), so only a linked WAN port counts.
+  const wanPort = gw?.ethernet_status?.statuses?.find((s) => s.isWanPort === true && s.hasCarrier !== false);
   const doubleNat = bool(raw.ip_settings?.double_nat) ?? (str(raw.wan_ip) ? isPrivateIpv4(raw.wan_ip) : null);
   const v6 = r.ipv6_lease && typeof r.ipv6_lease === "object" ? r.ipv6_lease : null;
   return {

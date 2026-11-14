@@ -3,7 +3,7 @@ import { createFakeEero } from "../../../test/fake-eero/server";
 import { type AuthState, composeBackend, type SecretStore } from "../backend";
 import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
-import { bandOf, cidr, eeroStatus, lanOf, mapEero, mapFirmwareHistory, mapPorts, portSpeed } from "../eero/map/eero";
+import { bandOf, eeroStatus, lanOf, mapEero, mapFirmwareHistory, mapPorts, portSpeed } from "../eero/map/eero";
 import { createEngine } from "../engine";
 import { meshQuality, withTopology } from "./eero";
 import type * as M from "../model";
@@ -156,15 +156,23 @@ describe("eero commands (fake eero server)", () => {
     if (!r.ok) throw new Error(r.error.message);
     expect(r.result.map((e) => [e.id, e.location, e.status, e.isGateway, e.backhaul, e.upstream, e.meshBars])).toEqual([
       ["500001", "Living Room", "online", true, "wired", null, null],
-      ["500004", "Garage", "degraded", false, "wireless", "500001", 1],
+      // Wireless parents come by name (eero sends no url); the wired one from its EERO neighbour on the WAN-labelled port.
+      ["500004", "Garage", "degraded", false, "wireless", "500002", 1],
       ["500002", "Office", "online", false, "wireless", "500001", 5],
-      ["500003", "Upstairs Hall", "online", false, "wireless", "500001", 4],
+      ["500003", "Upstairs Hall", "online", false, "wired", "500001", null],
+    ]);
+    // Hop follows the real links, not the "hangs off the gateway" fallback.
+    expect(r.result.map((e) => [e.location, e.hop])).toEqual([
+      ["Living Room", 0],
+      ["Garage", 2],
+      ["Office", 1],
+      ["Upstairs Hall", 1],
     ]);
     const garage = r.result.find((e) => e.location === "Garage");
     expect(garage).toMatchObject({ model: "eero Beacon", bands: ["2.4", "5", "6"], nightlight: { mode: "off", brightness: 50, on: "20:00", off: "07:00" }, firmware: "7.10.1", updateAvailable: true });
     expect(fake.log.map((l) => `${l.method} ${l.path}`).sort()).toEqual(["GET /2.2/networks/100001", "GET /2.2/networks/100001/eeros"]);
-    // Automatic DHCP: eero does not say which range it picked. The gateway is the gateway eero's address.
-    expect(r.result.map((e) => [e.subnet, e.gatewayIp])).toEqual(Array(4).fill([null, "192.168.4.1"]));
+    // Automatic DHCP: eero's default LAN, as reservation.list reports it. The gateway is the gateway eero's address.
+    expect(r.result.map((e) => [e.subnet, e.gatewayIp])).toEqual(Array(4).fill(["192.168.4.0/22", "192.168.4.1"]));
   });
 
   it("maps a custom DHCP subnet and drops the gateway in bridge mode", async () => {
@@ -197,7 +205,7 @@ describe("eero commands (fake eero server)", () => {
     expect(fake.log.map((l) => l.path)).toContain("/2.2/eeros/500001/connections");
   });
 
-  it("joins an attached eero by MAC and skips the joins when nothing is plugged in", async () => {
+  it("joins an attached eero by url and skips the joins when nothing is plugged in", async () => {
     const { fake, engine } = fakeEngine();
     close = fake.close;
     const net = fake.state.networks.get("100001");
@@ -209,8 +217,17 @@ describe("eero commands (fake eero server)", () => {
     const idle = await engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Office" });
     expect(idle.ok && idle.result.ports.every((p) => p.attached === null && p.status === "down" && p.speedMbps === null)).toBe(true);
     expect(fake.log.slice(before).some((l) => l.path.endsWith("/devices"))).toBe(false);
-    // Plug the Office eero (wired backhaul) into Upstairs Hall port 1; the neighbor carries only a MAC in upper case.
-    if (ifaces[0]) Object.assign(ifaces[0], { port_status: "UP", negotiated_speed: "P10G", neighbor: { type: "EERO", metadata: { mac: office?.mac_address?.toUpperCase() } } });
+    // Plug the Office eero and a switch with two devices into Upstairs Hall port 1, as eero reports it.
+    if (ifaces[0]) {
+      Object.assign(ifaces[0], {
+        port_status: "DATA_CONNECTED",
+        negotiated_speed: "P10G",
+        connection_status: {
+          type: "MULTIPLE_DEVICES",
+          metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: { display_name: "Printer", url: "/2.2/networks/100001/devices/0" } }, { type: "EERO_DEVICE", metadata: { location: "Office", model: "eero Pro 7", url: office?.url } }] } },
+        },
+      });
+    }
     const r = await engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Upstairs Hall" });
     expect(r.ok && r.result.ports[0]).toMatchObject({ status: "up", speedMbps: 10_000, attached: { deviceId: null, eeroId: "500002", name: "Office" } });
   });
@@ -222,7 +239,7 @@ describe("eero commands (fake eero server)", () => {
     expect(r.ok && r.result).toEqual({ eeroId: "500004", ports: [] });
   });
 
-  it("sorts firmware history newest first (eero stores it oldest first) and marks current", async () => {
+  it("maps firmware history rows (firmware_version, finished_at) newest first and marks current", async () => {
     const { fake, engine } = fakeEngine();
     close = fake.close;
     const r = await engine.execute<M.FirmwareEntry[]>("eero.firmware.history", { eero: "Office" });
@@ -255,6 +272,9 @@ describe("eero commands (fake eero server)", () => {
     close = fake.close;
     const r = await engine.execute<M.Eero>("eero.get", { eero: "Office" });
     expect(r.ok && r.result).toMatchObject({ id: "500002", serial: "FAKE00OF0002", location: "Office" });
+    // A single read names the wireless parent from the list, so eero.get agrees with eero.list.
+    const garage = await engine.execute<M.Eero>("eero.get", { eero: "Garage" });
+    expect(garage.ok && [garage.result.upstream, garage.result.hop, garage.result.subnet]).toEqual(["500002", 2, "192.168.4.0/22"]);
     expect(fake.log.map((l) => l.path)).toContain("/2.2/eeros/500002");
     const other = await engine.execute("eero.get", { eero: "Cabin", networkId: "Maple Street" });
     expect(other).toMatchObject({ ok: false, error: { code: "bad_params" } });
@@ -301,13 +321,10 @@ describe("eero mapper", () => {
   });
 
   it("reads LAN subnets and the gateway address", () => {
-    expect(cidr("192.168.4.7", "255.255.252.0")).toBe("192.168.4.0/22");
-    expect(cidr("10.0.0.0", "255.0.0.0")).toBe("10.0.0.0/8");
-    expect(cidr("10.0.0.0", "255.0.255.0")).toBeNull();
-    expect(cidr("300.0.0.0", "255.255.255.0")).toBeNull();
-    expect(cidr(null, "255.255.255.0")).toBeNull();
     const gw = { gateway: true, ip_address: "192.168.7.1" };
     expect(lanOf({ dhcp: { mode: "custom", custom: { subnet_ip: "192.168.7.0", subnet_mask: "255.255.255.0" } } }, [{ ip_address: "192.168.7.9" }, gw])).toEqual({ subnet: "192.168.7.0/24", gatewayIp: "192.168.7.1" });
+    // Automatic DHCP: eero's default LAN, the same source as reservation.list.
+    expect(lanOf({ dhcp: { mode: "automatic" }, connection: { mode: "nat" } }, [gw])).toEqual({ subnet: "192.168.4.0/22", gatewayIp: "192.168.7.1" });
     expect(lanOf({ dhcp: { mode: "automatic" }, connection: { mode: "bridged" } }, [gw])).toEqual({ subnet: null, gatewayIp: null });
     expect(lanOf(null, [])).toEqual({ subnet: null, gatewayIp: null });
   });
@@ -317,27 +334,29 @@ describe("eero mapper", () => {
   });
 
   it("maps odd port rows without throwing", () => {
-    const r = mapPorts("1", { ports: { interfaces: [{ interface_number: 2, port_status: "disabled", poe_status: "ENABLED", actions: [{ type: "enable_port" }, { type: "ENABLE_PORT_SECURITY" }, {}] }, { port_status: "UP", negotiated_speed: "P1000", neighbor: { type: "DEVICE", metadata: { mac: "AA:BB:CC:00:11:22", display_name: "NAS" } } }] } }, { devices: [], eeros: [] });
+    const r = mapPorts("1", { ports: { interfaces: [{ interface_number: 2, port_status: "disabled", poe_status: "ENABLED", actions: [{ type: "enable_port" }, { type: "ENABLE_PORT_SECURITY" }, {}] }, { port_status: "DATA_CONNECTED", negotiated_speed: "P1000", connection_status: { type: "MULTIPLE_DEVICES", metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: { url: "/2.2/networks/1/devices/aabbcc001122", display_name: "NAS" } }] } } } }, { interface_number: 3, port_status: "DISCONNECTED", negotiated_speed: "P1000", connection_status: { type: "MULTIPLE_DEVICES", metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: {} }, { type: "CLIENT_DEVICE", metadata: {} }] } } } }] } }, { devices: [], eeros: [] });
     expect(r.ports).toEqual([
       { number: 2, name: null, status: "disabled", speedMbps: null, supportedMbps: null, isWan: false, poe: "on", mac: null, attached: null, actions: ["ENABLE_PORT"] },
       { number: 2, name: null, status: "up", speedMbps: 1000, supportedMbps: null, isWan: false, poe: null, mac: null, attached: { deviceId: "aabbcc001122", eeroId: null, name: "NAS" }, actions: [] },
+      { number: 3, name: null, status: "down", speedMbps: null, supportedMbps: null, isWan: false, poe: null, mac: null, attached: { deviceId: null, eeroId: null, name: "2 devices" }, actions: [] },
     ]);
     expect(mapPorts("1", null, { devices: [], eeros: [] })).toEqual({ eeroId: "1", ports: [] });
   });
 
   it("orders firmware history and marks only the newest running version current", () => {
     const rows = [
-      { os_version: "7.1", installed: "2026-01-01T00:00:00Z" },
-      { version: "7.3", installed_at: "2026-03-01T00:00:00Z" },
-      { os_version: "7.1", created: "2026-04-01T00:00:00Z" },
-      { os_version: "7.0" },
-      { status: "failed" },
+      { firmware_version: "v7.1-2+20260101.prod", finished_at: "2026-01-01T00:00:00Z" },
+      { firmware_version: "v7.3-1+20260301.prod", timestamp: "2026-03-01T00:00:00Z" },
+      { firmware_version: "v7.1-2+20260401.prod", finished_at: "2026-04-01T00:00:00+0000", timestamp: "2026-03-31T23:59:00Z" },
+      { firmware_version: "v7.0-9" },
+      { firmware_version: "v7.4-0+20260501.prod", finished_at: "2026-05-01T00:00:00Z", outcome: "Failure", status: "failed" },
+      { status: "completed" },
     ];
-    expect(mapFirmwareHistory(rows, "7.1")).toEqual([
-      { version: "7.1", installedAt: "2026-04-01T00:00:00Z", current: true },
-      { version: "7.3", installedAt: "2026-03-01T00:00:00Z", current: false },
-      { version: "7.1", installedAt: "2026-01-01T00:00:00Z", current: false },
-      { version: "7.0", installedAt: null, current: false },
+    expect(mapFirmwareHistory(rows, "v7.1-2")).toEqual([
+      { version: "v7.1-2", installedAt: "2026-04-01T00:00:00.000Z", current: true },
+      { version: "v7.3-1", installedAt: "2026-03-01T00:00:00.000Z", current: false },
+      { version: "v7.1-2", installedAt: "2026-01-01T00:00:00.000Z", current: false },
+      { version: "v7.0-9", installedAt: null, current: false },
     ]);
     expect(mapFirmwareHistory(rows, null).some((f) => f.current)).toBe(false);
   });
