@@ -77,6 +77,11 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   const baseGate = useGate("settings.power_schedule.add");
   const addGate = baseGate.allowed && offline ? { allowed: false, reason: OFFLINE } : baseGate;
   const [sheet, setSheet] = useState<SheetMode | null>(null);
+  // Without the hardware, schedules cannot be added or edited, but eero still deletes leftovers.
+  const removeBase = useGate("settings.power_schedule.remove");
+  const removeGate = removeBase.allowed && offline ? { allowed: false, reason: OFFLINE } : removeBase;
+  const removeOnly = !addGate.allowed && removeGate.allowed;
+  const remove = useWrite<{ schedule: string }>("settings.power_schedule.remove", { confirmIn: "dialog" });
 
   const flip = (w: typeof eco, key: keyof PowerParams, what: string) => (on: boolean) =>
     void w.write.run(
@@ -98,7 +103,7 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
         dim={unsupported}
         control={<WriteSwitch on={ps?.scheduleEnabled} label="Power saving schedule" gate={sched.gate} busy={sched.write.running} onToggle={flip(sched, "scheduleEnabled", "The power saving schedule")} />}
       >
-        {!unsupported && (
+        {(!unsupported || schedules.length > 0) && (
           <SubPanel className="flex flex-col gap-3">
             {schedules.length === 0 ? (
               <span className="text-muted-foreground text-xs">{settings ? "No power saving schedules yet." : " "}</span>
@@ -114,9 +119,26 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
                       {s.enabled ? "" : " · off"}
                     </span>
                     <span className="ms-auto">
-                      <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
-                        <Pencil />
-                      </GatedButton>
+                      {removeOnly ? (
+                        <GatedButton
+                          size="icon-xs"
+                          variant="ghost-muted"
+                          gate={removeGate}
+                          aria-label={`Delete ${s.name}`}
+                          onClick={() =>
+                            void remove.run(
+                              { schedule: s.id },
+                              { askFirst: true, confirm: { title: `Delete ${s.name}?`, message: "This eero hardware cannot add it back.", confirmLabel: "Delete schedule" }, success: `Deleted ${s.name}` },
+                            )
+                          }
+                        >
+                          <Trash2 />
+                        </GatedButton>
+                      ) : (
+                        <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
+                          <Pencil />
+                        </GatedButton>
+                      )}
                     </span>
                   </li>
                 ))}

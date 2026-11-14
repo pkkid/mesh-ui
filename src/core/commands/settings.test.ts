@@ -75,7 +75,7 @@ describe("settings.get (demo)", () => {
     const s = await ok(demoEngine().execute<M.NetworkSettings>("settings.get", { networkId: MOM }));
     expect(s).toMatchObject({ connectionMode: "bridged", upnp: null, sqm: null, natRandomization: null, mlo: null, thread: null });
     expect(s.dhcp).toEqual({ mode: "bridged", subnetIp: null, subnetMask: null, gateway: null, startIp: null, endIp: null });
-    expect(s.powerSaving.schedules).toEqual([]);
+    expect(s.powerSaving.schedules.map((x) => x.name)).toEqual(["At work"]);
   });
 
   it("answers for an admin network too", async () => {
@@ -817,6 +817,9 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     expect(r).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("does not support Eco efficiency") } });
     const add = await engine.execute("settings.power_schedule.add", { networkId: MOM, name: "Night", days: ["MON"], start: "22:00", end: "06:00" });
     expect(add).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("does not support power saving schedules") } });
+    // A leftover schedule can still be deleted, as on the real network.
+    await ok(engine.execute("settings.power_schedule.remove", { networkId: MOM, schedule: "At work" }));
+    expect((await settingsOf(engine, MOM)).powerSaving.schedules).toEqual([]);
   });
 });
 

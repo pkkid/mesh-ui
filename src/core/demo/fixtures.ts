@@ -1061,7 +1061,8 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       mlo: null,
       legacyMode: false,
       simpleSetup: false,
-      powerSaving: { enabled: null, scheduleEnabled: null, schedules: [] },
+      // Like the real network without the hardware: switches reported off, capability false, one leftover schedule to delete.
+      powerSaving: { enabled: false, scheduleEnabled: false, schedules: [{ id: "71", name: "At work", days: ["MON", "TUE", "WED", "THU", "FRI"], start: "09:00", end: "17:00", enabled: true }] },
       thread: null,
     },
     threadCredentials: null,
