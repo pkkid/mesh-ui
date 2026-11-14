@@ -204,7 +204,8 @@ describe("settings mapping", () => {
   it("reads modes and words eero sends in several spellings", () => {
     expect(["nat", "bridged", "BRIDGE", "ip_passthrough", "ipPassthrough", "x", null].map(connectionMode)).toEqual(["nat", "bridged", "bridged", "ipPassthrough", "ipPassthrough", null, null]);
     expect(["multi", "MLO_DISABLED", "single_link", "auto", undefined].map(mloMode)).toEqual(["multi", "disabled", "single", null, null]);
-    expect(["enabled", "DISABLED", "auto", true, "mystery", null].map(simpleSetup)).toEqual([true, false, true, true, null, null]);
+    // Only ZTS is on: eero's app turns it on with ZTS and off with DEFAULT, which eero stores as LTS.
+    expect(["ZTS", "zts", "LTS", "DEFAULT", "OFF", true, "enabled", null].map(simpleSetup)).toEqual([true, true, false, false, false, true, null, null]);
     expect(["1:00", "01:00:00", "23:59", "24:00", "25:00", "noon", 5].map(hhmm)).toEqual(["01:00", "01:00", "23:59", "00:00", null, null, null]);
     expect(prefixMask(22)).toBe("255.255.252.0");
     expect(prefixMask(24)).toBe("255.255.255.0");
@@ -359,9 +360,9 @@ describe("poll topics", () => {
 });
 
 describe("M5.1 mapping and fake server fixtures", () => {
-  it("maps eero Simple Setup's captured LTS value to on, and keeps unknown words null", () => {
-    expect(simpleSetup("LTS")).toBe(true);
-    expect(simpleSetup("DISABLED")).toBe(false);
+  it("maps eero Simple Setup's captured LTS value to off (M5 review: eero's app said Off), and keeps unknown words null", () => {
+    expect(simpleSetup("LTS")).toBe(false);
+    expect(simpleSetup("ZTS")).toBe(true);
     expect(simpleSetup("SOMETHING_NEW")).toBeNull();
   });
 
@@ -831,8 +832,8 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     ["settings.legacy_mode.set", { enabled: true }, req("PUT", "/ac_compat", { enabled: "true" }, "form"), (s) => s.legacyMode, true],
     ["settings.power_saving.set", { scheduleEnabled: false }, req("PUT", "/power_saving", { power_saving_schedule_enabled: false }), (s) => [s.powerSaving.enabled, s.powerSaving.scheduleEnabled], [true, false]],
     ["settings.power_saving.set", { enabled: false }, req("PUT", "/power_saving", { enable: false }), (s) => s.powerSaving.enabled, false],
-    ["settings.simple_setup.set", { enabled: false }, req("PUT", "/auto_setup_mode", { mode: "OFF" }), (s) => s.simpleSetup, false],
-    ["settings.thread.set", { enabled: false }, req("PUT", "/thread", { thread_enable: false }), (s) => s.thread?.enabled, false],
+    ["settings.simple_setup.set", { enabled: false }, req("PUT", "/auto_setup_mode", { mode: "DEFAULT" }), (s) => s.simpleSetup, false],
+    ["settings.thread.set", { enabled: false }, req("PUT", "/thread/enable", { enabled: false }), (s) => s.thread?.enabled, false],
     ["settings.thread.set", { credentialSync: false }, req("PUT", "/thread", { enable_credential_syncing: false }), (s) => s.thread?.credentialSync, false],
   ];
 
@@ -846,13 +847,48 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     expect(pick(await settingsOf(s.engine, N))).toEqual(want);
   });
 
-  it("Simple Setup on sends LTS, the value a real network reads", async () => {
-    const s = fakeEngine((f) => void (f.state.networks.get(N)!.network.auto_setup_mode = "OFF"));
+  it("Simple Setup: LTS (eero's off) reads off; on sends ZTS; off sends DEFAULT, which eero stores as LTS", async () => {
+    // Lake Cabin reads LTS, as the M5 review's real network did while eero's app said Off.
+    const L = "100002";
+    const s = fakeEngine();
     fake = s.fake;
-    expect((await settingsOf(s.engine, N)).simpleSetup).toBe(false);
-    await ok(s.engine.execute("settings.simple_setup.set", { networkId: N, enabled: true }));
-    expect(sent(s.fake)).toEqual([req("PUT", "/auto_setup_mode", { mode: "LTS" })]);
-    expect((await settingsOf(s.engine, N)).simpleSetup).toBe(true);
+    expect((await settingsOf(s.engine, L)).simpleSetup).toBe(false);
+    await ok(s.engine.execute("settings.simple_setup.set", { networkId: L, enabled: true }));
+    expect((await settingsOf(s.engine, L)).simpleSetup).toBe(true);
+    await ok(s.engine.execute("settings.simple_setup.set", { networkId: L, enabled: false }));
+    expect((await settingsOf(s.engine, L)).simpleSetup).toBe(false);
+    const at = `/2.2/networks/${L}/auto_setup_mode`;
+    expect(sent(s.fake).map((w) => [w.path, w.body])).toEqual([
+      [at, { mode: "ZTS" }],
+      [at, { mode: "DEFAULT" }],
+    ]);
+    expect(s.fake.state.networks.get(L)?.network.auto_setup_mode).toBe("LTS");
+  });
+
+  it("Thread off goes to {thread}/enable; thread_enable on {thread} is ignored by eero, as the M5 review saw", async () => {
+    const s = fakeEngine();
+    fake = s.fake;
+    await ok(s.engine.execute("settings.thread.set", { networkId: N, enabled: false, credentialSync: false }));
+    expect(sent(s.fake)).toEqual([req("PUT", "/thread/enable", { enabled: false }), req("PUT", "/thread", { enable_credential_syncing: false })]);
+    expect((await settingsOf(s.engine, N)).thread).toMatchObject({ enabled: false, credentialSync: false });
+    expect(s.fake.state.networks.get(N)?.network.thread).toBe(false);
+    await ok(s.engine.execute("settings.thread.set", { networkId: N, enabled: true }));
+    expect((await settingsOf(s.engine, N)).thread?.enabled).toBe(true);
+  });
+
+  it("a write eero answers 200 but does not apply fails with eero_error instead of reporting success", async () => {
+    const s = fakeEngine();
+    fake = s.fake;
+    // The old Thread request: eero answers 200 and Thread stays on.
+    await s.fake.fetch(`${s.fake.origin}${base}/thread`, { method: "PUT", headers: { "content-type": "application/json", cookie: `s=${s.fake.signIn()}` }, body: JSON.stringify({ thread_enable: false }) });
+    expect(s.fake.state.networks.get(N)?.thread?.enabled).toBe(true);
+    const stuck: typeof s.backend = { ...s.backend, settings: { ...s.backend.settings, setThread: (id) => s.backend.settings.get(id), setSimpleSetup: (id) => s.backend.settings.get(id) } };
+    const engine = createEngine({ backend: stuck, clock: () => NOW });
+    expect(await engine.execute("settings.thread.set", { networkId: N, enabled: false })).toMatchObject({
+      ok: false,
+      error: { code: "eero_error", message: "eero accepted the change but did not apply it. Thread is still on." },
+    });
+    expect(await engine.execute("settings.simple_setup.set", { networkId: N, enabled: false })).toMatchObject({ ok: false, error: { code: "eero_error" } });
   });
 
   it("power saving schedules: POST, PUT and DELETE on the schedule, past midnight", async () => {

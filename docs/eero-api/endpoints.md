@@ -30,6 +30,7 @@ recognise their errors. Do not build commands for them.
   - **LD** Los33c/unofficial_eero_desktop_native (desktop app; ships a 3,700 line API-REFERENCE.md)
   - **MX** 343max/eero-client (PyPI `eero`), **ES** EvanSchalton/eero-client (PyPI `eero-client`, pydantic models)
   - **EH** erikh/eero (Rust), **DC** dciobanu/eero-cli (Go), **ED** EnricoFlammini/Dashboard_EERO, **YV** Yeraze/eeroVista, **XD** xrvk/eero-dashboard (wraps FF)
+  - **Eeronaut** Bretteroo/Eeronaut (web app; its comments quote eero's own Android client and record writes checked on a live network)
 
 Approximate total: about 230 distinct eero API endpoints (method + path) across all sources, of which roughly 150 are relevant to a router management client. LD alone documents ~300 calls including billing, chat, Guardian VPN, Amazon sign-in and onboarding.
 
@@ -110,7 +111,7 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | PUT | `{net}/settings` | JSON `{wpa3: bool}` | W | SX, FF, LD | Read `wpa3`. Older devices may drop. |
 | PUT | `{net}/settings` | JSON `{sqm: bool}` | W | SX, FF, LD | "Optimize for conferencing and gaming" (Smart Queue Management). FF sends it as query `?sqm=true`; SX/LD as JSON. |
 | PUT | `{net}/settings` | JSON `{ipv6_upstream: bool}` (FF `set_ipv6` also sends `ipv6_downstream`) | W | SX, FF, LD | IPv6 toggle. |
-| PUT | `{net}/settings` | JSON `{ffs: bool}` | W | LD | Amazon Frustration-Free Setup. |
+| PUT | `{net}/settings` | JSON `{ffs: bool}` | W | LD | Amazon Frustration-Free Setup. Unverified: eero's own app shows no switch for it (M5 review), and a real network sends `ffs` and capability `ffs` both true. |
 | PUT | `{net}/settings` | form `name` | W | FF | Rename SSID (FF live-verified). |
 | PUT | `{net}/settings` | JSON `{timezone: {value: "America/New_York"}}` | W | LD | Schedules follow network timezone. |
 | PUT | `{net}/settings` | JSON `{dns: {mode: "automatic"|"custom", caching: bool, custom: {ips: [..up to 4, v4 or v6]}}}` and/or `{ipv6: {name_servers: {mode, custom: [...]}}}` | W **D** | FF, LD | Custom DNS. **Confirmed mesh reboot (FF).** Read from `dns{mode, caching, parent{ips}, custom{ips}}`, `ipv6.name_servers`. |
@@ -134,10 +135,10 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | PUT | `{net}/ddns/enable` | none | W $ | SX, FF, LD | eero DDNS. State in `ddns{enabled, subdomain}`. |
 | PUT | `{net}/ddns/disable` | none | W $ | SX, FF, LD | |
 | GET | `{net}/thread` | - | R | SX, FF, LD, ES | `{url, enabled, enable_credential_syncing, name, channel, pan_id, xpan_id, master_key, commissioning_credential, active_operational_dataset, border_agent{ip,port}}`. Contains secrets. Real (2026-11-13): no `active_operational_dataset`; `border_agent{ip: string, port: number}`. |
-| PUT | `{net}/thread` | JSON `{thread_enable?: bool, enable_credential_syncing?: bool}` | W | FF, LD | FF corrected key to `thread_enable`. |
-| PUT | `{net}/thread/enable` | JSON `{enabled: bool}` | W | SX | Older path used by SX. |
+| PUT | `{net}/thread` | JSON `{enable_credential_syncing?: bool}` | W | FF, LD, Eeronaut | Credential sharing. `thread_enable` here answers 200 and changes nothing (M5 review on a real network; Eeronaut found the same). |
+| PUT | `{net}/thread/enable` (`{resources.thread}/enable`) | JSON `{enabled: bool}` | W | SX, Eeronaut | Thread on or off. Used by `settings.thread.set` (M5.R-fix3; MANUAL check). |
 | POST | `{net}/thread` | none | **D** | FF, LD | **Regenerates Thread credentials**: every Thread device must re-pair. |
-| PUT | `{net}/auto_setup_mode` | JSON `{mode: "DEFAULT"|"ZTS"|"LTS"|"OFF"}` | W | LD | Simple Setup. Read from network `auto_setup_mode` (a real network reads `LTS` while on). Used by `settings.simple_setup.set` (M5.3): on sends `LTS`, off sends `OFF` (MANUAL check). |
+| PUT | `{net}/auto_setup_mode` | JSON `{mode: "DEFAULT"|"ZTS"|"LTS"|"OFF"}` | W | LD, Eeronaut | eero Simple Setup. Read from network `auto_setup_mode`: on only at `ZTS`. eero's own app sends `ZTS` for on and `DEFAULT` for off, and eero stores `DEFAULT` as `LTS` (Eeronaut). A real network with Simple Setup off in eero's app reads `LTS` (M5 review). Used by `settings.simple_setup.set` (M5.R-fix3; MANUAL check). |
 | GET | `{net}/radio_settings` | - | R | LD | Channel and power per eero radio. |
 | GET | `/2.2/networks/{id}/safe_filter_levels?safeFilterType=SubnetFilter|ProfileFilter` | - | R | LD | |
 | PUT | `{net}/business_guest_network`, `{net}/captive_portal/*`, `{net}/network_customer_type`, `{net}/holding_state`, `{net}/community`, `{net}/cobranding` | various | W | LD | eero for Business only. Skip. |
@@ -429,7 +430,7 @@ computed shapes in-process; it was reverted before the first commit.
 
 | Endpoint | Result | Key paths and types | What it settles |
 |---|---|---|---|
-| `{net}` (settings fields) | 200 | as section 17, plus `auto_setup_mode`: string, value `LTS`; `upnp`, `nat_port_randomization`, `ipv6_upstream`, `thread`, `sqm`, `band_steering`, `wpa3`, `power_saving`, `power_saving_schedule_enabled`, `ffs`, `amazon_account_linked`, `alexa_skill`, `amazon_device_nickname`, `enable_ndproxy`, `backup_internet_enabled`: bool; `mlo_mode`, `wireless_mode`, `wan_type`: string; `connection{mode}`; `lease{mode, dhcp, static}`; `dhcp{mode, custom, custom_v2}`; `dns{mode, parent, custom, caching, default_test_servers}`; `timezone{value, geo_ip}`; `updates{...}` as `{net}/updates`; `ddns{enabled, subdomain}`; `resources{..., forwards, reservations, routing, settings, thread, transfer, updates, ...}`; `capabilities` include `simple_setup`, `mlo_mode`, `nat_port_randomization`, `port_forward_range`, `ownership_transfer`, `thread_network`, `power_saving`, `scheduled_power_saving` | Simple Setup maps `LTS` to on (data-model.md). The off value is unknown: `settings.simple_setup.set` needs a MANUAL check (M5.3) |
+| `{net}` (settings fields) | 200 | as section 17, plus `auto_setup_mode`: string, value `LTS`; `upnp`, `nat_port_randomization`, `ipv6_upstream`, `thread`, `sqm`, `band_steering`, `wpa3`, `power_saving`, `power_saving_schedule_enabled`, `ffs`, `amazon_account_linked`, `alexa_skill`, `amazon_device_nickname`, `enable_ndproxy`, `backup_internet_enabled`: bool; `mlo_mode`, `wireless_mode`, `wan_type`: string; `connection{mode}`; `lease{mode, dhcp, static}`; `dhcp{mode, custom, custom_v2}`; `dns{mode, parent, custom, caching, default_test_servers}`; `timezone{value, geo_ip}`; `updates{...}` as `{net}/updates`; `ddns{enabled, subdomain}`; `resources{..., forwards, reservations, routing, settings, thread, transfer, updates, ...}`; `capabilities` include `simple_setup`, `mlo_mode`, `nat_port_randomization`, `port_forward_range`, `ownership_transfer`, `thread_network`, `power_saving`, `scheduled_power_saving` Simple Setup: `LTS` is off (M5 review: eero's app said Off), `ZTS` is on (M5.R-fix3). The `simple_setup` capability is a different feature (vendor device onboarding, `{net}/simple_setup/vendors`), not eero Simple Setup |
 | `{net}/settings` | `eero_error` (no GET) | - | Only a write target; reads come from `{net}` |
 | `{net}/routing` | 200 | `url`; `devices{url, data[]{url, mac, nickname: string or null}}`; `reservations{url, data[]{url, device, mac, description, ip: string}}`; `forwards{url, data[]{url, ip, description, gateway_port, client_port, protocol: string, enabled: bool, reservation: string}}`; `pinholes{url, data: [] (empty)}` | Forward ports are **strings** inside `{net}/routing` (M5.5) |
 | `{net}/forwards` | 200 | array of `{url, ip, description, protocol, reservation: string, gateway_port, client_port: number, enabled: bool}` | The same rows with ports as **numbers**: accept both on read (M5.5) |

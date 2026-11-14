@@ -17,8 +17,10 @@
  * M5.3: `band_steering` and `timezone{value}` on `PUT {net}/settings`; JSON
  * `PUT {net}/fast_transition`, `{net}/mlo_mode` (400 on a network without
  * it), `{net}/power_saving` (`enable`, `power_saving_schedule_enabled`),
- * `{net}/auto_setup_mode` (`{mode}`: DEFAULT, ZTS, LTS or OFF, per LD) and
- * `{net}/thread` (`thread_enable`, `enable_credential_syncing`); form `PUT
+ * `{net}/auto_setup_mode` (`{mode}`: DEFAULT, ZTS, LTS or OFF; DEFAULT is
+ * stored as LTS), `{net}/thread/enable` (`{enabled}`, Thread on or off) and
+ * `{net}/thread` (`enable_credential_syncing`; `thread_enable` is accepted
+ * and ignored, as the real API does); form `PUT
  * {net}/ac_compat` (`enabled`); `POST {net}/thread` makes new secrets; power
  * saving schedules are `POST`, `PUT` and `DELETE` under
  * `{net}/power_saving/schedules`. Thread writes on a network without Thread
@@ -244,11 +246,29 @@ export const routes: Route[] = [
     handle: (ctx) => {
       const mode = jsonBody(ctx).mode;
       if (typeof mode !== "string" || !AUTO_SETUP_MODES.has(mode)) bad("error.auto_setup_mode.invalid");
-      ctx.network(ctx.params.net ?? "").network.auto_setup_mode = mode as string;
-      return ok({ mode });
+      // As eero does: DEFAULT is a request, and eero stores (and answers) LTS for it.
+      const stored = mode === "DEFAULT" ? "LTS" : (mode as string);
+      ctx.network(ctx.params.net ?? "").network.auto_setup_mode = stored;
+      return ok({ mode: stored });
     },
   },
   {
+    // Thread on or off. eero's own switch, as SX and Eeronaut send it.
+    method: "PUT",
+    path: "/networks/:net/thread/enable",
+    handle: (ctx) => {
+      const body = jsonBody(ctx);
+      const net = ctx.network(ctx.params.net ?? "");
+      if (!net.thread) return fail(404, "error.thread.not_found");
+      if (Object.keys(body).some((k) => k !== "enabled") || !isBool(body.enabled)) bad("error.thread.invalid");
+      net.thread.enabled = body.enabled as boolean;
+      net.network.thread = body.enabled as boolean;
+      return ok({ enabled: body.enabled });
+    },
+  },
+  {
+    // Credential sharing. Like the real API, `thread_enable` here answers 200 and changes nothing
+    // (seen on a real network in the M5 review; Eeronaut found the same).
     method: "PUT",
     path: "/networks/:net/thread",
     handle: (ctx) => {
@@ -257,10 +277,6 @@ export const routes: Route[] = [
       if (!net.thread) return fail(404, "error.thread.not_found");
       const keys = Object.keys(body);
       if (keys.length === 0 || keys.some((k) => k !== "thread_enable" && k !== "enable_credential_syncing") || !keys.every((k) => isBool(body[k]))) bad("error.thread.invalid");
-      if (isBool(body.thread_enable)) {
-        net.thread.enabled = body.thread_enable;
-        net.network.thread = body.thread_enable;
-      }
       if (isBool(body.enable_credential_syncing)) net.thread.enable_credential_syncing = body.enable_credential_syncing;
       const { master_key: _k, commissioning_credential: _c, ...shown } = net.thread;
       return ok(shown);

@@ -43,19 +43,19 @@ export function mloMode(v: unknown): M.NetworkSettings["mlo"] {
 }
 
 /**
- * `auto_setup_mode` is a string enum eero does not document. A real network
- * with Simple Setup at its default sends `LTS` (M5.1 capture, 2026-11-14),
- * read as on. LD lists `DEFAULT`, `ZTS`, `LTS` and `OFF` for `PUT
- * {net}/auto_setup_mode`: the policies read as on, `OFF` as off (M5.3);
- * otherwise only clear on and off words count.
+ * `auto_setup_mode` is a string enum eero does not document: `DEFAULT`, `ZTS`,
+ * `LTS` or `OFF` (LD). eero Simple Setup (new wired eeros join by themselves)
+ * is on only at `ZTS`, zero-touch setup: eero's own app writes `ZTS` to turn
+ * it on and `DEFAULT` to turn it off, and eero stores `DEFAULT` as `LTS`
+ * (Eeronaut, from eero's app; the M5 review saw a real network read `LTS`
+ * while eero's app said Off). Anything else is unknown (null).
  */
 export function simpleSetup(v: unknown): boolean | null {
   if (typeof v === "boolean") return v;
   if (typeof v !== "string") return null;
-  const s = v.toLowerCase().replace(/[^a-z]/g, "");
-  if (s === "lts" || s === "zts" || s === "default") return true;
-  if (s.includes("disab") || s === "off" || s === "false" || s === "manual" || s === "none") return false;
-  if (s.includes("enab") || s === "on" || s === "true" || s.startsWith("auto") || s === "wired") return true;
+  const s = v.trim().toUpperCase();
+  if (s === "ZTS") return true;
+  if (s === "LTS" || s === "DEFAULT" || s === "OFF") return false;
   return null;
 }
 
@@ -230,12 +230,16 @@ export function mapIntegrations(raw: RawNetwork): M.Integrations {
   const hub = capable(raw, "smart_home_hub", "zigbee");
   const smartHomeHub = hub === true ? integration(true, null) : integration(false, null, "Needs an eero with a Zigbee radio");
 
+  // eero sends `ffs` and an `ffs` capability; a capability of false means eero does not offer it here.
   const ffs = bool(raw.ffs);
+  const ffsCapable = capable(raw, "ffs");
+  const ffsState =
+    ffsCapable === false ? integration(false, null, "Not offered for this network") : ffs === null ? integration(false, null) : integration(true, ffs);
   return {
     homekit,
     amazon,
     builtin,
     smart_home_hub: smartHomeHub,
-    ffs: ffs === null ? integration(false, null) : integration(true, ffs),
+    ffs: ffsState,
   };
 }
