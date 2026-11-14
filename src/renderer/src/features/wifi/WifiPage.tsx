@@ -54,10 +54,20 @@ function useSecret<R>(id: string, networkId: string | null): Secret<R> {
     setState(NONE);
   }, []);
   useEffect(() => clear, [networkId, clear]);
-  useEffect(() => bridge().on?.((e) => e.type === "network.selected" && clear()), [clear]);
+  // The network the host switched to; until network.get catches up, `networkId` is still the old one.
+  const selected = useRef<string | null>(null);
+  useEffect(
+    () =>
+      bridge().on?.((e) => {
+        if (e.type !== "network.selected") return;
+        selected.current = e.networkId;
+        clear();
+      }),
+    [clear],
+  );
   const load = async (): Promise<R | null> => {
     if (state.value) return state.value;
-    if (!networkId) return null;
+    if (!networkId || (selected.current !== null && selected.current !== networkId)) return null;
     const gen = generation.current;
     setState((s) => ({ ...s, loading: true, error: null }));
     const res = await execute<R>(id, { networkId });
