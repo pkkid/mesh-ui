@@ -20,8 +20,8 @@ import type { WifiShare } from "../../../../core/model";
 
 export const PRINT_CARD_ID = "guest-print-card";
 
-/** Everything but the card disappears from the printout. */
-const PRINT_CSS = `@media print { body > :not(#${PRINT_CARD_ID}) { display: none !important; } @page { margin: 16mm; } }`;
+/** Hidden on screen; in the printout everything but the card disappears. */
+const PRINT_CSS = `#${PRINT_CARD_ID} { display: none; } @media print { #${PRINT_CARD_ID} { display: block; } body > :not(#${PRINT_CARD_ID}) { display: none !important; } @page { margin: 16mm; } }`;
 
 /** The short invite Send to a guest copies: name and password, or that no password is needed. */
 export function inviteText(share: Pick<WifiShare, "ssid" | "password">): string {
@@ -52,7 +52,7 @@ export function useGuestCardPrint(): { print: (share: WifiShare) => void; card: 
 
 export function GuestCard({ share }: { share: WifiShare }) {
   return (
-    <div id={PRINT_CARD_ID} className="hidden print:block" data-slot="guest-print-card">
+    <div id={PRINT_CARD_ID} data-slot="guest-print-card">
       <style>{PRINT_CSS}</style>
       <div className="mx-auto flex w-[22rem] flex-col items-center gap-5 rounded-2xl border-2 border-black bg-white p-8 text-center text-black">
         <div className="flex items-center gap-2 font-semibold text-base uppercase tracking-widest">
