@@ -23,7 +23,7 @@ and every write.
 |---|---|---|
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
-| M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | planned |
+| M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ready ([milestone](https://github.com/pkkid/mesh-ui/milestone/3)) |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | later |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
@@ -348,6 +348,8 @@ Learned in M2:
 
 ## M3: See people and settings
 
+Issue: [#81](https://github.com/pkkid/mesh-ui/issues/81) (parent of every M3 story)
+
 Goal: the rest of the app is complete read-only, so Mesh UI is a full
 monitor of the network.
 Carried from M1: guest usage on the eero backend (demo only today);
@@ -423,6 +425,7 @@ notifications history is free; how `updates.notes` fetches the manifest
 port, decided in M3.2).
 
 ### M3.1 Core contracts, captured shapes and fixtures for M3 ☐
+- issue: [#82](https://github.com/pkkid/mesh-ui/issues/82)
 - after: M2.R
 - docs: architecture/data-model.md, architecture/backends.md, architecture/commands.md (guest, wifi, settings, routing, activity, diagnostics, admins, integrations), testing.md (Fixtures, demo scenarios), eero-api/endpoints.md
 - files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, test/fake-eero/state.ts, src/core/eero/backend/index.ts, src/core/eero/backend/internet.ts, src/core/eero/map/network.ts, src/core/commands/internet.ts, src/core/commands/internet.test.ts, src/renderer/src/features/internet/Connection.tsx, docs/mockups/02-internet.html, docs/architecture/data-model.md, docs/architecture/backends.md, docs/eero-api/endpoints.md, docs/testing.md
@@ -430,6 +433,7 @@ port, decided in M3.2).
 - done when: `pnpm check` passes; the PR lists every captured endpoint with its key paths and types, or its 403 or 404, and no values; demo consistency tests cover the new fixtures (guests are on the guest network, pinholes and forwards point at reserved devices, unread count matches); `mesh-ui --demo run demo.scenario.set --params '{"scenario":"slow"}'` then any read is slow, and `errors` makes reads fail with `eero_error`; `leaseRenewsAt` is gone from `internet.get`, the Internet page and mockup 02; no real names, MACs or IPs.
 
 ### M3.2 Shared kit: QR, timeline, save dialog and M2 leftovers ☐
+- issue: [#83](https://github.com/pkkid/mesh-ui/issues/83)
 - after: M2.R
 - docs: AGENTS.md (Dashboards and charts), design/design-system.md, architecture/ui.md (bridge), architecture/security.md
 - files: src/renderer/src/components/ui/qr.tsx, src/renderer/src/components/ui/timeline.tsx, src/renderer/src/components/ui/page.tsx, src/renderer/src/components/charts/AreaChart.tsx, src/renderer/src/components/charts/charts.test.ts, src/renderer/src/features/overview/EerosList.tsx, src/renderer/src/features/internet/SpeedHistory.tsx, src/renderer/src/features/internet/EarlierTests.tsx, src/renderer/src/lib/saveFile.ts, src/main/ipc.ts, src/preload/index.ts, docs/design/design-system.md
@@ -437,6 +441,7 @@ port, decided in M3.2).
 - done when: `pnpm check` passes with tests for the timeline's wrap-past-midnight layout and the chart `max`; `pnpm ui:shot` of the chart gallery shows the QR and timeline in light and dark; Internet Export CSV writes a file through the save dialog in `ui:shot` (to a scratch path) and Overview, Internet and eero detail look unchanged apart from the listed fixes (before and after in the PR); the save bridge refuses non-text and never exposes a path to the renderer beyond the user's choice.
 
 ### M3.3 Mockups match the M3 fixtures ☐
+- issue: [#84](https://github.com/pkkid/mesh-ui/issues/84)
 - after: M3.1
 - docs: architecture/backends.md (demo)
 - files: docs/mockups/05-devices.html, docs/mockups/07-profiles.html, docs/mockups/08-profile-detail.html, docs/mockups/10-activity.html, docs/mockups/11-guest.html, docs/mockups/12-wifi-settings.html, docs/mockups/13-advanced-networking.html, docs/mockups/14-reservations-ports.html, docs/mockups/15-updates-admins.html, docs/mockups/16-troubleshooting.html, docs/mockups/assets/mockup.js
@@ -444,6 +449,7 @@ port, decided in M3.2).
 - done when: every changed value matches `mesh-ui --demo run` output for the same field (table in the PR); no `3c:22:fb` left; the mockup index opens every page.
 
 ### M3.4 Profiles page ☐
+- issue: [#85](https://github.com/pkkid/mesh-ui/issues/85)
 - after: M3.1, M3.2
 - docs: ux/pages/profiles.md, architecture/commands.md (profile)
 - files: src/core/commands/profile.ts, src/core/commands/profile.test.ts, src/core/eero/backend/profile.ts, src/core/eero/map/profile.ts, test/fake-eero/routes/profiles.ts, src/renderer/src/features/profiles/ProfilesPage.tsx, src/renderer/src/features/profiles/ProfileCards.tsx, src/renderer/src/features/profiles/UnassignedCard.tsx, src/renderer/src/features/profiles/ProfilesUsage.tsx, src/renderer/src/features/profiles/ScheduleOverview.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/profiles.md
@@ -451,6 +457,7 @@ port, decided in M3.2).
 - done when: demo tests for state and next schedule across midnight and a DST change, `bad_params`, and fake-server tests for schedule mapping; a real shape check of `profile.list` in the PR; page-load budget test; `pnpm ui:shot --route '#/profiles'` in demo and `--fake`, light and dark, plus `empty_network` and `errors`; `MANUAL: Profiles on the real network | pnpm dev, open Profiles | states, devices and schedules match the eero app | none`.
 
 ### M3.5 Profile detail ☐
+- issue: [#86](https://github.com/pkkid/mesh-ui/issues/86)
 - after: M3.4
 - docs: ux/pages/profile-detail.md
 - files: src/renderer/src/features/profile/ProfilePage.tsx, src/renderer/src/features/profile/ProfileHero.tsx, src/renderer/src/features/profile/ProfileSchedules.tsx, src/renderer/src/features/profile/ProfileDevices.tsx, src/renderer/src/features/profile/ProfileUsage.tsx, src/renderer/src/features/profile/helpers.ts, src/renderer/src/features/profile/helpers.test.ts, src/renderer/src/app/routes.ts, docs/ux/pages/profile-detail.md
@@ -458,6 +465,7 @@ port, decided in M3.2).
 - done when: helper tests; `pnpm ui:shot` of an active, a paused and a scheduled profile, demo and `--fake`, light and dark, plus a gone profile; page-load budget test; `MANUAL: profile detail on the real network | pnpm dev, open each profile | schedules and devices match the eero app | none`.
 
 ### M3.6 Activity page and event summary ☐
+- issue: [#87](https://github.com/pkkid/mesh-ui/issues/87)
 - after: M3.1, M3.2
 - docs: ux/pages/activity.md, architecture/commands.md (activity)
 - files: src/core/commands/activity.ts, src/core/commands/activity.test.ts, src/core/eero/backend/events.ts, test/fake-eero/routes/events.ts, src/renderer/src/features/activity/ActivityPage.tsx, src/renderer/src/features/activity/ActivityHero.tsx, src/renderer/src/features/activity/ActivityChart.tsx, src/renderer/src/features/activity/EventFilters.tsx, src/renderer/src/features/activity/EventStream.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/activity.md
@@ -465,6 +473,7 @@ port, decided in M3.2).
 - done when: demo tests for summary counts and change, grouping, filters and `bad_params`, and fake-server tests for paging back within the budget; a real shape check of `events.summary` in the PR; page-load budget test; `pnpm ui:shot --route '#/activity'` demo and `--fake`, light and dark, plus `empty_network` and `errors`; CSV saved through the dialog in `ui:shot`.
 
 ### M3.7 Notifications bell and desktop alerts ☐
+- issue: [#88](https://github.com/pkkid/mesh-ui/issues/88)
 - after: M3.1, M3.2
 - docs: ux/overview.md (notifications), architecture/engine.md (desktop notifications), architecture/security.md, architecture/commands.md (activity: notifications)
 - files: src/core/commands/notifications.ts, src/core/commands/notifications.test.ts, src/core/eero/backend/notifications.ts, src/core/eero/map/notifications.ts, test/fake-eero/routes/notifications.ts, src/renderer/src/features/notifications/Bell.tsx, src/renderer/src/features/notifications/NotificationList.tsx, src/renderer/src/features/notifications/useDesktopAlerts.ts, src/renderer/src/features/shell/TopBar.tsx, src/main/notify.ts, src/main/index.ts, src/main/ipc.ts, src/preload/index.ts
@@ -472,6 +481,7 @@ port, decided in M3.2).
 - done when: demo tests for unread counts, new-item detection and `bad_params`, and fake-server mapping tests; a real shape check of `notifications.list` in the PR; `pnpm ui:shot` of the open bell in light and dark; a test shows one host notification per new item and none on first load; `MANUAL: desktop alert | pnpm dev:demo, run demo.scenario.set eero_offline from the palette | one OS notification appears and clicking it opens the eero | none`.
 
 ### M3.8 Guest page ☐
+- issue: [#89](https://github.com/pkkid/mesh-ui/issues/89)
 - after: M3.1, M3.2
 - docs: ux/pages/guest.md, architecture/commands.md (guest)
 - files: src/core/commands/guest.ts, src/core/commands/guest.test.ts, src/core/eero/backend/guest.ts, src/core/eero/map/guest.ts, test/fake-eero/routes/guest.ts, src/core/commands/usage.ts, src/core/commands/usage.test.ts, src/renderer/src/features/guest/GuestPage.tsx, src/renderer/src/features/guest/GuestHero.tsx, src/renderer/src/features/guest/GuestDevices.tsx, src/renderer/src/features/guest/GuestUsage.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/guest.md
@@ -479,6 +489,7 @@ port, decided in M3.2).
 - done when: demo tests for both commands incl. `bad_params`, the open network and the `WIFI:` escaping of `;`, `,`, `:` and `\`; fake-server tests for guest mapping and usage; a real shape check of `guest.get` in the PR (no password printed); `guest.share` is marked sensitive and its result never reaches logs (test); page-load budget test; `pnpm ui:shot --route '#/guest'` demo and `--fake`, light and dark, plus guest off.
 
 ### M3.9 Wi-Fi page ☐
+- issue: [#90](https://github.com/pkkid/mesh-ui/issues/90)
 - after: M3.1, M3.2
 - docs: ux/pages/wifi.md, architecture/commands.md (wifi)
 - files: src/core/commands/wifi.ts, src/core/commands/wifi.test.ts, src/core/eero/backend/wifi.ts, src/core/eero/map/wifi.ts, test/fake-eero/routes/wifi.ts, src/renderer/src/features/wifi/WifiPage.tsx, src/renderer/src/features/wifi/WifiHero.tsx, src/renderer/src/features/wifi/WifiBands.tsx, src/renderer/src/features/wifi/WifiSecurity.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/wifi.md
@@ -486,6 +497,7 @@ port, decided in M3.2).
 - done when: demo tests for the three commands incl. `bad_params`; fake-server tests for `wpa3_per_band` and the flag mapping; a real shape check of `wifi.get` in the PR (no password printed); sensitive results never reach logs (test); page-load budget test (reveal not counted); `pnpm ui:shot --route '#/wifi'` demo and `--fake`, light and dark.
 
 ### M3.10 Advanced networking read view ☐
+- issue: [#91](https://github.com/pkkid/mesh-ui/issues/91)
 - after: M3.1, M3.2
 - docs: ux/pages/advanced-networking.md, architecture/commands.md (settings, integrations)
 - files: src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/commands/integrations.ts, src/core/commands/integrations.test.ts, src/core/eero/backend/settings.ts, src/core/eero/map/settings.ts, src/core/eero/backend/integrations.ts, test/fake-eero/routes/settings.ts, src/renderer/src/features/advanced/AdvancedPage.tsx, src/renderer/src/features/advanced/SettingsGroups.tsx, src/renderer/src/features/advanced/PowerSaving.tsx, src/renderer/src/features/advanced/Integrations.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/advanced-networking.md
@@ -493,6 +505,7 @@ port, decided in M3.2).
 - done when: demo tests incl. `bad_params` and Thread secrets never in the result; fake-server tests on the captured shapes; real shape checks of both commands in the PR; page-load budget test; `pnpm ui:shot --route '#/advanced'` demo and `--fake`, light and dark, plus Mom's House (bridge).
 
 ### M3.11 Reservations & ports read view ☐
+- issue: [#92](https://github.com/pkkid/mesh-ui/issues/92)
 - after: M3.1, M3.2
 - docs: ux/pages/reservations-ports.md, architecture/commands.md (routing)
 - files: src/core/commands/routing.ts, src/core/commands/routing.test.ts, src/core/eero/backend/routing.ts, src/core/eero/map/routing.ts, test/fake-eero/routes/routing.ts, src/renderer/src/features/ports/PortsPage.tsx, src/renderer/src/features/ports/LanMap.tsx, src/renderer/src/features/ports/Reservations.tsx, src/renderer/src/features/ports/Forwards.tsx, src/renderer/src/features/ports/Pinholes.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/reservations-ports.md
@@ -500,6 +513,7 @@ port, decided in M3.2).
 - done when: demo tests for `pinhole.list` incl. `bad_params` and bridge; fake-server mapping tests; a real shape check of `pinhole.list` in the PR; page-load budget test (one routing read for the page); `pnpm ui:shot --route '#/ports'` demo and `--fake`, light and dark, plus bridge and empty.
 
 ### M3.12 Troubleshooting health check ☐
+- issue: [#93](https://github.com/pkkid/mesh-ui/issues/93)
 - after: M3.1, M3.2
 - docs: ux/pages/troubleshooting.md, architecture/commands.md (diagnostics)
 - files: src/core/commands/diagnostics.ts, src/core/commands/diagnostics.test.ts, src/core/eero/backend/diagnostics.ts, src/core/eero/map/diagnostics.ts, test/fake-eero/routes/diagnostics.ts, src/renderer/src/features/troubleshooting/TroubleshootingPage.tsx, src/renderer/src/features/troubleshooting/HealthChecks.tsx, src/renderer/src/features/troubleshooting/SupportCard.tsx, src/renderer/src/features/troubleshooting/Tools.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/troubleshooting.md
@@ -507,6 +521,7 @@ port, decided in M3.2).
 - done when: demo tests for every check status, the redaction (no full MAC, IP or serial in the report) and `bad_params`; fake-server mapping tests; real shape checks of `health.check` and `support.info` in the PR; page-load budget test; `pnpm ui:shot --route '#/troubleshooting'` demo and `--fake`, light and dark, plus `eero_offline` and `network_offline`.
 
 ### M3.13 Updates & admins read view ☐
+- issue: [#94](https://github.com/pkkid/mesh-ui/issues/94)
 - after: M3.1, M3.2, M3.8
 - docs: ux/pages/updates-admins.md, architecture/commands.md (updates, admins, usage)
 - files: src/core/commands/admins.ts, src/core/commands/admins.test.ts, src/core/commands/usage.ts, src/core/commands/usage.test.ts, src/core/eero/backend/admins.ts, src/core/eero/map/admins.ts, test/fake-eero/routes/admins.ts, src/core/commands/updates.ts, src/core/commands/updates.test.ts, src/core/eero/backend/updates.ts, src/core/eero/client.ts, src/renderer/src/features/updates/UpdatesPage.tsx, src/renderer/src/features/updates/SoftwareCard.tsx, src/renderer/src/features/updates/QuietHours.tsx, src/renderer/src/features/updates/Admins.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/updates-admins.md
@@ -514,6 +529,7 @@ port, decided in M3.2).
 - done when: demo tests for the three commands incl. `bad_params` and the owner and admin views; a test shows `updates.notes` sends no cookie and refuses http and oversize bodies; real shape checks of `admin.list` and `updates.notes` in the PR; page-load budget test; `pnpm ui:shot --route '#/updates'` demo and `--fake`, light and dark, plus the admin view.
 
 ### M3.R Review ☐
+- issue: [#95](https://github.com/pkkid/mesh-ui/issues/95)
 - owner: maintainer
 - after: M3.1, M3.2, M3.3, M3.4, M3.5, M3.6, M3.7, M3.8, M3.9, M3.10, M3.11, M3.12, M3.13
 
