@@ -11,6 +11,12 @@ Rules for running milestones are in [AGENTS.md](../AGENTS.md#milestone-runs);
 the format follows the `milestone-plan` skill. The design lives in
 [docs/](README.md): every story names the docs it implements.
 
+How stories prove things: done-whens may include read-only shape checks
+on the real network ([AGENTS.md](../AGENTS.md#testing-sandbox-for-changes-read-only-on-the-real-network)),
+recorded redacted (key paths, types, counts). `MANUAL:` lines stay for
+visual comparison with the eero app, copy and clipboard in a real window,
+and every write.
+
 ## Overview
 
 | Milestone | Goal | Status |
@@ -249,6 +255,19 @@ thresholds (Great 75% or more of plan, Below plan under 75%, Poor under
 40%); a Pages group and `network.select` in the palette. Unknowns show `-`
 and get `MANUAL:` lines.
 
+Learned in M2:
+- Verdict thresholds kept: Great 75% or more of plan, Poor under 40%.
+- The palette has a Pages group.
+- `radio_channel_stats` gives channel and tx power on the real API.
+- Firmware history was empty on the real gateway (empty list or 404 still
+  being confirmed by M2.R-fix2).
+- Routing works for an owner: reservations, forwards and the LAN map.
+- Four mappings were wrong on the real network although fake-server tests
+  passed (lease time, eero ports, wireless upstream, eero subnet); fixed in
+  M2.R-fix2.
+- The eero client burned its rate budget on page loads until shared reads
+  (#74).
+
 ### M2.1 Core contracts and fixtures for M2 ✅ (#62)
 - issue: [#49](https://github.com/pkkid/mesh-ui/issues/49)
 - after: M1.R
@@ -344,7 +363,13 @@ Carried from M2: the shared Section header wraps when its subtitle is long
 (import `components/mesh/LinkChip`); mockups 05, 10 and 14 still use old
 `3c:22:fb` sample MACs; a fixed `max` on `AreaChart` so the Internet speed
 chart can scale to the plan; a host save dialog for CSV exports (Internet
-Export CSV copies to the clipboard today; Activity CSV needs it too).
+Export CSV copies to the clipboard today; Activity CSV needs it too);
+every story that adds or maps a read first confirms the raw shape with one
+read-only capture on the real network (key paths and types only), and the
+fake server serves that confirmed shape; every new page gets a page-load
+request-budget test like `src/core/eero/pageload.test.ts`; demo fixtures
+cover every state the mockup shows (for example a plan set, leased devices,
+blocked and guest devices).
 
 ## M4: Everyday control
 
@@ -364,7 +389,10 @@ the eero client re-reads the SecretStore on a 401 so two processes (app and
 CLI) share one session.
 Carried from M2: palette and pages dim commands by capability and bridge
 mode, and show the "no permission" state, once commands report them; copy
-and export feedback through the undo toast system.
+and export feedback through the undo toast system; writes are never tried
+on the real network, so before each write story capture, with a read-only
+call, the object the write will change, and keep a `MANUAL:` line for the
+write itself.
 
 ## M5: Advanced settings
 
