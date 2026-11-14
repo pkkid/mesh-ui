@@ -795,8 +795,12 @@ client sends the serial: fix whichever the M4 Find manual check disproves
 (#158); the palette preview shows "Running..." under a pending disruptive
 confirm, and a palette `device.pause` run toasts "Done" without the Undo
 that row actions get (M4 review). Update the docs and fixtures from the
-answers to the M4 manual checks (Wi-Fi rename path, `hide_5g` shape,
-schedule day form `MON`, Unassigned pause, nightlight shape).
+answers to the M4 manual checks (`hide_5g` shape, schedule day form `MON`,
+Unassigned pause, nightlight shape). The Wi-Fi rename manual check was
+skipped at the M4 review (maintainer, 2026-11-14), so `PUT {net}/settings`
+vs `PUT {net}` is still unverified and its `MANUAL:` line carries to M5.1.
+Owners: M5.1 (docs, fixtures, captures, the Wi-Fi rename check), M5.11
+(everything else).
 
 In: the write commands behind Advanced networking (DNS, DHCP, IPv6, WAN,
 connection mode, NAT randomization, UPnP, SQM, band steering, fast
@@ -829,7 +833,7 @@ Done when:
   of each page's confirm, impact and toast states.
 - Every Carried from M2, M3 and M4 item is closed or moved with a reason.
 
-Parallelism: 3 waves plus R (1, 8, 1, R); critical path M5.1 > M5.2 >
+Parallelism: 3 waves plus R (1, 9, 1, R); critical path M5.1 > M5.2 >
 M5.3 > M5.R. Hotspots: `src/core/model.ts`, `src/core/backend.ts`,
 `src/core/eero/raw.ts`, `src/core/demo/fixtures.ts`,
 `src/core/demo/backend.ts`, `src/core/demo/scenario.ts`,
@@ -854,8 +858,8 @@ restarts the network says so in its risk field.
 - after: M4.R
 - docs: architecture/backends.md, architecture/data-model.md, architecture/commands.md (settings, Restart estimates), testing.md (Fixtures), eero-api/endpoints.md
 - files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, src/core/poll.ts, test/fake-eero/state.ts, test/fake-eero/routes/eeros.ts, test/fake-eero/routes/updates.ts, src/core/eero/backend/index.ts, src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/commands/integrations.ts, src/core/commands/wifi.ts, docs/architecture/backends.md, docs/architecture/data-model.md, docs/eero-api/endpoints.md, docs/testing.md
-- scope: Everything wave 2 shares. Write methods on every M5 backend area (settings, integrations, routing, updates, admins, eero ports and remove, diagnostics, notifications settings); the eero backend answers "not available yet" until each story; the demo backend applies every write. Read-only captures (paths and types; one enum value for Simple Setup, as approved) of: `{net}` settings fields, `auto_setup_mode`, `{net}/routing` reservations, forwards and pinholes, `{net}/updates`, `{net}/members` and `{net}/invites`, an eero's `resources.connections` with a down port if any, `{net}/radio_settings` (for `Radio.autoChannel`), `{net}/notifications`, and whether any `app_events` type carries a device, eero or profile link. `settings.impact` in core from Restart estimates and cached devices. Carried from M3: map Simple Setup; fake `radio_channel_stats` and a raw release manifest on the fake server; `integrations.get` and `wifi.get` get their own poll topics.
-- done when: `pnpm check` passes; the PR lists every capture (paths and types, the one Simple Setup value) and no other values; `settings.impact` tests for each disruptive setting; demo writes applied and reset per scenario; `--fake` Wi-Fi shows width and channel and `--fake` Updates shows release notes (`ui:shot`); no real names, MACs or IPs.
+- scope: Everything wave 2 shares. Write methods on every M5 backend area (settings, integrations, routing, updates, admins, eero ports and remove, diagnostics, notifications settings); the eero backend answers "not available yet" until each story; the demo backend applies every write. Read-only captures (paths and types; one enum value for Simple Setup, as approved) of: `{net}` settings fields, `auto_setup_mode`, `{net}/routing` reservations, forwards and pinholes, `{net}/updates`, `{net}/members` and `{net}/invites`, an eero's `resources.connections` with a down port if any, `{net}/radio_settings` (for `Radio.autoChannel`), `{net}/notifications`, and whether any `app_events` type carries a device, eero or profile link. `settings.impact` in core from Restart estimates and cached devices. Carried from M3: map Simple Setup; fake `radio_channel_stats` and a raw release manifest on the fake server; `integrations.get` and `wifi.get` get their own poll topics. Carried from M4: apply the answers to the M4 manual checks to `endpoints.md`, the data model docs and fixtures (`led_cycle` by id or serial, `hide_5g` while on, schedule days, Unassigned pause, nightlight); capture whether eero's default profile carries a `schedule[]` (for Unassigned schedules in M5.11).
+- done when: `pnpm check` passes; the PR lists every capture (paths and types, the one Simple Setup value) and no other values; `endpoints.md` section 18 agrees with the M4 manual check answers; the PR carries `MANUAL: rename the Wi-Fi network and back, only when a reconnect is fine | Settings > Wi-Fi, Change, save, then restore | every wireless device rejoins and the eero app shows the name (settles PUT {net}/settings) | disruptive: all wireless devices drop for about a minute`; `settings.impact` tests for each disruptive setting; demo writes applied and reset per scenario; `--fake` Wi-Fi shows width and channel and `--fake` Updates shows release notes (`ui:shot`); no real names, MACs or IPs.
 
 ### M5.2 Internet-side settings ☐
 - issue: [#139](https://github.com/pkkid/mesh-ui/issues/139)
@@ -929,10 +933,18 @@ restarts the network says so in its risk field.
 - scope: Moved from M4. From the M5.1 capture: if an event type carries a device, eero or profile link, map it and add row actions (Assign profile, Resume, Unblock) through the M4 commands; if none does, match by name only where it is unambiguous, otherwise keep the link to the page and say so in the doc.
 - done when: demo and fake-server tests of the link mapping and each action's command; `pnpm ui:shot --route '#/activity'` with a row action and its toast, light and dark; the PR states what the capture found.
 
+### M5.11 Carried from M4: gates in core and leftover controls ☐
+- issue: [#168](https://github.com/pkkid/mesh-ui/issues/168)
+- after: M5.1
+- docs: architecture/commands.md (Effects, Confirmation), architecture/ui.md, ux/pages/command-palette.md, ux/pages/devices.md, ux/pages/overview.md, ux/pages/profiles.md, ux/pages/profile-detail.md
+- files: src/core/spec.ts, src/core/commands/device.ts, src/core/commands/device.test.ts, src/renderer/src/components/ui/page.tsx, src/renderer/src/features/palette/search.ts, src/renderer/src/features/palette/search.test.ts, src/renderer/src/features/palette/PalettePreview.tsx, src/renderer/src/features/palette/CommandPalette.tsx, src/renderer/src/features/wifi/ShareSheet.tsx, src/renderer/src/features/devices/DevicesPage.tsx, src/renderer/src/features/overview/NetworkHero.tsx, src/renderer/src/features/profiles/UnassignedCard.tsx, src/renderer/src/components/ui/timeline.tsx, src/renderer/src/features/profile/ProfileSchedules.tsx, src/renderer/src/features/eero/helpers.ts, src/renderer/src/features/eero/helpers.test.ts, src/renderer/src/features/eeros/NetworkActions.tsx, src/core/commands/wifi.ts, docs/architecture/ui.md, docs/ux/pages/command-palette.md
+- scope: Carried from M4. Each write's gate (permission, bridge mode, capability) moves into its command spec in core (`src/core/spec.ts`, listed by `mesh-ui commands`), and pages and the palette read it; the id-prefix table in `palette/search.ts` goes. One Share Wi-Fi sheet (QR, Copy password) opened from Overview and Devices. "New profile from selection" on the Unassigned card. Bulk device results carry `failed[].name`. Clicking a week timeline segment opens the schedule sheet. Unassigned schedules only if the M5.1 capture shows the default profile takes a `schedule[]`, else say so in the doc. Restart copy in `eero/helpers.ts` and Network actions, and the Wi-Fi security change estimate, come from `settings.impact`. The palette shows no "Running..." under a pending confirm, and a palette `device.pause` (or any write with an inverse) toasts with Undo.
+- done when: `mesh-ui commands` shows each write's gate and a test shows the palette and a page dim the same command for the same reason; demo tests for `failed[].name`; `pnpm ui:shot` light and dark of the Share Wi-Fi sheet from Devices, New profile from selection, a timeline click opening the sheet, and the palette confirm without "Running..."; `pnpm check` passes.
+
 ### M5.R Review ☐
 - issue: [#148](https://github.com/pkkid/mesh-ui/issues/148)
 - owner: maintainer
-- after: M5.1, M5.2, M5.3, M5.4, M5.5, M5.6, M5.7, M5.8, M5.9, M5.10
+- after: M5.1, M5.2, M5.3, M5.4, M5.5, M5.6, M5.7, M5.8, M5.9, M5.10, M5.11
 
 
 ## M6: App, account and release
