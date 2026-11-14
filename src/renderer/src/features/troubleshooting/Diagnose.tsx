@@ -27,13 +27,20 @@ const SYMPTOMS: { id: Symptom; label: string }[] = [
 
 const labelOf = (s: Symptom | null) => SYMPTOMS.find((x) => x.id === s)?.label ?? "Diagnose";
 
+/** One line from eero's answer: the area it points to, else what the results say. */
+function summaryOf(r: Diagnosis): string {
+  if (r.issueArea) return `eero's diagnostics point to the ${r.issueArea}.`;
+  if (r.results.some((x) => !resultGood(x.status))) return "eero's diagnostics found something to check.";
+  return r.results.length ? "eero's diagnostics found nothing wrong." : "eero's diagnostics returned no findings.";
+}
+
 function Findings({ result, onClose }: { result: Diagnosis; onClose: () => void }) {
   return (
     <div className="flex flex-col gap-3 rounded-(--control-radius) border p-4" data-diagnosis={result.symptom ?? "none"}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="font-medium text-sm">{labelOf(result.symptom)}</div>
-          <div className="text-muted-foreground text-xs">eero's diagnostics{result.issueArea ? ` point to the ${result.issueArea}` : " found nothing wrong"}.</div>
+          <div className="text-muted-foreground text-xs">{summaryOf(result)}</div>
         </div>
         <Button size="icon-xs" variant="ghost" aria-label="Close diagnostics" onClick={onClose}>
           <X />

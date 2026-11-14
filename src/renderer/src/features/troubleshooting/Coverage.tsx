@@ -40,7 +40,7 @@ const cellsOf = (q: number) => Math.max(1, Math.min(5, Math.ceil(q / 20)));
 const ratingOf = (q: number): Rating => (q >= 80 ? "strong" : q >= 60 ? "good" : q >= 40 ? "fair" : "poor");
 
 /** The 2.4 API is missing on this network: hide the report. */
-const unsupported = (q: QueryState<unknown>) => q.error?.code === "eero_error" && q.error.detail?.status === 404;
+const unsupported = (q: Pick<QueryState<unknown>, "error">) => q.error?.code === "eero_error" && q.error.detail?.status === 404;
 
 function QualityCells({ quality }: { quality: number | null }) {
   if (quality === null) return <span className="text-muted-foreground">{MISSING}</span>;
@@ -84,7 +84,8 @@ export function CoverageScanCard({ eeros }: { eeros: Eero[] | undefined }) {
   const scan = rescan.result ?? query.data;
   const scanning = rescan.running || (query.loading && !scan);
 
-  if (unsupported(query)) return null;
+  if (unsupported(query) || unsupported(rescan)) return null;
+  const error = rescan.error ?? query.error;
   const test = async (id: string) => {
     setTesting(id);
     const r = await placement.run({ eero: id });
@@ -104,10 +105,11 @@ export function CoverageScanCard({ eeros }: { eeros: Eero[] | undefined }) {
         </Button>
       }
     >
-      {query.error && !scan ? (
-        <SectionError what="the coverage scan" error={query.error} onRetry={scanAgain} />
+      {error && !scan ? (
+        <SectionError what="the coverage scan" error={error} onRetry={scanAgain} />
       ) : (
         <Card className={cn("transition-opacity", (query.fading || rescan.running) && "opacity-40")} data-coverage>
+          {rescan.error && <div className="border-b px-4 py-2 text-destructive-foreground text-xs">Couldn't scan again: {rescan.error.message}</div>}
           {scan?.advice.length ? (
             <div className="border-b px-4 py-3 text-xs">
               {scan.advice.map((a) => (
