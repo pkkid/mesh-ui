@@ -1,0 +1,49 @@
+/**
+ * eero backend, guest area: `GET {net}/guestnetwork` (the password comes in
+ * the clear; only `credentials` maps it), guests from `GET {net}/devices`
+ * (`is_guest`), security from `GET {net}/wpa3_per_band` and 6 GHz from the
+ * eeros' bands. See docs/architecture/commands.md (guest).
+ */
+
+import { BackendError } from "../../errors";
+import { bandOf, type RawEeroFull } from "../map/eero";
+import { guestCredentials, guestSecurity, mapGuestNetwork } from "../map/guest";
+import { asList, type RawDevice, type RawGuestNetwork, type RawWpa3PerBand } from "../raw";
+import { networkPath } from "../urls";
+import type { EeroArea } from "./index";
+import { networkLinks } from "./network";
+
+export const guest: EeroArea<"guest"> = (ctx) => {
+  const links = networkLinks(ctx);
+  const base = (id: string) => links.get(`net:${id}`, networkPath(id));
+  const read = <T>(path: string) => ctx.client.request<T>({ method: "GET", path });
+  const guestNetwork = (id: string) => read<RawGuestNetwork | null>(links.get(`net:${id}.guestnetwork`, `${base(id)}/guestnetwork`));
+
+  /** Older firmware has no per-band setting (404 or 405): security unknown, not an error. */
+  const perBand = async (id: string): Promise<RawWpa3PerBand | null> => {
+    try {
+      return await read<RawWpa3PerBand | null>(`${base(id)}/wpa3_per_band`);
+    } catch (err) {
+      if (err instanceof BackendError && err.code === "eero_error" && (err.detail?.status === 404 || err.detail?.status === 405)) return null;
+      throw err;
+    }
+  };
+
+  return {
+    async get(id) {
+      const [raw, devices, bands, eeros] = await Promise.all([
+        guestNetwork(id),
+        read<unknown>(networkPath(id, "devices")).then((d) => asList<RawDevice>(d, "devices")),
+        perBand(id),
+        read<unknown>(links.get(`net:${id}.eeros`, `${base(id)}/eeros`)).then((e) => asList<RawEeroFull>(e, "eeros")),
+      ]);
+      const has6 = eeros.some((e) => (e.bands ?? []).some((b) => bandOf(b) === "6"));
+      const open = !(typeof raw?.password === "string" && raw.password.length > 0);
+      return mapGuestNetwork(raw, devices, guestSecurity(bands, open, has6));
+    },
+
+    async credentials(id) {
+      return guestCredentials(await guestNetwork(id));
+    },
+  };
+};

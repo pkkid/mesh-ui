@@ -41,6 +41,7 @@ import { auth } from "./auth";
 import { device } from "./device";
 import { eero } from "./eero";
 import { events } from "./events";
+import { guest } from "./guest";
 import { internet } from "./internet";
 import { network } from "./network";
 import { profile } from "./profile";
@@ -55,6 +56,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   device,
   eero,
   events,
+  guest,
   internet,
   network,
   profile,

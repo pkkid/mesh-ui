@@ -303,7 +303,7 @@ function fakeEngine() {
     eero: { ...live.eero, list: async () => (net?.eeros ?? []).map((e) => ({ id: e.url?.split("/").pop(), location: e.location, serial: e.serial, mac: null }) as M.Eero) },
     device: {
       ...live.device,
-      list: async () => (net?.devices ?? []).map((d) => ({ id: d.mac?.replace(/:/g, ""), name: d.nickname ?? d.hostname, nickname: d.nickname, hostname: d.hostname, mac: d.mac }) as M.Device),
+      list: async () => (net?.devices ?? []).map((d) => ({ id: d.mac?.replace(/:/g, ""), name: d.nickname ?? d.hostname, nickname: d.nickname, hostname: d.hostname, mac: d.mac, ssid: d.is_guest ? "guest" : "main", connected: d.connected === true, lastActive: d.last_active ?? null }) as M.Device),
     },
     profile: {
       ...live.profile,
@@ -389,9 +389,40 @@ describe("usage on the fake eero server", () => {
     expect(usageRequests(fake).every((e) => e.body === "")).toBe(true);
   });
 
-  it("maps eero errors and refuses guest usage it cannot get yet", async () => {
+  it("adds up the guest devices' own series for guest usage (eero has no guest endpoint)", async () => {
+    const { fake, engine } = fakeEngine();
+    const guest = await ok(engine.execute<M.UsageSeries>("usage.get", { scope: "guest", range: "day" }));
+    // The only guest is the plug esp-plug-07 (0a:1b:2c:00:00:07).
+    const plug = await ok(engine.execute<M.UsageSeries>("usage.get", { scope: "device", id: "0a1b2c000007", range: "day" }));
+    expect(guest).toMatchObject({ scope: "guest", id: null, range: "day", cadence: "hourly" });
+    expect(guest.total).toEqual(plug.total);
+    expect(bytes(guest.total)).toBeGreaterThan(0);
+    expect(guest.points.map((p) => p.at)).toEqual(plug.points.map((p) => p.at));
+    expect(guest.busiest).toEqual(plug.busiest);
+    const paths = usageRequests(fake).map((e) => e.path);
+    expect(paths).toContain(`/2.2/networks/${FAKE_NET}/data_usage/devices/0a1b2c000007`);
+    expect(paths.filter((p) => p.includes("/data_usage/devices/")).every((p) => p.endsWith("0a1b2c000007"))).toBe(true);
+  });
+
+  it("leaves a guest eero no longer knows out of guest usage, and has none when no guest was online", async () => {
+    const { fake, engine } = fakeEngine();
+    const net = fake.state.networks.get(FAKE_NET);
+    const plug = net?.devices.find((d) => d.hostname === "esp-plug-07");
+    if (!net || !plug) throw new Error("fixture changed");
+    // A second guest that eero has since forgotten: listed, but its usage is a 404.
+    net.devices.push({ ...plug, mac: "0a:1b:2c:00:00:99", url: undefined });
+    const devicesList = net.devices;
+    const guest = await ok(engine.execute<M.UsageSeries>("usage.get", { scope: "guest", range: "day" }));
+    net.devices = devicesList.filter((d) => d.mac !== "0a:1b:2c:00:00:99");
+    const only = await ok(engine.execute<M.UsageSeries>("usage.get", { scope: "guest", range: "day" }));
+    expect(guest.total).toEqual(only.total);
+    plug.is_guest = false;
+    const none = await ok(engine.execute<M.UsageSeries>("usage.get", { scope: "guest", range: "week" }));
+    expect(none).toMatchObject({ scope: "guest", points: [], total: { down: 0, up: 0 }, busiest: null, todaySoFar: null });
+  });
+
+  it("maps eero errors", async () => {
     const { engine } = fakeEngine();
-    expect(await engine.execute("usage.get", { scope: "guest" })).toMatchObject({ ok: false, error: { code: "eero_error" } });
     expect(await engine.execute("usage.get", { scope: "device", id: "ffffffffffff" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 });

@@ -12,6 +12,7 @@ export { commands as auth } from "./auth";
 export { commands as demo } from "./demo";
 export { commands as device } from "./device";
 export { commands as eero } from "./eero";
+export { commands as guest } from "./guest";
 export { commands as internet } from "./internet";
 export { commands as network } from "./network";
 export { commands as profile } from "./profile";
