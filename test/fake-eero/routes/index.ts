@@ -13,6 +13,7 @@ export { routes as eeros } from "./eeros";
 export { routes as events } from "./events";
 export { routes as guest } from "./guest";
 export { routes as network } from "./network";
+export { routes as notifications } from "./notifications";
 export { routes as profiles } from "./profiles";
 export { routes as routing } from "./routing";
 export { routes as updates } from "./updates";

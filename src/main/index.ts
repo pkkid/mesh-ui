@@ -21,6 +21,7 @@
  * Headless runs may also set `MESH_UI_SAVE_DIR`: `window.mesh.saveFile` then
  * writes there under the suggested name instead of showing the save dialog,
  * so `ui:shot` can prove an export writes a file. Ignored with a window.
+ * Headless runs never show desktop alerts (`mesh:notify` is not registered).
  */
 
 import { mkdtempSync } from "node:fs";
@@ -28,7 +29,7 @@ import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Notification, nativeTheme, safeStorage, session, shell } from "electron";
 import { version as appVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
@@ -36,7 +37,9 @@ import { createEeroBackend } from "../core/eero/backend";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
 import type { SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
+import { IPC } from "../shared/types";
 import { registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
+import type { NotifyHost } from "./notify";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 
@@ -176,7 +179,7 @@ function electronCliHost(): CliHost {
 // ---------------------------------------------------------------------------
 // Window
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const dark = nativeTheme.shouldUseDarkColors;
   const isMac = process.platform === "darwin";
   mainWindow = new BrowserWindow({
@@ -216,6 +219,7 @@ function createWindow(): void {
   } else {
     void mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
+  return mainWindow;
 }
 
 /** True for URLs that belong to the app itself (dev server or built files). */
@@ -254,6 +258,36 @@ const saveFileHost: SaveFileHost = {
   write: (file, text) => writeFile(file, text, "utf8"),
 };
 
+/** Shown alerts, held so their click handlers are not garbage collected. */
+const shownAlerts = new Set<Notification>();
+
+/** Desktop alerts with Electron `Notification` (src/main/notify.ts checks them first). */
+const notifyHost: NotifyHost = {
+  show(alert, onClick) {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title: alert.title, body: alert.body });
+    const forget = () => shownAlerts.delete(n);
+    n.on("click", () => {
+      forget();
+      onClick();
+    });
+    n.on("close", forget);
+    shownAlerts.add(n);
+    n.show();
+  },
+  open(click) {
+    if (!mainWindow) {
+      const win = createWindow();
+      win.webContents.once("did-finish-load", () => win.webContents.send(IPC.notifyClick, click));
+      return;
+    }
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send(IPC.notifyClick, click);
+  },
+};
+
 function lockDownSession(): void {
   // The app needs no camera, mic, location, notifications, etc.
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
@@ -285,6 +319,7 @@ if (isCli) {
         mainWindow.setTitleBarOverlay({ ...colors, height: OVERLAY_HEIGHT });
       },
       saveFile: saveFileHost,
+      ...(isHeadless ? {} : { notify: notifyHost }),
     });
     createWindow();
     app.on("activate", () => {

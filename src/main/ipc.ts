@@ -3,8 +3,9 @@
  *
  * - `registerIpc` (main): `mesh:execute` and `mesh:commands` call the engine,
  *   engine host events go out on `mesh:event`, `mesh:titlebar` sets the
- *   overlay colours and `mesh:save-file` saves text through the native save
- *   dialog. Requests from anything but the app's own pages are refused.
+ *   overlay colours, `mesh:save-file` saves text through the native save
+ *   dialog and `mesh:notify` shows a desktop alert (src/main/notify.ts).
+ *   Requests from anything but the app's own pages are refused.
  * - `createMeshBridge` (preload): the `window.mesh` object.
  *
  * Only engine results, the registry listing and host events cross this
@@ -16,11 +17,12 @@ import type { Engine } from "../core/engine";
 import type { ExecuteResult } from "../core/errors";
 import type { HostEvent } from "../core/model";
 import { IPC, type MeshApi, type SaveFileResult, type TitlebarColors } from "../shared/types";
+import { type NotifyHost, registerNotify } from "./notify";
 
 // ---------------------------------------------------------------------------
 // Main side
 
-type SenderEvent = { senderFrame?: { url: string } | null };
+export type SenderEvent = { senderFrame?: { url: string } | null };
 
 /** The parts of Electron's `ipcMain` used here. */
 export interface IpcMainLike {
@@ -39,6 +41,8 @@ export type IpcOptions = {
   setTitlebarColors(colors: TitlebarColors): void;
   /** The native save dialog and file write; without it `mesh:save-file` is not registered. */
   saveFile?: SaveFileHost;
+  /** Desktop alerts; without it `mesh:notify` is not registered (headless runs, tests). */
+  notify?: NotifyHost;
 };
 
 /** What the host provides for `window.mesh.saveFile`. Paths stay in main. */
@@ -133,6 +137,8 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
     });
   }
 
+  const unregisterNotify = opts.notify ? registerNotify(ipcMain, trusted, opts.notify) : null;
+
   const unsubscribe = opts.engine.onEvent((event) => opts.broadcast(IPC.event, event));
 
   return () => {
@@ -141,6 +147,7 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
     ipcMain.removeHandler(IPC.commands);
     if (saver) ipcMain.removeHandler(IPC.saveFile);
     ipcMain.removeAllListeners(IPC.titlebar);
+    unregisterNotify?.();
   };
 }
 
@@ -188,6 +195,20 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
       } catch {
         return { status: "failed", message: "Lost contact with the app." };
       }
+    },
+    notify: (alert) => {
+      if (!alert || typeof alert !== "object") return;
+      const { title, body, target, networkId } = alert;
+      if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string" || typeof networkId !== "string") return;
+      ipc.send(IPC.notify, { title, body, target, networkId });
+    },
+    onNotificationClick(listener) {
+      const wrapped = (_e: unknown, click: unknown) => {
+        const { target, networkId } = (click ?? {}) as Record<string, unknown>;
+        if (typeof target === "string" && typeof networkId === "string") listener({ target, networkId });
+      };
+      ipc.on(IPC.notifyClick, wrapped);
+      return () => void ipc.removeListener(IPC.notifyClick, wrapped);
     },
   };
 

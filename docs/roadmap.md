@@ -472,7 +472,7 @@ port, decided in M3.2).
 - scope: Core (Carried from M1): `events.summary` (total, daily average, change vs prior period, per category and per bucket, paging back to the range start within the rate budget) and `grouped` events in `events.list`. Page (mockup 10): hero, events per hour or day chart by category, filters (category, device, eero, profile, search, range), the stream with grouped rows and paging, Export CSV through the M3.2 save dialog. All states from the page doc.
 - done when: demo tests for summary counts and change, grouping, filters and `bad_params`, and fake-server tests for paging back within the budget; a real shape check of `events.summary` in the PR; page-load budget test; `pnpm ui:shot --route '#/activity'` demo and `--fake`, light and dark, plus `empty_network` and `errors`; CSV saved through the dialog in `ui:shot`.
 
-### M3.7 Notifications bell and desktop alerts ☐
+### M3.7 Notifications bell and desktop alerts ✅ (#100)
 - issue: [#88](https://github.com/pkkid/mesh-ui/issues/88)
 - after: M3.1, M3.2
 - docs: ux/overview.md (notifications), architecture/engine.md (desktop notifications), architecture/security.md, architecture/commands.md (activity: notifications)

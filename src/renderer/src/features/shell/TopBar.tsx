@@ -8,17 +8,16 @@
  * light/dark toggle. Pages fill the slots with <TopBarTitle>,
  * <TopBarSubtitle> and <TopBarActions>, which portal into the bar.
  */
-import { Bell, Moon, Search, Sun } from "lucide-react";
+import { Moon, Search, Sun } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Link, useLocation } from "~/app/router";
 import { routeById } from "~/app/routes";
-import { useQuery } from "~/app/useCommand";
+import { Bell } from "~/features/notifications/Bell";
 import { openPalette } from "~/features/palette/CommandPalette";
 import { toggleAppearance, useResolvedAppearance } from "~/lib/themes";
 import { cn } from "~/lib/utils";
-import type { NotificationPage } from "../../../../core/model";
 
 type SlotName = "title" | "subtitle" | "actions";
 type Slots = Readonly<Record<SlotName, HTMLElement | null>>;
@@ -65,7 +64,6 @@ export function TopBar() {
   const { route } = useLocation();
   const parent = route.parent ? routeById(route.parent) : null;
   const appearance = useResolvedAppearance();
-  const notifications = useQuery<NotificationPage>("notifications.list", undefined, { poll: true });
   const isMac = navigator.platform.startsWith("Mac");
   const themeLabel = appearance === "dark" ? "Switch to light" : "Switch to dark";
 
@@ -101,17 +99,7 @@ export function TopBar() {
             {isMac ? "⌘K" : "Ctrl K"}
           </kbd>
         </button>
-        <Link
-          to={routeById("activity").path}
-          title="Notifications"
-          aria-label={notifications.data?.unread ? "Notifications, some unread" : "Notifications"}
-          className={iconButton}
-        >
-          <Bell />
-          {notifications.data?.unread && (
-            <span className="absolute top-1.5 right-[7px] size-[7px] rounded-full bg-destructive ring-2 ring-background" />
-          )}
-        </Link>
+        <Bell className={iconButton} />
         <button type="button" onClick={toggleAppearance} title={themeLabel} aria-label={themeLabel} className={iconButton}>
           {appearance === "dark" ? <Sun /> : <Moon />}
         </button>
