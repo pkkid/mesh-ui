@@ -623,6 +623,7 @@ type NetworkEvent = {
   title: string;
   detail: string | null;
   refs: { deviceId?: Id; eeroId?: Id; profileId?: Id; adminId?: Id };
+  action?: "assign_profile" | "resume" | "unblock"; // events.list: the row's write, on refs.deviceId or refs.profileId
   grouped?: NetworkEvent[];       // events.list {grouped: true}: older same type and title, newest first
 };
 
@@ -644,7 +645,7 @@ type NotificationSettings = { eero: Record<string, boolean>; push: { networkOffl
 
 | Model | eero source |
 | --- | --- |
-| `NetworkEvent` | `GET {net}/app_events`, mapped on the real shape `{events: [{hash, timestamp_ms, description, category}]}` (capture, 2026-11-13), not the clients' `{event_type, title or message, created}`: `id` from `hash`, `at` from `timestamp_ms`, `type` is eero's `category`, `title` is `description`, `detail` is null. Real events carry no device, eero or profile links, so `refs` is empty. Our `category` comes from a core table on eero's category and the description; unknown values go to `other` |
+| `NetworkEvent` | `GET {net}/app_events`, mapped on the real shape `{events: [{hash, timestamp_ms, description, category}]}` (capture, 2026-11-13), not the clients' `{event_type, title or message, created}`: `id` from `hash`, `at` from `timestamp_ms`, `type` is eero's `category`, `title` is `description`, `detail` is null. Real events carry no device, eero or profile links, so the backend's `refs` is empty and `events.list` fills them by name where that is unambiguous (docs/ux/pages/activity.md). Our `category` comes from a core table on eero's category and the description; unknown values go to `other` |
 | `nextCursor` | `at` of the last event in a full page of 50 (sent back as the `timestamp` param) |
 | `Notification` | `notifications_history` `{notifications: [{uuid, category, title, body, created_at, meta{device_url?, network_url}}]}`; eero sends no read flag per row (how `read` is derived is M3.7's call) |
 | `unread` | `notifications/has_unread` (object or bare bool) |

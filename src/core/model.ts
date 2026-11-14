@@ -685,6 +685,9 @@ export type EventCategory =
   | "ports_temperature"
   | "other";
 
+/** A row action on the Activity stream: `assign_profile` and `unblock` act on `refs.deviceId`, `resume` on `refs.profileId`. */
+export type EventAction = "assign_profile" | "resume" | "unblock";
+
 export type NetworkEvent = {
   id: Id;
   at: Iso;
@@ -694,6 +697,12 @@ export type NetworkEvent = {
   title: string;
   detail: string | null;
   refs: { deviceId?: Id; eeroId?: Id; profileId?: Id; adminId?: Id };
+  /**
+   * `events.list`: the write this row offers, on the device or profile in
+   * `refs` (Assign profile, Resume, Unblock). It says what the event was, not
+   * the current state: the UI shows it only while the target still needs it.
+   */
+  action?: EventAction;
   /** `events.list {grouped: true}`: older events of the same type and title folded into this row, newest first. */
   grouped?: NetworkEvent[];
 };

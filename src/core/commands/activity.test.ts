@@ -7,7 +7,7 @@ import { eventCategory, mapEvent } from "../eero/backend/events";
 import { createEngine } from "../engine";
 import type { RawAppEvent } from "../eero/raw";
 import type * as M from "../model";
-import { EVENT_CATEGORIES, GROUP_WINDOW_MS, groupEvents, MAX_PAGES_PER_CALL, MAX_SUMMARY_PAGES } from "./activity";
+import { EVENT_CATEGORIES, eventAction, GROUP_WINDOW_MS, groupEvents, MAX_PAGES_PER_CALL, MAX_SUMMARY_PAGES, refsByName } from "./activity";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -377,6 +377,9 @@ function fakeEngine() {
     auth: { ...live.auth, status: async () => ({ signedIn: true, pending: false, login: null, storage: "keychain" }) },
     network: { ...live.network, list: async () => [{ ...summary }] },
     events: live.events,
+    device: live.device,
+    eero: live.eero,
+    profile: live.profile,
   });
   return { fake, engine: createEngine({ backend, clock: () => FAKE_NOW }) };
 }
@@ -484,5 +487,153 @@ describe("events.summary on the fake eero server", () => {
     // A poll inside the summary TTL reads only what is stale.
     await Promise.all(page.map(([id, params]) => engine.execute(id, params)));
     expect(fake.log.length - first).toBeLessThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Row links and actions (M5.10)
+
+describe("row actions on the demo backend", () => {
+  it("offers Resume, Unblock and Assign profile on the newest matching row, and each runs its command", async () => {
+    const { engine } = demoEngine();
+    const page = await ok(engine.execute<M.EventPage>("events.list", {}));
+    const all: M.EventPage["events"] = [...page.events];
+    for (let c = page.nextCursor; c; ) {
+      const next: M.EventPage = await ok(engine.execute<M.EventPage>("events.list", { cursor: c }));
+      all.push(...next.events);
+      c = next.nextCursor;
+    }
+    const pick = (title: string) => all.find((e) => e.title === title);
+    const pause = pick("Profile Leo paused by Alex Kim");
+    const joined = pick("New device joined: Nest Thermostat");
+    const blocked = pick("Device blocked: ESP_3A9F21");
+    expect(pause?.action).toBe("resume");
+    expect(joined?.action).toBe("assign_profile");
+    expect(blocked?.action).toBe("unblock");
+    // Schedules pause too, but Resume belongs to the pause itself.
+    expect(pick("Schedule started: Bedtime for Mia")?.action).toBeUndefined();
+    expect(pick("Speed test: 942 down / 918 up Mbps")?.action).toBeUndefined();
+
+    const leo = pause?.refs.profileId as string;
+    await ok(engine.execute("profile.resume", { profile: leo }));
+    const profiles = await ok(engine.execute<M.ProfileList>("profile.list"));
+    expect(profiles.profiles.find((p) => p.id === leo)?.paused).toBe(false);
+
+    const esp = blocked?.refs.deviceId as string;
+    await ok(engine.execute("device.unblock", { devices: [esp] }));
+    const nest = joined?.refs.deviceId as string;
+    await ok(engine.execute("device.profile.set", { devices: [nest], profile: leo }));
+    const devices = await ok(engine.execute<M.DeviceList>("device.list", {}));
+    expect(devices.devices.find((d) => d.id === esp)?.blocked).toBe(false);
+    expect(devices.devices.find((d) => d.id === nest)?.profileId).toBe(leo);
+  });
+
+  it("keeps one action per target on a page", async () => {
+    const demo = createDemoBackend({ clock: () => NOW });
+    const at = (m: number) => new Date(NOW - m * 60_000).toISOString();
+    const events: M.NetworkEvent[] = [1, 2, 3].map((m) => ({ id: `p${m}`, at: at(m), category: "pause_block", type: "profile_paused", title: "Profile Leo paused", detail: null, refs: { profileId: "9104" } }));
+    const backend = composeBackend("demo", { ...demo, events: { list: async () => ({ events, nextCursor: null }) } });
+    const engine = createEngine({ backend, clock: () => NOW });
+    const page = await ok(engine.execute<M.EventPage>("events.list", {}));
+    expect(page.events.map((e) => e.action ?? null)).toEqual(["resume", null, null]);
+  });
+
+  it("keeps one action per target across pages", async () => {
+    const leoPauses = (es: M.NetworkEvent[]) => es.filter((e) => e.action === "resume").length;
+    const demo = createDemoBackend({ clock: () => NOW });
+    const at = (m: number) => new Date(NOW - m * 60_000).toISOString();
+    const events: M.NetworkEvent[] = [1, 2, 3].map((m) => ({ id: `p${m}`, at: at(m), category: "pause_block", type: "profile_paused", title: "Profile Leo paused", detail: null, refs: { profileId: "9104" } }));
+    const backend = composeBackend("demo", { ...demo, events: { list: async () => ({ events, nextCursor: null }) } });
+    const paged = createEngine({ backend, clock: () => NOW });
+    const p1 = await ok(paged.execute<M.EventPage>("events.list", { limit: 1 }));
+    const p2 = await ok(paged.execute<M.EventPage>("events.list", { limit: 2, cursor: p1.nextCursor as string }));
+    expect(leoPauses(p1.events)).toBe(1);
+    expect(p2.events.map((e) => e.id)).toEqual(["p2", "p3"]);
+    expect(leoPauses(p2.events)).toBe(0);
+  });
+});
+
+describe("refsByName (events without refs)", () => {
+  const names = [
+    { kind: "device", id: "d1", name: "living room tv" },
+    { kind: "device", id: "d2", name: "old printer" },
+    { kind: "device", id: "d3", name: "alex's phone" },
+    { kind: "device", id: "d4", name: "garage" },
+    { kind: "eero", id: "e1", name: "living room" },
+    { kind: "eero", id: "e2", name: "garage" },
+    { kind: "profile", id: "p1", name: "leo" },
+    { kind: "profile", id: "p2", name: "alex" },
+  ] as const;
+  const shared = new Set(["garage"]);
+  const refs = (title: string) => refsByName(title, names, shared);
+
+  it("links a name only one thing has", () => {
+    expect(refs("Leo was paused")).toEqual({ profileId: "p1" });
+    expect(refs("Old Printer was blocked")).toEqual({ deviceId: "d2" });
+  });
+  it("takes the longest name: the device, not the eero inside it", () => {
+    expect(refs("Living Room TV joined the network")).toEqual({ deviceId: "d1" });
+    expect(refs("Living Room is back online")).toEqual({ eeroId: "e1" });
+  });
+  it("does not read a possessive or part of a word as a name", () => {
+    expect(refs("Alex's Phone connected")).toEqual({ deviceId: "d3" });
+    expect(refs("Alex's tablet connected")).toEqual({});
+    expect(refs("Leonard joined")).toEqual({});
+  });
+  it("links nothing for a name two things share, or two names of one kind", () => {
+    expect(refs("Garage went offline")).toEqual({});
+    expect(refs("Old Printer and Living Room TV were blocked")).toEqual({});
+  });
+});
+
+describe("eventAction", () => {
+  const ev = (type: string, title: string, category: M.EventCategory, refs: M.NetworkEvent["refs"]) => eventAction({ type, title, category, refs });
+  it("reads the real stream's bare nouns and descriptions", () => {
+    expect(ev("profile", "Leo was paused", "pause_block", { profileId: "p1" })).toBe("resume");
+    expect(ev("profile", "Leo was unpaused", "pause_block", { profileId: "p1" })).toBeUndefined();
+    expect(ev("device", "Old Printer was blocked", "pause_block", { deviceId: "d2" })).toBe("unblock");
+    expect(ev("device", "Old Printer was unblocked", "pause_block", { deviceId: "d2" })).toBeUndefined();
+    expect(ev("device", "Living Room TV joined the network", "devices", { deviceId: "d1" })).toBe("assign_profile");
+    expect(ev("device", "Living Room TV connected", "devices", { deviceId: "d1" })).toBeUndefined();
+  });
+  it("needs the target ref", () => {
+    expect(ev("profile", "Leo was paused", "pause_block", {})).toBeUndefined();
+    expect(ev("device", "Someone joined", "devices", {})).toBeUndefined();
+  });
+});
+
+describe("row links and actions on the fake eero server", () => {
+  it("links by unambiguous name and runs each action's command", async () => {
+    const { fake, engine } = fakeEngine();
+    const net = fake.state.networks.get(FAKE_NET);
+    net?.appEvents.push(
+      { hash: "m510-1", category: "device", description: "Living Room TV joined the network", timestamp_ms: Date.parse("2026-11-12T18:10:00Z") },
+      { hash: "m510-2", category: "device", description: "Old Printer was blocked", timestamp_ms: Date.parse("2026-11-12T18:20:00Z") },
+    );
+    const devices = await ok(engine.execute<M.DeviceList>("device.list", {}));
+    const profiles = await ok(engine.execute<M.ProfileList>("profile.list"));
+    const eeros = await ok(engine.execute<M.Eero[]>("eero.list"));
+    const dev = (name: string) => devices.devices.find((d) => d.name === name)?.id;
+    const leo = profiles.profiles.find((p) => p.name === "Leo")?.id;
+    const garage = eeros.find((e) => e.location === "Garage")?.id;
+    await ok(engine.execute("device.block", { devices: [dev("Old Printer")] }));
+
+    const page = await ok(engine.execute<M.EventPage>("events.list", {}));
+    const row = (hash: string) => page.events.find((e) => e.id === hash);
+    expect(row("m510-1")).toMatchObject({ refs: { deviceId: dev("Living Room TV") }, action: "assign_profile" });
+    expect(row("m510-2")).toMatchObject({ refs: { deviceId: dev("Old Printer") }, action: "unblock" });
+    expect(row("fake-ev-2")).toMatchObject({ refs: { profileId: leo }, action: "resume" });
+    expect(row("fake-ev-1")).toMatchObject({ refs: { eeroId: garage } });
+    expect(row("fake-ev-1")?.action).toBeUndefined();
+    expect(row("fake-ev-3")).toMatchObject({ refs: { deviceId: dev("Alex's Phone") } });
+
+    await ok(engine.execute("device.profile.set", { devices: [dev("Living Room TV")], profile: leo }));
+    await ok(engine.execute("device.unblock", { devices: [dev("Old Printer")] }));
+    await ok(engine.execute("profile.resume", { profile: leo }));
+    const after = await ok(engine.execute<M.DeviceList>("device.list", {}));
+    expect(after.devices.find((d) => d.name === "Living Room TV")?.profileId).toBe(leo);
+    expect(after.devices.find((d) => d.name === "Old Printer")?.blocked).toBe(false);
+    const p2 = await ok(engine.execute<M.ProfileList>("profile.list"));
+    expect(p2.profiles.find((p) => p.id === leo)?.paused).toBe(false);
   });
 });
