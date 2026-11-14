@@ -13,7 +13,7 @@ import { z } from "zod";
 import { toolName } from "../../../../core/mcpNames";
 import type { Device, Effect, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import type { CommandInfo, JsonSchema } from "../../../../core/registry";
-import { needsConfirm } from "../../../../core/spec";
+import { needsConfirm, ownerOnly } from "../../../../core/spec";
 import { type GateOptions, gateFor, type WriteRequest } from "../../app/useWrite";
 
 // ---------------------------------------------------------------------------
@@ -111,8 +111,11 @@ export function commandUnavailable(
   permissions: Permissions | null | undefined,
   network: Network | null | undefined,
 ): string | null {
-  // An unknown role (null: the real network sent none, M5.6 capture) is not treated as admin; the permission gate still applies.
-  if (info.effect === "destructive" && permissions?.role === "admin") return "Owner only";
+  if (info.effect === "destructive") {
+    // network.get carries the same role, for when the permissions read failed or has not landed.
+    const refused = ownerOnly(permissions?.role ?? network?.role);
+    if (refused) return refused;
+  }
   const gate = commandGate(info);
   return gate ? gateFor(gate, permissions ?? undefined, network ?? undefined).reason : null;
 }

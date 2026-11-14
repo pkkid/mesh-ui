@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { ExecuteError, ExecuteResult } from "../../../core/errors";
+import { ownerOnly, permissionFor } from "../../../core/spec";
 import type { Effect, Network, Permission, Permissions } from "../../../core/model";
 import { toast } from "../components/ui/toast";
 import { affectedBy, commandInfo, execute, invalidate } from "./useCommand";
@@ -231,7 +232,7 @@ export function fieldErrors(error: ExecuteError | null | undefined): Record<stri
 // Gates (useGate and GatedButton in components/ui/page.tsx)
 
 export type GateOptions = {
-  /** Permission area from network.permissions (`devices`, `eeros`, `profiles`, `settings`, `network`). */
+  /** Permission area from network.permissions; resolved by core's `permissionFor` (an area eero does not send inherits `network`). */
   area?: string;
   /** Which permission the write needs. Default `update`. */
   op?: keyof Permission;
@@ -254,8 +255,8 @@ export function gateFor(opts: GateOptions, permissions: Permissions | undefined,
   if (bridgeOff && bridged) return { allowed: false, reason: BRIDGE_OFF };
   if (capability && network && network.capabilities[capability] !== true) return { allowed: false, reason: NOT_AVAILABLE };
   if (area && permissions) {
-    const can = permissions.can[area];
-    if (!can || !can[op]) return { allowed: false, reason: permissions.role === "admin" ? "Owner only" : NO_PERMISSION };
+    const can = permissionFor(permissions, area);
+    if (can && !can[op]) return { allowed: false, reason: ownerOnly(permissions.role) ?? NO_PERMISSION };
   }
   return { allowed: true, reason: null };
 }

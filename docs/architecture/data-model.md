@@ -129,7 +129,7 @@ type Permissions = {
 | --- | --- |
 | `name`, `nickname` | `name`, `nickname_label` (network), or `networks.data[].{name,nickname_label}` in the list |
 | `status` | `status` (`connected`/`online` = online, `offline`, `updating`), downgraded to `degraded` when any eero is red or `health.internet.isp_up` is false |
-| `role` | `GET {net}/permissions` `role` (`standard-admin` = admin), else account `role` |
+| `role` | `GET {net}/permissions` `role`: `network-owner` (or `owner`) = owner, `standard-admin` and other `*admin*` = admin. Else the account `role`, which a real account sends as `none` (null) |
 | `timezone` | `timezone.value` |
 | `connectionMode` | `connection.mode` |
 | `gatewayUptimeSec` | gateway eero `uptime.since_last_reboot_s` |
@@ -139,7 +139,38 @@ type Permissions = {
 | `health.mesh` | `health.eero_network.status` |
 | `weakLink` | wireless eero with `mesh_quality_bars <= 2` |
 | `issues` | derived in core from eeros and devices (not a backend field) |
-| `Permissions.can` | `permissions.<area>.{create,read,update,delete}` |
+| `Permissions.can` | `permissions.<area>.{create,read,update,delete}`, keys as sent, without `per_eero`. See [Permissions](#permissions) |
+
+### Permissions
+
+A real `{net}/permissions` (M5.1-fix capture, 2026-11-14) sends `role`
+(`network-owner` for the owner) and `permissions` with only two areas,
+`network` and `eeros`, plus `per_eero` (an array of `{id, eero}`) and about 55
+dotted keys (`network.proxied_nodes`, `network.standard_admins`,
+`network.subnets.main.password`, `amazon.account`, `user.conversations`, ...).
+It has no `devices`, `profiles`, `settings` or `updates` area, and the owner's
+`network.create` is false (it means creating a network).
+
+Gates still name areas such as `devices` or `settings`, so core resolves a gate
+area with `permissionFor` (`src/core/spec.ts`), used by the palette, pages
+and every other surface:
+
+1. A key eero sends is used as sent.
+2. A dotted key it does not send inherits its nearest sent parent
+   (`network.subnets.main.password` from `network.subnets`, then `network`).
+3. An area it does not send (`devices`, `profiles`, `settings`) inherits
+   `network`, as does a dotted key with no sent parent.
+4. An inherited permission is the parent's `update` for every op: who may
+   change the network may change what is in it.
+5. When nothing covers the area (no `network` either) permission does not
+   gate; the engine and eero decide.
+
+Destructive commands are owner only on top of this, by one rule, `ownerOnly`
+(`src/core/spec.ts`), used by the palette, pages (`useGate`, the danger
+zone) and core (`network.delete`): a known `admin` is refused "Owner only";
+the owner and an unknown role (eero sent no permissions) are not, so a failed
+read never locks the owner out. The demo fixtures and the fake eero server use
+this shape.
 
 ## Internet, speed and usage
 

@@ -42,7 +42,10 @@ Field notes (this is the one place they are defined):
   key). See [Effects](#effects) for how surfaces treat it.
 - `gate` (`WriteGate` in `src/core/spec.ts`): what a write needs to run on
   this network: `area`, the `network.permissions` `can` key (`devices`,
-  `eeros`, `profiles`, `settings`, `network`) or `null` for none; `op`
+  `eeros`, `profiles`, `settings`, `network`, or a dotted key such as
+  `network.proxied_nodes`) or `null` for none, resolved by `permissionFor`
+  (an area eero does not send inherits `network`; see
+  [data-model.md#permissions](data-model.md#permissions)); `op`
   (`create`, `update` default, `delete`); `bridgeOff: true` when it is off in
   bridge and IP passthrough mode; `capability`, a `network.get` capability
   that must be true. Every write, disruptive and destructive command declares

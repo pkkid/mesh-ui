@@ -170,43 +170,46 @@ const full: M.Permission = { read: true, create: true, update: true, delete: tru
 const readOnly: M.Permission = { read: true, create: false, update: false, delete: false };
 const readUpdate: M.Permission = { read: true, create: false, update: true, delete: false };
 
+const none: M.Permission = { read: false, create: false, update: false, delete: false };
+
+/**
+ * The shape a real `{net}/permissions` has (M5.1-fix capture): only
+ * `network` and `eeros` areas plus dotted keys, no `devices`, `profiles`,
+ * `settings` or `updates`. Gates on those inherit `network` (core
+ * `permissionFor`). `network.create` is false even for the owner.
+ */
 const OWNER: M.Permissions = {
   role: "owner",
   can: {
-    network: full,
+    network: { read: true, create: false, update: true, delete: true },
     eeros: full,
-    devices: full,
-    profiles: full,
-    settings: full,
-    updates: full,
     "network.admin_invites": full,
+    // The real owner has this all false; no gate reads it (transfer uses network.ownership_transfer).
     "network.transfer": full,
     "network.proxied_nodes": readUpdate,
     "network.smart_home_hub": full,
+    "network.radio_settings": { read: true, create: false, update: true, delete: true },
+    "network.static_ip_reservation": { read: true, create: true, update: true, delete: false },
+    "network.simple_setup": readUpdate,
     "amazon.account": full,
-    // As the real permissions name them (M5.6 capture): removing admins and transferring.
     "network.standard_admins": { read: true, create: false, update: false, delete: true },
     "network.ownership_transfer": { read: true, create: true, update: false, delete: true },
   },
 };
 
-/** Admins see and pause everything but cannot restart, update or manage admins. */
+/** Admins change the network (devices, profiles, settings inherit `network`) but cannot restart, update or manage admins. */
 const ADMIN: M.Permissions = {
   role: "admin",
   can: {
     network: readUpdate,
     eeros: readOnly,
-    devices: { read: true, create: false, update: true, delete: false },
-    profiles: full,
-    settings: readUpdate,
-    updates: readOnly,
     "network.admin_invites": readOnly,
-    "network.transfer": { read: false, create: false, update: false, delete: false },
+    "network.transfer": none,
     "network.proxied_nodes": readUpdate,
     "network.smart_home_hub": readUpdate,
     "amazon.account": readOnly,
     "network.standard_admins": readOnly,
-    "network.ownership_transfer": { read: false, create: false, update: false, delete: false },
+    "network.ownership_transfer": none,
   },
 };
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createDemoBackend } from "../../../../core/demo";
 import { createEngine } from "../../../../core/engine";
+import { mapPermissions } from "../../../../core/eero/map/network";
 import type { DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import { allCommands, type CommandInfo } from "../../../../core/registry";
 import { type AnyCommand, defineCommand, ref } from "../../../../core/spec";
@@ -334,6 +335,91 @@ describe("dimming writes", () => {
     // Dimmed items carry the reason into the result list.
     const items = commandItems(t.commands, on(owner, bridged));
     expect(items.find((c) => c.info.id === "device.pause")?.unavailable).toBe(BRIDGE_OFF);
+  });
+});
+
+/**
+ * The shape a real `{net}/permissions` sends (M5.1-fix capture; flags
+ * invented to match): role `network-owner`, only `network` and `eeros`
+ * areas plus dotted keys, `network.create` false even for the owner.
+ */
+const T = true;
+const F = false;
+const p = (create: boolean, read: boolean, update: boolean, del: boolean) => ({ create, read, update, delete: del });
+const REAL_OWNER = mapPermissions({
+  role: "network-owner",
+  permissions: {
+    network: p(F, T, T, T),
+    eeros: p(T, T, T, T),
+    "network.transfer": p(F, F, F, F),
+    "network.admin_invites": p(T, T, T, T),
+    "network.standard_admins": p(F, T, F, T),
+    "network.ownership_transfer": p(T, T, F, T),
+    "network.proxied_nodes": p(F, T, T, F),
+    "network.smart_home_hub": p(T, T, T, T),
+    "network.radio_settings": p(F, T, T, T),
+    "network.subnets.main.password": p(F, T, T, F),
+    "amazon.account": p(T, T, T, T),
+    per_eero: [{ id: 1, eero: p(T, T, T, T) }],
+  },
+} as never);
+const REAL_ADMIN = mapPermissions({
+  role: "standard-admin",
+  permissions: { network: p(F, T, T, F), eeros: p(F, T, F, F), "network.admin_invites": p(F, T, F, F), "network.standard_admins": p(F, T, F, F), "network.ownership_transfer": p(F, F, F, F), "amazon.account": p(F, T, F, F) },
+} as never);
+
+describe("dimming writes on the real permissions shape", () => {
+  it("maps the real owner and admin roles", () => {
+    expect(REAL_OWNER.role).toBe("owner");
+    expect(REAL_ADMIN.role).toBe("admin");
+    expect(REAL_OWNER.can.devices).toBeUndefined();
+  });
+
+  it("an owner can run every network write: Wi-Fi, device, profile, routing and destructive ones", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    const blocked = t.commands
+      .filter((c) => c.effect !== "query" && c.scope === "network")
+      .map((c) => [c.id, commandUnavailable(c, REAL_OWNER, network)] as const)
+      .filter(([, reason]) => reason === NO_PERMISSION || reason === "Owner only");
+    expect(blocked).toEqual([]);
+    for (const id of ["wifi.name.set", "device.pause", "device.block", "profile.create", "profile.delete", "reservation.add", "forward.add", "pinhole.remove", "network.transfer", "network.delete", "admin.remove", "integrations.amazon.unlink"]) {
+      const c = t.commands.find((x) => x.id === id);
+      expect(c && commandUnavailable(c, REAL_OWNER, network), id).toBeNull();
+    }
+    expect(t.commands.filter((c) => c.effect === "destructive" && c.scope === "network").length).toBeGreaterThan(0);
+  });
+
+  it("an admin is refused owner-only commands and may change the network", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    for (const c of t.commands.filter((c) => c.effect === "destructive" && c.scope === "network")) {
+      expect(commandUnavailable(c, REAL_ADMIN, network), c.id).toBe("Owner only");
+    }
+    for (const id of ["wifi.name.set", "device.pause", "profile.create"]) {
+      expect(commandUnavailable(info(t.commands, id), REAL_ADMIN, network), id).toBeNull();
+    }
+    expect(commandUnavailable(info(t.commands, "eero.restart"), REAL_ADMIN, network)).toBe("Owner only");
+  });
+
+  it("refuses a destructive command for an admin from network.get's role when permissions did not load", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    const del = info(t.commands, "network.delete");
+    expect(commandUnavailable(del, null, { ...network, role: "admin" })).toBe("Owner only");
+    expect(availability(del, { signedIn: true, permissions: null, network: { ...network, role: "admin" } })).toBe("Owner only");
+    expect(commandUnavailable(del, null, { ...network, role: "owner" })).toBeNull();
+    expect(commandUnavailable(del, null, { ...network, role: null })).toBeNull();
+  });
+
+  it("a page (useGate by id) and the palette agree on the real shape", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    for (const c of t.commands.filter((c) => c.effect !== "query" && c.scope === "network")) {
+      for (const permissions of [REAL_OWNER, REAL_ADMIN]) {
+        expect(availability(c, { signedIn: true, permissions, network }), c.id).toBe(commandUnavailable(c, permissions, network));
+      }
+    }
   });
 });
 

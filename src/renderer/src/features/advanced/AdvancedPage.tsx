@@ -1,10 +1,9 @@
 /**
  * Advanced networking: every network-wide setting, power saving schedules on
  * the shared week timeline, Thread without its secrets, integrations and the
- * danger zone. Internet and Network services controls are live (M5.2); the
- * side panel shows the impact of the change waiting on its confirm
- * (`settings.impact`). Wireless, Thread and the danger zone are read only
- * until M5.3.
+ * danger zone. Internet, Network services, Wireless and the danger zone are
+ * live (M5.2, M5.3); the side panel shows the impact of the change waiting
+ * on its confirm (`settings.impact`).
  * Layout, data and states: docs/ux/pages/advanced-networking.md and
  * docs/mockups/13-advanced-networking.html.
  */
@@ -13,6 +12,7 @@ import { useQuery } from "~/app/useCommand";
 import { SectionError } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import { TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
+import { ownerOnly } from "../../../../core/spec";
 import type { Integrations as IntegrationsData, Internet, Network, NetworkSettings } from "../../../../core/model";
 
 import { PendingImpactProvider, PendingPanel } from "./ImpactPanel";
@@ -30,7 +30,8 @@ export function AdvancedPage(_: PageProps) {
   const mode = s?.connectionMode ?? network.data?.connectionMode;
   const bridged = mode === "bridged" || mode === "ipPassthrough";
   const offline = network.data?.status === "offline";
-  const owner = network.data?.role === "owner";
+  // The shared owner rule (core `ownerOnly`): the real owner maps to "owner"; an unknown role is not refused.
+  const owner = ownerOnly(network.data?.role) === null;
   const timezone = s?.timezone ?? network.data?.timezone ?? null;
 
   return (

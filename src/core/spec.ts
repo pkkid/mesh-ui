@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import type { Backend } from "./backend";
-import type { AppSettings, BackendKind, Effect, HostEvent, Id } from "./model";
+import type { AppSettings, BackendKind, Effect, HostEvent, Id, Permission, Permissions, Role } from "./model";
 import type { Topic } from "./poll";
 
 export type { Effect } from "./model";
@@ -91,6 +91,49 @@ export const resolveGate = (g: WriteGate): ResolvedGate => ({
   bridgeOff: g.bridgeOff === true,
   capability: g.capability ?? null,
 });
+
+export const OWNER_ONLY = "Owner only";
+
+/**
+ * The owner-only rule for destructive commands, shared by core
+ * (`network.delete`), the palette and pages: refused with `OWNER_ONLY` for a
+ * known non-owner (an admin), null otherwise. A real owner maps to `owner`
+ * (eero sends `network-owner`); an unknown role (null: eero sent no
+ * permissions) is left to the permission gate and eero, so a failed read
+ * never locks the owner out.
+ */
+export function ownerOnly(role: Role | null | undefined): string | null {
+  return role && role !== "owner" ? OWNER_ONLY : null;
+}
+
+/**
+ * The permission a gate's `area` resolves to, or null when eero reports
+ * nothing that covers it (then permission does not gate; the engine and eero
+ * decide). A real `{net}/permissions` sends only `network`, `eeros` and
+ * dotted keys (`network.proxied_nodes`), so (docs/architecture/data-model.md#permissions):
+ *
+ * 1. A key eero sends is used as sent.
+ * 2. A dotted key it does not send inherits its nearest sent parent
+ *    (`network.subnets.main.password` from `network.subnets`, then `network`).
+ * 3. An area it does not send (`devices`, `profiles`, `settings`) inherits
+ *    `network`, as do dotted keys with no sent parent.
+ *
+ * An inherited permission is the parent's `update` for every op: who may
+ * change the network may change what is in it. (`network.create` is false
+ * even for the owner; it means creating a network.)
+ */
+export function permissionFor(permissions: Pick<Permissions, "can">, area: string): Permission | null {
+  const own = permissions.can[area];
+  if (own) return own;
+  const parts = area.split(".");
+  const parents = parts.slice(0, -1).map((_, i) => parts.slice(0, parts.length - 1 - i).join("."));
+  if (parts[0] !== "network") parents.push("network");
+  for (const key of parents) {
+    const p = permissions.can[key];
+    if (p) return { read: p.read, create: p.update, update: p.update, delete: p.update };
+  }
+  return null;
+}
 
 export interface CommandSpec<P extends z.ZodObject = z.ZodObject, R = unknown> {
   /** Dotted lowercase: area.verb or area.object.verb. */

@@ -20,7 +20,7 @@ import { z } from "zod";
 import type * as M from "../model";
 import { POLL } from "../poll";
 import { CommandError } from "../errors";
-import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
+import { type AnyCommand, type CommandContext, defineCommand, ownerOnly, ref } from "../spec";
 import { knownDevices } from "./device";
 
 const empty = z.object({});
@@ -60,7 +60,7 @@ export function healthIssues(health: Omit<M.NetworkHealth, "issues">, eeros: Pic
  */
 async function deletable(ctx: CommandContext, typed: string): Promise<M.Network> {
   const n = await ctx.backend.network.get(ctx.net);
-  if (n.role === "admin") throw new CommandError("bad_params", "Only the network owner can delete it.");
+  if (ownerOnly(n.role)) throw new CommandError("bad_params", "Only the network owner can delete it.");
   if (typed.trim() !== n.name) throw new CommandError("bad_params", `Type the network name, ${n.name}, exactly to delete it.`, { issues: [{ path: "networkName", message: `Type ${n.name} exactly.` }] });
   return n;
 }
