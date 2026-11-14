@@ -52,7 +52,7 @@ read these before planning the next milestone):
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/4), [review](reviews/M4.md)) |
-| M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | planned |
+| M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/5), [review](reviews/M5.md)) |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
 
 Why this order: M1 proves the riskiest parts first (command engine shared by
@@ -971,7 +971,7 @@ restarts the network says so in its risk field.
 - scope: Carried from M4 (the write gates moved to M5.1). One Share Wi-Fi sheet (QR, Copy password) opened from Overview and Devices. "New profile from selection" on the Unassigned card. Bulk device results carry `failed[].name`. Clicking a week timeline segment opens the schedule sheet. Unassigned schedules only if the M5.1 capture shows the default profile takes a `schedule[]`, else say so in the doc. Restart copy in `eero/helpers.ts` and Network actions, and the Wi-Fi security change estimate, come from `settings.impact`. The palette shows no "Running..." under a pending confirm, and a palette `device.pause` (or any write with an inverse) toasts with Undo.
 - done when: demo tests for `failed[].name` (`device.test.ts`); a palette test that a write with an inverse toasts with Undo; `pnpm ui:shot` light and dark of the Share Wi-Fi sheet from Devices, New profile from selection, a timeline click opening the sheet, and the palette confirm without "Running..."; `pnpm check` passes.
 
-### M5.R Review ☐
+### M5.R Review ✅
 - issue: [#148](https://github.com/pkkid/mesh-ui/issues/148)
 - owner: maintainer
 - after: M5.1, M5.2, M5.3, M5.4, M5.5, M5.6, M5.7, M5.8, M5.9, M5.10, M5.11
@@ -1001,3 +1001,12 @@ Carried from M4: the speed test one-at-a-time lock is per process, so the
 app and a CLI in another process can each start one (share it, or accept
 eero's own refusal, #162); the CLI and agents panel reads the audit log
 (`audit.jsonl`, live CLI and MCP only, #149).
+Carried from M5: the Activity overflow menu and settings icon from the
+mockup (#178; M5 review question 3); Wi-Fi network nickname edit and the
+Wi-Fi "Print a card" are still Coming soon (no command yet); manual checks
+not run at the M5 review (M5 review question 2: Wi-Fi rename, DNS change,
+PPPoE, update install, eero remove) and, if not run then, the M4 list
+(question 1), with their answers applied to `endpoints.md` sections 18
+and 19 and the fixtures; the real `{net}/admins` role value is unverified
+(the fake admins list uses `owner`); network transfer's request shape is
+unproven and must never be tried on the real network.
