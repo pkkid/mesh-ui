@@ -656,7 +656,7 @@ changes (paths and types). The exact request each write sends comes from
 `docs/eero-api/` and the open source clients, and its real behaviour is a
 `MANUAL:` line for the maintainer.
 
-### M4.1 Core write contracts, demo writes and fake write state ✅ (#PR)
+### M4.1 Core write contracts, demo writes and fake write state ✅ (#151)
 - issue: [#123](https://github.com/pkkid/mesh-ui/issues/123)
 - after: M3.R
 - docs: architecture/backends.md, architecture/data-model.md, architecture/commands.md (Effects, Confirmation), testing.md (Fixtures), eero-api/endpoints.md
