@@ -963,7 +963,7 @@ restarts the network says so in its risk field.
 - scope: Moved from M4. From the M5.1 capture: if an event type carries a device, eero or profile link, map it and add row actions (Assign profile, Resume, Unblock) through the M4 commands; if none does, match by name only where it is unambiguous, otherwise keep the link to the page and say so in the doc.
 - done when: demo and fake-server tests of the link mapping and each action's command; `pnpm ui:shot --route '#/activity'` with a row action and its toast, light and dark; the PR states what the capture found.
 
-### M5.11 Carried from M4: leftover controls ☐
+### M5.11 Carried from M4: leftover controls ✅ (#181)
 - issue: [#168](https://github.com/pkkid/mesh-ui/issues/168)
 - after: M5.1
 - docs: ux/pages/command-palette.md, ux/pages/devices.md, ux/pages/overview.md, ux/pages/profiles.md, ux/pages/profile-detail.md

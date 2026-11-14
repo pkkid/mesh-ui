@@ -14,8 +14,9 @@ import { WriteConfirm } from "~/components/ui/confirm";
 import { IconTile } from "~/components/ui/hero";
 import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
 import { toast } from "~/components/ui/toast";
+import { restartNetworkLine } from "~/features/eero/helpers";
 import type { RestartResult } from "../../../../core/commands/network";
-import type { Eero, Network } from "../../../../core/model";
+import type { Eero, Network, SettingsImpact } from "../../../../core/model";
 
 /** First check, while eero still reports the restart. */
 const FIRST_LOOK_MS = 1_000;
@@ -85,6 +86,7 @@ export function useRestartNetwork() {
 
 export function NetworkActions() {
   const restart = useRestartNetwork();
+  const impact = useQuery<SettingsImpact>("settings.impact", { changes: [{ id: "network.restart" }] });
   return (
     <Section title="Network actions">
       <RowList>
@@ -92,7 +94,7 @@ export function NetworkActions() {
           <IconTile icon={RotateCcw} />
           <div className="min-w-0 flex-1">
             <div className="font-medium text-[13.5px]">Restart network</div>
-            <div className="text-muted-foreground text-xs">Restarts every eero at once. Disruptive: everyone loses internet for 2 to 3 minutes.</div>
+            <div className="text-muted-foreground text-xs">Restarts every eero at once. {restartNetworkLine(impact.data)}</div>
           </div>
           {!restart.write.asking && (
             <GatedButton gate={restart.gate} size="xs" variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>

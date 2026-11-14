@@ -82,7 +82,7 @@ actions.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Run speed test | `speedtest.run` | write | No | Button reads "Testing..." and gauges fade to 40%; after about a minute the new result lands and "Last speed test" reads "Just now". Toast "Speed test: 942 down / 918 up Mbps" |
-| Share Wi-Fi | - then `wifi.share` | query | No | Opens the Wi-Fi page, whose QR block runs `wifi.share` on Show code (QR, Copy password, Save QR). A Share Wi-Fi sheet shared with Devices is later work |
+| Share Wi-Fi | `wifi.share` | query | No | Opens the Share Wi-Fi sheet (`features/wifi/ShareSheet.tsx`, shared with Devices): opening it is the ask, so it runs `wifi.share` then and shows the QR code with Copy password and Save QR. The password lives only while the sheet is open |
 | Pause a profile | `profile.list` then `profile.pause {profile}` | write | No | A menu of the profiles not yet paused (name and device count; "Every profile is paused", or a link to Profiles when there are none); picking one pauses it and toasts "Paused Leo" with Undo (`profile.resume`). Dims by the `profiles` permission |
 | Restart network | `network.restart {confirm: true}` | disruptive | Yes, inline | Reveals the inline note "Everyone loses internet for about 2 to 3 minutes, including every connected device and any calls in progress." with "Yes, restart network" and Cancel. On run: progress toast, hero status Restarting, faster polling until Online |
 | Day / Week (Data usage) | - (view state; re-queries `usage.get` with the range) | - | No | Chart, hero and share bar switch range |

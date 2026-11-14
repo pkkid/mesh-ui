@@ -1,10 +1,14 @@
 /**
  * "Unassigned devices": a tile per device in no profile with its icon, name
  * and "Online · 142 GB in 24h", "Offline · 3 days ago" or "Blocked", plus a
- * faint avatar per profile that assigns it (`device.profile.set`, with Undo). Pause unassigned asks inline first; Resume
- * unassigned undoes it. docs/ux/pages/profiles.md (Layout 4).
+ * faint avatar per profile that assigns it (`device.profile.set`, with Undo).
+ * Clicking a tile selects it (view state); "New profile from selection" opens
+ * the Add a profile sheet with the selection picked (`profile.create`). Pause
+ * unassigned asks inline first; Resume unassigned undoes it.
+ * docs/ux/pages/profiles.md (Layout 4).
  */
 import { Info, Pause, Play, UserRoundPlus } from "lucide-react";
+import { useState } from "react";
 
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
@@ -19,7 +23,7 @@ import { cn } from "~/lib/utils";
 import { formatBytes, formatRelative } from "../../../../core/format";
 import type { Device, DeviceList, ProfileList, UsageBreakdown } from "../../../../core/model";
 
-import { Avatar, PROFILE_GATE } from "./ProfileCards";
+import { Avatar, PROFILE_GATE, ProfileSheet } from "./ProfileCards";
 import type { ProfileColor } from "./ProfilesPage";
 
 type Props = {
@@ -33,6 +37,9 @@ type Props = {
 export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: Props) {
   const now = useNow(60_000);
   const assignGate = useGate({ area: "devices", bridgeOff: true });
+  const createGate = useGate("profile.create");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
+  const [creating, setCreating] = useState<string[] | null>(null);
   const owned = new Set((profiles?.profiles ?? []).flatMap((p) => p.deviceIds));
   const listed = new Set((profiles?.profiles ?? []).map((p) => p.id));
   // Same rule as the core Unassigned summary (no profile, or eero's own Unassigned group),
@@ -46,6 +53,15 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
   const empty = loaded && list.length === 0;
   const paused = profiles?.unassigned.paused ?? false;
   const pausable = list.filter((d) => !d.blocked);
+  // Only tiles still on screen count: an assigned device leaves the selection.
+  const picked = list.filter((d) => selected.has(d.id)).map((d) => d.id);
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const detail = (d: Device) => {
     if (d.blocked) return <span className="text-destructive-foreground">Blocked</span>;
@@ -87,11 +103,26 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
           <div className={cn("grid gap-2 sm:grid-cols-2 xl:grid-cols-4", devices.fading && "opacity-40 transition-opacity")}>
             {list.map((d) => {
               const Icon = deviceIcon(d);
+              const on = selected.has(d.id);
               return (
                 <div
                   key={d.id}
+                  role="checkbox"
+                  aria-checked={on}
+                  aria-label={`Select ${d.name}`}
+                  tabIndex={0}
+                  onClick={() => toggle(d.id)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget || (e.key !== " " && e.key !== "Enter")) return;
+                    e.preventDefault();
+                    toggle(d.id);
+                  }}
                   onDoubleClick={() => navigate(pathFor("device", { deviceId: d.id }))}
-                  className={cn("flex min-w-0 items-center gap-2.5 rounded-[10px] border bg-card px-3 py-2", !d.connected && "opacity-60")}
+                  className={cn(
+                    "flex min-w-0 cursor-pointer select-none items-center gap-2.5 rounded-[10px] border bg-card px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    on && "border-ring bg-muted",
+                    !d.connected && !on && "opacity-60",
+                  )}
                 >
                   <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
                     <Icon className="size-3.5" />
@@ -108,7 +139,11 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
                         disabled={!assignGate.allowed}
                         aria-label={`Assign ${d.name} to ${p.name}`}
                         title={assignGate.allowed ? `Assign to ${p.name}` : undefined}
-                        onClick={() => void performWrite(profileRequest([d], { id: p.id, name: p.name }))}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void performWrite(profileRequest([d], { id: p.id, name: p.name }));
+                        }}
+                        onDoubleClick={(e) => e.stopPropagation()}
                         className="cursor-pointer rounded-full opacity-35 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:hover:opacity-35"
                       >
                         <Avatar name={p.name} color={colorOf(p.id)} className="size-[18px] text-[9px]" />
@@ -119,17 +154,25 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
               );
             })}
             {loaded && (
-              <div
-                title="Coming soon"
-                className="flex items-center justify-center gap-2 rounded-[10px] border border-dashed px-3 py-2 text-muted-foreground text-xs opacity-70"
+              <button
+                type="button"
+                disabled={!createGate.allowed || picked.length === 0}
+                title={!createGate.allowed ? (createGate.reason ?? undefined) : picked.length === 0 ? "Click devices to select them first" : undefined}
+                onClick={() => setCreating(picked)}
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed px-3 py-2 text-muted-foreground text-xs outline-none hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
               >
                 <UserRoundPlus aria-hidden className="size-[15px]" />
                 New profile from selection
-              </div>
+                {picked.length > 0 && <span className="tabular-nums">({picked.length})</span>}
+              </button>
             )}
           </div>
         </>
       )}
+      <ProfileSheet
+        mode={creating ? { kind: "create", deviceIds: creating } : null}
+        onClose={() => setCreating(null)}
+      />
     </Section>
   );
 }

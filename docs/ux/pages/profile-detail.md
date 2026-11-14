@@ -137,7 +137,8 @@ Profiles stays active.
   confirm) or **Resume unassigned**, and the devices table with status and
   data in the last 24 hours. No Rename, no Delete section, no Add a device
   (devices land here by leaving other profiles); the schedules section is
-  left out, since Unassigned schedules have no known endpoint (see
+  left out until Unassigned schedules are built (the endpoint is likely
+  the default profile's own `resources.schedules`; see
   [profiles.md](profiles.md#notes)). The route shares `/profiles/:profileId`
   (profile ids are numbers).
 - **Capability missing.** None specific beyond Unassigned support (eeroOS
@@ -191,9 +192,10 @@ Undo (remove for a new schedule, the old fields for an edit); Delete
 schedule asks inline and its Undo adds the schedule back (with a new id).
 A manual pause draws on today's lane in the warning colour (as on the
 Profiles lanes) from `profile.get` `today`, with a "Manual pause" legend
-swatch. Clicking a lane segment does not open the sheet yet (the shared
-timeline has no click handler), and the Profiles card menu has no "Add a
-scheduled pause" item (`ProfileCards.tsx` was not this story's file).
+swatch. Clicking a lane segment opens the sheet for that schedule (M5.11:
+the shared timeline's `onSelect`, given only when the `profiles` gate
+allows; the manual pause block is `inert`). The Profiles card menu has no
+"Add a scheduled pause" item (`ProfileCards.tsx` was not this story's file).
 
 - **Hero.** State and the next change come from `profile.get` (`state`,
   `nextChange`, computed in core); the page only words them. In a scheduled

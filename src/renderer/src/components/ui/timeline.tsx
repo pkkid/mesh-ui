@@ -7,7 +7,9 @@
  * docs/mockups/08-profile-detail.html ("Scheduled pauses").
  *
  * `layoutWeek` is pure (tested in components/charts/charts.test.ts); the
- * component only draws its result.
+ * component only draws its result. With `onSelect`, each block is a button
+ * that opens its schedule (the schedule sheet), except `inert` ones such as
+ * a manual pause.
  */
 import type { ReactNode } from "react";
 
@@ -32,6 +34,8 @@ export type WeekSchedule = {
   end: number;
   /** Disabled schedules draw as a dashed outline. Defaults to true. */
   enabled?: boolean;
+  /** Not a schedule (today's manual pause): never a button, even with `onSelect`. */
+  inert?: boolean;
 };
 
 export type TimelineBlock = {
@@ -96,17 +100,19 @@ export type WeekTimelineProps = {
   ariaLabel: string;
   loading?: boolean;
   className?: string;
+  /** Clicking a block opens its schedule. Leave out where the person cannot edit it. */
+  onSelect?: (schedule: WeekSchedule) => void;
 };
 
-export function WeekTimeline({ schedules, today = null, now = null, ariaLabel, loading, className }: WeekTimelineProps) {
+export function WeekTimeline({ schedules, today = null, now = null, ariaLabel, loading, className, onSelect }: WeekTimelineProps) {
   const lanes = layoutWeek(schedules);
   return (
-    <div role="img" aria-label={ariaLabel} className={cn("flex flex-col gap-2", className)}>
+    <div role={onSelect ? "group" : "img"} aria-label={ariaLabel} className={cn("flex flex-col gap-2", className)}>
       <div className={cn("grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-y-[7px] transition-opacity", loading && "opacity-40")}>
         {lanes.map((blocks, day) => {
           const isToday = day === today;
           return (
-            <Lane key={WEEK_DAYS[day]} day={WEEK_DAYS[day]!} blocks={blocks} isToday={isToday} now={isToday ? now : null} />
+            <Lane key={WEEK_DAYS[day]} day={WEEK_DAYS[day]!} blocks={blocks} isToday={isToday} now={isToday ? now : null} onSelect={onSelect} />
           );
         })}
       </div>
@@ -119,7 +125,9 @@ export function WeekTimeline({ schedules, today = null, now = null, ariaLabel, l
   );
 }
 
-function Lane({ day, blocks, isToday, now }: { day: string; blocks: TimelineBlock[]; isToday: boolean; now: number | null }) {
+type LaneProps = { day: string; blocks: TimelineBlock[]; isToday: boolean; now: number | null; onSelect?: (s: WeekSchedule) => void };
+
+function Lane({ day, blocks, isToday, now, onSelect }: LaneProps) {
   return (
     <>
       <span
@@ -130,13 +138,13 @@ function Lane({ day, blocks, isToday, now }: { day: string; blocks: TimelineBloc
       </span>
       <div
         className={cn("relative h-[30px] rounded-lg border bg-muted/40", isToday && "border-muted-foreground/50")}
-        aria-hidden
+        aria-hidden={onSelect ? undefined : true}
       >
         {HOURS.map((h) => (
-          <i key={h} className="absolute inset-y-0 w-px bg-border/70" style={{ left: pct(h * 60) }} />
+          <i key={h} aria-hidden className="absolute inset-y-0 w-px bg-border/70" style={{ left: pct(h * 60) }} />
         ))}
         {blocks.map((b) => (
-          <Block key={`${b.schedule.id}-${b.start}`} block={b} />
+          <Block key={`${b.schedule.id}-${b.start}`} block={b} day={day} onSelect={b.schedule.inert ? undefined : onSelect} />
         ))}
         {now === null ? null : (
           <span className="absolute -inset-y-1 z-10 w-0.5 -translate-x-1/2 rounded-full bg-foreground" style={{ left: pct(now) }}>
@@ -148,17 +156,22 @@ function Lane({ day, blocks, isToday, now }: { day: string; blocks: TimelineBloc
   );
 }
 
-function Block({ block }: { block: TimelineBlock }) {
+function Block({ block, day, onSelect }: { block: TimelineBlock; day: string; onSelect?: (s: WeekSchedule) => void }) {
   const { schedule: s, start, end } = block;
   const hours = (end - start) / 60;
   const enabled = s.enabled ?? true;
   const title = `${s.label}${enabled ? "" : " (off)"}: ${formatMinute(s.start)} to ${formatMinute(s.end)}`;
+  const Tag = onSelect ? "button" : "span";
   return (
-    <span
+    <Tag
+      {...(onSelect
+        ? { type: "button" as const, "aria-label": `Edit ${s.label}, ${day} ${formatMinute(s.start)} to ${formatMinute(s.end)}`, onClick: () => onSelect(s) }
+        : {})}
       title={title}
       className={cn(
         "absolute inset-y-1 flex items-center gap-1 overflow-hidden whitespace-nowrap rounded-md px-[7px] font-semibold text-[10.5px] [&_svg]:size-[11px] [&_svg]:shrink-0",
         enabled ? "text-background" : "border-[1.5px] border-muted-foreground/70 border-dashed text-muted-foreground",
+        onSelect && "cursor-pointer outline-none hover:brightness-110 focus-visible:ring-2 focus-visible:ring-ring",
       )}
       style={{
         left: `calc(${pct(start)} + 1px)`,
@@ -168,6 +181,6 @@ function Block({ block }: { block: TimelineBlock }) {
     >
       {s.icon && hours >= 3 ? s.icon : null}
       {hours >= 2 ? <span className="min-w-0 truncate">{enabled ? s.label : `${s.label} (off)`}</span> : null}
-    </span>
+    </Tag>
   );
 }

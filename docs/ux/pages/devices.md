@@ -77,7 +77,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Share Wi-Fi (topbar) | `wifi.share` | query | No | Share Wi-Fi sheet (QR, name, show and copy password) |
+| Share Wi-Fi (topbar) | `wifi.share` | query | No | Share Wi-Fi sheet, the same one as Overview (QR code, network name, Copy password, Save QR); runs `wifi.share` when it opens |
 | Search, status segment, Filters popover, active filter chips, Clear all, sort | - (view state, passed as `device.list` params) | - | No | Table and counts update; filter state kept per network |
 | Group by, Columns, expand or collapse a group | - (view state) | - | No | Layout only |
 | Row click, device name | - | - | No | Device detail (Prev and Next follow this table's order) |

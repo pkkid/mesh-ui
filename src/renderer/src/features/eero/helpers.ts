@@ -3,7 +3,9 @@
  * components use, kept free of React and the `~` alias so they can be unit
  * tested (helpers.test.ts). docs/ux/pages/eero-detail.md.
  */
-import type { Eero, EeroPort, Radio } from "../../../../core/model";
+import { RESTART_ESTIMATE } from "../../../../core/commands/network";
+import { IMPACT } from "../../../../core/commands/settings";
+import type { Eero, EeroPort, Radio, SettingsImpact } from "../../../../core/model";
 
 /** "Tri-band Wi-Fi 7", "Dual-band": band count, plus the Wi-Fi generation when the model name carries it. */
 export function radioBadge(e: Pick<Eero, "bands" | "model">): string | null {
@@ -72,10 +74,27 @@ export function ipText(e: Pick<Eero, "ipv4" | "ipv6" | "subnet" | "gatewayIp">):
   return rows.flatMap(([k, v]) => (v ? [`${k} ${v}`] : [])).join("\n");
 }
 
-/** Restart copy: who drops and for how long (about 1 minute for a leaf, 2 to 3 for the gateway; commands.md#restart-estimates). */
+/**
+ * Restart copy: who drops and for how long. The estimates are core's: the
+ * gateway takes the network down like `network.restart` (settings.impact's
+ * IMPACT table), a leaf eero is `RESTART_ESTIMATE.eero`, the one `eero.restart`
+ * reports (commands.md#restart-estimates).
+ */
 export function restartLine(eero: Eero, eeros: ReadonlyArray<Eero>, networkName: string): string {
-  if (eero.isGateway) return `Everyone on ${networkName} loses internet for about 2 to 3 minutes`;
+  if (eero.isGateway) return `Everyone on ${networkName} loses internet for ${IMPACT["network.restart"]?.estimate ?? RESTART_ESTIMATE.network}`;
   const downstream = eeros.filter((e) => e.upstream === eero.id).map((e) => e.location);
   const also = downstream.length > 0 ? ` and ${downstream.join(", ")} (downstream)` : "";
-  return `Its devices${also} drop for about 1 minute`;
+  return `Its devices${also} drop for ${RESTART_ESTIMATE.eero}`;
+}
+
+/**
+ * "Disruptive: 23 devices online lose internet for about 2 to 3 minutes", from
+ * `settings.impact`; the table's estimate alone until it answers.
+ */
+export function restartNetworkLine(impact: SettingsImpact | null | undefined): string {
+  const change = impact?.changes.find((c) => c.id === "network.restart");
+  const estimate = change?.estimate ?? IMPACT["network.restart"]?.estimate ?? "a few minutes";
+  if (!change) return `Disruptive: everyone loses internet for ${estimate}.`;
+  const n = change.deviceIds.length;
+  return `Disruptive: ${n} ${n === 1 ? "device" : "devices"} online ${n === 1 ? "loses" : "lose"} internet for ${estimate}.`;
 }

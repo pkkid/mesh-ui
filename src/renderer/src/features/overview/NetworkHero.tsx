@@ -1,15 +1,16 @@
 /**
  * The Overview status hero: network name and status, gateway uptime, ISP,
  * public IP, last speed test, the action row (Run speed test with a
- * progress toast until the result lands; Share Wi-Fi opens the Wi-Fi page
- * and its QR block; Pause a profile picks a profile and pauses it with Undo;
+ * progress toast until the result lands; Share Wi-Fi opens the Share Wi-Fi
+ * sheet (QR, Copy password); Pause a profile picks a profile and pauses it
+ * with Undo;
  * Restart network confirms inline, then a progress toast until the eeros are
  * back) and the two speed gauges
  * ("Set your plan" opens the plan sheet).
  * docs/ux/pages/overview.md (Layout 1, States).
  */
 import { Popover } from "@base-ui/react/popover";
-import { PauseCircle, RotateCcw, Share2, TriangleAlert } from "lucide-react";
+import { PauseCircle, RotateCcw, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
@@ -26,6 +27,7 @@ import { seriesColors } from "~/lib/chartColors";
 import { formatDuration, formatRelative, mbpsParts, MISSING } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, Profile, ProfileList, SpeedHistory } from "../../../../core/model";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
+import { ShareWifiButton } from "~/features/wifi/ShareSheet";
 import { RunSpeedTestButton, useRunningSpeedTest } from "~/features/internet/InternetHero";
 import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
@@ -92,10 +94,7 @@ export function NetworkHero() {
         actions={
           <>
             <RunSpeedTestButton />
-            <Button variant="outline" render={<Link to={pathFor("wifi")} />}>
-              <Share2 />
-              Share Wi-Fi
-            </Button>
+            <ShareWifiButton />
             {!bridged && <PauseProfileButton />}
             <WriteConfirm write={restart.write} className="basis-full">
               <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
