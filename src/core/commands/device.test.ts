@@ -128,7 +128,7 @@ describe("device.list (demo)", () => {
     expect(unassigned.devices.map((d) => d.name)).toContain("Living Room TV");
     expect((await list(engine, { band: "wired" })).devices).toHaveLength(4);
     expect((await list(engine, { type: "entertainment" })).devices).toHaveLength(6);
-    expect(names(await list(engine, { ssid: "guest" }))).toEqual(["Sam's Pixel"]);
+    expect(names(await list(engine, { ssid: "guest" }))).toEqual(["Grandma's iPad", "Sam's Pixel"]);
     expect(names(await list(engine, { manufacturer: "sonos" }))).toEqual(["Sonos Kitchen", "Sonos Living Room"]);
     const since = new Date(NOW - 7 * 86_400_000).toISOString();
     expect(names(await list(engine, { firstSeenSince: since }))).toEqual(["ESP_3A9F21", "Grandma's iPad", "Nest Thermostat"]);

@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 import { dayStart, hourStart } from "../demo/backend";
-import { CommandError } from "../errors";
+import { BackendError, CommandError } from "../errors";
 import { type CsvColumn, toCsv } from "../format";
 import type * as M from "../model";
 import { POLL, USAGE_TTL } from "../poll";
@@ -88,7 +88,8 @@ const usageGet = defineCommand({
         .series(ctx.net, { scope, id, range: p.range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: w.cadence, timezone: tz })
         .then((s) => finishSeries(s, w, tz));
 
-    if (p.scope === "network" || p.scope === "guest") return query(p.scope, null);
+    if (p.scope === "network") return query("network", null);
+    if (p.scope === "guest") return guestSeries(ctx, w, tz, p.range);
     if (p.id) {
       const kind = p.scope as "eero" | "device" | "profile";
       return query(kind, await ctx.resolve(kind, p.id));
@@ -108,6 +109,35 @@ const usageGet = defineCommand({
     return out;
   },
 });
+
+/**
+ * The guest network: every device seen on it that was online during the
+ * window, added up bucket by bucket. eero has no guest usage endpoint, so
+ * both backends answer this the same way, from the per-device series. A
+ * guest eero no longer knows (404) adds nothing.
+ */
+async function guestSeries(ctx: CommandContext, w: UsageWindow, tz: string, range: M.UsageRange): Promise<M.UsageSeries> {
+  const devices = await ctx.backend.device.list(ctx.net);
+  const guests = devices.filter((d) => d.ssid === "guest" && (d.connected || (d.lastActive !== null && Date.parse(d.lastActive) >= w.from)));
+  const sum = new Map<string, { down: number; up: number }>();
+  for (const g of guests) {
+    let s: M.UsageSeries;
+    try {
+      s = await ctx.backend.usage.series(ctx.net, { scope: "device", id: g.id, range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: w.cadence, timezone: tz });
+    } catch (err) {
+      if (err instanceof BackendError && err.code === "eero_error" && err.detail?.status === 404) continue;
+      throw err;
+    }
+    for (const p of s.points) {
+      const t = sum.get(p.at) ?? { down: 0, up: 0 };
+      t.down += p.down;
+      t.up += p.up;
+      sum.set(p.at, t);
+    }
+  }
+  const points = [...sum.entries()].sort(([a], [b]) => Date.parse(a) - Date.parse(b)).map(([at, t]) => ({ at, ...t }));
+  return finishSeries({ scope: "guest", id: null, range, cadence: w.cadence, points, total: { down: 0, up: 0 }, busiest: null, todaySoFar: null }, w, tz);
+}
 
 /** The network minus every profile, bucket by bucket: the devices in no profile. */
 function unassigned(network: M.UsageSeries, profiles: M.UsageSeries[]): M.UsageSeries {

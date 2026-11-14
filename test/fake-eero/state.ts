@@ -159,7 +159,7 @@ function seedAccount(nets: FakeNetwork[]): RawAccount {
 
 /** `up`: index of the parent eero (default the gateway, index 0). */
 type EeroSeed = { id: string; serial: string; location: string; model: string; gateway?: boolean; status?: string; bars?: number; wired?: boolean; up?: number; clients: number };
-type DeviceSeed = { n: number; name: string | null; host: string; type: string; eero: number; band: "2.4" | "5" | "6" | "wired"; online?: boolean; paused?: boolean; profile?: number };
+type DeviceSeed = { n: number; name: string | null; host: string; type: string; eero: number; band: "2.4" | "5" | "6" | "wired"; online?: boolean; paused?: boolean; profile?: number; guest?: boolean };
 
 function seedNetworks(): FakeNetwork[] {
   return [
@@ -182,7 +182,7 @@ function seedNetworks(): FakeNetwork[] {
         { n: 4, name: "Mia's Tablet", host: "mia-tablet", type: "tablet", eero: 2, band: "5", profile: 2 },
         { n: 5, name: "Leo's Switch", host: "leo-switch", type: "game_console", eero: 0, band: "2.4", paused: true, profile: 3 },
         { n: 6, name: "Living Room TV", host: "living-tv", type: "television", eero: 0, band: "wired" },
-        { n: 7, name: null, host: "esp-plug-07", type: "plug", eero: 1, band: "2.4" },
+        { n: 7, name: null, host: "esp-plug-07", type: "plug", eero: 1, band: "2.4", guest: true },
         { n: 8, name: "Old Printer", host: "printer", type: "printer", eero: 0, band: "2.4", online: false },
       ],
     }),
@@ -278,8 +278,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       source: eero ? { location: eero.location, is_gateway: eero.gateway ?? false, url: `/2.2/eeros/${eero.id}`, model: eero.model, serial_number: eero.serial } : {},
       interface: wired ? {} : { frequency: d.band, frequency_unit: "GHz" },
       ssid: seed.name,
-      subnet_kind: "main",
-      is_guest: false,
+      subnet_kind: d.guest ? "guest" : "main",
+      is_guest: d.guest ?? false,
       is_private: false,
       connectivity: wired ? {} : { signal: "-52 dBm", signal_avg: "-54 dBm", score: 0.9, score_bars: 4, rx_bitrate: "866.7 Mbit/s" },
       usage: null,

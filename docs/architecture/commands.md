@@ -279,14 +279,20 @@ silent no-op (FF); schedules always go through `{profile}/schedules`.
 
 ### guest (`commands/guest.ts`)
 
+M3 ships `guest.get` and `guest.share`; the writes below are planned, and the
+Guest page shows them as disabled "Coming soon" controls. Guest usage is
+`usage.get` `{scope: "guest"}`: core adds up the per-device series of every
+guest online during the window, on both backends (eero has no guest usage
+endpoint).
+
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `guest.get` | Guest network | `{}` | q | `GET {net}/guestnetwork` | `GuestNetwork` without the password (`hasPassword` only), plus online guest count. |
+| `guest.get` | Guest network | `{}` | q | `GET {net}/guestnetwork`, `GET {net}/devices` (`is_guest`), `GET {net}/wpa3_per_band`, `GET {net}/eeros` (6 GHz radios) | `GuestNetwork` without the password (`hasPassword` only), plus online guest count (0 while off) and every guest seen in the last 7 days. Security per band is the main network's; none when open; 6 GHz is WPA3 when an eero has the radio. Polled with devices (60 s). |
 | `guest.enable` | Turn on guest network | `{ name?: string(1..32) }` | w | `PUT {net}/guestnetwork` form `enabled=true[&name]` | |
 | `guest.disable` | Turn off guest network | `{}` | d | `PUT {net}/guestnetwork` form `enabled=false` | Drops every guest. |
 | `guest.rename` | Rename guest network | `{ name: string(1..32) }` | d | `PUT {net}/guestnetwork` form `name` | Must differ from the main SSID (checked in core). Guests must rejoin. |
 | `guest.password.set` | Guest password | `{ password: string(8..63) \| null }` | d | `PUT {net}/guestnetwork/password` form `password`; `null`: `DELETE {net}/guestnetwork/password` | `null` makes the guest network open. |
-| `guest.share` | Share guest Wi-Fi | `{}` | q, sensitive | `GET {net}/guestnetwork`, `GET {net}/guestnetwork/password` | `WifiShare`: ssid, password, security, `WIFI:T:WPA;S:...;P:...;;` payload for the QR. |
+| `guest.share` | Share guest Wi-Fi | `{}` | q, sensitive | `GET {net}/guestnetwork` (the password is in the clear there) | `WifiShare`: ssid, password (null when open), security (`WPA` or `nopass`), and the `WIFI:T:WPA;S:...;P:...;;` (open: `WIFI:T:nopass;S:...;;`) payload for the QR, with `\`, `;`, `,`, `:` and `"` escaped. Never cached or polled. An unnamed guest network is an `eero_error`. |
 
 ### wifi (`commands/wifi.ts`)
 

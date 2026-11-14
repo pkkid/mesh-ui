@@ -133,7 +133,7 @@ describe("devices", () => {
     expect([byCat("phones_tablets"), byCat("computers"), byCat("entertainment"), byCat("smart_home"), byCat("other")]).toEqual([12, 7, 6, 10, 3]);
     const weekAgo = NOW - 7 * 24 * HOUR;
     expect(devices.filter((d) => d.firstSeen && Date.parse(d.firstSeen) > weekAgo).map((d) => d.name)).toEqual(["Grandma's iPad", "Nest Thermostat", "ESP_3A9F21"]);
-    expect(devices.filter((d) => d.ssid === "guest").map((d) => d.name)).toEqual(["Sam's Pixel"]);
+    expect(devices.filter((d) => d.ssid === "guest").map((d) => d.name)).toEqual(["Grandma's iPad", "Sam's Pixel"]);
     expect(new Set(devices.map((d) => d.id)).size).toBe(38);
     for (const d of devices) {
       expect(d.id).toBe(d.mac.replace(/:/g, ""));
@@ -249,8 +249,10 @@ describe("usage", () => {
   it("keeps guest usage to guest devices and offline networks quiet", async () => {
     const b = demo();
     const guest = await series(b, MAPLE, "guest", null, week);
-    const sam = (await b.device.list(MAPLE)).find((d) => d.name === "Sam's Pixel");
-    expect(guest.total).toEqual((await series(b, MAPLE, "device", sam?.id ?? null, week)).total);
+    const guests = (await b.device.list(MAPLE)).filter((d) => d.ssid === "guest");
+    expect(guests.map((d) => d.name)).toEqual(["Grandma's iPad", "Sam's Pixel"]);
+    const each = await Promise.all(guests.map((d) => series(b, MAPLE, "device", d.id, week)));
+    expect(guest.total).toEqual({ down: each.reduce((n, s) => n + s.total.down, 0), up: each.reduce((n, s) => n + s.total.up, 0) });
     const lake = await series(b, LAKE, "network", null);
     expect(lake.total).toEqual({ down: 0, up: 0 });
     expect(lake.busiest).toBeNull();
@@ -680,7 +682,6 @@ describe("eero backend", () => {
   it("answers not available yet for the M3 areas until their stories land", async () => {
     const b = createEeroBackend({ secrets: { load: async () => "t", save: async () => "memory", clear: async () => {}, storage: async () => "memory" }, fetch: async () => Promise.reject(new Error("no network in tests")) });
     const calls: [string, () => Promise<unknown>][] = [
-      ["guest.get", () => b.guest.get("1")],
       ["wifi.get", () => b.wifi.get("1")],
       ["settings.get", () => b.settings.get("1")],
       ["diagnostics.latest", () => b.diagnostics.latest("1")],
