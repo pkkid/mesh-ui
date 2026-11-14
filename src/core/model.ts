@@ -31,6 +31,16 @@ export type PortAction =
   | "ENABLE_POE"
   | "DISABLE_POE"
   | "RESTART_POWER";
+/** Each port action's opposite, for Undo and for the action eero lists once it applies. RESTART_POWER has none. */
+export const INVERSE_PORT_ACTION: Readonly<Record<PortAction, PortAction | null>> = {
+  ENABLE_PORT: "DISABLE_PORT",
+  DISABLE_PORT: "ENABLE_PORT",
+  ENABLE_DATA: "DISABLE_DATA",
+  DISABLE_DATA: "ENABLE_DATA",
+  ENABLE_POE: "DISABLE_POE",
+  DISABLE_POE: "ENABLE_POE",
+  RESTART_POWER: null,
+};
 export type UsageRange = "day" | "week";
 export type UsageCadence = "hourly" | "daily";
 
@@ -542,6 +552,38 @@ export type NetworkSettings = {
 };
 
 export type ThreadCredentials = { networkKey: string; pskc: string | null; dataset: string | null };
+
+/** Who a change takes down: every device, wireless ones, Thread accessories, one port's device, or nobody. */
+export type ImpactDrops = "all" | "wireless" | "thread" | "port" | "none";
+
+/** One change in `settings.impact`. */
+export type ChangeImpact = {
+  /** The write command id (`settings.dns.set`). */
+  id: string;
+  /** Every eero restarts to apply it. */
+  restarts: boolean;
+  /** Outage estimate ("about 8 minutes"), null when nothing restarts. */
+  estimate: string | null;
+  drops: ImpactDrops;
+  /** Online devices that drop (none listed for `thread` and `port`: eero does not report those). */
+  deviceIds: Id[];
+  /** One sentence for the confirm, the impact panel and the CLI. */
+  summary: string;
+};
+
+/** `settings.impact`: what a set of changes restarts and who drops, before the confirm. */
+export type SettingsImpact = {
+  changes: ChangeImpact[];
+  /** Any change restarts the network. */
+  restarts: boolean;
+  /** The longest estimate among the changes, null when none restarts. */
+  estimate: string | null;
+  devicesOnline: number;
+  /** Online devices any change drops, each once. */
+  deviceIds: Id[];
+  /** The changes' summaries joined: every disruptive setting's `needs_confirm` message. */
+  summary: string;
+};
 
 export type Protocol = "tcp" | "udp" | "both";
 

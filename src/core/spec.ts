@@ -60,6 +60,38 @@ export interface CommandContext {
   emit(event: HostEvent): void;
 }
 
+/** Which `network.permissions` operation a write needs. */
+export type GateOp = "create" | "update" | "delete";
+
+/**
+ * What a write needs to run on a network, declared on its spec so every
+ * surface reads the same rule (docs/ux/overview.md#permission-gating). The
+ * palette and pages dim with the reason; the engine and eero still have the
+ * last word when it runs. Every non-query command declares one; `{ area:
+ * null }` for writes no permission, mode or capability limits (sign-in,
+ * app-local settings).
+ */
+export type WriteGate = {
+  /** `network.permissions` `can` key (`devices`, `eeros`, `profiles`, `settings`, `network`), or null for none. */
+  area: string | null;
+  /** Default `update`. */
+  op?: GateOp;
+  /** Off in bridge and IP passthrough mode (eero has no router there). */
+  bridgeOff?: true;
+  /** A `network.get` capability that must be true. */
+  capability?: string;
+};
+
+/** A gate with its defaults filled in, as `CommandInfo.gate` lists it. */
+export type ResolvedGate = { area: string | null; op: GateOp; bridgeOff: boolean; capability: string | null };
+
+export const resolveGate = (g: WriteGate): ResolvedGate => ({
+  area: g.area,
+  op: g.op ?? "update",
+  bridgeOff: g.bridgeOff === true,
+  capability: g.capability ?? null,
+});
+
 export interface CommandSpec<P extends z.ZodObject = z.ZodObject, R = unknown> {
   /** Dotted lowercase: area.verb or area.object.verb. */
   id: string;
@@ -78,6 +110,8 @@ export interface CommandSpec<P extends z.ZodObject = z.ZodObject, R = unknown> {
   topic?: Topic;
   /** Query: cache lifetime override in seconds (0 = do not cache). Default from TTL[topic]. */
   ttl?: number | ((params: z.output<P>) => number);
+  /** Write: what it needs to run here (permission, bridge mode, capability). Required for every non-query command (registry.test.ts). */
+  gate?: WriteGate;
   /** Write: topics to mark stale after success. */
   invalidates?: Topic[];
   /** The result holds a credential. Never cached; masked by the CLI. */

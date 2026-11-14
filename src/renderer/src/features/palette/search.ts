@@ -90,74 +90,30 @@ export type AvailabilityContext = {
 };
 
 /**
- * Permission area (`network.permissions` `can` key) per command area. A
- * command area not listed here is not gated by permission.
+ * What a write needs to run on this network, from its spec's `gate`
+ * (src/core/spec.ts, listed by `mesh-ui commands`). Null for queries and
+ * commands outside a network.
  */
-const PERMISSION_AREA: Record<string, string> = {
-  admin: "network.admin_invites",
-  device: "devices",
-  eero: "eeros",
-  forward: "settings",
-  guest: "settings",
-  internet: "network",
-  network: "network",
-  notifications: "network",
-  pinhole: "settings",
-  profile: "profiles",
-  reservation: "settings",
-  settings: "settings",
-  speedtest: "network",
-  updates: "updates",
-  wifi: "settings",
-};
-
-/** Commands off in bridge or IP passthrough mode (eero has no router there), by id prefix. */
-const BRIDGE_OFF: ReadonlyArray<string> = [
-  "device.block",
-  "device.pause",
-  "device.profile",
-  "device.resume",
-  "device.unblock",
-  "forward",
-  "guest",
-  "profile",
-  "reservation",
-  "settings.sqm",
-];
-
-/** The `network.get` capability a command needs, by id prefix. */
-const CAPABILITY: ReadonlyArray<readonly [string, string]> = [
-  ["device.block", "device_blacklist"],
-  ["device.unblock", "device_blacklist"],
-  ["eero.led", "led_action"],
-  ["settings.band_steering", "band_steering"],
-  ["settings.dns_caching", "dns_caching"],
-  ["settings.ipv6", "ipv6_editable"],
-  ["settings.power_saving", "power_saving"],
-  ["settings.sqm", "sqm"],
-  ["settings.thread", "thread_network"],
-];
-
-const hasPrefix = (id: string, prefix: string) => id === prefix || id.startsWith(`${prefix}.`);
+export function commandGate(info: Pick<CommandInfo, "effect" | "scope" | "gate">): GateOptions | null {
+  if (info.effect === "query" || info.scope !== "network" || !info.gate) return null;
+  const { area, op, bridgeOff, capability } = info.gate;
+  return { area: area ?? undefined, op, bridgeOff, capability: capability ?? undefined };
+}
 
 /**
- * What a write needs to run on this network, read from its id: the
- * permission area and operation (`create` for add and create, `delete` for
- * delete, remove and destructive commands, else `update`), bridge mode and
- * capability. Null for queries and commands outside a network.
+ * Why a command cannot run here, or null when it can: destructive commands
+ * are owner only, then the spec's gate (role and permission, bridge mode,
+ * capability). The palette and pages (`useGate(id)` in components/ui/page)
+ * both call this, so they dim the same command for the same reason.
  */
-export function commandGate(info: Pick<CommandInfo, "id" | "effect" | "scope">): GateOptions | null {
-  if (info.effect === "query" || info.scope !== "network") return null;
-  const parts = info.id.split(".");
-  const verb = parts[parts.length - 1] ?? "";
-  const op: GateOptions["op"] =
-    verb === "create" || verb === "add" ? "create" : verb === "delete" || verb === "remove" || info.effect === "destructive" ? "delete" : "update";
-  return {
-    area: PERMISSION_AREA[parts[0] ?? ""],
-    op,
-    bridgeOff: BRIDGE_OFF.some((p) => hasPrefix(info.id, p)),
-    capability: CAPABILITY.find(([p]) => hasPrefix(info.id, p))?.[1],
-  };
+export function commandUnavailable(
+  info: Pick<CommandInfo, "effect" | "scope" | "gate">,
+  permissions: Permissions | null | undefined,
+  network: Network | null | undefined,
+): string | null {
+  if (info.effect === "destructive" && permissions && permissions.role !== "owner") return "Owner only";
+  const gate = commandGate(info);
+  return gate ? gateFor(gate, permissions ?? undefined, network ?? undefined).reason : null;
 }
 
 /**
@@ -169,10 +125,7 @@ export function commandGate(info: Pick<CommandInfo, "id" | "effect" | "scope">):
 export function availability(info: CommandInfo, ctx: AvailabilityContext): string | null | false {
   if (HIDDEN.has(info.id)) return false;
   if (!ctx.signedIn && info.scope === "network") return false;
-  if (info.effect === "destructive" && ctx.permissions && ctx.permissions.role !== "owner") return "Owner only";
-  const gate = commandGate(info);
-  if (gate) return gateFor(gate, ctx.permissions ?? undefined, ctx.network ?? undefined).reason;
-  return null;
+  return commandUnavailable(info, ctx.permissions, ctx.network);
 }
 
 export function commandItems(

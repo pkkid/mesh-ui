@@ -72,6 +72,7 @@ export const commands: AnyCommand[] = [
     icon: "arrow-left-right",
     params: z.object({ network: ref("network") }),
     effect: "write",
+    gate: { area: null },
     scope: "account",
     // network.get caches the `selected` flag.
     invalidates: ["network"],
@@ -142,6 +143,7 @@ export const commands: AnyCommand[] = [
     icon: "rotate-ccw",
     params: empty,
     effect: "disruptive",
+    gate: { area: "network" },
     invalidates: ["network", "eeros"],
     async confirmMessage(ctx) {
       const name = (await ctx.backend.network.get(ctx.net).catch(() => null))?.name;

@@ -87,6 +87,7 @@ const writeCommands: AnyCommand[] = [
     description: "Sets an eero's room name (`location`), as the eero app shows it.",
     icon: "pencil",
     effect: "write",
+    gate: { area: "eeros" },
     invalidates: ["eeros", "network", "eero_ports"],
     params: z.object({ eero: ref("eero"), location: z.string().trim().min(1, "Enter a name.").max(32, "32 characters at most.").describe("New room name, 1 to 32 characters.") }),
     run: async (ctx, p): Promise<M.Eero> => ctx.backend.eero.rename(ctx.net, await ctx.resolve("eero", p.eero), p.location),
@@ -98,6 +99,7 @@ const writeCommands: AnyCommand[] = [
     description: "Blinks an eero's status light blue and white so you can find it. Harmless. There is no stop yet: it ends by itself.",
     icon: "lightbulb",
     effect: "write",
+    gate: { area: "eeros" },
     invalidates: [],
     params: z.object({ eero: ref("eero"), seconds: z.number().int().min(10).max(60).optional().describe(`How long to blink, 10 to 60 seconds (default ${FIND_SECONDS}).`) }),
     async run(ctx, p): Promise<{ eeroId: M.Id; seconds: number }> {
@@ -114,6 +116,7 @@ const writeCommands: AnyCommand[] = [
     description: "Turns an eero's status light on or off and sets its brightness (0 to 100).",
     icon: "lightbulb",
     effect: "write",
+    gate: { area: "eeros", capability: "led_action" },
     invalidates: ["eeros"],
     params: z.object({ eero: ref("eero"), on: z.boolean().optional().describe("Light on or off."), brightness: z.number().int().min(0).max(100).optional().describe("Brightness, 0 to 100.") }),
     async run(ctx, p): Promise<M.Eero> {
@@ -128,6 +131,7 @@ const writeCommands: AnyCommand[] = [
     description: "eero Beacon nightlight: off, ambient (follows the room light) or on a schedule (`on` and `off` as HH:MM), with brightness 0 to 100. Other eeros have no nightlight and fail bad_params.",
     icon: "moon",
     effect: "write",
+    gate: { area: "eeros" },
     invalidates: ["eeros"],
     params: z.object({
       eero: ref("eero"),
@@ -154,6 +158,7 @@ const writeCommands: AnyCommand[] = [
     description: `Restarts one eero. A leaf eero's devices (and eeros that connect through it) drop for ${RESTART_ESTIMATE.eero}; restarting the gateway takes the whole network down for ${RESTART_ESTIMATE.network}. Returns the eeros that restart.`,
     icon: "rotate-ccw",
     effect: "disruptive",
+    gate: { area: "eeros" },
     invalidates: ["eeros", "network"],
     params: z.object({ eero: ref("eero") }),
     async confirmMessage(ctx, p) {

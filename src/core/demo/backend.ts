@@ -25,6 +25,7 @@
  */
 
 import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
+import { INVERSE_PORT_ACTION } from "../model";
 import { deviceCategory } from "../eero/map/device";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
@@ -164,6 +165,16 @@ function prefixMask(bits: number): string {
   return [24, 16, 8, 0].map((s) => (n >>> s) & 0xff).join(".");
 }
 
+/** Prefix length of a dotted mask: 255.255.252.0 gives 22. */
+function maskBits(mask: string): number {
+  return ipNumber(mask).toString(2).replace(/0+$/, "").length;
+}
+
+/** A dotted IPv4 address as an unsigned number. */
+function ipNumber(ip: string): number {
+  return ip.split(".").reduce((n, part) => n * 256 + Number(part), 0);
+}
+
 const WIRELESS: M.WirelessBand[] = ["2.4", "5", "6"];
 const uniqueSorted = (xs: (number | null)[]) => [...new Set(xs.filter((x): x is number => x !== null))].sort((a, b) => a - b);
 
@@ -186,6 +197,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
   let writeSeq = 0;
   /** Whether a device was connected before it was blocked, so unblocking puts it back. */
   let beforeBlock: Map<M.Id, boolean>;
+  /** The LAN map a network had before bridge mode, so NAT brings it back. */
+  let lanBeforeBridge: Map<M.Id, M.LanMap>;
   /** Restarts in progress: the status to go back to, and when. Keyed by eero id or `net:<id>`. */
   let restarting: Map<string, { until: number; status: M.Status }>;
   let flaky: Set<M.Id>;
@@ -203,6 +216,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     burstStep = 0;
     writeSeq = 0;
     beforeBlock = new Map();
+    lanBeforeBridge = new Map();
     restarting = new Map();
     flaky = new Set(fx.networks.flatMap((n) => n.devices.filter((d) => d.name === FLAKY_DEVICE).map((d) => d.id)));
   };
@@ -286,8 +300,10 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       const d = data.devices.find((x) => x.connected && x.wiredPort?.eeroId === e.id && x.wiredPort.port === p.number);
       const live = p.isWan ? wanUp : up && !!d;
       const speed = p.isWan ? (data.internet.gateway?.eeroId === e.id ? data.internet.gateway.wanPortSpeedMbps : null) : (d?.wiredPort?.speedMbps ?? null);
+      const { disabled, ...stored } = p;
+      if (disabled) return { ...clone(stored), status: "disabled", speedMbps: null, attached: null };
       return {
-        ...clone(p),
+        ...clone(stored),
         status: live ? "up" : "down",
         speedMbps: live ? speed : null,
         attached: d && up ? { deviceId: d.id, eeroId: null, name: d.name } : null,
@@ -357,13 +373,14 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     const lan = data.lan;
     const bridged = data.network.connectionMode === "bridged" || lan === null;
     const [subnetIp, bits] = lan ? (lan.subnet.split("/") as [string, string]) : [null, null];
+    const { dhcpMode: _d, wanStatic: _w, pppoeUsername: _p, ...stored } = s;
     return {
-      ...clone(s),
+      ...clone(stored),
       dns: { ...clone(s.dns), ispServers: s.dns.mode === "automatic" ? [...data.internet.dnsInUse] : [] },
       dhcp: bridged
         ? { mode: "bridged", subnetIp: null, subnetMask: null, gateway: null, startIp: null, endIp: null }
-        : { mode: "automatic", subnetIp, subnetMask: bits ? prefixMask(Number(bits)) : null, gateway: lan.gateway, startIp: lan.pool.start, endIp: lan.pool.end },
-      wan: { mode: data.internet.wanType ?? "dhcp", static: null, pppoeUsername: null, vlan: data.internet.vlan },
+        : { mode: s.dhcpMode ?? "automatic", subnetIp, subnetMask: bits ? prefixMask(Number(bits)) : null, gateway: lan.gateway, startIp: lan.pool.start, endIp: lan.pool.end },
+      wan: { mode: data.internet.wanType ?? "dhcp", static: clone(s.wanStatic ?? null), pppoeUsername: s.pppoeUsername ?? null, vlan: data.internet.vlan },
       connectionMode: data.network.connectionMode,
       timezone: data.network.timezone,
     };
@@ -440,6 +457,42 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     restarting.get(e.id)!.until = now() + RESTART_MS;
     e.status = "updating";
     e.uptimeSec = 0;
+  };
+
+  /** Applies a settings change and answers with the next settings read. */
+  const changeSettings = async (id: M.Id, change: (data: NetworkData) => void): Promise<M.NetworkSettings> => {
+    const data = net(id);
+    change(data);
+    return settingsView(data);
+  };
+
+  /** A settings write that restarts the mesh in eero shows the same `updating` window as a restart. */
+  const restartNetwork = (data: NetworkData) => {
+    const key = `net:${data.network.id}`;
+    if (!restarting.has(key)) restarting.set(key, { until: 0, status: data.network.status });
+    restarting.get(key)!.until = now() + RESTART_MS;
+    data.network.status = "updating";
+    data.network.lastReboot = new Date(now()).toISOString();
+    data.network.gatewayUptimeSec = 0;
+    data.eeros.forEach(restartEero);
+  };
+
+  const reservationIn = (data: NetworkData, rid: M.Id) => data.reservations.find((x) => x.id === rid) ?? notFound("reservation");
+  const forwardIn = (data: NetworkData, fid: M.Id) => data.forwards.find((x) => x.id === fid) ?? notFound("forward");
+  const reservationView = (data: NetworkData, r: M.Reservation): M.Reservation => ({ ...clone(r), forwards: data.forwards.filter((f) => f.deviceId === r.deviceId).length });
+  const updatesView = (data: NetworkData): M.Updates => {
+    const gateway = data.eeros.find((e) => e.isGateway) ?? data.eeros[0];
+    return {
+      ...clone(data.updates),
+      current: gateway?.firmware ?? null,
+      eeros: data.eeros.map((e) => ({ id: e.id, location: e.location, firmware: e.firmware })),
+    };
+  };
+  /** Integrations a write needs: unavailable ones refuse, as eero answers 403 or 404. */
+  const integrationIn = (data: NetworkData, key: M.IntegrationId) => {
+    const it = data.integrations[key];
+    if (!it.available) throw new BackendError("eero_error", "That integration is not available on this network.", { status: 404 });
+    return it;
   };
 
   const range = (q: { from: M.Iso; to: M.Iso }) => {
@@ -525,6 +578,10 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         data.network.lastReboot = new Date(now()).toISOString();
         data.network.gatewayUptimeSec = 0;
         data.eeros.forEach(restartEero);
+      },
+      remove: async (id) => {
+        net(id);
+        fx.networks = fx.networks.filter((n) => n.network.id !== id);
       },
     },
 
@@ -623,6 +680,35 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         if (e.status === "offline") throw new BackendError("eero_error", `${e.location} is offline, so it cannot restart.`, { status: 400 });
         restartEero(e);
       },
+      portAction: async (id, eeroId, number, action) => {
+        const data = net(id);
+        const e = eeroIn(data, eeroId);
+        const p = (data.ports[e.id] ?? []).find((x) => x.number === number) ?? notFound("port");
+        if (!p.actions.includes(action)) throw new BackendError("eero_error", `Port ${number} does not allow ${action}.`, { status: 400 });
+        if (action === "DISABLE_PORT") p.disabled = true;
+        if (action === "ENABLE_PORT") p.disabled = false;
+        if (action === "DISABLE_POE") p.poe = "off";
+        if (action === "ENABLE_POE") p.poe = "on";
+        // The opposite action takes its place, as eero lists only what applies now.
+        const inverse = INVERSE_PORT_ACTION[action];
+        if (inverse) p.actions = p.actions.map((a) => (a === action ? inverse : a));
+        return portsView(data, e.id);
+      },
+      remove: async (id, eeroId) => {
+        const data = net(id);
+        const e = eeroIn(data, eeroId);
+        data.eeros = data.eeros.filter((x) => x.id !== e.id);
+        for (const x of data.eeros) if (x.upstream === e.id) x.upstream = null;
+        delete data.ports[e.id];
+        for (const d of data.devices) if (d.eeroId === e.id) d.connected = false;
+      },
+      placementTest: async (id, eeroId) => {
+        const e = eeroIn(net(id), eeroId);
+        if (e.isGateway || e.backhaul === "wired") return { eeroId: e.id, rating: "strong", advice: null };
+        const bars = e.meshBars ?? 0;
+        const rating = bars >= 4 ? "strong" : bars === 3 ? "good" : bars === 2 ? "fair" : "poor";
+        return { eeroId: e.id, rating, advice: bars <= 2 ? `Move ${e.location} closer to the eero it connects through.` : null };
+      },
     },
 
     routing: {
@@ -636,23 +722,97 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
           lan: data.lan ? { ...clone(data.lan), pool: { ...data.lan.pool, leased: 0 } } : null,
         };
       },
+      addReservation: async (id, input) => {
+        const data = net(id);
+        const device = data.devices.find((d) => d.mac.toLowerCase() === input.mac.toLowerCase()) ?? null;
+        const r: M.Reservation = { id: nextId("demo-reservation-"), deviceId: device?.id ?? null, name: input.description || device?.name || input.mac, mac: input.mac, ip: input.ip, forwards: 0 };
+        data.reservations.push(r);
+        return reservationView(data, r);
+      },
+      updateReservation: async (id, rid, input) => {
+        const data = net(id);
+        const r = reservationIn(data, rid);
+        const oldIp = r.ip;
+        if (input.ip !== undefined) r.ip = input.ip;
+        if (input.description !== undefined) r.name = input.description;
+        // Forwards follow their reservation's address.
+        for (const f of data.forwards) if (f.ip === oldIp) f.ip = r.ip;
+        return reservationView(data, r);
+      },
+      removeReservation: async (id, rid, removeForwards) => {
+        const data = net(id);
+        const r = reservationIn(data, rid);
+        data.reservations = data.reservations.filter((x) => x.id !== r.id);
+        if (removeForwards) data.forwards = data.forwards.filter((f) => f.ip !== r.ip);
+      },
+      addForward: async (id, input) => {
+        const data = net(id);
+        const r = data.reservations.find((x) => x.ip === input.ip);
+        const f: M.Forward = {
+          id: nextId("demo-forward-"),
+          deviceId: r?.deviceId ?? null,
+          name: input.description,
+          ip: input.ip,
+          externalPort: input.externalPort,
+          internalPort: input.internalPort,
+          protocol: input.protocol,
+          enabled: input.enabled,
+        };
+        data.forwards.push(f);
+        return clone(f);
+      },
+      updateForward: async (id, fid, input) => {
+        const data = net(id);
+        const f = forwardIn(data, fid);
+        if (input.description !== undefined) f.name = input.description;
+        const { description: _d, ...rest } = input;
+        Object.assign(f, clone(rest));
+        if (input.ip !== undefined) f.deviceId = data.reservations.find((x) => x.ip === input.ip)?.deviceId ?? null;
+        return clone(f);
+      },
+      removeForward: async (id, fid) => {
+        const data = net(id);
+        forwardIn(data, fid);
+        data.forwards = data.forwards.filter((x) => x.id !== fid);
+      },
+      addPinhole: async (id, input) => {
+        const data = net(id);
+        const d = deviceIn(data, input.deviceId);
+        const ph: M.Pinhole = { id: nextId("demo-pinhole-"), deviceId: d.id, address: d.ipv6.find((a) => !a.toLowerCase().startsWith("fe80")) ?? null, port: input.port, protocol: input.protocol };
+        data.pinholes.push(ph);
+        return clone(ph);
+      },
+      removePinhole: async (id, pid) => {
+        const data = net(id);
+        if (!data.pinholes.some((x) => x.id === pid)) notFound("pinhole");
+        data.pinholes = data.pinholes.filter((x) => x.id !== pid);
+      },
     },
 
     updates: {
-      get: async (id) => {
-        const data = net(id);
-        const gateway = data.eeros.find((e) => e.isGateway) ?? data.eeros[0];
-        return {
-          ...clone(data.updates),
-          current: gateway?.firmware ?? null,
-          eeros: data.eeros.map((e) => ({ id: e.id, location: e.location, firmware: e.firmware })),
-        };
-      },
+      get: async (id) => updatesView(net(id)),
       notes: async (id) => {
         const data = net(id);
         const version = data.updates.target ?? (data.eeros.find((e) => e.isGateway) ?? data.eeros[0])?.firmware ?? null;
         const notes = version ? RELEASE_NOTES[version] : undefined;
         return notes ? clone(notes) : null;
+      },
+      install: async (id) => {
+        const data = net(id);
+        if (!data.updates.canUpdateNow || !data.updates.target) throw new BackendError("eero_error", "There is no update to install now.", { status: 400 });
+        // The demo installs at once: every eero restarts onto the target.
+        const target = data.updates.target;
+        restartNetwork(data);
+        for (const e of data.eeros) {
+          e.firmware = target;
+          e.updateAvailable = false;
+        }
+        data.updates = { ...data.updates, status: "up_to_date", target: null, canUpdateNow: false, required: false, scheduledAt: null, lastUpdatedAt: new Date(now()).toISOString(), stuckEeros: [] };
+      },
+      setPreferredHour: async (id, hour) => {
+        const data = net(id);
+        data.updates.preferredHour = hour;
+        return updatesView(data);
       },
     },
 
@@ -831,11 +991,154 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     settings: {
       get: async (id) => settingsView(net(id)),
       threadCredentials: async (id) => clone(net(id).threadCredentials),
+      // Writes eero applies through `PUT {net}/settings` restart the mesh there; the demo shows the same window.
+      setDns: (id, dns) =>
+        changeSettings(id, (data) => {
+          data.settings.dns = { mode: dns.mode, servers: [...dns.servers], ipv6Servers: [...dns.ipv6Servers], caching: dns.caching };
+          restartNetwork(data);
+        }),
+      setDhcp: (id, dhcp) =>
+        changeSettings(id, (data) => {
+          if (!data.lan) throw new BackendError("eero_error", "DHCP is off in bridge mode.", { status: 400 });
+          data.settings.dhcpMode = dhcp.mode;
+          if (dhcp.mode === "custom" && dhcp.subnetIp && dhcp.subnetMask && dhcp.startIp && dhcp.endIp) {
+            const bits = maskBits(dhcp.subnetMask);
+            data.lan.subnet = `${dhcp.subnetIp}/${bits}`;
+            data.lan.size = 2 ** (32 - bits);
+            data.lan.pool = { ...data.lan.pool, start: dhcp.startIp, end: dhcp.endIp, size: ipNumber(dhcp.endIp) - ipNumber(dhcp.startIp) + 1 };
+          }
+          restartNetwork(data);
+        }),
+      setIpv6: (id, enabled) =>
+        changeSettings(id, (data) => {
+          data.settings.ipv6 = { enabled };
+          restartNetwork(data);
+        }),
+      setWan: (id, wan) =>
+        changeSettings(id, (data) => {
+          data.internet.wanType = wan.mode;
+          data.internet.vlan = wan.vlan;
+          data.settings.wanStatic = wan.mode === "static" ? clone(wan.static) : null;
+          // The password is write-only: the demo keeps only the user name, like eero.
+          data.settings.pppoeUsername = wan.mode === "pppoe" ? (wan.pppoe?.username ?? null) : null;
+          restartNetwork(data);
+        }),
+      setConnectionMode: (id, mode) =>
+        changeSettings(id, (data) => {
+          const was = data.network.connectionMode;
+          if (was === mode) return;
+          if (mode !== "nat" && data.lan) lanBeforeBridge.set(data.network.id, data.lan);
+          data.network.connectionMode = mode;
+          data.lan = mode === "nat" ? (data.lan ?? lanBeforeBridge.get(data.network.id) ?? null) : null;
+          restartNetwork(data);
+        }),
+      setNatRandomization: (id, randomized) =>
+        changeSettings(id, (data) => {
+          data.settings.natRandomization = randomized;
+          restartNetwork(data);
+        }),
+      setUpnp: (id, enabled) => changeSettings(id, (data) => void (data.settings.upnp = enabled)),
+      setSqm: (id, enabled) => changeSettings(id, (data) => void (data.settings.sqm = enabled)),
+      setBandSteering: (id, enabled) => changeSettings(id, (data) => void (data.settings.bandSteering = enabled)),
+      setFastTransition: (id, enabled) => changeSettings(id, (data) => void (data.settings.fastTransition = enabled)),
+      setMlo: (id, mode) =>
+        changeSettings(id, (data) => {
+          if (data.settings.mlo === null) throw new BackendError("eero_error", "This network has no multi-link operation.", { status: 400 });
+          data.settings.mlo = mode;
+          restartNetwork(data);
+        }),
+      setPowerSaving: (id, input) =>
+        changeSettings(id, (data) => {
+          const ps = data.settings.powerSaving;
+          if (input.enabled !== undefined) ps.enabled = input.enabled;
+          if (input.scheduleEnabled !== undefined) ps.scheduleEnabled = input.scheduleEnabled;
+        }),
+      addPowerSavingSchedule: async (id, input) => {
+        const s: M.Schedule = { id: nextId("demo-power-"), ...clone(input) };
+        net(id).settings.powerSaving.schedules.push(s);
+        return clone(s);
+      },
+      updatePowerSavingSchedule: async (id, sid, input) => {
+        const s = net(id).settings.powerSaving.schedules.find((x) => x.id === sid) ?? notFound("schedule");
+        Object.assign(s, clone(input), { id: s.id });
+        return clone(s);
+      },
+      removePowerSavingSchedule: async (id, sid) => {
+        const ps = net(id).settings.powerSaving;
+        if (!ps.schedules.some((x) => x.id === sid)) notFound("schedule");
+        ps.schedules = ps.schedules.filter((x) => x.id !== sid);
+      },
+      setLegacyMode: (id, enabled) =>
+        changeSettings(id, (data) => {
+          data.settings.legacyMode = enabled;
+          restartNetwork(data);
+        }),
+      setTimezone: (id, timezone) => changeSettings(id, (data) => void (data.network.timezone = timezone)),
+      setSimpleSetup: (id, enabled) => changeSettings(id, (data) => void (data.settings.simpleSetup = enabled)),
+      setThread: (id, input) =>
+        changeSettings(id, (data) => {
+          const t = data.settings.thread;
+          if (!t) throw new BackendError("eero_error", "This network has no Thread.", { status: 404 });
+          if (input.enabled !== undefined) t.enabled = input.enabled;
+          if (input.credentialSync !== undefined) t.credentialSync = input.credentialSync;
+        }),
+      resetThread: async (id) => {
+        const data = net(id);
+        if (!data.settings.thread || !data.threadCredentials) throw new BackendError("eero_error", "This network has no Thread.", { status: 404 });
+        const step = ++writeSeq;
+        const hex = (salt: string) => Array.from({ length: 4 }, (_, i) => Math.floor(hash01(`${seed}|thread|${step}|${salt}|${i}`) * 0x100000000).toString(16).padStart(8, "0")).join("");
+        data.threadCredentials = { networkKey: hex("key"), pskc: hex("pskc"), dataset: null };
+        data.settings.thread.xpanId = hex("xpan").slice(0, 16);
+      },
     },
 
     diagnostics: {
       latest: async (id) => clone(net(id).diagnostics),
       support: async (id) => clone(net(id).support),
+      run: async (id, input) => {
+        const data = net(id);
+        const weak = data.eeros.filter((e) => e.backhaul === "wireless" && e.meshBars !== null && e.meshBars <= 2);
+        const offline = data.eeros.filter((e) => e.status === "offline");
+        const internetUp = data.internet.status === "online";
+        const results: M.DiagnosticsResult["results"] = [
+          { name: "Internet", status: internetUp ? "good" : "problem", detail: internetUp ? `${data.internet.isp.name ?? "Your ISP"} is up` : "The gateway eero has no internet" },
+          { name: "Mesh", status: weak.length ? "warning" : "good", detail: weak.length ? `${weak.map((e) => e.location).join(", ")} ${weak.length === 1 ? "has" : "have"} a weak link` : "Every eero has a good link" },
+          { name: "eeros", status: offline.length ? "problem" : "good", detail: offline.length ? `${offline.map((e) => e.location).join(", ")} offline` : `All ${data.eeros.length} eeros checked in` },
+        ];
+        if (input.deviceId) {
+          const d = deviceIn(data, input.deviceId);
+          results.push({ name: d.name, status: d.connected ? "good" : "warning", detail: d.connected ? "Connected now" : "Not connected now" });
+        }
+        const issueArea = !internetUp ? "internet" : offline.length ? "eeros" : weak.length ? "mesh" : null;
+        data.diagnostics = { status: "completed", issueArea, results };
+        return clone(data.diagnostics);
+      },
+      coverageScan: async (id) => {
+        const data = net(id);
+        const rooms = data.eeros.map((e) => {
+          const on = data.devices.filter((d) => d.connected && d.eeroId === e.id).length;
+          const quality = e.status === "offline" ? null : e.isGateway || e.backhaul === "wired" ? 100 : Math.round(((e.meshBars ?? 0) / 5) * 100);
+          return { eeroId: e.id, location: e.location, quality, devices: e.status === "offline" ? null : on, servedBy: e.isGateway ? null : e.upstream };
+        });
+        const advice = rooms.filter((r) => r.quality !== null && r.quality < 60).map((r) => `${r.location} has weak coverage. Try moving it closer to the eero it connects through.`);
+        return { scannedAt: new Date(now()).toISOString(), rooms, advice };
+      },
+      upgradeReport: async (id) => {
+        const data = net(id);
+        // The demo has no Wi-Fi generation per device, so it estimates from the band each uses.
+        const gen = (band: M.Device["band"]) => (band === "6" ? "wifi6e" : band === "5" ? "wifi6" : band === "2.4" ? "wifi4" : null);
+        const counts = new Map<string, number>();
+        for (const d of data.devices) {
+          const g = gen(d.band);
+          if (g) counts.set(g, (counts.get(g) ?? 0) + 1);
+        }
+        const order = ["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4"] as const;
+        return {
+          byGeneration: order.map((generation) => ({ generation, devices: counts.get(generation) ?? 0 })),
+          limitingEeros: data.eeros.filter((e) => !e.radios.some((r) => r.band === "6")).map((e) => ({ eeroId: e.id, reason: "No 6 GHz radio" })),
+          notes: ["Estimated from the band each device uses (demo)."],
+        };
+      },
     },
 
     admins: {
@@ -843,10 +1146,62 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const data = net(id);
         return { admins: clone(data.admins), invites: clone(data.invites) };
       },
+      createInvite: async (id, input) => {
+        const data = net(id);
+        const at = now();
+        const invite: M.Invite = { id: nextId("demo-invite-"), nickname: input.nickname, createdAt: new Date(at).toISOString(), expiresAt: new Date(at + 2 * DAY).toISOString() };
+        data.invites.unshift(invite);
+        return { invite: clone(invite), inviteUrl: `https://invite.example.com/demo/${invite.id}`, expiresAt: invite.expiresAt };
+      },
+      cancelInvite: async (id, inviteId) => {
+        const data = net(id);
+        if (!data.invites.some((x) => x.id === inviteId)) notFound("invite");
+        data.invites = data.invites.filter((x) => x.id !== inviteId);
+      },
+      setNickname: async (id, adminId, nickname) => {
+        const a = net(id).admins.find((x) => x.id === adminId) ?? notFound("admin");
+        a.name = nickname;
+        return clone(a);
+      },
+      remove: async (id, adminId) => {
+        const data = net(id);
+        const a = data.admins.find((x) => x.id === adminId) ?? notFound("admin");
+        if (a.role === "owner") throw new BackendError("eero_error", "The owner cannot be removed.", { status: 400 });
+        data.admins = data.admins.filter((x) => x.id !== a.id);
+      },
+      transfer: async (id, input) => {
+        const data = net(id);
+        // The new owner takes over; you stay on as an admin, as eero does.
+        for (const a of data.admins) if (a.role === "owner") a.role = "admin";
+        data.admins.unshift({ id: nextId("demo-admin-"), name: input.name, role: "owner", isYou: false });
+        data.network.role = "admin";
+        data.permissions = { ...clone(data.permissions), role: "admin" };
+        data.invites = [];
+      },
     },
 
     integrations: {
       get: async (id) => clone(net(id).integrations),
+      setBuiltin: async (id, enabled) => {
+        const data = net(id);
+        integrationIn(data, "builtin").enabled = enabled;
+        return clone(data.integrations);
+      },
+      setFfs: async (id, enabled) => {
+        const data = net(id);
+        integrationIn(data, "ffs").enabled = enabled;
+        return clone(data.integrations);
+      },
+      discoverZigbee: async (id) => {
+        integrationIn(net(id), "smart_home_hub");
+      },
+      unlinkAmazon: async (id) => {
+        const data = net(id);
+        const amazon = integrationIn(data, "amazon");
+        amazon.enabled = false;
+        amazon.detail = null;
+        return clone(data.integrations);
+      },
     },
 
     notifications: {
@@ -861,6 +1216,11 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       settings: async (id) => clone(net(id).notificationSettings),
       markRead: async (id) => {
         for (const n of net(id).notifications) n.read = true;
+      },
+      setSettings: async (id, settings) => {
+        const data = net(id);
+        data.notificationSettings = { ...data.notificationSettings, ...settings };
+        return clone(data.notificationSettings);
       },
     },
   };

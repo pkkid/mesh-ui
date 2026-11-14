@@ -8,10 +8,11 @@ import { ArrowRight } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { Link } from "~/app/router";
-import { useQuery } from "~/app/useCommand";
+import { useCommands, useQuery } from "~/app/useCommand";
 import { type Gate, type GateOptions, gateFor } from "~/app/useWrite";
 import { Button, type ButtonProps } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
+import { commandUnavailable } from "~/features/palette/search";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
 import type { Network, Permissions } from "../../../../core/model";
@@ -49,10 +50,22 @@ export function ComingSoonButton({ title = "Coming soon", ...props }: ButtonProp
  * Whether a write control can be used, from network.permissions and
  * network.get (docs/ux/overview.md#permission-gating, #capability-gating,
  * #bridge-mode). Allowed while they load: the engine is still the gate.
+ *
+ * Pass the command id (`useGate("device.pause")`) to use the gate its spec
+ * declares, the same rule and reason the palette shows. Options are the
+ * older form, kept until each page moves to ids.
  */
-export function useGate(opts: GateOptions): Gate {
-  const permissions = useQuery<Permissions>("network.permissions", undefined, { enabled: opts.area !== undefined });
+export function useGate(command: string | GateOptions): Gate {
+  const commands = useCommands();
+  const byId = typeof command === "string";
+  const info = byId ? commands?.find((c) => c.id === command) : undefined;
+  const opts: GateOptions = byId ? { area: info?.gate?.area ?? undefined, capability: info?.gate?.capability ?? undefined, bridgeOff: info?.gate?.bridgeOff } : command;
+  const permissions = useQuery<Permissions>("network.permissions", undefined, { enabled: byId || opts.area !== undefined });
   const network = useQuery<Network>("network.get", undefined, { enabled: opts.capability !== undefined || opts.bridgeOff === true });
+  if (byId) {
+    const reason = info ? commandUnavailable(info, permissions.data, network.data) : null;
+    return { allowed: reason === null, reason };
+  }
   return gateFor(opts, permissions.data, network.data);
 }
 

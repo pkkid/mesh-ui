@@ -7,7 +7,7 @@
 import { z } from "zod";
 import * as areas from "./commands";
 import type { BackendKind, Effect } from "./model";
-import { type AnyCommand, COMMAND_ID, confirmParam, needsConfirm, networkIdParam, type Scope } from "./spec";
+import { type AnyCommand, COMMAND_ID, confirmParam, needsConfirm, networkIdParam, type ResolvedGate, resolveGate, type Scope } from "./spec";
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -21,6 +21,8 @@ export type CommandInfo = {
   scope: Scope;
   sensitive: boolean;
   poll: number | null;
+  /** Writes: what they need to run (permission, bridge mode, capability); null for queries. */
+  gate: ResolvedGate | null;
   /** JSON Schema of the params, including networkId and confirm. */
   params: JsonSchema;
 };
@@ -65,6 +67,7 @@ function register(spec: AnyCommand): RegisteredCommand {
     scope,
     sensitive: spec.sensitive === true,
     poll: spec.poll ?? null,
+    gate: spec.gate ? resolveGate(spec.gate) : null,
     params: z.toJSONSchema(schema, { io: "input", unrepresentable: "any" }) as JsonSchema,
   };
   return { spec, scope, schema, info };

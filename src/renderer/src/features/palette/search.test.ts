@@ -14,6 +14,7 @@ import {
   cliLine,
   commandItems,
   commandGate,
+  commandUnavailable,
   defaultParams,
   deviceItems,
   entityWrite,
@@ -235,7 +236,9 @@ function writeSpecs(kit: Kit): AnyCommand[] {
 
 function writeSetup(answers: boolean[] = []) {
   const kit: Kit = { paused: new Set(), restarts: 0, profiles: ["Mia", "Leo"] };
-  const specs = writeSpecs(kit);
+  // Stand-ins take the real spec's gate, as the gate is part of the command, not its run.
+  const real = new Map(allCommands().map((c) => [c.id, c]));
+  const specs = writeSpecs(kit).map((c) => ({ ...c, gate: real.get(c.id)?.gate }));
   const ids = new Set(specs.map((c) => c.id));
   const engine = createEngine({
     backend: createDemoBackend({ clock: () => NOW }),
@@ -260,16 +263,39 @@ async function read<R>(engine: ReturnType<typeof createEngine>, id: string): Pro
 }
 
 describe("dimming writes", () => {
-  it("reads the permission area, op, bridge mode and capability from the id", () => {
-    const at = (id: string, effect: CommandInfo["effect"] = "write") => commandGate({ id, effect, scope: "network" });
+  it("reads the permission area, op, bridge mode and capability from the spec's gate", () => {
+    const t = writeSetup();
+    const at = (id: string) => commandGate(info(t.commands, id));
     expect(at("device.pause")).toEqual({ area: "devices", op: "update", bridgeOff: true, capability: undefined });
     expect(at("device.block")).toMatchObject({ bridgeOff: true, capability: "device_blacklist" });
     expect(at("profile.create")).toMatchObject({ area: "profiles", op: "create", bridgeOff: true });
-    expect(at("profile.delete", "destructive")).toMatchObject({ area: "profiles", op: "delete" });
-    expect(at("wifi.name.set", "disruptive")).toMatchObject({ area: "settings", op: "update", bridgeOff: false });
+    expect(at("profile.delete")).toMatchObject({ area: "profiles", op: "delete" });
+    expect(at("wifi.name.set")).toMatchObject({ area: "settings", op: "update", bridgeOff: false });
     expect(at("guest.enable")).toMatchObject({ area: "settings", op: "update", bridgeOff: true });
-    expect(at("device.list", "query")).toBeNull();
-    expect(commandGate({ id: "network.select", effect: "write", scope: "account" })).toBeNull();
+    expect(at("device.list")).toBeNull();
+    expect(at("network.select")).toBeNull();
+  });
+
+  it("a page (useGate by id) and the palette dim the same command for the same reason", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    const owner = await read<Permissions>(t.engine, "network.permissions");
+    const admin: Permissions = { role: "admin", can: { ...owner.can, eeros: { read: true, create: false, update: false, delete: false } } };
+    const bridged = { ...network, connectionMode: "bridged" as const };
+    const noBlock = { ...network, capabilities: { ...network.capabilities, device_blacklist: false } };
+    const reasons = new Set<string | null>();
+    for (const c of t.commands.filter((c) => c.effect !== "query" && c.scope === "network")) {
+      for (const [permissions, net] of [[owner, network], [admin, network], [owner, bridged], [owner, noBlock]] as const) {
+        // useGate("<id>") in components/ui/page.tsx returns commandUnavailable's reason.
+        const page = commandUnavailable(c, permissions, net);
+        expect(availability(c, { signedIn: true, permissions, network: net })).toBe(page);
+        reasons.add(page);
+      }
+    }
+    // Every kind of reason came up, so the comparison covers each rule.
+    expect([...reasons].sort()).toEqual([BRIDGE_OFF, NOT_AVAILABLE, "Owner only", null].sort());
+    expect(commandUnavailable(info(t.commands, "device.block"), owner, noBlock)).toBe(NOT_AVAILABLE);
+    expect(commandUnavailable(info(t.commands, "device.pause"), owner, bridged)).toBe(BRIDGE_OFF);
   });
 
   it("dims by role, permission, bridge mode and capability, with the reason", async () => {

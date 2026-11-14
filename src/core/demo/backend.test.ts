@@ -925,3 +925,185 @@ describe("write contracts (M4)", () => {
     expect((area as unknown as Record<string, unknown>).nope).toBeUndefined();
   });
 });
+
+describe("writes (M5)", () => {
+  const firstEero = async (b: DemoBackend, net = MAPLE) => (await b.eero.list(net))[0] as M.Eero;
+
+  it("settings writes show in the next read; mesh-restarting ones set the network updating", async () => {
+    const b = demo();
+    let s = await b.settings.setUpnp(MAPLE, false);
+    expect(s.upnp).toBe(false);
+    expect((await b.network.get(MAPLE)).status).not.toBe("updating");
+    s = await b.settings.setDns(MAPLE, { mode: "custom", servers: ["198.51.100.53"], ipv6Servers: [], caching: false });
+    expect(s.dns).toMatchObject({ mode: "custom", servers: ["198.51.100.53"], caching: false, ispServers: [] });
+    expect((await b.network.get(MAPLE)).status).toBe("updating");
+    s = await b.settings.setDhcp(MAPLE, { mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", startIp: "10.20.0.100", endIp: "10.20.0.200" });
+    expect(s.dhcp).toMatchObject({ mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", startIp: "10.20.0.100", endIp: "10.20.0.200" });
+    s = await b.settings.setWan(MAPLE, { mode: "pppoe", static: null, pppoe: { username: "user@isp.example", password: "secret-pw" }, vlan: 35 });
+    expect(s.wan).toEqual({ mode: "pppoe", static: null, pppoeUsername: "user@isp.example", vlan: 35 });
+    expect(JSON.stringify(s)).not.toContain("secret-pw");
+    for (const [method, field] of [["setSqm", "sqm"], ["setBandSteering", "bandSteering"], ["setFastTransition", "fastTransition"], ["setNatRandomization", "natRandomization"], ["setLegacyMode", "legacyMode"], ["setSimpleSetup", "simpleSetup"]] as const) {
+      const next = await b.settings[method](MAPLE, true);
+      expect(next[field], method).toBe(true);
+    }
+    expect((await b.settings.setIpv6(MAPLE, false)).ipv6.enabled).toBe(false);
+    expect((await b.settings.setMlo(MAPLE, "single")).mlo).toBe("single");
+    expect((await b.settings.setTimezone(MAPLE, "America/Denver")).timezone).toBe("America/Denver");
+    expect((await b.settings.setPowerSaving(MAPLE, { enabled: false })).powerSaving).toMatchObject({ enabled: false, scheduleEnabled: true });
+    expect((await b.settings.setThread(MAPLE, { credentialSync: false })).thread).toMatchObject({ enabled: true, credentialSync: false });
+  });
+
+  it("power saving schedules add, update and remove", async () => {
+    const b = demo();
+    const added = await b.settings.addPowerSavingSchedule(MAPLE, { name: "Lunch", days: ["MON"], start: "12:00", end: "13:00", enabled: true });
+    expect((await b.settings.get(MAPLE)).powerSaving.schedules.map((x) => x.id)).toContain(added.id);
+    const updated = await b.settings.updatePowerSavingSchedule(MAPLE, added.id, { name: "Late lunch", days: ["MON", "TUE"], start: "23:00", end: "01:00", enabled: false });
+    expect(updated).toMatchObject({ id: added.id, name: "Late lunch", start: "23:00", end: "01:00" });
+    await b.settings.removePowerSavingSchedule(MAPLE, added.id);
+    expect((await b.settings.get(MAPLE)).powerSaving.schedules.map((x) => x.id)).not.toContain(added.id);
+    await expect(b.settings.removePowerSavingSchedule(MAPLE, added.id)).rejects.toBeInstanceOf(BackendError);
+  });
+
+  it("bridge mode clears the LAN map and routing; NAT brings it back", async () => {
+    const b = demo();
+    const before = await b.routing.get(MAPLE);
+    expect((await b.settings.setConnectionMode(MAPLE, "bridged")).dhcp.mode).toBe("bridged");
+    expect((await b.network.get(MAPLE)).connectionMode).toBe("bridged");
+    expect((await b.routing.get(MAPLE)).lan).toBeNull();
+    await b.settings.setConnectionMode(MAPLE, "nat");
+    expect((await b.routing.get(MAPLE)).lan).toEqual(before.lan);
+  });
+
+  it("Thread reset gives new credentials", async () => {
+    const b = demo();
+    const old = await b.settings.threadCredentials(MAPLE);
+    await b.settings.resetThread(MAPLE);
+    const fresh = await b.settings.threadCredentials(MAPLE);
+    expect(fresh?.networkKey).toMatch(/^[0-9a-f]{32}$/);
+    expect(fresh?.networkKey).not.toBe(old?.networkKey);
+  });
+
+  it("reservations, forwards and pinholes round-trip through routing.get", async () => {
+    const b = demo();
+    const reserved = new Set((await b.routing.get(MAPLE)).reservations.map((x) => x.deviceId));
+    const device = (await b.device.list(MAPLE)).find((d) => d.connected && d.ipv4 && !reserved.has(d.id)) as M.Device;
+    const r = await b.routing.addReservation(MAPLE, { mac: device.mac, ip: "192.168.4.77", description: "Test box" });
+    expect(r).toMatchObject({ deviceId: device.id, ip: "192.168.4.77", name: "Test box", forwards: 0 });
+    const f = await b.routing.addForward(MAPLE, { ip: "192.168.4.77", externalPort: "8080", internalPort: "80", protocol: "tcp", description: "Web", enabled: true });
+    expect(f).toMatchObject({ deviceId: device.id, externalPort: "8080", enabled: true });
+    expect((await b.routing.updateForward(MAPLE, f.id, { enabled: false })).enabled).toBe(false);
+    let routing = await b.routing.get(MAPLE);
+    expect(routing.reservations.find((x) => x.id === r.id)?.forwards).toBe(1);
+    await b.routing.updateReservation(MAPLE, r.id, { ip: "192.168.4.78" });
+    expect((await b.routing.get(MAPLE)).forwards.find((x) => x.id === f.id)?.ip).toBe("192.168.4.78");
+    await b.routing.removeReservation(MAPLE, r.id, true);
+    routing = await b.routing.get(MAPLE);
+    expect(routing.reservations.some((x) => x.id === r.id)).toBe(false);
+    expect(routing.forwards.some((x) => x.id === f.id)).toBe(false);
+    const ph = await b.routing.addPinhole(MAPLE, { deviceId: device.id, protocol: "udp", port: "51820" });
+    expect((await b.routing.get(MAPLE)).pinholes.map((x) => x.id)).toContain(ph.id);
+    await b.routing.removePinhole(MAPLE, ph.id);
+    expect((await b.routing.get(MAPLE)).pinholes.map((x) => x.id)).not.toContain(ph.id);
+  });
+
+  it("updates: preferred hour and install", async () => {
+    const b = demo();
+    expect((await b.updates.setPreferredHour(MAPLE, 4)).preferredHour).toBe(4);
+    const before = await b.updates.get(MAPLE);
+    await b.updates.install(MAPLE);
+    const after = await b.updates.get(MAPLE);
+    expect(after).toMatchObject({ status: "up_to_date", target: null, canUpdateNow: false, current: before.target });
+    expect(after.eeros.every((e) => e.firmware === before.target)).toBe(true);
+    expect((await b.network.get(MAPLE)).status).toBe("updating");
+    await expect(b.updates.install(MAPLE)).rejects.toBeInstanceOf(BackendError);
+  });
+
+  it("admins: invite, cancel, nickname, remove, and transfer", async () => {
+    const b = demo();
+    const created = await b.admins.createInvite(MAPLE, { nickname: "Robin", email: null });
+    expect(created.inviteUrl).toMatch(/^https:\/\/invite\.example\.com\//);
+    expect((await b.admins.list(MAPLE)).invites[0]).toMatchObject({ id: created.invite.id, nickname: "Robin" });
+    await b.admins.cancelInvite(MAPLE, created.invite.id);
+    expect((await b.admins.list(MAPLE)).invites.map((x) => x.id)).not.toContain(created.invite.id);
+    const admin = (await b.admins.list(MAPLE)).admins.find((a) => a.role === "admin") as M.Admin;
+    expect((await b.admins.setNickname(MAPLE, admin.id, "J")).name).toBe("J");
+    const owner = (await b.admins.list(MAPLE)).admins.find((a) => a.role === "owner") as M.Admin;
+    await expect(b.admins.remove(MAPLE, owner.id)).rejects.toBeInstanceOf(BackendError);
+    await b.admins.remove(MAPLE, admin.id);
+    expect((await b.admins.list(MAPLE)).admins.map((a) => a.id)).not.toContain(admin.id);
+    await b.admins.transfer(MAPLE, { name: "Pat Example", email: "pat@example.com", phone: null });
+    expect((await b.network.get(MAPLE)).role).toBe("admin");
+    expect((await b.admins.list(MAPLE)).admins[0]).toMatchObject({ name: "Pat Example", role: "owner" });
+  });
+
+  it("eero ports: an allowed action applies and swaps to its inverse; others refuse", async () => {
+    const b = demo();
+    const e = await firstEero(b);
+    const port = (await b.eero.ports(MAPLE, e.id)).ports.find((p) => p.actions.includes("DISABLE_PORT")) as M.EeroPort;
+    const after = await b.eero.portAction(MAPLE, e.id, port.number, "DISABLE_PORT");
+    const p = after.ports.find((x) => x.number === port.number) as M.EeroPort;
+    expect(p.status).toBe("disabled");
+    expect(p.actions).toContain("ENABLE_PORT");
+    await expect(b.eero.portAction(MAPLE, e.id, port.number, "DISABLE_PORT")).rejects.toBeInstanceOf(BackendError);
+    const back = await b.eero.portAction(MAPLE, e.id, port.number, "ENABLE_PORT");
+    expect(back.ports.find((x) => x.number === port.number)?.status).not.toBe("disabled");
+  });
+
+  it("eero remove takes it off the list; placement and coverage read the eeros", async () => {
+    const b = demo();
+    const eeros = await b.eero.list(MAPLE);
+    const leaf = eeros.find((e) => !e.isGateway) as M.Eero;
+    expect((await b.eero.placementTest(MAPLE, leaf.id)).eeroId).toBe(leaf.id);
+    const scan = await b.diagnostics.coverageScan(MAPLE);
+    expect(scan.rooms.map((r) => r.eeroId).sort()).toEqual(eeros.map((e) => e.id).sort());
+    const report = await b.diagnostics.upgradeReport(MAPLE);
+    expect(report.byGeneration.map((g) => g.generation)).toEqual(["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4"]);
+    await b.eero.remove(MAPLE, leaf.id);
+    expect((await b.eero.list(MAPLE)).map((e) => e.id)).not.toContain(leaf.id);
+  });
+
+  it("diagnostics run, integrations and notification settings", async () => {
+    const b = demo();
+    const run = await b.diagnostics.run(MAPLE, { symptom: "internet_slow", deviceId: null });
+    expect(run.status).toBe("completed");
+    expect(await b.diagnostics.latest(MAPLE)).toEqual(run);
+    expect((await b.integrations.setFfs(MAPLE, false)).ffs.enabled).toBe(false);
+    expect((await b.integrations.setBuiltin(MAPLE, false)).builtin.enabled).toBe(false);
+    expect((await b.integrations.unlinkAmazon(MAPLE)).amazon.enabled).toBe(false);
+    // Smart Home Hub is unavailable on Maple Street, so discovery refuses as eero would.
+    await expect(b.integrations.discoverZigbee(MAPLE)).rejects.toBeInstanceOf(BackendError);
+    const key = Object.keys(await b.notifications.settings(MAPLE))[0] as string;
+    const was = (await b.notifications.settings(MAPLE))[key];
+    expect((await b.notifications.setSettings(MAPLE, { [key]: !was }))[key]).toBe(!was);
+  });
+
+  it("network delete removes it from the list", async () => {
+    const b = demo();
+    await b.network.remove(LAKE);
+    expect((await b.network.list()).map((n) => n.id)).not.toContain(LAKE);
+  });
+
+  it("are undone by demo.scenario.set", async () => {
+    const b = demo();
+    const engine = createEngine({ backend: b, clock: () => NOW });
+    const before = { settings: await b.settings.get(MAPLE), routing: await b.routing.get(MAPLE), updates: await b.updates.get(MAPLE), admins: await b.admins.list(MAPLE), integrations: await b.integrations.get(MAPLE), notif: await b.notifications.settings(MAPLE), eeros: await b.eero.list(MAPLE) };
+    await b.settings.setUpnp(MAPLE, false);
+    await b.settings.setConnectionMode(MAPLE, "bridged");
+    await b.routing.addPinhole(MAPLE, { deviceId: (await b.device.list(MAPLE))[0]!.id, protocol: "tcp", port: "22" });
+    await b.updates.setPreferredHour(MAPLE, 5);
+    await b.admins.createInvite(MAPLE, { nickname: null, email: null });
+    await b.integrations.setFfs(MAPLE, false);
+    await b.notifications.setSettings(MAPLE, { "device.new": false });
+    await b.eero.remove(MAPLE, before.eeros.find((e) => !e.isGateway)!.id);
+    await b.network.remove(LAKE);
+    expect((await engine.execute("demo.scenario.set", { scenario: "default" })).ok).toBe(true);
+    expect(await b.settings.get(MAPLE)).toEqual(before.settings);
+    expect(await b.routing.get(MAPLE)).toEqual(before.routing);
+    expect(await b.updates.get(MAPLE)).toEqual(before.updates);
+    expect(await b.admins.list(MAPLE)).toEqual(before.admins);
+    expect(await b.integrations.get(MAPLE)).toEqual(before.integrations);
+    expect(await b.notifications.settings(MAPLE)).toEqual(before.notif);
+    expect((await b.eero.list(MAPLE)).map((e) => e.id)).toEqual(before.eeros.map((e) => e.id));
+    expect((await b.network.list()).map((n) => n.id)).toContain(LAKE);
+  });
+});

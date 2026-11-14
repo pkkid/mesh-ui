@@ -128,6 +128,8 @@ export type RawSpeedTest = { date?: string; down_mbps?: number; up_mbps?: number
 // ---------------------------------------------------------------------------
 // eero nodes
 
+export type RawRadioChannelStats = { channel?: number; channel_width?: string | number; tx_power?: number; channel_utilization?: number; client_count?: number };
+
 export type RawEero = {
   url?: string;
   serial?: string;
@@ -160,6 +162,8 @@ export type RawEero = {
    */
   ethernet_status?: { wiredInternet?: boolean; segmentId?: string; statuses?: RawEthernetPortStatus[] } | null;
   wireless_upstream_node?: { url?: string; name?: string; primary_mesh_radio?: string; node_or_proxied_node_id?: number; is_proxied_node?: boolean } | null;
+  /** Per radio (`band_2_4GHz`, `band_5GHz_low`, `band_5GHz_high`, `band_6GHz`); no auto-channel flag (M5.1 capture: `{net}/radio_settings` has only `enabled` per band). */
+  radio_channel_stats?: Record<string, RawRadioChannelStats | undefined>;
   connected_clients_count?: number;
   connected_wired_clients_count?: number;
   connected_wireless_clients_count?: number;

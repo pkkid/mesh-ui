@@ -268,6 +268,7 @@ export const commands: AnyCommand[] = [
     description: "Adds a profile with a name and, optionally, devices (moved out of their old profiles).",
     icon: "user-plus",
     effect: "write",
+    gate: { area: "profiles", op: "create", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ name: profileName, devices: z.array(ref("device")).max(200).optional() }),
     run: async (ctx, p): Promise<M.Profile> => {
@@ -282,6 +283,7 @@ export const commands: AnyCommand[] = [
     label: "Rename profile",
     icon: "pencil",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), name: profileName }),
     run: async (ctx, p): Promise<M.Profile> => {
@@ -297,6 +299,7 @@ export const commands: AnyCommand[] = [
     description: "Pauses internet on every device in the profile until resumed. eero has no timed pause.",
     icon: "pause",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile") }),
     run: async (ctx, p): Promise<M.Profile> => setPaused(ctx, p.profile, true),
@@ -308,6 +311,7 @@ export const commands: AnyCommand[] = [
     description: "Resumes internet on every device in the profile. During a scheduled pause, eero keeps it online until the next schedule.",
     icon: "play",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile") }),
     run: async (ctx, p): Promise<M.Profile> => setPaused(ctx, p.profile, false),
@@ -319,6 +323,7 @@ export const commands: AnyCommand[] = [
     description: "Sets exactly which devices are in the profile. Listed devices move in; others leave to Unassigned.",
     icon: "users",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), devices: z.array(ref("device")).max(200) }),
     run: async (ctx, p): Promise<M.Profile> => {
@@ -334,6 +339,7 @@ export const commands: AnyCommand[] = [
     description: "Deletes the profile. Its devices move to Unassigned, its schedules are removed and any pause is lifted. Cannot be undone.",
     icon: "trash-2",
     effect: "destructive",
+    gate: { area: "profiles", op: "delete", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile") }),
     confirmMessage: async (ctx, p) => {
@@ -357,6 +363,7 @@ export const commands: AnyCommand[] = [
     description: "Pauses internet on every device with no profile (eero's Unassigned group), until resumed. Includes TVs and smart home gear.",
     icon: "pause",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({}),
     run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, true), { paused: true }),
@@ -368,6 +375,7 @@ export const commands: AnyCommand[] = [
     description: "Resumes internet on every device with no profile (eero's Unassigned group).",
     icon: "play",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({}),
     run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, false), { paused: false }),
@@ -379,6 +387,7 @@ export const commands: AnyCommand[] = [
       "Adds a scheduled pause to a profile: its devices pause from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
     icon: "calendar-plus",
     effect: "write",
+    gate: { area: "profiles", op: "create", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without pausing.") }),
     run: async (ctx, p): Promise<M.Schedule> => {
@@ -395,6 +404,7 @@ export const commands: AnyCommand[] = [
     description: "Changes a scheduled pause. Fields left out keep their value; enabled: false keeps it without pausing.",
     icon: "calendar-clock",
     effect: "write",
+    gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({
       profile: ref("profile"),
@@ -427,6 +437,7 @@ export const commands: AnyCommand[] = [
     description: "Removes a scheduled pause from a profile. The result holds the removed schedule, so it can be added back.",
     icon: "calendar-x",
     effect: "write",
+    gate: { area: "profiles", op: "delete", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), schedule: ref("schedule") }),
     run: async (ctx, p): Promise<{ removed: M.Id; schedule: M.Schedule }> => {

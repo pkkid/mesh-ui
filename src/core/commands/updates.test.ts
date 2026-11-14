@@ -199,7 +199,10 @@ describe("updates.notes (fake eero server)", () => {
   });
 
   it("answers null when eero names no manifest", async () => {
-    const { engine, fake } = fakeEngine();
+    const { engine, fake } = fakeEngine((f) => {
+      const u = f.state.networks.get("100001")?.updates;
+      if (u) u.manifest_resource = null;
+    });
     expect(await ok(engine.execute("updates.notes", { networkId: "100001" }))).toBeNull();
     expect(fake.log.some((e) => e.path.includes("manifest"))).toBe(false);
   });

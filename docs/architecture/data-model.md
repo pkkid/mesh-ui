@@ -297,7 +297,7 @@ type UpgradeReport = {
 | `upstream` | wireless: `wireless_upstream_node.name` matched to exactly one eero's `location` (eero sends no url, and `node_or_proxied_node_id` is not an eero id; a `url` is used if ever sent). Wired: the `neighbor` of type `EERO` (`metadata.url`) on the port with `isLeafWiredToUpstream`, else on the `isWanPort` port with carrier, else the only EERO neighbour (`isLeafWiredToUpstream` is false on every real port). `eero.get` reads the list to resolve the name |
 | `clients` | `connected_clients_count`, `connected_wired_clients_count`, `connected_wireless_clients_count` |
 | `bands` | `bands[]` (`band_5GHz_low` and `_high` both map to `"5"`) |
-| `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}`; `txPowerDbm` from `tx_power`; `autoChannel` is always null (no known eero field) |
+| `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}`; `txPowerDbm` from `tx_power`; `autoChannel` is always null: no known eero field (`{net}/radio_settings` is per eero `{eero_id, radio_settings{band_2_4GHz, band_5GHz_low, band_5GHz_high: {enabled}}}`, M5.1 capture) |
 | `hop`, `meshQuality` | derived in core in `eero.list` and `eero.get` from `upstream`, `backhaul` and `meshBars` |
 | `subnet`, `gatewayIp` | `subnet` from the same `mapLan(dhcp)` as `reservation.list`: `dhcp.custom`, or eero's automatic 192.168.4.0/22 when `dhcp.mode` is `automatic` (null in bridge or passthrough); `gatewayIp` is the gateway eero's IP (null in bridge or passthrough) |
 | `led` | `led_on`, `led_brightness` |
@@ -539,6 +539,11 @@ type NetworkSettings = {
 
 type ThreadCredentials = { networkKey: string; pskc: string | null; dataset: string | null };
 
+// settings.impact (M5.1): what changes restart and who drops, from IMPACT in commands/settings.ts
+type ImpactDrops = "all" | "wireless" | "thread" | "port" | "none";
+type ChangeImpact = { id: string; restarts: boolean; estimate: string | null; drops: ImpactDrops; deviceIds: Id[]; summary: string };
+type SettingsImpact = { changes: ChangeImpact[]; restarts: boolean; estimate: string | null; devicesOnline: number; deviceIds: Id[]; summary: string };
+
 type Reservation = { id: Id; deviceId: Id | null; name: string; mac: string; ip: string; forwards: number };
 type Forward = { id: Id; deviceId: Id | null; name: string; ip: string; externalPort: string; internalPort: string; protocol: "tcp" | "udp" | "both"; enabled: boolean };
 type Pinhole = { id: Id; deviceId: Id | null; address: string | null; port: string; protocol: "tcp" | "udp" | "both" };
@@ -558,7 +563,7 @@ type Routing = { reservations: Reservation[]; forwards: Forward[]; pinholes: Pin
 | `thread` | `GET {net}/thread` minus `master_key` and `commissioning_credential` (`borderAgent` is `border_agent.ip:port`; no device count is sent) |
 | `ThreadCredentials` | those two fields; `dataset` from `active_operational_dataset`, which a real network did not send (null) |
 | `powerSaving.schedules` | `GET {net}/power_saving/schedules` `{schedules: [{url, id, name, days, start_time, end_time, enabled}]}` (fields from the clients: the real list was empty) |
-| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings) |
+| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings). A real network sends `auto_setup_mode: "LTS"` (M5.1 capture, the one value printed), read as on; clear off words are false, anything else null |
 | `Reservation`, `Forward`, `Pinhole` | `GET {net}/routing` `reservations.data[]`, `forwards.data[]`, `pinholes.data[]`, joined to devices by MAC or IP |
 | `LanMap` | `dhcp.custom` (or defaults), reservations and connected device count |
 

@@ -39,6 +39,19 @@ import type {
 /** The one code the fake sign-in accepts. */
 export const FAKE_CODE = "123456";
 
+/** Where the fake serves the release notes manifest (`updates.manifest_resource`), relative to its origin. */
+export const FAKE_MANIFEST_PATH = "/2.2/fake/release_manifest";
+
+/**
+ * The release notes manifest, as eero's `{target, history[]}` entries. The
+ * fake answers in its usual envelope, so the entries are `data[]`, which
+ * `mapReleaseNotes` reads like `history[]`.
+ */
+export const FAKE_MANIFEST = [
+  { title: "eeroOS 7.11.0", os_version: "7.11.0", release_date: "2026-11-02", features: ["Faster roaming between eeros", "Fixes for Thread border routing", "Security updates"] },
+  { title: "eeroOS 7.10.1", os_version: "7.10.1", release_date: "2026-09-21", features: ["Stability fixes"] },
+];
+
 export type FakeSession = {
   token: string;
   kind: "pending" | "session";
@@ -227,6 +240,15 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     ip_address: `192.168.4.${i + 1}`,
     mac_address: mac(900 + i),
     bands: ["band_2_4GHz", "band_5GHz", "band_6GHz"],
+    // Channels and widths per radio, so `--fake` Wi-Fi shows them; an offline eero reports none.
+    radio_channel_stats:
+      e.status === "red"
+        ? {}
+        : {
+            band_2_4GHz: { channel: [1, 6, 11][i % 3], channel_width: "20MHz", tx_power: 20, channel_utilization: 30 + i * 5, client_count: Math.floor(e.clients / 3) },
+            band_5GHz_low: { channel: 36 + 8 * (i % 2), channel_width: "80MHz", tx_power: 23, channel_utilization: 20 + i * 4, client_count: e.clients - 2 * Math.floor(e.clients / 3) },
+            band_6GHz: { channel: 37, channel_width: "160MHz", tx_power: 23, channel_utilization: 10, client_count: Math.floor(e.clients / 3) },
+          },
     wired: e.wired ?? false,
     connection_type: e.wired ? "WIRED" : "WIRELESS",
     using_wan: e.gateway ?? false,
@@ -330,7 +352,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     preferred_update_hour: 3,
     last_update_started: iso("05T03:00:00"),
     last_user_update: { unresponsive_eeros: [], incomplete_eeros: [] },
-    manifest_resource: null,
+    // A path on the fake server; the updates route makes it absolute on the server's own origin.
+    manifest_resource: maple ? FAKE_MANIFEST_PATH : null,
   };
   const network: RawNetwork = {
     url: netUrl,

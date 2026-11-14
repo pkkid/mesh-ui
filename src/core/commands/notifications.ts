@@ -83,6 +83,7 @@ export const commands: AnyCommand[] = [
     icon: "check-check",
     params: z.object({}),
     effect: "write",
+    gate: { area: "network" },
     invalidates: ["notifications"],
     async run(ctx): Promise<{ unread: false }> {
       await ctx.backend.notifications.markRead(ctx.net);
