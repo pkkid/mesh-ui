@@ -27,6 +27,7 @@
 import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
 import { INVERSE_PORT_ACTION, portSummary } from "../model";
 import { deviceCategory } from "../eero/map/device";
+import { mapLan } from "../eero/map/routing";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
 import { applyScenario, type ReadMode, type ScenarioName } from "./scenario";
@@ -1040,7 +1041,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
           if (was === mode) return;
           if (mode !== "nat" && data.lan) lanBeforeBridge.set(data.network.id, data.lan);
           data.network.connectionMode = mode;
-          data.lan = mode === "nat" ? (data.lan ?? lanBeforeBridge.get(data.network.id) ?? null) : null;
+          // A network that started bridged gets eero's automatic range (M5.2).
+          data.lan = mode === "nat" ? (data.lan ?? lanBeforeBridge.get(data.network.id) ?? mapLan({ mode: "automatic" })) : null;
           restartNetwork(data);
         }),
       setNatRandomization: (id, randomized) =>

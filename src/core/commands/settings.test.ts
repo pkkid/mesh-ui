@@ -10,7 +10,9 @@ import { createEngine, type Engine } from "../engine";
 import type * as M from "../model";
 import { allCommands } from "../registry";
 import { RESTART_ESTIMATE } from "./network";
-import { IMPACT, SETTINGS_RESTART_ESTIMATE, UPDATE_RESTART_ESTIMATE } from "./settings";
+import { dhcpProblem, IMPACT, isIpv4, isIpv6, SETTINGS_RESTART_ESTIMATE, UPDATE_RESTART_ESTIMATE, wanStaticProblem } from "./settings";
+import { type CliHost, nodeHost, runCli } from "../../cli/index";
+import { memoryAudit } from "../audit";
 import { SECURITY_RESTART_ESTIMATE } from "./wifi";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
@@ -384,5 +386,269 @@ describe("M5.1 mapping and fake server fixtures", () => {
     const manifest = f.log.find((e) => e.path === "/2.2/fake/release_manifest");
     expect(manifest?.token).toBeNull();
     await f.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Internet-side writes (M5.2)
+
+const settingsOf = (engine: Engine, net = MAPLE) => ok(engine.execute<M.NetworkSettings>("settings.get", { networkId: net }));
+const PPPOE_PASSWORD = "fake-pppoe-secret-77";
+
+/** A valid call per write, each a change from the demo's Maple Street. */
+const WRITES: Record<string, Record<string, unknown>> = {
+  "settings.dns.set": { mode: "custom", servers: ["1.1.1.1", "9.9.9.9"], ipv6Servers: ["2606:4700:4700::1111"] },
+  "settings.dhcp.set": { mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", startIp: "10.20.0.100", endIp: "10.20.0.200" },
+  "settings.ipv6.set": { enabled: false },
+  "settings.wan.set": { mode: "static", static: { ip: "203.0.113.10", mask: "255.255.255.0", router: "203.0.113.1" }, vlan: 201 },
+  "settings.connection_mode.set": { mode: "bridged" },
+  "settings.nat_randomization.set": { randomized: true },
+  "settings.upnp.set": { enabled: false },
+  "settings.sqm.set": { enabled: true },
+};
+const conf = (id: string) => (DISRUPTIVE.includes(id) ? { confirm: true } : {});
+const DISRUPTIVE: string[] = ["settings.dns.set", "settings.dhcp.set", "settings.ipv6.set", "settings.wan.set", "settings.connection_mode.set", "settings.nat_randomization.set"];
+
+describe("internet-side settings writes (demo)", () => {
+  it("each write shows in the next settings.get", async () => {
+    const engine = demoEngine();
+    await settingsOf(engine); // cached, so the reads below prove each write invalidates settings
+    const read = async (id: string) => {
+      await ok(engine.execute(id, { networkId: MAPLE, ...WRITES[id], ...conf(id) }));
+      return settingsOf(engine);
+    };
+    expect((await read("settings.dns.set")).dns).toMatchObject({ mode: "custom", servers: ["1.1.1.1", "9.9.9.9"], ipv6Servers: ["2606:4700:4700::1111"], caching: true });
+    expect((await read("settings.dhcp.set")).dhcp).toEqual({ mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", gateway: "10.20.0.1", startIp: "10.20.0.100", endIp: "10.20.0.200" });
+    expect((await read("settings.ipv6.set")).ipv6.enabled).toBe(false);
+    expect((await read("settings.wan.set")).wan).toEqual({ mode: "static", static: { ip: "203.0.113.10", mask: "255.255.255.0", router: "203.0.113.1" }, pppoeUsername: null, vlan: 201 });
+    expect((await read("settings.nat_randomization.set")).natRandomization).toBe(true);
+    expect((await read("settings.upnp.set")).upnp).toBe(false);
+    expect((await read("settings.sqm.set")).sqm).toBe(true);
+    const bridged = await read("settings.connection_mode.set");
+    expect(bridged.connectionMode).toBe("bridged");
+    expect(bridged.dhcp.mode).toBe("bridged");
+  });
+
+  it("DNS keeps what is not given: caching alone, and automatic drops the custom servers", async () => {
+    const engine = demoEngine();
+    await ok(engine.execute("settings.dns.set", { networkId: MAPLE, ...WRITES["settings.dns.set"], confirm: true }));
+    await ok(engine.execute("settings.dns.set", { networkId: MAPLE, caching: false, confirm: true }));
+    expect((await settingsOf(engine)).dns).toMatchObject({ mode: "custom", servers: ["1.1.1.1", "9.9.9.9"], caching: false });
+    await ok(engine.execute("settings.dns.set", { networkId: MAPLE, mode: "automatic", confirm: true }));
+    expect((await settingsOf(engine)).dns).toMatchObject({ mode: "automatic", servers: [], ipv6Servers: [], caching: false });
+    expect(await code(engine.execute("settings.dns.set", { networkId: MAPLE, mode: "custom", servers: [], confirm: true }))).toBe("bad_params");
+  });
+
+  it("WAN: PPPoE keeps the user name only, VLAN null turns the tag off, and the password is never returned", async () => {
+    const engine = demoEngine();
+    const r = await ok(engine.execute<M.NetworkSettings>("settings.wan.set", { networkId: MAPLE, mode: "pppoe", pppoe: { username: "maple@example.net", password: PPPOE_PASSWORD }, vlan: 35, confirm: true }));
+    expect(r.wan).toEqual({ mode: "pppoe", static: null, pppoeUsername: "maple@example.net", vlan: 35 });
+    expect(JSON.stringify(r)).not.toContain(PPPOE_PASSWORD);
+    await ok(engine.execute("settings.wan.set", { networkId: MAPLE, mode: "dhcp", vlan: null, confirm: true }));
+    expect((await settingsOf(engine)).wan).toEqual({ mode: "dhcp", static: null, pppoeUsername: null, vlan: null });
+  });
+
+  it("disruptive writes need confirm, with the settings.impact summary as the message; UPnP and SQM do not", async () => {
+    const engine = demoEngine();
+    for (const id of DISRUPTIVE) {
+      const r = await engine.execute(id, { networkId: MAPLE, ...WRITES[id] });
+      expect(r.ok, id).toBe(false);
+      if (r.ok) continue;
+      expect(r.error.code, id).toBe("needs_confirm");
+      const impact = await ok(engine.execute<M.SettingsImpact>("settings.impact", { networkId: MAPLE, changes: [{ id }] }));
+      expect(r.error.message, id).toContain(impact.summary);
+      expect(r.error.message, id).toContain(SETTINGS_RESTART_ESTIMATE);
+    }
+    const bridge = await engine.execute("settings.connection_mode.set", { networkId: MAPLE, mode: "bridged" });
+    expect(!bridge.ok && bridge.error.message).toMatch(/profiles, pausing, reservations, port forwards/);
+    // Nothing ran: the settings are as they were.
+    expect(await settingsOf(engine)).toMatchObject({ connectionMode: "nat", ipv6: { enabled: true }, dns: { mode: "automatic" } });
+    expect((await ok(engine.execute<M.NetworkSettings>("settings.upnp.set", { networkId: MAPLE, enabled: false }))).upnp).toBe(false);
+    expect((await ok(engine.execute<M.NetworkSettings>("settings.sqm.set", { networkId: MAPLE, enabled: true }))).sqm).toBe(true);
+  });
+
+  it("a change that changes nothing says so and restarts nothing", async () => {
+    const engine = demoEngine();
+    const r = await engine.execute("settings.ipv6.set", { networkId: MAPLE, enabled: true });
+    expect(!r.ok && r.error).toMatchObject({ code: "needs_confirm", message: "Nothing changes, so nothing restarts." });
+    await ok(engine.execute("settings.ipv6.set", { networkId: MAPLE, enabled: true, confirm: true }));
+    await ok(engine.execute("settings.connection_mode.set", { networkId: MAPLE, mode: "nat", confirm: true }));
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: MAPLE }))).status).not.toBe("updating");
+  });
+
+  it("validates IP addresses, masks and ranges with a message per field", async () => {
+    const engine = demoEngine();
+    const issue = async (id: string, params: Record<string, unknown>) => {
+      const r = await engine.execute(id, { networkId: MAPLE, ...params, confirm: true });
+      expect(r.ok, `${id} ${JSON.stringify(params)}`).toBe(false);
+      if (r.ok) return null;
+      expect(r.error.code, `${id} ${JSON.stringify(params)}`).toBe("bad_params");
+      const issues = (r.error.detail?.issues ?? []) as { path: string; message: string }[];
+      return issues[0] ?? { path: "", message: r.error.message };
+    };
+    const dhcp = WRITES["settings.dhcp.set"]!;
+    expect(await issue("settings.dns.set", { mode: "custom", servers: ["1.1.1"] })).toMatchObject({ path: "servers.0" });
+    expect(await issue("settings.dns.set", { mode: "custom", servers: ["256.1.1.1"] })).toMatchObject({ path: "servers.0" });
+    expect(await issue("settings.dns.set", { mode: "custom", servers: ["1.1.1.1"], ipv6Servers: ["1.1.1.1"] })).toMatchObject({ path: "ipv6Servers.0" });
+    expect(await issue("settings.dns.set", { mode: "custom", servers: ["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4", "9.9.9.9"] })).toMatchObject({ path: "servers" });
+    expect(await issue("settings.dhcp.set", { mode: "custom" })).toMatchObject({ path: "subnetIp", message: "Required for a custom range." });
+    expect(await issue("settings.dhcp.set", { ...dhcp, subnetIp: "8.8.8.0" })).toMatchObject({ path: "subnetIp", message: expect.stringMatching(/private range/) });
+    expect(await issue("settings.dhcp.set", { ...dhcp, subnetIp: "10.20.0.5" })).toMatchObject({ path: "subnetIp", message: expect.stringMatching(/try 10\.20\.0\.0/) });
+    expect(await issue("settings.dhcp.set", { ...dhcp, subnetMask: "255.255.0.255" })).toMatchObject({ path: "subnetMask" });
+    expect(await issue("settings.dhcp.set", { ...dhcp, subnetMask: "255.0.0.0" })).toMatchObject({ path: "subnetMask" });
+    expect(await issue("settings.dhcp.set", { ...dhcp, startIp: "10.20.0.1" })).toMatchObject({ path: "startIp", message: expect.stringMatching(/10\.20\.0\.1 is the eero/) });
+    expect(await issue("settings.dhcp.set", { ...dhcp, endIp: "10.20.1.10" })).toMatchObject({ path: "endIp" });
+    expect(await issue("settings.dhcp.set", { ...dhcp, startIp: "10.20.0.200", endIp: "10.20.0.100" })).toMatchObject({ path: "endIp" });
+    expect(await issue("settings.dhcp.set", { mode: "automatic", subnetIp: "10.20.0.0" })).toMatchObject({ path: "subnetIp" });
+    const wan = WRITES["settings.wan.set"]!;
+    expect(await issue("settings.wan.set", { mode: "static" })).toMatchObject({ path: "static" });
+    expect(await issue("settings.wan.set", { ...wan, static: { ip: "203.0.113.10", mask: "255.255.255.0", router: "198.51.100.1" } })).toMatchObject({ path: "static.router", message: expect.stringMatching(/same subnet/) });
+    expect(await issue("settings.wan.set", { ...wan, static: { ip: "203.0.113.255", mask: "255.255.255.0", router: "203.0.113.1" } })).toMatchObject({ path: "static.ip" });
+    expect(await issue("settings.wan.set", { ...wan, static: { ip: "203.0.113.1", mask: "255.255.255.0", router: "203.0.113.1" } })).toMatchObject({ path: "static.router" });
+    expect(await issue("settings.wan.set", { mode: "pppoe" })).toMatchObject({ path: "pppoe" });
+    expect(await issue("settings.wan.set", { mode: "pppoe", pppoe: { username: "", password: "x" } })).toMatchObject({ path: "pppoe.username" });
+    expect(await issue("settings.wan.set", { mode: "dhcp", pppoe: { username: "a", password: "b" } })).toMatchObject({ path: "pppoe" });
+    expect(await issue("settings.wan.set", { mode: "dhcp", vlan: 4095 })).toMatchObject({ path: "vlan" });
+    expect(await issue("settings.connection_mode.set", { mode: "router" })).toMatchObject({ path: "mode" });
+    for (const id of Object.keys(WRITES)) {
+      expect(await code(engine.execute(id, { networkId: MAPLE, ...WRITES[id], extra: 1, ...conf(id) })), id).toBe("bad_params");
+      expect(await code(demoEngine("signed_out").execute(id, { networkId: MAPLE, ...WRITES[id], ...conf(id) })), id).toBe("not_signed_in");
+    }
+    expect(await settingsOf(engine)).toMatchObject({ dns: { mode: "automatic" }, dhcp: { mode: "automatic" }, wan: { mode: "dhcp" } });
+  });
+
+  it("the address rules accept what eero accepts", () => {
+    expect(["192.168.4.1", "0.0.0.0", "10.0.0.255"].every(isIpv4)).toBe(true);
+    expect(["192.168.4", "192.168.04.1", "1.2.3.4.5", " 1.2.3.4"].some(isIpv4)).toBe(false);
+    expect(["::1", "2001:db8::1", "2606:4700:4700::1111", "fe80:0:0:0:0:0:0:1", "::ffff:192.0.2.1"].every(isIpv6)).toBe(true);
+    expect(["1.1.1.1", "2001:db8:::1", "2001:db8::1::2", "1:2:3:4:5:6:7:8:9", "gggg::1", "2001:db8::/64"].some(isIpv6)).toBe(false);
+    expect(dhcpProblem({ subnetIp: "192.168.4.0", subnetMask: "255.255.252.0", startIp: "192.168.4.100", endIp: "192.168.7.254" })).toBeNull();
+    expect(dhcpProblem({ subnetIp: "172.16.0.0", subnetMask: "255.255.0.0", startIp: "172.16.0.2", endIp: "172.16.255.254" })).toBeNull();
+    expect(dhcpProblem({ subnetIp: "172.32.0.0", subnetMask: "255.255.0.0", startIp: "172.32.0.2", endIp: "172.32.0.9" })?.field).toBe("subnetIp");
+    expect(dhcpProblem({ subnetIp: "192.168.4.0", subnetMask: "255.255.255.0", startIp: "192.168.4.100", endIp: "192.168.4.255" })?.field).toBe("endIp");
+    expect(wanStaticProblem({ ip: "203.0.113.10", mask: "255.255.255.252", router: "203.0.113.9" })).toBeNull();
+  });
+
+  it("bridge mode turns NAT-only settings off: gates, bad_params, and nat brings them back", async () => {
+    const engine = demoEngine();
+    const gate = (id: string) => engine.commands().find((c) => c.id === id)?.gate;
+    for (const id of ["settings.dns.set", "settings.dhcp.set", "settings.ipv6.set", "settings.wan.set", "settings.nat_randomization.set", "settings.upnp.set", "settings.sqm.set"]) {
+      expect(gate(id), id).toEqual({ area: "settings", op: "update", bridgeOff: true, capability: null });
+      const r = await engine.execute(id, { networkId: MOM, ...WRITES[id], ...conf(id) });
+      expect(!r.ok && r.error, id).toMatchObject({ code: "bad_params", message: expect.stringMatching(/off in bridge mode/) });
+    }
+    expect(gate("settings.connection_mode.set")).toEqual({ area: "settings", op: "update", bridgeOff: false, capability: null });
+    const routed = await ok(engine.execute<M.NetworkSettings>("settings.connection_mode.set", { networkId: MOM, mode: "nat", confirm: true }));
+    expect(routed.connectionMode).toBe("nat");
+    expect(routed.dhcp.mode).not.toBe("bridged");
+    expect((await ok(engine.execute<M.NetworkSettings>("settings.ipv6.set", { networkId: MOM, enabled: !routed.ipv6.enabled, confirm: true }))).ipv6.enabled).toBe(!routed.ipv6.enabled);
+  });
+
+  it("declares effects, gates and the topics each write invalidates", () => {
+    const info = (id: string) => allCommands().find((c) => c.id === id);
+    for (const id of DISRUPTIVE) expect(info(id)?.effect, id).toBe("disruptive");
+    expect(info("settings.upnp.set")?.effect).toBe("write");
+    expect(info("settings.sqm.set")?.effect).toBe("write");
+    expect(Object.fromEntries(Object.keys(WRITES).map((id) => [id, info(id)?.invalidates]))).toEqual({
+      "settings.dns.set": ["settings", "network"],
+      "settings.dhcp.set": ["settings", "network", "routing", "devices"],
+      "settings.ipv6.set": ["settings", "network"],
+      "settings.wan.set": ["settings", "network"],
+      "settings.connection_mode.set": ["settings", "network", "routing", "devices", "profiles", "integrations"],
+      "settings.nat_randomization.set": ["settings", "network"],
+      "settings.upnp.set": ["settings"],
+      "settings.sqm.set": ["settings"],
+    });
+  });
+
+  it("the PPPoE password stays out of the CLI and the audit log", async () => {
+    const audit = memoryAudit();
+    let out = "";
+    const io = { stdout: (s: string) => void (out += s), stderr: (s: string) => void (out += s) };
+    const host: CliHost = { ...nodeHost(), createEngine: ({ surface }) => createEngine({ backend: createDemoBackend({ clock: () => NOW }), surface, audit, clock: () => NOW }) };
+    const params = JSON.stringify({ mode: "pppoe", pppoe: { username: "maple@example.net", password: PPPOE_PASSWORD } });
+    expect(await runCli(["run", "settings.wan.set", "--params", params], io, host)).not.toBe(0);
+    expect(await runCli(["--format", "json", "run", "settings.wan.set", "--params", params, "--confirm"], io, host)).toBe(0);
+    expect(out).toContain("maple@example.net");
+    expect(out).not.toContain(PPPOE_PASSWORD);
+    expect(JSON.stringify(audit.entries)).not.toContain(PPPOE_PASSWORD);
+    expect(JSON.stringify(audit.entries)).toContain('"password":"[removed]"');
+  });
+});
+
+describe("internet-side settings writes (fake eero server)", () => {
+  let fake: FakeEero | null = null;
+  afterEach(async () => {
+    await fake?.close();
+    fake = null;
+  });
+  const N = "100001";
+  const sent = (f: FakeEero) => f.writes.map(({ method, path, version, encoding, body, status }) => ({ method, path, version, encoding, body, status }));
+  const put = (body: Record<string, unknown>) => ({ method: "PUT", path: `/2.2/networks/${N}/settings`, version: "2.2", encoding: "json", body, status: 200 });
+
+  // One engine per write: the client's rate limiter (about 100 a minute) would hold a single long run.
+  const CASES: [string, Record<string, unknown>, Record<string, unknown>, (s: M.NetworkSettings) => unknown, unknown][] = [
+    ["settings.dns.set", { mode: "custom", servers: ["1.1.1.1"], ipv6Servers: ["2606:4700:4700::1111"], caching: false },
+      { dns: { mode: "custom", caching: false, custom: { ips: ["1.1.1.1"] } }, ipv6: { name_servers: { mode: "custom", custom: ["2606:4700:4700::1111"] } } },
+      (s) => s.dns, { mode: "custom", servers: ["1.1.1.1"], ipv6Servers: ["2606:4700:4700::1111"], caching: false, ispServers: ["203.0.113.53"] }],
+    ["settings.dhcp.set", WRITES["settings.dhcp.set"]!,
+      { dhcp: { mode: "custom", custom: { subnet_ip: "10.20.0.0", subnet_mask: "255.255.255.0", start_ip: "10.20.0.100", end_ip: "10.20.0.200" } } },
+      (s) => s.dhcp, { mode: "custom", subnetIp: "10.20.0.0", subnetMask: "255.255.255.0", gateway: "10.20.0.1", startIp: "10.20.0.100", endIp: "10.20.0.200" }],
+    ["settings.ipv6.set", { enabled: true }, { ipv6_upstream: true }, (s) => s.ipv6.enabled, true],
+    ["settings.wan.set", WRITES["settings.wan.set"]!,
+      { lease: { mode: "static", static: { ip: "203.0.113.10", mask: "255.255.255.0", router: "203.0.113.1" } }, pppoe: { enabled: false }, vlan: "201" },
+      (s) => s.wan, { mode: "static", static: { ip: "203.0.113.10", mask: "255.255.255.0", router: "203.0.113.1" }, pppoeUsername: null, vlan: 201 }],
+    ["settings.wan.set", { mode: "pppoe", pppoe: { username: "maple@example.net", password: PPPOE_PASSWORD }, vlan: null },
+      { lease: { mode: "dhcp" }, pppoe: { enabled: true, credentials: { username: "maple@example.net", password: PPPOE_PASSWORD } }, vlan: "" },
+      (s) => s.wan, { mode: "pppoe", static: null, pppoeUsername: "maple@example.net", vlan: null }],
+    ["settings.connection_mode.set", { mode: "bridged" }, { connection: { mode: "bridged" } }, (s) => [s.connectionMode, s.dhcp.mode], ["bridged", "bridged"]],
+    ["settings.nat_randomization.set", { randomized: true }, { nat_port_randomization: true }, (s) => s.natRandomization, true],
+    ["settings.upnp.set", { enabled: false }, { upnp: false }, (s) => s.upnp, false],
+    ["settings.sqm.set", { enabled: true }, { sqm: true }, (s) => s.sqm, true],
+  ];
+
+  it.each(CASES)("%s sends one JSON PUT {net}/settings, and the next (cached) read shows it", async (id, params, body, pick, want) => {
+    const s = fakeEngine();
+    fake = s.fake;
+    await settingsOf(s.engine, N); // cached: the read after proves the write invalidates settings
+    const result = await ok(s.engine.execute<M.NetworkSettings>(id, { networkId: N, ...params, ...conf(id) }));
+    expect(sent(s.fake)).toEqual([put(body)]);
+    expect(pick(result)).toEqual(want);
+    expect(pick(await settingsOf(s.engine, N))).toEqual(want);
+    expect(JSON.stringify(result)).not.toContain(PPPOE_PASSWORD);
+  });
+
+  it("sends nothing for a change that changes nothing or is refused in core", async () => {
+    const s = fakeEngine();
+    fake = s.fake;
+    await ok(s.engine.execute("settings.upnp.set", { networkId: N, enabled: true }));
+    await ok(s.engine.execute("settings.dns.set", { networkId: N, mode: "automatic", confirm: true }));
+    await ok(s.engine.execute("settings.connection_mode.set", { networkId: N, mode: "nat", confirm: true }));
+    await ok(s.engine.execute("settings.wan.set", { networkId: N, mode: "dhcp", confirm: true }));
+    await ok(s.engine.execute("settings.wan.set", { networkId: N, mode: "dhcp", vlan: null, confirm: true }));
+    expect(await code(s.engine.execute("settings.dns.set", { networkId: N, mode: "custom", servers: ["1.1.1"], confirm: true }))).toBe("bad_params");
+    expect(await code(s.engine.execute("settings.ipv6.set", { networkId: N, enabled: true }))).toBe("needs_confirm");
+    expect(s.fake.writes).toEqual([]);
+  });
+
+  it("the fake answers 400 for a bad body and changes nothing", async () => {
+    const f = createFakeEero({ now: () => NOW });
+    fake = f;
+    const token = f.signIn();
+    const before = structuredClone(f.state.networks.get(N)!.network);
+    const send = (body: unknown) =>
+      f.fetch(`${f.origin}/2.2/networks/${N}/settings`, { method: "PUT", headers: { "content-type": "application/json", cookie: `s=${token}` }, body: JSON.stringify(body) });
+    for (const body of [{ dhcp: { mode: "custom" } }, { upnp: "yes" }, { vlan: "5000" }, { lease: { mode: "static" } }, { connection: { mode: "router" } }, { dns: { mode: "custom", custom: { ips: [] } } }, { pppoe: { enabled: true } }, { bogus: 1 }, { sqm: true, upnp: "no" }]) {
+      const res = await send(body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+    }
+    expect(f.state.networks.get(N)!.network).toEqual(before);
+  });
+
+  it("the Wi-Fi rename still goes through the same path as a form", async () => {
+    const s = fakeEngine();
+    fake = s.fake;
+    await ok(s.engine.execute("wifi.name.set", { networkId: N, name: "Maple Renamed", confirm: true }));
+    expect(sent(s.fake)).toEqual([{ ...put({ name: "Maple Renamed" }), encoding: "form" }]);
   });
 });
