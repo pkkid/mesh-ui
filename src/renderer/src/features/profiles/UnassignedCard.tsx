@@ -1,6 +1,6 @@
 /**
  * "Unassigned devices": a tile per device in no profile with its icon, name
- * and "Online · 142 GB today", "Offline · 3 days ago" or "Blocked", plus a
+ * and "Online · 142 GB in 24h", "Offline · 3 days ago" or "Blocked", plus a
  * faint avatar per profile to assign it. Assigning and pausing are writes
  * from a later milestone, so they show disabled ("Coming soon").
  * docs/ux/pages/profiles.md (Layout 4).
@@ -33,7 +33,8 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
   const listed = new Set((profiles?.profiles ?? []).map((p) => p.id));
   // Same rule as the core Unassigned summary (no profile, or eero's own Unassigned group),
   // but blocked devices stay in the grid as "Blocked". Guests are not the household's.
-  const list = (devices.data?.devices ?? [])
+  // Blank until profiles load too, or assigned devices would flash in as unassigned.
+  const list = (profiles ? (devices.data?.devices ?? []) : [])
     .filter((d) => !owned.has(d.id) && (d.profileId === null || !listed.has(d.profileId)) && d.ssid !== "guest")
     .sort((a, b) => Number(b.connected) - Number(a.connected) || Number(a.blocked) - Number(b.blocked) || a.name.localeCompare(b.name));
   const today = new Map((usage?.rows ?? []).map((r) => [r.id, r.down + r.up]));
@@ -42,7 +43,8 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
 
   const detail = (d: Device) => {
     if (d.blocked) return <span className="text-destructive-foreground">Blocked</span>;
-    if (d.connected) return `Online · ${formatBytes(today.get(d.id))} today`;
+    // usage.breakdown day is the last 24 hours, not since midnight.
+    if (d.connected) return `Online · ${formatBytes(today.get(d.id))} in 24h`;
     return d.lastActive ? `Offline · ${formatRelative(d.lastActive, now, timezone ?? "UTC")}` : "Offline";
   };
 

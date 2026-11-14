@@ -63,7 +63,7 @@ count: number of profiles, not counting Unassigned.
 | Today's pauses lanes | `profile.list` (`today` segments per profile, computed in core from schedules and manual pause state, in the network time zone) | 60 s; the now line moves every minute |
 | Usage by profile (totals, shares, per day bars) | `usage.get {scope: "profile", range}` (includes the Unassigned series; the toggle hides it in the view) | 5 min |
 | Unassigned device tiles | `device.list` (devices with no profile, blocked ones included, guests left out) | 30 s |
-| "142 GB today" on a tile | `usage.breakdown {range: "day", by: "device"}` | 5 min |
+| "142 GB in 24h" on a tile (the breakdown's day is the last 24 hours, so the mockup's "today" would overstate it) | `usage.breakdown {range: "day", by: "device"}` | 5 min |
 | Avatar row on tiles | `profile.list` | 60 s |
 
 ## Actions
