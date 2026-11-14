@@ -143,7 +143,7 @@ type DeviceTableProps = {
   hidden: ReadonlySet<ColumnKey>;
   eeroName: ReadonlyMap<string, string>;
   profiles: ReadonlyMap<string, ProfileInfo>;
-  /** Bytes used today per device id, from `usage.breakdown`. */
+  /** Bytes used in the last 24 hours per device id, from `usage.breakdown` range day. */
   usage: ReadonlyMap<string, number> | undefined;
   newIds: ReadonlySet<string>;
   /** A rates burst is pending: fade the Now column. */
@@ -272,7 +272,7 @@ export function DeviceTable(props: DeviceTableProps) {
                   Now <span className="text-muted-foreground/70">down / up</span>
                 </th>
               )}
-              {show("today") && <th className={cn(th, "text-end")}>Today</th>}
+              {show("today") && <th className={cn(th, "text-end")}>24h</th>}
               <th className={th}>Status</th>
               <th className={cn(th, "w-6")}>
                 <span className="sr-only">Actions</span>

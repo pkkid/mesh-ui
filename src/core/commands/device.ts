@@ -200,6 +200,25 @@ async function sort(ctx: CommandContext, devices: M.Device[], by: ListParams["so
   }
 }
 
+/**
+ * eero's own Unassigned group is a profile flagged `default` that the
+ * backend's profile list leaves out (eero/backend/profile.ts). On a real
+ * network every device without a person's profile points at it, so a
+ * profile id the list does not have means Unassigned: `profileId: null`.
+ * The same rule as profile.list's Unassigned summary. No profiles readable
+ * (bridge mode, an error): the devices are returned as they are.
+ */
+async function withUnassigned<T extends Pick<M.Device, "profileId">>(ctx: CommandContext, devices: T[]): Promise<T[]> {
+  if (!devices.some((d) => d.profileId)) return devices;
+  let listed: Set<M.Id>;
+  try {
+    listed = new Set((await ctx.backend.profile.list(ctx.net)).map((p) => p.id));
+  } catch {
+    return devices;
+  }
+  return devices.map((d) => (d.profileId && !listed.has(d.profileId) ? { ...d, profileId: null } : d));
+}
+
 const statusLabel = (d: M.Device) => (d.blocked ? "Blocked" : d.paused ? "Paused" : d.connected ? "Online" : "Offline");
 const bandLabel = (b: M.Band | null) => (b === null ? null : b === "wired" ? "Wired" : `${b} GHz`);
 
@@ -262,7 +281,7 @@ export const commands: AnyCommand[] = [
     params: deviceListParams,
     run: async (ctx, p): Promise<M.DeviceList | string> => {
       const now = ctx.now();
-      const all = knownDevices(await ctx.backend.device.list(ctx.net), now).map((d) => fresh(d, now));
+      const all = (await withUnassigned(ctx, knownDevices(await ctx.backend.device.list(ctx.net), now))).map((d) => fresh(d, now));
       let devices = await sort(ctx, await filter(ctx, all, p), p.sort);
       if (p.limit) devices = devices.slice(0, p.limit);
       if (p.format === "csv") return toDeviceCsv(ctx, devices);
@@ -279,7 +298,10 @@ export const commands: AnyCommand[] = [
     topic: "devices",
     poll: POLL.devices,
     params: z.object({ device: ref("device") }),
-    run: async (ctx, p): Promise<M.Device> => fresh(await ctx.backend.device.get(ctx.net, await ctx.resolve("device", p.device)), ctx.now()),
+    run: async (ctx, p): Promise<M.Device> => {
+      const [d] = await withUnassigned(ctx, [await ctx.backend.device.get(ctx.net, await ctx.resolve("device", p.device))]);
+      return fresh(d as M.Device, ctx.now());
+    },
   }),
 
   defineCommand({

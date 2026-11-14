@@ -44,8 +44,8 @@ Wi-Fi**. Sidebar count: all known devices (38).
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Now down / up
-   (two small numbers; "Paused" or last-seen text when not live), Today
-   (data), Status (Online, Paused, Offline, Blocked), and a row menu (`...`).
+   (two small numbers; "Paused" or last-seen text when not live), 24h
+   (data used in the last 24 hours, `usage.breakdown` range day), Status (Online, Paused, Offline, Blocked), and a row menu (`...`).
    - Rows are grouped. Group header rows have a chevron, an icon, the group
      name and a count. Collapsed groups show a summary instead ("10 devices ·
      all online · Nest Thermostat, Hue Bridge, Ring Doorbell, Kitchen Echo,
@@ -113,7 +113,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 - **No permission.** Admins may pause and block. If `network.permissions`
   denies device updates, bulk buttons and write menu items are disabled with
   the reason.
-- **Capability missing.** Firmware without per-device usage: Today column
+- **Capability missing.** Firmware without per-device usage: 24h column
   `-`. Burst reporter unsupported: "Now" column and Throughput now hidden.
 - **Bridge mode.** Pause, Resume, Block, Assign profile and the Profile
   column are hidden; "Now" column and Throughput now hidden; the bridge note

@@ -257,6 +257,19 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
         : [],
     resources: { schedules: `${netUrl}/profiles/${700 + i}/schedules` },
   }));
+  // eero's own Unassigned group (eeroOS 7.12.4+): a profile flagged `default` that every device
+  // without a person's profile points at. On a real network no device has `profile: null`.
+  const unassigned: RawProfile = {
+    url: `${netUrl}/profiles/790`,
+    name: "Unassigned",
+    paused: false,
+    default: true,
+    state: { value: "active" },
+    devices: [],
+    schedule: [],
+    resources: { schedules: `${netUrl}/profiles/790/schedules` },
+  };
+  profiles.push(unassigned);
 
   // Reserved devices (see seedRouting) keep static-range addresses (.4.20 to .4.99); the rest take DHCP leases from the pool (.4.100 up).
   const reservedSeeds = new Set([seed.devices.find((d) => d.band === "wired"), seed.devices.find((d) => d.type === "laptop_computer")]);
@@ -264,7 +277,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     const m = mac(d.n);
     const ip = reservedSeeds.has(d) ? `192.168.4.${20 + (d.n % 80)}` : `192.168.4.${100 + (d.n % 150)}`;
     const eero = seed.eeros[d.eero];
-    const profile = d.profile === undefined ? null : profiles[d.profile];
+    const profile = d.profile === undefined ? unassigned : profiles[d.profile];
     const wired = d.band === "wired";
     const device: RawDevice = {
       url: `${netUrl}/devices/${compact(m)}`,
@@ -394,7 +407,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     },
     eeros: { count: eeros.length, data: eeros },
     clients: { count: online, url: `${netUrl}/devices` },
-    profiles: { count: profiles.length, url: `${netUrl}/profiles` },
+    // A real network sends no profile count; network.get counts profile.list instead.
+    profiles: { url: `${netUrl}/profiles` },
   };
 
   const full = { create: true, read: true, update: true, delete: true };

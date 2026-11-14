@@ -274,7 +274,47 @@ describe("device commands (fake eero server)", () => {
     expect(l.devices.find((d) => d.name === "Living Room TV")).toMatchObject({ band: "wired", category: "entertainment", signal: null, profileId: null });
     expect(l.devices.find((d) => d.name === "Alex's Phone")).toMatchObject({ profileId: "700", ssid: "main", ipv4: "192.168.4.101" });
     expect(l.summary).toMatchObject({ total: 9, online: 6, offline: 1, paused: 1, blocked: 2, rates: null });
-    expect(fake.log.map((e) => `${e.method} ${e.path}`).sort()).toEqual(["GET /2.2/networks/100001/blacklist", "GET /2.2/networks/100001/devices"]);
+    // The profile list tells eero's default (Unassigned) profile from people's profiles.
+    expect(fake.log.map((e) => `${e.method} ${e.path}`).sort()).toEqual([
+      "GET /2.2/networks/100001/blacklist",
+      "GET /2.2/networks/100001/devices",
+      "GET /2.2/networks/100001/profiles",
+    ]);
+  });
+
+  it("maps devices on eero's default profile to Unassigned, for the filter, summary and detail", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    // As on a real network: devices without a person's profile point at the default profile, never at null.
+    const maple = fake.state.networks.get("100001");
+    const tv = maple?.devices.find((d) => d.nickname === "Living Room TV");
+    expect(tv?.profile?.url).toBe("/2.2/networks/100001/profiles/790");
+    expect(maple?.profiles.find((p) => p.default)?.name).toBe("Unassigned");
+
+    const all = await list(engine);
+    expect(all.devices.some((d) => d.profileId === "790")).toBe(false);
+    const unassigned = await list(engine, { profile: null });
+    expect(unassigned.devices.map((d) => d.name).sort((a, b) => a.localeCompare(b))).toEqual(["esp-plug-07", "Living Room TV", "Old Printer"]);
+    expect(all.summary.byProfile.find((r) => r.profileId === null)?.count).toBe(3);
+    expect(all.summary.byProfile.map((r) => r.profileId)).not.toContain("790");
+
+    const one = await engine.execute<M.Device>("device.get", { device: "Living Room TV" });
+    expect(one.ok && one.result.profileId).toBeNull();
+    const csv = await engine.execute<string>("device.list", { profile: null, format: "csv" });
+    if (!csv.ok) throw new Error(csv.error.message);
+    expect(csv.result.match(/Unassigned/g)).toHaveLength(3);
+    expect(csv.result).not.toContain("790");
+    // The default profile is not a profile you can filter by.
+    expect(await engine.execute("device.list", { profile: "790" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("counts people's profiles for network.get, not eero's default profile", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    const [n, p] = await Promise.all([engine.execute<M.Network>("network.get"), engine.execute<M.ProfileList>("profile.list")]);
+    if (!n.ok || !p.ok) throw new Error("read failed");
+    expect(n.result.counts.profiles).toBe(4);
+    expect(n.result.counts.profiles).toBe(p.result.profiles.length);
   });
 
   it("sends one burst a minute and stamps rates once the burst is in", async () => {
@@ -333,7 +373,7 @@ describe("device commands (fake eero server)", () => {
     const r = await engine.execute<M.Device>("device.get", { device: "Mia's Tablet" });
     expect(r.ok && r.result).toMatchObject({ id: "0a1b2c000004", name: "Mia's Tablet", eeroId: "500003", profileId: "702" });
     // Then GET {net}/routing for its reservation.
-    expect(fake.log.slice(-2).map((e) => e.path)).toEqual(["/2.2/networks/100001/devices/0a1b2c000004", "/2.2/networks/100001/routing"]);
+    expect(fake.log.map((e) => e.path)).toEqual(expect.arrayContaining(["/2.2/networks/100001/devices/0a1b2c000004", "/2.2/networks/100001/routing", "/2.2/networks/100001/profiles"]));
   });
 });
 
