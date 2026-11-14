@@ -72,7 +72,7 @@ reservation removed together with its forwards. The sheets live in
 - **Error:** inline note per section with **Retry**. Sheet errors are core's `bad_params` issues under their field ("That address is outside your network (192.168.4.0/22).", "Port 8080 is already forwarded to Alex's MacBook Pro (Web dev server).", "Alex's iPhone is using that address now."); eero's own codes (`error.reservation.ip.invalid`, `error.assignment.ip.unavailable`) also come back as `bad_params`. Other write errors toast with Retry.
 - **Offline:** a muted line above the map says the network is offline and the lists are what eero last reported.
 - **Bridge mode:** the whole page shows a single note "Reservations and port forwards are off while the network is in bridge mode" (IP passthrough says so too) with a link to [Advanced networking](advanced-networking.md); tables are hidden.
-- **IPv6 off** (not built in M3; needs the IPv6 setting): the IPv6 section shows "Turn on IPv6 to add firewall rules" with a link.
+- **IPv6 off** (`settings.get` `ipv6.enabled` false; `settings.ipv6.set` refreshes it): the IPv6 section shows "Turn on IPv6 to add firewall rules." with a link to Advanced networking, and no Add.
 - **Capability missing:** port ranges need the `port_forward_range` capability; without it `forward.validate` says "This network takes single ports only, not ranges." under the port.
 - **No permission:** add, edit, the switch and remove are dimmed with the reason when `network.permissions` denies `settings` updates.
 
