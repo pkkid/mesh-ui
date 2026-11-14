@@ -17,6 +17,33 @@ recorded redacted (key paths, types, counts). `MANUAL:` lines stay for
 visual comparison with the eero app, copy and clipboard in a real window,
 and every write.
 
+Lessons so far (from [M3](reviews/M3.md#6-numbers-surprises-open-items-next);
+read these before planning the next milestone):
+- Capture before mapping. In M3 the real eero API differed from the docs
+  and fixtures in five places, and each was found only by a read-only
+  capture: a hidden Unassigned profile with `default: true`,
+  `{profile}/schedules` and `{net}/proxied_nodes` answer 404, the
+  `app_events` shape, profile usage rows keyed `profile_id`, and members
+  with no email. A story captures the raw shape before it maps or writes
+  anything. When a capture contradicts the docs or fixtures, the worker
+  reports it even if the fix is outside its files, and the lead makes a
+  fix task.
+- File lists were too tight. Several M3 stories also needed
+  `docs/architecture/data-model.md`, `src/shared/types.ts`,
+  `src/renderer/src/lib/chartColors.ts` or `src/core/poll.ts` (new cache
+  topics). List these in the hotspots as shared-additive files, like the
+  registration files.
+- A shared mapping file that several page stories depend on (the device,
+  usage and network maps) is owned by the core story or a named fix task.
+  Three M3 fixes landed in those maps.
+- A story that adds a sensitive command lists `src/cli/format.ts` (secret
+  masking) and tests the CLI table output, not only logs and MCP.
+- Done-when `ui:shot` lines use the real route paths from
+  `src/renderer/src/app/routes.ts` (settings pages are `#/settings/wifi`,
+  `#/settings/advanced`, `#/settings/ports` and `#/settings/updates`).
+- Workers run headless and push PR screenshots to an assets branch; see
+  [AGENTS.md](../AGENTS.md#milestone-runs).
+
 ## Overview
 
 | Milestone | Goal | Status |
@@ -562,6 +589,13 @@ real events do not carry; guest Print card and Send to a guest; Mark all
 read; the eero client shares an identical `GET {net}` (which holds the
 password) for 5 s, so a reveal right after an outside password change can
 show the old one (bypass or clear it for credential reads).
+Learned in M3: the Unassigned group is a real profile with `default: true`,
+so moving a device to "no profile" likely means assigning the default
+profile's id; capture a device's profile link read-only before building
+that write. Notifications carry only a network-wide `has_unread`, so Mark
+all read is network-wide. Free accounts keep about 7 days of events and
+usage history. Guest and Wi-Fi password stories list `src/cli/format.ts`
+and handle the 5 s shared GET above.
 
 ## M5: Advanced settings
 
