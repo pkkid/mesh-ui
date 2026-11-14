@@ -202,13 +202,11 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  */
 export function mapIntegrations(raw: RawNetwork): M.Integrations {
   const bridged = connectionMode(raw.connection?.mode) === "bridged";
-  const homekitCapable = capable(raw, "homekit");
+  // eero sends `homekit: null` when it reports no HomeKit here (a real Max 7 network did): unavailable, not an error.
   const homekit =
     raw.homekit && typeof raw.homekit === "object"
       ? integration(true, bool(raw.homekit.enabled))
-      : homekitCapable === true
-        ? integration(true, false)
-        : integration(false, null, bridged ? "Not available in bridge mode" : "Not supported by this network's eeros");
+      : integration(false, null, bridged ? "Not available in bridge mode" : "Not reported for this network's eeros");
 
   const linked = bool(raw.amazon_account_linked);
   const amazon = linked === null ? integration(false, null) : integration(true, linked, linked ? "Linked to an Amazon account" : "Link in the eero app");
@@ -219,7 +217,7 @@ export function mapIntegrations(raw: RawNetwork): M.Integrations {
     bridged
       ? integration(false, null, "Not available in bridge mode")
       : nodes && typeof nodes === "object"
-        ? integration(true, bool(nodes.enabled), devices > 0 ? `${plural(devices, "Echo device extends", "Echo devices extend")} your network` : null)
+        ? integration(true, bool(nodes.enabled), devices > 0 ? `${plural(devices, "Echo extends", "Echos extend")} your network` : null)
         : integration(false, null);
 
   const hub = capable(raw, "smart_home_hub", "zigbee");

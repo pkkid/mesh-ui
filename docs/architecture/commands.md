@@ -322,7 +322,7 @@ the write when nothing changed, and is never retried.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `settings.get` | Network settings | `{}` | q | `GET {net}`, `GET {net}/fast_transition`, `GET {net}/power_saving/schedules`, `GET {net}/thread`, `GET {net}/ac_compat` | `NetworkSettings`. Thread secrets are dropped before caching. |
+| `settings.get` | Network settings | `{}` | q | `GET {net}` (shared), `GET {net}/fast_transition`, `GET {net}/power_saving/schedules`, `GET {net}/thread`, `GET {net}/ac_compat` | `NetworkSettings`. Power saving on/off comes from the network object (`GET {net}/power_saving` is a 404). A 403, 404 or 405 on one of the extra reads is null (not on this network), never an error: Thread is null on a network without it. Thread secrets are never mapped; the command also strips any field outside the Thread model before caching. `devices` (Thread accessories) is always null: eero does not report it. `simpleSetup` is null unless `auto_setup_mode` is a clear on or off word. |
 | `settings.dns.set` | DNS | `{ mode?: "automatic" \| "custom", servers?: string[] (1..4), ipv6Servers?: string[], caching?: boolean }` | d | `PUT {net}/settings` JSON `{dns: {mode, caching, custom: {ips}}, ipv6: {name_servers}}` | Confirmed mesh restart. Also the Local DNS caching toggle (`{caching}` alone): there is no separate `settings.dns_cache.set`, because caching is a field of the same `dns` object and SX's `PUT {net}/dns` alternative is just as disruptive. |
 | `settings.dhcp.set` | DHCP and NAT | `{ mode: "automatic" \| "custom", subnetIp?, subnetMask?, startIp?, endIp? }` | d | `PUT {net}/settings` JSON `{dhcp: {mode, custom}}` | Confirmed mesh restart. Range validated in core. |
 | `settings.ipv6.set` | IPv6 | `{ enabled: boolean }` | d | `PUT {net}/settings` JSON `{ipv6_upstream}` | |
@@ -459,7 +459,7 @@ LD only and need a MANUAL check before shipping.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `integrations.get` **(added)** | Integrations | `{}` | q | `GET {net}` (HomeKit, Amazon link and `ffs` fields), `GET {net}/proxied_nodes` | `Integrations`: HomeKit, Amazon linked, eero Built-in, Smart Home Hub, Frustration-Free Setup, each with `available` and `enabled`. |
+| `integrations.get` **(added)** | Integrations | `{}` | q | `GET {net}` only (shared): `homekit`, `amazon_account_linked`, embedded `proxied_nodes`, `ffs`, `capabilities` | `Integrations`: HomeKit, Amazon linked, eero Built-in, Smart Home Hub, Frustration-Free Setup, each with `available` and `enabled`. `GET {net}/proxied_nodes` answers 404 on a real network, so eero Built-in is the network's embedded `proxied_nodes`. A missing or null field is unavailable, not an error (`homekit: null` is unavailable). Smart Home Hub is available only when a `smart_home_hub` or `zigbee` capability says so. |
 | `integrations.amazon.unlink` **(added)** | Unlink Amazon | `{}` | x | `POST /2.2/amazon/networks/{id}/account_unlink` | Owner only. Linking needs Amazon sign-in in a browser and is out of scope. |
 | `integrations.builtin.set` **(added)** | eero Built-in | `{ enabled: boolean }` | w | `PUT {net}/proxied_nodes` JSON `{enabled}` | Network-wide switch; eero has no per-device toggle. |
 | `integrations.zigbee.discover` **(added)** | Discover Zigbee devices | `{}` | w | `POST /2.3/networks/{id}/shh/start_zigbee_discovery` | `/2.3/` only. Pairing finishes in the Alexa app. Open question whether Smart Home Hub is free. |

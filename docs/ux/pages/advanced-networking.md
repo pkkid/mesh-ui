@@ -6,6 +6,18 @@ Mockup: [../../mockups/13-advanced-networking.html](../../mockups/13-advanced-ne
 
 Shared patterns (settings rows, restart badges, side panel, confirm bar, danger zone) are described in [../overview.md](../overview.md).
 
+## Built so far (M3.10, read view)
+
+The page shows every group read only: values, switches and segmented choices reflect `settings.get`, `integrations.get`, `internet.get` and `network.get`, and every control is disabled with a "Coming soon" tooltip (writes and `settings.impact` come in M5). Differences from the full design below:
+
+- No Pending change panel or confirm bar. The side panel says the page is read only, and adds the offline and bridge notes.
+- Fast roaming (802.11r) and Legacy device mode rows sit in Wireless (both are read by `settings.get`).
+- No Thread device count (eero does not report it). **Reveal** and **Copy dataset** are disabled; `settings.thread.credentials` is not built yet.
+- The ISP settings footer says eero does not report the DHCP lease time (a real capture has no lease or renew time).
+- The Reservations row links to Reservations & ports without counts.
+- Power saving schedules draw on the shared week timeline (`components/ui/timeline.tsx`) in the theme's green, with one line per schedule above it.
+- A setting eero does not report shows a dashed, empty switch or `-`; an integration eero leaves out (HomeKit `null` included) shows `Unavailable`, dimmed.
+
 ## Layout
 
 Breadcrumb `Settings / Advanced networking`, subtitle "Changes apply to every eero". Settings column on the left, side panel on the right. Rows that restart eeros carry a **Restarts eeros** badge next to their title.
