@@ -1,7 +1,8 @@
 /**
  * Wi-Fi hero: the SSID, whether it is broadcasting, wireless clients and
  * bands, and the QR block. The code stays an empty frame until "Show code"
- * runs `wifi.share`; Copy password and Save QR work from then on.
+ * runs `wifi.share`; Copy password and Save QR work from then on (copy reads
+ * `wifi.password.get`).
  * docs/ux/pages/wifi.md (Layout 1).
  */
 import { Eye, Printer, Wifi } from "lucide-react";
@@ -14,20 +15,23 @@ import { Status } from "~/components/ui/status";
 import { bandLabel } from "~/components/ui/band-badge";
 import { cn } from "~/lib/utils";
 import { formatCount } from "../../../../core/format";
-import type { Network, WifiSettings } from "../../../../core/model";
-import type { Reveal } from "./WifiPage";
+import type { Network, WifiSettings, WifiShare } from "../../../../core/model";
+import type { WifiPassword } from "../../../../core/commands/wifi";
+import type { Secret } from "./WifiPage";
 
 export function WifiHero({
   wifi,
   network,
   offline,
-  reveal,
+  share,
+  password,
   fading = false,
 }: {
   wifi: WifiSettings | null;
   network: Network | null;
   offline: boolean;
-  reveal: Reveal;
+  share: Secret<WifiShare>;
+  password: Secret<WifiPassword>;
   fading?: boolean;
 }) {
   const ssid = wifi?.ssid ?? network?.name ?? null;
@@ -54,16 +58,16 @@ export function WifiHero({
       }
       aside={
         <QrBlock
-          value={reveal.share?.qr ?? null}
+          value={share.value?.qr ?? null}
           ariaLabel={ssid ? `QR code to join ${ssid}` : "Wi-Fi QR code"}
-          caption={reveal.error ? <span className="text-destructive-foreground">Couldn't load the code</span> : "Wi-Fi Network"}
+          caption={share.error ? <span className="text-destructive-foreground">Couldn't load the code</span> : "Wi-Fi Network"}
           copyLabel="Copy password"
-          copyText={async () => (await reveal.load())?.password ?? null}
+          copyText={async () => (await password.load())?.password ?? null}
           fileName={`${ssid ?? "Wi-Fi"} QR.png`}
           actions={
             <>
-              {!reveal.share && (
-                <Button size="sm" variant="outline" disabled={!wifi || reveal.loading} onClick={() => void reveal.load()}>
+              {!share.value && (
+                <Button size="sm" variant="outline" disabled={!wifi || share.loading} onClick={() => void share.load()}>
                   <Eye />
                   Show code
                 </Button>

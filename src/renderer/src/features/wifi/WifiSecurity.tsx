@@ -1,7 +1,6 @@
 /**
  * Wi-Fi name, password and encryption. The password shows as dots until the
- * eye runs `wifi.password.get` (through the page's reveal, which reads
- * `wifi.share`); copy reads it on demand too. Security per band is shown on
+ * eye runs `wifi.password.get`; copy reads it on demand too. Security per band is shown on
  * a segmented control whose other options are "Coming soon". 6 GHz is always
  * WPA3. docs/ux/pages/wifi.md (Layout, left column 1 and 2).
  */
@@ -16,7 +15,8 @@ import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { formatCount, MISSING } from "../../../../core/format";
 import type { Device, Security, WifiSettings, WirelessBand } from "../../../../core/model";
-import type { Reveal } from "./WifiPage";
+import type { WifiPassword } from "../../../../core/commands/wifi";
+import type { Secret } from "./WifiPage";
 
 /** eero allows a 32 byte SSID; count bytes, not characters. */
 const SSID_MAX_BYTES = 32;
@@ -95,20 +95,20 @@ function CopyIcon({ label, text, disabled }: { label: string; text: () => Promis
   );
 }
 
-export function WifiNamePassword({ wifi, reveal }: { wifi: WifiSettings | null; reveal: Reveal }) {
+export function WifiNamePassword({ wifi, password: secret }: { wifi: WifiSettings | null; password: Secret<WifiPassword> }) {
   const [shown, setShown] = useState(false);
-  const password = reveal.share?.password ?? null;
+  const password = secret.value?.password ?? null;
   // A network switch drops the revealed password; hide again so the next one is not read unasked.
   useEffect(() => {
-    if (!reveal.share) setShown(false);
-  }, [reveal.share]);
+    if (!secret.value) setShown(false);
+  }, [secret.value]);
   const ssid = wifi?.ssid ?? null;
   const open = wifi !== null && !wifi.hasPassword;
 
   const passwordValue = !wifi ? null : open ? "No password (open network)" : shown && password ? password : "••••••••••••";
   const toggle = async () => {
     if (shown) return setShown(false);
-    if (await reveal.load()) setShown(true);
+    if (await secret.load()) setShown(true);
   };
 
   return (
@@ -135,14 +135,14 @@ export function WifiNamePassword({ wifi, reveal }: { wifi: WifiSettings | null; 
             label="Wi-Fi password"
             mono={shown}
             value={passwordValue}
-            hint={reveal.error ? <span className="text-destructive-foreground">{reveal.error}</span> : shown && password ? `${formatCount(password.length)} characters` : "Hidden until you reveal it"}
+            hint={secret.error ? <span className="text-destructive-foreground">{secret.error}</span> : shown && password ? `${formatCount(password.length)} characters` : "Hidden until you reveal it"}
             actions={
               open ? null : (
                 <>
-                  <IconButton label={shown ? "Hide password" : "Reveal password"} disabled={!wifi || reveal.loading} onClick={() => void toggle()}>
+                  <IconButton label={shown ? "Hide password" : "Reveal password"} disabled={!wifi || secret.loading} onClick={() => void toggle()}>
                     {shown ? <EyeOff /> : <Eye />}
                   </IconButton>
-                  <CopyIcon label="Copy password" disabled={!wifi} text={async () => (await reveal.load())?.password ?? null} />
+                  <CopyIcon label="Copy password" disabled={!wifi} text={async () => (await secret.load())?.password ?? null} />
                   <IconButton label="Generate a password (coming soon)" disabled>
                     <Dices />
                   </IconButton>
