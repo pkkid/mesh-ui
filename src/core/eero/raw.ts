@@ -496,37 +496,36 @@ export type RawPlacementTest = {
 };
 
 /** One room (eero) of a coverage scan. `quality` may be 0 to 100 or 1 to 5 bars. */
-export type RawCoverageRoom = {
-  eero_id?: string | number | null;
-  url?: string | null;
-  location?: string | null;
-  quality?: number | null;
-  score?: number | null;
-  coverage_score?: number | null;
-  bars?: number | null;
-  device_count?: number | null;
-  devices?: number | unknown[] | null;
-  served_by?: RawLink | null;
-  upstream?: RawLink | null;
-};
+/** `debug` on both `/2.4/` scans: two free-text strings (captured 2026-11-14), not shown. */
+export type RawScanDebug = { recommendation?: string | null; reason?: string | null };
 
-/** `GET /2.4/networks/{id}/placement/wifi_coverage_scan?allDevices=true`. */
+/**
+ * `GET /2.4/networks/{id}/placement/wifi_coverage_scan?allDevices=true`.
+ * Captured 2026-11-14 (keys and types only): an instant read of every
+ * connected wireless device, in full device shape, split by link health.
+ * There is no room list, timestamp or advice; core groups devices by
+ * `source.url` (their eero). `connectivity.score` is 0 to 1 and
+ * `score_bars` 0 to 5.
+ */
 export type RawCoverageScan = {
-  scanned_at?: string | null;
-  timestamp?: string | null;
-  rooms?: RawCoverageRoom[];
-  eeros?: RawCoverageRoom[];
-  nodes?: RawCoverageRoom[];
-  advice?: RawText[];
-  recommendations?: RawText[];
+  healthy_devices?: RawDevice[] | null;
+  unhealthy_devices?: RawDevice[] | null;
+  network_id?: number;
+  debug?: RawScanDebug | null;
 };
 
-/** `GET /2.4/networks/{id}/placement/wifi_generation_scan?allDevices=true`. Generations as rows or a `{wifi_6: n}` map. */
+/**
+ * `GET /2.4/networks/{id}/placement/wifi_generation_scan?allDevices=true`.
+ * Captured 2026-11-14 (keys and types only): devices grouped by a numeric
+ * Wi-Fi version (4, 5, 6, 7; no 6E), each group holding full device rows,
+ * the eeros counted the same way, and the network's (eeros') own version.
+ */
 export type RawGenerationScan = {
-  generations?: { generation?: string | number | null; count?: number | null; devices?: number | null }[] | Record<string, number>;
-  limiting_eeros?: { eero_id?: string | number | null; url?: string | null; reason?: RawText | null }[];
-  notes?: RawText[];
-  insights?: RawText[];
+  network_wifi_version?: number | null;
+  devices_per_wifi_version?: { wifi_version?: number | null; devices?: RawDevice[] | null }[] | null;
+  eeros_per_wifi_version?: { wifi_version?: number | null; count?: number | null }[] | null;
+  network_id?: number;
+  debug?: RawScanDebug | null;
 };
 
 /** `GET {net}/support` on `/2.2/`. */

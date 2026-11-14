@@ -9,13 +9,15 @@
  *   one read, then `{status: "complete", rating}` from the eero's mesh bars.
  *   `/2.3/` only.
  * - `GET /2.4/networks/{id}/placement/wifi_coverage_scan` and
- *   `wifi_generation_scan`: `/2.4/` only, built from the eeros and devices.
- * The placement and scan shapes are not captured (docs/eero-api/endpoints.md
- * section 5); these follow the fields the mapper reads.
+ *   `wifi_generation_scan`: `/2.4/` only, instant reads in the real shapes
+ *   captured 2026-11-14 (device rows split by link health, and device rows
+ *   grouped by numeric Wi-Fi version), built from the devices and eeros.
+ * The placement test shape is not captured (docs/eero-api/endpoints.md
+ * section 5); it follows the fields the mapper reads.
  * Shapes: docs/eero-api/endpoints.md sections 5, 10 and 17.
  */
 
-import type { RawEero } from "../../../src/core/eero/raw";
+import type { RawDevice, RawEero } from "../../../src/core/eero/raw";
 import { fail, ok, type Route } from "../server";
 import type { FakeNetwork, FakeState } from "../state";
 
@@ -25,6 +27,14 @@ const SYMPTOMS = new Set(["internet_slow", "internet_offline", "connection_drops
 
 type Pending = { reads: number };
 const pending = (state: FakeState, key: string): Pending | undefined => state.extra[key] as Pending | undefined;
+
+/** A device below this `connectivity.score` (0 to 1) is in the coverage scan's unhealthy list. */
+export const WEAK_SCORE = 0.5;
+
+/** A fake device's Wi-Fi version: 7 from a fixture field, else 6 on 6 GHz, 6 on 5 GHz, 4 on 2.4 GHz. */
+const deviceVersion = (d: RawDevice & { wifi_version?: number }): number => d.wifi_version ?? (String(d.interface?.frequency ?? "").startsWith("2") ? 4 : 6);
+/** An eero's Wi-Fi version from its model name ("eero Max 7", "eero 6+", "eero Beacon"). */
+const eeroVersion = (e: RawEero): number => (/\b7\b/.test(e.model ?? "") ? 7 : /\b6/.test(e.model ?? "") ? 6 : 5);
 
 const offline = (e: RawEero) => e.status === "red" || e.heartbeat_ok === false;
 const weak = (e: RawEero) => !e.gateway && e.wired !== true && (e.mesh_quality_bars ?? 5) <= 2;
@@ -110,43 +120,43 @@ export const routes: Route[] = [
     },
   },
   {
+    // Real shape (captured 2026-11-14): an instant read, connected wireless devices split by link health.
     method: "GET",
     path: "/networks/:net/placement/wifi_coverage_scan",
     versions: ["2.4"],
-    handle: ({ params, network, state }) => {
+    handle: ({ params, network }) => {
       const net = network(params.net ?? "");
-      const parent = (e: RawEero) => (e.gateway ? null : (net.eeros.find((x) => x.location === e.wireless_upstream_node?.name)?.url ?? null));
+      const wireless = net.devices.filter((d) => d.connected && d.wireless !== false);
+      const weakLink = (d: RawDevice) => (d.connectivity?.score ?? 1) < WEAK_SCORE;
       return ok({
-        scanned_at: new Date(state.now()).toISOString(),
-        eeros: net.eeros.map((e) => ({
-          url: e.url,
-          location: e.location,
-          bars: offline(e) ? null : e.gateway || e.wired ? 5 : (e.mesh_quality_bars ?? null),
-          device_count: offline(e) ? null : (e.connected_clients_count ?? 0),
-          served_by: parent(e),
-        })),
-        recommendations: net.eeros.filter(weak).map((e) => ({ message: `Adjust eero placement. ${e.location} sits too far from the eero it connects through.` })),
+        healthy_devices: wireless.filter((d) => !weakLink(d)),
+        unhealthy_devices: wireless.filter(weakLink),
+        network_id: Number(net.id),
+        debug: { recommendation: "Fake recommendation text", reason: "Fake reason text" },
       });
     },
   },
   {
+    // Real shape (captured 2026-11-14): device rows grouped by numeric wifi_version (no 6E), eeros counted the same way.
     method: "GET",
     path: "/networks/:net/placement/wifi_generation_scan",
     versions: ["2.4"],
     handle: ({ params, network }) => {
       const net = network(params.net ?? "");
-      const counts: Record<string, number> = {};
+      const byVersion = new Map<number, RawDevice[]>();
       for (const d of net.devices) {
         if (!d.connected || d.wireless === false) continue;
-        const f = d.interface?.frequency ?? "";
-        const key = f.startsWith("6") ? "WIFI_6E" : f.startsWith("5") ? "WIFI_6" : f.startsWith("2") ? "WIFI_4" : null;
-        if (key) counts[key] = (counts[key] ?? 0) + 1;
+        const v = deviceVersion(d);
+        byVersion.set(v, [...(byVersion.get(v) ?? []), d]);
       }
-      const old = net.eeros.filter((e) => !(e.bands ?? []).some((b) => b.includes("6")));
+      const eeroVersions = new Map<number, number>();
+      for (const e of net.eeros) eeroVersions.set(eeroVersion(e), (eeroVersions.get(eeroVersion(e)) ?? 0) + 1);
       return ok({
-        generations: counts,
-        limiting_eeros: old.map((e) => ({ url: e.url, reason: "No 6 GHz radio" })),
-        insights: ["2.4 GHz only devices such as plugs and sensors are fine where they are."],
+        network_wifi_version: Math.min(...eeroVersions.keys()),
+        devices_per_wifi_version: [...byVersion].map(([wifi_version, devices]) => ({ wifi_version, devices })),
+        eeros_per_wifi_version: [...eeroVersions].map(([wifi_version, count]) => ({ wifi_version, count })),
+        network_id: Number(net.id),
+        debug: { recommendation: "Fake recommendation text", reason: "Fake reason text" },
       });
     },
   },

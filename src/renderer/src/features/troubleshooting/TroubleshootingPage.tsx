@@ -12,22 +12,22 @@ import { useQuery } from "~/app/useCommand";
 import { useNow } from "~/components/ui/page";
 import { TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
 import { formatRelative } from "../../../../core/format";
-import type { Eero, HealthReport, Network, SupportInfo } from "../../../../core/model";
+import type { Eero, Network, SupportInfo } from "../../../../core/model";
 
 import { CoverageScanCard, RadioChannels, UpgradeReportCard } from "./Coverage";
 import { Diagnose } from "./Diagnose";
-import { HealthChecks } from "./HealthChecks";
+import { HealthChecks, useHealthCheck } from "./HealthChecks";
 import { SupportCard } from "./SupportCard";
 import { Fixes, Tools } from "./Tools";
 
 export function TroubleshootingPage(_: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
-  const health = useQuery<HealthReport>("health.check", undefined, { poll: true });
+  const health = useHealthCheck();
   const support = useQuery<SupportInfo>("support.info");
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
   const now = useNow();
 
-  const at = health.data?.at ?? null;
+  const at = health.report?.at ?? null;
   const offline = network.data?.status === "offline";
 
   return (
@@ -36,7 +36,7 @@ export function TroubleshootingPage(_: PageProps) {
       <TopBarSubtitle>{at ? `Last health check ${formatRelative(at, now)}` : "Health check"}</TopBarSubtitle>
       <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <HealthChecks query={health} symptoms={<Diagnose offline={offline} />} />
+          <HealthChecks health={health} symptoms={<Diagnose offline={offline} />} />
           <Tools eeros={eeros.data} />
           <div className="grid items-start gap-6 2xl:grid-cols-2">
             <CoverageScanCard eeros={eeros.data} />
