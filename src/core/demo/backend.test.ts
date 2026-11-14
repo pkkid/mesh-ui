@@ -423,16 +423,18 @@ describe("M2 fixtures", () => {
         const { eeroId, ports } = await b.eero.ports(n.id, e.id);
         expect(eeroId).toBe(e.id);
         for (const p of ports) {
-          const wired = devices.find((d) => d.connected && d.wiredPort?.eeroId === e.id && d.wiredPort.port === p.number);
-          expect(p.attached?.deviceId ?? null).toBe(wired?.id ?? null);
-          if (p.attached) expect(wired?.eeroId).toBe(e.id);
-          if (wired && e.status !== "offline") expect(p).toMatchObject({ status: "up", speedMbps: wired.wiredPort?.speedMbps });
+          // Several devices on one port sit behind a switch (M5.7); the fastest link is the port's.
+          const wired = devices.filter((d) => d.connected && d.wiredPort?.eeroId === e.id && d.wiredPort.port === p.number);
+          if (e.status !== "offline") expect(p.attachments.map((a) => a.deviceId)).toEqual(wired.map((d) => d.id));
+          if (wired.length === 1) expect(p.attached?.deviceId).toBe(wired[0]?.id);
+          const fastest = Math.max(...wired.map((d) => d.wiredPort?.speedMbps ?? 0));
+          if (wired.length && e.status !== "offline") expect(p).toMatchObject({ status: "up", speedMbps: fastest });
         }
       }
       // Every connected wired device sits on a port of its eero.
       for (const d of devices.filter((x) => x.connected && x.wiredPort)) {
         const { ports } = await b.eero.ports(n.id, d.wiredPort?.eeroId ?? "");
-        expect(ports.find((p) => p.number === d.wiredPort?.port)?.attached?.deviceId).toBe(d.id);
+        expect(ports.find((p) => p.number === d.wiredPort?.port)?.attachments.map((a) => a.deviceId)).toContain(d.id);
       }
     }
   });

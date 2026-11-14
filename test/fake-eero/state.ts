@@ -573,7 +573,7 @@ function seedConnections(e: EeroSeed, i: number, devices: RawDevice[]): RawConne
   const port = (n: number, extra: Partial<RawPortInterface>): RawPortInterface => ({
     interface_number: n,
     name: `Port ${n}`,
-    port_status: "NOT_CONNECTED",
+    port_status: "DISCONNECTED",
     negotiated_speed: null,
     supported_speed: "P2500",
     network_type: "UNKNOWN",
@@ -593,7 +593,18 @@ function seedConnections(e: EeroSeed, i: number, devices: RawDevice[]): RawConne
       port(interfaces.length + 1, {
         port_status: "DATA_CONNECTED",
         negotiated_speed: "P1000",
-        connection_status: { type: "MULTIPLE_DEVICES", metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: { display_name: d.display_name ?? undefined, device_type: d.device_type ?? undefined, url: d.url, advanced_attributes: { connection_type: "WIRED" } } }] } } },
+        connection_status: {
+          type: "MULTIPLE_DEVICES",
+          metadata: {
+            multiple_devices: {
+              connections: [
+                { type: "CLIENT_DEVICE", metadata: { display_name: d.display_name ?? undefined, device_type: d.device_type ?? undefined, url: d.url, advanced_attributes: { connection_type: "WIRED" } } },
+                // The gateway's first wired port has a switch with a second, unlisted device behind it (several attachments, M5.7).
+                ...(e.gateway && k === 0 ? [{ type: "CLIENT_DEVICE", metadata: { display_name: "Desk Switch", device_type: "network_equipment", advanced_attributes: { connection_type: "WIRED" } } }] : []),
+              ],
+            },
+          },
+        },
         actions: [{ type: "DISABLE_PORT", position: 0 }, { type: k === 0 ? "RESTART_POWER" : "DISABLE_DATA", position: 1 }],
       }),
     ),

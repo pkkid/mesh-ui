@@ -25,7 +25,7 @@
  */
 
 import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
-import { INVERSE_PORT_ACTION } from "../model";
+import { INVERSE_PORT_ACTION, portSummary } from "../model";
 import { deviceCategory } from "../eero/map/device";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
@@ -302,16 +302,20 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     const up = e.status !== "offline";
     const wanUp = up && data.internet.status === "online";
     const ports = (data.ports[e.id] ?? []).map((p): M.EeroPort => {
-      const d = data.devices.find((x) => x.connected && x.wiredPort?.eeroId === e.id && x.wiredPort.port === p.number);
+      // Several devices on one port sit behind a switch; the fastest link is the port's.
+      const on = data.devices.filter((x) => x.connected && x.wiredPort?.eeroId === e.id && x.wiredPort.port === p.number);
+      const d = on.reduce<(typeof on)[number] | undefined>((best, x) => ((x.wiredPort?.speedMbps ?? 0) > (best?.wiredPort?.speedMbps ?? -1) ? x : best), undefined);
       const live = p.isWan ? wanUp : up && !!d;
       const speed = p.isWan ? (data.internet.gateway?.eeroId === e.id ? data.internet.gateway.wanPortSpeedMbps : null) : (d?.wiredPort?.speedMbps ?? null);
       const { disabled, ...stored } = p;
-      if (disabled) return { ...clone(stored), status: "disabled", speedMbps: null, attached: null };
+      if (disabled) return { ...clone(stored), status: "disabled", speedMbps: null, attached: null, attachments: [] };
+      const attachments = up ? on.map((x) => ({ deviceId: x.id, eeroId: null, name: x.name })) : [];
       return {
         ...clone(stored),
         status: live ? "up" : "down",
         speedMbps: live ? speed : null,
-        attached: d && up ? { deviceId: d.id, eeroId: null, name: d.name } : null,
+        attached: portSummary(attachments),
+        attachments,
       };
     });
     return { eeroId: e.id, ports };

@@ -345,7 +345,7 @@ const MAPLE_DEVICES: DeviceRow[] = [
   { name: "Leo's Switch", maker: "Nintendo", model: "Switch 2", type: "game_console", cat: "entertainment", profile: "leo", eero: "lr", band: "5", bars: 4, ip: 172, gb: 2.8, pattern: "kid", paused: true },
   // Smart home
   { name: "Nest Thermostat", maker: "Google", model: "Nest Thermostat", type: "thermostat", cat: "smart_home", eero: "lr", band: "2.4", bars: 4, ip: 181, rate: [0, 0], gb: 0.05, pattern: "steady", newMin: 48 },
-  { name: "Hue Bridge", maker: "Signify", model: "Hue Bridge", type: "hub", cat: "smart_home", eero: "lr", band: "wired", ip: 30, rate: [0, 0], gb: 0.1, pattern: "steady", port: [4, 100] },
+  { name: "Hue Bridge", maker: "Signify", model: "Hue Bridge", type: "hub", cat: "smart_home", eero: "lr", band: "wired", ip: 30, rate: [0, 0], gb: 0.1, pattern: "steady", port: [3, 100] }, // behind a switch on port 3 with the TV (several attachments, M5.7)
   { name: "Kitchen Echo", maker: "Amazon", model: "Echo (4th Gen)", type: "digital_assistant", cat: "smart_home", eero: "lr", band: "2.4", bars: 4, ip: 183, rate: [0.1, 0], gb: 0.4, pattern: "personal" },
   { name: "Desk Lamp", maker: "Signify", model: "Hue Go", type: "light", cat: "smart_home", eero: "of", band: "2.4", bars: 4, ip: 190, rate: [0, 0], gb: 0.01, pattern: "steady" },
   { name: "Hallway Smoke Alarm", maker: "Google", model: "Nest Protect", type: "smoke_detector", cat: "smart_home", eero: "up", band: "2.4", bars: 4, ip: 191, rate: [0, 0], gb: 0.01, pattern: "steady" },
@@ -746,7 +746,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     ports: {
       [mapleIds.lr]: portsOf(mapleEeros[0] as EeroFixture, [[1, 10000, { wan: true }], [2, 10000], [3, 2500], [4, 2500]]),
       [mapleIds.of]: portsOf(mapleEeros[1] as EeroFixture, [[1, 5000], [2, 5000]]),
-      [mapleIds.up]: portsOf(mapleEeros[2] as EeroFixture, [[1, 2500], [2, 2500]]),
+      [mapleIds.up]: portsOf(mapleEeros[2] as EeroFixture, [[1, 2500], [2, 2500, { poe: true }]]), // PoE on port 2 for RESTART_POWER (M5.7)
     },
     firmware: Object.fromEntries(mapleEeros.map((e) => [e.id, firmwareOf(e, now, [["7.12.1", 1.5], ["7.11.4", 41], ["7.10.2", 97], ["7.9.0", 160]])])),
     updates: {

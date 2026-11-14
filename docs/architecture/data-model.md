@@ -252,6 +252,8 @@ type Radio = {
 
 type Nightlight = { mode: "off" | "ambient" | "schedule"; brightness: number | null; on: Hhmm | null; off: Hhmm | null };
 
+type PortAttachment = { deviceId: Id | null; eeroId: Id | null; name: string | null };
+
 type EeroPorts = {
   eeroId: Id;
   ports: {
@@ -263,7 +265,8 @@ type EeroPorts = {
     isWan: boolean;
     poe: "on" | "off" | null;
     mac: string | null;
-    attached: { deviceId: Id | null; eeroId: Id | null; name: string | null } | null;
+    attached: PortAttachment | null;     // summary: the eero, else the only device, else "N devices"
+    attachments: PortAttachment[];       // everything behind the port (a switch: several), eeros first
     actions: string[];            // PortAction values eero allows
   }[];
 };
@@ -304,7 +307,7 @@ type UpgradeReport = {
 | `nightlight` | `nightlight` (`enabled` false = off; `schedule.enabled` picks schedule vs ambient) |
 | `ipv4`, `ipv6`, `mac`, `bssids` | `ip_address`, `ipv6_addresses[].address`, `mac_address`, `bssids_with_bands` |
 | `uptimeSec`, `joined` | `uptime.since_last_reboot_s`, `joined` |
-| `EeroPorts` | `resources.connections`: `ports.interfaces[]`. `status`: `port_status` `DATA_CONNECTED` or `WAN` is up, `DISABLED` disabled, else down. `speedMbps`: `negotiated_speed` (`"P1000"`) when up; `supportedMbps`: `supported_speed`. `isWan`: `port_status` `WAN` or `connection_status.type` `WAN_SOURCE` (`network_type` is `UNKNOWN` on real ports). `attached`: from `connection_status.metadata.multiple_devices.connections[]` (`type` `EERO_DEVICE` or `CLIENT_DEVICE`, joined by `metadata.url`): an eero if one is there, else the only device, else `"N devices"` with no id. `poe_status`, `actions[].type` |
+| `EeroPorts` | `resources.connections`: `ports.interfaces[]`. `status`: `port_status` `DATA_CONNECTED` or `WAN` is up, `DISCONNECTED` down (real capture), `DISABLED` disabled (a guess; no real disabled port seen), else down. `speedMbps`: `negotiated_speed` (`"P1000"`) when up; `supportedMbps`: `supported_speed`. `isWan`: `port_status` `WAN` or `connection_status.type` `WAN_SOURCE` (`network_type` is `UNKNOWN` on real ports). `attachments`: every entry of `connection_status.metadata.multiple_devices.connections[]` (`type` `EERO_DEVICE` or `CLIENT_DEVICE`, joined by `metadata.url`), eeros first, as `{deviceId, eeroId, name}`; `attached`: their summary (`portSummary` in `model.ts`): an eero if one is there, else the only device, else `"N devices"` with no id. `poe_status`, `actions[].type` |
 | `FirmwareEntry` | `GET /2.2/eeros/{id}/firmware_update/history`, `data.data[]`: `version` is `firmware_version` up to `+` (the build tail dropped, so it equals the eero's `os_version`), `installedAt` is `finished_at`, else `timestamp`; rows whose `outcome` or `status` says failed are dropped; `current` is the newest entry matching `os_version` |
 | `CoverageScan`, `UpgradeReport` | `/2.4/` placement scans; shapes known only from LD, MANUAL capture needed |
 

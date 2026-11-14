@@ -931,7 +931,7 @@ restarts the network says so in its risk field.
 - scope: `updates.install` (disruptive, progress until eeros return), `updates.hour.set` (with the quiet-hours suggestion), `admin.invite.create`, `admin.invite.cancel`, `admin.nickname.set` (verify the request with a capture first; drop it if unverifiable), `admin.remove` (destructive), `network.transfer` (destructive, type-the-name). Owner and admin views.
 - done when: demo and fake-server tests incl. owner-only refusals, invite 403 for admins and `needs_confirm`; `pnpm ui:shot --route '#/settings/updates'` of the install confirm, hour picker, invite sheet and transfer dialog, light and dark; `MANUAL: set the preferred update hour and back | ... | the eero app agrees | none`.
 
-### M5.7 eero ports and remove ☐
+### M5.7 eero ports and remove ✅ (#172)
 - issue: [#144](https://github.com/pkkid/mesh-ui/issues/144)
 - after: M5.1
 - docs: ux/pages/eero-detail.md (Ethernet ports), architecture/commands.md (eero)

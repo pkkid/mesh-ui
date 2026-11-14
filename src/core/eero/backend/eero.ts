@@ -5,6 +5,8 @@
  * (`PUT {eero}` form `location`), status light (`PUT resources.led_action`
  * form), find (`POST /2.2/eeros/{serial}/led_cycle` form), nightlight
  * (`PUT {nightlight.url}` JSON) and restart (`POST resources.reboot`).
+ * M5.7: port actions (`POST {eero}/ports/{n}/action` JSON) and remove
+ * (`DELETE {eero}`).
  */
 
 import { BackendError } from "../../errors";
@@ -17,8 +19,10 @@ import type { EeroArea } from "./index";
 
 const eeroPath = (id: string) => `/2.2/eeros/${encodeURIComponent(id)}`;
 
-/** History rows asked for in one read. eero may return them oldest first, so core sorts and trims. */
+/** History rows asked for in one read. eero may return them oldest first, so every page is read, then core sorts and trims. */
 const HISTORY_PAGE = 50;
+/** Most pages read (500 rows), so a broken `has_more` cannot loop. */
+const HISTORY_MAX_PAGES = 10;
 
 /** Blink colours and pace for find, as the eero app sends them. */
 const FIND_COLORS = ["blue", "white"];
@@ -58,6 +62,21 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
     return mapEero(raw, lan, peers);
   };
 
+  const ports = async (net: M.Id, id: M.Id): Promise<M.EeroPorts> => {
+    const raw = await rawGet(net, id);
+    const path = linkUrl(raw.resources?.connections) ?? `${eeroPath(id)}/connections`;
+    const conn = await client.request<RawConnections>({ method: "GET", path });
+    const owner = mapEero(raw).id || id;
+    const interfaces = conn?.ports?.interfaces ?? [];
+    // Join only when something is plugged in: two more reads otherwise wasted.
+    if (!interfaces.some((p) => portConnections(p).length > 0)) return mapPorts(owner, conn, { devices: [], eeros: [] });
+    const [devices, eeros] = await Promise.all([
+      client.request({ method: "GET", path: networkPath(net, "devices") }).then((d) => asList<RawDeviceFull>(d, "devices").map((r) => mapDevice(r))),
+      rawList(net).then((list) => list.map((e) => mapEero(e))),
+    ]);
+    return mapPorts(owner, conn, { devices, eeros });
+  };
+
   return {
     async list(net) {
       const [raws, rawNet] = await Promise.all([rawList(net), network(net)]);
@@ -67,27 +86,19 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
 
     get,
 
-    async ports(net, id) {
-      const raw = await rawGet(net, id);
-      const path = linkUrl(raw.resources?.connections) ?? `${eeroPath(id)}/connections`;
-      const conn = await client.request<RawConnections>({ method: "GET", path });
-      const owner = mapEero(raw).id || id;
-      const interfaces = conn?.ports?.interfaces ?? [];
-      // Join only when something is plugged in: two more reads otherwise wasted.
-      if (!interfaces.some((p) => portConnections(p).length > 0)) return mapPorts(owner, conn, { devices: [], eeros: [] });
-      const [devices, eeros] = await Promise.all([
-        client.request({ method: "GET", path: networkPath(net, "devices") }).then((d) => asList<RawDeviceFull>(d, "devices").map((r) => mapDevice(r))),
-        rawList(net).then((list) => list.map((e) => mapEero(e))),
-      ]);
-      return mapPorts(owner, conn, { devices, eeros });
-    },
+    ports,
 
     async firmwareHistory(net, id, limit) {
       const raw = await rawGet(net, id);
-      let rows: RawFirmwareHistoryEntry[];
+      const rows: RawFirmwareHistoryEntry[] = [];
       try {
-        const data = await client.request({ method: "GET", path: `${eeroPath(id)}/firmware_update/history`, query: { limit: HISTORY_PAGE, offset: 0 } });
-        rows = asList<RawFirmwareHistoryEntry>(data, "history");
+        // eero pages with `{data, meta: {has_more}}`; follow it past the first 50 rows.
+        for (let page = 0; page < HISTORY_MAX_PAGES; page++) {
+          const data = await client.request<{ meta?: { has_more?: boolean } } | null>({ method: "GET", path: `${eeroPath(id)}/firmware_update/history`, query: { limit: HISTORY_PAGE, offset: page * HISTORY_PAGE } });
+          const got = asList<RawFirmwareHistoryEntry>(data, "history");
+          rows.push(...got);
+          if (got.length < HISTORY_PAGE || data?.meta?.has_more !== true) break;
+        }
       } catch (err) {
         // Some eeros have no history endpoint: no entries rather than an error.
         if (isMissing(err)) return [];
@@ -142,6 +153,18 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
     async restart(net, id) {
       const raw = await rawGet(net, id);
       await client.request({ method: "POST", path: linkUrl(raw.resources?.reboot) ?? `${eeroPath(id)}/reboot`, encoding: "empty" });
+    },
+
+    async portAction(net, id, port, action) {
+      const raw = await rawGet(net, id);
+      const base = linkUrl(raw.url) ?? eeroPath(id);
+      await client.request({ method: "POST", path: `${base}/ports/${encodeURIComponent(String(port))}/action`, body: { action }, encoding: "json" });
+      return ports(net, id);
+    },
+
+    async remove(net, id) {
+      const raw = await rawGet(net, id);
+      await client.request({ method: "DELETE", path: linkUrl(raw.url) ?? eeroPath(id) });
     },
   };
 };

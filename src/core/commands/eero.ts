@@ -1,8 +1,8 @@
-/** eero commands: reads, and rename, find, status light, nightlight and restart (M4.8). See docs/architecture/commands.md#eero-commandseerots. */
+/** eero commands: reads, rename, find, status light, nightlight and restart (M4.8), port actions and remove (M5.7). See docs/architecture/commands.md#eero-commandseerots. */
 
 import { z } from "zod";
 import { CommandError } from "../errors";
-import type * as M from "../model";
+import * as M from "../model";
 import { POLL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { RESTART_ESTIMATE, type RestartResult } from "./network";
@@ -76,6 +76,82 @@ export function restartedBy(eero: Pick<M.Eero, "id" | "isGateway">, eeros: Reado
     for (const e of eeros) if (e.upstream && out.has(e.upstream) && !out.has(e.id)) (out.add(e.id), (grew = true));
   }
   return [...out];
+}
+
+const PORT_ACTIONS = Object.keys(M.INVERSE_PORT_ACTION) as [M.PortAction, ...M.PortAction[]];
+
+/** "A", "A and B", "A, B and C". */
+const listNames = (names: string[]) => (names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+
+/** Who is behind a port, for confirm copy: "Living Room TV and Hue Bridge", or null when nothing is. */
+const behind = (p: Pick<M.EeroPort, "attachments">) => {
+  const names = p.attachments.map((a) => a.name ?? "an unnamed device");
+  return names.length ? listNames(names) : null;
+};
+
+/**
+ * What a port action does, for the confirm (engine's needs_confirm message).
+ * Names what is plugged in and, for an eero behind the port, that it may go offline.
+ */
+export function portActionMessage(eero: Pick<M.Eero, "location">, port: Pick<M.EeroPort, "number" | "attachments">, action: M.PortAction): string {
+  const where = `port ${port.number} on ${eero.location}`;
+  const who = behind(port);
+  const plural = port.attachments.length > 1;
+  const eeros = port.attachments.filter((a) => a.eeroId !== null).map((a) => a.name ?? "an eero");
+  const meshNote = eeros.length ? ` ${listNames(eeros)} ${eeros.length > 1 ? "connect" : "connects"} through this port and may go offline.` : "";
+  const lose = (what: string) => (who ? ` ${who} ${plural ? "lose" : "loses"} ${what}.` : " Nothing is plugged in.");
+  switch (action) {
+    case "DISABLE_PORT":
+      return `Turns off ${where}.${lose(plural ? "their wired connection" : "its wired connection")}${meshNote}`;
+    case "ENABLE_PORT":
+      return `Turns ${where} back on. Wired devices on it reconnect.`;
+    case "DISABLE_DATA":
+      return `Stops data on ${where}; PoE power stays on.${lose("its network connection")}${meshNote}`;
+    case "ENABLE_DATA":
+      return `Turns data on ${where} back on.`;
+    case "DISABLE_POE":
+      return `Cuts PoE power on ${where}.${lose("power")}${meshNote}`;
+    case "ENABLE_POE":
+      return `Turns PoE power on ${where} back on.`;
+    case "RESTART_POWER":
+      return `Power-cycles PoE on ${where}.${who ? ` ${who} ${plural ? "drop" : "drops"} until ${plural ? "they restart" : "it restarts"}.` : " Nothing is plugged in."}${meshNote}`;
+  }
+}
+
+/** The port and eero for a port action, or bad_params when the port does not exist or does not list the action. */
+async function portFor(ctx: CommandContext, eeroRef: string, number: number, action: M.PortAction) {
+  const id = await ctx.resolve("eero", eeroRef);
+  const [eero, ports] = await Promise.all([ctx.backend.eero.get(ctx.net, id), ctx.backend.eero.ports(ctx.net, id)]);
+  const port = ports.ports.find((p) => p.number === number);
+  if (!port) {
+    const have = ports.ports.map((p) => p.number);
+    throw new CommandError("bad_params", have.length ? `${eero.location} has no port ${number}. Ports: ${have.join(", ")}.` : `${eero.location} has no Ethernet ports.`);
+  }
+  if (!port.actions.includes(action)) {
+    const allowed = port.actions.length ? `It allows ${port.actions.join(", ")}.` : "eero lists no actions for it.";
+    throw new CommandError("bad_params", `Port ${number} on ${eero.location} does not allow ${action}. ${allowed}`);
+  }
+  return { id, eero, port };
+}
+
+/** Why an eero cannot be removed, or null. The gateway can only go when it is the only eero. */
+export function removeRefusal(eero: Pick<M.Eero, "location" | "isGateway">, eeroCount: number): string | null {
+  if (!eero.isGateway || eeroCount <= 1) return null;
+  return `${eero.location} is the gateway. Remove the other eeros first, or replace the gateway in the eero app.`;
+}
+
+/** What removing an eero does, for the confirm. */
+export function removeMessage(eero: Pick<M.Eero, "id" | "location" | "isGateway">, eeros: ReadonlyArray<Pick<M.Eero, "id" | "location" | "upstream">>, networkName: string): string {
+  if (eero.isGateway) return `Removes ${eero.location} from ${networkName} and resets it. It is the only eero, so ${networkName} goes offline. This cannot be undone; adding it back needs the eero app.`;
+  const below = eeros.filter((e) => e.upstream === eero.id).map((e) => e.location);
+  const also = below.length ? ` ${listNames(below)} ${below.length === 1 ? "loses its" : "lose their"} uplink and may go offline until ${below.length === 1 ? "it finds" : "they find"} another path.` : "";
+  return `Removes ${eero.location} from ${networkName} and resets it. Its devices move to other eeros if in range.${also} This cannot be undone; adding it back needs the eero app.`;
+}
+
+/** One key order and port order for every backend, so tables and JSON read the same; `attached` always from `portSummary`. */
+function normalisePorts(r: M.EeroPorts): M.EeroPorts {
+  const ports = r.ports.map(({ number, name, status, speedMbps, supportedMbps, isWan, poe, mac, attachments, actions }): M.EeroPort => ({ number, name, status, speedMbps, supportedMbps, isWan, poe, mac, attached: M.portSummary(attachments), attachments, actions }));
+  return { eeroId: r.eeroId, ports: ports.sort((a, b) => a.number - b.number) };
 }
 
 const networkName = async (ctx: CommandContext) => (await ctx.backend.network.get(ctx.net).catch(() => null))?.name ?? "the network";
@@ -178,6 +254,61 @@ const writeCommands: AnyCommand[] = [
       return { networkId: ctx.net, eeroIds: down, estimate: e?.isGateway ? RESTART_ESTIMATE.network : RESTART_ESTIMATE.eero };
     },
   }),
+
+  defineCommand({
+    id: "eero.port.action",
+    label: "Port action",
+    description:
+      "Runs one action on one Ethernet port: ENABLE_PORT, DISABLE_PORT, ENABLE_DATA, DISABLE_DATA, ENABLE_POE, DISABLE_POE or RESTART_POWER. Only an action listed in that port's `actions` (eero.ports.get) is accepted; others fail bad_params. Can cut data or power to wired gear. Returns the ports as the next read shows them.",
+    icon: "ethernet-port",
+    effect: "disruptive",
+    gate: { area: "eeros" },
+    invalidates: ["eero_ports", "eeros", "devices", "network"],
+    params: z.object({
+      eero: ref("eero"),
+      port: z.number().int().min(1).max(64).describe("Port number, as eero.ports.get lists it."),
+      action: z.enum(PORT_ACTIONS).describe("One of the port's `actions`."),
+    }),
+    async confirmMessage(ctx, p) {
+      const { eero, port } = await portFor(ctx, p.eero, p.port, p.action);
+      return portActionMessage(eero, port, p.action);
+    },
+    async run(ctx, p): Promise<M.EeroPorts> {
+      const { id } = await portFor(ctx, p.eero, p.port, p.action);
+      return normalisePorts(await ctx.backend.eero.portAction(ctx.net, id, p.port, p.action));
+    },
+  }),
+
+  defineCommand({
+    id: "eero.remove",
+    label: "Remove eero",
+    description:
+      "Removes an eero from the network and resets it. Cannot be undone; adding it back needs the eero app. Refuses the gateway unless it is the only eero. Owner only.",
+    icon: "trash-2",
+    effect: "destructive",
+    gate: { area: "eeros", op: "delete" },
+    invalidates: ["eeros", "network", "eero_ports", "devices", "usage"],
+    params: z.object({ eero: ref("eero") }),
+    async confirmMessage(ctx, p) {
+      const id = await ctx.resolve("eero", p.eero);
+      const [eeros, name] = await Promise.all([ctx.backend.eero.list(ctx.net), networkName(ctx)]);
+      const e = eeros.find((x) => x.id === id);
+      if (!e) return `Removes this eero from ${name} and resets it. This cannot be undone.`;
+      const refused = removeRefusal(e, eeros.length);
+      if (refused) throw new CommandError("bad_params", refused);
+      return removeMessage(e, eeros, name);
+    },
+    async run(ctx, p): Promise<{ networkId: M.Id; eeroId: M.Id; location: string }> {
+      const id = await ctx.resolve("eero", p.eero);
+      const eeros = await ctx.backend.eero.list(ctx.net);
+      const e = eeros.find((x) => x.id === id);
+      if (!e) throw new CommandError("bad_params", "That eero is not on this network.");
+      const refused = removeRefusal(e, eeros.length);
+      if (refused) throw new CommandError("bad_params", refused);
+      await ctx.backend.eero.remove(ctx.net, id);
+      return { networkId: ctx.net, eeroId: id, location: e.location };
+    },
+  }),
 ];
 
 export const commands: AnyCommand[] = [
@@ -218,17 +349,14 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "eero.ports.get",
     label: "Ethernet ports",
-    description: "One eero's Ethernet ports: status, negotiated and supported speed (Mbps), PoE, MAC, the device or eero plugged in, and the actions eero allows. Empty list when the eero has no ports.",
+    description: "One eero's Ethernet ports: status, negotiated and supported speed (Mbps), PoE, MAC, everything plugged in (`attachments`, several behind a switch; `attached` sums them up), and the actions eero allows. Empty list when the eero has no ports.",
     icon: "ethernet-port",
     effect: "query",
     topic: "eero_ports",
     poll: POLL.eeros,
     params: z.object({ eero: ref("eero") }),
     async run(ctx, p): Promise<M.EeroPorts> {
-      const r = await ctx.backend.eero.ports(ctx.net, await ctx.resolve("eero", p.eero));
-      // One key order for every backend, so tables and JSON read the same.
-      const ports = r.ports.map(({ number, name, status, speedMbps, supportedMbps, isWan, poe, mac, attached, actions }): M.EeroPort => ({ number, name, status, speedMbps, supportedMbps, isWan, poe, mac, attached, actions }));
-      return { eeroId: r.eeroId, ports: ports.sort((a, b) => a.number - b.number) };
+      return normalisePorts(await ctx.backend.eero.ports(ctx.net, await ctx.resolve("eero", p.eero)));
     },
   }),
 
@@ -239,7 +367,7 @@ export const commands: AnyCommand[] = [
     icon: "history",
     effect: "query",
     topic: "firmware_history",
-    params: z.object({ eero: ref("eero"), limit: z.number().int().min(1).max(50).optional().describe("Most entries to return (default 20).") }),
+    params: z.object({ eero: ref("eero"), limit: z.number().int().min(1).max(200).optional().describe("Most entries to return, 1 to 200 (default 20).") }),
     run: async (ctx, p): Promise<M.FirmwareEntry[]> => ctx.backend.eero.firmwareHistory(ctx.net, await ctx.resolve("eero", p.eero), p.limit ?? 20),
   }),
   ...writeCommands,
