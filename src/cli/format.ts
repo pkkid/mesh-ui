@@ -17,8 +17,11 @@ export const red = ansi("31");
 
 export const MASK = "********";
 
-/** Keys that hold a credential in a `sensitive` command's result. */
-const SECRET_KEY = /pass(word|phrase)?|secret|psk|token|key$/i;
+/** Keys that hold a credential in a `sensitive` command's result. `qr` is a `WIFI:` payload, password included. */
+const SECRET_KEY = /pass(word|phrase)?|secret|psk|token|key$|^qr$/i;
+
+/** A `WIFI:` join string carries the password (`P:`), whatever key it sits under. */
+const WIFI_PAYLOAD = /^\s*WIFI:/i;
 
 /** Masks credential fields, recursively. Only used for table output. */
 export function maskSensitive(value: unknown): unknown {
@@ -27,7 +30,9 @@ export function maskSensitive(value: unknown): unknown {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([k, v]) => [
         k,
-        SECRET_KEY.test(k) && v !== null && v !== undefined && typeof v !== "object" ? MASK : maskSensitive(v),
+        (SECRET_KEY.test(k) && v !== null && v !== undefined && typeof v !== "object") || (typeof v === "string" && WIFI_PAYLOAD.test(v))
+          ? MASK
+          : maskSensitive(v),
       ]),
     );
   }

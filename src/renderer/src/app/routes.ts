@@ -108,6 +108,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   activity: page(() => import("~/features/activity/ActivityPage"), "ActivityPage"),
   profile: page(() => import("~/features/profile/ProfilePage"), "ProfilePage"),
   ports: page(() => import("~/features/ports/PortsPage"), "PortsPage"),
+  wifi: page(() => import("~/features/wifi/WifiPage"), "WifiPage"),
   ...(import.meta.env.DEV ? { "dev-charts": page(() => import("~/components/charts/ChartGallery"), "ChartGallery") } : {}),
 };
 

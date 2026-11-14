@@ -682,7 +682,6 @@ describe("eero backend", () => {
   it("answers not available yet for the M3 areas until their stories land", async () => {
     const b = createEeroBackend({ secrets: { load: async () => "t", save: async () => "memory", clear: async () => {}, storage: async () => "memory" }, fetch: async () => Promise.reject(new Error("no network in tests")) });
     const calls: [string, () => Promise<unknown>][] = [
-      ["wifi.get", () => b.wifi.get("1")],
       ["diagnostics.latest", () => b.diagnostics.latest("1")],
     ];
     for (const [name, call] of calls) {

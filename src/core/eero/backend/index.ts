@@ -2,7 +2,7 @@
  * The eero backend: one file per area in this folder, each exporting a
  * factory named after its area (`export const network: EeroArea<"network">`).
  * Areas not registered yet answer "not available yet" (composeBackend): in
- * M3 that is wifi and diagnostics until each story adds its file
+ * M3 that is diagnostics until its story adds its file
  * and one line below.
  */
 
@@ -52,6 +52,7 @@ import { routing } from "./routing";
 import { settings } from "./settings";
 import { updates } from "./updates";
 import { usage } from "./usage";
+import { wifi } from "./wifi";
 
 /** Area factories, one line each, alphabetical. */
 const areas: { [K in AreaName]?: EeroArea<K> } = {
@@ -71,6 +72,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   settings,
   updates,
   usage,
+  wifi,
 };
 
 export function createEeroBackend(options: EeroBackendOptions): Backend {
