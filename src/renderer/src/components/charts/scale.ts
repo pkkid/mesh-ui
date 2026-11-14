@@ -55,9 +55,11 @@ export const PLACEHOLDER_SCALE: Scale = {
 /**
  * Scale for series drawn on one plot. Overlapping series each start at zero,
  * so the peak is the largest single value, not the sum. Stacked series use
- * the largest column total.
+ * the largest column total. A `fixedMax` (for example the internet plan)
+ * sets the top of the scale; values above it still fit, so nothing is
+ * clipped. With no data the placeholder gridlines show either way.
  */
-export function seriesScale(series: ReadonlyArray<ReadonlyArray<number>>, stacked = false): Scale {
+export function seriesScale(series: ReadonlyArray<ReadonlyArray<number>>, stacked = false, fixedMax?: number | null): Scale {
   let peak = 0;
   const length = Math.max(0, ...series.map((s) => s.length));
   for (let i = 0; i < length; i += 1) {
@@ -69,7 +71,9 @@ export function seriesScale(series: ReadonlyArray<ReadonlyArray<number>>, stacke
     }
     if (stacked) peak = Math.max(peak, sum);
   }
-  return peak > 0 ? { ...niceScale(peak), labeled: true } : PLACEHOLDER_SCALE;
+  if (peak <= 0) return PLACEHOLDER_SCALE;
+  const top = fixedMax !== undefined && fixedMax !== null && Number.isFinite(fixedMax) && fixedMax > 0 ? Math.max(fixedMax, peak) : peak;
+  return { ...niceScale(top), labeled: true };
 }
 
 /** A finite, non-negative number; anything else counts as zero. */

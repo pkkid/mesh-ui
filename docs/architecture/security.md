@@ -106,6 +106,10 @@ In `src/main/index.ts`, applied to every web contents through
 
 Do not loosen any of this to load remote content.
 
+The renderer can write a file only through `window.mesh.saveFile`: text only,
+with a text extension, to a path the user picks in the native save dialog.
+The path stays in main; the renderer gets back only the file name.
+
 ## Confirmation
 
 `disruptive` and `destructive` commands fail with `needs_confirm` unless

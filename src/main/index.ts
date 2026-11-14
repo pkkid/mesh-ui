@@ -18,13 +18,17 @@
  * never shows it, so agents can drive and screenshot the UI without a window
  * on the desktop. It also drops the native window-controls overlay, which
  * crashes Electron under `--ozone-platform=headless`. Inert unless set.
+ * Headless runs may also set `MESH_UI_SAVE_DIR`: `window.mesh.saveFile` then
+ * writes there under the suggested name instead of showing the save dialog,
+ * so `ui:shot` can prove an export writes a file. Ignored with a window.
  */
 
 import { mkdtempSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, ipcMain, nativeTheme, safeStorage, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, safeStorage, session, shell } from "electron";
 import { version as appVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
@@ -32,7 +36,7 @@ import { createEeroBackend } from "../core/eero/backend";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
 import type { SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
-import { registerIpc } from "./ipc";
+import { registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 
@@ -235,6 +239,21 @@ app.on("web-contents-created", (_e, contents) => {
   });
 });
 
+/** The native save dialog for `window.mesh.saveFile`; the path never leaves main. */
+const saveFileHost: SaveFileHost = {
+  async choosePath(name, ext) {
+    const scratch = process.env.MESH_UI_SAVE_DIR;
+    if (isHeadless && scratch) return path.join(scratch, name);
+    const options = {
+      defaultPath: path.join(app.getPath("downloads"), name),
+      filters: [{ name: SAVE_EXTS[ext], extensions: [ext] }],
+    };
+    const r = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+    return r.canceled || !r.filePath ? null : r.filePath;
+  },
+  write: (file, text) => writeFile(file, text, "utf8"),
+};
+
 function lockDownSession(): void {
   // The app needs no camera, mic, location, notifications, etc.
   session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
@@ -265,6 +284,7 @@ if (isCli) {
         if (!mainWindow || process.platform === "darwin" || isHeadless) return;
         mainWindow.setTitleBarOverlay({ ...colors, height: OVERLAY_HEIGHT });
       },
+      saveFile: saveFileHost,
     });
     createWindow();
     app.on("activate", () => {

@@ -17,7 +17,17 @@ export const IPC = {
   commands: "mesh:commands",
   event: "mesh:event",
   titlebar: "mesh:titlebar",
+  saveFile: "mesh:save-file",
 } as const;
+
+/**
+ * What `saveFile` reports. Never the path: the renderer learns only the file
+ * name the user chose, to say "Saved speed-tests.csv".
+ */
+export type SaveFileResult =
+  | { status: "saved"; name: string }
+  | { status: "canceled" }
+  | { status: "failed"; message: string };
 
 export type TitlebarColors = {
   color: string;
@@ -38,4 +48,10 @@ export type MeshApi = {
   on(listener: (event: HostEvent) => void): () => void;
   /** Window-only, not a command. */
   setTitlebarColors(colors: TitlebarColors): void;
+  /**
+   * Saves text (CSV, JSON, logs) to a file the user picks in the native save
+   * dialog; `name` is only the suggested file name. Not a command: it reads
+   * nothing from eero. Never throws.
+   */
+  saveFile(name: string, text: string): Promise<SaveFileResult>;
 };

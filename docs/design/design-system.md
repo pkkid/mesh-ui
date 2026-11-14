@@ -168,13 +168,15 @@ Every page opens with the same header:
 - **actions in a row at the bottom**, primary first, disruptive last.
 
 Guest network and Wi-Fi put a **QR block at the top right** of the header,
-with labelled buttons (Copy password, Save QR, Print a card) to its left.
+with labelled buttons (Copy password, Save QR, Print a card) to its left
+(`components/ui/qr.tsx`, see Components).
 
 ### Sections
 
 **Sections are subtle cards**: a `<section>` with a heading row
 (`text-sm font-medium` title, optional muted subtitle, controls on the right)
-above a card with a solid `bg-card` surface, a 1px `border`, and 14px radius.
+that stays one line (title and tools never wrap; a long subtitle truncates
+with an ellipsis and shows in full in its tooltip) above a card with a solid `bg-card` surface, a 1px `border`, and 14px radius.
 A fully flat layout, with sections directly on the page background, was tried
 in the mockups and rejected: on the warm Gruvbox surfaces sections blurred
 together.
@@ -211,6 +213,8 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from device type (then category) to a lucide icon, shown in an Icon tile. Never map device types to icons anywhere else |
 | Tooltip | Glass card (see Charts) |
 | Dialog and sheet | `bg-popover`, border, large radius, dimmed backdrop |
+| QR block | `qr.tsx`. `QrBlock`: small outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. The code is always black modules on a white tile with a quiet zone and 1px border, in both themes, because some scanners cannot read inverted codes: the one place fixed black and white are used. An empty muted frame while the payload loads. Save QR writes a black-on-white PNG through Chromium's download save dialog. Encoder: `uqr` (MIT, pinned) |
+| Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
 
 ### Tables
 
@@ -243,7 +247,8 @@ Hand-written SVG, no chart library. Shared pieces in
 resource diagnostics. Port from them rather than inventing a style.
 
 In a dev build (`pnpm dev:demo`), `#/dev/charts` opens the chart gallery
-(`ChartGallery.tsx`): every chart in the kit with invented data, with a
+(`ChartGallery.tsx`): every chart in the kit, the QR block and the week
+timeline, with invented data, with a
 Live / Loading toggle. It is not linked from the sidebar and is left out of
 release builds. Check a chart change there in light and dark (the topbar
 toggle switches appearance).
@@ -258,7 +263,9 @@ toggle switches appearance).
   the same colour at 12% opacity. Draw all areas first, then all lines; the
   largest series first so small ones sit on top.
 - **Scale.** Overlapping (not stacked) series share a scale based on the
-  largest single series, not the sum.
+  largest single series, not the sum. A chart with a natural ceiling passes
+  `max` (the Internet speed chart passes the plan), so the scale stays put
+  as points come and go; values above it still fit.
 - **Chrome.** Horizontal gridlines only, 1px `text-border`, at nice ticks
   (steps of 1, 2 or 5 times a power of ten, about 4 ticks). No axis lines,
   vertical gridlines, border or background.

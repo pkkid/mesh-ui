@@ -63,7 +63,9 @@ type MeshApi = {
   commands(): Promise<CommandInfo[]>;                       // registry listing
   on(listener: (e: HostEvent) => void): () => void;         // host events; returns an unsubscribe
   setTitlebarColors(colors: TitlebarColors): void;          // window-only, not a command
+  saveFile(name: string, text: string): Promise<SaveFileResult>; // native save dialog, text only
 };
+type SaveFileResult = { status: "saved"; name: string } | { status: "canceled" } | { status: "failed"; message: string };
 type Result = { ok: true; result: unknown } | { ok: false; error: { code: string; message: string; detail?: unknown } };
 ```
 
@@ -80,6 +82,16 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   `mesh:event` channel: `session.changed` (signed out or expired elsewhere,
   for example by the CLI), `network.selected`, `update.ready` (an app
   update is downloaded). No eero data travels on it.
+- `saveFile` (`mesh:save-file`, renderer helper `lib/saveFile.ts`) saves a
+  text export, such as Internet's Export CSV, to a file the user picks in the
+  native save dialog. It is not a command: the text comes from a command
+  first (`speedtest.history {format: "csv"}`). Main refuses anything but a
+  string (8 MB at most), keeps only the base name of `name` as the
+  suggestion, allows only text extensions (`csv`, `tsv`, `txt`, `json`,
+  `jsonl`, `log`), and returns just the chosen file name, never the folder or
+  path. Headless runs (`ui:shot`) may set `MESH_UI_SAVE_DIR` to skip the
+  dialog and write there. Images (Save QR) use Chromium's download save
+  dialog instead.
 
 The renderer reads the bridge through a local `MeshBridge` type in
 `app/useCommand.ts` (`execute`, `commands`, optional `on`). If `window.mesh`
