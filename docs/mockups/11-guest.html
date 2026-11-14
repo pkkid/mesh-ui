@@ -37,7 +37,7 @@
         <div class="row gap-8">
           <button class="btn danger" id="off-btn"><i data-lucide="power"></i>Turn off guest network</button>
         </div>
-        <div class="note warn" id="off-confirm" style="align-self:flex-start;align-items:center;display:none"><i data-lucide="alert-triangle"></i><div class="body">Turn off guest network? No guests are connected right now.</div><button class="btn sm" style="background:var(--danger);border-color:var(--danger);color:var(--bg);margin-left:8px">Turn off</button><button class="btn sm ghost" id="off-cancel" style="color:var(--fg-2)">Cancel</button></div>
+        <div class="note warn" id="off-confirm" style="align-self:flex-start;align-items:center;display:none"><i data-lucide="alert-triangle"></i><div class="body">Turn off guest network? 1 guest is disconnected right away.</div><button class="btn sm" style="background:var(--danger);border-color:var(--danger);color:var(--bg);margin-left:8px">Turn off</button><button class="btn sm ghost" id="off-cancel" style="color:var(--fg-2)">Cancel</button></div>
       </div>
       <div class="qrblock">
         <div class="qr-actions">
@@ -56,10 +56,10 @@
   <!-- Usage + isolation -->
   <div class="grid g-2-1" style="gap:28px">
     <section class="section">
-      <div class="section-h"><h2>Guest usage</h2><span class="sub">2.4 GB in 7 days, under 1% of all network traffic</span>
-        <div class="tools"><div class="seg"><span>Day</span><span class="on">Week</span></div></div></div>
+      <div class="section-h"><h2>Guest usage</h2><span class="sub">2.9 GB in 24 hours, under 1% of all network traffic</span>
+        <div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
       <div class="card pad col gap-12">
-        <div class="legend"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>2.1 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>293 MB</b></span><span class="ml-auto">Busiest day <b>688 MB</b> on Sun</span></div>
+        <div class="legend"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>2.6 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>349 MB</b></span><span class="ml-auto">Busiest hour <b>284 MB</b> at 7 PM</span></div>
         <div id="ch-usage"></div>
       </div>
     </section>
@@ -124,7 +124,7 @@
 
   <!-- Guests table -->
   <section class="section">
-    <div class="section-h"><h2>Guest devices</h2><span class="sub">None online · 1 seen in the last 7 days</span>
+    <div class="section-h"><h2>Guest devices</h2><span class="sub">1 online · 1 more in the last 7 days</span>
       <div class="tools"><div class="seg"><span class="on">All</span><span>Online</span><span>Recent</span></div></div></div>
     <div class="panel">
       <table class="table">
@@ -146,22 +146,23 @@ MU.ready(() => {
   document.getElementById("off-cancel").addEventListener("click", () => show(false));
   MU.qr("#qr", 77, { label: "QR code for Maple Street Guest" });
 
-  // Week: daily totals in MB, Fri Nov 6 to Thu Nov 12 (Sam's Pixel, the only guest this week)
-  const dn = [597, 605, 606, 339, 0, 0, 0], up = [82, 82, 82, 46, 0, 0, 0];
+  // Day: hourly totals in MB, 3 PM yesterday to 2 PM today (Grandma's iPad, online, and Sam's Pixel)
+  const dn = [100, 100, 109, 200, 250, 250, 200, 125, 50, 25, 10, 5, 5, 5, 20, 100, 201, 150, 100, 100, 100, 150, 100, 100], up = [14, 14, 15, 27, 34, 34, 27, 17, 7, 3, 1, 1, 1, 1, 3, 14, 27, 21, 14, 14, 14, 21, 14, 14];
   MU.area("#ch-usage", {
-    labels: MU.labels.days(7), height: 300, format: MU.fmt.mb, total: true, label: "Guest network data usage per day, last 7 days",
+    labels: MU.labels.hours(24, 14), height: 300, format: MU.fmt.mb, total: true, label: "Guest network data usage per hour, last 24 hours",
     series: [
       { name: "Download", color: "var(--c-down)", values: dn },
       { name: "Upload", color: "var(--c-up)", values: up },
     ],
   });
   const G = [
+    ["Grandma's iPad", "tablet", null, "Living Room", "5", -52, "Now", 5.76, 0.785, true],
     ["Sam's Pixel", "smartphone", null, "Living Room", null, null, "Nov 9", 2.15, 0.293, false],
   ];
   const fmtD = (v) => (v >= 1 ? v.toFixed(1) + " GB" : Math.round(v * 1000) + " MB");
   const bars = (d) => { const n = d > -55 ? 4 : d > -62 ? 3 : d > -70 ? 2 : 1; return `<span class="bars" data-n="${n}"><i></i><i></i><i></i><i></i></span>`; };
   document.getElementById("tb-g").innerHTML = G.map((g) => `<tr class="${g[9] ? "" : "off"}">
-    <td><div class="row"><div class="ico sm" style="${g[9] ? "" : "opacity:.55"}"><i data-lucide="${g[1]}"></i></div><div class="grow"><div class="m">${g[0]}</div><div class="minibar"><i style="--c:${g[9] ? "var(--c-down)" : "var(--muted-2)"};width:${(g[7] / 2.15) * 100}%"></i></div></div></div></td>
+    <td><div class="row"><div class="ico sm" style="${g[9] ? "" : "opacity:.55"}"><i data-lucide="${g[1]}"></i></div><div class="grow"><div class="m">${g[0]}</div><div class="minibar"><i style="--c:${g[9] ? "var(--c-down)" : "var(--muted-2)"};width:${(g[7] / 5.76) * 100}%"></i></div></div></div></td>
     <td class="nowrap"><span class="xs">${g[3]}</span></td>
     <td>${g[4] ? `<span class="badge c">${g[4]} GHz</span>` : '<span class="muted">-</span>'}</td>
     <td class="r">${g[5] == null ? '<span class="muted">-</span>' : `<span class="row-6" style="justify-content:flex-end"><span class="xs muted tnum">${g[5]}</span>${bars(g[5])}</span>`}</td>
