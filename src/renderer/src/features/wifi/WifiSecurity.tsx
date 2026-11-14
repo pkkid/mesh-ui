@@ -203,12 +203,14 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
   const [name, setName] = useState(wifi.ssid);
   const [pw, setPw] = useState("");
   const [shown, setShown] = useState(false);
+  // Reset only when the sheet opens: a rename refetches the SSID mid-save, and the password draft must survive it.
+  const ssid = wifi.ssid;
   useEffect(() => {
     if (!open) return;
-    setName(wifi.ssid);
+    setName(ssid);
     setPw("");
     setShown(false);
-  }, [open, wifi.ssid]);
+  }, [open]);
 
   const rename = useWrite<{ name: string }, WifiSettings>("wifi.name.set", {
     success: (r) => `Wi-Fi renamed to ${r.ssid}`,
