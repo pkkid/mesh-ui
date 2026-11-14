@@ -15,6 +15,7 @@ export { commands as eero } from "./eero";
 export { commands as guest } from "./guest";
 export { commands as internet } from "./internet";
 export { commands as network } from "./network";
+export { commands as notifications } from "./notifications";
 export { commands as profile } from "./profile";
 export { commands as routing } from "./routing";
 export { commands as updates } from "./updates";

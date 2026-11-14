@@ -62,6 +62,7 @@ export function applyScenario(fx: DemoFixtures, name: ScenarioName, now: number)
           e.lastHeartbeat = at(12);
         }
         for (const d of maple.devices) dropDevice(d, at(12));
+        alert(maple, { id: "ms-network-offline", at: at(12), title: "Maple Street is offline", body: "Maple Street stopped checking in. Check the modem and the Living Room eero.", category: "network" });
       }
       return { signedIn: true, reads: "normal" };
 
@@ -74,6 +75,7 @@ export function applyScenario(fx: DemoFixtures, name: ScenarioName, now: number)
           garage.lastHeartbeat = at(9);
           garage.messages = ["Garage is offline. It last checked in 9 minutes ago."];
           for (const d of maple.devices) if (d.eeroId === garage.id && d.connected) dropDevice(d, at(9));
+          alert(maple, { id: "ms-eero-offline", at: at(9), title: "Garage is offline", body: "Garage stopped checking in 9 minutes ago. Check its power.", category: "eero" });
         }
       }
       return { signedIn: true, reads: "normal" };
@@ -96,6 +98,11 @@ export function applyScenario(fx: DemoFixtures, name: ScenarioName, now: number)
       }
       return { signedIn: true, reads: "normal" };
   }
+}
+
+/** Puts an unread notification on top of the network's list, as eero does when something goes offline. */
+function alert(net: DemoFixtures["networks"][number], n: { id: string; at: string; title: string; body: string; category: string }) {
+  net.notifications.unshift({ ...n, read: false, refs: {} });
 }
 
 function dropDevice(d: DemoFixtures["networks"][number]["devices"][number], lastActive: string) {
