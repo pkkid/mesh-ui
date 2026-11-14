@@ -744,7 +744,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `notifications.mark_read` (network-wide, since eero keeps only `has_unread`) on the bell and the Activity Unread marker; the dot clears and the next poll agrees.
 - done when: demo and fake-server tests (POST, `has_unread` false after); `pnpm ui:shot` of the bell before and after, light and dark; `MANUAL: Mark all read | ... | the eero app shows no unread | none`.
 
-### M4.12 Scheduled pauses ☐
+### M4.12 Scheduled pauses ✅ (#PR)
 - issue: [#134](https://github.com/pkkid/mesh-ui/issues/134)
 - after: M4.5
 - docs: ux/pages/profile-detail.md (Schedules), architecture/commands.md (profile schedules)
