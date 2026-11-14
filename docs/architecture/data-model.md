@@ -716,6 +716,7 @@ type AppSettings = {
   lastNetworkId: Id | null;
   userAgent: string | null;       // null = default app-like UA
   planMbps: Record<Id, { down: number; up: number; label?: string }>;
+  /** Desktop alert choices: `enabled`, `offline`, `devices`, `other` (missing = on). Set by notifications.settings.set. */
   desktopNotifications: Record<string, boolean>;
   openOnLaunch: Id | null;
 };

@@ -152,11 +152,17 @@ Left to right (mockup `.topbar`):
   network-wide flag and the dot; a "Marked all read" toast with no Undo,
   since eero cannot mark anything unread; disabled with "Nothing unread"
   when the flag is clear, and gated like other network writes),
-  "All activity" (to Activity) and a gear to notification settings in
-  App & account (`notifications.settings.get` / `notifications.settings.set`).
+  "All activity" (to Activity) and a gear that opens the Notification
+  settings sheet (`notifications.settings.get` / `notifications.settings.set`):
+  eero alerts for the selected network (the keys eero sends, never an eero
+  Plus one; unknown keys show as sent) and Desktop alerts for this computer
+  (Show desktop alerts, then Network or eero offline, Devices, Everything
+  else, dimmed while the first is off). Save sends only the changed keys; the
+  "Saved notification settings" toast offers Undo.
 - **Desktop notifications:** the host shows an OS notification for new items
-  whose type is enabled in settings, only while the app runs. Clicking one
-  focuses the window and opens the same target.
+  whose kind is on in the desktop choices, only while the app runs. Turning
+  them off stops alerts at once; items seen while off are not replayed later.
+  Clicking one focuses the window and opens the same target.
 - Polled with Activity, every 60 s (see [Live refresh](#live-refresh)).
 
 ## Command palette

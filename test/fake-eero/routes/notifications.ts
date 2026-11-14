@@ -2,8 +2,10 @@
  * Fake notifications: `GET {net}/notifications_history?limit=50&timestamp=`
  * (newest first; `timestamp` returns only rows created before it),
  * `GET {net}/notifications/has_unread` and `GET {net}/notifications`, in the
- * captured shapes, and `POST {net}/notifications/mark_read`, which clears
- * `has_unread` for the network. See docs/eero-api/endpoints.md section 15.
+ * captured shapes, `POST {net}/notifications/mark_read`, which clears
+ * `has_unread` for the network, and `PUT {net}/notifications`, which takes a
+ * map of bools (unknown keys are a 400) and answers the whole map. See
+ * docs/eero-api/endpoints.md section 15.
  */
 
 import { fail, ok, type Route } from "../server";
@@ -46,5 +48,16 @@ export const routes: Route[] = [
     method: "GET",
     path: "/networks/:net/notifications",
     handle: ({ params, network }) => ok(network(params.net ?? "").notificationSettings),
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/notifications",
+    handle: ({ req, params, network }) => {
+      const net = network(params.net ?? "");
+      const entries = Object.entries(req.body);
+      if (!entries.length || entries.some(([k, v]) => typeof v !== "boolean" || !(k in net.notificationSettings))) return fail(400, "error.params.invalid");
+      net.notificationSettings = { ...net.notificationSettings, ...(req.body as Record<string, boolean>) };
+      return ok(net.notificationSettings);
+    },
   },
 ];
