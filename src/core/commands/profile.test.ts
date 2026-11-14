@@ -633,6 +633,14 @@ describe("scheduled pauses (demo)", () => {
     expect(await engine.execute("profile.schedule.update", { profile: "Mia" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
+  it("still edits schedules eero already has under one name, by id; the name alone is ambiguous", async () => {
+    const { backend, engine } = demo();
+    // Made outside Mesh UI (the eero app allows it), straight on the backend.
+    const twin = await backend.profile.addSchedule("4821907", "9103", { name: "Bedtime", days: ["SAT"], start: "10:00", end: "11:00", enabled: true });
+    expect(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: twin.id, enabled: false })).toMatchObject({ ok: true, result: { id: twin.id, enabled: false } });
+    expect(issue(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Bedtime", enabled: false }))?.detail?.issues?.[0]?.path).toBe("schedule");
+  });
+
   it("removes a schedule and returns it, so Undo can add it back", async () => {
     const { engine } = demo();
     const r = ok(await engine.execute<{ removed: string; schedule: M.Schedule }>("profile.schedule.remove", { profile: "Mia", schedule: "Homework" }));

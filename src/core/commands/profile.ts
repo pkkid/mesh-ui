@@ -191,9 +191,11 @@ function findSchedule(profile: M.Profile, ref: string): M.Schedule {
 }
 
 /** Start and end must differ (eero has no 24 h pause; pause the profile instead), and names are unique per profile. */
-function checkSchedule(profile: M.Profile, input: M.ScheduleInput, self: M.Id | null): void {
+function checkSchedule(profile: M.Profile, input: M.ScheduleInput, self: M.Schedule | null): void {
   if (input.start === input.end) throw fieldError("end", "End must differ from start.");
-  const taken = profile.schedules.some((s) => s.id !== self && s.name.toLowerCase() === input.name.toLowerCase());
+  // Only a new or changed name is checked, so schedules eero already has under one name can still be edited.
+  if (self && self.name.toLowerCase() === input.name.toLowerCase()) return;
+  const taken = profile.schedules.some((s) => s.id !== self?.id && s.name.toLowerCase() === input.name.toLowerCase());
   if (taken) throw fieldError("name", `${profile.name} already has a schedule named ${input.name}.`);
 }
 
@@ -414,7 +416,7 @@ export const commands: AnyCommand[] = [
         end: p.end ?? s.end,
         enabled: p.enabled ?? s.enabled,
       };
-      checkSchedule(profile, input, s.id);
+      checkSchedule(profile, input, s);
       return ctx.backend.profile.updateSchedule(ctx.net, id, s.id, input);
     },
   }),
