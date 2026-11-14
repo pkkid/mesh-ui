@@ -148,7 +148,8 @@ export function ActivityPage(_props: PageProps) {
   ) : null;
 
   const footer =
-    rows && rows.length > 0 ? (
+    // Also when a narrow filter found nothing in the pages read so far: older pages may still match.
+    rows && (rows.length > 0 || lastPage?.nextCursor) ? (
       <div className="flex justify-center border-t px-4 py-3">
         {lastPage?.nextCursor ? (
           <Button size="xs" variant="outline" disabled={older.loading && older.key === paramsKey} onClick={() => void loadOlder()}>
