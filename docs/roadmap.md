@@ -819,7 +819,15 @@ its test: M4's CLI and MCP confirm parity was only proven at the review
 `input[aria-label="Search or run a command"]` (the titlebar button has the
 same label), set the value with the native setter, and prefix ids with `>`.
 A provider rate limit can stop several workers at once; small PRs and a
-pushed branch make the resume cheap.
+pushed branch make the resume cheap. To resume, check the worker's branch
+and PR first, then resume it on the same thread with a short status (what
+merged since, what to rebase on); a resumed worker must still never end
+its run waiting on a review. Demo fixture and icon type names must match
+eero's (`laptop_computer`, not `laptop`), or the type grid shows no
+current type (#160). Process lessons from the M4 review are also in the
+milestone skills: shared test files go in the plan's hotspot list with an
+owner, and each Done when line is checked against a named test before the
+review.
 
 In: the write commands behind Advanced networking (DNS, DHCP, IPv6, WAN,
 connection mode, NAT randomization, UPnP, SQM, band steering, fast
