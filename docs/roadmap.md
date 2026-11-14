@@ -923,7 +923,7 @@ restarts the network says so in its risk field.
 - scope: `reservation.add`, `.update`, `.remove`; `forward.add`, `.validate`, `.update`, `.remove`; `pinhole.add`, `.remove`. Sheets on Reservations & ports and the device detail shortcuts (reserve this IP, add a forward). Validation in core (pool, overlaps, port ranges).
 - done when: demo and fake-server tests incl. overlap and range errors and bridge refusal; `pnpm ui:shot --route '#/settings/ports'` of each sheet and a validation error, light and dark; `MANUAL: add and remove a port forward to a test device | ... | the eero app shows it | none`.
 
-### M5.6 Updates, admins and network transfer ☐
+### M5.6 Updates, admins and network transfer ✅ (#176)
 - issue: [#143](https://github.com/pkkid/mesh-ui/issues/143)
 - after: M5.1
 - docs: ux/pages/updates-admins.md, architecture/commands.md (updates, admins)
