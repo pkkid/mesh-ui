@@ -151,8 +151,8 @@ dir (`src/core/audit.ts`, written by `engine.execute`), one JSON line each:
   credential, `code` or `key` become `"[removed]"`, and so does any string
   that is a `WIFI:` payload. Results are never logged, so a revealed
   password, a share payload or a token cannot reach the file.
-- The file is mode 600, appended in order, and trimmed to the newest 1,000
-  lines once it passes 1,100.
+- The file is mode 600, appended in order, and capped at the newest 1,000
+  lines.
 - UI-originated commands are not logged, and neither are demo or fake runs
   (they change nothing real and may run with the real config dir).
 - App & account shows the last week ("38 commands from the CLI and

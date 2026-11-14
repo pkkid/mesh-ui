@@ -72,7 +72,7 @@ export function auditEntry(e: {
   };
 }
 
-/** Appends to a JSONL file (mode 600), trimming it to the newest `maxLines` once it grows past them. */
+/** Appends to a JSONL file (mode 600), keeping only the newest `maxLines` lines. */
 export function fileAudit(path: string, maxLines = AUDIT_MAX_LINES): AuditLog {
   let lines: number | null = null;
   let queue: Promise<unknown> = Promise.resolve();
@@ -90,8 +90,7 @@ export function fileAudit(path: string, maxLines = AUDIT_MAX_LINES): AuditLog {
     lines ??= await countLines();
     await appendFile(path, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
     lines++;
-    // Trim in batches (10 percent over the cap) so most appends stay appends.
-    if (lines > maxLines + Math.max(1, Math.floor(maxLines / 10))) {
+    if (lines > maxLines) {
       const kept = (await readFile(path, "utf8")).split("\n").filter(Boolean).slice(-maxLines);
       const tmp = `${path}.${process.pid}.tmp`;
       await writeFile(tmp, `${kept.join("\n")}\n`, { mode: 0o600 });

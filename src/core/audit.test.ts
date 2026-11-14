@@ -173,12 +173,10 @@ describe("fileAudit", () => {
       await log.append({ time: new Date(i).toISOString(), surface: "cli", id: `n.${i}`, effect: "query", ok: true, params: {} });
     }
     const lines = await readLines(path);
-    expect(lines.length).toBeGreaterThanOrEqual(10);
-    expect(lines.length).toBeLessThanOrEqual(11);
-    expect(lines.at(-1)?.id).toBe("n.39");
+    expect(lines.map((l) => l.id)).toEqual(Array.from({ length: 10 }, (_, i) => `n.${30 + i}`));
     // A new log over an existing file counts what is there.
     const again = fileAudit(path, 10);
     for (let i = 40; i < 45; i++) await again.append({ time: new Date(i).toISOString(), surface: "mcp", id: `n.${i}`, effect: "query", ok: true, params: {} });
-    expect((await readLines(path)).length).toBeLessThanOrEqual(11);
+    expect((await readLines(path)).map((l) => l.id)).toEqual(Array.from({ length: 10 }, (_, i) => `n.${35 + i}`));
   });
 });
