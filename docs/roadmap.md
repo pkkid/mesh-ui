@@ -704,7 +704,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `guest.enable`, `guest.disable` (disruptive), `guest.rename` (disruptive, must differ from the main SSID), `guest.password.set` (disruptive; `null` makes it open). Guest page: on and off with confirm, Name & password sheet with Generate (`wifi.password.generate`), the QR refreshing after a change. Carried from M3: Print a card (a print-only card with name, password and QR through the window's print) and Send to a guest (copies a short invite text with name and password).
 - done when: demo and fake-server tests incl. `needs_confirm`, the main-SSID check, open network and form bodies; a new password never reaches logs, the audit log or the CLI table without `--reveal` (tests); `pnpm ui:shot --route '#/guest'` of the confirm, sheet and off state, light and dark; `MANUAL: guest off and on | ... | guests drop, then can rejoin | guests lose Wi-Fi briefly`.
 
-### M4.7 Wi-Fi writes ☐
+### M4.7 Wi-Fi writes ✅ (#156)
 - issue: [#129](https://github.com/pkkid/mesh-ui/issues/129)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/wifi.md, architecture/commands.md (wifi)
