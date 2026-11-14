@@ -893,7 +893,8 @@ describe("write contracts (M4)", () => {
   it("the eero backend answers 'not available yet' for each write it has not built", async () => {
     const secrets = { load: async () => "t", save: async () => "memory" as const, clear: async () => {}, storage: async () => "memory" as const };
     let calls = 0;
-    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", fetch: (async () => (calls++, new Response("{}", { status: 500 }))) as typeof fetch });
+    // 400, not 500: a built write may read first (guest.rename), and reads retry a 500 with backoff.
+    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", fetch: (async () => (calls++, new Response("{}", { status: 400 }))) as typeof fetch });
     for (const [area, methods] of Object.entries(WRITE_METHODS)) {
       for (const m of methods) {
         const fn = (eero as unknown as Record<string, Record<string, (...a: unknown[]) => Promise<unknown>>>)[area]?.[m];

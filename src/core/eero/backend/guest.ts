@@ -2,13 +2,18 @@
  * eero backend, guest area: `GET {net}/guestnetwork` (the password comes in
  * the clear; only `credentials` maps it), guests from `GET {net}/devices`
  * (`is_guest`), security from `GET {net}/wpa3_per_band` and 6 GHz from the
- * eeros' bands. See docs/architecture/commands.md (guest).
+ * eeros' bands. Writes (form bodies, as the live-verified clients send them):
+ * `PUT {net}/guestnetwork` `enabled` and `name`; the password has its own
+ * path, `PUT {net}/guestnetwork/password` `password`, and `DELETE` there
+ * makes the network open. Each write answers with a fresh `get`. See
+ * docs/architecture/commands.md (guest) and docs/eero-api/endpoints.md
+ * section 11.
  */
 
 import { BackendError } from "../../errors";
 import { bandOf, type RawEeroFull } from "../map/eero";
 import { guestCredentials, guestSecurity, mapGuestNetwork } from "../map/guest";
-import { asList, type RawDevice, type RawGuestNetwork, type RawWpa3PerBand } from "../raw";
+import { asList, type RawDevice, type RawGuestNetwork, type RawGuestWrite, type RawPasswordWrite, type RawWpa3PerBand } from "../raw";
 import { networkPath } from "../urls";
 import type { EeroArea } from "./index";
 import { networkLinks } from "./network";
@@ -31,7 +36,11 @@ export const guest: EeroArea<"guest"> = (ctx) => {
     }
   };
 
-  return {
+  const guestPath = (id: string) => links.get(`net:${id}.guestnetwork`, `${base(id)}/guestnetwork`);
+  const putGuest = (id: string, body: RawGuestWrite) =>
+    ctx.client.request<unknown>({ method: "PUT", path: guestPath(id), body, encoding: "form" });
+
+  const area: ReturnType<EeroArea<"guest">> = {
     async get(id) {
       const [raw, devices, bands, eeros] = await Promise.all([
         guestNetwork(id),
@@ -47,5 +56,25 @@ export const guest: EeroArea<"guest"> = (ctx) => {
     async credentials(id) {
       return guestCredentials(await guestNetwork(id, false));
     },
+
+    async setEnabled(id, enabled) {
+      await putGuest(id, { enabled });
+      return area.get(id);
+    },
+
+    async rename(id, name) {
+      // The clients always send `enabled` with `name`; repeat the current state so a rename never toggles it.
+      const current = await guestNetwork(id, false);
+      await putGuest(id, { enabled: current?.enabled === true, name });
+      return area.get(id);
+    },
+
+    async setPassword(id, password) {
+      const path = `${guestPath(id)}/password`;
+      if (password === null) await ctx.client.request<unknown>({ method: "DELETE", path, encoding: "none" });
+      else await ctx.client.request<unknown>({ method: "PUT", path, body: { password } satisfies RawPasswordWrite, encoding: "form" });
+      return area.get(id);
+    },
   };
+  return area;
 };

@@ -1,25 +1,25 @@
 /**
- * Guest network: the hero with the QR block, guest usage, isolation and
- * security, name and password, and the guest devices. Read-only for now:
- * turning it on or off, renaming and password changes are disabled "Coming
- * soon" controls until their commands land. Layout, data and states:
- * docs/ux/pages/guest.md and docs/mockups/11-guest.html.
+ * Guest network: the hero with the power button and the QR block, guest
+ * usage, isolation and security, name and password (with its edit sheet),
+ * and the guest devices. Layout, data and states: docs/ux/pages/guest.md
+ * and docs/mockups/11-guest.html.
  */
-import { Check, Globe, House, KeyRound, Smartphone, Ticket, Wifi, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, Globe, House, Smartphone, Ticket, X } from "lucide-react";
+import { type ReactNode, useReducer } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { SectionError } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import { TopBarTitle } from "~/features/shell/TopBar";
 import type { GuestNetwork, Network, Security, WirelessBand } from "../../../../core/model";
 
 import { GuestDevices } from "./GuestDevices";
 import { GuestHero } from "./GuestHero";
+import { GuestSettings } from "./GuestSettings";
 import { GuestUsage } from "./GuestUsage";
 
 export function GuestPage(_: PageProps) {
@@ -30,6 +30,8 @@ export function GuestPage(_: PageProps) {
   const g = guest.data;
   const on = g?.enabled === true && !bridged;
   const timezone = network.data?.timezone ?? null;
+  // Bumped after a name or password save, so the hero reads the QR again.
+  const [shareVersion, bumpShare] = useReducer((n: number) => n + 1, 0);
 
   return (
     <>
@@ -37,7 +39,7 @@ export function GuestPage(_: PageProps) {
       {guest.error && !g ? (
         <SectionError what="the guest network" error={guest.error} onRetry={() => void guest.refetch()} />
       ) : (
-        <GuestHero guest={g} networkName={network.data?.name ?? null} unavailable={bridged} offline={network.data?.status === "offline"} fading={guest.fading} />
+        <GuestHero guest={g} networkName={network.data?.name ?? null} unavailable={bridged} offline={network.data?.status === "offline"} fading={guest.fading} shareVersion={shareVersion} />
       )}
 
       {bridged ? (
@@ -50,7 +52,7 @@ export function GuestPage(_: PageProps) {
             <GuestUsage timezone={timezone} off={g !== undefined && !on} />
             <Isolation guest={g} networkName={network.data?.name ?? null} />
           </div>
-          <NameAndPassword guest={g} networkName={network.data?.name ?? null} />
+          <GuestSettings guest={g} networkName={network.data?.name ?? null} onSaved={bumpShare} />
           <GuestDevices timezone={timezone} />
         </>
       )}
@@ -134,40 +136,6 @@ function Path({ from, to, allowed = false }: { from: ReactNode; to: ReactNode; a
         </span>
       </div>
       {to}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Name & password (read-only until guest.rename and guest.password.set land)
-
-function NameAndPassword({ guest, networkName }: { guest: GuestNetwork | undefined; networkName: string | null }) {
-  return (
-    <Section title="Name & password" subtitle="Changes come in a later update">
-      <Card padded className="grid gap-4 sm:grid-cols-2">
-        <Field label="Guest network name" icon={<Wifi />} hint={networkName ? `Must be different from your main network name, ${networkName}` : undefined}>
-          {guest ? (guest.name ?? "-") : ""}
-        </Field>
-        <Field label="Guest network password" icon={<KeyRound />} hint={guest && !guest.hasPassword ? "Anyone nearby can join an open network." : "Copy it or share the QR code above."}>
-          {guest ? (guest.hasPassword ? <span className="tracking-[0.18em]">••••••••••</span> : "Open, no password") : ""}
-        </Field>
-        <div className="flex gap-2 sm:col-span-2">
-          <ComingSoonButton size="sm">Edit name and password</ComingSoonButton>
-        </div>
-      </Card>
-    </Section>
-  );
-}
-
-function Field({ label, icon, hint, children }: { label: string; icon: ReactNode; hint?: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <div className="flex h-8 items-center gap-2 rounded-(--control-radius) border bg-muted/30 px-2.5 text-sm [&_svg]:size-4 [&_svg]:text-muted-foreground">
-        {icon}
-        <span className="truncate">{children}</span>
-      </div>
-      {hint && <span className="text-2xs text-muted-foreground">{hint}</span>}
     </div>
   );
 }
