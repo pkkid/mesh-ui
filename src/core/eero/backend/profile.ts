@@ -16,10 +16,12 @@
  *
  * Scheduled pauses (M4.12): `POST {profile}/schedules`, `PUT` and `DELETE
  * {profile}/schedules/{id}`, JSON `{name, days, start, end, enabled}` with
- * days as `MON`..`SUN` (LD, Los33c/unofficial_eero_desktop_native; FF sends
- * lowercase names). Unverified on a real network: the GET there is a 404 and
- * the captured network had no schedules, so a MANUAL check covers it. When
- * eero answers without the schedule, it is read back from the profile.
+ * days as capitalized full names, "Monday".."Sunday" (M5.R-fix7). Eeronaut
+ * worked this out from eero's own field errors on a live network: `MON` (LD's
+ * form) and "monday" (FF's) are refused with `error.form.enum.invalid`, as
+ * power saving schedules refuse them. No real write here has been tried by
+ * us (the captured networks have no schedules), so a MANUAL check covers it.
+ * When eero answers without the schedule, it is read back from the profile.
  *
  * Unassigned schedules (M5.11-fix): the profile id `unassigned` (core's
  * UNASSIGNED ref) names the `default: true` profile, found through
@@ -34,6 +36,7 @@ import { BackendError } from "../../errors";
 import { mapProfile, mapSchedule, type RawScheduleFull } from "../map/profile";
 import { asList, type RawDevice, type RawProfile, type RawProfileWrite, type RawScheduleWrite, linkUrl } from "../raw";
 import { idFromUrl, networkPath } from "../urls";
+import { POWER_DAY_NAMES } from "./settings";
 import type * as M from "../../model";
 import type { EeroArea } from "./index";
 
@@ -46,8 +49,8 @@ const scheduleOf = (raw: unknown): M.Schedule | null => {
   return linkUrl(r.url) || r.id !== undefined ? mapSchedule(r, 0) : null;
 };
 
-/** The JSON eero takes, days in the `MON` form. Tolerates a missing input so the request (and eero's error) still happens. */
-const scheduleBody = ({ name, days, start, end, enabled } = {} as M.ScheduleInput): RawScheduleWrite => ({ name, days: Array.from(days ?? []), start, end, enabled });
+/** The JSON eero takes, days as "Monday".."Sunday". Tolerates a missing input so the request (and eero's error) still happens. */
+const scheduleBody = ({ name, days, start, end, enabled } = {} as M.ScheduleInput): RawScheduleWrite => ({ name, days: Array.from(days ?? [], (d) => POWER_DAY_NAMES[d] ?? d), start, end, enabled });
 
 /** core's UNASSIGNED ref (commands/profile.ts): eero's `default: true` profile. Backends sit below commands, so the literal is repeated. */
 const UNASSIGNED = "unassigned";
