@@ -170,6 +170,8 @@ type Entry = {
   /** The in-flight request skips the engine cache. */
   inflightFresh: boolean;
   listeners: Set<() => void>;
+  /** Mounted readers with `enabled` on: what Refresh fetches. */
+  active: number;
   /** Set when a write made the data stale; the next poll or mount refetches. */
   stale: boolean;
 };
@@ -197,7 +199,7 @@ function entryFor(id: string, params: unknown): Entry {
   const key = queryKey(id, params);
   let entry = entries.get(key);
   if (!entry) {
-    entry = { id, params, snapshot: EMPTY, inflight: null, inflightFresh: false, listeners: new Set(), stale: true };
+    entry = { id, params, snapshot: EMPTY, inflight: null, inflightFresh: false, listeners: new Set(), active: 0, stale: true };
     entries.set(key, entry);
   }
   return entry;
@@ -228,11 +230,21 @@ function fetchEntry(entry: Entry, fresh = false): Promise<void> {
   return entry.inflight;
 }
 
-/** Subscribes to one query's snapshot (what `useQuery` mounts). Returns an unsubscribe. */
-export function watchQuery(id: string, params: unknown, listener: () => void): () => void {
+/** Subscribes to one query's snapshot. Returns an unsubscribe. */
+function watchQuery(id: string, params: unknown, listener: () => void): () => void {
   const entry = entryFor(id, params);
   entry.listeners.add(listener);
   return () => void entry.listeners.delete(listener);
+}
+
+/**
+ * Marks an enabled reader of a query as mounted (what `useQuery` does while
+ * `enabled`), so Refresh fetches it. Returns the unmount.
+ */
+export function mountQuery(id: string, params: unknown): () => void {
+  const entry = entryFor(id, params);
+  entry.active++;
+  return () => void entry.active--;
 }
 
 // ---------------------------------------------------------------------------
@@ -242,14 +254,15 @@ let refreshing: Promise<void> | null = null;
 const refreshListeners = new Set<() => void>();
 
 /**
- * Refetches every query on screen (any entry with a mounted reader: the page,
- * the sidebar, the topbar) once, skipping the engine cache. Calls while one
+ * Refetches every query on screen (any entry with a mounted, enabled reader:
+ * the page, the sidebar, the topbar) once, skipping the engine cache. Calls while one
  * runs get the same promise and start nothing. Errors land on each query, so
  * sections show their usual error notes.
  */
 export function refreshAll(): Promise<void> {
   if (refreshing) return refreshing;
-  const mounted = [...entries.values()].filter((e) => e.listeners.size > 0);
+  // Disabled readers (waiting for an id or valid input) are left alone.
+  const mounted = [...entries.values()].filter((e) => e.active > 0);
   refreshing = Promise.all(mounted.map((e) => fetchEntry(e, true))).then(() => {
     refreshing = null;
     refreshListeners.forEach((l) => l());
@@ -353,11 +366,12 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
   useEffect(() => {
     if (!enabled) return;
     const current = entryFor(id, params);
+    const unmount = mountQuery(id, params);
     // A polled query older than its interval (the page was closed meanwhile) refetches on open.
     const fetchedAt = current.snapshot.fetchedAt;
     const old = intervalSec !== null && fetchedAt !== null && Date.now() - fetchedAt >= intervalSec * 1000;
     if (current.stale || fetchedAt === null || old) void fetchEntry(current);
-    if (intervalSec === null) return;
+    if (intervalSec === null) return unmount;
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
@@ -382,6 +396,7 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
     schedule();
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      unmount();
       cancelled = true;
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);

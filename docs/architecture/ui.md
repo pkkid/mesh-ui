@@ -165,8 +165,9 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
 - **`useCommand(id)`** runs a command on demand without the kit (a query the
   person asks for, such as Copy details) and returns `{ run, running,
   result, error, reset }`.
-- **Refresh.** `refreshAll()` refetches every query that has a mounted
-  reader (the page, the sidebar, the topbar bell) once, with
+- **Refresh.** `refreshAll()` refetches every query that has a mounted,
+  enabled reader (the page, the sidebar, the topbar bell; a `useQuery` with
+  `enabled: false` does not count) once, with
   `{ fresh: true }`, so the engine reads eero instead of its cache. One
   request per query key, the same set the page already loads; queries no
   view shows are left alone. A query already in flight is joined if it is

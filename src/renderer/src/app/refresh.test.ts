@@ -10,7 +10,7 @@ import { composeBackend } from "../../../core/backend";
 import { createEngine } from "../../../core/engine";
 import type { ExecuteOptions } from "../../../core/engine";
 import { defineCommand } from "../../../core/spec";
-import { isRefreshing, refreshAll, resetRegistry, watchQuery } from "./useCommand";
+import { isRefreshing, mountQuery, refreshAll, resetRegistry } from "./useCommand";
 
 function setup() {
   const runs: Record<string, number> = {};
@@ -65,7 +65,7 @@ describe("refreshAll", () => {
   it("refetches each mounted query once with fresh: true, past the engine cache", async () => {
     const t = setup();
     // Two readers of the same query (page and sidebar) and one other query are mounted.
-    offs.push(watchQuery("rf.eeros", undefined, () => {}), watchQuery("rf.eeros", {}, () => {}), watchQuery("rf.devices", { q: "a" }, () => {}));
+    offs.push(mountQuery("rf.eeros", undefined), mountQuery("rf.eeros", {}), mountQuery("rf.devices", { q: "a" }));
     // Warm the engine cache the way page loads do; rf.hidden is cached but no longer on screen.
     await t.engine.execute("rf.eeros");
     await t.engine.execute("rf.devices", { q: "a" });
@@ -81,9 +81,19 @@ describe("refreshAll", () => {
     expect(isRefreshing()).toBe(false);
   });
 
+  it("skips queries whose only readers are disabled (useQuery enabled: false), and unmounted ones", async () => {
+    const t = setup();
+    // rf.hidden has no enabled reader (a disabled useQuery only subscribes); rf.devices was mounted then unmounted.
+    const off = mountQuery("rf.devices", {});
+    off();
+    offs.push(mountQuery("rf.eeros", undefined));
+    await refreshAll();
+    expect(t.sent.map((s) => s.id)).toEqual(["rf.eeros"]);
+  });
+
   it("ignores calls while a refresh runs: same promise, no extra requests", async () => {
     const t = setup();
-    offs.push(watchQuery("rf.eeros", undefined, () => {}));
+    offs.push(mountQuery("rf.eeros", undefined));
     t.holdReads();
     const first = refreshAll();
     expect(isRefreshing()).toBe(true);
@@ -105,7 +115,7 @@ describe("refreshAll", () => {
 
   it("keeps errors on each query (the page's own error states) and finishes", async () => {
     const t = setup();
-    offs.push(watchQuery("rf.unknown", undefined, () => {}));
+    offs.push(mountQuery("rf.unknown", undefined));
     await refreshAll();
     expect(t.sent).toEqual([{ id: "rf.unknown", options: { fresh: true } }]);
     expect(isRefreshing()).toBe(false);
