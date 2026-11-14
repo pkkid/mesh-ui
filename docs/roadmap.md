@@ -23,7 +23,7 @@ and every write.
 |---|---|---|
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
-| M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | later |
+| M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | planned |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | later |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
@@ -350,12 +350,6 @@ Learned in M2:
 
 Goal: the rest of the app is complete read-only, so Mesh UI is a full
 monitor of the network.
-Rough scope: Profiles and Profile detail (schedules timeline, devices,
-usage), Activity (event stream, filters, unread, CSV), Guest (status, usage,
-isolation, guest devices, QR via `guest.share`), Wi-Fi (name, encryption,
-bands, QR via `wifi.share`), Advanced networking and Reservations & ports
-as read views, Troubleshooting health check, desktop notifications for
-offline alerts.
 Carried from M1: guest usage on the eero backend (demo only today);
 `events.summary`, `usage.quiet_hours` and grouped events; `slow` and
 `errors` demo scenarios so loading and error states can be shown in demo.
@@ -373,6 +367,155 @@ cover every state the mockup shows (for example a plan set, leased devices,
 blocked and guest devices); drop `Internet.leaseRenewsAt`, the Internet
 page's lease row, its value in mockup 02 and its data-model row, since eero
 sends no lease time (#78).
+
+In: Profiles and Profile detail; Activity (event summary, stream, filters,
+grouping, CSV through a save dialog); the notifications bell and desktop
+alerts for new notifications; Guest and Wi-Fi as read views with share QR
+codes; Advanced networking, Reservations & ports and Updates & admins as
+read views; the Troubleshooting health check and support info; new read
+commands `guest.get`, `guest.share`, `wifi.get`, `wifi.share`,
+`wifi.password.get`, `settings.get`, `integrations.get`, `pinhole.list`,
+`events.summary`, `notifications.list`, `notifications.settings.get`,
+`health.check`, `support.info`, `support.report`, `admin.list`,
+`updates.notes`, `usage.quiet_hours`; the Carried from M1 and M2 items.
+Out: every write (pause, rename, schedules, guest and Wi-Fi changes,
+settings, reservations, forwards, pinholes, invites, mark read, diagnostics
+run, update install); their controls render disabled with "Coming soon".
+Also out: App & account (M6) and anything eero Plus.
+
+Done when:
+- `pnpm check` passes locally in under a minute and the CI smoke is green
+  on macOS, Windows and Linux.
+- `pnpm ui:shot` screenshots of Profiles, a profile, Activity, the bell,
+  Guest, Wi-Fi, Advanced networking, Reservations & ports, Updates & admins
+  and Troubleshooting, in demo and `--fake`, light and dark, match mockups
+  07, 08, 10, 11, 12, 13, 14, 15 and 16 (as aligned by M3.3), with the
+  `network_offline`, `empty_network`, `slow` and `errors` scenarios and the
+  bridge-mode network (Mom's House) where the page doc names them.
+- Every new M3 command has demo tests through `engine.execute` including
+  `bad_params`, fake-server mapping tests on a confirmed real shape, and a
+  read-only real-network shape check in its PR (paths, types, counts);
+  `mesh-ui --demo commands` lists them and `mesh-ui mcp --read-only`
+  exposes them. Sensitive reads (`guest.share`, `wifi.share`,
+  `wifi.password.get`) never print in logs and are marked sensitive in MCP.
+- Each new page has a page-load request-budget test.
+- Every Carried from M1 and M2 item is closed or moved with a reason.
+
+Parallelism: 3 waves plus R (2, 9, 2, R); critical path M3.1 > M3.4 > M3.5
+> M3.R (M3.8 also gates M3.13). Hotspots: `src/core/model.ts`, `src/core/backend.ts`,
+`src/core/eero/raw.ts`, `src/core/demo/fixtures.ts`,
+`src/core/demo/backend.ts`, `src/core/demo/scenario.ts` and
+`test/fake-eero/state.ts` (owned by M3.1; later waves take small additive
+edits only and say so); `src/renderer/src/features/shell/TopBar.tsx` (owned
+by M3.7); `src/main/ipc.ts` and `src/preload/index.ts` (M3.2 adds the save bridge, then M3.7 the notify bridge);
+`docs/architecture/commands.md` (each story edits only its own area's
+section); registration files `src/core/commands/index.ts`,
+`src/core/eero/backend/index.ts`, `test/fake-eero/routes/index.ts`,
+`src/renderer/src/app/routes.ts`, `package.json`, `pnpm-lock.yaml` (one-line
+edits by anyone).
+
+Open questions (answers change details, not the plan): whether
+`{net}/diagnostics`, `{net}/support`, `{net}/members`, `{net}/invites` and
+the integrations fields answer for this account (M3.1 captures them; a 403
+or 404 becomes an empty read with a reason, not an error); whether
+notifications history is free; how `updates.notes` fetches the manifest
+(absolute URL, no cookie); the QR encoder (a small pinned dependency or a
+port, decided in M3.2).
+
+### M3.1 Core contracts, captured shapes and fixtures for M3 ☐
+- after: M2.R
+- docs: architecture/data-model.md, architecture/backends.md, architecture/commands.md (guest, wifi, settings, routing, activity, diagnostics, admins, integrations), testing.md (Fixtures, demo scenarios), eero-api/endpoints.md
+- files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, test/fake-eero/state.ts, src/core/eero/backend/index.ts, src/core/eero/backend/internet.ts, src/core/eero/map/network.ts, src/core/commands/internet.ts, src/core/commands/internet.test.ts, src/renderer/src/features/internet/Connection.tsx, docs/mockups/02-internet.html, docs/architecture/data-model.md, docs/architecture/backends.md, docs/eero-api/endpoints.md, docs/testing.md
+- scope: Everything wave 2 shares. First, one read-only capture on the real network (key paths and types only, per AGENTS.md Testing) of `{net}/guestnetwork`, `{net}` (settings fields), `{net}/wpa3_per_band`, `{net}/fast_transition`, `{net}/power_saving/schedules`, `{net}/thread`, `{net}/ac_compat`, `{net}/routing` pinholes, `{profile}` and `{profile}/schedules`, `{net}/app_events`, `{net}/notifications_history`, `{net}/notifications`, `{net}/diagnostics`, `{net}/support`, `{net}/members`, `{net}/invites`, `{net}/proxied_nodes`; record them in `eero-api/endpoints.md`. Then backend areas `guest`, `wifi`, `settings`, `diagnostics`, `admins`, `integrations` and `notifications` in `backend.ts` (the eero backend answers "not available yet" for each, from `eero/backend/index.ts`, until its story), raw types from the captures, model fields each page needs, demo fixtures and methods for every new read (guest network with guests and usage, Wi-Fi bands, settings with a power saving schedule, pinholes, notifications with unread, a health report with a warning, support contacts, two admins and an invite) and fake seed state in the captured shapes. Demo scenarios `slow` (every read delayed) and `errors` (reads fail with `eero_error`) (Carried from M1). Drop `Internet.leaseRenewsAt` from the model, mapping, data-model row, the Internet page's lease row and mockup 02 (Carried from M2).
+- done when: `pnpm check` passes; the PR lists every captured endpoint with its key paths and types, or its 403 or 404, and no values; demo consistency tests cover the new fixtures (guests are on the guest network, pinholes and forwards point at reserved devices, unread count matches); `mesh-ui --demo run demo.scenario.set --params '{"scenario":"slow"}'` then any read is slow, and `errors` makes reads fail with `eero_error`; `leaseRenewsAt` is gone from `internet.get`, the Internet page and mockup 02; no real names, MACs or IPs.
+
+### M3.2 Shared kit: QR, timeline, save dialog and M2 leftovers ☐
+- after: M2.R
+- docs: AGENTS.md (Dashboards and charts), design/design-system.md, architecture/ui.md (bridge), architecture/security.md
+- files: src/renderer/src/components/ui/qr.tsx, src/renderer/src/components/ui/timeline.tsx, src/renderer/src/components/ui/page.tsx, src/renderer/src/components/charts/AreaChart.tsx, src/renderer/src/components/charts/charts.test.ts, src/renderer/src/features/overview/EerosList.tsx, src/renderer/src/features/internet/SpeedHistory.tsx, src/renderer/src/features/internet/EarlierTests.tsx, src/renderer/src/lib/saveFile.ts, src/main/ipc.ts, src/preload/index.ts, docs/design/design-system.md
+- scope: Renderer and host pieces wave 2 reuses. QR block (encoder decided here: a small pinned dependency or a port, with its licence noted) with Copy and Save PNG. Week timeline for schedules (days by hours, blocks that wrap past midnight), shared by profiles and power saving. A host save dialog over the one IPC bridge (`window.mesh.saveFile(name, text)`), never a command, locked to text and the user's chosen path; Internet Export CSV uses it. Carried from M2: Section header no longer wraps with a long subtitle; `EerosList` imports `MeshBars` from `components/mesh/LinkChip`; `AreaChart` takes a fixed `max` and the Internet speed chart scales to the plan.
+- done when: `pnpm check` passes with tests for the timeline's wrap-past-midnight layout and the chart `max`; `pnpm ui:shot` of the chart gallery shows the QR and timeline in light and dark; Internet Export CSV writes a file through the save dialog in `ui:shot` (to a scratch path) and Overview, Internet and eero detail look unchanged apart from the listed fixes (before and after in the PR); the save bridge refuses non-text and never exposes a path to the renderer beyond the user's choice.
+
+### M3.3 Mockups match the M3 fixtures ☐
+- after: M3.1
+- docs: architecture/backends.md (demo)
+- files: docs/mockups/05-devices.html, docs/mockups/07-profiles.html, docs/mockups/08-profile-detail.html, docs/mockups/10-activity.html, docs/mockups/11-guest.html, docs/mockups/12-wifi-settings.html, docs/mockups/13-advanced-networking.html, docs/mockups/14-reservations-ports.html, docs/mockups/15-updates-admins.html, docs/mockups/16-troubleshooting.html, docs/mockups/assets/mockup.js
+- scope: Docs only. Align the M3 mockups' numbers and names with the demo fixtures, as M2.3 did; replace the old `3c:22:fb` sample MACs in 05, 10 and 14 (Carried from M2). Grey out or mark anything the captures in M3.1 showed is not available for this account. Layout and design stay as approved.
+- done when: every changed value matches `mesh-ui --demo run` output for the same field (table in the PR); no `3c:22:fb` left; the mockup index opens every page.
+
+### M3.4 Profiles page ☐
+- after: M3.1, M3.2
+- docs: ux/pages/profiles.md, architecture/commands.md (profile)
+- files: src/core/commands/profile.ts, src/core/commands/profile.test.ts, src/core/eero/backend/profile.ts, src/core/eero/map/profile.ts, test/fake-eero/routes/profiles.ts, src/renderer/src/features/profiles/ProfilesPage.tsx, src/renderer/src/features/profiles/ProfileCards.tsx, src/renderer/src/features/profiles/UnassignedCard.tsx, src/renderer/src/features/profiles/ProfilesUsage.tsx, src/renderer/src/features/profiles/ScheduleOverview.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/profiles.md
+- scope: Core: map schedules from `{profile}/schedules` on the captured shape; profile state (active, paused, scheduled) and next schedule computed in core in the network time zone; the `unassigned` summary. Page (mockup 07): profile cards with state, devices online, usage today and next schedule; Unassigned card; usage by profile Day/Week; the week schedule overview on the shared timeline. Pause, resume, add and edit are disabled ("Coming soon"). Empty, offline, `slow`, `errors` and bridge states.
+- done when: demo tests for state and next schedule across midnight and a DST change, `bad_params`, and fake-server tests for schedule mapping; a real shape check of `profile.list` in the PR; page-load budget test; `pnpm ui:shot --route '#/profiles'` in demo and `--fake`, light and dark, plus `empty_network` and `errors`; `MANUAL: Profiles on the real network | pnpm dev, open Profiles | states, devices and schedules match the eero app | none`.
+
+### M3.5 Profile detail ☐
+- after: M3.4
+- docs: ux/pages/profile-detail.md
+- files: src/renderer/src/features/profile/ProfilePage.tsx, src/renderer/src/features/profile/ProfileHero.tsx, src/renderer/src/features/profile/ProfileSchedules.tsx, src/renderer/src/features/profile/ProfileDevices.tsx, src/renderer/src/features/profile/ProfileUsage.tsx, src/renderer/src/features/profile/helpers.ts, src/renderer/src/features/profile/helpers.test.ts, src/renderer/src/app/routes.ts, docs/ux/pages/profile-detail.md
+- scope: Page (mockup 08), read-only: hero with state and next schedule; schedules on the shared timeline with a list; devices with status and usage; usage Day/Week with top devices; `[` `]` move between profiles. Every write is disabled ("Coming soon"). Paused, scheduled, empty-profile, gone and bridge states.
+- done when: helper tests; `pnpm ui:shot` of an active, a paused and a scheduled profile, demo and `--fake`, light and dark, plus a gone profile; page-load budget test; `MANUAL: profile detail on the real network | pnpm dev, open each profile | schedules and devices match the eero app | none`.
+
+### M3.6 Activity page and event summary ☐
+- after: M3.1, M3.2
+- docs: ux/pages/activity.md, architecture/commands.md (activity)
+- files: src/core/commands/activity.ts, src/core/commands/activity.test.ts, src/core/eero/backend/events.ts, test/fake-eero/routes/events.ts, src/renderer/src/features/activity/ActivityPage.tsx, src/renderer/src/features/activity/ActivityHero.tsx, src/renderer/src/features/activity/ActivityChart.tsx, src/renderer/src/features/activity/EventFilters.tsx, src/renderer/src/features/activity/EventStream.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/activity.md
+- scope: Core (Carried from M1): `events.summary` (total, daily average, change vs prior period, per category and per bucket, paging back to the range start within the rate budget) and `grouped` events in `events.list`. Page (mockup 10): hero, events per hour or day chart by category, filters (category, device, eero, profile, search, range), the stream with grouped rows and paging, Export CSV through the M3.2 save dialog. All states from the page doc.
+- done when: demo tests for summary counts and change, grouping, filters and `bad_params`, and fake-server tests for paging back within the budget; a real shape check of `events.summary` in the PR; page-load budget test; `pnpm ui:shot --route '#/activity'` demo and `--fake`, light and dark, plus `empty_network` and `errors`; CSV saved through the dialog in `ui:shot`.
+
+### M3.7 Notifications bell and desktop alerts ☐
+- after: M3.1, M3.2
+- docs: ux/overview.md (notifications), architecture/engine.md (desktop notifications), architecture/security.md, architecture/commands.md (activity: notifications)
+- files: src/core/commands/notifications.ts, src/core/commands/notifications.test.ts, src/core/eero/backend/notifications.ts, src/core/eero/map/notifications.ts, test/fake-eero/routes/notifications.ts, src/renderer/src/features/notifications/Bell.tsx, src/renderer/src/features/notifications/NotificationList.tsx, src/renderer/src/features/notifications/useDesktopAlerts.ts, src/renderer/src/features/shell/TopBar.tsx, src/main/notify.ts, src/main/index.ts, src/main/ipc.ts, src/preload/index.ts
+- scope: Core: a `notifications` command area (its rows move out of the activity section in commands.md): `notifications.list` (history plus unread) and `notifications.settings.get` (eero keys plus the desktop choice from app settings). Bell in the titlebar with the unread dot and a popover list; Mark all read is disabled ("Coming soon"). Desktop alerts: the renderer's notifications poll finds new items and asks the host to show one OS notification each (offline eero and network first), through the IPC bridge, never with real data in logs; off when the desktop choice is off; clicking it focuses the window on the matching page.
+- done when: demo tests for unread counts, new-item detection and `bad_params`, and fake-server mapping tests; a real shape check of `notifications.list` in the PR; `pnpm ui:shot` of the open bell in light and dark; a test shows one host notification per new item and none on first load; `MANUAL: desktop alert | pnpm dev:demo, run demo.scenario.set eero_offline from the palette | one OS notification appears and clicking it opens the eero | none`.
+
+### M3.8 Guest page ☐
+- after: M3.1, M3.2
+- docs: ux/pages/guest.md, architecture/commands.md (guest)
+- files: src/core/commands/guest.ts, src/core/commands/guest.test.ts, src/core/eero/backend/guest.ts, src/core/eero/map/guest.ts, test/fake-eero/routes/guest.ts, src/core/commands/usage.ts, src/core/commands/usage.test.ts, src/renderer/src/features/guest/GuestPage.tsx, src/renderer/src/features/guest/GuestHero.tsx, src/renderer/src/features/guest/GuestDevices.tsx, src/renderer/src/features/guest/GuestUsage.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/guest.md
+- scope: Core: `guest.get` (no password, `hasPassword` only, online guests) and `guest.share` (sensitive: SSID, password, security, the `WIFI:` payload); guest usage on the eero backend (Carried from M1). Page (mockup 11): status, name and security, the QR block with Copy password and Save QR, guest devices, guest usage. Enable, rename and password changes are disabled ("Coming soon"). Off, open (no password), offline and bridge states.
+- done when: demo tests for both commands incl. `bad_params`, the open network and the `WIFI:` escaping of `;`, `,`, `:` and `\`; fake-server tests for guest mapping and usage; a real shape check of `guest.get` in the PR (no password printed); `guest.share` is marked sensitive and its result never reaches logs (test); page-load budget test; `pnpm ui:shot --route '#/guest'` demo and `--fake`, light and dark, plus guest off.
+
+### M3.9 Wi-Fi page ☐
+- after: M3.1, M3.2
+- docs: ux/pages/wifi.md, architecture/commands.md (wifi)
+- files: src/core/commands/wifi.ts, src/core/commands/wifi.test.ts, src/core/eero/backend/wifi.ts, src/core/eero/map/wifi.ts, test/fake-eero/routes/wifi.ts, src/renderer/src/features/wifi/WifiPage.tsx, src/renderer/src/features/wifi/WifiHero.tsx, src/renderer/src/features/wifi/WifiBands.tsx, src/renderer/src/features/wifi/WifiSecurity.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/wifi.md
+- scope: Core: `wifi.get` (SSID, security per band, bands with clients, widths, channels, the 2.4 GHz only flag and its expiry; no password), `wifi.password.get` and `wifi.share` (both sensitive, only on explicit reveal or share). Page (mockup 12): name, the QR block, Reveal password, security per band, bands and clients, time zone. Every change is disabled ("Coming soon"). Offline and single-band states.
+- done when: demo tests for the three commands incl. `bad_params`; fake-server tests for `wpa3_per_band` and the flag mapping; a real shape check of `wifi.get` in the PR (no password printed); sensitive results never reach logs (test); page-load budget test (reveal not counted); `pnpm ui:shot --route '#/wifi'` demo and `--fake`, light and dark.
+
+### M3.10 Advanced networking read view ☐
+- after: M3.1, M3.2
+- docs: ux/pages/advanced-networking.md, architecture/commands.md (settings, integrations)
+- files: src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/commands/integrations.ts, src/core/commands/integrations.test.ts, src/core/eero/backend/settings.ts, src/core/eero/map/settings.ts, src/core/eero/backend/integrations.ts, test/fake-eero/routes/settings.ts, src/renderer/src/features/advanced/AdvancedPage.tsx, src/renderer/src/features/advanced/SettingsGroups.tsx, src/renderer/src/features/advanced/PowerSaving.tsx, src/renderer/src/features/advanced/Integrations.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/advanced-networking.md
+- scope: Core: `settings.get` (DNS, DHCP, IPv6, WAN, connection mode, UPnP, SQM, band steering, fast roaming, MLO, power saving with schedules, legacy mode, Thread without secrets) and `integrations.get` (each with `available` and `enabled`; a 403 or 404 is unavailable, not an error). Page (mockup 13): every group as read-only values, power saving schedules on the shared timeline, integrations. Every toggle is disabled ("Coming soon"); `settings.impact` waits for M5. Bridge and offline states.
+- done when: demo tests incl. `bad_params` and Thread secrets never in the result; fake-server tests on the captured shapes; real shape checks of both commands in the PR; page-load budget test; `pnpm ui:shot --route '#/advanced'` demo and `--fake`, light and dark, plus Mom's House (bridge).
+
+### M3.11 Reservations & ports read view ☐
+- after: M3.1, M3.2
+- docs: ux/pages/reservations-ports.md, architecture/commands.md (routing)
+- files: src/core/commands/routing.ts, src/core/commands/routing.test.ts, src/core/eero/backend/routing.ts, src/core/eero/map/routing.ts, test/fake-eero/routes/routing.ts, src/renderer/src/features/ports/PortsPage.tsx, src/renderer/src/features/ports/LanMap.tsx, src/renderer/src/features/ports/Reservations.tsx, src/renderer/src/features/ports/Forwards.tsx, src/renderer/src/features/ports/Pinholes.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/reservations-ports.md
+- scope: Core: `pinhole.list` on the captured shape, from the same cached routing read. Page (mockup 14): LAN map with the pool and leased count, reservations, port forwards, IPv6 rules, each joined to devices. Add, edit, toggle and remove are disabled ("Coming soon"). Bridge, empty and offline states.
+- done when: demo tests for `pinhole.list` incl. `bad_params` and bridge; fake-server mapping tests; a real shape check of `pinhole.list` in the PR; page-load budget test (one routing read for the page); `pnpm ui:shot --route '#/ports'` demo and `--fake`, light and dark, plus bridge and empty.
+
+### M3.12 Troubleshooting health check ☐
+- after: M3.1, M3.2
+- docs: ux/pages/troubleshooting.md, architecture/commands.md (diagnostics)
+- files: src/core/commands/diagnostics.ts, src/core/commands/diagnostics.test.ts, src/core/eero/backend/diagnostics.ts, src/core/eero/map/diagnostics.ts, test/fake-eero/routes/diagnostics.ts, src/renderer/src/features/troubleshooting/TroubleshootingPage.tsx, src/renderer/src/features/troubleshooting/HealthChecks.tsx, src/renderer/src/features/troubleshooting/SupportCard.tsx, src/renderer/src/features/troubleshooting/Tools.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/troubleshooting.md
+- scope: Core: `health.check` (internet, DNS, each eero, mesh links, firmware, each good, warning or problem with one line, from cached topics and `network.health` issues; no active probes), `support.info` (eero and ISP contacts, support ID) and `support.report` (plain-text report with MACs, IPs, names and serials redacted to the last four characters, built in core). Page (mockup 16): health check list, Copy diagnostics report, support contacts. Diagnose, restarts and coverage scan are disabled ("Coming soon"). Healthy, warning, offline and `errors` states.
+- done when: demo tests for every check status, the redaction (no full MAC, IP or serial in the report) and `bad_params`; fake-server mapping tests; real shape checks of `health.check` and `support.info` in the PR; page-load budget test; `pnpm ui:shot --route '#/troubleshooting'` demo and `--fake`, light and dark, plus `eero_offline` and `network_offline`.
+
+### M3.13 Updates & admins read view ☐
+- after: M3.1, M3.2, M3.8
+- docs: ux/pages/updates-admins.md, architecture/commands.md (updates, admins, usage)
+- files: src/core/commands/admins.ts, src/core/commands/admins.test.ts, src/core/commands/usage.ts, src/core/commands/usage.test.ts, src/core/eero/backend/admins.ts, src/core/eero/map/admins.ts, test/fake-eero/routes/admins.ts, src/core/commands/updates.ts, src/core/commands/updates.test.ts, src/core/eero/backend/updates.ts, src/core/eero/client.ts, src/renderer/src/features/updates/UpdatesPage.tsx, src/renderer/src/features/updates/SoftwareCard.tsx, src/renderer/src/features/updates/QuietHours.tsx, src/renderer/src/features/updates/Admins.tsx, src/renderer/src/app/routes.ts, docs/ux/pages/updates-admins.md
+- scope: Core: `admin.list` (admins and invites, seats of 10; invites that 403 for an admin are empty, not an error), `updates.notes` (release notes from the absolute manifest URL, fetched by the eero client without the session cookie, https only, size capped) and `usage.quiet_hours` (Carried from M1; the quietest 3-hour window from the hourly usage call). Page (mockup 15): software status and per-eero versions, release notes, preferred update time with the quiet-hours chart, admins and invites. Install, preferred hour, invite and remove are disabled ("Coming soon"). Owner and admin views. Runs after M3.8, which also edits the usage command files.
+- done when: demo tests for the three commands incl. `bad_params` and the owner and admin views; a test shows `updates.notes` sends no cookie and refuses http and oversize bodies; real shape checks of `admin.list` and `updates.notes` in the PR; page-load budget test; `pnpm ui:shot --route '#/updates'` demo and `--fake`, light and dark, plus the admin view.
+
+### M3.R Review ☐
+- owner: maintainer
+- after: M3.1, M3.2, M3.3, M3.4, M3.5, M3.6, M3.7, M3.8, M3.9, M3.10, M3.11, M3.12, M3.13
 
 ## M4: Everyday control
 
