@@ -42,15 +42,14 @@ gathers them ([testing.md](testing.md#manual-checks)).
 - Whether `hide_5g` also hides 6 GHz. ([troubleshooting.md](ux/pages/troubleshooting.md#notes))
 - Outage length for `settings.mlo.set` and `settings.legacy_mode.set` (estimated at about 2 to 3 minutes). ([commands.md](architecture/commands.md#restart-estimates))
 - "Password changed N days ago" needs a timestamp not yet seen in a response. ([wifi.md](ux/pages/wifi.md#notes))
-- Network transfer: the real flow (recipient name, email, phone vs the mockup's QR or link). Never try it on the real network; capture only. ([updates-admins.md](ux/pages/updates-admins.md#notes))
+- Network transfer: what the recipient sees and whether eero sends it by text when given a phone (built from the LD client in M5.6; never tried on the real network). ([updates-admins.md](ux/pages/updates-admins.md#notes))
 - Response shapes known only from one client: network nickname label, IPv6 lease, coverage and upgrade scans, invite expiry, Simple Setup, integrations. ([commands.md](architecture/commands.md), [data-model.md](architecture/data-model.md))
 - Schedule day format: `MON`..`SUN` (LD) vs lowercase (FF). ([commands.md](architecture/commands.md#profile-commandsprofilets))
 - `device.rename` with an empty nickname resets to the hostname; `device.type.set` on `/2.3/`. ([commands.md](architecture/commands.md#device-commandsdevicets))
 
 ## Needs a technical spike
 
-- A member nickname endpoint for `admin.nickname.set` (only invite nicknames are known). ([commands.md](architecture/commands.md#admins-commandsadminsts), [updates-admins.md](ux/pages/updates-admins.md#notes))
-- An email invite endpoint, or "Send invite" stays a `mailto:` with the link. ([updates-admins.md](ux/pages/updates-admins.md#notes))
+- Whether `POST {net}/invites` answers an invite id (the clients read only `invite_url`; core finds the new row by reading the invites again). ([commands.md](architecture/commands.md#admins-commandsadminsts))
 - A way to stop `eero.find` early; until found, Stop is hidden. ([eeros.md](ux/pages/eeros.md#notes), [commands.md](architecture/commands.md#eero-commandseerots))
 - Whether Smart Home Hub (Zigbee discovery) is free or an eero Business feature. ([advanced-networking.md](ux/pages/advanced-networking.md#notes))
 - One combined write for Wi-Fi name, password and security, instead of three restarts in sequence. ([wifi.md](ux/pages/wifi.md#notes))

@@ -1,9 +1,10 @@
 /**
  * Updates & admins: software status with the release notes, every eero's
  * version, the preferred update time with the quiet-hours chart, then the
- * admins and invites. Read-only for now: install, preferred hour, invites
- * and removing admins are disabled "Coming soon" controls until their
- * commands land. Owner and admin views follow `admin.list` (who "you" are).
+ * admins and invites, and Transfer network (owner only). Install now, the
+ * preferred hour, invites, removing admins and the transfer are writes
+ * through the write kit. Owner and admin views follow `admin.list` (who
+ * "you" are).
  * Layout, data and states: docs/ux/pages/updates-admins.md and
  * docs/mockups/15-updates-admins.html.
  */
@@ -21,6 +22,7 @@ import type { AdminList, Network, ReleaseNotes, Updates } from "../../../../core
 import { Admins } from "./Admins";
 import { QuietHours } from "./QuietHours";
 import { osVersion, SoftwareCard } from "./SoftwareCard";
+import { TransferNetwork } from "./TransferDialog";
 
 export function UpdatesPage(_: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -47,12 +49,13 @@ export function UpdatesPage(_: PageProps) {
       {updates.error && !u ? (
         <SectionError what="software updates" error={updates.error} onRetry={() => void updates.refetch()} />
       ) : (
-        <SoftwareCard updates={u} notes={notes.error ? null : notes.data} timezone={timezone} now={now} canInstall={myRole === "owner"} fading={updates.fading} />
+        <SoftwareCard updates={u} notes={notes.error ? null : notes.data} timezone={timezone} now={now} canInstall={myRole === "owner"} networkId={network.data?.id ?? null} fading={updates.fading} />
       )}
 
       <EveryEero updates={u} timezone={timezone} />
-      <QuietHours preferredHour={u ? u.preferredHour : undefined} />
+      <QuietHours preferredHour={u ? u.preferredHour : undefined} canChange={myRole === "owner"} />
       <Admins list={admins} timezone={timezone} myRole={myRole} />
+      {myRole === "owner" && network.data && <TransferNetwork network={network.data} />}
     </>
   );
 }

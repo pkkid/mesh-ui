@@ -9,6 +9,8 @@ import { RateLimiter } from "../eero/ratelimit";
 import { mapUpdates, updateStatus } from "../eero/map/updates";
 import { createEngine, type Engine } from "../engine";
 import type * as M from "../model";
+import { FAKE_INSTALL_MS } from "../../../test/fake-eero/routes/updates";
+import { commands as updatesCommands } from "./updates";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -342,5 +344,125 @@ describe("Updates page load against the fake eero server", () => {
     const before = f.log.length;
     await load(engine, UPDATES_PAGE);
     expect(f.log.length - before).toBeLessThanOrEqual(14);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Writes: updates.install and updates.hour.set (M5.6)
+
+describe("updates.install (demo)", () => {
+  it("needs confirm with the impact (every eero, about 10 minutes, devices online), then installs", async () => {
+    const engine = demoEngine();
+    const refused = await engine.execute("updates.install", { networkId: MAPLE });
+    expect(refused).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+    const message = (refused as { error: { message: string } }).error.message;
+    expect(message).toMatch(/^eeroOS 7\.13\.0 installs now\. Every eero installs the update and restarts: \d+ devices online lose internet for about 10 minutes\.$/);
+    const after = await ok(engine.execute<M.Updates>("updates.install", { networkId: MAPLE, confirm: true }));
+    expect(after).toMatchObject({ status: "up_to_date", target: null, canUpdateNow: false, current: "7.13.0" });
+    // The next read shows it too, and every eero is on the new version.
+    const next = await ok(engine.execute<M.Updates>("updates.get", { networkId: MAPLE }));
+    expect(next.eeros.every((e) => e.firmware === "7.13.0")).toBe(true);
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: MAPLE }))).status).toBe("updating");
+  });
+
+  it("refuses when there is nothing to install, before asking", async () => {
+    const engine = demoEngine();
+    expect(await engine.execute("updates.install", { networkId: LAKE })).toMatchObject({ ok: false, error: { code: "bad_params", message: "There is no update to install now." } });
+    expect(await code(engine.execute("updates.install", { networkId: LAKE, confirm: true }))).toBe("bad_params");
+  });
+
+  it("rejects bad params and needs a session", async () => {
+    const engine = demoEngine();
+    expect(await code(engine.execute("updates.install", { networkId: MAPLE, now: true }))).toBe("bad_params");
+    expect(await code(engine.execute("updates.install", { networkId: MAPLE, confirm: "yes" }))).toBe("bad_params");
+    expect(await code(demoEngine("signed_out").execute("updates.install", { confirm: true }))).toBe("not_signed_in");
+  });
+});
+
+describe("updates.hour.set (demo)", () => {
+  it("sets the preferred hour, shown by the next read, without a confirm", async () => {
+    const engine = demoEngine();
+    const set = await ok(engine.execute<M.Updates>("updates.hour.set", { networkId: MAPLE, hour: 4 }));
+    expect(set.preferredHour).toBe(4);
+    expect((await ok(engine.execute<M.Updates>("updates.get", { networkId: MAPLE }))).preferredHour).toBe(4);
+    expect(await ok(engine.execute<M.Updates>("updates.hour.set", { networkId: MAPLE, hour: 0 }))).toMatchObject({ preferredHour: 0 });
+  });
+
+  it("rejects hours outside 0 to 23 and anything else", async () => {
+    const engine = demoEngine();
+    for (const hour of [24, -1, 2.5, "3", null]) expect(await code(engine.execute("updates.hour.set", { networkId: MAPLE, hour })), String(hour)).toBe("bad_params");
+    expect(await code(engine.execute("updates.hour.set", { networkId: MAPLE }))).toBe("bad_params");
+    expect((await ok(demoEngine().execute<M.Updates>("updates.get", { networkId: MAPLE }))).preferredHour).toBe(2);
+  });
+});
+
+describe("updates write specs", () => {
+  it("declare effect, gate and the topics they invalidate", () => {
+    const info = Object.fromEntries(demoEngine().commands().map((c) => [c.id, c]));
+    expect(info["updates.install"]).toMatchObject({ effect: "disruptive", gate: { area: "eeros", op: "update", bridgeOff: false, capability: null } });
+    expect(info["updates.hour.set"]).toMatchObject({ effect: "write", gate: { area: "eeros", op: "update" } });
+    expect(updatesCommands.find((c) => c.id === "updates.install")?.invalidates).toEqual(["updates", "eeros", "network", "release_notes"]);
+    expect(updatesCommands.find((c) => c.id === "updates.hour.set")?.invalidates).toEqual(["updates"]);
+  });
+});
+
+describe("updates writes (fake eero server)", () => {
+  let fake: FakeEero | null = null;
+  afterEach(async () => {
+    await fake?.close();
+    fake = null;
+  });
+
+  /** A fake whose clock the test moves. */
+  function clocked() {
+    let t = NOW;
+    const f = createFakeEero({ now: () => t });
+    const eero = createEeroBackend({ secrets: secrets(f.signIn()), origin: f.origin, fetch: f.fetch });
+    const backend: Backend = { ...eero, auth: { ...eero.auth, status: async () => signedIn } };
+    return { fake: f, engine: createEngine({ backend, clock: () => t }), advance: (ms: number) => (t += ms) };
+  }
+
+  it("install: POST {net}/updates with the empty-JSON body, installing until the eeros return", async () => {
+    const s = clocked();
+    fake = s.fake;
+    expect(await code(s.engine.execute("updates.install", { networkId: "100001" }))).toBe("needs_confirm");
+    expect(s.fake.writes).toEqual([]);
+    const during = await ok(s.engine.execute<M.Updates>("updates.install", { networkId: "100001", confirm: true }));
+    expect(s.fake.writes).toEqual([expect.objectContaining({ method: "POST", version: "2.2", route: "/networks/100001/updates", encoding: "empty", rawBody: '""' })]);
+    expect(during).toMatchObject({ status: "installing", canUpdateNow: false, target: "7.11.0" });
+    // A second install while one runs is refused in core, with no request.
+    expect(await code(s.engine.execute("updates.install", { networkId: "100001", confirm: true }))).toBe("bad_params");
+    expect(s.fake.writes).toHaveLength(1);
+    s.advance(FAKE_INSTALL_MS);
+    const done = await ok(s.engine.execute<M.Updates>("updates.get", { networkId: "100001" }));
+    expect(done).toMatchObject({ status: "up_to_date", current: "7.11.0", target: null });
+    expect(done.eeros.every((e) => e.firmware === "7.11.0")).toBe(true);
+  });
+
+  it("install refuses an up-to-date network without a request", async () => {
+    const s = clocked();
+    fake = s.fake;
+    expect(await code(s.engine.execute("updates.install", { networkId: "100002", confirm: true }))).toBe("bad_params");
+    expect(s.fake.writes).toEqual([]);
+  });
+
+  it("hour.set: POST {net}/updates/preferred_update_hour JSON, and the next read shows it", async () => {
+    const s = clocked();
+    fake = s.fake;
+    expect((await ok(s.engine.execute<M.Updates>("updates.get", { networkId: "100001" }))).preferredHour).toBe(3);
+    const set = await ok(s.engine.execute<M.Updates>("updates.hour.set", { networkId: "100001", hour: 23 }));
+    expect(s.fake.writes).toEqual([
+      expect.objectContaining({ method: "POST", version: "2.2", route: "/networks/100001/updates/preferred_update_hour", encoding: "json", body: { preferred_update_hour: 23 } }),
+    ]);
+    expect(set.preferredHour).toBe(23);
+    // The cached updates read was invalidated, so updates.get reads again.
+    expect((await ok(s.engine.execute<M.Updates>("updates.get", { networkId: "100001" }))).preferredHour).toBe(23);
+  });
+
+  it("an eero error on the write is eero_error", async () => {
+    const s = clocked();
+    fake = s.fake;
+    s.fake.scenarios.add({ path: "/2.2/networks/100001/updates/preferred_update_hour" }, { replace: { status: 500, error: "error.internal" } });
+    expect(await code(s.engine.execute("updates.hour.set", { networkId: "100001", hour: 5 }))).toBe("eero_error");
   });
 });

@@ -498,6 +498,11 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       eeros: data.eeros.map((e) => ({ id: e.id, location: e.location, firmware: e.firmware })),
     };
   };
+  /** Admin writes eero allows only the owner (an admin gets 403, as on invites). */
+  const ownerOnly = (data: NetworkData): NetworkData => {
+    if (data.network.role !== "owner") throw new BackendError("eero_error", "Only the network owner can do that.", { status: 403 });
+    return data;
+  };
   /** Integrations a write needs: unavailable ones refuse, as eero answers 403 or 404. */
   const integrationIn = (data: NetworkData, key: M.IntegrationId) => {
     const it = data.integrations[key];
@@ -1160,30 +1165,25 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         return { admins: clone(data.admins), invites: clone(data.invites) };
       },
       createInvite: async (id, input) => {
-        const data = net(id);
+        const data = ownerOnly(net(id));
         const at = now();
         const invite: M.Invite = { id: nextId("demo-invite-"), nickname: input.nickname, createdAt: new Date(at).toISOString(), expiresAt: new Date(at + 2 * DAY).toISOString() };
         data.invites.unshift(invite);
         return { invite: clone(invite), inviteUrl: `https://invite.example.com/demo/${invite.id}`, expiresAt: invite.expiresAt };
       },
       cancelInvite: async (id, inviteId) => {
-        const data = net(id);
+        const data = ownerOnly(net(id));
         if (!data.invites.some((x) => x.id === inviteId)) notFound("invite");
         data.invites = data.invites.filter((x) => x.id !== inviteId);
       },
-      setNickname: async (id, adminId, nickname) => {
-        const a = net(id).admins.find((x) => x.id === adminId) ?? notFound("admin");
-        a.name = nickname;
-        return clone(a);
-      },
       remove: async (id, adminId) => {
-        const data = net(id);
+        const data = ownerOnly(net(id));
         const a = data.admins.find((x) => x.id === adminId) ?? notFound("admin");
         if (a.role === "owner") throw new BackendError("eero_error", "The owner cannot be removed.", { status: 400 });
         data.admins = data.admins.filter((x) => x.id !== a.id);
       },
       transfer: async (id, input) => {
-        const data = net(id);
+        const data = ownerOnly(net(id));
         // The new owner takes over; you stay on as an admin, as eero does.
         for (const a of data.admins) if (a.role === "owner") a.role = "admin";
         data.admins.unshift({ id: nextId("demo-admin-"), name: input.name, role: "owner", isYou: false });

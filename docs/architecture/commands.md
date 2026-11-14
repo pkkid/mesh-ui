@@ -426,8 +426,8 @@ with `unavailable` set to the reason, without calling eero's routing.
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `updates.get` | Software updates | `{}` | q | `GET {net}/updates`, `GET {net}/eeros` | `Updates`: current (the gateway's) and target eeroOS, can update now, scheduled time, preferred hour, per-eero versions (from the eeros; the updates object has none), stuck eeros from `last_user_update`. Status from `update_status`, else `has_update` and a scheduled time. Polls every 15 min. |
-| `updates.install` | Install update now | `{}` | d | `POST {net}/updates` empty-JSON | Only when `canUpdateNow`. Every eero restarts, about 10 minutes. |
-| `updates.hour.set` | Preferred update time | `{ hour: 0..23 }` | w | `POST {net}/updates/preferred_update_hour` JSON | |
+| `updates.install` | Install update now | `{}` | d | `POST {net}/updates` empty-JSON | Only when `canUpdateNow` and not already installing, else `bad_params` before the confirm. Every eero restarts, about 10 minutes; the confirm is `settings.impact`'s summary. Returns `Updates` read right after; the `updates`, `eeros` and `network` topics go stale again 10 minutes later. Gate `eeros` (no `updates` key in the real permissions). |
+| `updates.hour.set` | Set preferred update time | `{ hour: 0..23 }` | w | `POST {net}/updates/preferred_update_hour` JSON `{preferred_update_hour}` | Returns `Updates`. Gate `eeros`. The page offers Undo (the old hour) and "Use quietest" from `usage.quiet_hours`. |
 | `updates.notes` | Release notes | `{}` | q | `GET {net}/updates`, `GET {net}/eeros`, then `GET updates.manifest_resource` (absolute URL, not api-user) | `ReleaseNotes \| null` (null when eero names no manifest). The manifest is `{target, history[]}`, each `{title, os_version, release_date, features: string[]}`; the result is the entry (target or history) of the version being installed, else the one running now (leading `v` and build suffix ignored), null when the manifest has none. Fetched by `EeroClient.fetchPublic` **without** the session cookie or token header, https only (the fake server's own loopback origin is the one exception), no redirects, 1 MB cap. Cached 6 h (`release_notes`). |
 
 ### admins (`commands/admins.ts`)
@@ -435,11 +435,20 @@ with `unavailable` set to the reason, without calling eero's routing.
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `admin.list` | User permissions | `{}` | q | `GET {net}/members`, `GET {net}/invites` (plus the shared account and permissions reads) | `AdminList`: owner first then admins by name, invites newest first, seats used (members, owner included) of 10. eero sends no member email, so there is none. `isYou` is decided in core: the member whose name is the account name, narrowed by this network's role. Invites answer 403 for an admin; that part is empty, not an error. |
-| `admin.invite.create` | Invite an admin | `{ nickname?: string, email?: string }` | w | `POST {net}/invites` JSON `{invite_role: "admin"}`, then `PUT {net}/invites/{id}` `{invite_nickname}` | Returns `{ inviteUrl, expiresAt }` for the QR and copy link. Email sending, if any, is the user's mail app. |
-| `admin.invite.cancel` | Cancel invite | `{ invite: Ref }` | w | `DELETE {net}/invites/{id}` | |
-| `admin.nickname.set` **(added, unverified)** | Admin nickname | `{ admin: Ref, nickname: string(0..32) }` | w | unknown; only `PUT {net}/invites/{id}` `{invite_nickname}` is known, for invites | Ship only if a member nickname endpoint is found (MANUAL check in the eero app or a capture). Until then the UI shows nicknames read-only. |
-| `admin.remove` | Remove admin | `{ admin: Ref }` | x | `DELETE {net}/admins/{user_id}` | Owner only. Can not remove the owner. |
-| `network.transfer` | Transfer network | `{ name: string, email: string, phone?: string, networkName: string }` | x | `POST {net}/transfer` form `{name, email, phone}` | `networkName` must equal the current network name (the type-to-confirm step). Owner only. |
+| `admin.invite.create` | Invite an admin | `{ nickname?: string(1..32) }` | w | `GET {net}/invites`, `POST {net}/invites` JSON `{invite_role: "admin"}` (answers only `{invite_url}`), `GET {net}/invites` again to find the new row, then `PUT {net}/invites/{id}` JSON `{invite_nickname}` when a nickname is given | **Sensitive**: returns `{ invite, inviteUrl, expiresAt }`; the link makes whoever opens it an admin. `bad_params` when members plus pending invites fill the 10 seats. eero sends no email and has no email invite endpoint, so there is no `email` param: the link is shared by hand (QR or Copy link). Gate `network.admin_invites` create. |
+| `admin.invite.cancel` | Cancel invite | `{ invite: Ref }` | w | `DELETE {net}/invites/{id}` | The invite is an id or its nickname. Resend on the page is this on the old one, then `admin.invite.create` with the same nickname, so a full network keeps its seat. Gate `network.admin_invites` delete. |
+| `admin.remove` | Remove admin | `{ admin: Ref }` | x | `DELETE {net}/admins/{user_id}` | Owner only (eero answers 403 otherwise). `bad_params` for the owner. The page confirms by typing the person's name. Gate `network.standard_admins` delete. |
+| `network.transfer` | Transfer network | `{ name: string, email?: string, phone?: string, networkName: string }` | x | `POST {net}/transfer` form `{name, email}` or `{name, phone}` | Exactly one of `email` or `phone` (where eero sends it), else `bad_params`. `networkName` must equal the network's name or nickname (the type-to-confirm step), else `bad_params`. Returns `{ recipient, sentTo }`; the recipient becomes owner when they accept. Owner only. Gate `network.ownership_transfer` create and capability `ownership_transfer`. |
+
+There is no `admin.nickname.set` (dropped in M5.6): the M5.1 capture shows
+members carry no nickname or url, `{net}/admins` has no GET, and the clients
+only rename pending invites (`PUT {net}/invites/{id}`), so no member
+nickname request can be verified. Invite nicknames are set by
+`admin.invite.create`. The real `{net}/permissions` (M5.6 capture, keys
+only) names the admin areas `network.admin_invites`,
+`network.standard_admins` and `network.ownership_transfer`, which the gates
+above use; its `network.transfer` key is all false even for the owner, and
+it sends no `role`.
 
 ### activity (`commands/activity.ts`)
 

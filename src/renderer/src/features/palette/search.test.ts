@@ -181,6 +181,8 @@ describe("availability", () => {
     expect(signedOut.every((c) => c.info.scope !== "network")).toBe(true);
     const destructive = { ...info(commands, "device.list"), effect: "destructive" as const };
     expect(availability(destructive, { signedIn: true, permissions: { role: "admin", can: {} } })).toBe("Owner only");
+    // The real network sends no role (M5.6 capture): that is not an admin, so an owner's destructive commands stay usable.
+    expect(availability(destructive, { signedIn: true, permissions: { role: null, can: {} } })).toBeNull();
   });
 });
 

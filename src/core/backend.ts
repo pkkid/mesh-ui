@@ -323,16 +323,14 @@ export interface DiagnosticsBackend {
 
 export type InviteInput = { nickname: string | null; email: string | null };
 export type InviteCreated = { invite: M.Invite; inviteUrl: string; expiresAt: M.Iso | null };
-/** `phone` optional; `email` is where eero sends the transfer. */
-export type TransferInput = { name: string; email: string; phone: string | null };
+/** Exactly one of `email` or `phone`: where eero sends the transfer. */
+export type TransferInput = { name: string; email: string | null; phone: string | null };
 
 export interface AdminsBackend {
   /** Seats are counted in core. Invites a role cannot read are an empty list, not an error. */
   list(net: M.Id): Promise<Pick<M.AdminList, "admins" | "invites">>;
   createInvite(net: M.Id, input: InviteInput): Promise<InviteCreated>;
   cancelInvite(net: M.Id, invite: M.Id): Promise<void>;
-  /** No member nickname endpoint is known (M5.1 capture: members carry no nickname); M5.6 drops it if none is found. */
-  setNickname(net: M.Id, admin: M.Id, nickname: string | null): Promise<M.Admin>;
   remove(net: M.Id, admin: M.Id): Promise<void>;
   /** Hands the network to someone else (`POST {net}/transfer`). Owner only; cannot be undone. */
   transfer(net: M.Id, input: TransferInput): Promise<void>;
@@ -427,7 +425,7 @@ export const WRITE_METHODS = {
     "resetThread",
   ],
   diagnostics: ["run", "coverageScan", "upgradeReport"],
-  admins: ["createInvite", "cancelInvite", "setNickname", "remove", "transfer"],
+  admins: ["createInvite", "cancelInvite", "remove", "transfer"],
   integrations: ["setBuiltin", "setFfs", "discoverZigbee", "unlinkAmazon"],
   notifications: ["markRead", "setSettings"],
 } as const satisfies { [K in AreaName]?: readonly (keyof BackendAreas[K])[] };
