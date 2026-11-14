@@ -9,12 +9,19 @@
  * firmware and forwards per reservation (leased addresses are counted in core). Usage is generated per device and hour from its typical
  * daily traffic, and every scope (network, eero, profile, guest, device) and
  * breakdown sums the same per-device hours, so totals add up everywhere.
+ * Guests are the devices on the guest SSID, Wi-Fi bands merge the eeros'
+ * radios, and settings take DHCP, WAN and the ISP's DNS from the LAN map and
+ * internet fixtures.
+ *
+ * The `slow` and `errors` scenarios wrap every area but `auth`: reads wait
+ * `slowMs` first, or fail with `eero_error`, so loading and error states can
+ * be shown while sign-in and scenario switching keep working.
  */
 
-import { type Backend, type BreakdownQuery, type EventChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
+import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
-import { applyScenario, type ScenarioName } from "./scenario";
+import { applyScenario, type ReadMode, type ScenarioName } from "./scenario";
 
 export type DemoBackendOptions = {
   /** Epoch ms; injectable so tests are deterministic. */
@@ -22,6 +29,8 @@ export type DemoBackendOptions = {
   /** Seeds the filler events and the live-rate walk. */
   seed?: number;
   scenario?: ScenarioName;
+  /** How long each read waits in the `slow` scenario, in ms. */
+  slowMs?: number;
 };
 
 export interface DemoBackend extends Backend {
@@ -36,6 +45,9 @@ export const isDemoBackend = (b: Backend): b is DemoBackend => b.kind === "demo"
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 export const EVENT_PAGE_SIZE = 50;
+export const NOTIFICATION_PAGE_SIZE = 50;
+/** The `slow` scenario's delay per read. */
+export const SLOW_READ_MS = 1_500;
 const BURST_LEAD_MS = 3_000;
 const WRONG_CODE = "111111";
 
@@ -133,6 +145,15 @@ function sumHours(devices: M.Device[], data: NetworkData, from: number, to: numb
 
 const clone = <T>(v: T): T => structuredClone(v);
 
+/** Dotted mask for a prefix length: 22 gives 255.255.252.0. */
+function prefixMask(bits: number): string {
+  const n = bits <= 0 ? 0 : (0xffffffff << (32 - Math.min(32, bits))) >>> 0;
+  return [24, 16, 8, 0].map((s) => (n >>> s) & 0xff).join(".");
+}
+
+const WIRELESS: M.WirelessBand[] = ["2.4", "5", "6"];
+const uniqueSorted = (xs: (number | null)[]) => [...new Set(xs.filter((x): x is number => x !== null))].sort((a, b) => a - b);
+
 function notFound(what: string): never {
   throw new BackendError("eero_error", `No ${what} with that id.`, { status: 404 });
 }
@@ -148,12 +169,15 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
   let typical: Map<M.Id, M.DeviceRates>;
   let walk: Map<M.Id, number>;
   let burstStep = 0;
+  let reads: ReadMode = "normal";
+  const slowMs = opts.slowMs ?? SLOW_READ_MS;
 
   const reset = (name: ScenarioName) => {
     scenario = name;
     fx = createFixtures(now(), seed);
     const effect = applyScenario(fx, name, now());
     auth = { signedIn: effect.signedIn, pending: false, login: effect.signedIn ? fx.login : null };
+    reads = effect.reads;
     typical = new Map(fx.networks.flatMap((n) => n.devices.flatMap((d) => (d.rates ? [[d.id, d.rates] as const] : []))));
     walk = new Map();
     burstStep = 0;
@@ -245,6 +269,61 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     };
   };
 
+  const guestView = (data: NetworkData): M.GuestNetwork => {
+    const guests = data.devices.filter((d) => d.ssid === "guest");
+    return {
+      enabled: data.guest.enabled,
+      name: data.guest.name,
+      hasPassword: data.guest.password !== null,
+      online: data.guest.enabled ? guests.filter((d) => d.connected).length : 0,
+      deviceIds: guests.map((d) => d.id),
+      security: clone(data.guest.security),
+    };
+  };
+
+  /** Bands every eero radio offers, with channels and widths merged and clients from the devices. */
+  const wifiView = (data: NetworkData): M.WifiSettings => {
+    const on = data.devices.filter((d) => d.connected && d.band !== null && d.band !== "wired");
+    const bands = WIRELESS.flatMap((band) => {
+      const radios = data.eeros.flatMap((e) => e.radios.filter((r) => r.band === band));
+      if (!radios.length) return [];
+      return [{
+        band,
+        // A band is on while any eero is broadcasting on it (offline eeros report no channel).
+        on: radios.some((r) => r.channel !== null),
+        clients: on.filter((d) => d.band === band).length,
+        widthsMhz: uniqueSorted(radios.map((r) => r.widthMhz)),
+        channels: uniqueSorted(radios.map((r) => r.channel)),
+      }];
+    });
+    return {
+      ssid: data.network.name,
+      hasPassword: true,
+      security: clone(data.wifi.security),
+      wpa2OnlyDevices: [...data.wifi.wpa2OnlyDevices],
+      bands,
+      hide5g: clone(data.wifi.hide5g),
+      wirelessClients: on.length,
+    };
+  };
+
+  const settingsView = (data: NetworkData): M.NetworkSettings => {
+    const s = data.settings;
+    const lan = data.lan;
+    const bridged = data.network.connectionMode === "bridged" || lan === null;
+    const [subnetIp, bits] = lan ? (lan.subnet.split("/") as [string, string]) : [null, null];
+    return {
+      ...clone(s),
+      dns: { ...clone(s.dns), ispServers: s.dns.mode === "automatic" ? [...data.internet.dnsInUse] : [] },
+      dhcp: bridged
+        ? { mode: "bridged", subnetIp: null, subnetMask: null, gateway: null, startIp: null, endIp: null }
+        : { mode: "automatic", subnetIp, subnetMask: bits ? prefixMask(Number(bits)) : null, gateway: lan.gateway, startIp: lan.pool.start, endIp: lan.pool.end },
+      wan: { mode: data.internet.wanType ?? "dhcp", static: null, pppoeUsername: null, vlan: data.internet.vlan },
+      connectionMode: data.network.connectionMode,
+      timezone: data.network.timezone,
+    };
+  };
+
   /** Devices whose traffic counts toward a usage scope. */
   const scopeDevices = (data: NetworkData, scope: M.UsageScope, id: M.Id | null): M.Device[] => {
     switch (scope) {
@@ -270,11 +349,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     return { from, to };
   };
 
-  return {
-    kind: "demo",
-    scenario: () => scenario,
-    setScenario: reset,
-
+  const areas: BackendAreas = {
     auth: {
       status: async () => ({ signedIn: auth.signedIn, pending: auth.pending, login: auth.login, storage: "memory" }),
       start: async (login) => {
@@ -480,5 +555,77 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         return { events, nextCursor: next < data.events.length ? String(next) : null };
       },
     },
+
+    guest: {
+      get: async (id) => guestView(net(id)),
+      credentials: async (id) => {
+        const data = net(id);
+        return { ssid: data.guest.name ?? `${data.network.name} Guest`, password: data.guest.password };
+      },
+    },
+
+    wifi: {
+      get: async (id) => wifiView(net(id)),
+      credentials: async (id) => {
+        const data = net(id);
+        return { ssid: data.network.name, password: data.wifi.password };
+      },
+    },
+
+    settings: {
+      get: async (id) => settingsView(net(id)),
+      threadCredentials: async (id) => clone(net(id).threadCredentials),
+    },
+
+    diagnostics: {
+      latest: async (id) => clone(net(id).diagnostics),
+      support: async (id) => clone(net(id).support),
+    },
+
+    admins: {
+      list: async (id) => {
+        const data = net(id);
+        return { admins: clone(data.admins), invites: clone(data.invites) };
+      },
+    },
+
+    integrations: {
+      get: async (id) => clone(net(id).integrations),
+    },
+
+    notifications: {
+      list: async (id, cursor): Promise<NotificationChunk> => {
+        const data = net(id);
+        const offset = cursor === null ? 0 : Number(cursor);
+        if (!Number.isInteger(offset) || offset < 0) throw new BackendError("bad_params", "That notifications cursor is not valid.");
+        const next = offset + NOTIFICATION_PAGE_SIZE;
+        return { notifications: clone(data.notifications.slice(offset, next)), nextCursor: next < data.notifications.length ? String(next) : null };
+      },
+      unread: async (id) => net(id).notifications.some((n) => !n.read),
+      settings: async (id) => clone(net(id).notificationSettings),
+    },
+  };
+
+  /** Every method of an area, behind the scenario's read mode. `auth` is never wrapped. */
+  const gated = <T extends object>(area: T): T =>
+    new Proxy(area, {
+      get(target, key, receiver) {
+        const value = Reflect.get(target, key, receiver);
+        if (typeof value !== "function") return value;
+        return async (...args: unknown[]) => {
+          if (reads === "errors") throw new BackendError("eero_error", "eero did not answer (demo errors scenario).", { status: 503 });
+          if (reads === "slow") await new Promise((r) => setTimeout(r, slowMs));
+          return (value as (...a: unknown[]) => unknown).apply(target, args);
+        };
+      },
+    });
+
+  const wrapped = Object.fromEntries(AREA_NAMES.map((name) => [name, name === "auth" ? areas.auth : gated(areas[name])])) as unknown as BackendAreas;
+
+  return {
+    kind: "demo",
+    scenario: () => scenario,
+    setScenario: reset,
+    ...wrapped,
   };
 }

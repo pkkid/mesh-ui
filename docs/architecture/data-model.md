@@ -157,7 +157,6 @@ type Internet = {
   dnsMode: "automatic" | "custom" | null;
   doubleNat: boolean | null;
   gateway: { eeroId: Id; location: string; model: string | null; wanPortSpeedMbps: number | null } | null;
-  leaseRenewsAt: Iso | null;      // WAN DHCP lease renewal
   planMbps: { down: number; up: number } | null;   // from app settings, "set by you"
   lastSpeedTest: SpeedTest | null;
   verdict: { kind: "steady" | "slow" | "down"; title: string; detail: string | null } | null;  // built in core
@@ -196,7 +195,6 @@ type UsageBreakdown = {
 | `wanType` | `wan_type`, `lease.mode`, `pppoe_enabled` |
 | `ispGateway` | `gateway_ip` or `lease.dhcp.router` |
 | `dnsInUse`, `dnsMode` | `dns.parent.ips` or `dns.custom.ips`, `dns.mode` |
-| `leaseRenewsAt` | always null from eero: `lease.dhcp` has only `ip`, `mask`, `router` and `GET {net}` has no lease time (real capture, 2026-11-13). Only the demo fills it |
 | `verdict` | built in core from status, plan and the last speed test |
 | `gateway.wanPortSpeedMbps` | gateway eero `ethernet_status.statuses[isWanPort].speed` (`"P2500"` to 2500), only when that port `hasCarrier` (an unlinked port reports `"P10"`) |
 | `lastSpeedTest` | `speed.{date,down.value,up.value}` |
@@ -406,12 +404,12 @@ type Schedule = {
 };
 ```
 
-| Model | eero source (`GET {net}/profiles`, `{profile}/schedules`) |
+| Model | eero source (`GET {net}/profiles`, `GET {profile}`) |
 | --- | --- |
 | `name`, `paused` | `name`, `paused` |
 | `state` | `state.value` (`paused`, `active`, `schedule` = scheduled) |
 | `deviceIds` | `devices[].url` |
-| `schedules` | `{profile}/schedules` items, else `schedule[]` on the profile; days normalised from `MON` or `monday` |
+| `schedules` | `schedule[]` on the profile; days normalised from `MON` or `monday`. `GET {profile}/schedules` is a 404 on a real network although `resources.schedules` names it (capture, 2026-11-13) |
 | `nextChange` | computed in core from schedules and the network time zone |
 
 `premium_dns` and `unified_content_filters` are ignored (Plus).
@@ -419,7 +417,14 @@ type Schedule = {
 ## Guest and Wi-Fi
 
 ```ts
-type GuestNetwork = { enabled: boolean; name: string | null; hasPassword: boolean; online: number; security: Record<Exclude<Band, "wired">, Security | null> };
+type GuestNetwork = {
+  enabled: boolean;
+  name: string | null;
+  hasPassword: boolean;           // false: open; the password is only in guest.share
+  online: number;                 // guests connected now
+  deviceIds: Id[];                // every device seen on the guest network
+  security: Record<Exclude<Band, "wired">, Security | null>;
+};
 
 type WifiSettings = {
   ssid: string;
@@ -436,9 +441,10 @@ type WifiShare = { ssid: string; password: string | null; security: "WPA" | "nop
 
 | Model | eero source |
 | --- | --- |
-| `GuestNetwork` | `GET {net}/guestnetwork` `{name, enabled, password}`; online from devices with `is_guest` |
+| `GuestNetwork` | `GET {net}/guestnetwork` `{url, name, enabled, password, resources.password}` (the password is in the clear there and in the network's `guest_network`; only `guest.share` maps it); `online` and `deviceIds` from devices with `is_guest` (`{net}/guestnetwork/devices` is a 404) |
 | `ssid` | network `name` |
-| `security` | `GET {net}/wpa3_per_band` (`band_2_4_ghz`, `band_5_ghz`, `band_6_ghz`, case normalised) |
+| `security` | `GET {net}/wpa3_per_band` (`band_2_4_ghz`, `band_5_ghz`, case normalised; a real network sends no 6 GHz key, and 6 GHz is always WPA3) |
+| `WifiShare` password | network `password` (in the clear in `GET {net}`) or `GET {net}/password`; sensitive reads only |
 | `bands` | merged `radio_channel_stats` across eeros, clients from devices |
 | `hide5g` | `temporary_flags.hide_5g.{value,expires_on}` (or a bare bool) |
 | `WifiShare.qr` | `WIFI:T:WPA;S:<ssid>;P:<password>;;` with `\`, `;`, `,`, `:` escaped |
@@ -483,8 +489,10 @@ type Routing = { reservations: Reservation[]; forwards: Forward[]; pinholes: Pin
 | toggles | `upnp`, `sqm`, `band_steering`, `ipv6_upstream`, `nat_port_randomization`, `mlo_mode`, `power_saving`, `power_saving_schedule_enabled` |
 | `fastTransition` | `GET {net}/fast_transition` |
 | `legacyMode` | `GET {net}/ac_compat` |
-| `thread` | `GET {net}/thread` minus `master_key`, `commissioning_credential`, `active_operational_dataset` |
-| `ThreadCredentials` | those three fields |
+| `thread` | `GET {net}/thread` minus `master_key` and `commissioning_credential` (`borderAgent` is `border_agent.ip:port`; no device count is sent) |
+| `ThreadCredentials` | those two fields; `dataset` from `active_operational_dataset`, which a real network did not send (null) |
+| `powerSaving.schedules` | `GET {net}/power_saving/schedules` `{schedules: [{url, id, name, days, start_time, end_time, enabled}]}` (fields from the clients: the real list was empty) |
+| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings) |
 | `Reservation`, `Forward`, `Pinhole` | `GET {net}/routing` `reservations.data[]`, `forwards.data[]`, `pinholes.data[]`, joined to devices by MAC or IP |
 | `LanMap` | `dhcp.custom` (or defaults), reservations and connected device count |
 
@@ -515,8 +523,8 @@ type AdminList = { admins: Admin[]; invites: Invite[]; seatsUsed: number; seatsM
 | --- | --- |
 | `Updates` | `GET {net}/updates`: `has_update`, `update_required`, `can_update_now`, `target_firmware`, `scheduled_update_time`, `preferred_update_hour`, `last_update_started`, `last_user_update.{unresponsive_eeros,incomplete_eeros}` |
 | `ReleaseNotes` | `manifest_resource` JSON `{title, os_version, release_date, features}` |
-| `Admin` | `GET {net}/members` `{user_id, user_role, user_name, user_email}` |
-| `Invite` | `GET {net}/invites` `{invite_id, invite_nickname, created}`; expiry is created plus 48 h (MANUAL) |
+| `Admin` | `GET {net}/members` `{members: [{user_id: number, user_role, user_name, user_tags[]}]}`; a real network sent no email, so `email` is usually null |
+| `Invite` | `GET {net}/invites`, a bare array (empty in the capture; `{invite_id, invite_nickname, created}` per the clients); expiry is created plus 48 h (MANUAL). An admin may get a 403: an empty list, not an error |
 
 ## Activity and notifications
 
@@ -535,7 +543,15 @@ type NetworkEvent = {
 
 type EventPage = { events: NetworkEvent[]; nextCursor: string | null; counts: Record<EventCategory, number> };
 
-type Notification = { id: Id; at: Iso; title: string; body: string; read: boolean };
+type Notification = {
+  id: Id;
+  at: Iso;
+  title: string;
+  body: string;
+  read: boolean;
+  category: string | null;        // eero category as sent
+  refs: { deviceId?: Id };        // from meta.device_url
+};
 type NotificationPage = { notifications: Notification[]; unread: boolean; nextCursor: string | null };
 
 type NotificationSettings = { eero: Record<string, boolean>; push: { networkOffline: boolean; nodeOffline: boolean } | null; desktop: Record<string, boolean> };
@@ -543,9 +559,9 @@ type NotificationSettings = { eero: Record<string, boolean>; push: { networkOffl
 
 | Model | eero source |
 | --- | --- |
-| `NetworkEvent` | `GET {net}/app_events` `{event_type, title or message, created}`; `category` from a core table of `event_type` prefixes, unknown types go to `other` |
+| `NetworkEvent` | `GET {net}/app_events`. A real network answers `{events: [{hash, timestamp_ms, description, category}]}` (capture, 2026-11-13), not the clients' `{event_type, title or message, created}`; mapping it is M3.6. `category` from a core table, unknown values go to `other` |
 | `nextCursor` | `created` of the last event (the `timestamp` param) |
-| `Notification` | `notifications_history` `{uuid, title, body}` |
+| `Notification` | `notifications_history` `{notifications: [{uuid, category, title, body, created_at, meta{device_url?, network_url}}]}`; eero sends no read flag per row (how `read` is derived is M3.7's call) |
 | `unread` | `notifications/has_unread` (object or bare bool) |
 | `NotificationSettings.eero` | `GET {net}/notifications` flat map, keys kept as-is (`device.new`) |
 
@@ -562,7 +578,8 @@ type DiagnosticsResult = { status: string | null; issueArea: string | null; resu
 
 type SupportInfo = {
   supportId: string | null;
-  eero: { phone: string | null; email: string | null; helpUrl: string | null };
+  // who answers support for this network ({net}/support `name`), usually eero
+  eero: { name: string | null; phone: string | null; email: string | null; helpUrl: string | null; contactUrl: string | null; emailFormUrl: string | null };
   isp: { name: string | null; phone: string | null; url: string | null } | null;
 };
 ```
@@ -570,8 +587,27 @@ type SupportInfo = {
 | Model | eero source |
 | --- | --- |
 | `HealthReport` | composed in core from `NetworkHealth`, `Internet`, `Eero[]`, `Updates` and `GET {net}/diagnostics` |
-| `DiagnosticsResult` | `GET {net}/diagnostics` `{status, issue_area, results[]}` |
-| `SupportInfo` | `GET {net}/support` (2.2: `support_phone`, `contact_url`, `help_url`, `name`), account `log_id` |
+| `DiagnosticsResult` | `GET {net}/diagnostics`: a real network that has not run diagnostics sends only `{status}`; `issue_area` and `results[]` per the clients after a run |
+| `SupportInfo` | `GET {net}/support` (2.2: `support_phone`, `contact_url`, `help_url`, `email_web_form_url`, `name`, all strings), account `log_id` |
+
+## Integrations
+
+```ts
+type IntegrationId = "homekit" | "amazon" | "builtin" | "smart_home_hub" | "ffs";
+type Integration = { available: boolean; enabled: boolean | null; detail: string | null };
+type Integrations = Record<IntegrationId, Integration>;
+```
+
+| Model | eero source |
+| --- | --- |
+| `homekit` | network `homekit` (null when never set up) and capability |
+| `amazon` | network `amazon_account_linked` (the linked name is never mapped) |
+| `builtin` | network `proxied_nodes{enabled, devices[]}`; `GET {net}/proxied_nodes` is a 404 on a real network |
+| `smart_home_hub` | capability only (Zigbee radio); shape unverified |
+| `ffs` | network `ffs` |
+
+A 403 or 404 makes one integration unavailable (`enabled: null`), never an
+error for the whole read.
 
 ## App
 

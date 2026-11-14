@@ -36,6 +36,13 @@ export interface BackendAreas {
   events: EventsBackend;     // list(net, cursor): one page, newest first
   routing: RoutingBackend;   // get: reservations, forwards, pinholes, LAN map
   updates: UpdatesBackend;   // get
+  guest: GuestBackend;       // get (no password), credentials (sensitive)
+  wifi: WifiBackend;         // get (no password), credentials (sensitive)
+  settings: SettingsBackend; // get (no Thread secrets), threadCredentials (sensitive)
+  diagnostics: DiagnosticsBackend; // latest, support
+  admins: AdminsBackend;     // list: admins and invites (seats in core)
+  integrations: IntegrationsBackend; // get
+  notifications: NotificationsBackend; // list(net, cursor), unread, settings
 }
 
 export interface Backend extends BackendAreas {
@@ -43,16 +50,19 @@ export interface Backend extends BackendAreas {
 }
 ```
 
-The file holds the M1 and M2 methods, which are all reads plus sign-in.
+The file holds the M1 to M3 methods, which are all reads plus sign-in.
 M2.1 added `eero.ports`, `eero.firmwareHistory` and the `routing` and
 `updates` areas; the demo backend answers them, while the eero backend
 answers "not available yet" until the M2 stories that map them (M2.5 updates,
-M2.6 ports and firmware, M2.7 routing). Later milestones add their writes
-(renames, pause, restarts, settings) to the matching area, and new areas
-(guest, Wi-Fi, settings, admins, notifications, diagnostics) as they are
-built. There is no
-`activity` area: events have their own `events` area, and notifications
-will get theirs.
+M2.6 ports and firmware, M2.7 routing). M3.1 added the `guest`, `wifi`,
+`settings`, `diagnostics`, `admins`, `integrations` and `notifications`
+areas the same way: the demo backend answers them, and the eero backend
+answers "not available yet" until the M3 story that maps each one. Later
+milestones add their writes (renames, pause, restarts, settings) to the
+matching area. There is no `activity` area: events have their own `events`
+area and notifications theirs. Wi-Fi and guest passwords never travel in
+`get`; each has a `credentials` method that only the sensitive share and
+reveal commands call, and core builds the `WIFI:` QR payload.
 
 `SecretStore`, the host contract for the session token, is defined in the
 same file.
@@ -195,6 +205,21 @@ fixtures.
   for core's `reservation.list` to count, as with the eero backend); per-eero
   update versions come from the eeros. Bridge mode (Mom's House) answers
   routing with empty lists and no LAN map.
+- **Guest, Wi-Fi and settings (M3).** Guests are the devices with
+  `ssid: "guest"` (online only while the guest network is on); Wi-Fi bands
+  merge every eero's radios, with clients from the connected devices and a
+  band off when no eero broadcasts on it; settings take DHCP from the LAN
+  map (bridged in bridge mode), WAN and the ISP's DNS from the internet
+  fixture, and the connection mode and time zone from the network. Passwords
+  and Thread secrets come back only from the `credentials` and
+  `threadCredentials` methods.
+- **Notifications, admins, support, integrations (M3).** Stored per
+  network; `unread` is true when any stored notification is unread, and
+  notifications page by 50 like events.
+- **Read modes.** The `slow` scenario delays every method of every area but
+  `auth` by `slowMs` (1.5 s by default), and `errors` makes them fail with
+  `eero_error` (status 503), so loading and error states show in demo while
+  sign-in and `demo.scenario.set` keep working.
 - **Errors on purpose** (not yet built in M1, as it needs writes). A
   device named "Flaky Plug" fails writes with
   `eero_error` (`error.eero.offline`) so error states are reachable in the
@@ -213,15 +238,24 @@ fixtures.
   Mom's House (admin, 2 eeros).
 - Maple Street has about 38 devices across every category and band, 4
   profiles (Alex active, Jamie active, Mia scheduled with Bedtime and
-  Homework, Leo paused), a guest network with a few guests, 8 reservations,
-  5 port forwards (3 on Alex's MacBook Pro, 1 each on the Synology NAS and
-  PlayStation 5, all reserved), 2 IPv6 pinholes, Thread on, eeroOS 7.13.0
-  scheduled for the next 2 AM window, and one pending admin invite.
+  Homework, Leo paused), a guest network that is on with one guest seen this
+  week (Sam's Pixel, offline now), 8 reservations, 5 port forwards (3 on
+  Alex's MacBook Pro, 1 each on the Synology NAS and PlayStation 5, all
+  reserved), 2 IPv6 pinholes (on the reserved NAS and PlayStation 5),
+  Thread on, eeroOS 7.13.0 scheduled for the next 2 AM window, Wi-Fi on
+  2.4, 5 and 6 GHz with three WPA2-only devices, power saving with an
+  overnight schedule, a last diagnostics run with a mesh warning (the
+  Garage link), eero and ISP support contacts, two admins (Alex owner, Jamie
+  admin) and one pending invite, integrations with Amazon and eero Built-in
+  on, and six notifications, three unread.
+- Lake Cabin has an open guest network (no password) and Thread off. Mom's
+  House is in bridge mode: guest network off, no Thread, no power saving,
+  DHCP bridged, and Alex is an admin there (Rose Kim owns it), so invites
+  are empty.
 - Every eero has Ethernet ports except the Garage Beacon, a firmware
   history ending at its current version, tx power and auto channel per
   radio, and its LAN subnet and gateway. Devices have `fe80::` link-local
-  addresses built from their invented MACs. WAN leases renew in the future
-  (none for the offline Lake Cabin).
+  addresses built from their invented MACs.
 - Demo settings: `DEMO_SETTINGS` gives Maple Street the mockup 02 plan
   (1,200 Mbps down and up); Lake Cabin and Mom's House have none. Settings
   are host state, not backend state, so the demo hosts (app window, CLI)

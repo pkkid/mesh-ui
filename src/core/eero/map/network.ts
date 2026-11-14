@@ -230,15 +230,6 @@ function wanType(raw: RawNetworkWan): M.Internet["wanType"] {
   return null;
 }
 
-/**
- * When the WAN DHCP lease renews. eero sends no lease time: a real DHCP WAN
- * has only `lease.dhcp.{ip, mask, router}`, and no other date in `GET {net}`
- * is about the lease (capture of 2026-11-13). Always null from the live API.
- */
-export function leaseRenewsAt(_raw: RawNetwork): M.Iso | null {
-  return null;
-}
-
 /** `speed` on the network: the latest test. `rating` is left for core. */
 export function mapLastSpeedTest(raw: RawNetwork): M.SpeedTest | null {
   const at = toIso(raw.speed?.date);
@@ -286,7 +277,6 @@ export function mapInternet(raw: RawNetwork, eeros: RawEero[] = eerosOf(raw)): O
           wanPortSpeedMbps: portSpeedMbps(wanPort?.speed),
         }
       : null,
-    leaseRenewsAt: leaseRenewsAt(r),
     lastSpeedTest: mapLastSpeedTest(raw),
   };
 }

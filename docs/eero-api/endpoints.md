@@ -4,7 +4,9 @@ Reference for the unofficial eero cloud API that the mobile app uses, compiled
 2026-11-12 from the source of open source clients. Nothing here was tested
 against the live API by the Mesh UI project, and eero can change any of it
 without notice. Agents never call this API (see [Testing](../testing.md));
-the client that does is described in
+Rows that were checked with a read-only capture on a real network (key
+paths and types only) say so, and [Real captures for M3](#17-real-captures-for-m3-2026-11-13)
+lists them. The client that does is described in
 [architecture/eero-client.md](../architecture/eero-client.md), and the fields
 are in [data-model.md](data-model.md).
 
@@ -81,8 +83,8 @@ Approximate total: about 230 distinct eero API endpoints (method + path) across 
 | PUT | `{net}/label?labelType=specialMarket` | form `label` | - | W | LD | Network nickname shown in apps (not SSID). Read from `nickname_label`. |
 | POST | `{net}/reboot` | empty-JSON | - | **D** | SX, FF, LD, MX, ES, EH, DC, ED | **Reboots every eero on the network.** |
 | GET | `{net}/permissions` | - | `{role: "standard-admin"|..., permissions{<area>:{create,read,update,delete}, per_eero:[...]}}` | R | FF | What the signed-in user may do. Use to gate UI. |
-| GET | `{net}/members` | - | `{members:[{user_id, user_role: owner|admin|..., user_name, user_email?, user_tags}]}` | R | FF, LD | |
-| GET | `{net}/invites` | - | `[{invite_id, invite_nickname, created}]` | R | FF, LD | FF saw access-denied on a non-owner. |
+| GET | `{net}/members` | - | `{members:[{user_id, user_role: owner|admin|..., user_name, user_email?, user_tags}]}` | R | FF, LD | Real (2026-11-13): `{members: [{user_id: number, user_role, user_name, user_tags: string[]}]}`, no email. |
+| GET | `{net}/invites` | - | `[{invite_id, invite_nickname, created}]` | R | FF, LD | FF saw access-denied on a non-owner. Real (2026-11-13), owner, none pending: a bare empty array. |
 | POST | `{net}/invites` | JSON `{invite_role: "admin"}` | `{invite_url}` | W | FF, LD | Creates shareable admin invite link. |
 | PUT / DELETE | `{net}/invites/{invite_id}` | JSON `{invite_nickname}` | - | W | FF, LD | |
 | POST | `{net}/invites/response` | JSON `{invite_id}` or `{invite_code}` + accept/decline | - | W | FF, LD | |
@@ -118,19 +120,19 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | POST | `{eero}/pppoe` | JSON `{pppoe:{username,password}}` | W | FF | Returns encrypted credential blob for a later settings write. |
 | GET | `{net}/fast_transition` | - | R | FF, LD | `{fast_transition: bool}` (802.11r). |
 | PUT | `{net}/fast_transition` | JSON `{fast_transition: bool}` | W | FF, LD | |
-| GET | `{net}/wpa3_per_band` | - | R | FF, LD | `{band_2_4_ghz, band_5_ghz, band_6_ghz}` values `WPA2`/`WPA2_WPA3`/`WPA3` (case varies). |
+| GET | `{net}/wpa3_per_band` | - | R | FF, LD | `{band_2_4_ghz, band_5_ghz, band_6_ghz}` values `WPA2`/`WPA2_WPA3`/`WPA3` (case varies). Real (2026-11-13): only `band_2_4_ghz` and `band_5_ghz`, both strings. |
 | PUT | `{net}/wpa3_per_band` | JSON `{band_2_4_ghz?, band_5_ghz?}` | W | FF, LD | 6 GHz is always WPA3. |
 | PUT | `{net}/mlo_mode` | JSON `{mlo_mode: "disabled"|"single"|"multi"}` | W | FF, LD | Wi-Fi 7 multi-link. Shown when network has `mlo_mode`. |
 | GET / PUT | `{net}/ac_compat` | PUT form `enabled` | R/W | FF, LD, ES | Legacy 802.11ac compatibility mode. |
 | PUT | `{net}/passpoint/enabled` | JSON `{enabled}` | W | FF, LD | Hotspot 2.0. |
-| GET / PUT | `{net}/proxied_nodes` | JSON `{enabled}` | R/W | FF, LD | "eero Built-in" (Amazon/partner devices acting as nodes). Device list can be filtered with `?proxied_node=`. |
+| GET / PUT | `{net}/proxied_nodes` | JSON `{enabled}` | R/W | FF, LD | "eero Built-in" (Amazon/partner devices acting as nodes). Device list can be filtered with `?proxied_node=`. `GET` is a **404** on a real network (2026-11-13); the state is the network's embedded `proxied_nodes{enabled, devices[]}`. |
 | PUT | `{net}/power_saving` | JSON `{enable?, power_saving_schedule_enabled?}` | W | FF, LD | Read from network `power_saving`, `power_saving_schedule_enabled`. |
 | GET | `{net}/power_saving/schedules` | - | R | FF, LD | `{schedules:[{url,id,name,days[],start_time,end_time,enabled}]}` |
 | POST | `{net}/power_saving/schedules` | JSON `{name, days:["MON",...], start_time:"22:00", end_time:"07:00", enabled}` | W | FF, LD | |
 | PUT / DELETE | `{net}/power_saving/schedules/{id}` (or item `url`) | same fields | W | FF, LD | |
 | PUT | `{net}/ddns/enable` | none | W $ | SX, FF, LD | eero DDNS. State in `ddns{enabled, subdomain}`. |
 | PUT | `{net}/ddns/disable` | none | W $ | SX, FF, LD | |
-| GET | `{net}/thread` | - | R | SX, FF, LD, ES | `{url, enabled, enable_credential_syncing, name, channel, pan_id, xpan_id, master_key, commissioning_credential, active_operational_dataset, border_agent{ip,port}}`. Contains secrets. |
+| GET | `{net}/thread` | - | R | SX, FF, LD, ES | `{url, enabled, enable_credential_syncing, name, channel, pan_id, xpan_id, master_key, commissioning_credential, active_operational_dataset, border_agent{ip,port}}`. Contains secrets. Real (2026-11-13): no `active_operational_dataset`; `border_agent{ip: string, port: number}`. |
 | PUT | `{net}/thread` | JSON `{thread_enable?: bool, enable_credential_syncing?: bool}` | W | FF, LD | FF corrected key to `thread_enable`. |
 | PUT | `{net}/thread/enable` | JSON `{enabled: bool}` | W | SX | Older path used by SX. |
 | POST | `{net}/thread` | none | **D** | FF, LD | **Regenerates Thread credentials**: every Thread device must re-pair. |
@@ -202,7 +204,7 @@ No factory-reset endpoint was found in any client. Closest are `DELETE {eero}` a
 | PUT | `{profile}` | JSON `{name}` | profile | W | FF, LD | Rename. |
 | PUT | `{profile}` | JSON `{devices: [{url: <device url>}, ...]}` | profile | W | FF, LD | **Replaces** full membership list. |
 | DELETE | `{profile}` | - | - | **D** | FF, LD | Devices become unassigned. |
-| GET | `{profile}/schedules` (`resources.schedules`) | - | `[schedule]` | R | FF, LD | |
+| GET | `{profile}/schedules` (`resources.schedules`) | - | `[schedule]` | R | FF, LD | **404 on a real network (2026-11-13)** although `resources.schedules` names it: schedules come only from the profile's own `schedule[]`. |
 | POST | `{profile}/schedules` | JSON `{name, days: ["MON","TUE",...] (LD) or lowercase names (FF), start: "22:00", end: "07:00", enabled: true}` | schedule | W | FF, LD | Scheduled pause ("Bedtime"). End before start wraps past midnight. Network timezone. |
 | PUT / DELETE | `{schedule url}` | same fields | - | W | FF, LD | |
 | PUT | `{profile}` | JSON `{schedule: ...}`, `{dns_policies: ...}`, `{blocked_applications: ...}` | - | (no-op) | EH | FF verified writing filters/schedules onto the profile object does nothing. Use `dns_policies` and `schedules` endpoints. |
@@ -250,8 +252,8 @@ Response shape (charts): `{network_id, start, end, series: [{type | insight_type
 | GET | `{net}/insights` | `start,end,cadence,insight_type` | R $ | SX, FF, LD | Security activity (threats blocked, ads blocked, sites inspected). |
 | GET | `{net}/insights/devices`, `/insights/devices/{mac}` | same | R $ | SX, FF, LD | `{insight_type, insights:[{nickname, hostname, manufacturer, device_type, sum, insights_url}]}` |
 | GET | `{net}/insights/profiles`, `/insights/profiles/{id}`, `/insights/profiles/{id}/devices` | same | R $ | SX, FF, LD | |
-| GET | `{net}/app_events` | `page_size=50`, `timestamp?` (paging cursor) | R | FF, LD | Network event log (`message/title, event_type, created`). |
-| GET | `{net}/notifications_history` | `limit=50`, `timestamp?` | R | FF, LD | Recent notifications `{uuid, title, body}`. LD polls this once a minute for desktop alerts. |
+| GET | `{net}/app_events` | `page_size=50`, `timestamp?` (paging cursor) | R | FF, LD | Network event log (`message/title, event_type, created`). Real shape (2026-11-13) differs: `{events: [{hash, timestamp_ms, description, category}]}`, no `event_type`, `title` or `created`. |
+| GET | `{net}/notifications_history` | `limit=50`, `timestamp?` | R | FF, LD | Recent notifications `{uuid, title, body}`. LD polls this once a minute for desktop alerts. Real shape (2026-11-13): `{notifications: [{uuid, category, title, body, created_at, meta{device_url?, network_url}}]}`; no read flag per row. |
 | GET | `{net}/channel_utilization` | `start,end` required; `eero_id?, band?, granularity?, busy_threshold?, gap_data_placeholder?` | R $ | FF, LD | `{utilization:[{eero_id, channel, band, frequency, channel_bandwidth, average_utilization, max_utilization, p99_utilization, minutes_over_busy_threshold, acs_events[], time_series_data[]}], bands[], eeros[{eero_id, role, location, wired}]}` |
 | GET | `{net}/network_scan` | - | R | FF, LD | Neighbour/channel scan, e.g. `{conflicting_ssid: false}`. |
 
@@ -261,7 +263,7 @@ Response shape (charts): `{network_id, start, end, series: [{type | insight_type
 |---|---|---|---|---|---|---|
 | GET | `{net}/speedtest` (`resources.speedtest`) | `limit?`, `startTime?`, `endTime?` (camelCase) | `[{date, down_mbps, up_mbps}]` | R | FF, LD, ES, EH | History. Latest also in network `speed{status, date, down{value,units}, up{value,units}}`. |
 | POST | `{net}/speedtest` | empty-JSON / none | `null` (HTTP 202) | W | SX, FF, LD, ES, EH | Result appears ~1 min later. Uses WAN bandwidth for ~30 s. |
-| GET | `{net}/diagnostics` | - | `{status, issue_area, results[...]}` | R | FF, LD, ES, EH | |
+| GET | `{net}/diagnostics` | - | `{status, issue_area, results[...]}` | R | FF, LD, ES, EH | Real (2026-11-13), no run yet: only `{status: string}`. |
 | POST | `{net}/diagnostics` | none, or JSON `{symptom: "internet_slow"|"internet_offline"|"connection_drops"|"eeros_red", device?}` | - | W | FF, LD, EH | Runs cloud diagnostics. |
 | POST | `{net}/dns_perf_test` | JSON `{servers: [{ip, port: 53}]}` (1-8) | `{action_uuid}` | W | LD | Compare resolver latency. |
 | GET | `{net}/dns_perf_test/{action_uuid}` | - | results | R | LD | |
@@ -347,6 +349,39 @@ Backup internet (`$` rows) is eero Plus and out of scope. Multi-WAN and multi st
 | POST | `/2.3/networks/{id}/shh/start_zigbee_discovery` | W | LD | Amazon smart home hub. |
 | GET / DELETE | `{net}/accessories/setup/status`, `{net}/accessories/{serial}`, `{net}/sip_config_associations/{eero_id}` | R/W | LD | Accessories / cellular. |
 | GET / POST / PUT | `/2.2/conversations*` | R/W | LD | eero AI assistant chat (streaming). |
+
+## 17. Real captures for M3 (2026-11-13)
+
+One read-only `GET` of each endpoint on the maintainer's network (owner, one
+network, app-like User-Agent), recorded as key paths and types
+only: no values were printed or kept. `[]` is an array element, `?` a field
+seen only on some rows, `a or b` a field seen with both types. Shapes of empty
+lists are not known from the capture; their element fields come from the
+clients and are marked so in `src/core/eero/raw.ts`.
+
+| Endpoint | Result | Key paths and types |
+|---|---|---|
+| `{net}` (settings fields) | 200 | `password`: string; `dns{mode: string, parent{ips: string[]}, custom: null, caching: bool, default_test_servers[]{name, ipv4[], ipv6[]}}`; `dhcp{mode: string, custom: null, custom_v2: null}`; `lease{mode, dhcp{ip, mask, router}, static: null}`; `connection{mode}`; `upnp`, `nat_port_randomization`, `ipv6_upstream`, `thread`, `sqm`, `band_steering`, `wpa3`, `power_saving`, `power_saving_schedule_enabled`, `enable_ndproxy`, `backup_internet_enabled`, `amazon_account_linked`, `ffs`, `alexa_skill`, `amazon_device_nickname`: bool; `wireless_mode`, `mlo_mode`, `auto_setup_mode`, `wan_type`, `network_customer_type`: string; `ipv6{name_servers{mode: string, custom: []}}`; `ipv6_lease`, `pppoe_username`, `pppoe_enabled`, `vlan`, `homekit`, `ipip6`, `cellular_backup`: null; `temporary_flags`: object (empty); `guest_network{url, name, password: string, enabled: bool, resources{password}}`; `proxied_nodes{enabled: bool, devices[]{url, client_device_url, mac_address, ip_address, display_name, model_name, manufacturer, status, enabled, is_meshing, is_guest, blocked, paused, serial, os, os_version, first_seen, first_active, connection{...}, profile{url, name}, warnings?, alert_info?}}`; `ddns{enabled: bool, subdomain: string}` ($); `timezone{value, geo_ip}` |
+| `{net}/guestnetwork` | 200 | `url`, `name`, `password`: string; `enabled`: bool; `resources{password: string}` |
+| `{net}/wpa3_per_band` | 200 | `band_2_4_ghz`, `band_5_ghz`: string (no 6 GHz key) |
+| `{net}/fast_transition` | 200 | `fast_transition`: bool |
+| `{net}/power_saving/schedules` | 200 | `schedules`: array (empty) |
+| `{net}/power_saving` | 404 | (read from the network's `power_saving` fields) |
+| `{net}/thread` | 200 | `url`, `name`, `xpan_id`, `pan_id`, `master_key`, `commissioning_credential`: string; `enabled`, `enable_credential_syncing`: bool; `channel`: number; `border_agent{ip: string, port: number}`. Two secrets; no dataset |
+| `{net}/ac_compat` | 200 | `enabled`: bool |
+| `{net}/routing` | 200 | `url`; `devices{url, data[]{url, mac, nickname: string or null}}`; `reservations{url, data[]{url, device, mac, description, ip}}`; `forwards{url, data[]{url, ip, description, gateway_port: string, client_port: string, protocol, enabled: bool, reservation}}`; `pinholes{url, data: []}` (empty) |
+| `{net}/profiles` | 200 | array: `url`, `name`, `paused`, `default`, `resources{schedules}`, `devices[]` (device rows), `schedule`: [] (empty), `state{value: string, schedule: null}`, `proxied_nodes[]`, `premium_dns{...}` ($), `unified_content_filters{...}` ($) |
+| `{profile}` | 200 | same object as one `{net}/profiles` row |
+| `{profile}/schedules` | 404 | |
+| `{net}/app_events` | 200 | `events[]{hash: string, timestamp_ms: number, description: string, category: string}` |
+| `{net}/notifications_history` | 200 | `notifications[]{uuid, category, title, body, created_at: string, meta{device_url?: string, network_url: string}}` |
+| `{net}/notifications` | 200 | flat map, keys with dots, all bool: `device.new`, `device.restrict.new.private`, `network.updated`, `network.dataUsageReport`, `permissions.updates`, `port.security.blocked`, `network.scheduledUpdate.earlyNotification`, `network.scheduledUpdate.lateNotification`, `premium.activity.weeklyReport` ($), `backup.internet.status.change` ($), `backup.wan.change` ($) |
+| `{net}/diagnostics` | 200 | `status`: string |
+| `{net}/support` | 200 | `support_phone`, `contact_url`, `help_url`, `email_web_form_url`, `name`: string |
+| `{net}/members` | 200 | `members[]{user_id: number, user_role: string, user_name: string, user_tags: string[]}` |
+| `{net}/invites` | 200 | bare array (empty) |
+| `{net}/proxied_nodes` | 404 | (state is the network's embedded `proxied_nodes`) |
+| `{net}/guestnetwork/devices` | 404 | (guests are devices with `is_guest`) |
 
 ---
 
