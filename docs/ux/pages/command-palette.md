@@ -50,9 +50,10 @@ Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. 
 | Tab | none | | | Moves focus into the params form |
 | Enter or run button on a page, device or profile | none (navigation) | | | Palette closes and the page, device or profile page opens |
 | Enter or run button (query) | `window.mesh.execute(id, params)` | query | no | The result (or error) JSON shows in the preview; the palette stays open |
-| Enter or run button (write) | `window.mesh.execute(id, params)` | write | no | Later milestone; until then dimmed with "Coming soon" |
-| Enter or run button (disruptive or destructive) | `window.mesh.execute(id, {...params, confirm: true})` after the confirm | per command | the shared confirm dialog first | Later milestone; until then dimmed with "Coming soon" |
-| Device or profile row action | `device.pause`, `device.resume`, `profile.pause`, `profile.resume` | write | no | Later milestone; until then dimmed with "Coming soon" |
+| Enter or run button (write) | `window.mesh.execute(id, params)` through `useWrite` | write | no | Success toast ("Done: Pause device, Leo's iPad"), or an error toast with Retry; the result envelope shows in the preview and the palette stays open |
+| Enter or run button (disruptive) | `useWrite`: runs once without `confirm`, then `{...params, confirm: true}` after the confirm | disruptive | inline confirm in place of the run button, with the engine's `needs_confirm` message | Progress toast, then success or error toast |
+| Enter or run button (destructive) | as disruptive | destructive | the confirm dialog over the palette; type the target's name when the command has an entity param | Success or error toast |
+| Device or profile row action (preview Actions button) | `device.pause`, `device.resume`, `profile.pause`, `profile.resume`, the entity in the command's picker param | write | no | Toast "Paused Leo's iPad" with Undo (the opposite action). "Coming soon" until the command is in the registry |
 | Command shortcut (e.g. `Ctrl Shift P`) | opens the palette on that command with params focused | | | |
 | Copy (CLI block) or `Ctrl C` | none | | | Copies the CLI line |
 | Add to script.jsonl | none (app local) | | | Appends `{"id", "params"}` to a script file chosen once with a save dialog |
@@ -67,13 +68,15 @@ Commands shown in the mockup: `profile.pause`, `device.pause`, `wifi.hide5g.set`
 - **Loading entities:** command results show at once; device and profile groups show a muted "Loading..." row.
 - **Invalid params:** the run button is disabled and the field shows the zod message (the same text `bad_params` returns).
 - **Not signed in:** only app and auth commands are listed (no pages, devices or profiles). The sign-in commands themselves (`auth.login.*`) are never listed; they need the sign-in screen.
-- **No permission:** commands the user cannot run (per `network.permissions`) are listed dimmed with "Owner only" or "Not allowed", and Enter does nothing. Today: `destructive` commands for a non-owner say "Owner only".
-- **Capability missing or bridge mode:** commands unavailable on this network are dimmed with the reason.
-- **Error after run:** toast with the error code message; the palette reopens on the same command if the user presses `Ctrl K` again.
+- **No permission:** writes the user cannot run (per `network.permissions`) are listed dimmed with the reason beside the effect tag and the run button, and Enter does nothing: "Owner only" for an admin (and for every `destructive` command when the user is not the owner), "You don't have permission to change this" otherwise. The permission area comes from the id's area (`device` is `devices`, `wifi` and `guest` are `settings`, ...) and the operation from the verb (`create`/`add`, `delete`/`remove` or destructive, else `update`); see `commandGate` in `features/palette/search.ts`.
+- **Capability missing or bridge mode:** writes unavailable on this network are dimmed with "Not available on this network" (a `network.get` capability such as `device_blacklist` for block, `led_action` for the status light) or "Off in bridge mode" (pause, block, profiles, reservations, forwards, SQM). The same `gateFor` check the pages use (`app/useWrite.ts`). The engine still has the last word when a command runs.
+- **Confirm pending:** moving to another result cancels it; nothing has run.
+- **Error after run:** toast with the error code message and Retry; the result envelope shows in the preview.
 
 ## Notes
 
-- The palette is a surface like any other. It must not hold its own copy of what a command does; everything comes from the registry (`id`, `label`, `effect`, `params` JSON Schema). `description` and `icon` are optional spec fields defined in [commands.md](../../architecture/commands.md#the-spec); shortcuts stay in the renderer.
+- The palette is a surface like any other. Writes go through the write kit (`useWrite`, `writeRequest` in `search.ts`) built from the registry entry alone: no command has palette-specific code. Generic toast copy is "Done: <label>[, <target>]", where the target is the first entity picker's value.
+- The palette must not hold its own copy of what a command does; everything comes from the registry (`id`, `label`, `effect`, `params` JSON Schema). `description` and `icon` are optional spec fields defined in [commands.md](../../architecture/commands.md#the-spec); shortcuts stay in the renderer.
 - The params form reads the JSON Schema from the registry: a string param whose description says "A device id or exact name" (or "this eero (id ...)") is an entity picker filled from the cached lists, sending the name as the CLI would; enums of up to four short options and optional booleans are segmented controls; larger enums are selects; arrays are comma separated. Messages come from zod (`z.fromJSONSchema`, jitless for the CSP), the same text `bad_params` returns; a required field nobody has filled in yet is marked instead.
 - MCP tool names come from the id with dots replaced by underscores; hints come from `effect` exactly as in AGENTS.md. The renderer cannot import `src/cli/mcp.ts` (it pulls in the MCP SDK), so `search.ts` has its own copy and a test checks it against `toTool` for every command.
 - "Pause unassigned devices" is `profile.unassigned.pause` (write; the UI asks first because it includes TVs and smart home gear).

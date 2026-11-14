@@ -1,16 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { createDemoBackend } from "../../../../core/demo";
 import { createEngine } from "../../../../core/engine";
-import type { DeviceList, Eero, ProfileList } from "../../../../core/model";
-import type { CommandInfo } from "../../../../core/registry";
+import type { DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
+import { allCommands, type CommandInfo } from "../../../../core/registry";
+import { type AnyCommand, defineCommand, ref } from "../../../../core/spec";
+import { BRIDGE_OFF, type ConfirmAsk, NO_PERMISSION, NOT_AVAILABLE, performWrite, type WriteDeps } from "../../app/useWrite";
+import { toast } from "../../components/ui/toast";
 import {
   availability,
   chosenParams,
   cliLine,
   commandItems,
+  commandGate,
   defaultParams,
   deviceItems,
+  entityWrite,
   highlightParts,
   matchText,
   mcpCall,
@@ -21,6 +27,8 @@ import {
   search,
   missingRequired,
   validateParams,
+  withActions,
+  writeRequest,
 } from "./search";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
@@ -161,16 +169,199 @@ describe("search", () => {
 });
 
 describe("availability", () => {
-  it("runs queries, says Coming soon for writes and hides network commands when signed out", async () => {
+  it("runs queries and writes, and hides network commands when signed out", async () => {
     const { commands } = await demo();
     expect(availability(info(commands, "device.list"), SIGNED_IN)).toBeNull();
-    expect(availability(info(commands, "network.select"), SIGNED_IN)).toBe("Coming soon");
+    expect(availability(info(commands, "network.select"), SIGNED_IN)).toBeNull();
+    expect(availability(info(commands, "device.rates.refresh"), SIGNED_IN)).toBeNull();
     expect(availability(info(commands, "auth.login.start"), SIGNED_IN)).toBe(false);
     const signedOut = commandItems(commands, { signedIn: false, permissions: null });
     expect(signedOut.length).toBeGreaterThan(0);
     expect(signedOut.every((c) => c.info.scope !== "network")).toBe(true);
     const destructive = { ...info(commands, "device.list"), effect: "destructive" as const };
     expect(availability(destructive, { signedIn: true, permissions: { role: "admin", can: {} } })).toBe("Owner only");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Writes. The real device, profile and network writes land in parallel M4
+// stories, so these test-only specs stand in for them (any real spec with the
+// same id is swapped out). Each keeps its own state so a run is visible.
+
+type Kit = { paused: Set<string>; restarts: number; profiles: string[] };
+
+function writeSpecs(kit: Kit): AnyCommand[] {
+  const device = z.object({ device: ref("device") });
+  return [
+    defineCommand({
+      id: "device.pause",
+      label: "Pause device",
+      effect: "write",
+      params: device,
+      run: async (_ctx, p) => (kit.paused.add(p.device), { paused: [...kit.paused] }),
+    }),
+    defineCommand({
+      id: "device.resume",
+      label: "Resume device",
+      effect: "write",
+      params: device,
+      run: async (_ctx, p) => (kit.paused.delete(p.device), { paused: [...kit.paused] }),
+    }),
+    defineCommand({ id: "device.block", label: "Block device", effect: "write", params: device, run: async () => ({}) }),
+    defineCommand({
+      id: "network.restart",
+      label: "Restart network",
+      effect: "disruptive",
+      params: z.object({}),
+      confirmMessage: () => "Everyone loses internet for about 2 to 3 minutes.",
+      run: async () => ({ restarts: ++kit.restarts }),
+    }),
+    defineCommand({
+      id: "eero.reboot",
+      label: "Restart eero",
+      effect: "disruptive",
+      params: z.object({ eero: ref("eero") }),
+      run: async () => ({}),
+    }),
+    defineCommand({
+      id: "profile.delete",
+      label: "Delete profile",
+      effect: "destructive",
+      params: z.object({ profile: ref("profile") }),
+      run: async (_ctx, p) => ((kit.profiles = kit.profiles.filter((n) => n !== p.profile)), { profiles: kit.profiles }),
+    }),
+  ];
+}
+
+function writeSetup(answers: boolean[] = []) {
+  const kit: Kit = { paused: new Set(), restarts: 0, profiles: ["Mia", "Leo"] };
+  const specs = writeSpecs(kit);
+  const ids = new Set(specs.map((c) => c.id));
+  const engine = createEngine({
+    backend: createDemoBackend({ clock: () => NOW }),
+    clock: () => NOW,
+    commands: [...allCommands().filter((c) => !ids.has(c.id)), ...specs],
+  });
+  const asks: ConfirmAsk[] = [];
+  const executed: { id: string; params: unknown }[] = [];
+  const deps: WriteDeps = {
+    execute: (id, params) => (executed.push({ id, params }), engine.execute(id, params)),
+    info: async (id) => engine.commands().find((c) => c.id === id),
+    ask: async (a) => (asks.push(a), answers.shift() ?? false),
+    invalidate: () => {},
+  };
+  return { kit, engine, commands: engine.commands(), deps, asks, executed };
+}
+
+async function read<R>(engine: ReturnType<typeof createEngine>, id: string): Promise<R> {
+  const r = await engine.execute<R>(id, {});
+  if (!r.ok) throw new Error(r.error.message);
+  return r.result;
+}
+
+describe("dimming writes", () => {
+  it("reads the permission area, op, bridge mode and capability from the id", () => {
+    const at = (id: string, effect: CommandInfo["effect"] = "write") => commandGate({ id, effect, scope: "network" });
+    expect(at("device.pause")).toEqual({ area: "devices", op: "update", bridgeOff: true, capability: undefined });
+    expect(at("device.block")).toMatchObject({ bridgeOff: true, capability: "device_blacklist" });
+    expect(at("profile.create")).toMatchObject({ area: "profiles", op: "create", bridgeOff: true });
+    expect(at("profile.delete", "destructive")).toMatchObject({ area: "profiles", op: "delete" });
+    expect(at("wifi.name.set", "disruptive")).toMatchObject({ area: "settings", op: "update", bridgeOff: false });
+    expect(at("device.list", "query")).toBeNull();
+    expect(commandGate({ id: "network.select", effect: "write", scope: "account" })).toBeNull();
+  });
+
+  it("dims by role, permission, bridge mode and capability, with the reason", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    const owner = await read<Permissions>(t.engine, "network.permissions");
+    const admin: Permissions = {
+      role: "admin",
+      can: { ...owner.can, eeros: { read: true, create: false, update: false, delete: false } },
+    };
+    const member: Permissions = { role: null, can: { ...owner.can, devices: { read: true, create: false, update: false, delete: false } } };
+    const on = (permissions: Permissions, net: Network = network) => ({ signedIn: true, permissions, network: net });
+    const av = (id: string, ctx: ReturnType<typeof on>) => availability(info(t.commands, id), ctx);
+
+    for (const id of ["device.pause", "device.block", "network.restart", "eero.reboot", "profile.delete"]) {
+      expect(av(id, on(owner))).toBeNull();
+    }
+    expect(av("eero.reboot", on(admin))).toBe("Owner only");
+    expect(av("profile.delete", on(admin))).toBe("Owner only");
+    expect(av("device.pause", on(member))).toBe(NO_PERMISSION);
+    const bridged = { ...network, connectionMode: "bridged" as const };
+    expect(av("device.pause", on(owner, bridged))).toBe(BRIDGE_OFF);
+    expect(av("network.restart", on(owner, bridged))).toBeNull();
+    const noBlock = { ...network, capabilities: { ...network.capabilities, device_blacklist: false } };
+    expect(av("device.block", on(owner, noBlock))).toBe(NOT_AVAILABLE);
+    expect(av("device.pause", on(owner, noBlock))).toBeNull();
+
+    // Dimmed items carry the reason into the result list.
+    const items = commandItems(t.commands, on(owner, bridged));
+    expect(items.find((c) => c.info.id === "device.pause")?.unavailable).toBe(BRIDGE_OFF);
+  });
+});
+
+describe("running writes", () => {
+  beforeEach(() => toast.clear());
+
+  it("runs a write on Enter with a success toast and no confirm", async () => {
+    const t = writeSetup();
+    const pause = info(t.commands, "device.pause");
+    const res = await performWrite(writeRequest(pause, pause.label, { device: "Leo's iPad" }), t.deps);
+    expect(res).toMatchObject({ ok: true, result: { paused: ["Leo's iPad"] } });
+    expect(t.asks).toEqual([]);
+    expect(t.executed).toEqual([{ id: "device.pause", params: { device: "Leo's iPad" } }]);
+    expect(toast.list()).toMatchObject([{ kind: "success", title: "Done: Pause device, Leo's iPad" }]);
+  });
+
+  it("asks before a disruptive command with the engine's message, then runs it with confirm", async () => {
+    const t = writeSetup([true]);
+    const restart = info(t.commands, "network.restart");
+    const req = writeRequest(restart, restart.label, {});
+    expect(req.progress).toBe("Restart network");
+    const res = await performWrite(req, t.deps);
+    expect(res).toMatchObject({ ok: true, result: { restarts: 1 } });
+    expect(t.asks).toMatchObject([
+      { id: "network.restart", effect: "disruptive", title: "Restart network?", message: "Everyone loses internet for about 2 to 3 minutes." },
+    ]);
+    expect(t.executed.map((e) => e.params)).toEqual([{}, { confirm: true }]);
+    expect(toast.list()).toMatchObject([{ kind: "success", title: "Done: Restart network" }]);
+  });
+
+  it("runs nothing when the confirm is cancelled", async () => {
+    const t = writeSetup([false]);
+    const restart = info(t.commands, "network.restart");
+    expect(await performWrite(writeRequest(restart, restart.label, {}), t.deps)).toBeNull();
+    expect(t.kit.restarts).toBe(0);
+    expect(toast.list()).toEqual([]);
+  });
+
+  it("asks to type the target's name before a destructive command", async () => {
+    const t = writeSetup([true]);
+    const del = info(t.commands, "profile.delete");
+    const res = await performWrite(writeRequest(del, del.label, { profile: "Mia" }), t.deps);
+    expect(res).toMatchObject({ ok: true, result: { profiles: ["Leo"] } });
+    expect(t.asks).toMatchObject([{ effect: "destructive", title: "Delete profile: Mia?", typeToConfirm: "Mia", confirmLabel: "Delete profile" }]);
+  });
+
+  it("device and profile row actions run their command with Undo, and say Coming soon until it exists", async () => {
+    const t = writeSetup();
+    const d = await demo();
+    const [row] = withActions(deviceItems(d.devices.devices, d.profiles, d.eeros), t.commands, SIGNED_IN).filter((r) => r.action === "Pause");
+    expect(row?.actionBlocked).toBeNull();
+    const req = row ? entityWrite(row, t.commands) : null;
+    expect(req).toMatchObject({ id: "device.pause", params: { device: row?.id }, undo: { id: "device.resume" } });
+    await performWrite(req ?? { id: "x" }, t.deps);
+    expect(t.kit.paused.has(row?.id ?? "")).toBe(true);
+    const [done] = toast.list();
+    expect(done).toMatchObject({ kind: "success", title: `Paused ${row?.label}`, action: { label: "Undo" } });
+    await done?.action?.run();
+    expect(t.kit.paused.size).toBe(0);
+
+    const profiles = withActions(profileItems(d.profiles), d.commands.filter((c) => !c.id.startsWith("profile.")), SIGNED_IN);
+    expect(profiles.every((p) => p.actionBlocked === "Coming soon")).toBe(true);
+    expect(profiles[0] && entityWrite(profiles[0], [])).toBeNull();
   });
 });
 
