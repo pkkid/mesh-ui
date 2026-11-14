@@ -98,9 +98,9 @@ devices has an **Open** link to the Unassigned page
 (`#/profiles/unassigned`, see [profile-detail.md](profile-detail.md)).
 Every write control dims by the `profiles` permission and bridge mode.
 
-Still "Coming soon": avatars on unassigned tiles (they run
-`device.profile.set`, M4.4's command), tile selection and New profile from
-selection, and the menu's Add a scheduled pause (M4.12). Card clicks, lane
+Avatars on unassigned tiles run `device.profile.set` (M4.4) with an Undo
+toast, dimmed by the `devices` permission and bridge mode. Still "Coming
+soon": tile selection and New profile from selection, and the menu's Add a scheduled pause (M4.12). Card clicks, lane
 segments and tile double-clicks navigate as described.
 
 ## States
