@@ -2,9 +2,11 @@
  * The health check hero from `health.check`: a score ring with the status
  * summary, Run again, and a grid of checks (internet, DNS, each eero, mesh
  * links, firmware), each with its mark, icon, name and one-line detail.
- * The symptom chips need `diagnostics.run` and are disabled for now.
+ * The symptom chips and their results (Diagnose.tsx) render in the
+ * `symptoms` slot at the foot of the card.
  * docs/ux/pages/troubleshooting.md (Health check hero), mockup 16.
  */
+import type { ReactNode } from "react";
 import { CircleCheck, CircleHelp, CircleX, Download, Globe, type LucideIcon, RefreshCw, Router, Search, TriangleAlert, Waypoints } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
@@ -12,7 +14,7 @@ import type { RouteId } from "~/app/routes";
 import type { QueryState } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { SectionError } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import type { Check, HealthReport } from "../../../../core/model";
 
@@ -39,8 +41,6 @@ function checkIcon(id: string): LucideIcon {
 
 /** Where a failing check's fix lives. */
 const FIX: Partial<Record<string, RouteId>> = { firmware: "updates", internet: "internet", mesh: "eeros" };
-
-const SYMPTOMS = ["My connection drops", "My internet is slow", "My internet is offline", "My eero's light is red"];
 
 function ScoreRing({ report, loading }: { report: HealthReport | undefined; loading: boolean }) {
   const size = 132;
@@ -104,7 +104,7 @@ function CheckRow({ check }: { check: Check }) {
   );
 }
 
-export function HealthChecks({ query, offline }: { query: QueryState<HealthReport>; offline: boolean }) {
+export function HealthChecks({ query, symptoms }: { query: QueryState<HealthReport>; symptoms?: ReactNode }) {
   const report = query.data;
   if (query.error && !report) return <SectionError what="the health check" error={query.error} onRetry={() => void query.refetch()} />;
   const count = report?.checks.length;
@@ -141,14 +141,7 @@ export function HealthChecks({ query, offline }: { query: QueryState<HealthRepor
             : Array.from({ length: 6 }, (_, i) => <div key={i} className="h-[60px] border-b sm:odd:border-r" />)}
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="me-1 text-muted-foreground text-xs">Something specific?</span>
-        {SYMPTOMS.map((s) => (
-          <ComingSoonButton key={s} size="xs" variant={offline && s === "My internet is offline" ? "secondary" : "outline"}>
-            {s}
-          </ComingSoonButton>
-        ))}
-      </div>
+      {symptoms}
     </Card>
   );
 }
