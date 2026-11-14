@@ -33,7 +33,7 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 | Find an eero select | `eero.list` | on load |
 | Coverage rooms and advice | `coverage.scan` | on load (last result), on Scan again |
 | Upgrade report | `coverage.upgrade_report` | on load |
-| Radio channels table | `eero.list` (radio stats per band) | every 60 s |
+| Radio channels table | `eero.list` (radio stats per band; `Radio.autoChannel` is always null on eero, so Auto channel shows `-`) | every 60 s |
 | 2.4 GHz mode state and countdown | `wifi.get` (`hide5g` with expiry) | every 15 s while active |
 | Joined during this window | `device.list` `{firstSeenSince}` (start of the window) | every 15 s while active |
 | Legacy mode state, devices that may need it | `settings.get` (legacy mode), `coverage.upgrade_report` | on load |
@@ -47,14 +47,15 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Run again | `health.check` | query | no | Checks refresh; subtitle time resets |
-| Symptom chip | `diagnostics.run` `{symptom: "connection_drops" or "internet_slow" or "internet_offline" or "eeros_red"}` | write | no | Panel under the chips with eero's findings and suggested next steps |
+| Symptom chip | `diagnostics.run` `{symptom: "connection_drops" or "internet_slow" or "internet_offline" or "eeros_red"}` | write | no | A panel under the chips says eero is testing (up to a minute), then shows eero's findings and the next steps from core |
 | Run (speed test) | `speedtest.run` | write | no | Row shows progress, then down and up Mbps |
 | History | none (navigation) | | | Internet page speed test history |
 | Blink light | `eero.find` `{eero}` | write | no | LED cycles for 30 s |
-| Scan again | `coverage.scan` `{refresh: true}` | query | no | Table and advice update |
+| Scan again | `coverage.scan` `{refresh: true}` | query | no | Subtitle and button say "Scanning...", the table fades, then table and advice update |
+| Test (coverage row) | `eero.placement.test` `{eero}` | write | no | Row says "Testing..." (up to a minute), then the rating as a status; advice in its tooltip. Not offered for the gateway |
 | Start 2.4 GHz mode | `wifi.hide5g.set` `{enabled: true}` | disruptive | inline confirm with device count | Timer starts |
 | Restore now | `wifi.hide5g.set` `{enabled: false}` | disruptive | short inline confirm ("Bring back 5 and 6 GHz now?") | 5 and 6 GHz come back |
-| Legacy mode switch, Turn on legacy mode | `settings.legacy_mode.set` `{enabled}` | disruptive | inline confirm (outage from `settings.impact`, about 2 to 3 min) | |
+| Legacy mode switch, Turn on legacy mode | `settings.legacy_mode.set` `{enabled}` | disruptive | inline confirm (outage from `settings.impact`, about 2 to 3 min) | Built so far: the card shows the state from `settings.get` and links to Advanced networking, where the switch lives (M5.3) |
 | Restart (single eero) | `eero.restart` `{eero}` | disruptive | inline confirm; gateway confirm says the whole network goes offline | Row shows "Restarting" until the eero is back |
 | Restart network | `network.restart` | disruptive | inline confirm (shown open in the mockup) | Network offline; page waits and refetches |
 | Support center, Email support | none | | | Opens eero support pages externally |
@@ -78,7 +79,10 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 
 - `health.check` is composite and built in core from `network.health` (with its issues), `internet.get` (with the last speed test), `eero.list` and `updates.get`; it runs no active probes and does not post a diagnostics run. The score formula lives in core (100 minus 14 per warning, 30 per problem, 5 per unknown, so one warning gives 86) so the CLI and MCP get the same number. The hero word is "Good" for good or warning and "Needs attention" with any problem.
 - Built so far (M3.12): the health check hero and checks grid, Tools and restarts (all disabled, "Coming soon"), coverage scan and upgrade report placeholders (disabled, "No scan yet"; no fixtures until M5), and Get help with Copy diagnostics report. The symptom chips are disabled until `diagnostics.run`. Radio channels and the Fixes cards (2.4 GHz mode, legacy mode, status lights) come with their commands.
-- `diagnostics.run` posts to `{net}/diagnostics` with a symptom, then reads `GET {net}/diagnostics` until it has results.
+- Built in M5.8: the symptom chips (`diagnostics.run`) and their panel, Find an eero (eero select and Blink light), the coverage scan with per-room placement tests, the upgrade report, radio channels and the Fixes cards (2.4 GHz mode, legacy mode state, status lights, restart a single eero, restart network). Coverage and upgrade report stack below the 2xl breakpoint so the coverage table keeps its columns.
+- `Radio.autoChannel`: eero has no auto-channel field. `{net}/radio_settings` is per eero `{eero_id, radio_settings{band_2_4GHz, band_5GHz_low, band_5GHz_high: {enabled}}}` with no channel or auto flag (M5.1 capture), and `radio_channel_stats` has none either, so the Auto channel column shows `-` on real networks (the demo fixtures set it).
+- The placement test, coverage scan and Wi-Fi generation scan responses have not been captured: the test is a write and the scans are not run on the maintainer's network. The mappers read the likely field names tolerantly (see [commands.md](../../architecture/commands.md#eero-commandseerots)); a MANUAL check confirms the shapes.
+- `diagnostics.run` posts to `{net}/diagnostics` with a symptom, then reads `GET {net}/diagnostics` every 3 s (first after one interval, so the previous run is not taken for this one) until it is no longer running, and fails `eero_error` after 2 minutes. The placement test waits the same way.
 - Coverage scan and upgrade report are `GET /2.4/networks/{id}/placement/...`; they read only but may take a while, so show progress.
 - Busy percent comes from `radio_channel_stats.channel_utilization` on each eero, a current value that free accounts get. Historical channel analytics (`channel_utilization` endpoint) is an eero Plus feature and is not used.
 - The 2.4 GHz mode uses the temporary `hide_5g` flag, which auto expires. `wifi.hide5g.set` is disruptive (it moves every 5 and 6 GHz client) and takes no duration: eero sets the end time itself (`temporary_flags.hide_5g.expires_on`, `hide5g.expiresAt` in the model), which drives the countdown, and the engine keeps no timer. Open question: whether the flag also hides 6 GHz (MANUAL check).

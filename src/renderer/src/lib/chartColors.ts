@@ -91,3 +91,12 @@ export const eventCategoryColors: Readonly<Record<EventCategory, string>> = {
   ports_temperature: hue("green"),
   other: seriesColors.neutral,
 };
+
+/** Wi-Fi generations in the upgrade report (Troubleshooting), newest first. */
+export const wifiGenerationColors = {
+  wifi7: hue("purple"),
+  wifi6e: hue("aqua"),
+  wifi6: hue("blue"),
+  wifi5: hue("orange"),
+  wifi4: hue("yellow"),
+} as const;

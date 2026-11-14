@@ -1,15 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createFakeEero, type FakeEero } from "../../../test/fake-eero/server";
 import type { AuthState, Backend, SecretStore } from "../backend";
 import { createDemoBackend } from "../demo";
 import type { ScenarioName } from "../demo/scenario";
 import { createEeroBackend } from "../eero/backend";
+import { WAIT } from "../eero/backend/coverage";
 import { READ_SHARE_MS } from "../eero/client";
-import { mapDiagnostics, mapSupport } from "../eero/map/diagnostics";
+import { diagnosticsPending, mapDiagnostics, mapSupport } from "../eero/map/diagnostics";
 import { RateLimiter } from "../eero/ratelimit";
 import { createEngine, type Engine } from "../engine";
 import type * as M from "../model";
-import { healthScore, overallStatus, redact, redactMac, scrub, supportReport } from "./diagnostics";
+import { RUN_READS } from "../../../test/fake-eero/routes/diagnostics";
+import { commands as diagnosticsCommands, diagnosisSteps, healthScore, overallStatus, redact, redactMac, scrub, supportReport } from "./diagnostics";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -261,6 +263,85 @@ describe("diagnostics (fake eero server)", () => {
   });
 });
 
+describe("diagnostics.run (demo)", () => {
+  it("connection drops on Maple Street: mesh finding, next steps, and the next report shows the run", async () => {
+    const { engine } = demo();
+    const r = await ok(engine.execute<M.Diagnosis>("diagnostics.run", { networkId: MAPLE, symptom: "connection_drops" }));
+    expect(r).toMatchObject({ status: "completed", issueArea: "mesh", symptom: "connection_drops", at: new Date(NOW).toISOString() });
+    expect(r.results.find((x) => x.name === "Mesh")).toMatchObject({ status: "warning" });
+    expect(r.steps[0]).toContain("weak link");
+    expect(r.steps.at(-1)).toContain("coverage scan");
+    const report = await ok(engine.execute<string>("support.report", { networkId: MAPLE }));
+    expect(report).toContain("Status: completed, issue area: mesh");
+  });
+
+  it("runs without a symptom, around a device by name, and rejects a bad symptom or device", async () => {
+    const { engine } = demo();
+    const plain = await ok(engine.execute<M.Diagnosis>("diagnostics.run", { networkId: MAPLE }));
+    expect(plain.symptom).toBeNull();
+    const dev = await ok(engine.execute<M.Diagnosis>("diagnostics.run", { networkId: MAPLE, symptom: "internet_slow", device: "Alex's iPhone" }));
+    expect(dev.results.map((x) => x.name)).toContain("Alex's iPhone");
+    expect(await code(engine.execute("diagnostics.run", { networkId: MAPLE, symptom: "slow" }))).toBe("bad_params");
+    expect(await code(engine.execute("diagnostics.run", { networkId: MAPLE, device: "Nobody's phone" }))).toBe("bad_params");
+  });
+
+  it("is a gated write that never asks to confirm and invalidates diagnostics", () => {
+    const spec = diagnosticsCommands.find((c) => c.id === "diagnostics.run");
+    expect(spec).toMatchObject({ effect: "write", gate: { area: "network" }, invalidates: ["diagnostics"] });
+  });
+
+  it("a run is pending while eero says not_started (the idle state captured on a real network) or running", () => {
+    expect(["not_started", "running", "IN_PROGRESS"].map((status) => diagnosticsPending({ status }))).toEqual([true, true, true]);
+    expect(["completed", "failed", "idle"].map((status) => diagnosticsPending({ status }))).toEqual([false, false, false]);
+  });
+
+  it("steps: one per flagged area, then the symptom's own", () => {
+    const steps = diagnosisSteps({ status: "completed", issueArea: "internet", results: [{ name: "eeros", status: "fail", detail: null }, { name: "Mesh", status: "pass", detail: null }] }, "internet_offline");
+    expect(steps).toHaveLength(3);
+    expect(steps[0]).toContain("modem");
+    expect(steps[1]).toContain("offline eero");
+    expect(steps[2]).toContain("Restart the network");
+    expect(diagnosisSteps({ status: "completed", issueArea: null, results: [] }, null)).toEqual([]);
+  });
+});
+
+describe("diagnostics.run (fake eero server)", () => {
+  const saved = { ...WAIT };
+  beforeEach(() => Object.assign(WAIT, { intervalMs: 1, timeoutMs: 2_000 }));
+  afterEach(() => Object.assign(WAIT, saved));
+
+  it("posts {symptom} to {net}/diagnostics, reads while it runs, then maps the result", async () => {
+    const s = fakeEngine();
+    const r = await ok(s.engine.execute<M.Diagnosis>("diagnostics.run", { networkId: "100001", symptom: "connection_drops" }));
+    expect(s.fake.writes.at(-1)).toMatchObject({ method: "POST", version: "2.2", route: "/networks/100001/diagnostics", body: { symptom: "connection_drops" } });
+    const reads = s.fake.log.filter((l) => l.method === "GET" && l.path === "/2.2/networks/100001/diagnostics");
+    expect(reads.length).toBe(RUN_READS);
+    expect(r).toMatchObject({ status: "completed", issueArea: "mesh", symptom: "connection_drops" });
+    expect(r.results.map((x) => x.name)).toEqual(["Internet", "Mesh", "eeros"]);
+    expect(r.steps.length).toBeGreaterThan(1);
+    await s.fake.close();
+  });
+
+  it("sends the device id when one is given", async () => {
+    const s = fakeEngine();
+    const devices = await ok(s.engine.execute<{ devices: M.Device[] }>("device.list", { networkId: "100001" }));
+    const d = devices.devices[0];
+    if (!d) throw new Error("no fake devices");
+    await ok(s.engine.execute("diagnostics.run", { networkId: "100001", device: d.id }));
+    expect(s.fake.writes.at(-1)?.body).toEqual({ device: d.id });
+    await s.fake.close();
+  });
+
+  it("a run that never finishes fails eero_error instead of hanging", async () => {
+    const s = fakeEngine();
+    Object.assign(WAIT, { intervalMs: 1, timeoutMs: 20 });
+    const extra = s.fake.state.extra;
+    s.fake.state.extra = new Proxy(extra, { get: (t, k) => (String(k).startsWith("diagnostics:") ? { reads: 1e9 } : Reflect.get(t, k)) });
+    expect(await code(s.engine.execute("diagnostics.run", { networkId: "100001" }))).toBe("eero_error");
+    await s.fake.close();
+  });
+});
+
 describe("diagnostics mapping", () => {
   it("maps a bare status and a full run", () => {
     expect(mapDiagnostics({ status: "idle" })).toEqual({ status: "idle", issueArea: null, results: [] });
@@ -284,7 +365,7 @@ describe("diagnostics mapping", () => {
 // ---------------------------------------------------------------------------
 // Page-load budget: the Troubleshooting page's queries, run at once as React mounts them
 
-const PAGE: [string, unknown?][] = [["auth.status"], ["account.get"], ["network.list"], ["network.get"], ["health.check"], ["support.info"], ["eero.list"]];
+const PAGE: [string, unknown?][] = [["auth.status"], ["account.get"], ["network.list"], ["network.get"], ["health.check"], ["support.info"], ["eero.list"], ["coverage.scan"], ["coverage.upgrade_report"]];
 
 async function load(engine: Engine, page: [string, unknown?][]) {
   const results = await Promise.all(page.map(([id, params]) => engine.execute(id, params)));

@@ -478,6 +478,57 @@ export type RawHasUnread = { has_unread?: boolean } | boolean;
 /** `GET {net}/diagnostics`. Only `status` came back; `issue_area` and `results` per the clients, after a run. */
 export type RawDiagnostics = { status?: string; issue_area?: string | null; results?: { name?: string; status?: string; detail?: string | null }[] };
 
+/**
+ * Placement and coverage (M5.8). Not captured: the placement test is a write
+ * and the scans are not run on the real network, so these list the field
+ * names the eero app's screens suggest, all optional, read tolerantly.
+ */
+export type RawText = string | { message?: string | null; text?: string | null; title?: string | null };
+
+/** `GET /2.3/networks/{id}/placement_test/{serial}` after a `POST` to the same path. */
+export type RawPlacementTest = {
+  status?: string | null;
+  rating?: string | number | null;
+  placement_rating?: string | number | null;
+  result?: { rating?: string | number | null; recommendation?: RawText | null } | null;
+  recommendation?: RawText | null;
+  advice?: RawText | null;
+};
+
+/** One room (eero) of a coverage scan. `quality` may be 0 to 100 or 1 to 5 bars. */
+export type RawCoverageRoom = {
+  eero_id?: string | number | null;
+  url?: string | null;
+  location?: string | null;
+  quality?: number | null;
+  score?: number | null;
+  coverage_score?: number | null;
+  bars?: number | null;
+  device_count?: number | null;
+  devices?: number | unknown[] | null;
+  served_by?: RawLink | null;
+  upstream?: RawLink | null;
+};
+
+/** `GET /2.4/networks/{id}/placement/wifi_coverage_scan?allDevices=true`. */
+export type RawCoverageScan = {
+  scanned_at?: string | null;
+  timestamp?: string | null;
+  rooms?: RawCoverageRoom[];
+  eeros?: RawCoverageRoom[];
+  nodes?: RawCoverageRoom[];
+  advice?: RawText[];
+  recommendations?: RawText[];
+};
+
+/** `GET /2.4/networks/{id}/placement/wifi_generation_scan?allDevices=true`. Generations as rows or a `{wifi_6: n}` map. */
+export type RawGenerationScan = {
+  generations?: { generation?: string | number | null; count?: number | null; devices?: number | null }[] | Record<string, number>;
+  limiting_eeros?: { eero_id?: string | number | null; url?: string | null; reason?: RawText | null }[];
+  notes?: RawText[];
+  insights?: RawText[];
+};
+
 /** `GET {net}/support` on `/2.2/`. */
 export type RawSupport = { support_phone?: string; contact_url?: string; help_url?: string; email_web_form_url?: string; name?: string };
 

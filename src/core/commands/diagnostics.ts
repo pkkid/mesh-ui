@@ -5,16 +5,18 @@
  * it never runs active probes or posts a cloud diagnostics run. The report
  * is plain text with MACs, IPs, names and serials cut to their last four
  * characters, so it is safe to paste into a support chat. `diagnostics.run`
- * (the symptom chips) comes later.
+ * (the symptom chips) asks eero's cloud to test the network for a symptom
+ * and adds next steps built here; it can take a minute.
  * See docs/architecture/commands.md#diagnostics-commandsdiagnosticsts and
  * docs/ux/pages/troubleshooting.md.
  */
 
 import { z } from "zod";
+import type { DiagnosticsSymptom } from "../backend";
 import { formatDuration, formatMbps, formatRelative, MISSING } from "../format";
 import type * as M from "../model";
 import { POLL } from "../poll";
-import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
+import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { knownDevices } from "./device";
 import { withTopology } from "./eero";
 import { internetVerdict, speedRating } from "./internet";
@@ -304,6 +306,43 @@ export function supportReport(r: ReportInputs): string {
 }
 
 // ---------------------------------------------------------------------------
+// Diagnose by symptom
+
+export const SYMPTOMS = ["connection_drops", "internet_slow", "internet_offline", "eeros_red"] as const satisfies readonly DiagnosticsSymptom[];
+
+/** A result eero marked as fine. Anything else (warning, failed, problem) counts as a finding. */
+export const resultGood = (status: string): boolean => /^(good|ok|pass|passed|success|succeeded|healthy|completed?)$/i.test(status.trim());
+
+const AREA_STEP: Record<string, string> = {
+  internet: "Restart your modem, wait a minute, then restart the gateway eero. If the internet stays down, call your ISP.",
+  mesh: "Move the eero with the weak link closer to the one it connects through, or connect it with a cable. A coverage scan shows which rooms are weak.",
+  eeros: "Check that the offline eero has power and its light is on, then restart it from Fixes.",
+  dns: "Switch DNS back to your ISP's servers on Advanced networking, or try another provider.",
+};
+
+const SYMPTOM_STEP: Record<DiagnosticsSymptom, string> = {
+  connection_drops: "Run a coverage scan: devices drop most often in rooms with weak coverage.",
+  internet_slow: "Run a speed test and compare it with your plan. Slow results with every eero healthy point to your ISP.",
+  internet_offline: "Restart the network from Fixes. If it is still offline, check the cable from the gateway eero to your modem.",
+  eeros_red: "A red light means that eero has no internet. Check the cable from the gateway eero to your modem, then restart it.",
+};
+
+/** Next steps for a run: one per area eero flagged, then the symptom's own step. Pure. */
+export function diagnosisSteps(result: M.DiagnosticsResult, symptom: DiagnosticsSymptom | null): string[] {
+  const steps: string[] = [];
+  const area = result.issueArea?.toLowerCase() ?? null;
+  if (area && AREA_STEP[area]) steps.push(AREA_STEP[area]);
+  for (const r of result.results) {
+    if (resultGood(r.status)) continue;
+    const key = Object.keys(AREA_STEP).find((k) => r.name.toLowerCase().includes(k.replace(/s$/, "")));
+    const step = key ? AREA_STEP[key] : undefined;
+    if (step && !steps.includes(step)) steps.push(step);
+  }
+  if (symptom) steps.push(SYMPTOM_STEP[symptom]);
+  return steps;
+}
+
+// ---------------------------------------------------------------------------
 // Support info
 
 async function supportInfo(ctx: CommandContext): Promise<M.SupportInfo> {
@@ -329,6 +368,27 @@ export const commands: AnyCommand[] = [
     topic: "network",
     poll: POLL.network,
     run: async (ctx): Promise<M.HealthReport> => healthReport(await readInputs(ctx), ctx.now()),
+  }),
+
+  defineCommand({
+    id: "diagnostics.run",
+    label: "Diagnose",
+    description:
+      "Asks eero's cloud to test the network for a symptom (connection_drops, internet_slow, internet_offline or eeros_red), optionally around one device, and returns its findings with next steps. Can take a minute; nothing restarts.",
+    icon: "stethoscope",
+    effect: "write",
+    gate: { area: "network" },
+    invalidates: ["diagnostics"],
+    params: z.object({
+      symptom: z.enum(SYMPTOMS).optional().describe("What is wrong: connection_drops, internet_slow, internet_offline or eeros_red."),
+      device: ref("device").optional().describe("A device the problem is about."),
+    }),
+    async run(ctx, p): Promise<M.Diagnosis> {
+      const deviceId = p.device ? await ctx.resolve("device", p.device) : null;
+      const symptom = p.symptom ?? null;
+      const result = await ctx.backend.diagnostics.run(ctx.net, { symptom, deviceId });
+      return { ...result, symptom, steps: diagnosisSteps(result, symptom), at: new Date(ctx.now()).toISOString() };
+    },
   }),
 
   defineCommand({

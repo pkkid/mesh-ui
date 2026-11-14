@@ -771,6 +771,14 @@ export type DiagnosticsResult = {
   results: { name: string; status: string; detail: string | null }[];
 };
 
+/** `diagnostics.run`: eero's cloud result, the symptom asked about and next steps built in core. */
+export type Diagnosis = DiagnosticsResult & {
+  symptom: "internet_slow" | "internet_offline" | "connection_drops" | "eeros_red" | null;
+  /** Plain sentences, most useful first; empty when there is nothing to do. */
+  steps: string[];
+  at: Iso;
+};
+
 export type SupportInfo = {
   supportId: string | null;
   /** Who answers support for this network (`name` in `{net}/support`), usually eero. */

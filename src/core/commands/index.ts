@@ -10,6 +10,7 @@ export { commands as activity } from "./activity";
 export { commands as admins } from "./admins";
 export { commands as app } from "./app";
 export { commands as auth } from "./auth";
+export { commands as coverage } from "./coverage";
 export { commands as demo } from "./demo";
 export { commands as device } from "./device";
 export { commands as diagnostics } from "./diagnostics";

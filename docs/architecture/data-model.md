@@ -309,7 +309,7 @@ type UpgradeReport = {
 | `uptimeSec`, `joined` | `uptime.since_last_reboot_s`, `joined` |
 | `EeroPorts` | `resources.connections`: `ports.interfaces[]`. `status`: `port_status` `DATA_CONNECTED` or `WAN` is up, `DISCONNECTED` down (real capture), `DISABLED` disabled (a guess; no real disabled port seen), else down. `speedMbps`: `negotiated_speed` (`"P1000"`) when up; `supportedMbps`: `supported_speed`. `isWan`: `port_status` `WAN` or `connection_status.type` `WAN_SOURCE` (`network_type` is `UNKNOWN` on real ports). `attachments`: every entry of `connection_status.metadata.multiple_devices.connections[]` (`type` `EERO_DEVICE` or `CLIENT_DEVICE`, joined by `metadata.url`), eeros first, as `{deviceId, eeroId, name}`; `attached`: their summary (`portSummary` in `model.ts`): an eero if one is there, else the only device, else `"N devices"` with no id. `poe_status`, `actions[].type` |
 | `FirmwareEntry` | `GET /2.2/eeros/{id}/firmware_update/history`, `data.data[]`: `version` is `firmware_version` up to `+` (the build tail dropped, so it equals the eero's `os_version`), `installedAt` is `finished_at`, else `timestamp`; rows whose `outcome` or `status` says failed are dropped; `current` is the newest entry matching `os_version` |
-| `CoverageScan`, `UpgradeReport` | `/2.4/` placement scans; shapes known only from LD, MANUAL capture needed |
+| `CoverageScan`, `UpgradeReport` | `/2.4/` placement scans; shapes known only from LD, read tolerantly (M5.8), MANUAL capture needed |
 
 ## Devices
 
@@ -660,6 +660,8 @@ type Check = { id: string; label: string; status: "good" | "warning" | "problem"
 type HealthReport = { overall: "good" | "warning" | "problem"; score: number /* 0 to 100, core */; checks: Check[]; at: Iso };
 
 type DiagnosticsResult = { status: string | null; issueArea: string | null; results: { name: string; status: string; detail: string | null }[] };
+/** diagnostics.run: the result plus the symptom asked about and next steps from core. */
+type Diagnosis = DiagnosticsResult & { symptom: "internet_slow" | "internet_offline" | "connection_drops" | "eeros_red" | null; steps: string[]; at: Iso };
 
 type SupportInfo = {
   supportId: string | null;
