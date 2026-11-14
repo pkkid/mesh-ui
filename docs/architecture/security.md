@@ -138,10 +138,25 @@ these the spec sets `sensitive: true`, and:
 ## Audit log
 
 Commands run from the CLI or MCP are appended to `audit.jsonl` in the config
-dir: time, surface, command id, effect, ok or error code, and params with
-secret fields (`password`, `code`) removed. It is capped at 1,000 lines. App &
-account shows the last week ("38 commands from the CLI and agents"), flagging
-any that needed confirm. UI-originated commands are not logged.
+dir (`src/core/audit.ts`, written by `engine.execute`), one JSON line each:
+
+```json
+{"time":"2026-11-13T10:00:00.000Z","surface":"cli","id":"guest.password.set","effect":"disruptive","ok":true,"params":{"password":"[removed]","confirm":true}}
+```
+
+- Fields: `time`, `surface` (`cli` or `mcp`), `id`, `effect` (null for an
+  unknown id), `ok`, `code` when it failed, and the params as given.
+- Params lose every secret before they are written, at any depth: keys
+  matching password, passphrase, passcode, psk, secret, token, cookie,
+  credential, `code` or `key` become `"[removed]"`, and so does any string
+  that is a `WIFI:` payload. Results are never logged, so a revealed
+  password, a share payload or a token cannot reach the file.
+- The file is mode 600, appended in order, and trimmed to the newest 1,000
+  lines once it passes 1,100.
+- UI-originated commands are not logged, and neither are demo or fake runs
+  (they change nothing real and may run with the real config dir).
+- App & account shows the last week ("38 commands from the CLI and
+  agents"), flagging any that needed confirm (M6).
 
 ## Logging
 

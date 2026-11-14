@@ -92,6 +92,15 @@ export const RATES_STALE_SEC = 90;
 /** Extra wait after `next_burst` before devices are read again. */
 export const BURST_SETTLE_SEC = 2;
 
+/**
+ * After a write, reads of its topics fetched in this window expire at its end,
+ * so the read after it sees eero's new state even when eero is slow to apply it.
+ */
+export const WRITE_SETTLE_SEC = 2;
+
+/** The engine cache keeps entries for this many networks, most recently used. */
+export const CACHE_NETWORKS = 2;
+
 /** Polls are jittered by up to this fraction. */
 export const POLL_JITTER = 0.1;
 

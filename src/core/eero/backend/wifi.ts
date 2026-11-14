@@ -17,8 +17,9 @@ import type { EeroArea } from "./index";
 const isMissing = (err: unknown) => err instanceof BackendError && err.code === "eero_error" && (err.detail?.status === 404 || err.detail?.status === 405);
 
 export const wifi: EeroArea<"wifi"> = ({ client }) => {
-  const network = async (net: string): Promise<RawNetwork> => {
-    const raw = await client.request<RawNetwork | null>({ method: "GET", path: networkPath(net) });
+  // share false: a credential read never takes a finished shared GET {net}, so a reveal never shows an old password.
+  const network = async (net: string, share = true): Promise<RawNetwork> => {
+    const raw = await client.request<RawNetwork | null>({ method: "GET", path: networkPath(net), share });
     if (!raw || typeof raw !== "object") throw new BackendError("eero_error", "eero sent no data for this network.");
     return raw;
   };
@@ -39,7 +40,7 @@ export const wifi: EeroArea<"wifi"> = ({ client }) => {
     },
 
     async credentials(net) {
-      const raw = await network(net);
+      const raw = await network(net, false);
       const password = typeof raw.password === "string" && raw.password !== "" ? raw.password : null;
       return { ssid: typeof raw.name === "string" ? raw.name : "", password };
     },

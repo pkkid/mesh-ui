@@ -4,9 +4,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { type AuthState, composeBackend } from "./backend";
+import { commands as deviceCommands } from "./commands/device";
 import { createEngine, fileSettings, memorySettings } from "./engine";
 import { BackendError } from "./errors";
 import type { Device, HostEvent, NetworkSummary } from "./model";
+import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, WRITE_SETTLE_SEC } from "./poll";
 import { createRegistry } from "./registry";
 import { type AnyCommand, defineCommand, ref } from "./spec";
 
@@ -29,7 +31,7 @@ const device = (id: string, name: string, mac: string): Device =>
 
 function setup(opts: { signedIn?: boolean; specs?: AnyCommand[]; now?: () => number } = {}) {
   const auth: AuthState = { signedIn: opts.signedIn ?? true, pending: false, login: null, storage: "memory" };
-  const calls = { networks: 0, devices: 0, ran: [] as string[] };
+  const calls = { networks: 0, devices: 0, bursts: 0, ran: [] as string[] };
   let failWith: unknown = null;
   const backend = composeBackend("demo", {
     auth: {
@@ -63,7 +65,10 @@ function setup(opts: { signedIn?: boolean; specs?: AnyCommand[]; now?: () => num
       get: async () => {
         throw new Error("unused");
       },
-      requestBurst: async () => ({ nextBurstAt: "2026-11-12T00:00:12Z" }),
+      requestBurst: async () => {
+        calls.bursts++;
+        return { nextBurstAt: "2026-11-12T00:00:12Z" };
+      },
     },
   });
 
@@ -123,6 +128,7 @@ function setup(opts: { signedIn?: boolean; specs?: AnyCommand[]; now?: () => num
       scope: "app",
       run: async () => "pong",
     }),
+    ...deviceCommands.filter((c) => c.id === "device.rates.refresh"),
   ];
 
   const settings = memorySettings();
@@ -300,6 +306,97 @@ describe("cache", () => {
     await engine.execute("test.device.pause", { device: "Leo's Switch" });
     await engine.execute("test.devices");
     expect(calls.devices).toBe(3);
+  });
+
+  it("lets a read during the write settle delay expire when eero has settled", async () => {
+    let t = 1_000_000;
+    const { engine, calls } = setup({ now: () => t });
+    await engine.execute("test.devices");
+    await engine.execute("test.device.pause", { device: "Leo's Switch" });
+    // Stale at once: the read right after the write goes to the backend.
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(2);
+    t += WRITE_SETTLE_SEC * 1000 - 500;
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(2);
+    // That read was fetched while eero settled, so it expires when the settle delay ends.
+    t += 1_000;
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(3);
+    // A read after the settle delay keeps its normal TTL.
+    t += 10_000;
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(3);
+  });
+
+  it("invalidates after a failed write too, since it may have landed", async () => {
+    const t = 1_000_000;
+    const failing = defineCommand({
+      id: "test.device.fail",
+      label: "Fail",
+      params: z.object({}),
+      effect: "write",
+      invalidates: ["devices"],
+      run: async () => {
+        throw new BackendError("network_error", "timed out");
+      },
+    });
+    const { engine, calls } = setup({
+      now: () => t,
+      specs: [
+        defineCommand({ id: "test.devices", label: "Devices", params: z.object({}), effect: "query", topic: "devices", run: (ctx) => ctx.backend.device.list(ctx.net) }),
+        failing,
+      ],
+    });
+    await engine.execute("test.devices");
+    expect((await engine.execute("test.device.fail")).ok).toBe(false);
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(2);
+  });
+
+  it("keeps cached answers for the last two networks only", async () => {
+    const t = 1_000_000;
+    const { engine, calls } = setup({ now: () => t });
+    const read = (networkId: string) => engine.execute("test.devices", { networkId });
+    await read("n1");
+    await read("n2");
+    await read("n1");
+    expect(calls.devices).toBe(2);
+    // A third network drops the least recently used one (n2).
+    await read("n3");
+    expect(calls.devices).toBe(3);
+    await read("n1");
+    expect(calls.devices).toBe(3);
+    await read("n2");
+    expect(calls.devices).toBe(4);
+    // n3 was dropped when n2 came back; n1 is still kept.
+    await read("n1");
+    expect(calls.devices).toBe(4);
+    await read("n3");
+    expect(calls.devices).toBe(5);
+  });
+
+  it("bursts once a minute per network and keeps device reads until the burst has settled", async () => {
+    let t = Date.parse("2026-11-12T00:00:00Z");
+    const { engine, calls } = setup({ now: () => t });
+    await engine.execute("test.devices");
+    const first = await engine.execute("device.rates.refresh");
+    expect(first).toEqual({ ok: true, result: { nextBurstAt: "2026-11-12T00:00:12Z" } });
+    expect(await engine.execute("device.rates.refresh")).toEqual(first);
+    expect(calls.bursts).toBe(1);
+    // Devices cached before the burst are served until the burst is in plus BURST_SETTLE_SEC.
+    t = Date.parse("2026-11-12T00:00:12Z") + BURST_SETTLE_SEC * 1000 - 1;
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(1);
+    t += 2;
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(2);
+    // Another network has its own minute; this one bursts again after BURST_COOLDOWN_SEC.
+    await engine.execute("device.rates.refresh", { networkId: "n2" });
+    expect(calls.bursts).toBe(2);
+    t = Date.parse("2026-11-12T00:00:00Z") + BURST_COOLDOWN_SEC * 1000;
+    await engine.execute("device.rates.refresh");
+    expect(calls.bursts).toBe(3);
   });
 
   it("shares one backend call between concurrent identical queries", async () => {

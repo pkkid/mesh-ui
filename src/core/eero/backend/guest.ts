@@ -16,8 +16,10 @@ import { networkLinks } from "./network";
 export const guest: EeroArea<"guest"> = (ctx) => {
   const links = networkLinks(ctx);
   const base = (id: string) => links.get(`net:${id}`, networkPath(id));
-  const read = <T>(path: string) => ctx.client.request<T>({ method: "GET", path });
-  const guestNetwork = (id: string) => read<RawGuestNetwork | null>(links.get(`net:${id}.guestnetwork`, `${base(id)}/guestnetwork`));
+  const read = <T>(path: string, share = true) => ctx.client.request<T>({ method: "GET", path, share });
+  // share false: a credential read never takes a finished shared GET, so a reveal never shows an old password.
+  const guestNetwork = (id: string, share = true) =>
+    read<RawGuestNetwork | null>(links.get(`net:${id}.guestnetwork`, `${base(id)}/guestnetwork`), share);
 
   /** Older firmware has no per-band setting (404 or 405): security unknown, not an error. */
   const perBand = async (id: string): Promise<RawWpa3PerBand | null> => {
@@ -43,7 +45,7 @@ export const guest: EeroArea<"guest"> = (ctx) => {
     },
 
     async credentials(id) {
-      return guestCredentials(await guestNetwork(id));
+      return guestCredentials(await guestNetwork(id, false));
     },
   };
 };
