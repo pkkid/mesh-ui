@@ -402,6 +402,8 @@ type Schedule = {
   end: Hhmm;                      // before start: wraps past midnight
   enabled: boolean;
 };
+
+type ScheduleInput = Omit<Schedule, "id">; // schedule add and update (M4); eero assigns the id
 ```
 
 | Model | eero source (`GET {net}/profiles`, `GET {profile}`) |
