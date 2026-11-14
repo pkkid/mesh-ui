@@ -18,6 +18,7 @@
   .qr-actions .btn { justify-content: flex-start; }
   .qr-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .qr-box { line-height: 0; }
+  .qr-empty { position: relative; width: 116px; height: 116px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); display: flex; align-items: center; justify-content: center; line-height: normal; }
   .bandc { position: relative; padding: 16px 18px; }
   .encrow { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 12px 18px; }
   .encrow + .encrow { border-top: 1px solid var(--border); }
@@ -51,12 +52,14 @@
       </div>
       <div class="qrblock">
         <div class="qr-actions">
-          <button class="btn sm"><i data-lucide="copy"></i>Copy password</button>
-          <button class="btn sm"><i data-lucide="image-down"></i>Save QR</button>
+          <button class="btn sm" id="qr-copy" disabled style="opacity:0.5"><i data-lucide="copy"></i>Copy password</button>
+          <button class="btn sm" id="qr-save" disabled style="opacity:0.5"><i data-lucide="image-down"></i>Save QR</button>
           <button class="btn sm"><i data-lucide="printer"></i>Print a card</button>
         </div>
         <div class="qr-col">
-          <div class="qr-box" id="qr"></div>
+          <!-- Before reveal: an empty frame with Show code centred on it. Nothing is read until the click. -->
+          <div class="qr-empty" id="qr-empty"><button class="btn sm" id="qr-show" aria-label="Show the QR code to join Maple Street"><i data-lucide="eye"></i>Show code</button></div>
+          <div class="qr-box" id="qr" hidden></div>
           <div class="xs muted">Maple Street</div>
         </div>
       </div>
@@ -211,9 +214,14 @@
 
 <script src="assets/mockup.js"></script>
 <script>
-// Fake QR code: three finder squares plus seeded modules.
+// Fake QR code (three finder squares plus seeded modules), drawn when Show code is clicked.
 MU.ready(() => {
-  MU.qr("#qr", 41, { label: "QR code for Maple Street" });
+  document.querySelector("#qr-show").addEventListener("click", () => {
+    document.querySelector("#qr-empty").remove();
+    document.querySelector("#qr").hidden = false;
+    MU.qr("#qr", 41, { label: "QR code for Maple Street" });
+    for (const id of ["#qr-copy", "#qr-save"]) { const b = document.querySelector(id); b.disabled = false; b.style.opacity = ""; }
+  });
 });
 </script>
 </body>
