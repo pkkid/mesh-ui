@@ -18,7 +18,21 @@ sees the flag before `app.whenReady()` and:
   `sessionData` and caches to a `cli/` subfolder so two processes never fight
   over the same Chromium profile files;
 - builds the engine with the Electron `SecretStore`, runs the subcommand, and
-  exits with the exit code below.
+  exits with the exit code below;
+- never shows a window or dialog, on any OS: before anything else it replaces
+  `dialog.showErrorBox` with a stderr line and handles `uncaughtException`
+  and `unhandledRejection` by printing `mesh-ui: internal error: <first
+  message line>` (no stack, no other error fields, so no token or network
+  data) and exiting 1 (`src/main/cli-host.ts`).
+
+**The CLI is always headless.** The CLI and MCP surfaces never show UI. On
+Linux the dev launcher (`scripts/mesh-ui-dev.mjs`) also removes `DISPLAY`
+and `WAYLAND_DISPLAY` from the child and adds `--ozone-platform=headless
+--disable-gpu`, so it cannot reach the display server at all, even for an
+error during module load (before the handlers above exist), which Electron
+would otherwise show as a native "A JavaScript error occurred in the main
+process" box. The session keychain still works without a display: Secret
+Service and KWallet are reached over the D-Bus session bus.
 
 So the CLI reuses the same `safeStorage` secret store and the same session as
 the app on every OS. Sign in once in either and both are signed in. Signing
@@ -45,7 +59,8 @@ Limits that follow from this:
   starts signed out. `mesh-ui login` still works for one process, which makes
   `mesh-ui mcp` usable but `mesh-ui run` one-shot. `--demo` always works.
 - Headless Linux without a display server runs with `--ozone-platform=headless`
-  (set by the launcher when neither `DISPLAY` nor `WAYLAND_DISPLAY` is set).
+  (the packaged launcher sets it when neither `DISPLAY` nor `WAYLAND_DISPLAY`
+  is set; the dev launcher always does).
 
 ## Install
 
