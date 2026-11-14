@@ -12,7 +12,7 @@
  * network), then the rename runs without asking again.
  */
 import { Copy, Eye, EyeOff, KeyRound, Pencil, TriangleAlert, Wand2, Wifi } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { useCommand } from "~/app/useCommand";
 import { askInDialog, defaultDeps, fieldErrors, performWrite, type WriteOutcome } from "~/app/useWrite";
@@ -85,14 +85,18 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
   const [formError, setFormError] = useState<string | null>(null);
 
   const runShare = share.run;
-  useEffect(() => {
-    void runShare().then((res) => {
-      const current = res.ok ? (res.result.password ?? "") : "";
-      setSavedPassword(current);
-      setPassword(current);
-      setLoaded(true);
-    });
+  // Only a successful read fills the field: a failed one must not look like an open network.
+  const load = useCallback(async () => {
+    const res = await runShare();
+    if (!res.ok) return;
+    const current = res.result.password ?? "";
+    setSavedPassword(current);
+    setPassword(current);
+    setLoaded(true);
   }, [runShare]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const nameChanged = name.trim() !== (guest.name ?? "");
   const passwordChanged = loaded && password !== savedPassword;
@@ -184,7 +188,7 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
         label="Guest network password"
         htmlFor="guest-password"
         error={errors.password}
-        helper={strength ? `${strength.label} · ${password.length} characters` : loaded ? "Empty: an open network anyone nearby can join" : "Loading the current password"}
+        helper={strength ? `${strength.label} · ${password.length} characters` : loaded ? "Empty: an open network anyone nearby can join" : share.error ? undefined : "Loading the current password"}
       >
         <div className="flex items-center gap-1.5">
           <Input
@@ -212,6 +216,14 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
             <Wand2 />
           </Button>
         </div>
+        {!loaded && share.error && (
+          <div role="alert" className="flex items-center gap-2 text-destructive-foreground text-xs">
+            Couldn't read the current password. Nothing can be saved until it loads.
+            <Button type="button" size="xs" variant="outline" disabled={share.running} onClick={() => void load()}>
+              Retry
+            </Button>
+          </div>
+        )}
         {strength && <Meter value={strength.score} max={4} label={`Password strength, ${strength.label}`} className="mt-1" />}
       </SheetField>
       {opening && (
