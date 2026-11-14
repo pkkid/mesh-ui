@@ -46,7 +46,7 @@
           <div class="row-12 mt-8"><span class="pill ok">Broadcasting</span><span class="xs muted">One name on every band</span></div></div>
         <div class="row wrap" style="gap:8px 26px">
           <div class="metric"><div class="l">Wireless clients</div><div class="v">27<small>of 31 online</small></div></div>
-          <div class="metric"><div class="l">Password changed</div><div class="v">142<small>days ago</small></div></div>
+          <div class="metric" style="opacity:0.55" title="eero does not send when the password last changed"><div class="l">Password changed</div><div class="v">-<small>not sent by eero</small></div></div>
         </div>
       </div>
       <div class="qrblock">
@@ -57,7 +57,7 @@
         </div>
         <div class="qr-col">
           <div class="qr-box" id="qr"></div>
-          <div class="xs muted">Wi-Fi Network</div>
+          <div class="xs muted">Maple Street</div>
         </div>
       </div>
     </div>
@@ -95,12 +95,12 @@
           <div class="encrow">
             <div class="row"><span class="m">2.4 GHz</span></div>
             <div class="seg"><span>Standard (WPA2)</span><span class="on"><i data-lucide="shield-half"></i>Hybrid (WPA2 + WPA3)</span><span>Enhanced (WPA3)</span></div>
-            <div class="right"><span class="m tnum">2</span><span class="muted"> devices</span></div>
+            <div class="right"><span class="m tnum">3</span><span class="muted"> devices</span></div>
           </div>
           <div class="encrow">
             <div class="row"><span class="m">5 GHz</span></div>
             <div class="seg"><span>Standard (WPA2)</span><span class="on"><i data-lucide="shield-half"></i>Hybrid (WPA2 + WPA3)</span><span>Enhanced (WPA3)</span></div>
-            <div class="right"><span class="m tnum">1</span><span class="muted"> device</span></div>
+            <div class="right"><span class="muted">-</span></div>
           </div>
           <div class="encrow">
             <div class="row"><span class="m">6 GHz</span></div>
@@ -108,7 +108,7 @@
             <div class="right"><span class="muted">-</span></div>
           </div>
           <div style="padding:0 18px 16px" class="col gap-12">
-            <div class="note info"><i data-lucide="info"></i><div class="body">6 GHz always uses Enhanced (WPA3). Choosing Enhanced on 2.4 or 5 GHz asks you to confirm: <b class="m">HP LaserJet, Ring Doorbell and Nest Thermostat</b> only speak WPA2 and would drop off. Hidden while Compatibility Mode is on.</div></div>
+            <div class="note info"><i data-lucide="info"></i><div class="body">6 GHz always uses Enhanced (WPA3). Choosing Enhanced on 2.4 or 5 GHz asks you to confirm: <b class="m">HP LaserJet, Garage Door Opener and Flaky Plug</b> only speak WPA2 and would drop off. Hidden while Compatibility Mode is on.</div></div>
           </div>
         </div>
       </section>
@@ -119,18 +119,18 @@
         <div class="grid g3">
           <div class="card bandc">
             <div class="row"><div class="ico"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">2.4 GHz</div><div class="xxs muted">Range, older devices</div></div><span class="pill ok">On</span></div>
-            <div class="mid mt-12">6<small>clients</small></div>
-            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>20 MHz</dd><dt>Channels</dt><dd class="mono">1, 6, 11</dd><dt>Share</dt><dd>22% of clients</dd></div>
+            <div class="mid mt-12">11<small>clients</small></div>
+            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>20 MHz</dd><dt>Channels</dt><dd class="mono">1, 6, 11</dd><dt>Share</dt><dd>41% of clients</dd></div>
           </div>
           <div class="card bandc">
             <div class="row"><div class="ico"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">5 GHz</div><div class="xxs muted">Low and high radios</div></div><span class="pill ok">On</span></div>
-            <div class="mid mt-12">14<small>clients</small></div>
-            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>80 / 160 MHz</dd><dt>Channels</dt><dd class="mono">36, 149</dd><dt>Share</dt><dd>52% of clients</dd></div>
+            <div class="mid mt-12">10<small>clients</small></div>
+            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>80 MHz</dd><dt>Channels</dt><dd class="mono">36, 44, 149</dd><dt>Share</dt><dd>37% of clients</dd></div>
           </div>
           <div class="card bandc">
             <div class="row"><div class="ico"><i data-lucide="radio-tower"></i></div><div class="grow"><div class="m">6 GHz</div><div class="xxs muted">eero Max 7, Pro 7, 7</div></div><span class="pill ok">On</span></div>
-            <div class="mid mt-12">7<small>clients</small></div>
-            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>320 MHz</dd><dt>Channels</dt><dd class="mono">37</dd><dt>Share</dt><dd>26% of clients</dd></div>
+            <div class="mid mt-12">6<small>clients</small></div>
+            <div class="kv xs mt-12" style="gap:5px 16px"><dt>Width</dt><dd>160 MHz</dd><dt>Channels</dt><dd class="mono">37, 69</dd><dt>Share</dt><dd>22% of clients</dd></div>
           </div>
         </div>
         <div class="xs muted">eero picks channels and bands automatically; there is no per-band SSID. The Garage eero Beacon has no 6 GHz radio.</div>
@@ -142,7 +142,7 @@
           <div class="grid g2">
             <div>
               <div class="fl"><i data-lucide="tag" style="width:13px;height:13px"></i>Network nickname</div>
-              <div class="input">Kim house</div>
+              <div class="input"><span class="ph">Add a nickname</span></div>
               <div class="xxs muted mt-4">Helps tell networks apart on accounts with more than one</div>
             </div>
             <div>
@@ -179,7 +179,7 @@
             <div class="ico sm"><i data-lucide="mic"></i></div>
             <div class="ico sm"><span class="xxxs b">+1</span></div>
           </div>
-          <div class="xs muted">Nest Thermostat, Ring Doorbell, Sonos Kitchen, Hue lights, HP LaserJet, Living Room TV, Kitchen Echo and 1 more join with a saved password.</div>
+          <div class="xs muted">Nest Thermostat, Ring Doorbell, Sonos Kitchen, Desk Lamp, HP LaserJet, Garage Door Opener, Kitchen Echo and 1 more join with a saved password.</div>
           <div class="hr"></div>
           <div class="xs fg2 col gap-4">
             <div class="row-6"><i data-lucide="check" style="width:13px;height:13px;color:var(--success)"></i>Guest network is not affected</div>
