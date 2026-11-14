@@ -1,8 +1,10 @@
 /**
  * eero backend, notifications area: `GET {net}/notifications_history`
  * (`limit=50`, paged by `timestamp`, the `created_at` of the last row),
- * `GET {net}/notifications/has_unread` and `GET {net}/notifications`, and
- * `POST {net}/notifications/mark_read` (empty-JSON body, network-wide).
+ * `GET {net}/notifications/has_unread` and `GET {net}/notifications`,
+ * `POST {net}/notifications/mark_read` (empty-JSON body, network-wide), and
+ * `PUT {net}/notifications` with the whole switch map (dotted keys as sent,
+ * never an eero Plus key; core merges the change into the current map).
  */
 
 import type { NotificationChunk } from "../../backend";
@@ -36,5 +38,13 @@ export const notifications: EeroArea<"notifications"> = ({ client }) => ({
   },
   async settings(net) {
     return mapNotificationSettings(await client.request<RawNotificationSettings | null>({ method: "GET", path: networkPath(net, "notifications") }));
+  },
+  async setSettings(net, settings) {
+    // mapNotificationSettings keeps only booleans and drops eero Plus keys, so none is ever sent.
+    const body = mapNotificationSettings(settings);
+    const data = await client.request<RawNotificationSettings | null>({ method: "PUT", path: networkPath(net, "notifications"), body });
+    // eero's answer to the PUT is not captured: use it when it is the map, else what was sent.
+    const echoed = mapNotificationSettings(data);
+    return Object.keys(echoed).length ? echoed : body;
   },
 });

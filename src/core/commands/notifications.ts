@@ -10,12 +10,24 @@
  */
 
 import { z } from "zod";
+import { CommandError } from "../errors";
 import type * as M from "../model";
 import { POLL, TTL } from "../poll";
 import { type AnyCommand, defineCommand } from "../spec";
 
 /** Desktop alert choices when settings.json has none: on. */
 export const DESKTOP_DEFAULTS: Readonly<Record<string, boolean>> = { enabled: true };
+
+/**
+ * The desktop choices `notifications.settings.set` takes: `enabled` is the
+ * master switch, the rest pick kinds of alert (`desktopKind`). A missing kind
+ * counts as on.
+ */
+export const DESKTOP_KEYS = ["enabled", "offline", "devices", "other"] as const;
+export type DesktopKey = (typeof DESKTOP_KEYS)[number];
+
+/** eero Plus switches (out of scope, AGENTS.md): never read, offered or sent. */
+export const isPlusNotificationKey = (key: string): boolean => /^(premium|backup)\./.test(key);
 
 /** At most this many desktop alerts per poll, so a burst never floods the OS. */
 export const MAX_ALERTS_PER_POLL = 5;
@@ -28,6 +40,12 @@ export const isOfflineAlert = (n: M.Notification): boolean => (n.category === "n
 
 /** Whether desktop alerts are on. */
 export const desktopEnabled = (desktop: Record<string, boolean> | null | undefined): boolean => desktop?.enabled !== false;
+
+/** Which desktop choice covers a notification: an offline network or eero, a device, or anything else. */
+export const desktopKind = (n: M.Notification): Exclude<DesktopKey, "enabled"> => (isOfflineAlert(n) ? "offline" : n.category === "device" || n.category === "devices" ? "devices" : "other");
+
+/** Whether the desktop choices allow an OS alert for this notification. */
+export const desktopAllows = (desktop: Record<string, boolean> | null | undefined, n: M.Notification): boolean => desktopEnabled(desktop) && desktop?.[desktopKind(n)] !== false;
 
 export type NewNotifications = {
   /** Items to alert, offline network and eero first, then newest first. Empty on the first page seen. */
@@ -51,6 +69,17 @@ export function findNewNotifications(seen: ReadonlySet<string> | null, page: M.N
   }
   fresh.sort((a, b) => Number(isOfflineAlert(b)) - Number(isOfflineAlert(a)) || b.at.localeCompare(a.at));
   return { alerts: fresh.slice(0, MAX_ALERTS_PER_POLL), seen: next };
+}
+
+/**
+ * New items to show as OS alerts under the desktop choices: the same
+ * detection, with the kinds turned off (or everything, when `enabled` is
+ * false) left out. Every id is still remembered, so turning alerts back on
+ * does not replay old items.
+ */
+export function findDesktopAlerts(seen: ReadonlySet<string> | null, page: M.NotificationPage, desktop: Record<string, boolean> | null | undefined): NewNotifications {
+  const found = findNewNotifications(seen, page);
+  return { alerts: found.alerts.filter((n) => desktopAllows(desktop, n)), seen: found.seen };
 }
 
 export const commands: AnyCommand[] = [
@@ -101,6 +130,55 @@ export const commands: AnyCommand[] = [
     async run(ctx): Promise<M.NotificationSettings> {
       const [eero, account, app] = await Promise.all([ctx.backend.notifications.settings(ctx.net), ctx.backend.account.get(), ctx.settings.get()]);
       return { eero, push: account.push, desktop: { ...DESKTOP_DEFAULTS, ...app.desktopNotifications } };
+    },
+  }),
+  defineCommand({
+    id: "notifications.settings.set",
+    label: "Set notification settings",
+    description:
+      "Turns eero's alerts for this network on or off (keys as notifications.settings.get shows them, e.g. device.new) and the desktop alert choices (enabled, offline, devices, other) kept in Mesh UI's settings. Only the keys passed change; eero gets the whole merged map, never an eero Plus key. Returns the settings as the next read shows them.",
+    icon: "bell-ring",
+    params: z
+      .object({
+        eero: z
+          .record(z.string().min(1), z.boolean())
+          .optional()
+          .describe("eero switches to change, keys as sent (device.new). Unknown and eero Plus keys are rejected."),
+        desktop: z
+          .partialRecord(z.enum(DESKTOP_KEYS), z.boolean())
+          .optional()
+          .describe("Desktop alert choices to change: enabled (all), offline, devices, other."),
+      })
+      .refine((p) => Object.keys(p.eero ?? {}).length + Object.keys(p.desktop ?? {}).length > 0, "Pass at least one eero or desktop choice."),
+    effect: "write",
+    // eero's switches are the signed-in account's own alerts and the desktop
+    // choices are app-local, so no permission, mode or capability limits it.
+    gate: { area: null },
+    invalidates: ["notification_settings"],
+    async run(ctx, p): Promise<M.NotificationSettings> {
+      const changes = p.eero ?? {};
+      const keys = Object.keys(changes);
+      let eero: Record<string, boolean>;
+      if (keys.length) {
+        const plus = keys.filter(isPlusNotificationKey);
+        if (plus.length) throw new CommandError("bad_params", `${plus.join(", ")} ${plus.length === 1 ? "is an" : "are"} eero Plus ${plus.length === 1 ? "setting" : "settings"}, which Mesh UI does not change.`);
+        const current = await ctx.backend.notifications.settings(ctx.net);
+        const unknown = keys.filter((k) => !(k in current));
+        if (unknown.length) throw new CommandError("bad_params", `Unknown eero notification ${unknown.length === 1 ? "key" : "keys"}: ${unknown.join(", ")}. See notifications.settings.get.`);
+        // eero takes the whole map: send every known switch, never a Plus one.
+        const merged = Object.fromEntries(Object.entries({ ...current, ...changes }).filter(([k]) => !isPlusNotificationKey(k)));
+        eero = await ctx.backend.notifications.setSettings(ctx.net, merged);
+      } else {
+        eero = await ctx.backend.notifications.settings(ctx.net);
+      }
+      const app = await ctx.settings.get();
+      let desktop = app.desktopNotifications;
+      if (p.desktop && Object.keys(p.desktop).length) {
+        desktop = { ...desktop, ...p.desktop };
+        await ctx.settings.update({ desktopNotifications: desktop });
+      }
+      const account = await ctx.backend.account.get();
+      return { eero, push: account.push, desktop: { ...DESKTOP_DEFAULTS, ...desktop } };
     },
   }),
 ];

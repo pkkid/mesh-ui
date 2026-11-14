@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createFakeEero, type FakeEero } from "../../../test/fake-eero/server";
+import { createFakeEero, type FakeEero, fail } from "../../../test/fake-eero/server";
 import type { AuthState, Backend, SecretStore } from "../backend";
 import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
 import { mapHasUnread, mapNotification, mapNotificationSettings } from "../eero/map/notifications";
 import { createEngine, memorySettings } from "../engine";
 import type * as M from "../model";
-import { desktopEnabled, findNewNotifications, isOfflineAlert, MAX_ALERTS_PER_POLL, unreadCount } from "./notifications";
+import { desktopAllows, desktopEnabled, findDesktopAlerts, findNewNotifications, isOfflineAlert, MAX_ALERTS_PER_POLL, unreadCount } from "./notifications";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -143,6 +143,105 @@ describe("notifications.settings.get (demo)", () => {
   it("rejects bad params", async () => {
     expect(await code(demo().engine.execute("notifications.settings.get", { device: "x" }))).toBe("bad_params");
     expect(await code(demo("signed_out").engine.execute("notifications.settings.get"))).toBe("not_signed_in");
+  });
+});
+
+describe("notifications.settings.set (demo)", () => {
+  const get = (engine: ReturnType<typeof demo>["engine"], networkId = MAPLE) => ok(engine.execute<M.NotificationSettings>("notifications.settings.get", { networkId }));
+
+  it("changes one eero switch, and the next read shows it with the rest kept", async () => {
+    const { engine } = demo();
+    // Cache the read first, as the sheet does: the write must invalidate it.
+    const before = await get(engine);
+    expect(before.eero["device.new"]).toBe(true);
+    const saved = await ok(engine.execute<M.NotificationSettings>("notifications.settings.set", { networkId: MAPLE, eero: { "device.new": false } }));
+    expect(saved.eero).toEqual({ ...before.eero, "device.new": false });
+    const after = await get(engine);
+    expect(after.eero).toEqual({ ...before.eero, "device.new": false });
+    expect(after.desktop).toEqual(before.desktop);
+    // Per network: Lake Cabin is unchanged.
+    expect((await get(engine, LAKE)).eero["device.new"]).toBe(true);
+  });
+
+  it("saves desktop choices in app settings, for every network", async () => {
+    const settings = memorySettings();
+    const backend = createDemoBackend({ clock: () => NOW });
+    const engine = createEngine({ backend, clock: () => NOW, settings });
+    await get(engine);
+    const saved = await ok(engine.execute<M.NotificationSettings>("notifications.settings.set", { networkId: MAPLE, desktop: { enabled: false, devices: false } }));
+    expect(saved.desktop).toEqual({ enabled: false, devices: false });
+    expect((await settings.get()).desktopNotifications).toEqual({ enabled: false, devices: false });
+    expect((await get(engine)).desktop).toEqual({ enabled: false, devices: false });
+    expect((await get(engine, LAKE)).desktop).toEqual({ enabled: false, devices: false });
+    // Only the keys passed change.
+    await ok(engine.execute("notifications.settings.set", { desktop: { enabled: true } }));
+    expect((await get(engine)).desktop).toEqual({ enabled: true, devices: false });
+  });
+
+  it("changes eero and desktop together", async () => {
+    const { engine } = demo();
+    const s = await ok(engine.execute<M.NotificationSettings>("notifications.settings.set", { networkId: MAPLE, eero: { "network.dataUsageReport": true }, desktop: { offline: false } }));
+    expect([s.eero["network.dataUsageReport"], s.desktop]).toEqual([true, { enabled: true, offline: false }]);
+  });
+
+  it("rejects eero Plus keys, unknown keys and bad values", async () => {
+    const { engine } = demo();
+    const plus = await engine.execute("notifications.settings.set", { networkId: MAPLE, eero: { "premium.activity.weeklyReport": true } });
+    expect(plus).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(plus.ok ? "" : plus.error.message).toMatch(/eero Plus/);
+    expect(await code(engine.execute("notifications.settings.set", { eero: { "backup.wan.change": false } }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { eero: { "device.nope": false } }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { eero: { "device.new": "no" } }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { desktop: { sounds: true } }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", {}))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { eero: {} }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { eero: { "device.new": false }, extra: 1 }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { networkId: "Nowhere", eero: { "device.new": false } }))).toBe("bad_params");
+    expect(await code(demo("signed_out").engine.execute("notifications.settings.set", { eero: { "device.new": false } }))).toBe("not_signed_in");
+    // Nothing changed.
+    expect((await get(engine)).eero["device.new"]).toBe(true);
+  });
+
+  it("is undone by demo.scenario.set", async () => {
+    const { engine } = demo();
+    await ok(engine.execute("notifications.settings.set", { networkId: MAPLE, eero: { "device.new": false } }));
+    await ok(engine.execute("demo.scenario.set", { scenario: "default" }));
+    expect((await get(engine)).eero["device.new"]).toBe(true);
+  });
+
+  it("is a plain write with no gate limits that invalidates notification_settings", async () => {
+    const { engine } = demo();
+    const info = engine.commands().find((c) => c.id === "notifications.settings.set");
+    expect(info).toMatchObject({ effect: "write", scope: "network", label: "Set notification settings", gate: { area: null, op: "update", bridgeOff: false, capability: null } });
+    expect(await code(engine.execute("notifications.settings.set", { networkId: MAPLE, eero: { "device.new": false }, confirm: true }))).toBe("bad_params");
+  });
+
+  it("stops desktop alerts when turned off, and alerts only the kinds left on", async () => {
+    const { engine } = demo();
+    const first = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: MAPLE }));
+    const on = await get(engine);
+    const seen = findDesktopAlerts(null, first, on.desktop).seen;
+    await ok(engine.execute("demo.scenario.set", { scenario: "eero_offline" }));
+    const next = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: MAPLE }));
+    // On (the default): the new offline alert shows.
+    expect(findDesktopAlerts(seen, next, (await get(engine)).desktop).alerts.map((n) => n.title)).toEqual(["Garage is offline"]);
+    // Off: nothing, though the id is still remembered.
+    await ok(engine.execute("notifications.settings.set", { desktop: { enabled: false } }));
+    const off = findDesktopAlerts(seen, next, (await get(engine)).desktop);
+    expect(off.alerts).toEqual([]);
+    expect(off.seen.size).toBe(seen.size + 1);
+    // Back on with offline alerts turned off: still nothing for this one.
+    await ok(engine.execute("notifications.settings.set", { desktop: { enabled: true, offline: false } }));
+    expect(findDesktopAlerts(seen, next, (await get(engine)).desktop).alerts).toEqual([]);
+  });
+
+  it("sorts each notification into one desktop kind", () => {
+    expect(desktopAllows({ enabled: true }, note("a", 1))).toBe(true);
+    expect(desktopAllows({ enabled: true, devices: false }, note("a", 1))).toBe(false);
+    expect(desktopAllows({ enabled: true, devices: false }, note("a", 1, { category: "network", title: "Update tonight" }))).toBe(true);
+    expect(desktopAllows({ other: false }, note("a", 1, { category: "network", title: "Update tonight" }))).toBe(false);
+    expect(desktopAllows({ other: false }, note("a", 1, { category: "eero", title: "Garage is offline" }))).toBe(true);
+    expect(desktopAllows(null, note("a", 1))).toBe(true);
   });
 });
 
@@ -294,6 +393,54 @@ describe("notifications (fake eero server)", () => {
     const after = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: "100001" }));
     expect(after.unread).toBe(false);
     expect(after.notifications.every((n) => n.read)).toBe(true);
+  });
+});
+
+describe("notifications.settings.set (fake eero server)", () => {
+  const NON_PLUS = {
+    "device.new": true,
+    "device.restrict.new.private": false,
+    "network.updated": true,
+    "network.dataUsageReport": false,
+    "permissions.updates": true,
+    "port.security.blocked": true,
+    "network.scheduledUpdate.earlyNotification": true,
+    "network.scheduledUpdate.lateNotification": false,
+  };
+
+  it("PUTs the whole merged map with dotted keys and no eero Plus key, and the next read shows it", async () => {
+    const { fake, engine } = fakeEngine();
+    // Cached read first: the write must invalidate notification_settings.
+    expect((await ok(engine.execute<M.NotificationSettings>("notifications.settings.get", { networkId: "100001" }))).eero["device.new"]).toBe(true);
+    const saved = await ok(engine.execute<M.NotificationSettings>("notifications.settings.set", { networkId: "100001", eero: { "device.new": false } }));
+    expect(saved.eero).toEqual({ ...NON_PLUS, "device.new": false });
+    expect(fake.writes).toHaveLength(1);
+    const put = fake.writes[0];
+    expect(put).toMatchObject({ method: "PUT", path: "/2.2/networks/100001/notifications", version: "2.2", contentType: "application/json", encoding: "json", status: 200 });
+    expect(put?.body).toEqual({ ...NON_PLUS, "device.new": false });
+    expect(Object.keys(put?.body ?? {}).some((k) => k.startsWith("premium.") || k.startsWith("backup."))).toBe(false);
+    expect(put?.rawBody).toContain('"device.new":false');
+    // eero's Plus switches are left as they were.
+    expect(fake.state.networks.get("100001")?.notificationSettings).toMatchObject({ "premium.activity.weeklyReport": false, "backup.wan.change": false, "device.new": false });
+    const after = await ok(engine.execute<M.NotificationSettings>("notifications.settings.get", { networkId: "100001" }));
+    expect(after.eero["device.new"]).toBe(false);
+  });
+
+  it("sends nothing to eero for a desktop-only change or a rejected key", async () => {
+    const { fake, engine } = fakeEngine();
+    const s = await ok(engine.execute<M.NotificationSettings>("notifications.settings.set", { networkId: "100001", desktop: { enabled: false } }));
+    expect(s.desktop).toEqual({ enabled: false });
+    expect(s.eero).toEqual(NON_PLUS);
+    expect(await code(engine.execute("notifications.settings.set", { networkId: "100001", eero: { "premium.activity.weeklyReport": true } }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.settings.set", { networkId: "100001", eero: { "device.nope": true } }))).toBe("bad_params");
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("maps an eero refusal to eero_error, not retried", async () => {
+    const fake = createFakeEero({ now: () => NOW, routes: [{ method: "PUT", path: "/networks/:net/notifications", handle: () => fail(400, "error.params.invalid") }] });
+    const backend = createEeroBackend({ secrets: secrets(fake.signIn()), origin: fake.origin, fetch: fake.fetch });
+    await expect(backend.notifications.setSettings("100001", { "device.new": true })).rejects.toMatchObject({ code: "eero_error" });
+    expect(fake.writes).toHaveLength(1);
   });
 });
 
