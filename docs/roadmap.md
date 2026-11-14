@@ -51,7 +51,7 @@ read these before planning the next milestone):
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
-| M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | planned |
+| M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/4), [review](reviews/M4.md)) |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | planned |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
 
@@ -752,7 +752,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `profile.schedule.add`, `.update` and `.remove` through `{profile}/schedules` (the GET there is a 404, so capture the profile's `schedule[]` and keep the write request from the clients; day form `MON` or `monday` decided from the capture). The schedule sheet (name, days, start and end with "next day" past midnight, enabled) on profile detail; the week timeline and today's lanes update.
 - done when: demo and fake-server tests incl. wrap past midnight, days form and `bad_params`; `pnpm ui:shot` of the sheet and the updated timeline, light and dark; `MANUAL: add, edit and remove a schedule on a test profile | ... | the eero app shows it and it pauses on time | that profile pauses at the scheduled time`.
 
-### M4.R Review ☐
+### M4.R Review ✅
 - issue: [#135](https://github.com/pkkid/mesh-ui/issues/135)
 - owner: maintainer
 - after: M4.1, M4.2, M4.3, M4.4, M4.5, M4.6, M4.7, M4.8, M4.9, M4.10, M4.11, M4.12
@@ -779,6 +779,24 @@ release manifest, so `--fake` shows no release notes; `integrations.get` and
 Moved from M4 planning: Activity row actions (Assign profile, Resume,
 Unblock); real events carry no device, eero or profile links, so capture
 whether any event type does before building them.
+Carried from M4: move each write's gate (permission, bridge mode,
+capability) into its command spec in core so pages and the palette share
+it, replacing the id-prefix table in `palette/search.ts` (#152, #154); one
+Share Wi-Fi sheet for Overview and Devices (Devices' button is still
+disabled; Overview links to the Wi-Fi page, #164); "New profile from
+selection" on the Unassigned card (#157); bulk device results carry
+`failed[].name` (#157); clicking a week timeline segment opens the
+schedule sheet (#161); schedules for Unassigned devices (no endpoint known;
+capture first, #161); restart copy in `helpers.restartLine` and Network
+actions still hard-codes times, and the Wi-Fi security change estimate is
+borrowed from the network restart: both come from `settings.impact` (#156,
+#158); `endpoints.md` section 18 says `led_cycle` takes `{id}` while the
+client sends the serial: fix whichever the M4 Find manual check disproves
+(#158); the palette preview shows "Running..." under a pending disruptive
+confirm, and a palette `device.pause` run toasts "Done" without the Undo
+that row actions get (M4 review). Update the docs and fixtures from the
+answers to the M4 manual checks (Wi-Fi rename path, `hide_5g` shape,
+schedule day form `MON`, Unassigned pause, nightlight shape).
 
 In: the write commands behind Advanced networking (DNS, DHCP, IPv6, WAN,
 connection mode, NAT randomization, UPnP, SQM, band steering, fast
@@ -790,7 +808,7 @@ pinholes, updates (install, preferred hour), admins and invites (invite,
 cancel, nickname, remove) and network transfer, eero port actions and eero
 remove, Troubleshooting tools (diagnose, placement test, coverage scan,
 upgrade report), notification settings, and `settings.impact`; every
-Carried from M2 and M3 item above.
+Carried from M2, M3 and M4 item above.
 Out: App & account and release (M6), anything eero Plus.
 
 Done when:
@@ -809,7 +827,7 @@ Done when:
 - In demo and `--fake`, every M5 control that M3 showed as "Coming soon"
   works, with M4's toasts, confirms and Undo. `pnpm ui:shot` light and dark
   of each page's confirm, impact and toast states.
-- Every Carried from M2 and M3 item is closed or moved with a reason.
+- Every Carried from M2, M3 and M4 item is closed or moved with a reason.
 
 Parallelism: 3 waves plus R (1, 8, 1, R); critical path M5.1 > M5.2 >
 M5.3 > M5.R. Hotspots: `src/core/model.ts`, `src/core/backend.ts`,
@@ -937,3 +955,7 @@ Carried from M3: the packaged Linux launcher strips `DISPLAY` and
 `dist:smoke` window step fails with no display (set `MESH_UI_HEADLESS`);
 sidebar and sign-in avatars use an inline `hue("orange")` (from M1.7), move
 it to `chartColors.ts` or make avatars neutral.
+Carried from M4: the speed test one-at-a-time lock is per process, so the
+app and a CLI in another process can each start one (share it, or accept
+eero's own refusal, #162); the CLI and agents panel reads the audit log
+(`audit.jsonl`, live CLI and MCP only, #149).
