@@ -12,7 +12,7 @@ import { CircleCheck, CircleHelp, CircleX, Download, Globe, type LucideIcon, Ref
 
 import { Link, pathFor } from "~/app/router";
 import type { RouteId } from "~/app/routes";
-import { type QueryState, useCommand } from "~/app/useCommand";
+import { useCommand, useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
@@ -106,10 +106,20 @@ function CheckRow({ check }: { check: Check }) {
   );
 }
 
-export function HealthChecks({ query, symptoms }: { query: QueryState<HealthReport>; symptoms?: ReactNode }) {
-  // Run again skips the engine's cache (refresh: true); a plain refetch answered from it and looked like nothing happened.
+/**
+ * The health check with Run again: `health.check` polled, plus a one-off
+ * `{refresh: true}` run per click (a plain refetch was answered from the
+ * engine's cache and looked like nothing happened). `report` is the newer of
+ * the two, for the hero and the page subtitle alike.
+ */
+export function useHealthCheck() {
+  const query = useQuery<HealthReport>("health.check", undefined, { poll: true });
   const rerun = useCommand<{ refresh: boolean }, HealthReport>("health.check");
-  const report = newerReport(query.data, rerun.result);
+  return { query, rerun, report: newerReport(query.data, rerun.result) };
+}
+
+export function HealthChecks({ health, symptoms }: { health: ReturnType<typeof useHealthCheck>; symptoms?: ReactNode }) {
+  const { query, rerun, report } = health;
   const busy = rerun.running;
   const runAgain = () => {
     if (!busy) void rerun.run({ refresh: true });
