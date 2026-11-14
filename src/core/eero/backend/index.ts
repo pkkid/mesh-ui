@@ -42,11 +42,13 @@ import { device } from "./device";
 import { eero } from "./eero";
 import { events } from "./events";
 import { guest } from "./guest";
+import { integrations } from "./integrations";
 import { internet } from "./internet";
 import { network } from "./network";
 import { notifications } from "./notifications";
 import { profile } from "./profile";
 import { routing } from "./routing";
+import { settings } from "./settings";
 import { updates } from "./updates";
 import { usage } from "./usage";
 
@@ -58,11 +60,13 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   eero,
   events,
   guest,
+  integrations,
   internet,
   network,
   notifications,
   profile,
   routing,
+  settings,
   updates,
   usage,
 };
