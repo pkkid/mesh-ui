@@ -801,6 +801,25 @@ skipped at the M4 review (maintainer, 2026-11-14), so `PUT {net}/settings`
 vs `PUT {net}` is still unverified and its `MANUAL:` line carries to M5.1.
 Owners: M5.1 (docs, fixtures, captures, the Wi-Fi rename check), M5.11
 (everything else).
+Learned in M4: the write kit is the pattern for every M5 control: run
+through `useWrite`, show core's `needs_confirm` message as the confirm text
+(so `settings.impact` should produce that message), offer Undo only for a
+reversible write that changed something, and never hold a password or
+secret in a toast. Contract tests that read before a write retry a fake 500
+with backoff and time out; answer 400, or do lookups inside the write.
+Test-only stand-in commands must register only for ids not yet in the
+registry, or they collide with the real spec. `src/core/demo/backend.test.ts`
+and `src/core/audit.test.ts` are touched by every write story; M5.1 owns
+them and fixes them for the rest. eero accepted shapes are not proven by a
+capture of an unset value: when the real network has none (schedules,
+nightlight, `hide_5g` on), take the shape from the clients, accept both
+forms on read, and keep a `MANUAL:` line. Each Done when line should name
+its test: M4's CLI and MCP confirm parity was only proven at the review
+(#166). Headless `ui:shot` can drive the palette: target
+`input[aria-label="Search or run a command"]` (the titlebar button has the
+same label), set the value with the native setter, and prefix ids with `>`.
+A provider rate limit can stop several workers at once; small PRs and a
+pushed branch make the resume cheap.
 
 In: the write commands behind Advanced networking (DNS, DHCP, IPv6, WAN,
 connection mode, NAT randomization, UPnP, SQM, band steering, fast
