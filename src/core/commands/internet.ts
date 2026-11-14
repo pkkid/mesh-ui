@@ -43,8 +43,21 @@ const CLOCK_SKEW_MS = 10_000;
 /** What `speedtest.run` returns (and `speedtest.history` while it runs). */
 export type SpeedTestRun = M.SpeedTestRun;
 
-/** Tests started and not yet seen in the history: backend to network to start time (engine clock). */
-const running = new WeakMap<Backend, Map<M.Id, number>>();
+/**
+ * Tests started and not yet seen in the history: backend to network to the
+ * start time (engine clock) and the newest result read before it, which
+ * cannot be this test's.
+ */
+const running = new WeakMap<Backend, Map<M.Id, { since: number; after: number }>>();
+
+/** The newest result each history read saw, per backend and network. */
+const newestSeen = new WeakMap<Backend, Map<M.Id, number>>();
+
+const perBackend = <V>(map: WeakMap<Backend, Map<M.Id, V>>, backend: Backend): Map<M.Id, V> => {
+  let m = map.get(backend);
+  if (!m) map.set(backend, (m = new Map()));
+  return m;
+};
 
 const runOf = (net: M.Id, since: number): SpeedTestRun => ({
   networkId: net,
@@ -55,13 +68,13 @@ const runOf = (net: M.Id, since: number): SpeedTestRun => ({
 /** When the running test on `net` started, or null (none, or it gave up). */
 function runningSince(ctx: CommandContext, net: M.Id): number | null {
   const tests = running.get(ctx.backend);
-  const at = tests?.get(net);
-  if (at === undefined) return null;
-  if (ctx.now() - at >= SPEEDTEST_GIVE_UP_MS) {
+  const test = tests?.get(net);
+  if (test === undefined) return null;
+  if (ctx.now() - test.since >= SPEEDTEST_GIVE_UP_MS) {
     tests?.delete(net);
     return null;
   }
-  return at;
+  return test.since;
 }
 
 /**
@@ -71,8 +84,11 @@ function runningSince(ctx: CommandContext, net: M.Id): number | null {
  */
 function checkRunning(ctx: CommandContext, net: M.Id, tests: M.SpeedTest[]): SpeedTestRun | null {
   const since = runningSince(ctx, net);
+  const after = running.get(ctx.backend)?.get(net)?.after ?? Number.NEGATIVE_INFINITY;
+  const newest = tests[0] ? Date.parse(tests[0].at) : null;
+  if (newest !== null) perBackend(newestSeen, ctx.backend).set(net, newest);
   if (since === null) return null;
-  if (tests.some((t) => Date.parse(t.at) >= since - CLOCK_SKEW_MS)) {
+  if (tests.some((t) => Date.parse(t.at) >= since - CLOCK_SKEW_MS && Date.parse(t.at) > after)) {
     running.get(ctx.backend)?.delete(net);
     ctx.invalidate(["network"]);
     return null;
@@ -251,9 +267,7 @@ export const commands: AnyCommand[] = [
       }
       await ctx.backend.internet.runSpeedTest(net);
       const now = ctx.now();
-      let tests = running.get(ctx.backend);
-      if (!tests) running.set(ctx.backend, (tests = new Map()));
-      tests.set(net, now);
+      perBackend(running, ctx.backend).set(net, { since: now, after: newestSeen.get(ctx.backend)?.get(net) ?? Number.NEGATIVE_INFINITY });
       // Reads made before the result is due expire when it is.
       ctx.invalidate(["speedtest", "network"], now + SPEEDTEST_RESULT_MS);
       return runOf(net, now);

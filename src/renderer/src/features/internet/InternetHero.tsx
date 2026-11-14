@@ -37,8 +37,6 @@ const FIRST_LOOK_MS = 1_000;
 const WATCH_EVERY_MS = 5_000;
 /** No result by then: "Speed test did not finish" (core frees the network at the same time). */
 const GIVE_UP_MS = 3 * 60_000;
-/** A result dated this much before the start still counts (eero's clock against ours). */
-const CLOCK_SKEW_MS = 10_000;
 
 /** The network with a test running, one at a time per network like core. */
 const running = new Map<Id, SpeedTestRun>();
@@ -92,15 +90,18 @@ export function watchSpeedTest(run: SpeedTestRun): void {
     invalidate(["speedtest.", "internet.", "network.get"]);
   };
   const tick = async () => {
+    // Core decides when the test is over (`running` back to null): a result
+    // newer than any seen before the start, or the 3 minute give-up.
     const r = await execute<SpeedHistory>("speedtest.history", { networkId: run.networkId, range: "day", limit: 1 });
     const latest = r.ok ? r.result.tests[0] : undefined;
-    if (latest && Date.parse(latest.at) >= started - CLOCK_SKEW_MS) {
-      toast.update(id, "success", { title: `Speed test: ${formatMbps(latest.downMbps)} down, ${formatMbps(latest.upMbps)} up` });
+    // Checked first: past the give-up core clears `running` without a result.
+    if (Date.now() - started >= GIVE_UP_MS) {
+      toast.update(id, "error", { title: "Speed test did not finish", detail: "eero posted no result. Try again in a few minutes." });
       done();
       return;
     }
-    if (Date.now() - started > GIVE_UP_MS) {
-      toast.update(id, "error", { title: "Speed test did not finish", detail: "eero posted no result. Try again in a few minutes." });
+    if (r.ok && r.result.running === null && latest && Date.parse(latest.at) >= started - 10_000) {
+      toast.update(id, "success", { title: `Speed test: ${formatMbps(latest.downMbps)} down, ${formatMbps(latest.upMbps)} up` });
       done();
       return;
     }

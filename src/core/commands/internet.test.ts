@@ -494,6 +494,21 @@ describe("speedtest.run and internet.plan.set (fake eero server)", () => {
     expect(fake.writes).toHaveLength(2);
   });
 
+  it("a result from before the start never finishes the next test", async () => {
+    const { clock, fake, engine } = clockedFake();
+    const first = await ok(engine.execute<SpeedTestRun>("speedtest.run", { networkId: "100001" }));
+    clock.t += 65_000;
+    expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }))).tests[0]?.at).toBe(first.resultAt);
+    // Run again 5 s after the first result is dated: inside the clock skew allowance.
+    clock.t = Date.parse(first.resultAt) + 5_000;
+    const second = await ok(engine.execute<SpeedTestRun>("speedtest.run", { networkId: "100001" }));
+    const h = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
+    expect(h.tests[0]?.at).toBe(first.resultAt);
+    expect(h.running).toEqual(second);
+    expect(await code(engine.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    expect(fake.writes).toHaveLength(2);
+  });
+
   it("uses the speedtest link eero handed back for the start", async () => {
     const { fake, engine } = clockedFake();
     const net = fake.state.networks.get("100001");

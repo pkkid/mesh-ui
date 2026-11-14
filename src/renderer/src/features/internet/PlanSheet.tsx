@@ -7,9 +7,9 @@
  * docs/ux/pages/internet.md (Actions: Plan value).
  */
 import { Gauge } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { useQuery } from "~/app/useCommand";
+import { invalidate, useQuery } from "~/app/useCommand";
 import { fieldErrors, useWrite, type WriteRequest } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -53,6 +53,15 @@ export function PlanSheet() {
   );
   // One sheet at a time: the page that rendered it closes it when it unmounts.
   useEffect(() => () => setOpen(false), []);
+  // Speed test ratings follow the plan. A plan write (save, remove, Undo, the
+  // palette) refreshes internet.get, so refresh the history when its plan changes.
+  const plan = JSON.stringify(useQuery<Internet>("internet.get").data?.planMbps ?? null);
+  const shown = useRef(plan);
+  useEffect(() => {
+    if (shown.current === plan) return;
+    shown.current = plan;
+    invalidate(["speedtest."]);
+  }, [plan]);
   if (!isOpen) return null;
   return <PlanForm onClose={() => setOpen(false)} />;
 }
