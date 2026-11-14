@@ -46,7 +46,7 @@ count: number of profiles, not counting Unassigned.
    - Info note: "New devices and devices with private (randomized) MAC
      addresses land here. Pausing Unassigned asks for confirmation, since it
      includes the TV, printer and smart home gear."
-   - A 4-column grid of device tiles: icon, name, "Online · 142 GB today",
+   - A 4-column grid of device tiles: icon, name, "Online · 142 GB in 24h",
      "Offline · 3 days ago" or "Blocked" (destructive text); offline tiles at
      reduced opacity. On the right of each tile, a row of faint profile
      avatars (A, J, M, L) that brighten on hover; clicking one assigns the
