@@ -4,9 +4,11 @@
  */
 
 import type * as M from "../../model";
-import { type RawEero, type RawFirmwareHistoryEntry, type RawNetwork, type RawPortInterface, linkUrl } from "../raw";
+import { type RawEero, type RawFirmwareHistoryEntry, type RawNetwork, type RawPortConnection, type RawPortInterface, linkUrl } from "../raw";
 import { compactMac, idFromUrl } from "../urls";
 import { speedMbps } from "./device";
+import { toIso } from "./network";
+import { mapLan } from "./routing";
 
 type RawRadioStats = { channel?: number; channel_width?: string | number; tx_power?: number; channel_utilization?: number; client_count?: number };
 
@@ -16,9 +18,6 @@ export type RawEeroFull = RawEero & {
   ipv6_addresses?: (string | { address?: string })[];
   bssids_with_bands?: { band?: string; ethernet_address?: string }[];
   radio_channel_stats?: Record<string, RawRadioStats | undefined>;
-  ethernet_status?: {
-    statuses?: { isLeafWiredToUpstream?: boolean; neighbor?: { type?: string; metadata?: { url?: string; location?: string } } }[];
-  } | null;
   power_info?: { power_source?: string } | null;
 };
 
@@ -86,12 +85,28 @@ function nightlight(raw: RawEero): M.Nightlight | null {
   return { mode, brightness: num(n.brightness_percentage), on: str(n.schedule?.on), off: str(n.schedule?.off) };
 }
 
-function upstream(raw: RawEeroFull, wired: boolean): M.Id | null {
-  const wireless = linkUrl(raw.wireless_upstream_node?.url);
-  if (!wired && wireless) return idFromUrl(wireless);
-  const leaf = raw.ethernet_status?.statuses?.find((s) => s.isLeafWiredToUpstream && s.neighbor?.type?.toUpperCase() === "EERO");
-  const url = linkUrl(leaf?.neighbor?.metadata?.url);
-  return url ? idFromUrl(url) : wireless ? idFromUrl(wireless) : null;
+/**
+ * The parent eero's id. Wired: the EERO neighbour on the uplink port
+ * (`isLeafWiredToUpstream` if eero ever sets it, else the `isWanPort` port,
+ * else the only EERO neighbour). Wireless: `wireless_upstream_node.url` if
+ * sent, else its `name` matched to exactly one peer's `location` (eero sends
+ * no url and its node id is not an eero id). Null when it cannot be told.
+ */
+function upstream(raw: RawEeroFull, wired: boolean, peers: RawEero[]): M.Id | null {
+  const self = linkUrl(raw.url);
+  const eeroNeighbours = (raw.ethernet_status?.statuses ?? []).filter((s) => s.neighbor?.type?.toUpperCase() === "EERO" && linkUrl(s.neighbor.metadata?.url));
+  const wiredUp =
+    eeroNeighbours.find((s) => s.isLeafWiredToUpstream === true) ??
+    eeroNeighbours.find((s) => s.isWanPort === true && s.hasCarrier !== false) ??
+    (eeroNeighbours.length === 1 ? eeroNeighbours[0] : undefined);
+  const wiredUrl = linkUrl(wiredUp?.neighbor?.metadata?.url);
+  const node = raw.wireless_upstream_node;
+  const nodeUrl = linkUrl(node?.url);
+  const name = str(node?.name);
+  const named = name ? peers.filter((p) => str(p.location) === name && linkUrl(p.url) !== self) : [];
+  const wirelessUrl = nodeUrl ?? (named.length === 1 ? linkUrl(named[0]?.url) : null);
+  const url = wired ? (wiredUrl ?? wirelessUrl) : (wirelessUrl ?? wiredUrl);
+  return url && url !== self ? idFromUrl(url) : null;
 }
 
 /** LAN facts every eero shares, from the network object and the gateway eero. */
@@ -99,43 +114,25 @@ export type Lan = { subnet: string | null; gatewayIp: string | null };
 
 const NO_LAN: Lan = { subnet: null, gatewayIp: null };
 
-const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-
-function ipv4Int(ip: string | null): number | null {
-  const m = ip ? IPV4.exec(ip) : null;
-  if (!m) return null;
-  const parts = m.slice(1).map(Number);
-  return parts.every((n) => n <= 255) ? parts.reduce((a, n) => a * 256 + n, 0) : null;
-}
-
-/** "192.168.4.0" and "255.255.252.0" to "192.168.4.0/22"; null for a bad or non-contiguous mask. */
-export function cidr(ip: string | null, mask: string | null): string | null {
-  const a = ipv4Int(ip);
-  const m = ipv4Int(mask);
-  if (a === null || m === null) return null;
-  const bits = m.toString(2).padStart(32, "0");
-  if (!/^1*0*$/.test(bits)) return null;
-  const prefix = bits.indexOf("0") === -1 ? 32 : bits.indexOf("0");
-  const base = prefix === 0 ? 0 : (a - (a % 2 ** (32 - prefix)));
-  return `${[24, 16, 8, 0].map((s) => Math.floor(base / 2 ** s) % 256).join(".")}/${prefix}`;
-}
-
 /**
- * Subnet from the network's custom DHCP settings (null in automatic mode:
- * eero does not send the range it picked), and the LAN gateway, the gateway
- * eero's own address. In bridge mode eero is not the gateway, so null.
+ * Subnet from the network's DHCP settings, the same source as
+ * `reservation.list` (`mapLan`: `dhcp.custom`, or eero's automatic
+ * 192.168.4.0/22), and the LAN gateway, the gateway eero's own address. In
+ * bridge mode eero runs no LAN, so both are null; without the network object
+ * the subnet is null.
  */
 export function lanOf(net: Pick<RawNetwork, "dhcp" | "connection"> | null, eeros: RawEero[]): Lan {
   const mode = net?.connection?.mode?.toLowerCase();
   const gw = eeros.find((e) => e.gateway === true || e.is_primary_node === true);
-  const custom = net?.dhcp?.mode?.toLowerCase() === "custom" ? net.dhcp.custom : undefined;
+  const bridged = mode !== undefined && mode !== "nat";
   return {
-    subnet: custom ? cidr(str(custom.subnet_ip), str(custom.subnet_mask)) : null,
-    gatewayIp: mode && mode !== "nat" ? null : str(gw?.ip_address),
+    subnet: net && !bridged ? (mapLan(net.dhcp)?.subnet ?? null) : null,
+    gatewayIp: bridged ? null : str(gw?.ip_address),
   };
 }
 
-export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN): M.Eero {
+/** `peers`: the network's eeros, to name a wireless parent (pass the list; a lone read cannot). */
+export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN, peers: RawEero[] = []): M.Eero {
   const url = linkUrl(raw.url);
   const isGateway = raw.gateway === true || raw.is_primary_node === true;
   const wired = raw.wired === true || raw.connection_type?.toUpperCase() === "WIRED";
@@ -155,7 +152,7 @@ export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN): M.Eero {
     endOfLife: eol && (eol.support_expired !== undefined || eol.support_expiration_date) ? { expired: eol.support_expired === true, date: str(eol.support_expiration_date) } : null,
     backhaul,
     meshBars: backhaul === "wireless" && bars !== null ? Math.max(1, Math.min(5, bars)) : null,
-    upstream: isGateway ? null : upstream(raw, wired),
+    upstream: isGateway ? null : upstream(raw, wired, peers),
     // Derived in core (eero.list, eero.get).
     hop: null,
     meshQuality: null,
@@ -200,10 +197,11 @@ export function portSpeed(v: unknown): number | null {
   return n > 0 ? n : null;
 }
 
+/** Real values: "DATA_CONNECTED", "WAN". "DISABLED" is a guess; anything else is down. */
 function portStatus(v: unknown): M.EeroPort["status"] {
   const s = typeof v === "string" ? v.toUpperCase() : "";
-  if (s === "UP" || s === "CONNECTED" || s === "ACTIVE") return "up";
   if (s === "DISABLED") return "disabled";
+  if (s === "UP" || s === "WAN" || s === "ACTIVE" || (/CONNECTED$/.test(s) && !/(DIS|NOT_?)CONNECTED$/.test(s))) return "up";
   return "down";
 }
 
@@ -217,22 +215,44 @@ function poe(v: unknown): M.EeroPort["poe"] {
 /** What the ports can join against: the network's devices and eeros. */
 export type PortJoin = { devices: Pick<M.Device, "id" | "mac" | "name">[]; eeros: Pick<M.Eero, "id" | "mac" | "location">[] };
 
-function attached(n: RawPortInterface["neighbor"], join: PortJoin): M.EeroPort["attached"] {
-  if (!n) return null;
-  const meta = n.metadata ?? {};
+/** One device behind a port, joined to the network's eeros or devices by its url (or MAC, if sent). */
+function joinOne(c: RawPortConnection, join: PortJoin): NonNullable<M.EeroPort["attached"]> | null {
+  const meta = (c.metadata ?? {}) as NonNullable<RawPortConnection["metadata"]> & { mac?: string };
   const mac = str(meta.mac) ? compactMac(meta.mac as string) : null;
   const url = linkUrl(meta.url);
   const urlId = url ? idFromUrl(url) : null;
-  const isEero = n.type?.toUpperCase() === "EERO" || (url?.includes("/eeros/") ?? false);
-  if (isEero) {
-    const e = join.eeros.find((x) => (mac && x.mac && compactMac(x.mac) === mac) || x.id === urlId);
-    const name = e?.location ?? str(meta.location) ?? str(meta.display_name);
-    return { deviceId: null, eeroId: e?.id ?? urlId, name };
+  const type = c.type?.toUpperCase() ?? "";
+  if (type.startsWith("EERO") || (url?.includes("/eeros/") ?? false)) {
+    const e = join.eeros.find((x) => x.id === urlId || (mac && x.mac && compactMac(x.mac) === mac));
+    return { deviceId: null, eeroId: e?.id ?? urlId, name: e?.location ?? str(meta.location) };
   }
-  const d = join.devices.find((x) => (mac && compactMac(x.mac) === mac) || x.id === urlId);
+  const d = join.devices.find((x) => x.id === urlId || (mac && compactMac(x.mac) === mac));
   const deviceId = d?.id ?? urlId ?? mac;
   const name = d?.name ?? str(meta.display_name);
   return deviceId || name ? { deviceId, eeroId: null, name } : null;
+}
+
+/** What eero says is behind a port: none, one, or several (behind a switch). WAN_SOURCE is the internet, not a device. */
+export function portConnections(p: RawPortInterface): RawPortConnection[] {
+  const cs = p.connection_status;
+  const type = cs?.type?.toUpperCase() ?? "";
+  if (!cs || !type || type === "WAN_SOURCE") return [];
+  const many = cs.metadata?.multiple_devices?.connections;
+  if (Array.isArray(many)) return many.filter((c) => c && typeof c === "object");
+  return cs.metadata?.url ? [{ type: cs.type, metadata: cs.metadata }] : [];
+}
+
+/**
+ * The one thing the model shows per port: an eero if one is behind it (a
+ * wired backhaul matters most), else the only device, else "N devices" with
+ * no id (a switch with several).
+ */
+function attached(p: RawPortInterface, join: PortJoin): M.EeroPort["attached"] {
+  const list = portConnections(p);
+  const eeroConn = list.find((c) => c.type?.toUpperCase().startsWith("EERO") || linkUrl(c.metadata?.url)?.includes("/eeros/"));
+  if (eeroConn) return joinOne(eeroConn, join);
+  if (list.length === 1 && list[0]) return joinOne(list[0], join);
+  return list.length > 1 ? { deviceId: null, eeroId: null, name: `${list.length} devices` } : null;
 }
 
 export function mapPorts(eeroId: M.Id, raw: { ports?: { interfaces?: RawPortInterface[] } } | null | undefined, join: PortJoin): M.EeroPorts {
@@ -244,10 +264,11 @@ export function mapPorts(eeroId: M.Id, raw: { ports?: { interfaces?: RawPortInte
       status,
       speedMbps: status === "up" ? portSpeed(p.negotiated_speed) : null,
       supportedMbps: portSpeed(p.supported_speed),
-      isWan: p.network_type?.toUpperCase() === "WAN",
+      // network_type is "UNKNOWN" on the real WAN port; port_status "WAN" and connection_status WAN_SOURCE say it.
+      isWan: [p.network_type, p.port_status, p.connection_status?.type].some((v) => /^WAN(_SOURCE)?$/i.test(v ?? "")),
       poe: poe(p.poe_status),
       mac: str(p.ethernet_address),
-      attached: attached(p.neighbor, join),
+      attached: attached(p, join),
       actions: (p.actions ?? []).map((a) => a?.type?.toUpperCase()).filter((t): t is M.PortAction => !!t && PORT_ACTIONS.has(t as M.PortAction)),
     };
   });
@@ -257,10 +278,20 @@ export function mapPorts(eeroId: M.Id, raw: { ports?: { interfaces?: RawPortInte
 // ---------------------------------------------------------------------------
 // Firmware history (`GET /2.2/eeros/{id}/firmware_update/history`)
 
-/** Newest first, `current` on the newest entry matching the running version. Entries without a version are dropped. */
+/** "v7.10.1-12+20261101-...prod" to "v7.10.1-12": the build tail dropped, so it compares with the eero's `os_version`. */
+const baseVersion = (v: unknown): string | null => str(typeof v === "string" ? v.split("+")[0] : null);
+
+const FAILED = /fail|error|cancel|abort/i;
+
+/**
+ * Newest first, `current` on the newest entry matching the running version.
+ * Rows come as `firmware_version` with `finished_at` (else `timestamp`);
+ * rows without a version, and failed updates, are dropped.
+ */
 export function mapFirmwareHistory(rows: RawFirmwareHistoryEntry[], running: string | null): M.FirmwareEntry[] {
   const list = rows
-    .map((r) => ({ version: str(r.os_version) ?? str(r.version), installedAt: str(r.installed_at) ?? str(r.installed) ?? str(r.created) }))
+    .filter((r) => r && !FAILED.test(`${r.outcome ?? ""} ${r.status ?? ""} ${r.update_status ?? ""}`))
+    .map((r) => ({ version: baseVersion(r.firmware_version), installedAt: toIso(r.finished_at) ?? toIso(r.timestamp) }))
     .filter((r): r is { version: string; installedAt: string | null } => r.version !== null);
   const time = (t: string | null) => (t ? Date.parse(t) : Number.NaN);
   list.sort((a, b) => {
@@ -269,6 +300,7 @@ export function mapFirmwareHistory(rows: RawFirmwareHistoryEntry[], running: str
     if (Number.isNaN(ta) || Number.isNaN(tb)) return Number.isNaN(ta) ? (Number.isNaN(tb) ? 0 : 1) : -1;
     return tb - ta;
   });
-  const cur = running ? list.findIndex((r) => r.version === running) : -1;
+  const run = baseVersion(running);
+  const cur = run ? list.findIndex((r) => r.version === run) : -1;
   return list.map((r, i) => ({ ...r, current: i === cur }));
 }

@@ -227,11 +227,8 @@ function fakeEngine(opts: { settings?: SettingsStore; prepare?: (fake: FakeEero)
 
 describe("internet commands (fake eero server)", () => {
   it("internet.get maps the connection from GET {net}", async () => {
+    // The fake serves the gateway's ethernet_status as eero does: the WAN-labelled port at P2500.
     const { engine } = fakeEngine({
-      prepare: (fake) => {
-        const gw = fake.state.networks.get("100001")?.eeros[0] as Record<string, unknown>;
-        gw.ethernet_status = { statuses: [{ isWanPort: false, speed: "P1000" }, { isWanPort: true, speed: "P2500" }] };
-      },
       settings: memorySettings({ planMbps: { "100001": { down: 1000, up: 50 } } }),
     });
     const internet = await ok(engine.execute<M.Internet>("internet.get", { networkId: "100001" }));
@@ -248,26 +245,27 @@ describe("internet commands (fake eero server)", () => {
       dnsMode: "automatic",
       doubleNat: false,
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
-      leaseRenewsAt: "2026-11-13T07:41:00.000Z",
+      leaseRenewsAt: null,
       planMbps: { down: 1000, up: 50 },
       lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
       verdict: { kind: "steady", title: "Example Fiber is fast and steady", detail: "Last test 20 h ago hit 91% of your 1,000 Mbps plan" },
     });
   });
 
-  it("maps the lease renew time from lease.dhcp, only on a DHCP WAN", async () => {
+  it("has no lease renew time: eero sends only the address, mask and router", async () => {
     const seeded = (lease: unknown, wanType = "DHCP") =>
       fakeEngine({
         prepare: (fake) => {
           const net = fake.state.networks.get("100001")?.network as Record<string, unknown>;
-          net.lease = lease;
+          if (lease !== undefined) net.lease = lease;
           net.wan_type = wanType;
         },
       }).engine.execute<M.Internet>("internet.get", { networkId: "100001" });
-    expect((await ok(seeded({ mode: "dhcp", dhcp: { renews_on: "2026-11-13T04:00:00+0000" } }))).leaseRenewsAt).toBe("2026-11-13T04:00:00.000Z");
-    expect((await ok(seeded({ mode: "dhcp", dhcp: { expires_on: "2026-11-13T10:00:00Z" } }))).leaseRenewsAt).toBe("2026-11-13T10:00:00.000Z");
-    expect((await ok(seeded({ mode: "dhcp", dhcp: { ip: "203.0.113.9" } }))).leaseRenewsAt).toBeNull();
-    expect((await ok(seeded({ mode: "static", dhcp: { renews_on: "2026-11-13T04:00:00Z" } }, "STATIC"))).leaseRenewsAt).toBeNull();
+    // The fake's default lease is the real shape: { mode, dhcp: { ip, mask, router }, static: null }.
+    expect(await ok(seeded(undefined))).toMatchObject({ wanType: "dhcp", ispGateway: "203.0.113.1", leaseRenewsAt: null });
+    // Old guessed field names are not read.
+    expect((await ok(seeded({ mode: "dhcp", dhcp: { ip: "203.0.113.9", renews_on: "2026-11-13T04:00:00Z" } }))).leaseRenewsAt).toBeNull();
+    expect((await ok(seeded({ mode: "static", static: { ip: "203.0.113.9" } }, "STATIC"))).wanType).toBe("static");
   });
 
   it("speedtest.history sends the window and limit, and maps rows newest first", async () => {

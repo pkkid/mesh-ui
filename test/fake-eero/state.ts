@@ -48,7 +48,7 @@ export type FakeNetwork = {
   blacklist: string[];
   /** `GET {eero}/connections` per eero id. */
   connections: Record<string, RawConnections>;
-  /** `GET /2.2/eeros/{id}/firmware_update/history` per eero id, oldest first (as seeded; mappers sort). */
+  /** `GET /2.2/eeros/{id}/firmware_update/history` rows per eero id, newest first as eero sends them. */
   firmwareHistory: Record<string, RawFirmwareHistoryEntry[]>;
   /** `GET {net}/routing`. */
   routing: RawRouting;
@@ -117,7 +117,8 @@ function seedAccount(nets: FakeNetwork[]): RawAccount {
   };
 }
 
-type EeroSeed = { id: string; serial: string; location: string; model: string; gateway?: boolean; status?: string; bars?: number; wired?: boolean; clients: number };
+/** `up`: index of the parent eero (default the gateway, index 0). */
+type EeroSeed = { id: string; serial: string; location: string; model: string; gateway?: boolean; status?: string; bars?: number; wired?: boolean; up?: number; clients: number };
 type DeviceSeed = { n: number; name: string | null; host: string; type: string; eero: number; band: "2.4" | "5" | "6" | "wired"; online?: boolean; paused?: boolean; profile?: number };
 
 function seedNetworks(): FakeNetwork[] {
@@ -130,8 +131,8 @@ function seedNetworks(): FakeNetwork[] {
       eeros: [
         { id: "500001", serial: "FAKE00LR0001", location: "Living Room", model: "eero Max 7", gateway: true, wired: true, clients: 5 },
         { id: "500002", serial: "FAKE00OF0002", location: "Office", model: "eero Pro 7", bars: 5, clients: 2 },
-        { id: "500003", serial: "FAKE00UH0003", location: "Upstairs Hall", model: "eero 7", bars: 4, clients: 1 },
-        { id: "500004", serial: "FAKE00GA0004", location: "Garage", model: "eero Beacon", status: "yellow", bars: 1, clients: 0 },
+        { id: "500003", serial: "FAKE00UH0003", location: "Upstairs Hall", model: "eero 7", wired: true, clients: 1 },
+        { id: "500004", serial: "FAKE00GA0004", location: "Garage", model: "eero Beacon", status: "yellow", bars: 1, up: 1, clients: 0 },
       ],
       profiles: ["Alex", "Jamie", "Mia", "Leo"],
       devices: [
@@ -187,7 +188,9 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     connection_type: e.wired ? "WIRED" : "WIRELESS",
     using_wan: e.gateway ?? false,
     mesh_quality_bars: e.bars ?? 5,
-    wireless_upstream_node: e.wired ? null : { url: `/2.2/eeros/${seed.eeros[0]?.id}`, location: seed.eeros[0]?.location ?? "" },
+    ethernet_status: ethernetStatus(e, seed.eeros),
+    // As eero sends it: the parent's location as `name` and a node id that is not an eero id; no url.
+    wireless_upstream_node: e.gateway || e.wired ? null : { name: seed.eeros[e.up ?? 0]?.location ?? "", primary_mesh_radio: "band_5GHz", node_or_proxied_node_id: 9000 + (e.up ?? 0), is_proxied_node: false },
     connected_clients_count: e.clients,
     connected_wired_clients_count: e.gateway ? 1 : 0,
     connected_wireless_clients_count: Math.max(0, e.clients - (e.gateway ? 1 : 0)),
@@ -352,10 +355,11 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     firmwareHistory: Object.fromEntries(
       eeros.map((e) => [
         e.url?.split("/").pop() ?? "",
+        // Newest first, as eero sends it; `firmware_version` is os_version plus a build tail.
         [
-          { os_version: "7.8.0", installed: "2026-07-01T03:00:00Z" },
-          { os_version: "7.9.2", installed: "2026-09-01T03:00:00Z" },
-          { os_version: e.os_version, installed: iso("05T03:00:00") },
+          historyRow(3, `${e.os_version}+20261105-0300-1.prod.fake`, "7.9.2+20260901-0300-1.prod.fake", iso("05T03:00:00")),
+          historyRow(2, "7.9.2+20260901-0300-1.prod.fake", "7.8.0+20260701-0300-1.prod.fake", "2026-09-01T03:00:00Z"),
+          historyRow(1, "7.8.0+20260701-0300-1.prod.fake", null, "2026-07-01T03:00:00Z"),
         ],
       ]),
     ),
@@ -364,29 +368,83 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
   };
 }
 
+/**
+ * `ethernet_status` as eero sends it: two ports. The gateway's WAN-labelled
+ * port has carrier but no neighbour; a wired satellite has its parent as an
+ * EERO neighbour on its WAN-labelled port, with `isLeafWiredToUpstream`
+ * false (as on the real network).
+ */
+function ethernetStatus(e: EeroSeed, all: EeroSeed[]): NonNullable<RawEero["ethernet_status"]> {
+  const parent = all[e.up ?? 0];
+  const uplinkWired = !e.gateway && e.wired && e.status !== "red" && parent;
+  // A port with no link still reports a speed ("P10"), so readers must check hasCarrier.
+  const linked = (e.gateway || e.wired) && e.status !== "red";
+  const row = (n: number, wan: boolean) => ({
+    interfaceNumber: n,
+    hasCarrier: Boolean(linked),
+    speed: linked ? (wan && e.gateway ? "P2500" : "P1000") : "P10",
+    isWanPort: wan,
+    isLte: false,
+    isLeafWiredToUpstream: false,
+    neighbor: wan && uplinkWired ? { type: "EERO", metadata: { port: 1, port_name: "LAN", location: parent.location, url: `/2.2/eeros/${parent.id}` } } : null,
+    port_name: wan ? "WAN" : "LAN",
+  });
+  return { wiredInternet: Boolean(e.gateway || e.wired), segmentId: "1", statuses: [row(0, false), row(1, true)] };
+}
+
+/** One `firmware_update/history` row in eero's shape; finished a minute after it started. */
+function historyRow(n: number, version: string, previous: string | null, started: string): RawFirmwareHistoryEntry {
+  return {
+    id: `fw-${n}`,
+    timestamp: started,
+    firmware_version: version,
+    previous_version: previous,
+    status: "completed",
+    update_type: n % 2 ? "automatic" : "manual",
+    duration_seconds: 60,
+    outcome: "Success",
+    update_status: "completed",
+    failure_reason: null,
+    finished_at: new Date(Date.parse(started) + 60_000).toISOString(),
+  };
+}
+
 /** Ports per eero: the gateway has a WAN port and every wired device on it; leaves have idle ports; a Beacon has none. */
 function seedConnections(e: EeroSeed, i: number, devices: RawDevice[]): RawConnections {
   if (e.model === "eero Beacon") return { ports: { layout: "none", interfaces: [] }, node_actions: [], wireless_devices: [] };
   const wired = devices.filter((d) => d.wireless === false && d.connected && d.source?.url === `/2.2/eeros/${e.id}`);
+  // As eero sends it: network_type "UNKNOWN" on every port (WAN too), port_status DATA_CONNECTED or WAN,
+  // and what is plugged in under connection_status.
   const port = (n: number, extra: Partial<RawPortInterface>): RawPortInterface => ({
     interface_number: n,
     name: `Port ${n}`,
-    port_status: "DOWN",
+    port_status: "NOT_CONNECTED",
     negotiated_speed: null,
     supported_speed: "P2500",
-    network_type: "LAN",
+    network_type: "UNKNOWN",
     poe_status: null,
     ethernet_address: mac(950 + i * 4 + n),
-    actions: [{ type: "DISABLE_PORT" }],
+    is_upstream: false,
+    connection_status: null,
+    actions: [{ type: "DISABLE_PORT", position: 0 }],
     ...extra,
   });
   const interfaces: RawPortInterface[] = [];
-  if (e.gateway) interfaces.push(port(1, { name: "WAN", port_status: "UP", negotiated_speed: "P2500", network_type: "WAN", actions: [] }));
+  if (e.gateway) {
+    interfaces.push(port(1, { name: "WAN", port_status: "WAN", negotiated_speed: "P2500", is_upstream: true, connection_status: { type: "WAN_SOURCE", metadata: { advanced_attributes: { connection_type: "WIRED" } } }, actions: [] }));
+  }
   wired.forEach((d, k) =>
-    interfaces.push(port(interfaces.length + 1, { port_status: "UP", negotiated_speed: "P1000", neighbor: { type: "DEVICE", metadata: { url: d.url, mac: d.mac, display_name: d.display_name ?? undefined } }, actions: [{ type: "DISABLE_PORT" }, { type: k === 0 ? "RESTART_POWER" : "DISABLE_DATA" }] })),
+    interfaces.push(
+      port(interfaces.length + 1, {
+        port_status: "DATA_CONNECTED",
+        negotiated_speed: "P1000",
+        connection_status: { type: "MULTIPLE_DEVICES", metadata: { multiple_devices: { connections: [{ type: "CLIENT_DEVICE", metadata: { display_name: d.display_name ?? undefined, device_type: d.device_type ?? undefined, url: d.url, advanced_attributes: { connection_type: "WIRED" } } }] } } },
+        actions: [{ type: "DISABLE_PORT", position: 0 }, { type: k === 0 ? "RESTART_POWER" : "DISABLE_DATA", position: 1 }],
+      }),
+    ),
   );
   while (interfaces.length < 2) interfaces.push(port(interfaces.length + 1, {}));
-  return { ports: { layout: "horizontal", interfaces }, node_actions: [{ type: "POWER_CYCLE_ALL_PORTS_AND_REBOOT" }], wireless_devices: [] };
+  return { ports: { layout: { layout_type: "TWO_PORT_A", position_rank_order: interfaces.map((_, k) => k) }, interfaces }, node_actions: [{ type: "POWER_CYCLE_ALL_PORTS_AND_REBOOT" }], wireless_devices: [] };
 }
 
 /** One reservation and forward on the first wired device, one on the first laptop, and an IPv6 pinhole. buildNetwork keeps these two on static-range addresses. */
