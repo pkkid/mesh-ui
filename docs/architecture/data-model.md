@@ -456,7 +456,7 @@ type ScheduleInput = Omit<Schedule, "id">; // schedule add and update (M4); eero
 | `name`, `paused` | `name`, `paused` |
 | `state` | `state.value` (`paused`, `active`, `schedule` = scheduled) |
 | `deviceIds` | `devices[].url` |
-| `schedules` | `schedule[]` on the profile; days normalised from `MON` or `monday`. `GET {profile}/schedules` is a 404 on a real network although `resources.schedules` names it (capture, 2026-11-13) |
+| `schedules` | `schedule[]` on the profile; days normalised from `Monday` (eero's form), `MON` or `monday`. `GET {profile}/schedules` is a 404 on a real network although `resources.schedules` names it (capture, 2026-11-13) |
 | `nextChange` | computed in core from schedules and the network time zone |
 
 `premium_dns` and `unified_content_filters` are ignored (Plus).

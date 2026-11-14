@@ -11,10 +11,11 @@
  * `fake.writes`.
  *
  * Scheduled pauses (M4.12): `POST {profile}/schedules`, `PUT` and `DELETE
- * {profile}/schedules/{id}`, JSON `{name, days, start, end, enabled}`. The
- * request shape is from the clients (LD sends days as `MON`; FF as
- * `monday`), so the fake takes either and keeps what it was sent. A bad
- * body is a 400; the stored row gets its own `url`, as profile rows do.
+ * {profile}/schedules/{id}`, JSON `{name, days, start, end, enabled}`. Days
+ * are "Monday".."Sunday" only: like eero (Eeronaut, from eero's own field
+ * errors), `MON` and "monday" are 400 `error.form.enum.invalid` (M5.R-fix7).
+ * Any other bad body is a 400 `error.schedule.invalid`; the stored row gets
+ * its own `url`, as profile rows do.
  * The `default: true` profile (Unassigned) takes schedules too (M5.11-fix):
  * it carries `schedule[]` and `resources.schedules` like any other.
  */
@@ -73,16 +74,16 @@ function setPaused(net: FakeNetwork, p: RawProfile, paused: boolean) {
 
 const badName = (v: unknown) => typeof v !== "string" || v.trim() === "";
 
-const DAYS = /^(mon|tue|wed|thu|fri|sat|sun)(day|sday|nesday|rsday|urday)?$/i;
+const DAYS = new Set(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
 const TIME = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
-/** A schedule body with every field, or null when one is missing or malformed. */
-function scheduleBody(body: Record<string, unknown>): Omit<RawSchedule, "url"> | null {
+/** A schedule body with every field, or the eero error code it gets. */
+function scheduleBody(body: Record<string, unknown>): Omit<RawSchedule, "url"> | string {
   const { name, days, start, end, enabled } = body;
-  if (badName(name) || !Array.isArray(days) || days.length === 0) return null;
-  if (!days.every((d) => typeof d === "string" && DAYS.test(d))) return null;
-  if (typeof start !== "string" || typeof end !== "string" || !TIME.test(start) || !TIME.test(end) || start === end) return null;
-  if (typeof enabled !== "boolean") return null;
+  if (badName(name) || !Array.isArray(days) || days.length === 0) return "error.schedule.invalid";
+  if (!days.every((d) => typeof d === "string" && DAYS.has(d))) return "error.form.enum.invalid";
+  if (typeof start !== "string" || typeof end !== "string" || !TIME.test(start) || !TIME.test(end) || start === end) return "error.schedule.invalid";
+  if (typeof enabled !== "boolean") return "error.schedule.invalid";
   return { name: String(name).trim(), days: [...days] as string[], start, end, enabled };
 }
 
@@ -166,7 +167,7 @@ export const routes: Route[] = [
       const p = find(ctx);
       if (!p) return fail(404, "error.profile.not.found");
       const body = scheduleBody(ctx.req.body);
-      if (!body) return fail(400, "error.schedule.invalid");
+      if (typeof body === "string") return fail(400, body);
       const s: RawSchedule = { url: `${p.url}/schedules/${ctx.state.nextId()}`, ...body };
       p.schedule = [...(p.schedule ?? []), s];
       return ok(s);
@@ -180,7 +181,7 @@ export const routes: Route[] = [
       const s = p ? findSchedule(p, ctx.params.sid ?? "") : null;
       if (!s) return fail(404, "error.schedule.not.found");
       const body = scheduleBody(ctx.req.body);
-      if (!body) return fail(400, "error.schedule.invalid");
+      if (typeof body === "string") return fail(400, body);
       Object.assign(s, body);
       return ok(s);
     },

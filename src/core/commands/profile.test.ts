@@ -699,7 +699,7 @@ describe("scheduled pauses (fake eero server)", () => {
     return t;
   };
 
-  it("adds with POST {profile}/schedules, JSON, days as MON..SUN, and the next read shows it", async () => {
+  it("adds with POST {profile}/schedules, JSON, days as Monday..Sunday, and the next read shows it", async () => {
     const { fake, engine } = start();
     await engine.execute("profile.get", { profile: "Alex" }); // cached; the write must invalidate it
     const r = await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Alex", name: "Late night", days: ["SUN", "MON", "TUE"], start: "22:00", end: "06:30" });
@@ -710,7 +710,7 @@ describe("scheduled pauses (fake eero server)", () => {
       version: "2.2",
       route: "/networks/100001/profiles/700/schedules",
       encoding: "json",
-      body: { name: "Late night", days: ["MON", "TUE", "SUN"], start: "22:00", end: "06:30", enabled: true },
+      body: { name: "Late night", days: ["Monday", "Tuesday", "Sunday"], start: "22:00", end: "06:30", enabled: true },
     });
     const id = r.ok ? r.result.id : "";
     const alex = await engine.execute<M.ProfileDetail>("profile.get", { profile: "Alex" });
@@ -718,7 +718,7 @@ describe("scheduled pauses (fake eero server)", () => {
     expect(alex.ok && alex.result.state).toBe("scheduled");
   });
 
-  it("updates with PUT {profile}/schedules/{id}, sending every field in the MON form even when eero stored lowercase names", async () => {
+  it("updates with PUT {profile}/schedules/{id}, sending every field with days as Monday..Sunday even when eero stored lowercase names", async () => {
     const { fake, engine } = start();
     // Mia's Homework (id 2) is stored as ["monday", "friday"] on the fake.
     const r = await engine.execute<M.Schedule>("profile.schedule.update", { profile: "Mia", schedule: "Homework", enabled: true, end: "18:30" });
@@ -728,10 +728,28 @@ describe("scheduled pauses (fake eero server)", () => {
       version: "2.2",
       route: "/networks/100001/profiles/702/schedules/2",
       encoding: "json",
-      body: { name: "Homework", days: ["MON", "FRI"], start: "16:00", end: "18:30", enabled: true },
+      body: { name: "Homework", days: ["Monday", "Friday"], start: "16:00", end: "18:30", enabled: true },
     });
     const list = await engine.execute<M.ProfileList>("profile.list");
     expect(list.ok && list.result.profiles.find((p) => p.name === "Mia")?.schedules.find((s) => s.id === "2")).toMatchObject({ end: "18:30", enabled: true });
+  });
+
+  it("the fake answers like eero: MON and monday days are 400 error.form.enum.invalid, Monday is stored and read back", async () => {
+    const { fake, engine } = start();
+    const token = fake.signIn();
+    for (const days of [["MON"], ["monday"]]) {
+      const res = await fake.fetch(`${fake.origin}/2.2/networks/100001/profiles/700/schedules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: `s=${token}` },
+        body: JSON.stringify({ name: "Nap", days, start: "13:00", end: "14:00", enabled: true }),
+      });
+      expect(res.status, days[0]).toBe(400);
+      expect(((await res.json()) as { meta: { error: string } }).meta.error).toBe("error.form.enum.invalid");
+    }
+    expect(fake.writes.filter((w) => w.method === "POST")).toHaveLength(2);
+    // Mia's Bedtime is stored in eero's form and maps to the model's days.
+    const mia = await engine.execute<M.ProfileDetail>("profile.get", { profile: "Mia" });
+    expect(mia.ok && mia.result.schedules.find((s) => s.id === "1")?.days).toEqual(["MON", "TUE", "WED", "THU", "SUN"]);
   });
 
   it("removes with DELETE {profile}/schedules/{id}", async () => {
@@ -855,7 +873,7 @@ describe("Unassigned scheduled pauses (fake eero server)", () => {
       version: "2.2",
       route: "/networks/100001/profiles/790/schedules",
       encoding: "json",
-      body: { name: "Late night", days: ["MON", "SUN"], start: "23:00", end: "06:00", enabled: true },
+      body: { name: "Late night", days: ["Monday", "Sunday"], start: "23:00", end: "06:00", enabled: true },
     });
     const id = r.ok ? r.result.id : "";
     const read = await engine.execute<M.ProfileDetail>("profile.get", { profile: "unassigned" });
@@ -871,7 +889,7 @@ describe("Unassigned scheduled pauses (fake eero server)", () => {
       version: "2.2",
       route: `/networks/100001/profiles/790/schedules/${id}`,
       encoding: "json",
-      body: { name: "Late night", days: ["MON", "SUN"], start: "23:00", end: "06:00", enabled: false },
+      body: { name: "Late night", days: ["Monday", "Sunday"], start: "23:00", end: "06:00", enabled: false },
     });
 
     const d = await engine.execute("profile.schedule.remove", { profile: "unassigned", schedule: id });

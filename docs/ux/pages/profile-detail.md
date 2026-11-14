@@ -154,9 +154,9 @@ Profiles stays active.
 
 - Schedules use eero's `{profile}/schedules` endpoints (POST, then PUT and
   DELETE on `{profile}/schedules/{id}`); writing schedules on the profile
-  object is a silent no-op. Days are sent as `MON`..`SUN` (the LD client's
-  form; FF sends `monday`, so a MANUAL check confirms it); an end before the
-  start wraps past midnight.
+  object is a silent no-op. Days are sent as "Monday".."Sunday" (eero
+  refuses LD's `MON` and FF's `monday`, per Eeronaut; a MANUAL check
+  confirms it); an end before the start wraps past midnight.
 - `profile.schedule.add` and `.update` params: `name` (1 to 32 chars,
   unique within the profile), `start` and `end` (`HH:MM`, 24 h, and not
   equal), `days` (non-empty subset of `MON`..`SUN`), `enabled`. `.update`
@@ -175,7 +175,7 @@ Profiles stays active.
 - MANUAL: add, edit and remove a schedule on a test profile | profile
   detail, Add a scheduled pause starting a few minutes from now, check the
   eero app shows it with the right days, edit its end time, wait for it to
-  start, then delete it | the eero app shows it (days right, so `MON` is
+  start, then delete it | the eero app shows it (days right, so "Monday" is
   accepted) and the edit; devices pause at the start time; deleting removes
   it there too | risk: that profile pauses at the scheduled time.
 

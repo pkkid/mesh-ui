@@ -208,7 +208,7 @@ No factory-reset endpoint was found in any client. Closest are `DELETE {eero}` a
 | PUT | `{profile}` | JSON `{devices: [{url: <device url>}, ...]}` | profile | W | FF, LD | **Replaces** full membership list. |
 | DELETE | `{profile}` | - | - | **D** | FF, LD | Devices become unassigned. |
 | GET | `{profile}/schedules` (`resources.schedules`) | - | `[schedule]` | R | FF, LD | **404 on a real network (2026-11-13)** although `resources.schedules` names it: schedules come only from the profile's own `schedule[]`. |
-| POST | `{profile}/schedules` | JSON `{name, days: ["MON","TUE",...] (LD) or lowercase names (FF), start: "22:00", end: "07:00", enabled: true}` | schedule | W | FF, LD | Scheduled pause ("Bedtime"). End before start wraps past midnight. Network timezone. |
+| POST | `{profile}/schedules` | JSON `{name, days: ["Monday","Tuesday",...], start: "22:00", end: "07:00", enabled: true}` | schedule | W | FF, LD, Eeronaut | Scheduled pause ("Bedtime"). End before start wraps past midnight. Network timezone. **Days are capitalized full names**, as on power saving schedules. LD sends `MON` and FF `monday` (neither verified); Eeronaut worked out from eero's own field errors on a live network that both are refused with `error.form.enum.invalid` and only "Monday" is taken. Sent this way since M5.R-fix7 (MANUAL check). |
 | PUT / DELETE | `{schedule url}` | same fields | - | W | FF, LD | |
 | PUT | `{profile}` | JSON `{schedule: ...}`, `{dns_policies: ...}`, `{blocked_applications: ...}` | - | (no-op) | EH | FF verified writing filters/schedules onto the profile object does nothing. Use `dns_policies` and `schedules` endpoints. |
 
@@ -414,7 +414,7 @@ The rows above stay as built, and each stays open until its check is run:
 |---|---|---|
 | `led_cycle` takes the serial or the id | serial (`/2.2/eeros/{serial}/led_cycle`), the id when an eero has no serial | M4 "Blink an eero": a 404 means it wants the id |
 | `hide_5g` shape while on | `PUT {net}/temporary_flags/hide_5g`, `DELETE` to end; reads accept a bool or `{expires_at}` | not in the M4 checklist; the clients' shape stands |
-| Schedule day form | sent as `MON`..`SUN`; reads accept both forms | M4 "Schedule": the eero app shows the right days |
+| Schedule day form | sent as "Monday".."Sunday" since M5.R-fix7; reads accept `MON`, `monday` and `Monday`. A read-only capture (2026-11-14) found no profile schedules on the real network (3 profiles and Unassigned, 0 schedules), so the form comes from Eeronaut, which found from eero's field errors that `MON` and `monday` are 400 `error.form.enum.invalid`. This matches power saving schedules, where a real network refused `MON` (M5.R-fix4) | M5.R-fix7 MANUAL check: add a scheduled pause to a test profile, the eero app shows the right days |
 | Unassigned pause | `PUT {default profile}` `{paused}` | M4 "Pause and resume Unassigned" |
 | Nightlight shape | `PUT {nightlight.url}` JSON from the clients; every captured eero has `nightlight: null` | needs a Beacon; no check possible on the captured network |
 | Wi-Fi rename | `PUT {net}/settings` form `name` | skipped at the M4 review; carried as an M5.1 `MANUAL:` line |
