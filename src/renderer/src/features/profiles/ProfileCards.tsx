@@ -448,6 +448,7 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
   const nameError = !showName ? undefined : trimmed.length > 32 ? "Use 32 characters or fewer." : errors.name;
   const valid = !showName || (trimmed.length > 0 && trimmed.length <= 32);
 
+  const rows = pickerRows(devices.data?.devices ?? [], profiles.data?.profiles ?? [], profile?.id ?? null);
   const save = async () => {
     if (mode.kind === "create") {
       const res = await create.run({ name: trimmed, devices: [...picked] }, { success: (r) => `Added ${r.name}` });
@@ -460,16 +461,17 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
         { success: `Renamed ${startName} to ${trimmed}`, undo: { id: "profile.rename", params: { profile: mode.profile.id, name: startName } } },
       );
     }
+    // Undo restores this profile's list only; devices taken from another profile would end up Unassigned, so no Undo then.
+    const taken = rows.some((r) => picked.has(r.id) && !startIds.includes(r.id) && r.note !== null && r.note !== "Unassigned");
     return setDevices.run(
       { profile: mode.profile.id, devices: [...picked] },
       {
         success: `Updated ${mode.profile.name}'s devices`,
-        undo: { id: "profile.devices.set", params: { profile: mode.profile.id, devices: startIds } },
+        undo: taken ? undefined : { id: "profile.devices.set", params: { profile: mode.profile.id, devices: startIds } },
       },
     );
   };
 
-  const rows = pickerRows(devices.data?.devices ?? [], profiles.data?.profiles ?? [], profile?.id ?? null);
   const toggle = (id: string) =>
     setPicked((prev) => {
       const next = new Set(prev);
