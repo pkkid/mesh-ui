@@ -23,20 +23,22 @@ Side panel **Good to know** (below the sections on windows narrower than 1536 px
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Subnet, static range, DHCP pool, gateway | `reservation.list` (`lan`) | on load |
-| Leased addresses and count | `reservation.list` (`leases`, counted in core) | on load, after writes |
-| Reserved addresses and table | `reservation.list` | on load, after writes |
+| Subnet, static range, DHCP pool, gateway | `reservation.list` (`lan`) | every 60 s |
+| Leased addresses and count | `reservation.list` (`leases`, counted in core) | every 60 s, after writes |
+| Reserved addresses and table | `reservation.list` | every 60 s, after writes |
 | Device name, state, eero per reservation | `device.list`, `eero.list` | every 60 s |
-| Ports column | `forward.list` grouped by IP | on load |
+| Ports column | `forward.list` grouped by IP | every 60 s |
 | Public IP in the forwards header | `internet.get` | on load |
-| Port forwards table | `forward.list` | on load, after writes |
-| IPv6 pinholes | `pinhole.list` | on load, after writes |
+| Port forwards table | `forward.list` | every 60 s, after writes |
+| IPv6 pinholes | `pinhole.list` | every 60 s, after writes |
 | Connection mode subtitle, offline note | `network.get` | polled |
 | Sheet conflict check | `forward.validate` `{device, externalPort, internalPort, protocol, forward?}` | as the fields change (debounced) |
 
 `reservation.list`, `forward.list` and `pinhole.list` share one cached
 `GET {net}/routing`, so the page makes one routing read (tested in
-`routing.test.ts`).
+`routing.test.ts`). The lists poll every 60 s and refetch when the page opens
+on data older than that, so a rule added or removed in the eero app shows
+up without a restart.
 
 ## Actions
 
@@ -44,7 +46,9 @@ Built in M5.5. All of these are plain writes: they apply instantly and never
 restart eeros, so none needs `confirm`; the UI asks first only before a
 removal. Each control dims with its command's gate (`settings` update
 permission, off in bridge mode). Every success toast has Undo, except a
-reservation removed together with its forwards. The sheets live in
+reservation removed together with its forwards. Removing a rule the eero
+app already removed is not an error: core answers `alreadyGone`, the toast
+says "Plex was already removed" (no Undo) and the lists refresh. The sheets live in
 `features/ports/RuleSheet.tsx` and are shared with device detail.
 
 | Control | Command | Effect | Confirm | Result |

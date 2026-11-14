@@ -5,6 +5,7 @@
  *   every component asking for the same id and params, keeps the last data
  *   while refetching, and polls on the interval the registry reports for the
  *   command (from src/core/poll.ts), stretched while the window is hidden.
+ *   Opening a view whose polled data is older than its interval refetches.
  * - `useCommand(id)` runs a command on demand (writes, or a query the user
  *   triggers) and, after a successful write, refetches the queries it affects.
  *
@@ -293,7 +294,10 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
   useEffect(() => {
     if (!enabled) return;
     const current = entryFor(id, params);
-    if (current.stale || current.snapshot.fetchedAt === null) void fetchEntry(current);
+    // A polled query older than its interval (the page was closed meanwhile) refetches on open.
+    const fetchedAt = current.snapshot.fetchedAt;
+    const old = intervalSec !== null && fetchedAt !== null && Date.now() - fetchedAt >= intervalSec * 1000;
+    if (current.stale || fetchedAt === null || old) void fetchEntry(current);
     if (intervalSec === null) return;
 
     let timer: ReturnType<typeof setTimeout> | undefined;

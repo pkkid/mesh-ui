@@ -3,7 +3,8 @@
  * forwards and IPv6 firewall rules, each joined to devices in core. Add,
  * edit, the Enabled switch and remove run the routing writes through the
  * sheets in RuleSheet.tsx. The three lists come from one cached routing
- * read. Layout, data and states: docs/ux/pages/reservations-ports.md and
+ * read and poll, so rules changed in the eero app show up. Layout, data and
+ * states: docs/ux/pages/reservations-ports.md and
  * docs/mockups/14-reservations-ports.html.
  */
 import { Info } from "lucide-react";
@@ -27,9 +28,9 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function PortsPage(_: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
-  const reservations = useQuery<ReservationList>("reservation.list");
-  const forwards = useQuery<ForwardList>("forward.list");
-  const pinholes = useQuery<PinholeList>("pinhole.list");
+  const reservations = useQuery<ReservationList>("reservation.list", undefined, { poll: true });
+  const forwards = useQuery<ForwardList>("forward.list", undefined, { poll: true });
+  const pinholes = useQuery<PinholeList>("pinhole.list", undefined, { poll: true });
   const devices = useQuery<DeviceList>("device.list", undefined, { poll: 60 });
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
 

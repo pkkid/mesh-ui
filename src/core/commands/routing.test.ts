@@ -6,7 +6,8 @@ import { createEeroBackend } from "../eero/backend";
 import { mapLan, mapRouting } from "../eero/map/routing";
 import { createEngine } from "../engine";
 import type * as M from "../model";
-import type { ForwardList, PinholeList, ReservationList } from "./routing";
+import { POLL } from "../poll";
+import type { ForwardList, ForwardRemoved, PinholeList, PinholeRemoved, ReservationList, ReservationRemoved } from "./routing";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const KIM = "6092118";
@@ -189,7 +190,7 @@ describe("device.get reservation (demo)", () => {
 // ---------------------------------------------------------------------------
 // Against the fake eero server, through the real client and mappers.
 
-function fakeEngine() {
+function fakeEngine(clock: () => number = Date.now) {
   const fake = createFakeEero();
   const token = fake.signIn();
   const secrets: SecretStore = { load: async () => token, save: async () => "memory", clear: async () => {}, storage: async () => "memory" };
@@ -202,7 +203,7 @@ function fakeEngine() {
     device: live.device,
     routing: live.routing,
   });
-  return { fake, engine: createEngine({ backend }) };
+  return { fake, live, engine: createEngine({ backend, clock }) };
 }
 
 /** A fresh engine over the same fake server, so nothing is cached. */
@@ -439,10 +440,10 @@ describe("reservation writes (demo)", () => {
 
   it("removes a reservation, with or without its forwards", async () => {
     const { engine } = demo();
-    const kept = await ok<{ reservation: M.Reservation; removedForwards: M.Forward[] }>(engine, "reservation.remove", { reservation: "PlayStation 5" });
-    expect(kept).toMatchObject({ reservation: { ip: "192.168.4.14" }, removedForwards: [] });
+    const kept = await ok<ReservationRemoved>(engine, "reservation.remove", { reservation: "PlayStation 5" });
+    expect(kept).toMatchObject({ reservation: { ip: "192.168.4.14" }, removedForwards: [], alreadyGone: false });
     expect((await ok<ForwardList>(engine, "forward.list")).forwards.some((f) => f.name === "PSN party chat")).toBe(true);
-    const gone = await ok<{ reservation: M.Reservation; removedForwards: M.Forward[] }>(engine, "reservation.remove", { reservation: "Alex's MacBook Pro", removeForwards: true });
+    const gone = await ok<ReservationRemoved>(engine, "reservation.remove", { reservation: "Alex's MacBook Pro", removeForwards: true });
     expect(gone.removedForwards.map((f) => f.name)).toEqual(["Web dev server", "Syncthing", "Game server"]);
     const after = await ok<ReservationList>(engine, "reservation.list");
     expect(after.reservations.some((x) => x.name === "Alex's MacBook Pro" || x.name === "PlayStation 5")).toBe(false);
@@ -518,10 +519,30 @@ describe("forward writes (demo)", () => {
 
   it("removes a forward and keeps the reservation", async () => {
     const { engine } = demo();
-    const f = await ok<M.Forward>(engine, "forward.remove", { forward: "Plex Media Server" });
+    const { forward: f, alreadyGone } = await ok<ForwardRemoved>(engine, "forward.remove", { forward: "Plex Media Server" });
+    expect(alreadyGone).toBe(false);
+    if (!f) throw new Error("removed row");
     expect(f).toMatchObject({ name: "Plex Media Server", externalPort: "32400" });
     expect((await ok<ForwardList>(engine, "forward.list")).forwards.some((x) => x.id === f.id)).toBe(false);
     expect((await ok<ReservationList>(engine, "reservation.list")).reservations.find((r) => r.name === "Synology NAS")).toMatchObject({ forwards: 0 });
+  });
+  it("treats a rule id that is no longer listed as already gone, and a name with no match as a mistake", async () => {
+    const { engine } = demo();
+    const { forward: f } = await ok<ForwardRemoved>(engine, "forward.remove", { forward: "Plex Media Server" });
+    if (!f) throw new Error("removed row");
+    // Removed again by id (a stale list, or the eero app removed it first): nothing to do, no error.
+    expect(await ok<ForwardRemoved>(engine, "forward.remove", { forward: f.id })).toEqual({ forward: null, alreadyGone: true });
+    const r = (await ok<ReservationList>(engine, "reservation.list")).reservations[0];
+    if (!r) throw new Error("fixture");
+    await ok(engine, "reservation.remove", { reservation: r.id });
+    expect(await ok<ReservationRemoved>(engine, "reservation.remove", { reservation: r.id })).toEqual({ reservation: null, removedForwards: [], alreadyGone: true });
+    const p = (await ok<PinholeList>(engine, "pinhole.list")).pinholes[0];
+    if (!p) throw new Error("fixture");
+    await ok(engine, "pinhole.remove", { pinhole: p.id });
+    expect(await ok<PinholeRemoved>(engine, "pinhole.remove", { pinhole: p.id })).toEqual({ pinhole: null, alreadyGone: true });
+    // A name that matches nothing is still bad_params.
+    await fails(engine, "forward.remove", { forward: "No such forward" });
+    await fails(engine, "reservation.remove", { reservation: "Nobody's laptop" });
   });
 });
 
@@ -531,10 +552,10 @@ describe("pinhole writes (demo)", () => {
     const p = await ok<M.Pinhole>(engine, "pinhole.add", { device: "Office iMac", port: "22", protocol: "tcp" });
     expect(p).toMatchObject({ deviceId: "024d55100005", address: "2001:db8:4a1c:7e00::14", port: "22", protocol: "tcp" });
     expect((await ok<PinholeList>(engine, "pinhole.list")).pinholes.map((x) => x.port)).toContain("22");
-    expect(await ok<M.Pinhole>(engine, "pinhole.remove", { pinhole: p.id })).toMatchObject({ id: p.id });
+    expect(await ok<PinholeRemoved>(engine, "pinhole.remove", { pinhole: p.id })).toMatchObject({ pinhole: { id: p.id }, alreadyGone: false });
     expect((await ok<PinholeList>(engine, "pinhole.list")).pinholes.some((x) => x.id === p.id)).toBe(false);
     // By device name and port.
-    expect(await ok<M.Pinhole>(engine, "pinhole.remove", { pinhole: "PlayStation 5:3074" })).toMatchObject({ port: "3074" });
+    expect(await ok<PinholeRemoved>(engine, "pinhole.remove", { pinhole: "PlayStation 5:3074" })).toMatchObject({ pinhole: { port: "3074" } });
   });
 
   it("checks the port, the device and overlap", async () => {
@@ -630,6 +651,68 @@ describe("routing writes (fake eero server)", () => {
     const before = fake.writes.length;
     await fails(engine, "forward.add", { networkId: "100002", device: "x", externalPort: "1-2", protocol: "tcp", description: "r" });
     expect(fake.writes.length).toBe(before);
+  });
+
+  /** Removes rows from the fake as the eero app would, behind Mesh UI's back. */
+  const removeElsewhere = (fake: ReturnType<typeof createFakeEero>, kind: "reservations" | "forwards" | "pinholes", id: string) => {
+    const routing = fake.state.networks.get("100001")?.routing;
+    const list = routing?.[kind];
+    if (!routing || !list?.data) throw new Error("fixture");
+    routing[kind] = { ...list, data: (list.data as { url?: string }[]).filter((x) => !x.url?.endsWith(`/${id}`)) } as never;
+  };
+
+  it("polls the routing lists, so a rule removed in the eero app is gone on the next poll", async () => {
+    let now = NOW;
+    const { fake, engine } = fakeEngine(() => now);
+    close = fake.close;
+    for (const id of ["reservation.list", "forward.list", "pinhole.list"]) expect(engine.commands().find((c) => c.id === id)?.poll, id).toBe(POLL.routing);
+    expect((await ok<ForwardList>(engine, "forward.list")).forwards.map((f) => f.id)).toContain("400");
+    expect((await ok<ReservationList>(engine, "reservation.list")).reservations.map((r) => r.id)).toContain("300");
+    expect((await ok<PinholeList>(engine, "pinhole.list")).pinholes.map((p) => p.id)).toContain("500");
+    removeElsewhere(fake, "forwards", "400");
+    removeElsewhere(fake, "reservations", "300");
+    removeElsewhere(fake, "pinholes", "500");
+    // The renderer's next poll comes POLL.routing seconds later (jitter only adds): the cache has expired by then.
+    now += POLL.routing * 1000;
+    expect((await ok<ForwardList>(engine, "forward.list")).forwards.map((f) => f.id)).not.toContain("400");
+    expect((await ok<ReservationList>(engine, "reservation.list")).reservations.map((r) => r.id)).not.toContain("300");
+    expect((await ok<PinholeList>(engine, "pinhole.list")).pinholes.map((p) => p.id)).not.toContain("500");
+  });
+
+  it("removing a rule the eero app already removed succeeds as already gone and refreshes the list", async () => {
+    const { fake, engine } = fakeEngine(() => NOW);
+    close = fake.close;
+    // The page still shows the forward, reservation and rule from a cached read.
+    expect((await ok<ForwardList>(engine, "forward.list")).forwards.map((f) => f.id)).toContain("400");
+    await ok<ReservationList>(engine, "reservation.list");
+    removeElsewhere(fake, "forwards", "400");
+    removeElsewhere(fake, "reservations", "300");
+    removeElsewhere(fake, "pinholes", "500");
+    expect(await ok<ForwardRemoved>(engine, "forward.remove", { forward: "400" })).toEqual({ forward: null, alreadyGone: true });
+    expect(await ok<ReservationRemoved>(engine, "reservation.remove", { reservation: "300", removeForwards: true })).toEqual({ reservation: null, removedForwards: [], alreadyGone: true });
+    expect(await ok<PinholeRemoved>(engine, "pinhole.remove", { pinhole: "500" })).toEqual({ pinhole: null, alreadyGone: true });
+    // Nothing was sent to eero, and the write refreshed the cached list.
+    expect(fake.writes).toEqual([]);
+    expect((await ok<ForwardList>(engine, "forward.list")).forwards.map((f) => f.id)).not.toContain("400");
+    expect((await ok<ReservationList>(engine, "reservation.list")).reservations.map((r) => r.id)).not.toContain("300");
+  });
+
+  it("a DELETE eero refuses for a row it no longer lists counts as done; one it still lists fails", async () => {
+    const { fake, live } = fakeEngine();
+    close = fake.close;
+    removeElsewhere(fake, "forwards", "400");
+    removeElsewhere(fake, "reservations", "300");
+    removeElsewhere(fake, "pinholes", "500");
+    // Straight to the backend, as when the row vanished between core's read and the DELETE: eero answers 404.
+    await expect(live.routing.removeForward("100001", "400")).resolves.toBeUndefined();
+    await expect(live.routing.removeReservation("100001", "300", false)).resolves.toBeUndefined();
+    await expect(live.routing.removePinhole("100001", "500")).resolves.toBeUndefined();
+    expect(fake.log.filter((e) => e.method === "DELETE").map((e) => e.status)).toEqual([404, 404, 404]);
+    // A refused DELETE for a row eero still lists is a real failure.
+    const kept = (await live.routing.get("100001")).forwards[0];
+    if (!kept) throw new Error("fixture");
+    fake.scenarios.fail(403, "error.network.forbidden", { method: "DELETE", path: `/forwards/${kept.id}` });
+    await expect(live.routing.removeForward("100001", kept.id)).rejects.toMatchObject({ code: "eero_error", detail: { status: 403 } });
   });
 
   it("refuses writes in bridge mode without calling eero's routing", async () => {

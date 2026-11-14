@@ -20,6 +20,7 @@ import { z } from "zod";
 import type { ForwardInput } from "../backend";
 import { CommandError } from "../errors";
 import type * as M from "../model";
+import { POLL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref, type WriteGate } from "../spec";
 
 /**
@@ -116,6 +117,7 @@ export const commands: AnyCommand[] = [
     icon: "lock",
     effect: "query",
     topic: "routing",
+    poll: POLL.routing,
     params: z.object({}),
     run: async (ctx): Promise<ReservationList> => {
       const { routing, leases, unavailable } = await joined(ctx);
@@ -130,6 +132,7 @@ export const commands: AnyCommand[] = [
     icon: "arrow-right-left",
     effect: "query",
     topic: "routing",
+    poll: POLL.routing,
     params: z.object({ device: ref("device").optional().describe("Only forwards to this device (id, exact name or MAC).") }),
     run: async (ctx, p): Promise<ForwardList> => {
       const deviceId = p.device === undefined ? undefined : await ctx.resolve("device", p.device);
@@ -146,6 +149,7 @@ export const commands: AnyCommand[] = [
     icon: "shield",
     effect: "query",
     topic: "routing",
+    poll: POLL.routing,
     params: z.object({}),
     run: async (ctx): Promise<PinholeList> => {
       const { routing, unavailable } = await joined(ctx);
@@ -166,8 +170,27 @@ export type ForwardCheck = { ok: boolean; issues: Issue[]; needsReservation: boo
 /** Result of forward.add: the forward, and the reservation made for it when the device had none. */
 export type ForwardAdded = { forward: M.Forward; reservation: M.Reservation | null };
 
-/** Result of reservation.remove: what was removed, so Undo can add it back. */
-export type ReservationRemoved = { reservation: M.Reservation; removedForwards: M.Forward[] };
+/**
+ * Results of the removes: what was removed, so Undo can add it back. A rule
+ * named by id that eero no longer lists (removed in the eero app, say) is
+ * `alreadyGone` with a null row: the remove succeeds and changes nothing.
+ */
+export type ReservationRemoved = { reservation: M.Reservation | null; removedForwards: M.Forward[]; alreadyGone: boolean };
+export type ForwardRemoved = { forward: M.Forward | null; alreadyGone: boolean };
+export type PinholeRemoved = { pinhole: M.Pinhole | null; alreadyGone: boolean };
+
+/** A ref shaped like a rule id (no spaces, a digit): eero ids, MACs, `ip:port`. A name with no match still fails. */
+const ID_LIKE = /^(?=.*\d)[\w:.-]+$/;
+
+/** The rule `find` names, or null when the ref is an id that matches nothing now. */
+function stillThere<T>(refText: string, find: () => T): T | null {
+  try {
+    return find();
+  } catch (err) {
+    if (err instanceof CommandError && err.code === "bad_params" && err.detail?.matches === undefined && ID_LIKE.test(refText.trim())) return null;
+    throw err;
+  }
+}
 
 const GATE: WriteGate = { area: "settings", bridgeOff: true };
 const WRITES = ["routing", "devices"] as const;
@@ -427,7 +450,7 @@ commands.push(
   defineCommand({
     id: "reservation.remove",
     label: "Remove reservation",
-    description: "Removes a reservation; the device takes a DHCP address next time it joins. With removeForwards, also removes the port forwards on that address.",
+    description: "Removes a reservation; the device takes a DHCP address next time it joins. With removeForwards, also removes the port forwards on that address. A reservation id eero no longer lists answers alreadyGone.",
     icon: "trash",
     effect: "write",
     gate: GATE,
@@ -438,11 +461,12 @@ commands.push(
     }),
     run: async (ctx, p): Promise<ReservationRemoved> => {
       const j = await forWrite(ctx);
-      const r = findReservation(ctx, j, p.reservation);
+      const r = stillThere(p.reservation, () => findReservation(ctx, j, p.reservation));
+      if (!r) return { reservation: null, removedForwards: [], alreadyGone: true };
       const removeForwards = p.removeForwards === true;
       await ctx.backend.routing.removeReservation(ctx.net, r.id, removeForwards);
       const removedForwards = removeForwards ? j.routing.forwards.filter((f) => f.ip === r.ip) : [];
-      return { reservation: r, removedForwards };
+      return { reservation: r, removedForwards, alreadyGone: false };
     },
   }),
 
@@ -540,17 +564,18 @@ commands.push(
   defineCommand({
     id: "forward.remove",
     label: "Remove port forward",
-    description: "Closes a port forward. The device keeps its reservation.",
+    description: "Closes a port forward. The device keeps its reservation. A forward id eero no longer lists answers alreadyGone.",
     icon: "trash",
     effect: "write",
     gate: GATE,
     invalidates: [...WRITES],
     params: z.object({ forward: ref("forward").describe("The forward: id or exact name.") }),
-    run: async (ctx, p): Promise<M.Forward> => {
+    run: async (ctx, p): Promise<ForwardRemoved> => {
       const j = await forWrite(ctx);
-      const f = findForward(ctx, j, p.forward);
+      const f = stillThere(p.forward, () => findForward(ctx, j, p.forward));
+      if (!f) return { forward: null, alreadyGone: true };
       await ctx.backend.routing.removeForward(ctx.net, f.id);
-      return f;
+      return { forward: f, alreadyGone: false };
     },
   }),
 
@@ -583,17 +608,18 @@ commands.push(
   defineCommand({
     id: "pinhole.remove",
     label: "Remove IPv6 rule",
-    description: "Closes an IPv6 pinhole.",
+    description: "Closes an IPv6 pinhole. A rule id eero no longer lists answers alreadyGone.",
     icon: "trash",
     effect: "write",
     gate: GATE,
     invalidates: [...WRITES],
     params: z.object({ pinhole: ref("pinhole").describe("The rule: its id, or device name and port (TV:443).") }),
-    run: async (ctx, p): Promise<M.Pinhole> => {
+    run: async (ctx, p): Promise<PinholeRemoved> => {
       const j = await forWrite(ctx);
-      const ph = findPinhole(ctx, j, p.pinhole);
+      const ph = stillThere(p.pinhole, () => findPinhole(ctx, j, p.pinhole));
+      if (!ph) return { pinhole: null, alreadyGone: true };
       await ctx.backend.routing.removePinhole(ctx.net, ph.id);
-      return ph;
+      return { pinhole: ph, alreadyGone: false };
     },
   }),
 );

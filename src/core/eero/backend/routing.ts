@@ -14,6 +14,9 @@
  *   `DELETE` goes to the pinhole's own `url` from routing (no real pinhole
  *   has been captured, so its url form is unknown).
  *
+ * A DELETE that eero refuses (404 or its own code) for a row the next fresh
+ * read no longer lists succeeds: someone removed it first (the eero app).
+ *
  * A PUT sends the whole row: missing fields are read from routing inside the
  * write. Every write then answers the row as the next `get` shows it, read
  * back from routing (eero's write answers are not captured).
@@ -47,6 +50,9 @@ const forwardBody = (f: ForwardInput) => ({
 const missing = (what: string) => new BackendError("eero_error", `That ${what} is not on this network.`, { status: 404 });
 const lost = (what: string) => new BackendError("eero_error", `eero did not return the ${what}.`);
 
+/** eero answers a DELETE of a row it no longer has with an error (404 or its own code); the row being gone is what was asked. */
+const refusedDelete = (err: unknown) => err instanceof BackendError && (err.code === "eero_error" || err.code === "bad_params");
+
 export const routing: EeroArea<"routing"> = (ctx) => {
   const { client } = ctx;
   /** Routing rows as the model has them, read fresh inside a write (never a shared answer, no retry stall). The LAN map is not needed here. */
@@ -76,7 +82,9 @@ export const routing: EeroArea<"routing"> = (ctx) => {
     },
 
     async removeReservation(net, id, removeForwards) {
-      await client.request({ method: "DELETE", path: row(net, "reservations", id), query: { delete_forwards: removeForwards ? "true" : "false" } });
+      await client.request({ method: "DELETE", path: row(net, "reservations", id), query: { delete_forwards: removeForwards ? "true" : "false" } }).catch(async (err) => {
+        if (!refusedDelete(err) || (await fresh(net)).reservations.some((r) => r.id === id)) throw err;
+      });
     },
 
     async addForward(net, input) {
@@ -104,7 +112,9 @@ export const routing: EeroArea<"routing"> = (ctx) => {
     },
 
     async removeForward(net, id) {
-      await client.request({ method: "DELETE", path: row(net, "forwards", id) });
+      await client.request({ method: "DELETE", path: row(net, "forwards", id) }).catch(async (err) => {
+        if (!refusedDelete(err) || (await fresh(net)).forwards.some((f) => f.id === id)) throw err;
+      });
     },
 
     async addPinhole(net, input) {
@@ -120,7 +130,9 @@ export const routing: EeroArea<"routing"> = (ctx) => {
       // The pinhole's own link, as routing lists it; the documented path when it has none.
       const raw = await fetchRouting(ctx, net, "write");
       const url = (raw?.pinholes?.data ?? []).map((p) => p?.url).find((u): u is string => typeof u === "string" && idFromUrl(u) === id);
-      await client.request({ method: "DELETE", path: url ?? networkPath(net, `ipv6/pinholes/${encodeURIComponent(id)}`) });
+      await client.request({ method: "DELETE", path: url ?? networkPath(net, `ipv6/pinholes/${encodeURIComponent(id)}`) }).catch(async (err) => {
+        if (!refusedDelete(err) || (await fresh(net)).pinholes.some((p) => p.id === id)) throw err;
+      });
     },
   };
 };

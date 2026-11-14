@@ -22,7 +22,7 @@ import type { DeviceView } from "./DevicePage";
 const compact = (mac: string) => mac.toLowerCase().replace(/[^0-9a-f]/g, "");
 
 export function DeviceAddresses({ view }: { view: DeviceView }) {
-  const reservations = useQuery<ReservationList>("reservation.list", undefined, { poll: 60, enabled: !view.bridged });
+  const reservations = useQuery<ReservationList>("reservation.list", undefined, { poll: true, enabled: !view.bridged });
   const d = view.device;
   const listed = d ? reservations.data?.reservations.find((r) => compact(r.mac) === compact(d.mac)) : undefined;
   const reserved = !view.bridged && !!d && (!!listed || !!d.reservation);

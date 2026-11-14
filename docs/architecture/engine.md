@@ -138,7 +138,7 @@ views, a CLI script or an agent ask for the same thing.
 | `profiles` | `profile.list`, `profile.get` | 30 s |
 | `guest` | `guest.get` | 2 min |
 | `settings` | `settings.get` extras (fast transition, power saving, Thread, ac_compat) | 2 min |
-| `routing` | `reservation.list`, `forward.list`, `pinhole.list` | 2 min |
+| `routing` | `reservation.list`, `forward.list`, `pinhole.list` | 30 s |
 | `updates` | `updates.get` | 5 min |
 | `release_notes` | `updates.notes` | 6 h |
 | `speedtest` | `speedtest.history` | 5 min |
@@ -197,10 +197,11 @@ calls but never polls in the background.
 | Profiles | `profile.list`, `profile.get` | 60 s |
 | Events | `events.list` (first page) | 60 s on the Activity page |
 | Notifications | `notifications.list` | 60 s |
+| Reservations, forwards, IPv6 rules | `reservation.list`, `forward.list`, `pinhole.list` | 60 s on Reservations & ports and device detail (the eero app changes them too) |
 | Usage charts | `usage.get`, `usage.breakdown` | 5 min |
 | Speed test history | `speedtest.history` | on open and after `speedtest.run` (one re-read about 60 s later) |
 | Updates | `updates.get` | on open and after a write; 15 min on the Updates page |
-| Settings, guest, Wi-Fi, routing, admins | `settings.get`, `guest.get`, `wifi.get`, routing lists, `admin.list` | on open and after a write |
+| Settings, guest, Wi-Fi, admins | `settings.get`, `guest.get`, `wifi.get`, `admin.list` | on open and after a write |
 | Firmware history, coverage, upgrade report, release notes | | on open only |
 | Health check | `health.check` | on open and on "Run again" |
 
