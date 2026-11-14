@@ -40,6 +40,7 @@ import { account } from "./account";
 import { admins } from "./admins";
 import { auth } from "./auth";
 import { device } from "./device";
+import { diagnostics } from "./diagnostics";
 import { eero } from "./eero";
 import { events } from "./events";
 import { guest } from "./guest";
@@ -60,6 +61,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   admins,
   auth,
   device,
+  diagnostics,
   eero,
   events,
   guest,
