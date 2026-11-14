@@ -16,5 +16,6 @@ export { routes as network } from "./network";
 export { routes as notifications } from "./notifications";
 export { routes as profiles } from "./profiles";
 export { routes as routing } from "./routing";
+export { routes as settings } from "./settings";
 export { routes as updates } from "./updates";
 export { routes as usage } from "./usage";

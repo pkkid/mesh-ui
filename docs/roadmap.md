@@ -496,7 +496,7 @@ port, decided in M3.2).
 - scope: Core: `wifi.get` (SSID, security per band, bands with clients, widths, channels, the 2.4 GHz only flag and its expiry; no password), `wifi.password.get` and `wifi.share` (both sensitive, only on explicit reveal or share). Page (mockup 12): name, the QR block, Reveal password, security per band, bands and clients, time zone. Every change is disabled ("Coming soon"). Offline and single-band states.
 - done when: demo tests for the three commands incl. `bad_params`; fake-server tests for `wpa3_per_band` and the flag mapping; a real shape check of `wifi.get` in the PR (no password printed); sensitive results never reach logs (test); page-load budget test (reveal not counted); `pnpm ui:shot --route '#/wifi'` demo and `--fake`, light and dark.
 
-### M3.10 Advanced networking read view ☐
+### M3.10 Advanced networking read view ✅ (#106)
 - issue: [#91](https://github.com/pkkid/mesh-ui/issues/91)
 - after: M3.1, M3.2
 - docs: ux/pages/advanced-networking.md, architecture/commands.md (settings, integrations)
