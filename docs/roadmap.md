@@ -907,7 +907,7 @@ restarts the network says so in its risk field.
 - scope: `settings.band_steering.set`, `settings.fast_transition.set`, `settings.mlo.set`, `settings.legacy_mode.set`, `settings.power_saving.set` and its schedule add, update and remove (shared week timeline), `settings.timezone.set`, `settings.simple_setup.set`, `settings.thread.set`, `settings.thread.credentials` (sensitive, Copy dataset), `settings.thread.reset` (destructive), `network.delete` (destructive, type-the-name).
 - done when: demo and fake-server tests incl. schedules past midnight, Thread credentials never in logs, audit log or the CLI table without `--reveal`, and `needs_confirm`; `pnpm ui:shot` of power saving schedules, the Thread card and the delete dialog, light and dark; `MANUAL: toggle band steering off and on | ... | the eero app agrees | brief roam for some devices`.
 
-### M5.4 Integrations ☐
+### M5.4 Integrations ✅ (#171)
 - issue: [#141](https://github.com/pkkid/mesh-ui/issues/141)
 - after: M5.1
 - docs: ux/pages/advanced-networking.md (Integrations), architecture/commands.md (integrations)
