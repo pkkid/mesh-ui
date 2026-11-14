@@ -61,7 +61,8 @@ export function useGate(command: string | GateOptions): Gate {
   const info = byId ? commands?.find((c) => c.id === command) : undefined;
   const opts: GateOptions = byId ? { area: info?.gate?.area ?? undefined, capability: info?.gate?.capability ?? undefined, bridgeOff: info?.gate?.bridgeOff } : command;
   const permissions = useQuery<Permissions>("network.permissions", undefined, { enabled: byId || opts.area !== undefined });
-  const network = useQuery<Network>("network.get", undefined, { enabled: opts.capability !== undefined || opts.bridgeOff === true });
+  // Destructive commands also read the role from network.get (owner-only rule).
+  const network = useQuery<Network>("network.get", undefined, { enabled: opts.capability !== undefined || opts.bridgeOff === true || info?.effect === "destructive" });
   if (byId) {
     const reason = info ? commandUnavailable(info, permissions.data, network.data) : null;
     return { allowed: reason === null, reason };

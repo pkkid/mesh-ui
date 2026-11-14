@@ -402,6 +402,16 @@ describe("dimming writes on the real permissions shape", () => {
     expect(commandUnavailable(info(t.commands, "eero.restart"), REAL_ADMIN, network)).toBe("Owner only");
   });
 
+  it("refuses a destructive command for an admin from network.get's role when permissions did not load", async () => {
+    const t = writeSetup();
+    const network = await read<Network>(t.engine, "network.get");
+    const del = info(t.commands, "network.delete");
+    expect(commandUnavailable(del, null, { ...network, role: "admin" })).toBe("Owner only");
+    expect(availability(del, { signedIn: true, permissions: null, network: { ...network, role: "admin" } })).toBe("Owner only");
+    expect(commandUnavailable(del, null, { ...network, role: "owner" })).toBeNull();
+    expect(commandUnavailable(del, null, { ...network, role: null })).toBeNull();
+  });
+
   it("a page (useGate by id) and the palette agree on the real shape", async () => {
     const t = writeSetup();
     const network = await read<Network>(t.engine, "network.get");

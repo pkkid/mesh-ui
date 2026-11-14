@@ -112,7 +112,8 @@ export function commandUnavailable(
   network: Network | null | undefined,
 ): string | null {
   if (info.effect === "destructive") {
-    const refused = ownerOnly(permissions?.role);
+    // network.get carries the same role, for when the permissions read failed or has not landed.
+    const refused = ownerOnly(permissions?.role ?? network?.role);
     if (refused) return refused;
   }
   const gate = commandGate(info);
