@@ -624,6 +624,8 @@ describe("internet-side settings writes (fake eero server)", () => {
     await ok(s.engine.execute("settings.upnp.set", { networkId: N, enabled: true }));
     await ok(s.engine.execute("settings.dns.set", { networkId: N, mode: "automatic", confirm: true }));
     await ok(s.engine.execute("settings.connection_mode.set", { networkId: N, mode: "nat", confirm: true }));
+    await ok(s.engine.execute("settings.wan.set", { networkId: N, mode: "dhcp", confirm: true }));
+    await ok(s.engine.execute("settings.wan.set", { networkId: N, mode: "dhcp", vlan: null, confirm: true }));
     expect(await code(s.engine.execute("settings.dns.set", { networkId: N, mode: "custom", servers: ["1.1.1"], confirm: true }))).toBe("bad_params");
     expect(await code(s.engine.execute("settings.ipv6.set", { networkId: N, enabled: true }))).toBe("needs_confirm");
     expect(s.fake.writes).toEqual([]);

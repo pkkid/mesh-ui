@@ -247,6 +247,22 @@ const dhcpUnchanged = (s: M.NetworkSettings, p: { mode: "automatic" | "custom"; 
   s.dhcp.mode === p.mode &&
   (p.mode === "automatic" || (s.dhcp.subnetIp === p.subnetIp && s.dhcp.subnetMask === p.subnetMask && s.dhcp.startIp === p.startIp && s.dhcp.endIp === p.endIp));
 
+function wanTarget(s: M.NetworkSettings, p: { mode: WanInput["mode"]; static?: { ip: string; mask: string; router: string }; pppoe?: { username: string; password: string }; vlan?: number | null }): WanInput {
+  return {
+    mode: p.mode,
+    static: p.mode === "static" && p.static ? p.static : null,
+    pppoe: p.mode === "pppoe" && p.pppoe ? p.pppoe : null,
+    vlan: p.vlan === undefined ? s.wan.vlan : p.vlan,
+  };
+}
+
+/** PPPoE always sends: the password is write-only, so core cannot tell whether it changed. */
+const wanUnchanged = (s: M.NetworkSettings, t: WanInput) =>
+  t.mode !== "pppoe" &&
+  s.wan.mode === t.mode &&
+  s.wan.vlan === t.vlan &&
+  (t.mode === "dhcp" || (s.wan.static?.ip === t.static?.ip && s.wan.static?.mask === t.static?.mask && s.wan.static?.router === t.static?.router));
+
 const dnsUnchanged = (s: M.NetworkSettings, t: DnsInput) =>
   s.dns.mode === t.mode && sameList(s.dns.servers, t.servers) && sameList(s.dns.ipv6Servers, t.ipv6Servers) && s.dns.caching === t.caching;
 
@@ -438,18 +454,14 @@ export const commands: AnyCommand[] = [
     effect: "disruptive",
     gate: { area: "settings", bridgeOff: true },
     invalidates: ["settings", "network"],
-    confirmMessage: async (ctx) => {
-      await routedSettings(ctx, "ISP settings");
-      return confirmText(ctx, "settings.wan.set", false);
+    confirmMessage: async (ctx, p) => {
+      const s = await routedSettings(ctx, "ISP settings");
+      return confirmText(ctx, "settings.wan.set", wanUnchanged(s, wanTarget(s, p)));
     },
     run: async (ctx, p): Promise<M.NetworkSettings> => {
       const s = await routedSettings(ctx, "ISP settings");
-      const input: WanInput = {
-        mode: p.mode,
-        static: p.mode === "static" && p.static ? p.static : null,
-        pppoe: p.mode === "pppoe" && p.pppoe ? p.pppoe : null,
-        vlan: p.vlan === undefined ? s.wan.vlan : p.vlan,
-      };
+      const input = wanTarget(s, p);
+      if (wanUnchanged(s, input)) return withoutSecrets(s);
       return withoutSecrets(await ctx.backend.settings.setWan(ctx.net, input));
     },
   }),
