@@ -349,6 +349,14 @@ Work is planned and run with the `milestone-plan`, `milestone-start` and
   tests, then the UI (and CLI and MCP come for free from the registry).
 - Every story's done-when lines are provable in the sandbox. Anything that
   needs the real network is a `MANUAL:` line, not a done-when.
+- Workers run the CLI and any Electron process headless, never on the
+  maintainer's desktop display (#115 enforces it on Linux; keep the rule on
+  other hosts).
+- When a read-only capture contradicts the docs or fixtures, the worker
+  reports it in its PR even if the fix is outside its files; the lead turns
+  it into a fix task.
+- Workers push their PR screenshots to an `assets/<task id>-screenshots`
+  branch and link them in the PR body, as the review does.
 - Reviews are written to `docs/reviews/M<n>.md` and include the Manual checks
   section above, plus demo-mode screenshots for UI changes.
 - Never merge the milestone PR (`milestone/M<n>` into `main`); the maintainer
