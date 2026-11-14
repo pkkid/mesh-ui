@@ -696,7 +696,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `profile.create`, `profile.rename`, `profile.pause`, `profile.resume`, `profile.devices.set`, `profile.delete` (destructive, type-the-name), `profile.unassigned.pause` and `.resume`. Profiles page: Add a profile sheet, Pause all, pause and resume per card, Unassigned pause. Profile detail: rename, pause, devices picker, delete. Carried from M3: `profile.get` returns today's pauses so the hero and lane draw a manual pause; an Unassigned detail route (`#/profiles/unassigned`).
 - done when: demo and fake-server tests for every command incl. `needs_confirm` on delete and the default profile never offered as a profile; today's pauses test for `profile.get`; `pnpm ui:shot` of Profiles (sheet, paused card, toast) and a profile (delete dialog) and the Unassigned page, light and dark; `MANUAL: pause and resume a test profile | ... | its devices drop and return | brief loss for that profile`.
 
-### M4.6 Guest writes ☐
+### M4.6 Guest writes ✅ (#154)
 - issue: [#128](https://github.com/pkkid/mesh-ui/issues/128)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/guest.md, architecture/commands.md (guest)
