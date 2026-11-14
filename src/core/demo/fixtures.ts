@@ -310,7 +310,7 @@ const defaultUpShare: Record<UsagePattern, number> = { evening: 0.02, work: 0.2,
 
 // Maple Street, 38 devices: 31 online (12 Living Room, 9 Office, 7 Upstairs
 // Hall, 3 Garage), 5 offline, 2 blocked. Online by band: 11 on 2.4 GHz, 10
-// on 5 GHz, 6 on 6 GHz, 4 wired. 3 paused (Leo's), 1 guest, 3 new this week.
+// on 5 GHz, 6 on 6 GHz, 4 wired. 3 paused (Leo's), 2 guests (1 online), 3 new this week.
 const MAPLE_DEVICES: DeviceRow[] = [
   // Computers and personal
   { name: "Alex's MacBook Pro", maker: "Apple", model: "MacBook Pro 14 (M4 Pro)", type: "laptop", cat: "computers", profile: "alex", eero: "of", band: "6", bars: 5, ip: 23, rate: [38.4, 6.1], gb: 86, up: 0.26, pattern: "work", hostname: "Alexs-MacBook-Pro" },
@@ -326,7 +326,7 @@ const MAPLE_DEVICES: DeviceRow[] = [
   { name: "Mia's Chromebook", maker: "Acer", model: "Chromebook Spin", type: "laptop", cat: "computers", profile: "mia", eero: "up", band: "5", bars: 4, ip: 162, rate: [1.2, 0.2], gb: 5.1, pattern: "kid" },
   { name: "Mia's Kindle", maker: "Amazon", model: "Kindle Paperwhite", type: "ereader", cat: "phones_tablets", profile: "mia", eero: "up", band: "2.4", bars: 4, ip: 163, rate: [0, 0], gb: 0.1, pattern: "kid" },
   { name: "Leo's Fire HD", maker: "Amazon", model: "Fire HD 10", type: "tablet", cat: "phones_tablets", profile: "leo", eero: "up", band: "5", bars: 4, ip: 171, gb: 1.4, pattern: "kid", paused: true },
-  { name: "Grandma's iPad", maker: "Apple", model: "iPad mini", type: "tablet", cat: "phones_tablets", eero: "lr", band: "5", bars: 5, ip: 188, rate: [3.3, 0.2], gb: 2.7, pattern: "personal", newMin: 2 * 24 * 60 + 300 },
+  { name: "Grandma's iPad", maker: "Apple", model: "iPad mini", type: "tablet", cat: "phones_tablets", eero: "lr", band: "5", bars: 5, ip: 188, rate: [3.3, 0.2], gb: 2.7, pattern: "personal", newMin: 2 * 24 * 60 + 300, guest: true },
   { name: "HP LaserJet", maker: "HP", model: "LaserJet Pro M404", type: "printer", cat: "computers", eero: "of", band: "2.4", bars: 3, ip: 15, rate: [0, 0], gb: 0.02, pattern: "work" },
   // Entertainment
   { name: "Living Room TV", maker: "Samsung", model: "QN90D", type: "tv", cat: "entertainment", eero: "lr", band: "wired", ip: 12, rate: [58.2, 0.6], gb: 142, up: 0.008, pattern: "evening", port: [3, 1000] },

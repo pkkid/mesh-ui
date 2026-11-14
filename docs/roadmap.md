@@ -480,7 +480,7 @@ port, decided in M3.2).
 - scope: Core: a `notifications` command area (its rows move out of the activity section in commands.md): `notifications.list` (history plus unread) and `notifications.settings.get` (eero keys plus the desktop choice from app settings). Bell in the titlebar with the unread dot and a popover list; Mark all read is disabled ("Coming soon"). Desktop alerts: the renderer's notifications poll finds new items and asks the host to show one OS notification each (offline eero and network first), through the IPC bridge, never with real data in logs; off when the desktop choice is off; clicking it focuses the window on the matching page.
 - done when: demo tests for unread counts, new-item detection and `bad_params`, and fake-server mapping tests; a real shape check of `notifications.list` in the PR; `pnpm ui:shot` of the open bell in light and dark; a test shows one host notification per new item and none on first load; `MANUAL: desktop alert | pnpm dev:demo, run demo.scenario.set eero_offline from the palette | one OS notification appears and clicking it opens the eero | none`.
 
-### M3.8 Guest page ☐
+### M3.8 Guest page ✅ (#PRNUM)
 - issue: [#89](https://github.com/pkkid/mesh-ui/issues/89)
 - after: M3.1, M3.2
 - docs: ux/pages/guest.md, architecture/commands.md (guest)

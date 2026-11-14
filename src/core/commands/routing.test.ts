@@ -37,8 +37,8 @@ describe("reservation.list (demo)", () => {
     const mbp = r.reservations.find((x) => x.name === "Alex's MacBook Pro");
     expect(mbp).toMatchObject({ ip: "192.168.4.23", forwards: 3 });
     expect(r.lan).toMatchObject({ subnet: "192.168.4.0/22", size: 1024, gateway: "192.168.4.1", staticRange: { start: "192.168.4.2", end: "192.168.4.99" } });
-    // Reserved devices sit in the static range; the other connected main-network clients hold pool leases (.4.100 up).
-    expect(r.lan?.pool.leased).toBe(23);
+    // Reserved devices sit in the static range; the other connected main-network clients hold pool leases (.4.100 up). Guests (Grandma's iPad) do not.
+    expect(r.lan?.pool.leased).toBe(22);
   });
 
   it("counts leases as connected main-network devices inside the pool without a reservation", async () => {
@@ -174,8 +174,8 @@ describe("routing commands (fake eero server)", () => {
       subnet: "192.168.4.0/22",
       size: 1024,
       gateway: "192.168.4.1",
-      // The two reserved clients keep static-range addresses; the connected unreserved ones lease from the pool.
-      pool: { start: "192.168.4.100", end: "192.168.7.254", size: 923, leased: 5 },
+      // The two reserved clients keep static-range addresses; the connected unreserved main-network ones (not the guest plug) lease from the pool.
+      pool: { start: "192.168.4.100", end: "192.168.7.254", size: 923, leased: 4 },
       staticRange: { start: "192.168.4.2", end: "192.168.4.99" },
     });
     const f = await ok<ForwardList>(engine, "forward.list");
@@ -193,8 +193,8 @@ describe("routing commands (fake eero server)", () => {
     fake.state.networks.get("100001")?.blacklist.push("0a:1b:2c:00:00:03");
     const jamie = (await ok<M.DeviceList>(engine, "device.list")).devices.find((d) => d.name === "Jamie's Phone");
     expect(jamie).toMatchObject({ blocked: true, ipv4: "192.168.4.103" });
-    // Five connected unreserved pool clients, less the blocked Jamie's Phone.
-    expect((await ok<ReservationList>(engine, "reservation.list")).lan?.pool.leased).toBe(4);
+    // Four connected unreserved main-network pool clients (the guest plug is not one), less the blocked Jamie's Phone.
+    expect((await ok<ReservationList>(engine, "reservation.list")).lan?.pool.leased).toBe(3);
   });
 
   it("uses a custom DHCP range and skips GET routing in bridge mode", async () => {

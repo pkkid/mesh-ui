@@ -6,6 +6,8 @@ Mockup: [../../mockups/11-guest.html](../../mockups/11-guest.html)
 
 Shared patterns (hero, section cards, QR block, inline confirms, tables) are described in [../overview.md](../overview.md).
 
+**Built in M3 (read-only).** Hero with status, guests online and the QR block (Copy password, Save QR), Guest usage, Isolation & security, Name & password shown as values, and Guest devices. Turning the guest network on or off, renaming it and changing the password are disabled "Coming soon" controls until `guest.enable`, `guest.disable`, `guest.rename` and `guest.password.set` land; Print a card and Send to a guest come with them.
+
 ## Layout
 
 1. **Hero.** Ticket icon at the left, top aligned with the title. Title is the guest network name (`Maple Street Guest Network`), status line under it (`On` status, "Broadcast on all eeros"). Action row at the bottom: **Turn off guest network** (danger button). Clicking it hides the button and reveals an inline warning confirm: "Turn off guest network? 4 guests are disconnected right away." with **Turn off** and **Cancel**. QR block at the top right: QR code labelled "Guest Network", with labelled buttons to its left: **Copy password**, **Save QR**, **Print a card**.
@@ -20,12 +22,12 @@ Shared patterns (hero, section cards, QR block, inline confirms, tables) are des
 | Element | Command | Refresh |
 | --- | --- | --- |
 | Name, on or off, broadcast scope | `guest.get` | on load, after writes |
-| QR payload, password for copy | `guest.share` (reveals the password) | on demand only, never cached in the renderer |
+| QR payload, password for copy | `guest.share` (reveals the password) | once when the hero mounts (guest network on), and again for Copy password; held only in the hero's state, never in the shared query cache, never polled |
 | Usage chart, totals, share of network, busiest hour | `usage.get` `{scope: "guest", range: "day" or "week"}` | on load and range change, then every 5 min |
 | Isolation diagrams | static copy (eero guests are always isolated) | |
 | Encryption per band | `wifi.get` | on load |
 | Name and password fields | `guest.get`, then `guest.share` on reveal | on load |
-| Guest devices table | `device.list` `{ssid: "guest"}` (devices seen in the last 7 days) | every 60 s |
+| Guest devices table | `device.list` `{ssid: "guest"}` (devices seen in the last 7 days), Down and Up from `usage.breakdown` `{by: "device", range: "day"}`, eero names from `eero.list` | every 60 s |
 | Guest count in the confirm text | `device.list` `{ssid: "guest", connected: true}` | with the table |
 
 ## Actions
@@ -58,6 +60,8 @@ Shared patterns (hero, section cards, QR block, inline confirms, tables) are des
 - **No guests:** table shows "No guests in the last 7 days."
 - **Error:** inline note in the failing section with **Retry**; a failed write keeps the edited values and shows the eero error.
 - **No permission:** admins can do everything here. If `network.permissions` denies guest updates, inputs and the power button are read only.
+- **Network offline:** the status line says "Network offline, showing the last known settings".
+- **Open network (no password):** a warning status "Open, no password" in the hero, no Copy password, the QR joins without a password, and each band reads "Open, no password".
 - **Bridge mode:** isolation needs eero's NAT, so guest support in bridge mode is unclear (open question). If the network object reports the guest network unavailable, show a note "Guest network is not available in bridge mode" and hide the rest.
 
 ## Notes
