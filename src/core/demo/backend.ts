@@ -477,6 +477,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     network: {
       list: async () => {
         signedIn();
+        fx.networks.forEach(settleRestarts);
         return fx.networks.map(summary);
       },
       get: async (id) => {
@@ -716,7 +717,12 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         return profileView(data, p);
       },
       rename: async (id, profileId, name) => changeProfile(id, profileId, (p) => (p.name = name)),
-      setPaused: async (id, profileId, paused) => changeProfile(id, profileId, (p) => (p.paused = paused)),
+      setPaused: async (id, profileId, paused) =>
+        changeProfile(id, profileId, (p, data) => {
+          // eero pauses every device in the profile with it, as the fixtures show.
+          p.paused = paused;
+          for (const d of data.devices) if (d.profileId === p.id) d.paused = paused;
+        }),
       setDevices: async (id, profileId, deviceIds) => changeProfile(id, profileId, (p, data) => assign(data, p.id, deviceIds)),
       remove: async (id, profileId) => {
         const data = net(id);
@@ -806,6 +812,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
           // A band no eero has stays null.
           if (next && data.wifi.security[band] !== null) data.wifi.security[band] = next;
         }
+        // A guest network with a password follows the main network's security.
+        if (data.guest.password !== null) data.guest.security = clone(data.wifi.security);
         return wifiView(data);
       },
       setHide5g: async (id, enabled) => {

@@ -216,7 +216,9 @@ fixtures.
 - **Writes apply** (M4.1). Every write changes the in-memory fixtures, so
   the next read shows it and derived fields follow: pausing a device clears
   its live rates, blocking it drops it off (unblocking puts it back as it
-  was), a profile's state follows its pause and schedules, deleting a
+  was), pausing a profile pauses its devices, a profile's state follows its
+pause and schedules, a protected guest network follows the main Wi-Fi
+security, deleting a
   profile moves its devices to Unassigned, the guest network's online count
   drops to 0 when it is off, an open guest network has no security, and a
   speed test result appears at once (eero takes about a minute). Restarts

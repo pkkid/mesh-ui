@@ -724,6 +724,10 @@ describe("writes (M4)", () => {
 
     expect((await b.profile.rename(MAPLE, p.id, "Visitors")).name).toBe("Visitors");
     expect((await b.profile.setPaused(MAPLE, p.id, true)).state).toBe("paused");
+    expect(await b.device.get(MAPLE, d1.id)).toMatchObject({ paused: true, rates: null });
+    await b.profile.setPaused(MAPLE, p.id, false);
+    expect((await b.device.get(MAPLE, d1.id)).paused).toBe(false);
+    await b.profile.setPaused(MAPLE, p.id, true);
     expect((await b.profile.setDevices(MAPLE, p.id, [d2.id])).deviceIds).toEqual([d2.id]);
     expect((await b.device.get(MAPLE, d1.id)).profileId).toBeNull();
 
@@ -772,6 +776,7 @@ describe("writes (M4)", () => {
     expect((await b.wifi.credentials(MAPLE)).password).toBe("fresh-demo-pass-1");
     const sec = await b.wifi.setSecurity(MAPLE, { "2.4": "WPA2" });
     expect(sec.security).toMatchObject({ "2.4": "WPA2", "5": "WPA2_WPA3", "6": "WPA3" });
+    expect((await b.guest.get(MAPLE)).security).toEqual(sec.security);
     // Lake Cabin has no 6 GHz radio, so its 6 GHz security stays null.
     expect((await b.wifi.setSecurity(LAKE, { "6": "WPA3" })).security["6"]).toBeNull();
     const on = await b.wifi.setHide5g(MAPLE, true);
@@ -818,6 +823,7 @@ describe("writes (M4)", () => {
     expect(await b.network.get(MAPLE)).toMatchObject({ status: "updating", lastReboot: iso(t), gatewayUptimeSec: 0 });
     expect((await b.network.health(MAPLE)).eeros.filter((e) => e.status === "updating").length).toBe(eeros.filter((e) => e.status !== "offline").length);
     t += RESTART_MS;
+    expect((await b.network.list()).find((n) => n.id === MAPLE)?.status).toBe(before.status);
     expect((await b.network.get(MAPLE)).status).toBe(before.status);
     expect((await b.eero.list(MAPLE)).map((e) => e.status)).toEqual(eeros.map((e) => e.status));
 
