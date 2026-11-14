@@ -57,16 +57,12 @@ export function ProfilePage({ params }: PageProps) {
       </Note>
     );
   }
-  // eero's own Unassigned group reads like a profile (`default: true`), but the list leaves it out.
+  // Gone, or eero's own Unassigned group (a `default: true` profile the list leaves out): one note for both,
+  // since a cached detail read cannot tell them apart without racing the list.
   if (profiles.data && !listed) {
-    const unassigned = profile.data?.id === id && !profile.error;
     return (
       <Note>
-        <span>
-          {unassigned
-            ? "This is eero's Unassigned group, not a profile. Devices with no profile are listed under Unassigned on Profiles."
-            : `This profile is no longer on ${networkName}.`}
-        </span>
+        <span>This profile is no longer on {networkName}. Devices with no profile are listed under Unassigned on Profiles.</span>
         <Link to={pathFor("profiles")} className="text-foreground underline-offset-2 hover:underline">
           Go to Profiles
         </Link>

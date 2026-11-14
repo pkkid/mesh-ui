@@ -14,7 +14,6 @@ import {
   hoursLine,
   inScheduledPause,
   neighbour,
-  pageReads,
   scheduledHoursPerWeek,
   scheduleIcon,
   spanMinutes,
@@ -141,6 +140,21 @@ describe("devices", () => {
     expect(neighbour(["a", "b"], "x", 1)).toBeNull();
   });
 });
+
+/** Every read ProfilePage and its sections mount, shell reads first. Keep in step with the page. */
+const pageReads = (profile: string): [string, unknown?][] => [
+  ["auth.status"],
+  ["account.get"],
+  ["network.list"],
+  ["network.get"],
+  ["profile.get", { profile }],
+  ["profile.list"],
+  ["eero.list"],
+  ["usage.get", { scope: "profile", id: profile, range: "week" }],
+  ["usage.get", { scope: "profile", id: profile, range: "day" }],
+  ["usage.breakdown", { range: "day", by: "device", profile }],
+  ["device.list", { profile }],
+];
 
 describe("page load against the fake eero server", () => {
   let fake: FakeEero | null = null;

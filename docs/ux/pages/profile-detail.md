@@ -187,10 +187,11 @@ until its command lands; the schedule sheet is not built yet.
 - **Devices** label data as "Last 24 hours": eero's device usage is a
   rolling 24 h, not "today". The 7 day sparklines are left out (one usage
   read per device) and so is **Recent activity** (a later story).
-- **Gone.** A profile `profile.list` no longer has shows "This profile is no
-  longer on Maple Street." eero's own Unassigned group (`default: true`,
-  which the list drops) opened by id reads as a profile, so it gets "This is
-  eero's Unassigned group, not a profile" with a link to Profiles.
+- **Gone.** An id `profile.list` does not have shows "This profile is no
+  longer on Maple Street. Devices with no profile are listed under
+  Unassigned on Profiles." with a link to Profiles. That covers eero's own
+  Unassigned group too (`default: true`, which the list drops), opened by
+  id from a device's profile link.
 - `[` and `]` move between profiles in `profile.list` order.
 - Page-load budget: `helpers.test.ts` runs `pageReads` (every read the page
   mounts) against the fake eero server: about 18 requests, no

@@ -184,27 +184,6 @@ export function neighbour(ids: ReadonlyArray<string>, id: string, dir: 1 | -1): 
   return ids[(at + dir + ids.length) % ids.length] ?? null;
 }
 
-/**
- * Every read the page runs on load, as React mounts them (shell reads
- * first). Mirrors ProfilePage and its sections; the page-load budget test
- * runs exactly this list against the fake eero server.
- */
-export function pageReads(profile: string): [string, unknown?][] {
-  return [
-    ["auth.status"],
-    ["account.get"],
-    ["network.list"],
-    ["network.get"],
-    ["profile.get", { profile }],
-    ["profile.list"],
-    ["eero.list"],
-    ["usage.get", { scope: "profile", id: profile, range: "week" }],
-    ["usage.get", { scope: "profile", id: profile, range: "day" }],
-    ["usage.breakdown", { range: "day", by: "device", profile }],
-    ["device.list", { profile }],
-  ];
-}
-
 /** "Pacific Time", from the zone's generic name; "UTC" when the network has none. */
 export function zoneName(timezone: string | null, now = Date.now()): string {
   if (!timezone) return "UTC";
