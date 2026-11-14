@@ -630,6 +630,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     { min: 120, category: "speed_tests", type: "speedtest_completed", title: "Speed test: 942 down / 918 up Mbps", detail: "Ziply Fiber · run from Mesh UI" },
     { min: 180, category: "firmware", type: "firmware_update_scheduled", title: "eeroOS 7.13.0 scheduled for tonight", detail: "Installs tonight, 2 AM to 5 AM · network restarts" },
     { min: 220, category: "eero_status", type: "eero_mesh_quality_changed", title: "Garage mesh link dropped to 2 bars", detail: "Garage · upstream Office · 5 GHz backhaul", refs: { eeroId: mapleIds.ga } },
+    { min: 262, category: "eero_status", type: "eero_mesh_quality_changed", title: "Garage mesh link dropped to 2 bars", detail: "Garage · upstream Office · 5 GHz backhaul", refs: { eeroId: mapleIds.ga } },
     { min: 460, category: "schedules", type: "profile_schedule_ended", title: "Schedule ended: Bedtime for Mia", detail: "Mia · 4 devices resumed · next start today 9:00 PM", refs: { profileId: mapleProfileIds.mia } },
     { min: 490, category: "admin", type: "admin_invite_sent", title: "Alex Kim invited sam@example.com as admin", detail: "Invite pending · expires in 2 days", refs: { adminId: "7001" } },
     { min: 18 * 60, category: "schedules", type: "profile_schedule_started", title: "Schedule started: Bedtime for Mia", detail: "Mia · 4 devices paused until 7:00 AM", refs: { profileId: mapleProfileIds.mia } },
