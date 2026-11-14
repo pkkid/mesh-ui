@@ -130,6 +130,7 @@ Left to right (mockup `.topbar`):
 | Crumbs | Page title as `h1`, or a path ("Devices / Alex's MacBook Pro", "eeros / Office", "Profiles / Mia") | Earlier crumbs are links. |
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
 | Page actions | Small buttons a page puts in the topbar slot: Share Wi-Fi (Devices), Prev and Next (Device detail), Add a profile (Profiles), Rename (Profile detail) | Optional per page. |
+| Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, right after the page actions so it reads as a page control. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
 | Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The theme itself (Gruvbox Hard by default; also Classic, Rose, Grove, Ocean, Ember, Iris) is picked in App & account. Stored in renderer `localStorage`, not a command. |
@@ -259,7 +260,7 @@ the ones that run commands go through `execute` like any button.
 | `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Activity, Guest network | Global |
 | `Ctrl+,` | App & account | Global |
 | `Alt+←` / `Alt+→` (`⌘[` / `⌘]`) | Back / forward | Global |
-| `Ctrl+R` | Refresh the current page's queries now | Global (does not reload the window) |
+| `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |
 | `Ctrl+B` | Hide or show the sidebar | Global |
 | `/` | Focus the list search field | Devices, Activity |
 | `Shift+click` | Select a range of rows | Devices table |
@@ -536,6 +537,11 @@ engine.md wins.
   quickly; the page then polls the relevant query faster (every 5 s for up to
   3 min) and shows progress in place ("Testing... about 1 minute",
   "Restarting, about 2 to 3 minutes"; the estimate comes from core).
+- **Manual refresh.** The topbar Refresh button (and `Ctrl+R`, `Cmd+R`,
+  `F5`) refetches every query on screen once with `{ fresh: true }`, so a
+  change made in the eero app shows at once instead of after the cache and
+  the next poll. One request per query, never more than the page already
+  loads; clicks while it runs are ignored.
 - **Freshness.** The topbar subtitle shows "Updated just now" / "Updated 4s
   ago" for the page's main query and ticks every second. Sections with live
   data say how they refresh ("refreshes every minute").

@@ -54,7 +54,9 @@ Steps, in order:
    `confirmMessage(ctx, params)` or a default built from the label.
 6. Queries: return the cached result if it is fresh for this
    `(id, networkId, params)`; otherwise run and cache. Sensitive queries are
-   never cached.
+   never cached. `execute(id, params, { fresh: true })` skips the cached
+   answer and runs again (the header Refresh, Run again, Check for updates);
+   the new answer replaces the cached one. Writes ignore `fresh`.
 7. Writes: run (one at a time per network), then invalidate the spec's
    `invalidates` topics, also when the write failed (a write that timed
    out may still have landed). They are stale at once, and a read of them
@@ -171,6 +173,16 @@ the backend while two views polling the same topic share one request.
   command: cached answers are served until then, and anything fetched
   before it expires at that time. `device.rates.refresh` uses it to keep
   `devices` until the burst is in.
+- **Fresh reads.** `execute(id, params, { fresh: true })` is the one way to
+  bypass the cache, for every query at once: no per-command flag is needed.
+  The fresh load replaces the entry (so later plain reads and other views
+  share it, and its TTL starts again); a failed fresh load drops the entry.
+  It only skips the engine cache: the eero client may still answer a GET
+  from a request finished in the last 5 s (`share`), and `ctx.resolve`
+  lists stay cached. The UI uses it for Refresh (topbar button, `Ctrl+R`,
+  `Cmd+R`, `F5`) and per-page Check for updates and Run again. The older
+  `refresh: true` params of `health.check` and `coverage.scan` still work
+  for the CLI and MCP, which have no option for it.
 - A backend `not_signed_in` clears the whole cache and emits
   `session.changed`.
 - After a `disruptive` write that restarts eeros (`network.restart`,
@@ -203,7 +215,7 @@ calls but never polls in the background.
 | Updates | `updates.get` | on open and after a write; 15 min on the Updates page |
 | Settings, guest, Wi-Fi, admins | `settings.get`, `guest.get`, `wifi.get`, `admin.list` | on open and after a write |
 | Firmware history, coverage, upgrade report, release notes | | on open only |
-| Health check | `health.check` | on open and on "Run again" |
+| Health check | `health.check` | on open and on "Run again" (a fresh read) |
 
 Busiest case (Devices page with live rates, window focused): network 1,
 devices 2, profiles 1, notifications 1, burst 1: about 6 requests a minute,

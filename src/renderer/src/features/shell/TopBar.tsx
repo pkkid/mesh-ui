@@ -4,15 +4,17 @@
  * is `no-drag` and it leaves room for native window controls on the right.
  *
  * Left: crumbs (parent page link, then the page title) and a subtitle slot.
- * Right: an actions slot for the page, search, notifications and the
- * light/dark toggle. Pages fill the slots with <TopBarTitle>,
+ * Right: an actions slot for the page, Refresh (every query on screen, past
+ * the engine cache; also Ctrl+R / Cmd+R / F5 from main), search,
+ * notifications and the light/dark toggle. Pages fill the slots with <TopBarTitle>,
  * <TopBarSubtitle> and <TopBarActions>, which portal into the bar.
  */
-import { Moon, Search, Sun } from "lucide-react";
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { Moon, RefreshCw, Search, Sun } from "lucide-react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Link, useLocation } from "~/app/router";
+import { refreshAll, useRefresh } from "~/app/useCommand";
 import { routeById } from "~/app/routes";
 import { Bell } from "~/features/notifications/Bell";
 import { openPalette } from "~/features/palette/CommandPalette";
@@ -87,6 +89,7 @@ export function TopBar() {
 
       <div className="no-drag ms-auto flex items-center gap-1">
         <div ref={refs.actions} className="flex items-center gap-1 empty:hidden" />
+        <RefreshButton isMac={isMac} />
         <button
           type="button"
           onClick={() => openPalette()}
@@ -105,6 +108,33 @@ export function TopBar() {
         </button>
       </div>
     </header>
+  );
+}
+
+/**
+ * Refetches every query on screen, skipping the engine cache. The icon spins
+ * while it runs and clicks meanwhile are ignored. Main sends the same request
+ * for Ctrl+R / Cmd+R and F5 (`window.mesh.onRefresh`) instead of reloading.
+ */
+function RefreshButton({ isMac }: { isMac: boolean }) {
+  const { refreshing, refresh } = useRefresh();
+  useEffect(() => {
+    const mesh = (window as { mesh?: { onRefresh?: (l: () => void) => () => void } }).mesh;
+    return typeof mesh?.onRefresh === "function" ? mesh.onRefresh(() => void refreshAll()) : undefined;
+  }, []);
+  const title = `Refresh (${isMac ? "⌘R" : "Ctrl+R"})`;
+  return (
+    <button
+      type="button"
+      onClick={() => void refresh()}
+      disabled={refreshing}
+      aria-busy={refreshing}
+      title={title}
+      aria-label="Refresh"
+      className={cn(iconButton, "ms-1 disabled:cursor-default disabled:hover:bg-transparent")}
+    >
+      <RefreshCw className={cn(refreshing && "animate-spin")} />
+    </button>
   );
 }
 

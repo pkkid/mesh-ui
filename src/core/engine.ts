@@ -44,9 +44,19 @@ export type EngineOptions = {
   audit?: AuditLog | null;
 };
 
+/** How one `execute` call runs, beside its params. */
+export type ExecuteOptions = {
+  /**
+   * For a query: skip the cached answer and read the backend again (the
+   * header Refresh). The fresh result replaces the cached one, so other
+   * readers share it. Ignored for writes.
+   */
+  fresh?: boolean;
+};
+
 export interface Engine {
   readonly backend: Backend;
-  execute<R = unknown>(id: string, params?: unknown): Promise<ExecuteResult<R>>;
+  execute<R = unknown>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>>;
   /** The registry as JSON, for window.mesh.commands(), `mesh-ui commands` and MCP. */
   commands(): CommandInfo[];
   /** Host events (session.changed, network.selected). Returns an unsubscribe. */
@@ -133,10 +143,11 @@ function createCache(now: () => number, keepNetworks = CACHE_NETWORKS) {
   };
 
   return {
-    get<T>(key: string, topic: Topic, net: Id | null, ttlSec: number, load: () => Promise<T>): Promise<T> {
+    /** The cached answer while it is fresh, else `load()`. `fresh` always loads and replaces the entry. */
+    get<T>(key: string, topic: Topic, net: Id | null, ttlSec: number, load: () => Promise<T>, fresh = false): Promise<T> {
       touch(net);
       const hit = entries.get(key);
-      if (hit && now() < hit.expires) return hit.promise as Promise<T>;
+      if (hit && !fresh && now() < hit.expires) return hit.promise as Promise<T>;
       const fetchedAt = now();
       const entry: CacheEntry = { promise: load(), topic, net, expires: Number.POSITIVE_INFINITY };
       entries.set(key, entry);
@@ -294,7 +305,7 @@ export function createEngine(opts: EngineOptions): Engine {
     emit,
   });
 
-  const runCommand = async (cmd: RegisteredCommand, params: Record<string, unknown>): Promise<unknown> => {
+  const runCommand = async (cmd: RegisteredCommand, params: Record<string, unknown>, fresh: boolean): Promise<unknown> => {
     const { spec, scope } = cmd;
     const { networkId: netRef, confirm, ...rest } = params as { networkId?: string; confirm?: boolean };
 
@@ -319,7 +330,7 @@ export function createEngine(opts: EngineOptions): Engine {
       const ttl = typeof spec.ttl === "function" ? spec.ttl(rest) : (spec.ttl ?? (spec.topic ? TTL[spec.topic] : 0));
       if (!spec.topic || spec.sensitive || ttl <= 0) return spec.run(ctx, rest);
       const key = `${spec.topic}|${networkId}|${spec.id}|${stableJson(rest)}`;
-      return cache.get(key, spec.topic, networkId, ttl, () => spec.run(ctx, rest));
+      return cache.get(key, spec.topic, networkId, ttl, () => spec.run(ctx, rest), fresh);
     }
 
     const queueKey = networkId ?? "_";
@@ -350,8 +361,8 @@ export function createEngine(opts: EngineOptions): Engine {
       return () => listeners.delete(listener);
     },
     selectedNetworkId: () => selected ?? null,
-    async execute<R>(id: string, params?: unknown): Promise<ExecuteResult<R>> {
-      const outcome = await executeOnce<R>(id, params);
+    async execute<R>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>> {
+      const outcome = await executeOnce<R>(id, params, options?.fresh === true);
       if (audit) {
         const effect = registry.get(id)?.spec.effect ?? null;
         // Awaited so a CLI that exits right after still has its line; a failed write never fails the command.
@@ -361,7 +372,7 @@ export function createEngine(opts: EngineOptions): Engine {
     },
   };
 
-  async function executeOnce<R>(id: string, params?: unknown): Promise<ExecuteResult<R>> {
+  async function executeOnce<R>(id: string, params: unknown, fresh: boolean): Promise<ExecuteResult<R>> {
     const cmd = registry.get(id);
     if (!cmd) return { ok: false, error: { code: "unknown_command", message: `Unknown command "${id}".` } };
 
@@ -374,7 +385,7 @@ export function createEngine(opts: EngineOptions): Engine {
     }
 
     try {
-      const result = (await runCommand(cmd, parsed.data as Record<string, unknown>)) as R;
+      const result = (await runCommand(cmd, parsed.data as Record<string, unknown>, fresh)) as R;
       return { ok: true, result };
     } catch (err) {
       const error = toExecuteError(err);

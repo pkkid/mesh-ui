@@ -40,7 +40,7 @@ export function UpdatesPage(_: PageProps) {
       <TopBarTitle>Updates &amp; admins</TopBarTitle>
       {updates.fetchedAt !== null && <TopBarSubtitle>Checked for updates {formatRelative(new Date(updates.fetchedAt).toISOString(), now, timezone ?? "UTC")}</TopBarSubtitle>}
       <TopBarActions>
-        <Button size="xs" variant="outline" className="no-drag" onClick={() => void updates.refetch()} disabled={updates.loading}>
+        <Button size="xs" variant="outline" className="no-drag" onClick={() => void updates.refetch({ fresh: true })} disabled={updates.loading}>
           <RefreshCw />
           Check for updates
         </Button>

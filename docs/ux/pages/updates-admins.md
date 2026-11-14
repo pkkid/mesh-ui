@@ -40,7 +40,7 @@ Side panel **During an update**: internet and Wi-Fi drop about 10 minutes, eeros
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Check for updates | `updates.get` | query | no | Subtitle time resets |
+| Check for updates | `updates.get`, fetched with `{ fresh: true }` | query | no | Skips the engine cache; subtitle time resets |
 | Install now | `updates.install` | disruptive | dialog with outage length (about 10 minutes, from core) and device count | eeros download and restart; page shows progress until they return |
 | Preferred window select | `updates.hour.set` `{hour}` | write | no | Chart overlay moves; toast with Undo |
 | Use quietest | `updates.hour.set` `{hour: quietest.start}` | write | no | Shown when the quietest window is not the chosen one |

@@ -5,11 +5,12 @@
  * bridge. Nothing here may carry the session token.
  */
 
+import type { ExecuteOptions } from "../core/engine";
 import type { ExecuteError, ExecuteResult } from "../core/errors";
 import type { HostEvent, SessionStorageKind } from "../core/model";
 import type { CommandInfo } from "../core/registry";
 
-export type { CommandInfo, ExecuteError, ExecuteResult, HostEvent };
+export type { CommandInfo, ExecuteError, ExecuteOptions, ExecuteResult, HostEvent };
 
 /** IPC channel names: one per bridge call, plus one outbound event channel. */
 export const IPC = {
@@ -20,6 +21,7 @@ export const IPC = {
   saveFile: "mesh:save-file",
   notify: "mesh:notify",
   notifyClick: "mesh:notify-click",
+  refresh: "mesh:refresh",
 } as const;
 
 /**
@@ -52,8 +54,13 @@ export type SessionStorage = SessionStorageKind;
 /** The API the preload script exposes to the renderer as `window.mesh`. */
 export type MeshApi = {
   platform: "darwin" | "linux" | "win32" | (string & {});
-  /** The only data path. Never throws; IPC failures come back as `network_error`. */
-  execute<R = unknown>(id: string, params?: unknown): Promise<ExecuteResult<R>>;
+  /**
+   * The only data path. Never throws; IPC failures come back as `network_error`.
+   * `{ fresh: true }` skips the engine's cached answer for a query (Refresh).
+   */
+  execute<R = unknown>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>>;
+  /** The host asks for a Refresh (Ctrl+R, Cmd+R or F5 in the window). Returns an unsubscribe. */
+  onRefresh(listener: () => void): () => void;
   /** The command registry as JSON. */
   commands(): Promise<CommandInfo[]>;
   /** Host events (session.changed, network.selected, update.ready). Returns an unsubscribe. */

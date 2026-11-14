@@ -59,7 +59,8 @@ in `src/main/ipc.ts`, so they are tested together.
 ```ts
 type MeshApi = {
   platform: "darwin" | "linux" | "win32";
-  execute(id: string, params?: unknown): Promise<Result>;   // the only data path
+  execute(id: string, params?: unknown, options?: { fresh?: boolean }): Promise<Result>; // the only data path
+  onRefresh(listener: () => void): () => void;             // Ctrl+R / Cmd+R / F5 from main
   commands(): Promise<CommandInfo[]>;                       // registry listing
   on(listener: (e: HostEvent) => void): () => void;         // host events; returns an unsubscribe
   setTitlebarColors(colors: TitlebarColors): void;          // window-only, not a command
@@ -71,7 +72,14 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
 
 - `execute` maps to one IPC channel, `mesh:execute`, handled in main by
   `engine.execute`. It never throws; IPC failures come back as
-  `{ ok: false, error: { code: "network_error" } }`.
+  `{ ok: false, error: { code: "network_error" } }`. The only option,
+  `{ fresh: true }`, makes a query skip the engine cache (see
+  [Refresh](#refresh)); main passes it on only as a real boolean.
+- `onRefresh` fires on `mesh:refresh`, which main sends when the window gets
+  `Ctrl+R` (`Cmd+R` on macOS) or a bare `F5`. Main stops those keys in
+  `before-input-event` (`isRefreshKey` in `src/main/ipc.ts`), so they never
+  reach the page or the default menu's Reload; `Ctrl+Shift+R` still force
+  reloads the window.
 - `commands()` returns `{ id, label, description, icon, effect, sensitive,
   params (JSON Schema), poll? }` for every command (fields defined in
   [commands.md](commands.md#the-spec)). Params follow the
@@ -120,6 +128,8 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
   not matter), dedupes concurrent calls, keeps the previous data while
   refetching, and returns `{ data, error, loading, fetchedAt, fading,
   refetch }`. `fading` turns on after a request has been in flight 150 ms.
+  `refetch({ fresh: true })` skips the engine cache and resolves with the
+  new snapshot (Check for updates, Run again).
   `poll: true` refetches on the interval the registry reports for that
   command (from `src/core/poll.ts`), a number polls every that many
   seconds, and `enabled: false` skips the query. While the window is hidden
@@ -155,6 +165,18 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
 - **`useCommand(id)`** runs a command on demand without the kit (a query the
   person asks for, such as Copy details) and returns `{ run, running,
   result, error, reset }`.
+- **Refresh.** `refreshAll()` refetches every query that has a mounted,
+  enabled reader (the page, the sidebar, the topbar bell; a `useQuery` with
+  `enabled: false` does not count) once, with
+  `{ fresh: true }`, so the engine reads eero instead of its cache. One
+  request per query key, the same set the page already loads; queries no
+  view shows are left alone. A query already in flight is joined if it is
+  fresh, or followed by one fresh read if it was a plain one. Calls while a
+  refresh runs return the same promise and start nothing. Errors land on
+  each query, so sections show their usual error notes (and `rate_limited`
+  its usual message). `useRefresh()` gives `{ refreshing, refresh }` to the
+  topbar button; `window.mesh.onRefresh` (the keyboard shortcut) calls the
+  same function.
 - **`followHostEvents()`**, called once by `App.tsx`, ends the session on a
   `session.changed` sign-out and refetches every query on
   `network.selected`. Any command answering `not_signed_in` also ends the

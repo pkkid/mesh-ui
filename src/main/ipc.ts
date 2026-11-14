@@ -13,7 +13,7 @@
  * No Electron values are imported here, so tests can drive both halves.
  */
 
-import type { Engine } from "../core/engine";
+import type { Engine, ExecuteOptions } from "../core/engine";
 import type { ExecuteResult } from "../core/errors";
 import type { HostEvent } from "../core/model";
 import { IPC, type MeshApi, type SaveFileResult, type TitlebarColors } from "../shared/types";
@@ -102,10 +102,12 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
     return typeof url === "string" && opts.isAppUrl(url);
   };
 
-  ipcMain.handle(IPC.execute, async (e, id, params) => {
+  ipcMain.handle(IPC.execute, async (e, id, params, options) => {
     if (!trusted(e)) return refused();
+    // Only the known option crosses: `fresh`, and only as a real boolean.
+    const fresh = !!options && typeof options === "object" && (options as { fresh?: unknown }).fresh === true;
     try {
-      return await opts.engine.execute(typeof id === "string" ? id : String(id), params);
+      return await opts.engine.execute(typeof id === "string" ? id : String(id), params, fresh ? { fresh } : undefined);
     } catch {
       // execute never throws; this guards the IPC boundary anyway.
       return { ok: false, error: { code: "network_error", message: "The app could not run that command." } };
@@ -151,6 +153,22 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
   };
 }
 
+/** The parts of Electron's `Input` (before-input-event) the refresh shortcut reads. */
+export type KeyInput = { type: string; key: string; control: boolean; meta: boolean; alt: boolean; shift: boolean };
+
+/**
+ * Whether a key press is the Refresh shortcut: `Cmd+R` on macOS, `Ctrl+R`
+ * elsewhere, or a bare `F5`. Main stops these before the page and the menu
+ * see them, so they refresh data instead of reloading the window.
+ * `Ctrl+Shift+R` (force reload) is left alone.
+ */
+export function isRefreshKey(input: KeyInput, platform: string): boolean {
+  if (input.type !== "keyDown" || input.alt || input.shift) return false;
+  const mod = platform === "darwin" ? input.meta && !input.control : input.control && !input.meta;
+  if (input.key === "F5") return !input.control && !input.meta;
+  return mod && input.key.toLowerCase() === "r";
+}
+
 // ---------------------------------------------------------------------------
 // Preload side
 
@@ -163,9 +181,10 @@ export interface IpcRendererLike {
 }
 
 export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshApi {
-  const execute = async <R>(id: string, params?: unknown): Promise<ExecuteResult<R>> => {
+  const execute = async <R>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>> => {
     try {
-      return (await ipc.invoke(IPC.execute, id, params)) as ExecuteResult<R>;
+      const args: unknown[] = options?.fresh === true ? [id, params, { fresh: true }] : [id, params];
+      return (await ipc.invoke(IPC.execute, ...args)) as ExecuteResult<R>;
     } catch {
       return { ok: false, error: { code: "network_error", message: "Lost contact with the app." } };
     }
@@ -201,6 +220,11 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
       const { title, body, target, networkId } = alert;
       if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string" || typeof networkId !== "string") return;
       ipc.send(IPC.notify, { title, body, target, networkId });
+    },
+    onRefresh(listener) {
+      const wrapped = () => listener();
+      ipc.on(IPC.refresh, wrapped);
+      return () => void ipc.removeListener(IPC.refresh, wrapped);
     },
     onNotificationClick(listener) {
       const wrapped = (_e: unknown, click: unknown) => {
