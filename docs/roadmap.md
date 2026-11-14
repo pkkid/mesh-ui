@@ -947,7 +947,7 @@ restarts the network says so in its risk field.
 - scope: `diagnostics.run` (symptoms, cloud-side, progress), `eero.placement.test` (`/2.3/`), `coverage.scan` and `coverage.upgrade_report` (`/2.4/`), each moved into `commands/coverage.ts` from the eero area if that keeps `eero.ts` free for M5.7. Troubleshooting: Diagnose by symptom, the Fixes cards, radio channels with `Radio.autoChannel` from the M5.1 capture, coverage scan and upgrade report. Health check's "Run again" stays a read.
 - done when: demo and fake-server tests incl. the `/2.3/` and `/2.4/` paths and long-running progress; `pnpm ui:shot --route '#/troubleshooting'` of diagnose, coverage and the upgrade report, light and dark; `MANUAL: run a coverage scan | ... | rooms match the eero app | none`.
 
-### M5.9 Notification settings ☐
+### M5.9 Notification settings ✅ (#177)
 - issue: [#146](https://github.com/pkkid/mesh-ui/issues/146)
 - after: M5.1
 - docs: ux/overview.md (notifications), architecture/commands.md (notifications)
