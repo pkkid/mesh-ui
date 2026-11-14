@@ -6,7 +6,7 @@ import { dayStart, hourStart } from "../demo/backend";
 import { createEeroBackend } from "../eero/backend";
 import { createEngine } from "../engine";
 import type * as M from "../model";
-import { finishSeries, USAGE_MAX_DAYS, usageWindow } from "./usage";
+import { finishSeries, hourlyAverages, quietHours, USAGE_MAX_DAYS, usageWindow, windowAverage } from "./usage";
 
 // Thursday Nov 12 2026, 2:41 PM in Los Angeles, as in the mockups.
 const NOW = Date.parse("2026-11-12T22:41:00Z");
@@ -424,5 +424,80 @@ describe("usage on the fake eero server", () => {
   it("maps eero errors", async () => {
     const { engine } = fakeEngine();
     expect(await engine.execute("usage.get", { scope: "device", id: "ffffffffffff" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// usage.quiet_hours
+
+describe("quiet hours", () => {
+  it("averages each local hour of day and leaves out the hour in progress", () => {
+    const h0 = hourStart(NOW, TZ);
+    // Two days of 2 PM (local) points plus the partial current hour (2 PM today).
+    const points = [
+      { at: iso(h0 - DAY), down: 100, up: 0 },
+      { at: iso(h0 - 2 * DAY), down: 300, up: 100 },
+      { at: iso(h0 - HOUR), down: 7, up: 0 }, // 1 PM
+      { at: iso(h0), down: 1e9, up: 0 }, // in progress
+    ];
+    const avgs = hourlyAverages(points, NOW, TZ);
+    expect(avgs[14]).toBe(250);
+    expect(avgs[13]).toBe(7);
+    expect(avgs.filter((v) => v !== null)).toHaveLength(2);
+  });
+
+  it("finds the quietest 3-hour window, wrapping past midnight, earliest on a tie", () => {
+    const avgs = Array.from({ length: 24 }, (_, h) => (h === 23 || h === 0 || h === 1 ? 1 : 10));
+    expect(quietHours(avgs, "week")).toMatchObject({ quietest: { start: 23, avg: 1 }, busiest: { hour: 2, avg: 10 }, windowHours: 3 });
+    expect(quietHours(Array(24).fill(5), "day").quietest).toEqual({ start: 0, avg: 5 });
+    expect(windowAverage(avgs, 22)).toBe(4);
+  });
+
+  it("skips windows with missing hours and answers null without data", () => {
+    const avgs: (number | null)[] = Array(24).fill(10);
+    avgs[3] = 0;
+    avgs[4] = null;
+    expect(quietHours(avgs, "week").quietest?.start).not.toBe(3);
+    expect(quietHours(avgs, "week", 2).selected).toEqual({ start: 2, avg: null });
+    expect(quietHours(Array(24).fill(null), "day")).toMatchObject({ quietest: null, busiest: null });
+    expect(quietHours(Array(24).fill(0), "day", 3)).toMatchObject({ quietest: null, busiest: null, selected: { start: 3, avg: null } });
+  });
+});
+
+describe("usage.quiet_hours on the demo backend", () => {
+  it("returns 24 hours, a quiet window overnight and the preferred window's average", async () => {
+    const { engine } = demoEngine();
+    const q = await ok(engine.execute<M.QuietHours>("usage.quiet_hours", { range: "week", start: 2 }));
+    expect(q.hours).toHaveLength(24);
+    expect(q.hours.every((h) => h.avg !== null && h.avg >= 0)).toBe(true);
+    expect(q.quietest?.start).toBeGreaterThanOrEqual(0);
+    expect(q.quietest?.start).toBeLessThanOrEqual(5);
+    expect(q.busiest?.hour).toBeGreaterThanOrEqual(17);
+    expect(q.selected?.start).toBe(2);
+    expect(q.selected?.avg).toBeGreaterThanOrEqual(q.quietest?.avg ?? 0);
+    // Same numbers as the hourly week series the Overview heatmap reads.
+    const series = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "week", cadence: "hourly" }));
+    expect(q.hours.map((h) => h.avg)).toEqual(hourlyAverages(series.points, NOW, TZ));
+  });
+
+  it("defaults to the week, has no selected window unless asked, and rejects bad params", async () => {
+    const { engine } = demoEngine();
+    const q = await ok(engine.execute<M.QuietHours>("usage.quiet_hours"));
+    expect(q.range).toBe("week");
+    expect(q.selected).toBeUndefined();
+    for (const bad of [{ start: 24 }, { start: -1 }, { start: 1.5 }, { range: "month" }, { extra: true }]) {
+      expect((await engine.execute("usage.quiet_hours", bad)).ok, JSON.stringify(bad)).toBe(false);
+      expect(await engine.execute("usage.quiet_hours", bad)).toMatchObject({ error: { code: "bad_params" } });
+    }
+    expect(engine.commands().find((c) => c.id === "usage.quiet_hours")).toMatchObject({ effect: "query" });
+  });
+
+  it("makes one hourly usage call on the fake eero server", async () => {
+    const { fake, engine } = fakeEngine();
+    const q = await ok(engine.execute<M.QuietHours>("usage.quiet_hours", { range: "day" }));
+    expect(q.hours).toHaveLength(24);
+    const reqs = usageRequests(fake);
+    expect(reqs).toHaveLength(1);
+    expect(new URLSearchParams(reqs[0]?.query).get("cadence")).toBe("hourly");
   });
 });
