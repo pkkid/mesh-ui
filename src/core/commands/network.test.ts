@@ -290,7 +290,7 @@ describe("network commands (fake eero server)", () => {
     const { engine } = fakeEngine();
     const owner = await ok(engine.execute<M.Permissions>("network.permissions", { networkId: "100001" }));
     expect(owner.role).toBe("owner");
-    expect(owner.can["network.transfer"]).toEqual({ read: true, create: true, update: true, delete: true });
+    expect(owner.can["network.transfer"]).toEqual({ read: false, create: false, update: false, delete: false });
     const admin = await ok(engine.execute<M.Permissions>("network.permissions", { networkId: "100002" }));
     expect(admin.role).toBe("admin");
     expect(admin.can["network.transfer"]).toEqual({ read: true, create: false, update: false, delete: false });

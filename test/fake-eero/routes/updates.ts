@@ -9,7 +9,7 @@
  */
 
 import { fail, ok, type Route } from "../server";
-import { FAKE_MANIFEST, FAKE_MANIFEST_PATH, type FakeNetwork, type FakeState } from "../state";
+import { FAKE_MANIFEST, isOwnerRole, FAKE_MANIFEST_PATH, type FakeNetwork, type FakeState } from "../state";
 
 /** How long a fake install takes, so `--fake` shows the installing state and then the eeros returning. */
 export const FAKE_INSTALL_MS = 20_000;
@@ -44,7 +44,7 @@ export const routes: Route[] = [
       const net = network(params.net ?? "");
       settle(net, state);
       const u = net.updates;
-      if (net.permissions.role !== "owner") return fail(403, "error.network.forbidden");
+      if (!isOwnerRole(net.permissions.role)) return fail(403, "error.network.forbidden");
       if (u.can_update_now !== true || u.has_update !== true || u.update_status === "installing") return fail(400, "error.updates.not_available");
       u.update_status = "installing";
       u.last_update_started = new Date(state.now()).toISOString();
