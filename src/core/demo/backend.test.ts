@@ -683,10 +683,8 @@ describe("eero backend", () => {
     const b = createEeroBackend({ secrets: { load: async () => "t", save: async () => "memory", clear: async () => {}, storage: async () => "memory" }, fetch: async () => Promise.reject(new Error("no network in tests")) });
     const calls: [string, () => Promise<unknown>][] = [
       ["wifi.get", () => b.wifi.get("1")],
-      ["settings.get", () => b.settings.get("1")],
       ["diagnostics.latest", () => b.diagnostics.latest("1")],
       ["admins.list", () => b.admins.list("1")],
-      ["integrations.get", () => b.integrations.get("1")],
     ];
     for (const [name, call] of calls) {
       await expect(call()).rejects.toMatchObject({ code: "eero_error", message: `${name} is not available in the eero backend yet.` });

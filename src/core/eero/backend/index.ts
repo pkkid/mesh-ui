@@ -2,8 +2,8 @@
  * The eero backend: one file per area in this folder, each exporting a
  * factory named after its area (`export const network: EeroArea<"network">`).
  * Areas not registered yet answer "not available yet" (composeBackend): in
- * M3 that is guest, wifi, settings, diagnostics, admins, integrations and
- * notifications until each story adds its file and one line below.
+ * M3 that is wifi, diagnostics and admins until each story adds its file
+ * and one line below.
  */
 
 import { type AreaName, type Backend, type BackendAreas, composeBackend, type SecretStore } from "../../backend";
@@ -42,11 +42,13 @@ import { device } from "./device";
 import { eero } from "./eero";
 import { events } from "./events";
 import { guest } from "./guest";
+import { integrations } from "./integrations";
 import { internet } from "./internet";
 import { network } from "./network";
 import { notifications } from "./notifications";
 import { profile } from "./profile";
 import { routing } from "./routing";
+import { settings } from "./settings";
 import { updates } from "./updates";
 import { usage } from "./usage";
 
@@ -58,11 +60,13 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   eero,
   events,
   guest,
+  integrations,
   internet,
   network,
   notifications,
   profile,
   routing,
+  settings,
   updates,
   usage,
 };
