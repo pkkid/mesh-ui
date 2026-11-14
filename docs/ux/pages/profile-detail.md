@@ -164,3 +164,34 @@ Profiles stays active.
   delete it | devices pause at the start time; the schedule shows in the
   eero app; deleting removes it there too | risk: brief outage for that
   profile's devices.
+
+## Built so far (M3.5)
+
+The read-only page (`src/renderer/src/features/profile/`). Every write
+above (Rename, Pause and Resume, schedule add, edit, switch and delete, Add
+a device, Remove, Delete profile) shows as a disabled "Coming soon" control
+until its command lands; the schedule sheet is not built yet.
+
+- **Hero.** State and the next change come from `profile.get` (`state`,
+  `nextChange`, computed in core); the page only words them. In a scheduled
+  pause (core's next change is a resume) the line reads "Bedtime until 7:00
+  AM" with a "Paused by schedule" status. Scheduled off-time is the sum of
+  enabled schedules (`helpers.ts`, `scheduledHoursPerWeek`).
+- **Scheduled pauses** use the shared week timeline
+  (`components/ui/timeline.tsx`) with one colour per schedule
+  (`entityColors` by schedule id) and the Now line in the network time zone.
+  Schedules come only from the profile's own `schedule[]`.
+- **Data usage** has Day / Week and a **Top devices** column
+  (`usage.breakdown {by: device, profile}` for the same range) beside it;
+  Day draws dashed markers where an enabled schedule started or ended.
+- **Devices** label data as "Last 24 hours": eero's device usage is a
+  rolling 24 h, not "today". The 7 day sparklines are left out (one usage
+  read per device) and so is **Recent activity** (a later story).
+- **Gone.** A profile `profile.list` no longer has shows "This profile is no
+  longer on Maple Street." eero's own Unassigned group (`default: true`,
+  which the list drops) opened by id reads as a profile, so it gets "This is
+  eero's Unassigned group, not a profile" with a link to Profiles.
+- `[` and `]` move between profiles in `profile.list` order.
+- Page-load budget: `helpers.test.ts` runs `pageReads` (every read the page
+  mounts) against the fake eero server: about 18 requests, no
+  `/schedules` reads.
