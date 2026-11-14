@@ -22,7 +22,9 @@ Titlebar: title "Activity", **Export CSV** button on the right of the titlebar a
    - Rows carry no unread dots or counts: eero keeps no read flag per event or notification, only one `has_unread` for the whole network.
    - Grouped rows (e.g. "Garage mesh link dropped to 2 bars", `2 events` badge) show an indented sub list of the underlying events with their times.
    - Footer: **Load older events** button while there is an older page; at the end, "Start of history. eero keeps about 7 days."
-   - Not yet built: the settings icon; row write actions (Assign profile, Resume, Unblock, overflow menu) are left out because the real stream carries no device, eero or profile refs. Rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting.
+   - Row actions: **Assign profile** (profile menu) on a new device that is still Unassigned, **Resume** on a profile pause while the profile is paused, **Unblock** on a block while the device is blocked. Core sets `action` on the newest such row per device or profile; the button shows only while the target still needs it, so Resume goes away once the profile runs again. Each runs the M4 command through the write kit with its success toast and Undo, and a closed gate (the command's own gate) hides it.
+   - Links: rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting. The real stream carries no refs (M5.1 capture: 5 of 5 rows had only `hash`, `timestamp_ms`, `description`, `category`), so core links a row by name only where it is unambiguous: exactly one device, eero or profile whose name stands alone in the description (not inside a longer word or a possessive, the longest name wins so "Living Room TV" is the device and not the Living Room eero). A name two things share, or two devices named in one row, links nothing; such a row keeps only its page link, if any, and offers no action.
+   - Not yet built: the settings icon and the row overflow menu (rename, block, device detail); the Device link covers detail.
 
 Row actions shown in the mockup:
 
@@ -65,10 +67,10 @@ Row actions shown in the mockup:
 | Grouped / Raw | none (passed as `grouped`) | | | Regroups the stream |
 | Mark all read | `notifications.mark_read` | write | no | Unread marker and bell dot clear; "Marked all read" toast, no Undo |
 | Settings icon | none (navigation) | | | Opens App & account, Notifications |
-| Assign profile | `device.profile.set` `{devices: [device], profile}` | write | no | Profile picker popover; row detail updates |
-| Row overflow menu | `device.rename`, `device.block`, navigation to device detail | write | no | |
-| Resume | `profile.resume` `{profile}` | write | no | New "resumed" event appears on next poll |
-| Unblock | `device.unblock` `{devices: [device]}` | write | no | |
+| Assign profile | `device.profile.set` `{devices: [device], profile}` | write | no | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
+| Row overflow menu (not built) | `device.rename`, `device.block`, navigation to device detail | write | no | |
+| Resume | `profile.resume` `{profile}` | write | no | "Resumed Leo" toast with Undo (`profile.pause`); the button goes; a "resumed" event appears on a later poll |
+| Unblock | `device.unblock` `{devices: [device]}` | write | no | "Unblocked X" toast with Undo (`device.block`); the button goes |
 | Updates, Diagnose | none (navigation) | | | [Updates & admins](updates-admins.md), [Troubleshooting](troubleshooting.md) |
 | Load older events | `events.list` `{cursor}` | query | no | Appends the next page |
 

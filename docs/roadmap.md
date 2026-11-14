@@ -955,7 +955,7 @@ restarts the network says so in its risk field.
 - scope: `notifications.settings.set`: eero keys (full merged map, dotted keys as sent, no eero Plus keys) and the desktop choices in `settings.json`; a settings sheet from the bell's gear; desktop alerts follow the choices.
 - done when: demo and fake-server tests incl. the merged map and Plus keys never sent; a test shows desktop alerts stop when turned off; `pnpm ui:shot` of the sheet, light and dark; `MANUAL: turn one eero notification off and on | ... | the eero app agrees | none`.
 
-### M5.10 Activity row actions ☐
+### M5.10 Activity row actions ✅ (#PR)
 - issue: [#147](https://github.com/pkkid/mesh-ui/issues/147)
 - after: M5.1
 - docs: ux/pages/activity.md, architecture/commands.md (activity)

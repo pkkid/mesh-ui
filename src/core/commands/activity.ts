@@ -118,6 +118,104 @@ async function eventFilter(ctx: CommandContext, p: FilterParams): Promise<(e: M.
   };
 }
 
+// ---------------------------------------------------------------------------
+// Links and row actions
+
+type Named = { kind: "device" | "eero" | "profile"; id: M.Id; name: string };
+type Hit = Named & { start: number; end: number };
+
+const isWordChar = (ch: string | undefined) => ch !== undefined && /[\p{L}\p{N}]/u.test(ch);
+
+/**
+ * Where each name stands alone in `text` (not inside a longer word, and not a
+ * possessive like "Alex's Phone" for the name "Alex").
+ */
+function findNames(text: string, names: ReadonlyArray<Named>): Hit[] {
+  const lower = text.toLowerCase();
+  const hits: Hit[] = [];
+  for (const n of names) {
+    for (let at = lower.indexOf(n.name); at >= 0; at = lower.indexOf(n.name, at + 1)) {
+      const end = at + n.name.length;
+      if (isWordChar(lower[at - 1]) || isWordChar(lower[end])) continue;
+      if (/^['\u2019]s\b/.test(lower.slice(end))) continue;
+      hits.push({ ...n, start: at, end });
+    }
+  }
+  // A name inside a longer match is part of it ("Leo" in "Leo's Switch").
+  return hits.filter((h) => !hits.some((o) => o !== h && o.start <= h.start && o.end >= h.end && o.end - o.start > h.end - h.start));
+}
+
+/**
+ * Refs for an event that carries none (the real eero stream sends only a
+ * description, M5.1 capture): each kind gets the one device, eero or profile
+ * whose name stands in the title, and only when that is unambiguous. A name
+ * two things share (two devices, or a device and an eero) links nothing, and
+ * two different devices named in one title link no device.
+ */
+export function refsByName(title: string, names: ReadonlyArray<Named>, shared: ReadonlySet<string>): M.NetworkEvent["refs"] {
+  const refs: M.NetworkEvent["refs"] = {};
+  const hits = findNames(title, names);
+  for (const kind of ["device", "eero", "profile"] as const) {
+    const ofKind = hits.filter((h) => h.kind === kind);
+    if (ofKind.some((h) => shared.has(h.name))) continue;
+    const ids = new Set(ofKind.map((h) => h.id));
+    if (ids.size === 1) refs[REF_KEY[kind]] = [...ids][0] as M.Id;
+  }
+  return refs;
+}
+
+/** The names refsByName looks for, and the names more than one thing shares. */
+async function nameIndex(ctx: CommandContext): Promise<{ names: Named[]; shared: Set<string> }> {
+  const [devices, eeros, profiles] = await Promise.all([ctx.backend.device.list(ctx.net), ctx.backend.eero.list(ctx.net), ctx.backend.profile.list(ctx.net)]);
+  const raw: Named[] = [];
+  const add = (kind: Named["kind"], id: M.Id, ...names: (string | null | undefined)[]) => {
+    for (const n of new Set(names.flatMap((x) => (x && x.trim().length > 1 ? [x.trim().toLowerCase()] : [])))) raw.push({ kind, id, name: n });
+  };
+  for (const d of devices) add("device", d.id, d.name, d.nickname);
+  for (const e of eeros) add("eero", e.id, e.location);
+  for (const p of profiles) add("profile", p.id, p.name);
+  const owners = new Map<string, Set<string>>();
+  for (const n of raw) owners.set(n.name, (owners.get(n.name) ?? new Set()).add(`${n.kind}:${n.id}`));
+  const shared = new Set([...owners].filter(([, o]) => o.size > 1).map(([n]) => n));
+  return { names: raw, shared };
+}
+
+/**
+ * The write an event offers, from what it says happened: a pause of a
+ * profile offers Resume, a block of a device Unblock, a new device joining
+ * Assign profile. eero's type and the title both count ("profile_paused",
+ * "Leo was paused").
+ */
+export function eventAction(e: Pick<M.NetworkEvent, "type" | "title" | "category" | "refs">): M.EventAction | undefined {
+  const text = `${e.type.replace(/[_.]+/g, " ")} ${e.title}`.toLowerCase();
+  if (e.refs.profileId && /\bpaused\b/.test(text) && !/\bschedule/.test(text)) return "resume";
+  if (e.refs.deviceId && e.category === "pause_block" && /\bblocked\b/.test(text)) return "unblock";
+  if (e.refs.deviceId && e.category === "devices" && /\b(joined|new device|device new)\b/.test(text)) return "assign_profile";
+  return undefined;
+}
+
+/**
+ * Fills in refs by name for events without any, and sets each row's action.
+ * Only the newest row per action and target keeps it, so a page shows one
+ * Resume for Leo, not one per pause. Grouped rows are linked as their head.
+ */
+async function linkEvents(ctx: CommandContext, events: M.NetworkEvent[]): Promise<M.NetworkEvent[]> {
+  // Links are a nicety: when a list cannot be read the rows still come back, unlinked.
+  const index = events.some((e) => Object.keys(e.refs).length === 0) ? await nameIndex(ctx).catch(() => null) : null;
+  const seen = new Set<string>();
+  return events.map((e) => {
+    const refs = index && Object.keys(e.refs).length === 0 ? refsByName(e.title, index.names, index.shared) : e.refs;
+    const out: M.NetworkEvent = { ...e, refs };
+    const action = eventAction(out);
+    const key = action && `${action}:${action === "resume" ? refs.profileId : refs.deviceId}`;
+    if (action && key && !seen.has(key)) {
+      seen.add(key);
+      out.action = action;
+    }
+    return out;
+  });
+}
+
 /** Where the next page starts: a backend page cursor and how many events of that page were already handed out. */
 type Cursor = { c: string | null; o: number };
 
@@ -217,7 +315,8 @@ const eventsList = defineCommand({
     if (p.format === "csv") return toCsv(out, EVENTS_CSV);
     const counts = emptyCounts();
     for (const e of out) counts[e.category]++;
-    return { events: p.grouped ? groupEvents(out) : out, nextCursor: next ? encodeCursor(next) : null, counts };
+    const rows = await linkEvents(ctx, p.grouped ? groupEvents(out) : out);
+    return { events: rows, nextCursor: next ? encodeCursor(next) : null, counts };
   },
 });
 
