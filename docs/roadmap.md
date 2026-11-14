@@ -720,7 +720,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `eero.rename`, `eero.find` (no Stop until verified), `eero.led.set` (through `resources.led_action`), `eero.nightlight.set` (Beacon only, capability check), `eero.restart` and `network.restart` (disruptive, message from Restart estimates, the gateway warning). eero detail and eeros page actions; Overview and eeros "Restart network" with a progress toast that clears when eeros come back.
 - done when: demo and fake-server tests for each command incl. the `led_action` link, the Beacon check, `needs_confirm` and the gateway message; `pnpm ui:shot` of eero detail actions, the restart confirm and progress toast, light and dark; `MANUAL: blink one eero's light | ... | the light cycles blue and white | none` and `MANUAL: rename an eero and back | ... | the eero app shows the name | none`.
 
-### M4.9 Speed test and internet plan ☐
+### M4.9 Speed test and internet plan ✅ (#162)
 - issue: [#131](https://github.com/pkkid/mesh-ui/issues/131)
 - after: M4.1, M4.2, M4.3, M4.8
 - docs: ux/pages/internet.md, ux/pages/overview.md, architecture/commands.md (internet), architecture/engine.md (speed test poller)
