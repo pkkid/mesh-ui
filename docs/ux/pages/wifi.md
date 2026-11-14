@@ -20,13 +20,18 @@ In M3.9 the page was read-only; M4.7 (below) added the writes. The rest of this 
 
 ## Built in M4.7 (writes)
 
-Name, password, security and 2.4 GHz only now change through the write kit; every save is disruptive and asks inline first, with the engine's `needs_confirm` message (the `wifi.impact` summary). Nickname, time zone and Print a card are still "Coming soon". Controls dim with the "no permission" tooltip when `network.permissions` denies `settings` updates, and while the network is offline.
+Name, password, security and 2.4 GHz only now change through the write kit; every save is disruptive and asks inline first, with the engine's `needs_confirm` message (the `wifi.impact` summary). Nickname, time zone and Print a card stayed "Coming soon" (time zone came in M5, below). Controls dim with the "no permission" tooltip when `network.permissions` denies `settings` updates, and while the network is offline.
 
 - **Name and password sheet** (**Change**): the name with a live byte count (32 bytes), and a new password that starts empty (the current one is never read to fill it; empty keeps it), with show and **Generate** (`wifi.password.generate`). The impact panel sits under the fields. **Save and reconnect** runs `wifi.name.set`, then `wifi.password.set`, each after an inline confirm in the sheet; a progress toast while it runs, then a success toast. After either, the revealed password and QR are dropped, so the next reveal reads the new ones (M4.2's credential bypass). No Undo: these writes are disruptive and the old password is never held.
 - **Encryption:** 2.4 and 5 GHz segments stage a change (`edited` marker); a staged change shows the impact panel (devices that disconnect, WPA2 only devices that can not rejoin a WPA3 band, the restart estimate) with **Discard** and **Save and restart**, which asks inline before `wifi.security.set`. 6 GHz stays Enhanced (WPA3).
 - **2.4 GHz only** (in Bands): **Turn on** asks inline with the impact (devices on 5 and 6 GHz that move); while on, a mono countdown to eero's own expiry and **Turn off**. The task brief put this switch here, so the Troubleshooting note below changed.
 - **Impact panel** (`WifiImpact.tsx`): reads `wifi.impact` for the pending change; two figures (devices disconnect in warning colour; may need their own app, or can't rejoin for security), the summary from core with the names, and a check list of what stays fine.
 - Not yet: the side panel layout and sticky confirm bar from the mockup (the impact panel sits with each control instead), WPA3 master switch, "Password changed".
+
+## Built in M5 (time zone)
+
+- **Time zone sheet** (Nickname and location > **Edit**, `TimezoneSheet.tsx`): a select of IANA zones (the runtime's list, plus the current zone if missing), the local time in the chosen zone, and the `settings.impact` panel ("Nothing restarts; schedules follow the new time zone"). **Save** runs `settings.timezone.set` (a `write`, no confirm), then a toast "Time zone set to ..." with **Undo**, which sets the old zone back. Edit dims with the gate's reason (settings permission) and while the network is offline.
+- The network nickname stays read only: no command sets it yet (M6). **Print a card** is still "Coming soon" (M6).
 
 ## Layout
 
@@ -77,7 +82,7 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | 2.4 GHz only Turn on / Turn off | `wifi.hide5g.set` `{enabled}` | disruptive | inline confirm with the impact | Countdown to `hide5g.expiresAt` |
 | 2.4 GHz only devices | none (navigation) | | | Opens the fix on [Troubleshooting](troubleshooting.md) |
 | Nickname Save | `network.nickname.set` `{nickname}` | write | no | `saved` marker; sidebar switcher updates |
-| Timezone select | `settings.timezone.set` `{timezone}` | write | no | Saves on change, `saved` marker |
+| Time zone Edit, sheet Save | `settings.timezone.set` `{timezone}` | write | no | Toast with Undo (sets the old zone back) |
 | Confirm bar Discard | none | | | Reverts staged edits |
 | Save and reconnect | `wifi.name.set`, `wifi.password.set`, `wifi.security.set` in that order, each with `confirm: true` | disruptive | the confirm bar plus impact panel is the confirm | Wireless clients drop and rejoin; hero updates |
 

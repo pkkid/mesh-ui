@@ -27,7 +27,7 @@ import { Card, Section } from "~/components/ui/card";
 import { WriteConfirm } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { useQuery } from "~/app/useCommand";
-import { ComingSoonButton, GatedButton, useGate } from "~/components/ui/page";
+import { GatedButton, useGate } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { cn } from "~/lib/utils";
@@ -39,40 +39,8 @@ import { ThreadCard } from "./ThreadCard";
 
 export { DangerZone } from "./DangerZone";
 
-const SOON = "Coming soon";
-
 // ---------------------------------------------------------------------------
 // Row pieces
-
-/** A switch that shows a setting's state. Disabled: changes come later. null shows an empty, dashed track. */
-export function ReadSwitch({ on, label }: { on: boolean | null | undefined; label: string }) {
-  const known = on === true || on === false;
-  return (
-    <span
-      role="switch"
-      aria-checked={on === true}
-      aria-disabled
-      aria-label={label}
-      title={known ? SOON : "eero does not report this setting"}
-      className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-not-allowed items-center rounded-full border opacity-70",
-        on === true ? "border-transparent bg-primary" : "bg-muted",
-        !known && "border-dashed",
-      )}
-    >
-      <span className={cn("size-4 rounded-full bg-background shadow-sm transition-transform", on === true ? "translate-x-4" : "translate-x-0.5")} />
-    </span>
-  );
-}
-
-/** A segmented choice with every option disabled, showing the current value. */
-export function ReadChoice<T extends string>({ value, options, label }: { value: T | null; options: ReadonlyArray<{ value: T; label: string }>; label: string }) {
-  return (
-    <span title={SOON}>
-      <Segmented<T> aria-label={label} value={(value ?? "") as T} onValueChange={() => {}} options={options.map((o) => ({ ...o, disabled: true }))} />
-    </span>
-  );
-}
 
 export function RestartBadge() {
   return (
@@ -563,9 +531,9 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
         dim={bridged}
         control={
           bridged ? (
-            <ComingSoonButton size="xs" variant="outline" title="Not available in bridge mode">
+            <GatedButton size="xs" variant="outline" gate={{ allowed: false, reason: "Not available in bridge mode" }}>
               Manage
-            </ComingSoonButton>
+            </GatedButton>
           ) : (
             <Link to={pathFor("ports")} className="rounded-(--control-radius) border px-2 py-1 font-medium text-xs hover:bg-muted/50">
               Manage

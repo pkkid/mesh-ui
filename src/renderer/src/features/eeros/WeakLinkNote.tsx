@@ -2,14 +2,17 @@
  * The note beside the topology: the most serious `network.health` issue in
  * words. Network not reporting, then an eero offline, then a weak link with
  * suggestions and Test placement / Scan coverage. Nothing when the mesh is
- * fine. docs/ux/pages/eeros.md (Layout 1, States).
+ * fine. Test placement runs `eero.placement.test` through the same hook and
+ * rating display as Troubleshooting's coverage table (usePlacementTest).
+ * docs/ux/pages/eeros.md (Layout 1, States).
  */
 import { Cable, CirclePlus, Crosshair, Move, TriangleAlert, Unplug, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import { Button } from "~/components/ui/button";
-import { ComingSoonButton } from "~/components/ui/page";
+import { GatedButton } from "~/components/ui/page";
+import { PlacementRating, usePlacementTest } from "~/features/troubleshooting/Coverage";
 import { cn } from "~/lib/utils";
 import type { Eero, HealthIssue } from "../../../../core/model";
 
@@ -59,6 +62,13 @@ export function WeakLinkNote({
     );
   }
 
+  return <WeakLink eero={eero} upstream={upstream} gateway={gateway} deviceCount={n} />;
+}
+
+function WeakLink({ eero, upstream, gateway, deviceCount: n }: { eero: Eero | undefined; upstream: Eero | undefined; gateway: Eero | undefined; deviceCount: number }) {
+  const placement = usePlacementTest();
+  const result = eero ? placement.results[eero.id] : undefined;
+  const testing = eero !== undefined && placement.testing === eero.id;
   const name = eero?.location ?? "An eero";
   const up = upstream?.location ?? "its upstream eero";
   const bars = eero?.meshBars;
@@ -69,10 +79,21 @@ export function WeakLinkNote({
       title={`${name} has a weak link`}
       actions={
         <>
-          <ComingSoonButton size="xs" variant="outline">
-            <Crosshair />
-            Test placement
-          </ComingSoonButton>
+          {testing ? (
+            <span className="text-muted-foreground text-xs">Testing placement...</span>
+          ) : (
+            eero && (
+              <GatedButton
+                size="xs"
+                variant="outline"
+                gate={eero.status === "offline" ? { allowed: false, reason: `${eero.location} is offline` } : placement.gate}
+                onClick={() => void placement.test(eero.id)}
+              >
+                <Crosshair />
+                {result ? "Test again" : "Test placement"}
+              </GatedButton>
+            )
+          )}
           <Button size="xs" variant="ghost" render={<Link to={pathFor("troubleshooting")} />}>
             Scan coverage
           </Button>
@@ -88,6 +109,13 @@ export function WeakLinkNote({
         <Suggestion icon={<Cable />}>Or run Ethernet from {gateway?.location ?? "the gateway"} for wired backhaul</Suggestion>
         <Suggestion icon={<CirclePlus />}>Or add an eero halfway between them</Suggestion>
       </ul>
+      {result && !testing && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1" data-placement-result>
+          <span className="text-muted-foreground">Placement</span>
+          <PlacementRating result={result} />
+          {result.advice && <span className="text-muted-foreground">· {result.advice}</span>}
+        </div>
+      )}
     </Note>
   );
 }
