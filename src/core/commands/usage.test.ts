@@ -276,7 +276,7 @@ const FAKE_NOW = Date.parse("2026-11-12T18:20:00Z");
  * the areas other stories own (auth, network, eero, profile, device), so the
  * command runs through the engine, the real client and real HTTP shapes.
  */
-function fakeEngine() {
+function fakeEngine(opts: { dropProfile?: string } = {}) {
   const fake: FakeEero = createFakeEero({ now: () => FAKE_NOW });
   const live = createEeroBackend({ secrets: memorySecrets(fake.signIn()), origin: fake.origin, fetch: fake.fetch });
   const summary = (id: string, name: string): M.NetworkSummary => ({
@@ -307,7 +307,11 @@ function fakeEngine() {
     },
     profile: {
       ...live.profile,
-      list: async () => (net?.profiles ?? []).map((p) => ({ id: p.url?.split("/").pop(), name: p.name, deviceIds: [] }) as unknown as M.Profile),
+      // Like the live profile.list: eero's default (Unassigned) profile is left out.
+      list: async () =>
+        (net?.profiles ?? [])
+          .filter((p) => p.default !== true && p.name !== opts.dropProfile)
+          .map((p) => ({ id: p.url?.split("/").pop(), name: p.name, deviceIds: [] }) as unknown as M.Profile),
     },
     usage: live.usage,
   });
@@ -387,6 +391,34 @@ describe("usage on the fake eero server", () => {
     expect(paths).toContain(`/2.2/networks/${FAKE_NET}/data_usage/breakdown`);
     expect(paths).toContain(`/2.2/networks/${FAKE_NET}/data_usage/eeros`);
     expect(usageRequests(fake).every((e) => e.body === "")).toBe(true);
+  });
+
+  it("maps by-profile rows on the real shape (profile_id, profile_name) to profile ids or Unassigned", async () => {
+    const { fake, engine } = fakeEngine();
+    const listed = new Set((fake.state.networks.get(FAKE_NET)?.profiles ?? []).filter((p) => p.default !== true).map((p) => p.url?.split("/").pop()));
+    const b = await ok(engine.execute<M.UsageBreakdown>("usage.breakdown", { by: "profile", range: "week" }));
+    // Replay the breakdown request: the fake answers like eero, with no url, id or name on a profile row.
+    const req = usageRequests(fake).find((e) => e.path.endsWith("/breakdown"));
+    if (!req) throw new Error("no breakdown request");
+    const raw = (await (await fake.fetch(`${fake.origin}${req.path}${req.query}`, { headers: { cookie: `s=${req.token}` } })).json()) as { data: { profiles: Record<string, unknown>[] } };
+    expect(raw.data.profiles.every((r) => Object.keys(r).sort().join() === "download,profile_id,profile_name,upload" && typeof r.profile_id === "number")).toBe(true);
+    expect(b.rows.every((r) => (r.id !== null && listed.has(r.id)) || (r.id === null && r.name === "Unassigned"))).toBe(true);
+    expect(b.rows.filter((r) => r.id === null)).toHaveLength(1);
+    expect(b.rows.find((r) => r.name === "Mia")?.id).toBe("702");
+    expect(sumOf(b.rows)).toBe(bytes(b.total));
+  });
+
+  it("folds a by-profile row whose id is not in profile.list into Unassigned", async () => {
+    const { engine } = fakeEngine();
+    const before = await ok(engine.execute<M.UsageBreakdown>("usage.breakdown", { by: "profile", range: "week" }));
+    const { engine: dropped } = fakeEngine({ dropProfile: "Alex" });
+    const after = await ok(dropped.execute<M.UsageBreakdown>("usage.breakdown", { by: "profile", range: "week" }));
+    const alex = before.rows.find((r) => r.name === "Alex");
+    const was = before.rows.find((r) => r.id === null);
+    if (!alex || !was) throw new Error("fixture changed");
+    expect(after.rows.map((r) => r.name)).not.toContain("Alex");
+    expect(after.rows.filter((r) => r.id === null)).toEqual([expect.objectContaining({ name: "Unassigned", down: was.down + alex.down, up: was.up + alex.up })]);
+    expect(sumOf(after.rows)).toBe(bytes(after.total));
   });
 
   it("adds up the guest devices' own series for guest usage (eero has no guest endpoint)", async () => {

@@ -90,7 +90,9 @@ gets them for free and both backends agree:
 - `Eero.hop` and `Eero.meshQuality` (backends leave them `null`),
 - `Profile.nextChange` (backends may leave it `null`),
 - `usage.breakdown` rows: backends return them unsorted and unfiltered;
-  core sorts them and computes each row's `share`,
+  core sorts them and computes each row's `share`, and by profile folds
+  every row whose id is not in `profile.list` (eero's default profile, or
+  no id) into one Unassigned row with a null id,
 - summaries such as `DeviceList.summary` (including `byEero`, `byProfile`
   and `byManufacturer`), and composites such as
   `health.check` and `support.report`.
@@ -123,8 +125,8 @@ Summary of [eero-client.md](eero-client.md), which is the full reference:
 - Base `https://api-user.e2ro.com`. The only other origin it accepts is a
   loopback `http` fake eero server (dev and tests). The client refuses any
   other origin for requests that carry the session. The release notes
-  manifest is to be fetched through a separate cookieless call, https only,
-  1 MB cap (not yet built in M1).
+  manifest is fetched through a separate cookieless call, `fetchPublic`:
+  https only, 1 MB cap, no rate limiting (M3.13).
 - Headers: `Accept: application/json`, `X-Accept-Language: en-US`, an
   app-like `User-Agent` (default in the style of
   `eero-ios/2026.8.1 (iPhone; iOS 18.5)`, overridable in app settings),

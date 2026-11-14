@@ -182,6 +182,21 @@ export function foldOthers(rows: M.UsageBreakdownRow[], top: number, all: number
   return [...rows.slice(0, top), { id: null, name: `Others (${rest.length})`, down, up, share }];
 }
 
+/**
+ * By profile, every row is a person's profile or Unassigned: a row whose id
+ * is not in `profile.list` (eero's default profile, a deleted profile, or no
+ * id at all) folds into one Unassigned row with a null id, the same rule as
+ * device.list (docs/architecture/data-model.md, default profile).
+ */
+export function foldUnassigned(rows: M.UsageBreakdownRow[], profileIds: ReadonlySet<string>): M.UsageBreakdownRow[] {
+  const known = rows.filter((r) => r.id !== null && profileIds.has(r.id));
+  const rest = rows.filter((r) => !(r.id !== null && profileIds.has(r.id)));
+  if (rest.length === 0) return known;
+  const down = rest.reduce((n, r) => n + r.down, 0);
+  const up = rest.reduce((n, r) => n + r.up, 0);
+  return [...known, { id: null, name: "Unassigned", down, up, share: 0 }];
+}
+
 const usageBreakdown = defineCommand({
   id: "usage.breakdown",
   label: "Usage breakdown",
@@ -204,6 +219,10 @@ const usageBreakdown = defineCommand({
     const w = usageWindow(p.range, "daily", ctx.now(), tz);
     const raw = await ctx.backend.usage.breakdown(ctx.net, { by: p.by, range: p.range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString() });
     let rows = raw.rows;
+    if (p.by === "profile") {
+      const profiles = await ctx.backend.profile.list(ctx.net);
+      rows = foldUnassigned(rows, new Set(profiles.map((pr) => pr.id)));
+    }
     if (p.profile) {
       const profile = await ctx.backend.profile.get(ctx.net, await ctx.resolve("profile", p.profile));
       const ids = new Set(profile.deviceIds);
