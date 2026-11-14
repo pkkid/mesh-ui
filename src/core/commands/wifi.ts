@@ -18,7 +18,9 @@ import type * as M from "../model";
 import { POLL } from "../poll";
 import { CommandError } from "../errors";
 import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
-import { wifiShare } from "./guest";
+import { WIFI_PASSWORD, wifiPasswordSchema, wifiShare } from "./guest";
+
+export { WIFI_PASSWORD };
 
 export type WifiPassword = { ssid: string; password: string | null };
 export type GeneratedPassword = { password: string };
@@ -57,9 +59,6 @@ export function generatePassword(length: number = PASSWORD_LENGTH.default): stri
 export const SSID_MAX_BYTES = 32;
 export const ssidBytes = (s: string) => new TextEncoder().encode(s).length;
 
-/** WPA passphrase rule: 8 to 63 printable ASCII characters (space to tilde). */
-export const WIFI_PASSWORD = { min: 8, max: 63 } as const;
-const PRINTABLE_ASCII = /^[\x20-\x7E]*$/;
 
 /**
  * Outage estimate when eero restarts the mesh to apply a security change
@@ -186,12 +185,8 @@ const nameParams = z.object({
 });
 
 const passwordParams = z.object({
-  password: z
-    .string()
-    .min(WIFI_PASSWORD.min, `The password needs at least ${WIFI_PASSWORD.min} characters.`)
-    .max(WIFI_PASSWORD.max, `The password is ${WIFI_PASSWORD.max} characters at most.`)
-    .regex(PRINTABLE_ASCII, "Use letters, digits, spaces and plain symbols only (printable ASCII).")
-    .describe(`The new password, ${WIFI_PASSWORD.min} to ${WIFI_PASSWORD.max} printable ASCII characters.`),
+  // Same rule and messages as guest.password.set (commands/guest.ts).
+  password: wifiPasswordSchema.describe(`The new password, ${WIFI_PASSWORD.min} to ${WIFI_PASSWORD.max} printable ASCII characters.`),
 });
 
 const securityParams = z.object({
