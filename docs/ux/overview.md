@@ -137,15 +137,18 @@ Left to right (mockup `.topbar`):
 
 ## Notifications bell
 
-- **Data:** `notifications.list` (newest first, with `read` flags). The dot
-  shows when any item is unread.
+- **Data:** `notifications.list` (newest first). Unread is network-wide:
+  eero sends one `has_unread` flag for the network, not a read flag per
+  notification, so the dot shows when that flag is set. Activity shows the
+  same flag as an "Unread" marker on its event stream.
 - **Popover:** up to 8 items, each with an icon, one-line text, relative time
   and an unread marker. Items use the same copy as the Activity event stream
   ("New device joined: Nest Thermostat", "eeroOS 7.13.0 scheduled for
   tonight"). Clicking an item navigates to the thing it is about (device,
   eero, profile, Updates). eero can only mark everything read, so there is
   no per-item mark read.
-- **Footer:** "Mark all read" (`notifications.mark_read {}`),
+- **Footer:** "Mark all read" (`notifications.mark_read {}`, which clears the
+  network-wide flag; not built yet, so it is shown disabled with "Coming soon"),
   "All activity" (to Activity) and a gear to notification settings in
   App & account (`notifications.settings.get` / `notifications.settings.set`).
 - **Desktop notifications:** the host shows an OS notification for new items

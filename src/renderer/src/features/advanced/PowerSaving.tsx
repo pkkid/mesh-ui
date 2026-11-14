@@ -8,7 +8,7 @@ import { Leaf } from "lucide-react";
 
 import { ComingSoonButton, useNow } from "~/components/ui/page";
 import { formatMinute, WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
-import { hue } from "~/lib/chartColors";
+import { seriesColors } from "~/lib/chartColors";
 import { networkClock } from "../../../../core/format";
 import type { Day, NetworkSettings, Schedule } from "../../../../core/model";
 
@@ -16,8 +16,6 @@ import { ReadSwitch, Row, SubPanel } from "./SettingsGroups";
 
 const DAY_INDEX: Record<Day, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-/** Power saving is one kind of series: the theme's green, as in the mockup. */
-const POWER_SAVING_COLOR = hue("green");
 
 const minutes = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -37,7 +35,7 @@ export function daysLabel(days: ReadonlyArray<Day>): string {
 const toWeek = (s: Schedule): WeekSchedule => ({
   id: s.id,
   label: s.name,
-  color: POWER_SAVING_COLOR,
+  color: seriesColors.powerSaving,
   icon: <Leaf />,
   days: s.days.map((d) => DAY_INDEX[d]),
   start: minutes(s.start),
@@ -71,7 +69,7 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
               <ul className="flex flex-col gap-1.5">
                 {schedules.map((s) => (
                   <li key={s.id} className="flex items-center gap-2 text-xs">
-                    <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: POWER_SAVING_COLOR }} aria-hidden />
+                    <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: seriesColors.powerSaving }} aria-hidden />
                     <span className="font-medium">{s.name}</span>
                     <span className="text-muted-foreground">
                       {daysLabel(s.days)} · {formatMinute(minutes(s.start))} to {formatMinute(minutes(s.end))}

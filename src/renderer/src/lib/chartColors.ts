@@ -5,7 +5,7 @@
  * has a light and a dark value and follows theme changes without re-render.
  * Never pick a colour inline. See docs/design/design-system.md#series-colours.
  */
-import type { Band, Effect } from "../../../core/model";
+import type { Band, Effect, EventCategory } from "../../../core/model";
 import type { SeriesHue } from "./themePalettes";
 
 /** A CSS colour for a hue of the active theme's series palette. */
@@ -19,6 +19,8 @@ export const seriesColors = {
   band5: hue("blue"),
   band6: hue("purple"),
   wired: hue("aqua"),
+  /** Power saving schedule blocks (Advanced networking, Eco efficiency). */
+  powerSaving: hue("green"),
   /** Neutral or "other": a mix of the text colour with the background. */
   neutral: "color-mix(in srgb, var(--color-foreground) 40%, var(--color-background))",
 } as const;
@@ -76,3 +78,16 @@ export const lanColors = {
   /** Network and broadcast addresses: not usable. */
   none: "color-mix(in srgb, var(--color-foreground) 8%, var(--color-card))",
 } as const;
+
+/** Activity event categories: one colour each in the legend, the stacked chart and the share. */
+export const eventCategoryColors: Readonly<Record<EventCategory, string>> = {
+  devices: hue("blue"),
+  pause_block: hue("orange"),
+  schedules: hue("red"),
+  eero_status: hue("yellow"),
+  speed_tests: hue("aqua"),
+  firmware: hue("gray"),
+  admin: hue("purple"),
+  ports_temperature: hue("green"),
+  other: seriesColors.neutral,
+};
