@@ -100,6 +100,7 @@ describe("wifi.get (fake eero server)", () => {
   it("maps wpa3_per_band, 6 GHz as WPA3, and the bands from every eero's radios", async () => {
     const { engine, fake } = fakeEngine((fake) => {
       const eeros = fake.state.networks.get("100001")?.eeros ?? [];
+      for (const e of eeros) (e as RawEeroFull).radio_channel_stats = {};
       // As the real list sends them: 5 GHz low and high are two entries, and both channels count.
       (eeros[0] as RawEeroFull).radio_channel_stats = { band_2_4GHz: { channel: 6, channel_width: "20MHz" }, band_5GHz_low: { channel: 36, channel_width: "80MHz" }, band_5GHz_high: { channel: 149, channel_width: "160MHz" } };
       (eeros[1] as RawEeroFull).radio_channel_stats = { band_2_4GHz: { channel: 11, channel_width: "20MHz" } };
@@ -464,10 +465,10 @@ describe("wifi writes (demo)", () => {
 
   it("invalidates the topics each write changes", () => {
     const of = (id: string) => wifiCommands.find((c) => c.id === id)?.invalidates;
-    expect(of("wifi.name.set")).toEqual(["settings", "network"]);
-    expect(of("wifi.password.set")).toEqual(["settings"]);
-    expect(of("wifi.security.set")).toEqual(["settings", "guest"]);
-    expect(of("wifi.hide5g.set")).toEqual(["settings", "devices"]);
+    expect(of("wifi.name.set")).toEqual(["wifi", "network"]);
+    expect(of("wifi.password.set")).toEqual(["wifi"]);
+    expect(of("wifi.security.set")).toEqual(["wifi", "guest"]);
+    expect(of("wifi.hide5g.set")).toEqual(["wifi", "devices"]);
   });
 });
 

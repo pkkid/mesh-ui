@@ -111,6 +111,20 @@ process-wide like this.
   Plug" fail with `eero_error` for error states, and restarts show
   `updating` for 5 s (`RESTART_MS`); see
   [backends.md](architecture/backends.md#demo-backend).
+- Demo writes (M5) cover every M5 backend method: settings writes change
+  the settings read (mesh-restarting ones also show the network `updating`
+  for `RESTART_MS`), bridge mode clears the LAN map and NAT brings it back,
+  reservations, forwards and pinholes round-trip through `routing.get`,
+  `updates.install` moves every eero to the target, admins invite, cancel,
+  remove and transfer, port actions apply only when listed and swap to
+  their inverse, eero and network remove, Thread reset makes new
+  credentials. `src/core/demo/backend.test.ts` "writes (M5)" checks each and
+  that `demo.scenario.set` undoes them.
+- The fake server (M5.1) sends `radio_channel_stats` for every online eero,
+  so `--fake` Wi-Fi shows widths and channels, and Maple Street's
+  `manifest_resource` points at `/2.2/fake/release_manifest` on the fake's
+  own origin (public, no session; entries in the envelope's `data[]`), so
+  `--fake` Updates shows release notes.
 - Fixtures live in one place and are typed against `src/core/model.ts` (demo)
   or `src/core/eero/raw.ts` (fake server), so model changes break them at
   compile time.

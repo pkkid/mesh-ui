@@ -257,6 +257,7 @@ export const commands: AnyCommand[] = [
     icon: "gauge",
     params: z.object({}),
     effect: "write",
+    gate: { area: "network" },
     invalidates: ["speedtest", "network"],
     async run(ctx): Promise<SpeedTestRun> {
       const net = ctx.net;
@@ -287,6 +288,7 @@ export const commands: AnyCommand[] = [
       clear: z.literal(true).optional().describe("Removes the plan instead of setting it."),
     }),
     effect: "write",
+    gate: { area: "network" },
     invalidates: ["network", "speedtest"],
     async run(ctx, p): Promise<M.PlanSpeed | null> {
       const net = ctx.net;

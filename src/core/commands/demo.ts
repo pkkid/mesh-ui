@@ -23,6 +23,7 @@ export const commands: AnyCommand[] = [
       scenario: z.enum(SCENARIO_NAMES as [ScenarioName, ...ScenarioName[]]).describe("Scenario name."),
     }),
     effect: "write",
+    gate: { area: null },
     scope: "app",
     backend: "demo",
     run: async (ctx, { scenario }): Promise<ScenarioResult> => {

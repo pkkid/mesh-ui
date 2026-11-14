@@ -883,7 +883,7 @@ fake server; the real network gets one read-only capture of the object a
 write changes; real behaviour is a `MANUAL:` line, and anything that
 restarts the network says so in its risk field.
 
-### M5.1 Core contracts, captures and fixtures for M5 ☐
+### M5.1 Core contracts, captures and fixtures for M5 ✅ (#170)
 - issue: [#138](https://github.com/pkkid/mesh-ui/issues/138)
 - after: M4.R
 - docs: architecture/backends.md, architecture/data-model.md, architecture/commands.md (settings, Restart estimates, Effects, Confirmation), architecture/ui.md, testing.md (Fixtures), eero-api/endpoints.md

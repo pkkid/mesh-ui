@@ -136,11 +136,18 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
   refetches `profile.*` and `eero.*`), mirroring the "re-read after write"
   habit of mature eero clients. Surfaces with no room for an inline note
   (the palette, bulk bars) call `performWrite` directly.
-- **Gates.** `useGate({ area, op, capability, bridgeOff })` and
-  `GatedButton` (`components/ui/page.tsx`) dim a write control with the
-  reason (no permission, bridge mode, not available) from
-  `network.permissions` and `network.get`; `gateFor` is the pure check the
-  palette's gate table uses. The engine still has the last word.
+- **Gates.** Each write declares its gate in its core spec (`gate`,
+  [commands.md](commands.md#the-spec)), listed in `window.mesh.commands()`.
+  `useGate("device.pause")` and `GatedButton` (`components/ui/page.tsx`)
+  dim a write control with the reason (owner only, no permission, bridge
+  mode, not available) from that gate, `network.permissions` and
+  `network.get`. The palette dims commands through the same function,
+  `commandUnavailable` in `features/palette/search.ts`, so a page and the
+  palette give the same reason for the same command
+  (`palette/search.test.ts`). The older `useGate({ area, op, capability,
+  bridgeOff })` form still works; pages move to ids as they are touched.
+  `gateFor` is the pure check under both. The engine still has the last
+  word.
 - **Sheets.** Forms open in `Sheet` (`components/ui/sheet.tsx`) with
   `SheetField`s; Save runs the write through `useWrite` with `form: true`.
 - **`useCommand(id)`** runs a command on demand without the kit (a query the

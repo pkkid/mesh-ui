@@ -42,11 +42,16 @@ export function mloMode(v: unknown): M.NetworkSettings["mlo"] {
   return null;
 }
 
-/** `auto_setup_mode` is a string; eero's values are not documented, so only clear on and off words count. */
+/**
+ * `auto_setup_mode` is a string enum eero does not document. A real network
+ * with Simple Setup at its default sends `LTS` (M5.1 capture, 2026-11-14),
+ * read as on; otherwise only clear on and off words count.
+ */
 export function simpleSetup(v: unknown): boolean | null {
   if (typeof v === "boolean") return v;
   if (typeof v !== "string") return null;
   const s = v.toLowerCase().replace(/[^a-z]/g, "");
+  if (s === "lts") return true;
   if (s.includes("disab") || s === "off" || s === "false" || s === "manual" || s === "none") return false;
   if (s.includes("enab") || s === "on" || s === "true" || s.startsWith("auto") || s === "wired") return true;
   return null;

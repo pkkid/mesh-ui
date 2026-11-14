@@ -41,7 +41,10 @@ export type EeroFixture = Omit<M.Eero, "clients">;
 export type NetworkFixture = Omit<M.Network, "eeroCount" | "devicesOnline" | "isp" | "updateAvailable" | "selected" | "counts">;
 
 /** An Ethernet port as stored: status, speed and attachment come from the devices and eeros. */
-export type PortFixture = Pick<M.EeroPort, "number" | "name" | "supportedMbps" | "isWan" | "poe" | "mac" | "actions">;
+export type PortFixture = Pick<M.EeroPort, "number" | "name" | "supportedMbps" | "isWan" | "poe" | "mac" | "actions"> & {
+  /** Turned off with DISABLE_PORT (status "disabled"); unset means enabled. */
+  disabled?: boolean;
+};
 
 /** The network's update state as stored: the current version and per-eero versions come from the eeros. */
 export type UpdatesFixture = Omit<M.Updates, "current" | "eeros">;
@@ -58,6 +61,11 @@ export type WifiFixture = Pick<M.WifiSettings, "security" | "wpa2OnlyDevices" | 
  */
 export type SettingsFixture = Omit<M.NetworkSettings, "dhcp" | "wan" | "connectionMode" | "timezone" | "dns"> & {
   dns: Omit<M.NetworkSettings["dns"], "ispServers">;
+  /** Set by a DHCP write; unset means automatic (the LAN map holds the range either way). */
+  dhcpMode?: "automatic" | "custom";
+  /** Set by a WAN write: the static lease and PPPoE user (never the password). */
+  wanStatic?: M.NetworkSettings["wan"]["static"];
+  pppoeUsername?: string | null;
 };
 
 export type NetworkData = {

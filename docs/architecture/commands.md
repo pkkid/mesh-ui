@@ -22,6 +22,7 @@ type CommandSpec<P extends z.ZodTypeAny, R> = {
   effect: Effect;
   scope?: "network" | "account" | "app"; // default "network"
   topic?: Topic;              // query: cache topic it reads (engine.md)
+  gate?: WriteGate;           // write: what it needs to run here; required for every non-query command
   invalidates?: Topic[];      // write: topics to refresh after success
   sensitive?: true;           // result contains a password or key
   poll?: number;              // query: poll interval in seconds, from src/core/poll.ts
@@ -39,6 +40,18 @@ Field notes (this is the one place they are defined):
   it to the component. Optional; the palette falls back to the area icon.
 - `sensitive`: the result holds a credential (Wi-Fi or guest password, Thread
   key). See [Effects](#effects) for how surfaces treat it.
+- `gate` (`WriteGate` in `src/core/spec.ts`): what a write needs to run on
+  this network: `area`, the `network.permissions` `can` key (`devices`,
+  `eeros`, `profiles`, `settings`, `network`) or `null` for none; `op`
+  (`create`, `update` default, `delete`); `bridgeOff: true` when it is off in
+  bridge and IP passthrough mode; `capability`, a `network.get` capability
+  that must be true. Every write, disruptive and destructive command declares
+  one (`{ area: null }` when nothing limits it, as for sign-in and app-local
+  settings); `src/core/spec.test.ts` fails otherwise. The registry lists it
+  as `gate` (defaults filled in, `null` for queries) in `mesh-ui commands`,
+  the MCP tool list and `window.mesh.commands()`, and the palette and pages
+  dim from it ([ui.md](ui.md), Gates). Destructive commands are also owner
+  only. The engine and eero still have the last word.
 - `poll`: how often a visible view re-runs this query, in seconds. Values
   come from the one table in `src/core/poll.ts` ([engine.md](engine.md#polling-intervals)). The
   renderer polls on it; the CLI and MCP do not poll.
@@ -217,7 +230,7 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `eero.list` | eeros | `{}` | q | `GET {net}/eeros` (`resources.eeros`), `GET {net}` | `Eero[]` with topology (`upstream`, `meshBars`), clients, bands. `GET {net}` gives the LAN facts: `subnet` from custom DHCP (`dhcp.custom.subnet_ip`/`subnet_mask` as CIDR; null in automatic mode, which does not say the range), `gatewayIp` the gateway eero's `ip_address` (null in bridge or passthrough mode). |
-| `eero.get` | eero | `{ eero: Ref }` | q | `GET {eero}`, `GET {net}` | `Eero` plus radios (tx power from `radio_channel_stats.tx_power`) and BSSIDs. `gatewayIp` and `subnet` fall back to the `eero.list` values. `autoChannel` stays null: no eero field for it has been seen. |
+| `eero.get` | eero | `{ eero: Ref }` | q | `GET {eero}`, `GET {net}` | `Eero` plus radios (tx power from `radio_channel_stats.tx_power`) and BSSIDs. `gatewayIp` and `subnet` fall back to the `eero.list` values. `autoChannel` stays null: no eero field for it has been seen (`{net}/radio_settings` carries only `enabled` per band, M5.1 capture). |
 | `eero.rename` | Rename eero | `{ eero: Ref, location: string(1..32) }` | w | `PUT {eero}` form `location` | Trimmed. Returns the `Eero`. Invalidates eeros, network, eero_ports. |
 | `eero.restart` | Restart eero | `{ eero: Ref }` | d | `POST resources.reboot` empty-JSON (201) | Restarting the gateway takes the network down; downstream eeros drop too. Message says which: "Living Room is the gateway: restarting it takes Maple Street offline. ..." or "Restarts Office. Its devices drop for about 1 minute. Garage connects through it and drops too." Returns `{ eeroIds, estimate }` (this eero and those through it, or all for the gateway; offline ones left out). Invalidates eeros, network. |
 | `eero.led.set` | Status light | `{ eero: Ref, on?: boolean, brightness?: 0..100 }` | w | `PUT resources.led_action` form `led_on` / `led_brightness` | JSON PUT to `{eero}` is a silent no-op; always use the `led_action` link. At least one of `on` and `brightness` (else `bad_params`); only the given field is sent. Invalidates eeros. |
@@ -328,7 +341,7 @@ the write when nothing changed, and is never retried.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `settings.get` | Network settings | `{}` | q | `GET {net}` (shared), `GET {net}/fast_transition`, `GET {net}/power_saving/schedules`, `GET {net}/thread`, `GET {net}/ac_compat` | `NetworkSettings`. Power saving on/off comes from the network object (`GET {net}/power_saving` is a 404). A 403, 404 or 405 on one of the extra reads is null (not on this network), never an error: Thread is null on a network without it. Thread secrets are never mapped; the command also strips any field outside the Thread model before caching. `devices` (Thread accessories) is always null: eero does not report it. `simpleSetup` is null unless `auto_setup_mode` is a clear on or off word. |
+| `settings.get` | Network settings | `{}` | q | `GET {net}` (shared), `GET {net}/fast_transition`, `GET {net}/power_saving/schedules`, `GET {net}/thread`, `GET {net}/ac_compat` | `NetworkSettings`. Power saving on/off comes from the network object (`GET {net}/power_saving` is a 404). A 403, 404 or 405 on one of the extra reads is null (not on this network), never an error: Thread is null on a network without it. Thread secrets are never mapped; the command also strips any field outside the Thread model before caching. `devices` (Thread accessories) is always null: eero does not report it. `simpleSetup` is true for `LTS` (the value a real network sends, M5.1 capture) and other clear on words, false for off words, else null. |
 | `settings.dns.set` | DNS | `{ mode?: "automatic" \| "custom", servers?: string[] (1..4), ipv6Servers?: string[], caching?: boolean }` | d | `PUT {net}/settings` JSON `{dns: {mode, caching, custom: {ips}}, ipv6: {name_servers}}` | Confirmed mesh restart. Also the Local DNS caching toggle (`{caching}` alone): there is no separate `settings.dns_cache.set`, because caching is a field of the same `dns` object and SX's `PUT {net}/dns` alternative is just as disruptive. |
 | `settings.dhcp.set` | DHCP and NAT | `{ mode: "automatic" \| "custom", subnetIp?, subnetMask?, startIp?, endIp? }` | d | `PUT {net}/settings` JSON `{dhcp: {mode, custom}}` | Confirmed mesh restart. Range validated in core. |
 | `settings.ipv6.set` | IPv6 | `{ enabled: boolean }` | d | `PUT {net}/settings` JSON `{ipv6_upstream}` | |
@@ -346,17 +359,21 @@ the write when nothing changed, and is never retried.
 | `settings.power_saving.schedule.remove` **(added)** | Delete power saving schedule | `{ schedule: Ref }` | w | `DELETE {item url}` | |
 | `settings.legacy_mode.set` **(added)** | Legacy device mode | `{ enabled: boolean }` | d | `PUT {net}/ac_compat` form `enabled` | Troubleshooting "Connect devices that can't detect Wi-Fi 6". Restarts the network. |
 | `settings.timezone.set` **(added)** | Time zone | `{ timezone: string }` IANA | w | `PUT {net}/settings` JSON `{timezone: {value}}` | Wi-Fi page. Schedules follow it. |
-| `settings.simple_setup.set` **(added)** | eero Simple Setup | `{ enabled: boolean }` | w | `PUT {net}/auto_setup_mode` (LD, shape unverified) | Advanced networking toggle. MANUAL check before shipping. |
+| `settings.simple_setup.set` **(added)** | eero Simple Setup | `{ enabled: boolean }` | w | `PUT {net}/auto_setup_mode` (LD, shape unverified) | Advanced networking toggle. A real network reads `auto_setup_mode: "LTS"`, mapped to on (M5.1 capture); the value to send for off is unknown, so MANUAL check before shipping. |
 | `settings.thread.set` | Thread | `{ enabled?: boolean, credentialSync?: boolean }` | w | `PUT {net}/thread` JSON `{thread_enable, enable_credential_syncing}` | SX's older `{net}/thread/enable` is a fallback on 404. |
 | `settings.thread.credentials` **(added)** | Reveal Thread credentials | `{}` | q, sensitive | `GET {net}/thread` | Network key, PSKc, operational dataset. Only on explicit reveal or "Copy dataset". |
 | `settings.thread.reset` | Regenerate Thread credentials | `{}` | x | `POST {net}/thread` | Every Thread device must re-pair. |
-| `settings.impact` **(added)** | Impact of a settings change | `{ changes: { id: string, params?: object }[] }` | q | none (cached topics) | `SettingsImpact`: per change whether it restarts the mesh, the outage estimate in minutes (from the table below), devices online now, and whether this computer is behind the network. Advanced networking's Pending change panel and every disruptive confirm message use it. |
+| `settings.impact` **(added)** | Impact of a settings change | `{ changes: { id: string, params?: object }[] }` (1 to 20, ids of writes) | q | `GET {net}/devices` (backend device list) | `SettingsImpact`: per change (`ChangeImpact`) whether every eero restarts, the estimate (from the table below), who drops (`all`, `wireless`, `thread`, `port`, `none`) and the online devices that drop, plus the longest estimate, devices online, every dropped device once and a `summary` that is each disruptive write's `needs_confirm` message. An id with no row is `bad_params`; `params` are accepted for later and do not change the estimate yet. Topic `settings`, cached 30 s. Built in core (`IMPACT` and `settingsImpact` in `commands/settings.ts`; `impactOf(ctx, id)` for confirm messages). Whether this computer is behind the network is not reported: core cannot tell yet. |
 
 ### Restart estimates
 
-Core owns every outage estimate (`src/core/impact.ts` once `settings.impact` lands; the restart ones live in `RESTART_ESTIMATE`, `src/core/commands/network.ts`). `settings.impact`
-returns them, `needs_confirm` messages and command results quote them, and
-the UI never hard-codes a number.
+Core owns every outage estimate in one table, `IMPACT` in
+`src/core/commands/settings.ts` (restart copy from `RESTART_ESTIMATE` in
+`commands/network.ts`; the Wi-Fi security estimate in `commands/wifi.ts`
+reads its row). `settings.impact` returns them, `needs_confirm` messages and
+command results quote them, and the UI never hard-codes a number. A wave 2
+story that adds a write adds its row; a disruptive write without one fails
+`settings.test.ts`.
 
 | Change | Estimate | Source |
 | --- | --- | --- |
@@ -365,6 +382,11 @@ the UI never hard-codes a number.
 | `eero.restart`, gateway | about 2 to 3 minutes (whole network) | same as `network.restart` |
 | Settings writes through `PUT {net}/settings` that restart the mesh: `settings.dns.set`, `settings.dhcp.set`, `settings.wan.set`, `settings.connection_mode.set`, `settings.ipv6.set`, `settings.nat_randomization.set` | about 8 minutes | FF field report (research notes) |
 | `settings.mlo.set`, `settings.legacy_mode.set` (own endpoints) | about 2 to 3 minutes | eero app copy; unverified, MANUAL check |
+| `wifi.security.set` (`wpa3_per_band`) | about 2 to 3 minutes | same as `network.restart`; unverified, MANUAL check |
+| `wifi.name.set`, `wifi.password.set` | no restart; wireless devices on the main network drop and rejoin | `wifi.impact` |
+| `settings.thread.set`, `settings.thread.reset` | no restart; Thread accessories (not listed by eero) lose the border router or must re-pair | |
+| `eero.port.action` | no restart; that port's device loses data or power | |
+| Live toggles: `settings.upnp.set`, `settings.sqm.set`, `settings.band_steering.set`, `settings.fast_transition.set`, `settings.power_saving.set`, `settings.timezone.set`, `settings.simple_setup.set` | nothing restarts | |
 | `updates.install` | about 10 minutes | eero app copy |
 
 ### routing (`commands/routing.ts`)

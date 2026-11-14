@@ -9,7 +9,8 @@
  *
  * The interface is split into one sub-interface per area, so each eero
  * backend area file implements exactly one of them. This file holds every
- * read through M3 and the M4 writes (each area's `...Writes` interface).
+ * read through M3, the M4 writes and the M5 writes (M5.1 declares them all;
+ * each wave 2 story builds its eero side).
  * Areas, and write methods, the eero backend has not built yet answer "not
  * available yet" (see composeBackend and partialArea).
  *
@@ -72,6 +73,8 @@ export interface NetworkBackend {
   permissions(net: M.Id): Promise<M.Permissions>;
   /** Reboots every eero (`POST {net}/reboot`). Answers once eero accepts it, not when the mesh is back. */
   restart(net: M.Id): Promise<void>;
+  /** Deletes the network (`DELETE {net}`). Owner only; cannot be undone. */
+  remove(net: M.Id): Promise<void>;
 }
 
 export type SpeedTestQuery = { from: M.Iso; to: M.Iso; limit: number };
@@ -128,6 +131,12 @@ export interface EeroBackend {
   setNightlight(net: M.Id, eero: M.Id, nightlight: M.Nightlight): Promise<M.Eero>;
   /** Reboots one eero (`POST {eero}/reboot`). */
   restart(net: M.Id, eero: M.Id): Promise<void>;
+  /** One action on one port (`POST {eero}/ports/{n}/action`); core checks it is in the port's `actions[]`. Returns the ports as the next read shows them. */
+  portAction(net: M.Id, eero: M.Id, port: number, action: M.PortAction): Promise<M.EeroPorts>;
+  /** Removes the eero from the network (`DELETE {eero}`). Core refuses the gateway unless it is the only eero. */
+  remove(net: M.Id, eero: M.Id): Promise<void>;
+  /** Placement test (`POST`, then `GET /2.3/networks/{id}/placement_test/{serial}`). */
+  placementTest(net: M.Id, eero: M.Id): Promise<M.PlacementResult>;
 }
 
 /** Either or both. */
@@ -172,15 +181,44 @@ export interface ProfileBackend {
 
 export type ProfileInput = { name: string; deviceIds: M.Id[] };
 
+/** A reservation to add: core resolves the device to its MAC and validates the address. */
+export type ReservationInput = { mac: string; ip: string; description: string };
+
+/** A forward to add, on the device's reserved address (core adds the reservation first when there is none). */
+export type ForwardInput = {
+  ip: string;
+  externalPort: string;
+  internalPort: string;
+  protocol: M.Protocol;
+  description: string;
+  enabled: boolean;
+};
+
+export type PinholeInput = { deviceId: M.Id; protocol: M.Protocol; port: string };
+
 export interface RoutingBackend {
   /** Reservations, forwards and pinholes joined to devices, plus the LAN map. */
   get(net: M.Id): Promise<M.Routing>;
+  // M5 writes. Each returns the changed row as the next `get` shows it.
+  addReservation(net: M.Id, input: ReservationInput): Promise<M.Reservation>;
+  updateReservation(net: M.Id, reservation: M.Id, input: Partial<Omit<ReservationInput, "mac">>): Promise<M.Reservation>;
+  /** `removeForwards`: also delete the forwards on that address (`?delete_forwards=`). */
+  removeReservation(net: M.Id, reservation: M.Id, removeForwards: boolean): Promise<void>;
+  addForward(net: M.Id, input: ForwardInput): Promise<M.Forward>;
+  updateForward(net: M.Id, forward: M.Id, input: Partial<ForwardInput>): Promise<M.Forward>;
+  removeForward(net: M.Id, forward: M.Id): Promise<void>;
+  addPinhole(net: M.Id, input: PinholeInput): Promise<M.Pinhole>;
+  removePinhole(net: M.Id, pinhole: M.Id): Promise<void>;
 }
 
 export interface UpdatesBackend {
   get(net: M.Id): Promise<M.Updates>;
   /** Release notes of the target (or current) eeroOS; null when eero names no manifest. */
   notes(net: M.Id): Promise<M.ReleaseNotes | null>;
+  /** Installs the target eeroOS now (`POST {net}/updates`); every eero restarts. */
+  install(net: M.Id): Promise<void>;
+  /** 0 to 23, network time (`POST {net}/updates/preferred_update_hour`). */
+  setPreferredHour(net: M.Id, hour: number): Promise<M.Updates>;
 }
 
 export type EventChunk = { events: M.NetworkEvent[]; nextCursor: string | null };
@@ -218,27 +256,95 @@ export interface WifiBackend {
   setHide5g(net: M.Id, enabled: boolean): Promise<M.WifiSettings>;
 }
 
+export type DnsInput = { mode: "automatic" | "custom"; servers: string[]; ipv6Servers: string[]; caching: boolean | null };
+/** `custom` needs every address; core validates the range. */
+export type DhcpInput = { mode: "automatic" | "custom"; subnetIp: string | null; subnetMask: string | null; startIp: string | null; endIp: string | null };
+/** The PPPoE password is write-only: never cached or returned. */
+export type WanInput = {
+  mode: M.NetworkSettings["wan"]["mode"];
+  static: { ip: string; mask: string; router: string } | null;
+  pppoe: { username: string; password: string } | null;
+  vlan: number | null;
+};
+export type PowerSavingInput = { enabled?: boolean; scheduleEnabled?: boolean };
+export type ThreadInput = { enabled?: boolean; credentialSync?: boolean };
+export type MloMode = NonNullable<M.NetworkSettings["mlo"]>;
+
+/**
+ * Settings writes (M5.2, M5.3). Each returns `NetworkSettings` as the next
+ * `get` shows it, except schedules (the schedule) and Thread reset (nothing).
+ * Most go through `PUT {net}/settings` and restart the mesh; core decides
+ * which via `settings.impact`, the backend only sends.
+ */
 export interface SettingsBackend {
   /** Thread secrets are never part of this result. */
   get(net: M.Id): Promise<M.NetworkSettings>;
   /** Sensitive: the Thread network key and friends. Null when the network has no Thread. */
   threadCredentials(net: M.Id): Promise<M.ThreadCredentials | null>;
+  setDns(net: M.Id, dns: DnsInput): Promise<M.NetworkSettings>;
+  setDhcp(net: M.Id, dhcp: DhcpInput): Promise<M.NetworkSettings>;
+  setIpv6(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  setWan(net: M.Id, wan: WanInput): Promise<M.NetworkSettings>;
+  setConnectionMode(net: M.Id, mode: M.ConnectionMode): Promise<M.NetworkSettings>;
+  setNatRandomization(net: M.Id, randomized: boolean): Promise<M.NetworkSettings>;
+  setUpnp(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  setSqm(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  setBandSteering(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  setFastTransition(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  setMlo(net: M.Id, mode: MloMode): Promise<M.NetworkSettings>;
+  setPowerSaving(net: M.Id, input: PowerSavingInput): Promise<M.NetworkSettings>;
+  addPowerSavingSchedule(net: M.Id, schedule: M.ScheduleInput): Promise<M.Schedule>;
+  updatePowerSavingSchedule(net: M.Id, schedule: M.Id, input: M.ScheduleInput): Promise<M.Schedule>;
+  removePowerSavingSchedule(net: M.Id, schedule: M.Id): Promise<void>;
+  setLegacyMode(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  /** IANA zone. */
+  setTimezone(net: M.Id, timezone: string): Promise<M.NetworkSettings>;
+  setSimpleSetup(net: M.Id, enabled: boolean): Promise<M.NetworkSettings>;
+  setThread(net: M.Id, input: ThreadInput): Promise<M.NetworkSettings>;
+  /** New Thread credentials; every Thread device must re-pair. */
+  resetThread(net: M.Id): Promise<void>;
 }
+
+export type DiagnosticsInput = { symptom: DiagnosticsSymptom | null; deviceId: M.Id | null };
+export type DiagnosticsSymptom = "internet_slow" | "internet_offline" | "connection_drops" | "eeros_red";
 
 export interface DiagnosticsBackend {
   /** The last cloud diagnostics run (`GET {net}/diagnostics`). The health check is built in core. */
   latest(net: M.Id): Promise<M.DiagnosticsResult>;
   /** Support contacts; `supportId` comes from the account in core. */
   support(net: M.Id): Promise<Omit<M.SupportInfo, "supportId">>;
+  /** Starts a cloud run (`POST {net}/diagnostics`) and answers with its result once eero has one. */
+  run(net: M.Id, input: DiagnosticsInput): Promise<M.DiagnosticsResult>;
+  /** `/2.4/` coverage scan, a read the eero side builds in M5.8. */
+  coverageScan(net: M.Id): Promise<M.CoverageScan>;
+  /** `/2.4/` Wi-Fi generation scan, a read the eero side builds in M5.8. */
+  upgradeReport(net: M.Id): Promise<M.UpgradeReport>;
 }
+
+export type InviteInput = { nickname: string | null; email: string | null };
+export type InviteCreated = { invite: M.Invite; inviteUrl: string; expiresAt: M.Iso | null };
+/** `phone` optional; `email` is where eero sends the transfer. */
+export type TransferInput = { name: string; email: string; phone: string | null };
 
 export interface AdminsBackend {
   /** Seats are counted in core. Invites a role cannot read are an empty list, not an error. */
   list(net: M.Id): Promise<Pick<M.AdminList, "admins" | "invites">>;
+  createInvite(net: M.Id, input: InviteInput): Promise<InviteCreated>;
+  cancelInvite(net: M.Id, invite: M.Id): Promise<void>;
+  /** No member nickname endpoint is known (M5.1 capture: members carry no nickname); M5.6 drops it if none is found. */
+  setNickname(net: M.Id, admin: M.Id, nickname: string | null): Promise<M.Admin>;
+  remove(net: M.Id, admin: M.Id): Promise<void>;
+  /** Hands the network to someone else (`POST {net}/transfer`). Owner only; cannot be undone. */
+  transfer(net: M.Id, input: TransferInput): Promise<void>;
 }
 
 export interface IntegrationsBackend {
   get(net: M.Id): Promise<M.Integrations>;
+  setBuiltin(net: M.Id, enabled: boolean): Promise<M.Integrations>;
+  setFfs(net: M.Id, enabled: boolean): Promise<M.Integrations>;
+  /** Starts Zigbee discovery on the Smart Home Hub; pairing finishes in the Alexa app. */
+  discoverZigbee(net: M.Id): Promise<void>;
+  unlinkAmazon(net: M.Id): Promise<M.Integrations>;
 }
 
 export type NotificationChunk = { notifications: M.Notification[]; nextCursor: string | null };
@@ -252,6 +358,8 @@ export interface NotificationsBackend {
   settings(net: M.Id): Promise<Record<string, boolean>>;
   /** Network-wide: eero keeps only `has_unread`, no per-row read flag. */
   markRead(net: M.Id): Promise<void>;
+  /** Saves eero's switches (`PUT {net}/notifications` with the full merged map, keys as sent). Returns the map as the next read shows it. */
+  setSettings(net: M.Id, settings: Record<string, boolean>): Promise<Record<string, boolean>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -281,19 +389,47 @@ export interface BackendAreas {
 export type AreaName = keyof BackendAreas;
 
 /**
- * The write methods of each area (M4). The eero backend may leave any of
- * them out until its story builds it (see `EeroArea` and `partialArea`);
- * the demo backend implements them all.
+ * The write methods of each area (M4 and M5), plus the M5 reads whose eero
+ * side lands with their story (coverage scan, upgrade report, placement
+ * test). The eero backend may leave any of them out until its story builds
+ * it (see `EeroArea` and `partialArea`); the demo backend implements them all.
  */
 export const WRITE_METHODS = {
-  network: ["restart"],
+  network: ["restart", "remove"],
   internet: ["runSpeedTest"],
-  eero: ["rename", "find", "setLed", "setNightlight", "restart"],
+  eero: ["rename", "find", "setLed", "setNightlight", "restart", "portAction", "remove", "placementTest"],
   device: ["setPaused", "rename", "setType", "setProfile", "setBlocked"],
   profile: ["create", "rename", "setPaused", "setDevices", "remove", "setUnassignedPaused", "addSchedule", "updateSchedule", "removeSchedule"],
+  routing: ["addReservation", "updateReservation", "removeReservation", "addForward", "updateForward", "removeForward", "addPinhole", "removePinhole"],
+  updates: ["install", "setPreferredHour"],
   guest: ["setEnabled", "rename", "setPassword"],
   wifi: ["setName", "setPassword", "setSecurity", "setHide5g"],
-  notifications: ["markRead"],
+  settings: [
+    "setDns",
+    "setDhcp",
+    "setIpv6",
+    "setWan",
+    "setConnectionMode",
+    "setNatRandomization",
+    "setUpnp",
+    "setSqm",
+    "setBandSteering",
+    "setFastTransition",
+    "setMlo",
+    "setPowerSaving",
+    "addPowerSavingSchedule",
+    "updatePowerSavingSchedule",
+    "removePowerSavingSchedule",
+    "setLegacyMode",
+    "setTimezone",
+    "setSimpleSetup",
+    "setThread",
+    "resetThread",
+  ],
+  diagnostics: ["run", "coverageScan", "upgradeReport"],
+  admins: ["createInvite", "cancelInvite", "setNickname", "remove", "transfer"],
+  integrations: ["setBuiltin", "setFfs", "discoverZigbee", "unlinkAmazon"],
+  notifications: ["markRead", "setSettings"],
 } as const satisfies { [K in AreaName]?: readonly (keyof BackendAreas[K])[] };
 
 export type WriteMethod<K extends AreaName> = K extends keyof typeof WRITE_METHODS ? (typeof WRITE_METHODS)[K][number] : never;

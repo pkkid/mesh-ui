@@ -8,6 +8,10 @@ import { connectionMode, hhmm, mapPowerSavingSchedule, mapSettings, mapThread, m
 import { RateLimiter } from "../eero/ratelimit";
 import { createEngine, type Engine } from "../engine";
 import type * as M from "../model";
+import { allCommands } from "../registry";
+import { RESTART_ESTIMATE } from "./network";
+import { IMPACT, SETTINGS_RESTART_ESTIMATE, UPDATE_RESTART_ESTIMATE } from "./settings";
+import { SECURITY_RESTART_ESTIMATE } from "./wifi";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -271,6 +275,114 @@ describe("Advanced networking page load against the fake eero server", () => {
     for (const p of ["fast_transition", "power_saving/schedules", "thread", "ac_compat"]) expect(reads(`/2.2/networks/100001/${p}`)).toBe(1);
     expect(reads("/2.2/networks/100001/proxied_nodes")).toBe(0);
     expect(f.log.length).toBeLessThanOrEqual(14);
+    await f.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// settings.impact
+
+describe("settings.impact (demo)", () => {
+  const impact = (ids: string[], net = MAPLE, engine = demoEngine()) => ok(engine.execute<M.SettingsImpact>("settings.impact", { networkId: net, changes: ids.map((id) => ({ id })) }));
+
+  it("has a row for every disruptive and destructive write that exists or M5 adds", () => {
+    const registered = allCommands().filter((c) => c.effect === "disruptive").map((c) => c.id);
+    const planned = ["settings.dns.set", "settings.dhcp.set", "settings.ipv6.set", "settings.wan.set", "settings.connection_mode.set", "settings.nat_randomization.set", "settings.mlo.set", "settings.legacy_mode.set", "updates.install", "eero.port.action"];
+    // eero.restart and guest writes have their own impact copy (gateway-aware, guests only).
+    const own = new Set(["eero.restart", "guest.disable", "guest.rename", "guest.password.set", "wifi.hide5g.set"]);
+    for (const id of [...registered, ...planned].filter((id) => !own.has(id))) expect(IMPACT[id], id).toBeDefined();
+  });
+
+  it("each mesh-restarting setting restarts every eero, with its estimate and every online device", async () => {
+    const engine = demoEngine();
+    const online = (await ok(engine.execute<M.DeviceList>("device.list", { networkId: MAPLE, status: "online" }))).devices.filter((d) => !d.blocked);
+    const eight = ["settings.dns.set", "settings.dhcp.set", "settings.ipv6.set", "settings.wan.set", "settings.connection_mode.set", "settings.nat_randomization.set"];
+    const three = ["settings.mlo.set", "settings.legacy_mode.set", "wifi.security.set", "network.restart"];
+    for (const id of [...eight, ...three, "updates.install"]) {
+      const i = await impact([id], MAPLE, engine);
+      const estimate = eight.includes(id) ? SETTINGS_RESTART_ESTIMATE : three.includes(id) ? RESTART_ESTIMATE.network : UPDATE_RESTART_ESTIMATE;
+      expect(i, id).toMatchObject({ restarts: true, estimate, devicesOnline: online.length });
+      expect(i.changes[0], id).toMatchObject({ id, restarts: true, estimate, drops: "all" });
+      expect(i.deviceIds.sort(), id).toEqual(online.map((d) => d.id).sort());
+      expect(i.summary, id).toContain(estimate);
+      expect(i.summary, id).toContain(`${online.length} devices online lose internet`);
+    }
+  });
+
+  it("toggles that apply live restart nothing and drop nobody", async () => {
+    for (const id of ["settings.upnp.set", "settings.sqm.set", "settings.band_steering.set", "settings.fast_transition.set", "settings.power_saving.set", "settings.timezone.set", "settings.simple_setup.set"]) {
+      const i = await impact([id]);
+      expect(i, id).toMatchObject({ restarts: false, estimate: null, deviceIds: [] });
+    }
+  });
+
+  it("Wi-Fi name and password drop main-network wireless devices only; Thread and port changes name no devices", async () => {
+    const engine = demoEngine();
+    const online = (await ok(engine.execute<M.DeviceList>("device.list", { networkId: MAPLE, status: "online" }))).devices;
+    const wireless = online.filter((d) => !d.blocked && d.band !== "wired" && d.band !== null && d.ssid !== "guest");
+    const name = await impact(["wifi.name.set"], MAPLE, engine);
+    expect(name).toMatchObject({ restarts: false, changes: [{ drops: "wireless" }] });
+    expect(name.deviceIds.sort()).toEqual(wireless.map((d) => d.id).sort());
+    for (const id of ["settings.thread.reset", "settings.thread.set", "eero.port.action"]) {
+      const i = await impact([id], MAPLE, engine);
+      expect(i.restarts, id).toBe(false);
+      expect(i.deviceIds, id).toEqual([]);
+    }
+  });
+
+  it("several changes: the longest estimate wins and devices count once", async () => {
+    const i = await impact(["settings.mlo.set", "settings.dns.set", "settings.upnp.set"]);
+    expect(i.estimate).toBe(SETTINGS_RESTART_ESTIMATE);
+    expect(i.changes.map((c) => c.id)).toEqual(["settings.mlo.set", "settings.dns.set", "settings.upnp.set"]);
+    expect(new Set(i.deviceIds).size).toBe(i.deviceIds.length);
+  });
+
+  it("bad_params for an unknown id, an empty list or an extra key", async () => {
+    const engine = demoEngine();
+    expect(await code(engine.execute("settings.impact", { networkId: MAPLE, changes: [{ id: "settings.nope.set" }] }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.impact", { networkId: MAPLE, changes: [] }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.impact", { networkId: MAPLE, changes: [{ id: "settings.dns.set", extra: 1 }] }))).toBe("bad_params");
+  });
+
+  it("the Wi-Fi security estimate comes from the same table", () => {
+    expect(SECURITY_RESTART_ESTIMATE).toBe(IMPACT["wifi.security.set"]?.estimate);
+  });
+});
+
+describe("poll topics", () => {
+  it("wifi.get and wifi.impact read their own topic, and integrations.get its own, apart from settings", () => {
+    const topic = (id: string) => allCommands().find((c) => c.id === id)?.topic;
+    expect([topic("wifi.get"), topic("wifi.impact"), topic("integrations.get"), topic("settings.get")]).toEqual(["wifi", "wifi", "integrations", "settings"]);
+  });
+});
+
+describe("M5.1 mapping and fake server fixtures", () => {
+  it("maps eero Simple Setup's captured LTS value to on, and keeps unknown words null", () => {
+    expect(simpleSetup("LTS")).toBe(true);
+    expect(simpleSetup("DISABLED")).toBe(false);
+    expect(simpleSetup("SOMETHING_NEW")).toBeNull();
+  });
+
+  it("--fake Wi-Fi has widths and channels from radio_channel_stats", async () => {
+    const f = createFakeEero();
+    const engine = createEngine({ backend: createEeroBackend({ secrets: secrets(f.signIn()), origin: f.origin, fetch: f.fetch, limiter: new RateLimiter() }) });
+    const wifi = await ok(engine.execute<M.WifiSettings>("wifi.get", { networkId: "100001" }));
+    for (const band of wifi.bands) {
+      expect(band.widthsMhz.length, band.band).toBeGreaterThan(0);
+      expect(band.channels.length, band.band).toBeGreaterThan(0);
+    }
+    expect(wifi.bands.find((b) => b.band === "5")?.widthsMhz).toEqual([80]);
+    await f.close();
+  });
+
+  it("--fake Updates has release notes from a manifest the fake serves without the session", async () => {
+    const f = createFakeEero();
+    const engine = createEngine({ backend: createEeroBackend({ secrets: secrets(f.signIn()), origin: f.origin, fetch: f.fetch, limiter: new RateLimiter() }) });
+    const notes = await ok(engine.execute<M.ReleaseNotes | null>("updates.notes", { networkId: "100001" }));
+    expect(notes).toMatchObject({ version: "7.11.0", title: "eeroOS 7.11.0" });
+    expect(notes?.features.length).toBeGreaterThan(0);
+    const manifest = f.log.find((e) => e.path === "/2.2/fake/release_manifest");
+    expect(manifest?.token).toBeNull();
     await f.close();
   });
 });

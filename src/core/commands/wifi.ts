@@ -19,6 +19,7 @@ import { POLL } from "../poll";
 import { CommandError } from "../errors";
 import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
 import { WIFI_PASSWORD, wifiPasswordSchema, wifiShare } from "./guest";
+import { IMPACT } from "./settings";
 
 export { WIFI_PASSWORD };
 
@@ -63,9 +64,10 @@ export const ssidBytes = (s: string) => new TextEncoder().encode(s).length;
 /**
  * Outage estimate when eero restarts the mesh to apply a security change
  * (`wpa3_per_band` is in the restart list of docs/eero-api/endpoints.md).
- * Same copy as a network restart; unverified on a real network (MANUAL).
+ * From the one estimate table, `IMPACT` in settings.ts; unverified on a real
+ * network (MANUAL).
  */
-export const SECURITY_RESTART_ESTIMATE = "about 2 to 3 minutes";
+export const SECURITY_RESTART_ESTIMATE: string = IMPACT["wifi.security.set"]?.estimate ?? "about 2 to 3 minutes";
 
 export type WifiChange = "name" | "password" | "security" | "hide5g";
 export type SecurityBand = "band24" | "band5";
@@ -207,7 +209,7 @@ export const commands: AnyCommand[] = [
     icon: "wifi",
     params: z.object({}),
     effect: "query",
-    topic: "settings",
+    topic: "wifi",
     poll: POLL.network,
     run: (ctx): Promise<M.WifiSettings> => ctx.backend.wifi.get(ctx.net),
   }),
@@ -261,7 +263,7 @@ export const commands: AnyCommand[] = [
       band5: securityEnum.optional().describe("Security only: the mode 5 GHz moves to."),
     }),
     effect: "query",
-    topic: "settings",
+    topic: "wifi",
     run: async (ctx, p): Promise<WifiImpact> => {
       if (p.change !== "security") {
         if (p.band24 || p.band5) throw new CommandError("bad_params", "band24 and band5 apply to a security change only.");
@@ -277,7 +279,8 @@ export const commands: AnyCommand[] = [
     icon: "pencil",
     params: nameParams,
     effect: "disruptive",
-    invalidates: ["settings", "network"],
+    gate: { area: "settings" },
+    invalidates: ["wifi", "network"],
     confirmMessage: async (ctx, p) => {
       await checkName(ctx, p.name);
       return `The Wi-Fi becomes "${p.name}". ${(await impactFor(ctx, "name")).summary}`;
@@ -295,7 +298,8 @@ export const commands: AnyCommand[] = [
     icon: "key-round",
     params: passwordParams,
     effect: "disruptive",
-    invalidates: ["settings"],
+    gate: { area: "settings" },
+    invalidates: ["wifi"],
     confirmMessage: async (ctx) => (await impactFor(ctx, "password")).summary,
     run: (ctx, p): Promise<M.WifiSettings> => ctx.backend.wifi.setPassword(ctx.net, p.password),
   }),
@@ -307,7 +311,8 @@ export const commands: AnyCommand[] = [
     icon: "shield-check",
     params: securityParams,
     effect: "disruptive",
-    invalidates: ["settings", "guest"],
+    gate: { area: "settings" },
+    invalidates: ["wifi", "guest"],
     confirmMessage: async (ctx, p) => (await impactFor(ctx, "security", p)).summary,
     run: async (ctx, p): Promise<M.WifiSettings> => {
       const wifi = await ctx.backend.wifi.get(ctx.net);
@@ -323,7 +328,8 @@ export const commands: AnyCommand[] = [
     icon: "radio",
     params: hide5gParams,
     effect: "disruptive",
-    invalidates: ["settings", "devices"],
+    gate: { area: "settings" },
+    invalidates: ["wifi", "devices"],
     confirmMessage: async (ctx, p) =>
       p.enabled ? `5 and 6 GHz are hidden for a while. ${(await impactFor(ctx, "hide5g")).summary}` : "5 and 6 GHz come back, and devices move back to them on their own.",
     run: (ctx, p): Promise<M.WifiSettings> => ctx.backend.wifi.setHide5g(ctx.net, p.enabled),

@@ -92,7 +92,34 @@ a write invalidates and the settle delay. Notes on the contracts:
 - `wifi.setName` changes the SSID, which is also the network's `name`.
 - `eero.setNightlight` is Beacon only; other eeros fail with `eero_error`.
 
-`WRITE_METHODS` in `backend.ts` lists each area's writes. An eero area
+M5 writes (contracts from M5.1; each wave 2 story builds its eero side):
+
+- `settings`: `setDns`, `setDhcp`, `setIpv6`, `setWan`,
+  `setConnectionMode`, `setNatRandomization`, `setUpnp`, `setSqm`,
+  `setBandSteering`, `setFastTransition`, `setMlo`, `setPowerSaving`,
+  power saving schedule add, update and remove, `setLegacyMode`,
+  `setTimezone`, `setSimpleSetup`, `setThread`, `resetThread`. Each returns
+  `NetworkSettings` (schedules return the `Schedule`). Inputs are
+  `DnsInput`, `DhcpInput`, `WanInput` (the PPPoE password is write-only),
+  `PowerSavingInput`, `ThreadInput`. The backend only sends; which writes
+  restart the mesh is core's `settings.impact`.
+- `network.remove` (delete network); `admins.transfer`.
+- `integrations`: `setBuiltin`, `setFfs`, `discoverZigbee`, `unlinkAmazon`.
+- `routing`: reservation, forward and pinhole add, update (not pinholes)
+  and remove, on `ReservationInput`, `ForwardInput`, `PinholeInput`. Core
+  resolves devices to MACs and addresses and validates ranges first.
+- `updates`: `install`, `setPreferredHour`.
+- `admins`: `createInvite` (`InviteCreated` with the invite url),
+  `cancelInvite`, `setNickname` (no member nickname endpoint is known),
+  `remove`, `transfer`.
+- `eero`: `portAction` (returns `EeroPorts`), `remove`, `placementTest`.
+- `diagnostics`: `run`, plus the `/2.4/` reads `coverageScan` and
+  `upgradeReport`, listed with the writes so their eero side can land with
+  M5.8.
+- `notifications.setSettings`: the full merged map, keys as sent.
+
+`WRITE_METHODS` in `backend.ts` lists each area's writes (and the three
+M5 reads above). An eero area
 file returns `PartialWrites<K>`: every read, and whichever writes are built.
 `composeBackend` wraps each area in `partialArea`, so a missing write
 answers "not available yet" instead of failing typecheck, and each wave-2

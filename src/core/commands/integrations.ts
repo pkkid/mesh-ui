@@ -18,7 +18,7 @@ export const commands: AnyCommand[] = [
     icon: "plug",
     params: z.object({}),
     effect: "query",
-    topic: "settings",
+    topic: "integrations",
     run: (ctx): Promise<M.Integrations> => ctx.backend.integrations.get(ctx.net),
   }),
 ];

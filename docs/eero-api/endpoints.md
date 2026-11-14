@@ -403,6 +403,46 @@ story.
 | `{net}/speedtest` | 200 | array of `{date: string, down_mbps: number, up_mbps: number}` | History shape for after `POST {net}/speedtest` (M4.9) |
 | `{net}/blacklist` | 200 | array (empty) | Block and unblock round-trips are fake-server only (M4.4) |
 
+**M4 manual check answers (M5.1, 2026-11-14).** The M4 review's manual
+checklist (`docs/reviews/M4.md`, Manual checks) was not ticked or answered
+when M5 started, so none of the open questions above is settled by it yet.
+The rows above stay as built, and each stays open until its check is run:
+
+| Question | As built | Settled by |
+|---|---|---|
+| `led_cycle` takes the serial or the id | serial (`/2.2/eeros/{serial}/led_cycle`), the id when an eero has no serial | M4 "Blink an eero": a 404 means it wants the id |
+| `hide_5g` shape while on | `PUT {net}/temporary_flags/hide_5g`, `DELETE` to end; reads accept a bool or `{expires_at}` | not in the M4 checklist; the clients' shape stands |
+| Schedule day form | sent as `MON`..`SUN`; reads accept both forms | M4 "Schedule": the eero app shows the right days |
+| Unassigned pause | `PUT {default profile}` `{paused}` | M4 "Pause and resume Unassigned" |
+| Nightlight shape | `PUT {nightlight.url}` JSON from the clients; every captured eero has `nightlight: null` | needs a Beacon; no check possible on the captured network |
+| Wi-Fi rename | `PUT {net}/settings` form `name` | skipped at the M4 review; carried as an M5.1 `MANUAL:` line |
+
+## 19. Real captures for M5 (2026-11-14)
+
+Before the M5 writes, one sequential read-only `GET` of each object they
+change, on the same network (the account has 1), recorded as key paths and
+types only. Values were never printed, except the one approved enum
+(`auto_setup_mode`) and eero's own `port_status` enum names, counted. No
+write was sent. The capture hook was a local, uncommitted patch that
+computed shapes in-process; it was reverted before the first commit.
+
+| Endpoint | Result | Key paths and types | What it settles |
+|---|---|---|---|
+| `{net}` (settings fields) | 200 | as section 17, plus `auto_setup_mode`: string, value `LTS`; `upnp`, `nat_port_randomization`, `ipv6_upstream`, `thread`, `sqm`, `band_steering`, `wpa3`, `power_saving`, `power_saving_schedule_enabled`, `ffs`, `amazon_account_linked`, `alexa_skill`, `amazon_device_nickname`, `enable_ndproxy`, `backup_internet_enabled`: bool; `mlo_mode`, `wireless_mode`, `wan_type`: string; `connection{mode}`; `lease{mode, dhcp, static}`; `dhcp{mode, custom, custom_v2}`; `dns{mode, parent, custom, caching, default_test_servers}`; `timezone{value, geo_ip}`; `updates{...}` as `{net}/updates`; `ddns{enabled, subdomain}`; `resources{..., forwards, reservations, routing, settings, thread, transfer, updates, ...}`; `capabilities` include `simple_setup`, `mlo_mode`, `nat_port_randomization`, `port_forward_range`, `ownership_transfer`, `thread_network`, `power_saving`, `scheduled_power_saving` | Simple Setup maps `LTS` to on (data-model.md). The off value is unknown: `settings.simple_setup.set` needs a MANUAL check (M5.3) |
+| `{net}/settings` | `eero_error` (no GET) | - | Only a write target; reads come from `{net}` |
+| `{net}/routing` | 200 | `url`; `devices{url, data[]{url, mac, nickname: string or null}}`; `reservations{url, data[]{url, device, mac, description, ip: string}}`; `forwards{url, data[]{url, ip, description, gateway_port, client_port, protocol: string, enabled: bool, reservation: string}}`; `pinholes{url, data: [] (empty)}` | Forward ports are **strings** inside `{net}/routing` (M5.5) |
+| `{net}/forwards` | 200 | array of `{url, ip, description, protocol, reservation: string, gateway_port, client_port: number, enabled: bool}` | The same rows with ports as **numbers**: accept both on read (M5.5) |
+| `{net}/reservations` | 200 | array of `{url, device, mac, description, ip: string}` | `device` is the device url (M5.5) |
+| `{net}/updates` | 200 | `preferred_update_hour`: number; `min_required_firmware`, `target_firmware`, `update_to_firmware`, `last_update_started`, `manifest_resource`: string; `update_required`, `can_update_now`, `has_update`: bool; `update_status`, `scheduled_update_time`: null; `last_user_update{last_update_started: string, unresponsive_eeros: [], incomplete_eeros: []}` | Hour is a number (M5.6) |
+| `{net}/members` | 200 | `members[]{user_id: number, user_role, user_name: string, user_tags: string[]}` | No nickname and no url per member: `admin.nickname.set` has no known endpoint (M5.6 drops it unless one is found) |
+| `{net}/invites` | 200 | array (empty) | Invite row shape still from the clients (M5.6) |
+| `{net}/admins` | `eero_error` (no GET) | - | `DELETE {net}/admins/{user_id}` stays from the clients (M5.6) |
+| `{net}/radio_settings` | 200 | array of `{eero_id: number, radio_settings{band_2_4GHz, band_5GHz_low, band_5GHz_high: {enabled: bool}}}` | No channel or auto-channel field: `Radio.autoChannel` stays null (M5.8) |
+| `{net}/notifications` | 200 | object of bool, keys `device.new`, `device.restrict.new.private`, `network.updated`, `network.dataUsageReport`, `permissions.updates`, `port.security.blocked`, `network.scheduledUpdate.earlyNotification`, `network.scheduledUpdate.lateNotification`, and Plus keys `premium.activity.weeklyReport`, `backup.internet.status.change`, `backup.wan.change` | Flat map, dotted keys as sent (M5.9) |
+| `{net}/app_events` | 200 | `events[]{hash: string, timestamp_ms: number, description: string, category: string}`; 5 rows, 0 with any device, eero, profile, node, mac or url key, top level or nested | No event carries a link: Activity row actions match by name only where unambiguous (M5.10) |
+| `{net}/profiles` (default row) | 200 | the `default: true` row has `schedule`: array (empty) and `resources{schedules: string}`, like every other profile | The default profile takes schedules the same way: Unassigned schedules can use its `resources.schedules` (M5.11; MANUAL check of a real write) |
+| `{eero}/connections` | 200 | `provide_device_power`: null; `node_actions`: []; `ports{layout{position_rank_order: number[], layout_type: string}, interfaces[]{interface_number: number, name, network_type, supported_speed, negotiated_speed, port_status, ethernet_address: string, actions[]{type: string, position: number}, capable_protocols: string[], disabled_protocols: [], connection_status[]{type: string, metadata{multiple_devices: object} or {advanced_attributes: object}}, is_upstream, is_sfp: bool, port_security{capable, enabled: bool, status, display_status: string}, providing_power, port_flap_info, sfp: null}}`; `wireless_devices[]{type, metadata{display_name, device_type, url}}` | `port_status` across every eero's ports: `DATA_CONNECTED` x3, `WAN` x1, `DISCONNECTED` x2, so a down port is `DISCONNECTED` (M5.7). Attachments sit in `connection_status[].metadata.multiple_devices` (M5.7) |
+
 ---
 
 ## API versions

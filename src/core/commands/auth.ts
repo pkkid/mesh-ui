@@ -67,6 +67,7 @@ export const commands: AnyCommand[] = [
       login: z.string().trim().min(1).max(254).describe("Email address, or phone number in E.164 form (+15550100142)."),
     }),
     effect: "write",
+    gate: { area: null },
     scope: "account",
     run: async (ctx, { login }) => {
       await ctx.backend.auth.start(normaliseLogin(login));
@@ -88,6 +89,7 @@ export const commands: AnyCommand[] = [
         .describe("The code eero sent."),
     }),
     effect: "write",
+    gate: { area: null },
     scope: "account",
     run: async (ctx, { code }) => {
       if (!(await ctx.backend.auth.status()).pending) {
@@ -109,6 +111,7 @@ export const commands: AnyCommand[] = [
     icon: "rotate-cw",
     params: z.object({}),
     effect: "write",
+    gate: { area: null },
     scope: "account",
     run: async (ctx) => {
       if (!(await ctx.backend.auth.status()).pending) {
@@ -132,6 +135,7 @@ export const commands: AnyCommand[] = [
     icon: "log-out",
     params: z.object({}),
     effect: "write",
+    gate: { area: null },
     scope: "account",
     run: async (ctx) => {
       await ctx.backend.auth.logout();

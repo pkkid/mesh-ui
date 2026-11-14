@@ -122,6 +122,7 @@ export const commands: AnyCommand[] = [
     icon: "power",
     params: z.object({}),
     effect: "write",
+    gate: { area: "settings", bridgeOff: true },
     invalidates: ["guest", "devices"],
     run: (ctx): Promise<M.GuestNetwork> => ctx.backend.guest.setEnabled(ctx.net, true),
   }),
@@ -133,6 +134,7 @@ export const commands: AnyCommand[] = [
     icon: "power-off",
     params: z.object({}),
     effect: "disruptive",
+    gate: { area: "settings", bridgeOff: true },
     invalidates: ["guest", "devices"],
     confirmMessage: (ctx) => guestsDropped(ctx, "Guests cannot join until it is turned back on."),
     run: (ctx): Promise<M.GuestNetwork> => ctx.backend.guest.setEnabled(ctx.net, false),
@@ -145,6 +147,7 @@ export const commands: AnyCommand[] = [
     icon: "pencil",
     params: z.object({ name: guestNameSchema }),
     effect: "disruptive",
+    gate: { area: "settings", bridgeOff: true },
     invalidates: ["guest", "devices"],
     async confirmMessage(ctx, { name }) {
       await checkName(ctx, name);
@@ -164,6 +167,7 @@ export const commands: AnyCommand[] = [
     icon: "key-round",
     params: z.object({ password: wifiPasswordSchema.nullable() }),
     effect: "disruptive",
+    gate: { area: "settings", bridgeOff: true },
     invalidates: ["guest", "devices"],
     confirmMessage: (ctx, { password }) =>
       password === null
