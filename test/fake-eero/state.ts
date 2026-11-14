@@ -535,7 +535,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     updates,
     wpa3PerBand: maple ? { band_2_4_ghz: "WPA2_WPA3", band_5_ghz: "WPA2_WPA3" } : { band_2_4_ghz: "WPA2", band_5_ghz: "WPA2" },
     fastTransition: { fast_transition: maple },
-    powerSavingSchedules: maple ? [{ url: `${netUrl}/power_saving/schedules/1`, id: 1, name: "Overnight", days: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"], start_time: "01:00", end_time: "06:00", enabled: true }] : [],
+    powerSavingSchedules: maple ? [{ url: `${netUrl}/power_saving/schedules/1`, id: 1, name: "Overnight", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], start_time: "01:00", end_time: "06:00", enabled: true }] : [],
     thread: maple
       ? { url: `${netUrl}/thread`, enabled: true, enable_credential_syncing: true, name: "FakeThread", xpan_id: "fa4efa4efa4efa4e", pan_id: "0xfa4e", channel: 15, master_key: "fake-thread-master-key-0000000001", commissioning_credential: "fake-thread-pskc-0000000000000001", border_agent: { ip: "192.168.4.1", port: 49191 } }
       : null,

@@ -140,25 +140,26 @@ function jsonBody(ctx: RouteContext): Record<string, unknown> {
   return ctx.req.body;
 }
 
-const DAYS = new Set(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
+/** As eero takes them on power saving schedules: "Monday" only; `MON` and "monday" are 400 `error.form.errors` (Eeronaut, live). */
+const DAYS = new Set(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** A power saving schedule body (`{name, days, start_time, end_time, enabled}`), or 400. */
 function scheduleOf(body: Record<string, unknown>): { name: string; days: string[]; start_time: string; end_time: string; enabled: boolean } {
   const { name, days, start_time, end_time, enabled } = body;
   if (typeof name !== "string" || name.trim() === "") bad("error.schedule.name.invalid");
-  if (!Array.isArray(days) || days.length === 0 || !days.every((d) => typeof d === "string" && DAYS.has(d))) bad("error.schedule.days.invalid");
+  if (!Array.isArray(days) || days.length === 0 || !days.every((d) => typeof d === "string" && DAYS.has(d))) bad("error.form.errors");
   if (typeof start_time !== "string" || !HHMM.test(start_time) || typeof end_time !== "string" || !HHMM.test(end_time)) bad("error.schedule.time.invalid");
   if (enabled !== undefined && !isBool(enabled)) bad("error.schedule.enabled.invalid");
   return { name: name as string, days: days as string[], start_time: start_time as string, end_time: end_time as string, enabled: enabled !== false };
 }
 
 /**
- * Whether the network's hardware can do it. A real network whose eeros lack
- * power saving reports `capabilities.power_saving` and
- * `scheduled_power_saving` as not capable (M5.R-fix4 capture), answers
- * `enable` with 403 and a new schedule with 400 `error.form.errors`, while
- * the schedule switch and deletes still answer 200.
+ * Whether the network's hardware can do it. A real network whose gateway
+ * lacks power saving reports `capabilities.power_saving` and
+ * `scheduled_power_saving` as not capable (M5.R-fix4 capture) and answers
+ * `enable` with 403, while the schedule switch and schedule deletes still
+ * answer 200.
  */
 const capable = (net: FakeNetwork, name: string) => net.network.capabilities?.[name]?.capable !== false;
 
@@ -222,7 +223,6 @@ export const routes: Route[] = [
     path: "/networks/:net/power_saving/schedules",
     handle: (ctx) => {
       const net = ctx.network(ctx.params.net ?? "");
-      if (!capable(net, "scheduled_power_saving")) bad("error.form.errors");
       const s = scheduleOf(jsonBody(ctx));
       const id = Math.max(0, ...net.powerSavingSchedules.map((x) => Number(x.id) || 0)) + 1;
       const saved = { url: `${net.network.url}/power_saving/schedules/${id}`, id, ...s };

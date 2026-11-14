@@ -714,10 +714,9 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     await bad("settings.timezone.set", { timezone: "" });
     await bad("settings.mlo.set", { mode: "max", confirm: true });
     await bad("settings.band_steering.set", { enabled: "yes" });
-    // Mom's House reports no MLO, power saving or Thread.
+    // Mom's House reports no MLO or Thread, and power_saving not capable (its schedules still work, as on a real network).
     expect(await code(engine.execute("settings.mlo.set", { networkId: MOM, mode: "single", confirm: true }))).toBe("bad_params");
     expect(await code(engine.execute("settings.power_saving.set", { networkId: MOM, enabled: true }))).toBe("bad_params");
-    expect(await code(engine.execute("settings.power_schedule.add", { networkId: MOM, name: "Night", days: ["MON"], start: "22:00", end: "06:00" }))).toBe("bad_params");
     expect(await code(engine.execute("settings.thread.set", { networkId: MOM, enabled: true }))).toBe("bad_params");
     expect(await code(engine.execute("settings.thread.credentials", { networkId: MOM }))).toBe("bad_params");
     expect(await code(engine.execute("settings.thread.reset", { networkId: MOM, confirm: true }))).toBe("bad_params");
@@ -800,26 +799,26 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
       "settings.fast_transition.set": ["write", g(), ["settings"]],
       "settings.mlo.set": ["disruptive", g(), ["settings", "network", "wifi"]],
       "settings.legacy_mode.set": ["disruptive", g(), ["settings", "network", "wifi"]],
-      "settings.power_saving.set": ["write", { ...g(), capability: "power_saving" }, ["settings"]],
+      "settings.power_saving.set": ["write", g(), ["settings"]],
       "settings.timezone.set": ["write", g(), ["settings", "network", "profiles"]],
       "settings.simple_setup.set": ["write", g(), ["settings"]],
       "settings.thread.set": ["write", g(), ["settings"]],
-      "settings.power_schedule.add": ["write", { ...g(), capability: "scheduled_power_saving" }, ["settings"]],
-      "settings.power_schedule.update": ["write", { ...g(), capability: "scheduled_power_saving" }, ["settings"]],
+      "settings.power_schedule.add": ["write", g(), ["settings"]],
+      "settings.power_schedule.update": ["write", g(), ["settings"]],
       "settings.power_schedule.remove": ["write", g("delete"), ["settings"]],
       "settings.thread.reset": ["destructive", g(), ["settings"]],
     });
   });
 
-  it("refuses Eco efficiency and new schedules with the hardware reason when eero reports them not capable", async () => {
+  it("refuses Eco efficiency with the hardware reason when eero reports power_saving not capable; schedules still work", async () => {
     const engine = demoEngine();
     const r = await engine.execute("settings.power_saving.set", { networkId: MOM, enabled: true });
     expect(r).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("does not support Eco efficiency") } });
-    const add = await engine.execute("settings.power_schedule.add", { networkId: MOM, name: "Night", days: ["MON"], start: "22:00", end: "06:00" });
-    expect(add).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("does not support power saving schedules") } });
-    // A leftover schedule can still be deleted, as on the real network.
+    // As on the real network: the schedule switch, adds and deletes are not refused.
+    await ok(engine.execute("settings.power_saving.set", { networkId: MOM, scheduleEnabled: true }));
+    await ok(engine.execute("settings.power_schedule.add", { networkId: MOM, name: "Night", days: ["MON"], start: "22:00", end: "06:00" }));
     await ok(engine.execute("settings.power_schedule.remove", { networkId: MOM, schedule: "At work" }));
-    expect((await settingsOf(engine, MOM)).powerSaving.schedules).toEqual([]);
+    expect((await settingsOf(engine, MOM)).powerSaving.schedules.map((x) => x.name)).toEqual(["Night"]);
   });
 });
 
@@ -910,7 +909,7 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     expect((await settingsOf(s.engine, N)).powerSaving.schedules.map((x) => [x.name, x.start, x.end])).toEqual([["Overnight", "01:00", "06:00"], ["Late night", "23:00", "05:30"]]);
     await ok(s.engine.execute("settings.power_schedule.update", { networkId: N, schedule: "Late night", enabled: false }));
     await ok(s.engine.execute("settings.power_schedule.remove", { networkId: N, schedule: "2" }));
-    const body = { name: "Late night", days: ["SAT", "SUN"], start_time: "23:00", end_time: "05:30", enabled: true };
+    const body = { name: "Late night", days: ["Saturday", "Sunday"], start_time: "23:00", end_time: "05:30", enabled: true };
     expect(sent(s.fake)).toEqual([
       req("POST", "/power_saving/schedules", body),
       req("PUT", "/power_saving/schedules/2", { ...body, enabled: false }),
@@ -919,32 +918,33 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     expect((await settingsOf(s.engine, N)).powerSaving.schedules.map((x) => x.name)).toEqual(["Overnight"]);
   });
 
-  // M5.R-fix4: on a real network without the hardware, eero sends capable false and answers `enable` with 403
-  // and a new schedule with 400 error.form.errors; the commands now refuse first, with the reason, and send nothing.
+  // M5.R-fix4: on a real network whose gateway lacks power saving, eero sends capable false and answers `enable`
+  // with 403; the command now refuses first, with the reason, and sends nothing. The schedule switch still answers.
   const INCAPABLE = "100002";
-  it("on hardware without power saving, Eco efficiency and Add schedule are refused before eero is called", async () => {
+  it("on hardware without power saving, Eco efficiency is refused before eero is called", async () => {
     const s = fakeEngine();
     fake = s.fake;
-    const caps = (await ok(s.engine.execute<M.Network>("network.get", { networkId: INCAPABLE }))).capabilities;
-    expect([caps.power_saving, caps.scheduled_power_saving]).toEqual([false, false]);
+    expect((await ok(s.engine.execute<M.Network>("network.get", { networkId: INCAPABLE }))).capabilities.power_saving).toBe(false);
     const eco = await s.engine.execute("settings.power_saving.set", { networkId: INCAPABLE, enabled: true });
     expect(eco).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("does not support Eco efficiency") } });
-    const add = await s.engine.execute("settings.power_schedule.add", { networkId: INCAPABLE, name: "Night", days: ["MON"], start: "23:00", end: "06:00" });
-    expect(add).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("does not support power saving schedules") } });
     expect(s.fake.writes).toEqual([]);
+    await ok(s.engine.execute("settings.power_saving.set", { networkId: INCAPABLE, scheduleEnabled: true }));
+    expect(sent(s.fake)).toEqual([{ ...req("PUT", "/power_saving", { power_saving_schedule_enabled: true }), path: `/2.2/networks/${INCAPABLE}/power_saving` }]);
   });
 
-  it("the fake answers like the real incapable network: 403 for enable, 400 error.form.errors for a new schedule", async () => {
+  it("the fake answers like the real API: 403 for enable on incapable hardware, 400 error.form.errors for MON or monday days", async () => {
     const f = createFakeEero({ now: () => NOW });
     fake = f;
     const token = f.signIn();
-    const send = (method: string, path: string, body: unknown) =>
-      f.fetch(`${f.origin}/2.2/networks/${INCAPABLE}${path}`, { method, headers: { "content-type": "application/json", cookie: `s=${token}` }, body: JSON.stringify(body) });
-    expect((await send("PUT", "/power_saving", { enable: true })).status).toBe(403);
-    const post = await send("POST", "/power_saving/schedules", { name: "Night", days: ["MON"], start_time: "23:00", end_time: "06:00", enabled: true });
-    expect(post.status).toBe(400);
-    expect(((await post.json()) as { meta: { error: string } }).meta.error).toBe("error.form.errors");
-    expect((await send("PUT", "/power_saving", { power_saving_schedule_enabled: true })).status).toBe(200);
+    const send = (net: string, method: string, path: string, body: unknown) =>
+      f.fetch(`${f.origin}/2.2/networks/${net}${path}`, { method, headers: { "content-type": "application/json", cookie: `s=${token}` }, body: JSON.stringify(body) });
+    expect((await send(INCAPABLE, "PUT", "/power_saving", { enable: true })).status).toBe(403);
+    for (const days of [["MON"], ["monday"]]) {
+      const post = await send(N, "POST", "/power_saving/schedules", { name: "Night", days, start_time: "23:00", end_time: "06:00", enabled: true });
+      expect(post.status, days[0]).toBe(400);
+      expect(((await post.json()) as { meta: { error: string } }).meta.error).toBe("error.form.errors");
+    }
+    expect((await send(N, "POST", "/power_saving/schedules", { name: "Night", days: ["Monday"], start_time: "23:00", end_time: "06:00", enabled: true })).status).toBe(200);
   });
 
   it("a time zone eero answers 200 for but does not keep is an eero_error, not a saved toast", async () => {

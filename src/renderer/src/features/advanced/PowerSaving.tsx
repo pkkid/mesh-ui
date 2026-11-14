@@ -7,8 +7,9 @@
  * runs `.remove` with an Undo that adds it back. An end before the start
  * wraps past midnight ("next day"). Validation is core's (bad_params lands
  * under the field). docs/ux/pages/advanced-networking.md (Network services),
- * mockup 13. On hardware eero reports as not capable (`power_saving`,
- * `scheduled_power_saving`), the gates dim both rows and the first says why.
+ * mockup 13. On a gateway eero reports as not `power_saving` capable, the
+ * Eco efficiency row dims and says why; the schedule switch and schedules
+ * still work there, as on a real network.
  */
 import { CalendarPlus, Leaf, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -69,19 +70,16 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   const clock = networkClock(timezone);
   const parts = clock.parts(now);
   const minute = parts.hour * 60 + Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone ?? "UTC", minute: "numeric" }).format(now));
-  const eco = useSettingsWrite<PowerParams>("settings.power_saving.set", "Eco efficiency", offline);
-  // eero reports power_saving not capable on hardware without it (and refuses the write): say so, keep the rows dim.
-  const incapable = eco.gate.reason === NOT_AVAILABLE;
-  const unsupported = incapable || (settings !== undefined && ps?.enabled === null && ps.scheduleEnabled === null);
+  const ecoWrite = useSettingsWrite<PowerParams>("settings.power_saving.set", "Eco efficiency", offline);
+  // eero reports power_saving not capable on a gateway without it and refuses `enable` (403): dim Eco and say why.
+  const ecoCapable = useGate({ area: "settings", capability: "power_saving" });
+  const incapable = ecoCapable.reason === NOT_AVAILABLE;
+  const eco = incapable ? { ...ecoWrite, gate: ecoCapable } : ecoWrite;
+  const unsupported = settings !== undefined && ps?.enabled === null && ps.scheduleEnabled === null;
   const sched = useSettingsWrite<PowerParams>("settings.power_saving.set", "the power saving schedule", offline);
   const baseGate = useGate("settings.power_schedule.add");
   const addGate = baseGate.allowed && offline ? { allowed: false, reason: OFFLINE } : baseGate;
   const [sheet, setSheet] = useState<SheetMode | null>(null);
-  // Without the hardware, schedules cannot be added or edited, but eero still deletes leftovers.
-  const removeBase = useGate("settings.power_schedule.remove");
-  const removeGate = removeBase.allowed && offline ? { allowed: false, reason: OFFLINE } : removeBase;
-  const removeOnly = !addGate.allowed && removeGate.allowed;
-  const remove = useWrite<{ schedule: string }>("settings.power_schedule.remove", { confirmIn: "dialog" });
 
   const flip = (w: typeof eco, key: keyof PowerParams, what: string) => (on: boolean) =>
     void w.write.run(
@@ -94,7 +92,7 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
       <Row
         title="Eco efficiency"
         description={incapable ? "Your eero hardware does not support power saving" : "Use less power when nobody needs full speed"}
-        dim={unsupported}
+        dim={unsupported || incapable}
         control={<WriteSwitch on={ps?.enabled} label="Eco efficiency" gate={eco.gate} busy={eco.write.running} onToggle={flip(eco, "enabled", "Eco efficiency")} />}
       />
       <Row
@@ -103,7 +101,7 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
         dim={unsupported}
         control={<WriteSwitch on={ps?.scheduleEnabled} label="Power saving schedule" gate={sched.gate} busy={sched.write.running} onToggle={flip(sched, "scheduleEnabled", "The power saving schedule")} />}
       >
-        {(!unsupported || schedules.length > 0) && (
+        {!unsupported && (
           <SubPanel className="flex flex-col gap-3">
             {schedules.length === 0 ? (
               <span className="text-muted-foreground text-xs">{settings ? "No power saving schedules yet." : " "}</span>
@@ -119,26 +117,9 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
                       {s.enabled ? "" : " · off"}
                     </span>
                     <span className="ms-auto">
-                      {removeOnly ? (
-                        <GatedButton
-                          size="icon-xs"
-                          variant="ghost-muted"
-                          gate={removeGate}
-                          aria-label={`Delete ${s.name}`}
-                          onClick={() =>
-                            void remove.run(
-                              { schedule: s.id },
-                              { askFirst: true, confirm: { title: `Delete ${s.name}?`, message: "This eero hardware cannot add it back.", confirmLabel: "Delete schedule" }, success: `Deleted ${s.name}` },
-                            )
-                          }
-                        >
-                          <Trash2 />
-                        </GatedButton>
-                      ) : (
-                        <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
-                          <Pencil />
-                        </GatedButton>
-                      )}
+                      <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
+                        <Pencil />
+                      </GatedButton>
                     </span>
                   </li>
                 ))}

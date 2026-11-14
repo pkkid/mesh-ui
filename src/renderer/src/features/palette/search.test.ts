@@ -7,7 +7,7 @@ import { mapPermissions } from "../../../../core/eero/map/network";
 import type { DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import { allCommands, type CommandInfo } from "../../../../core/registry";
 import { type AnyCommand, defineCommand, ref } from "../../../../core/spec";
-import { BRIDGE_OFF, type ConfirmAsk, NO_PERMISSION, NOT_AVAILABLE, performWrite, type WriteDeps } from "../../app/useWrite";
+import { BRIDGE_OFF, type ConfirmAsk, gateFor, NO_PERMISSION, NOT_AVAILABLE, performWrite, type WriteDeps } from "../../app/useWrite";
 import { toast } from "../../components/ui/toast";
 import {
   availability,
@@ -412,18 +412,17 @@ describe("dimming writes on the real permissions shape", () => {
     expect(commandUnavailable(del, null, { ...network, role: null })).toBeNull();
   });
 
-  // M5.R-fix4: the owner's Eco efficiency was refused by eero (403), not by this gate: the demo network
-  // reported power_saving capable, so the capability half of the gate never ran on a real-shaped network.
-  // A real network whose hardware lacks it sends power_saving and scheduled_power_saving capable false.
-  it("on a real-shaped network without power saving hardware, the owner sees Not available, never a role reason", async () => {
+  // M5.R-fix4: the owner's Eco efficiency was refused by eero (403), not by this gate: the role gate was right,
+  // and nothing checked the power_saving capability, which a real network without the hardware sends as false.
+  it("on a real-shaped network without power saving hardware, the owner sees Not available for Eco only, never a role reason", async () => {
     const t = writeSetup();
     const demo = await read<Network>(t.engine, "network.get");
     const network: Network = { ...demo, role: "owner", capabilities: { ...demo.capabilities, power_saving: false, scheduled_power_saving: false } };
-    for (const id of ["settings.power_saving.set", "settings.power_schedule.add", "settings.power_schedule.update"]) {
-      expect(commandUnavailable(info(t.commands, id), REAL_OWNER, network), id).toBe(NOT_AVAILABLE);
+    // The page dims the Eco switch on the capability; the command's own gate leaves the schedule switch usable.
+    for (const id of ["settings.power_saving.set", "settings.power_schedule.add", "settings.power_schedule.update", "settings.power_schedule.remove", "settings.timezone.set"]) {
+      expect(commandUnavailable(info(t.commands, id), REAL_OWNER, network), id).toBeNull();
     }
-    expect(commandUnavailable(info(t.commands, "settings.power_schedule.remove"), REAL_OWNER, network)).toBeNull();
-    expect(commandUnavailable(info(t.commands, "settings.timezone.set"), REAL_OWNER, network)).toBeNull();
+    expect(gateFor({ area: "settings", capability: "power_saving" }, REAL_OWNER, network)).toEqual({ allowed: false, reason: NOT_AVAILABLE });
     const reasons = t.commands.filter((c) => c.effect !== "query" && c.scope === "network").map((c) => commandUnavailable(c, REAL_OWNER, network));
     expect(reasons.filter((r) => r === NO_PERMISSION || r === "Owner only")).toEqual([]);
   });
