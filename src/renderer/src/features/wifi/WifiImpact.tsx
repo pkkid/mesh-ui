@@ -1,12 +1,12 @@
 /**
  * Impact of saving a Wi-Fi change, from `wifi.impact`: devices that drop and
  * must rejoin (warning colour), smart home devices that may need their own
- * app or WPA2 only devices that cannot rejoin, the restart estimate, the
- * names, and what stays fine. Shown in the name and password sheet, under a
- * staged security change and before 2.4 GHz only. Every figure and sentence
+ * app or WPA2 only devices that cannot rejoin, the summary from core (with
+ * any restart estimate), the names, and what stays fine. Shown in the name
+ * and password sheet, under a staged security change and before 2.4 GHz only. Every figure and sentence
  * comes from core. docs/ux/pages/wifi.md (Side panel 1).
  */
-import { Check, TriangleAlert } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { useQuery } from "~/app/useCommand";
 import { cn } from "~/lib/utils";
@@ -72,9 +72,9 @@ export function WifiImpact({ params, className }: { params: ImpactParams | null;
             <Figure label="Devices disconnect" value={impact ? impact.reconnect.length : null} tone="warning" />
             {security ? (
               <Figure label="Can't rejoin (WPA2 only)" value={impact ? impact.drop.length : null} tone="destructive" />
-            ) : (
+            ) : params.change !== "hide5g" ? (
               <Figure label="May need their own app" value={impact ? impact.needsSetup.length : null} />
-            )}
+            ) : null}
           </div>
           {impact && (
             <p className="text-foreground/80 text-xs">
@@ -82,12 +82,6 @@ export function WifiImpact({ params, className }: { params: ImpactParams | null;
               {impact.drop.length > 0 && <span className="text-muted-foreground"> {names(impact.drop)}.</span>}
               {!security && impact.needsSetup.length > 0 && <span className="text-muted-foreground"> {names(impact.needsSetup)}.</span>}
             </p>
-          )}
-          {impact?.restart && (
-            <div className="flex items-center gap-1.5 text-xs">
-              <TriangleAlert aria-hidden className="size-3.5 shrink-0 text-warning-foreground" />
-              eeros restart, {impact.restart}
-            </div>
           )}
           {fine.length > 0 && (
             <ul className="flex flex-col gap-1 text-muted-foreground text-xs">

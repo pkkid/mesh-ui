@@ -374,9 +374,9 @@ describe("wifi writes (demo)", () => {
       if (!r.ok) expect(r.error.message).not.toContain(NEW_PASSWORD);
     }
     const name = await engine.execute("wifi.name.set", { networkId: MAPLE, name: "Maple Street 2" });
-    expect(name.ok ? "" : name.error.message).toMatch(/^Rename the Wi-Fi to "Maple Street 2"\? \d+ wireless devices drop and must rejoin with the new name\./);
+    expect(name.ok ? "" : name.error.message).toMatch(/^The Wi-Fi becomes "Maple Street 2"\. \d+ wireless devices drop and must rejoin with the new name\./);
     const sec = await engine.execute("wifi.security.set", { networkId: MAPLE, band5: "WPA3" });
-    expect(sec.ok ? "" : sec.error.message).toContain("eeros restart to apply it, about 2 to 3 minutes");
+    expect(sec.ok ? "" : sec.error.message).toContain("Every device drops while eeros restart to apply it, about 2 to 3 minutes.");
     expect(await ok(engine.execute<M.WifiSettings>("wifi.get", { networkId: MAPLE }))).toMatchObject({ ssid: "Maple Street", security: { "5": "WPA2_WPA3" }, hide5g: { active: false } });
     expect(await ok(engine.execute<WifiPassword>("wifi.password.get", { networkId: MAPLE }))).toMatchObject({ password: "maple-cedar-orbit-27" });
   });

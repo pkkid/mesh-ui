@@ -146,7 +146,7 @@ export function wifiImpact(
     }
     summary = !changed.length
       ? "Nothing changes."
-      : `eeros restart to apply it, ${restart}; every device drops meanwhile.${drop.length ? ` ${plural(drop.length, "device")} only ${drop.length === 1 ? "speaks" : "speak"} WPA2 and will not rejoin.` : ""}`;
+      : `Every device drops while eeros restart to apply it, ${restart}.${drop.length ? ` ${plural(drop.length, "device")} only ${drop.length === 1 ? "speaks" : "speak"} WPA2 and will not rejoin.` : ""}`;
   }
 
   const needsSetup = change === "name" || change === "password" ? reconnect.filter((d) => d.category === "smart_home") : [];
@@ -285,7 +285,7 @@ export const commands: AnyCommand[] = [
     invalidates: ["settings", "network"],
     confirmMessage: async (ctx, p) => {
       await checkName(ctx, p.name);
-      return `Rename the Wi-Fi to "${p.name}"? ${(await impactFor(ctx, "name")).summary}`;
+      return `The Wi-Fi becomes "${p.name}". ${(await impactFor(ctx, "name")).summary}`;
     },
     run: async (ctx, p): Promise<M.WifiSettings> => {
       await checkName(ctx, p.name);
@@ -301,7 +301,7 @@ export const commands: AnyCommand[] = [
     params: passwordParams,
     effect: "disruptive",
     invalidates: ["settings"],
-    confirmMessage: async (ctx) => `Change the Wi-Fi password? ${(await impactFor(ctx, "password")).summary}`,
+    confirmMessage: async (ctx) => (await impactFor(ctx, "password")).summary,
     run: (ctx, p): Promise<M.WifiSettings> => ctx.backend.wifi.setPassword(ctx.net, p.password),
   }),
   defineCommand({
@@ -313,7 +313,7 @@ export const commands: AnyCommand[] = [
     params: securityParams,
     effect: "disruptive",
     invalidates: ["settings", "guest"],
-    confirmMessage: async (ctx, p) => `Change Wi-Fi security? ${(await impactFor(ctx, "security", p)).summary}`,
+    confirmMessage: async (ctx, p) => (await impactFor(ctx, "security", p)).summary,
     run: async (ctx, p): Promise<M.WifiSettings> => {
       const wifi = await ctx.backend.wifi.get(ctx.net);
       const target = securityTarget(wifi, p);
@@ -330,7 +330,7 @@ export const commands: AnyCommand[] = [
     effect: "disruptive",
     invalidates: ["settings", "devices"],
     confirmMessage: async (ctx, p) =>
-      p.enabled ? `Hide 5 and 6 GHz for a while? ${(await impactFor(ctx, "hide5g")).summary}` : "Turn 2.4 GHz only off? 5 and 6 GHz come back and devices move back on their own.",
+      p.enabled ? `5 and 6 GHz are hidden for a while. ${(await impactFor(ctx, "hide5g")).summary}` : "5 and 6 GHz come back, and devices move back to them on their own.",
     run: (ctx, p): Promise<M.WifiSettings> => ctx.backend.wifi.setHide5g(ctx.net, p.enabled),
   }),
 ];
