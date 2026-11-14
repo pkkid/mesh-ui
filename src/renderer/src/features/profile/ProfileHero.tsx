@@ -2,17 +2,15 @@
  * Profile detail hero (docs/ux/pages/profile-detail.md, Layout 1): the
  * initial in the profile colour, name, state and the next scheduled change
  * (both from `profile.get`, computed in core), devices, last 7 days and
- * scheduled off-time, and the Pause / Resume button (disabled until the
- * profile writes land). States: active, scheduled, in a scheduled pause,
+ * scheduled off-time, and the Pause / Resume button (`profile.pause` and
+ * `profile.resume`, with Undo). States: active, scheduled, in a scheduled pause,
  * paused (manual) and no devices.
  */
-import { Pause, Play } from "lucide-react";
-
 import { useQuery } from "~/app/useCommand";
 import { Metric, PageHeader } from "~/components/ui/hero";
-import { ComingSoonButton, useNow } from "~/components/ui/page";
+import { useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
-import { PROFILE_STATE } from "~/features/profiles/ProfileCards";
+import { PROFILE_STATE, ProfilePauseButton } from "~/features/profiles/ProfileCards";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount } from "../../../../core/format";
 import type { Profile, UsageSeries } from "../../../../core/model";
@@ -34,17 +32,7 @@ export function ProfileHero({ profile: p, color, timezone, fading }: Props) {
   const total = week.data ? week.data.total.down + week.data.total.up : null;
   const possessive = name ? `${name}'s` : "the";
 
-  const action = p?.paused ? (
-    <ComingSoonButton size="lg" variant="outline" className="w-full">
-      <Play />
-      Resume profile
-    </ComingSoonButton>
-  ) : (
-    <ComingSoonButton size="lg" variant="outline" className="w-full" title={devices === 0 ? "Add a device first" : "Coming soon"}>
-      <Pause />
-      Pause profile
-    </ComingSoonButton>
-  );
+  const action = p ? <ProfilePauseButton profile={p} size="lg" variant={p.paused ? "default" : "outline"} className="w-full" /> : null;
   const hint = p?.paused
     ? `Resuming during a scheduled pause keeps ${name || "it"} online until the next scheduled pause.`
     : devices === 0

@@ -76,7 +76,7 @@ count: number of profiles, not counting Unassigned.
 | Card (click outside buttons) | - | - | No | Profile detail |
 | Pause (card) | `profile.pause {profile}` | write | No | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
 | Resume (card) | `profile.resume {profile}` | write | No | Card Active (or Scheduled); during a scheduled pause, stays online until the next scheduled start |
-| `...` menu: Rename | `profile.rename {profile, name}` | write | No | Inline edit of the card name |
+| `...` menu: Rename | `profile.rename {profile, name}` | write | No | Rename sheet (name only); toast with Undo |
 | `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | No | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
 | `...` menu: Delete profile... | `profile.delete {profile, confirm: true}` | destructive | Yes, type-to-confirm dialog | Devices move to Unassigned |
 | Lane segment | - | - | No | Tooltip "Bedtime · 9:00 PM to 7:00 AM"; click opens the profile |
@@ -87,11 +87,21 @@ count: number of profiles, not counting Unassigned.
 | New profile from selection | `profile.create {name, devices}` | write | No | Name sheet prefilled with the selection |
 | Pause unassigned | `profile.unassigned.pause {}` | write | Yes, UI inline ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
 
-Until the profile writes land, every control in this table that runs a
-`write` command shows disabled with a "Coming soon" tooltip: Add a profile,
-Pause all, Pause and Resume, the `...` menu, avatars on unassigned tiles, New
-profile from selection and Pause unassigned. Card clicks, lane segments and
-tile double-clicks navigate as described.
+Built in M4.5: Add a profile (sheet with name and a device picker:
+unassigned first, then others with "Moves from Alex"; Save opens the new
+profile), Pause all (dialog; one toast with Undo that resumes them all; off
+with "Every profile is paused" when there is nothing to pause), Pause and
+Resume per card with Undo, the `...` menu (Rename sheet and Delete
+profile...), and Pause unassigned (inline confirm naming up to three
+devices, online first; the button becomes Resume unassigned). Unassigned
+devices has an **Open** link to the Unassigned page
+(`#/profiles/unassigned`, see [profile-detail.md](profile-detail.md)).
+Every write control dims by the `profiles` permission and bridge mode.
+
+Still "Coming soon": avatars on unassigned tiles (they run
+`device.profile.set`, M4.4's command), tile selection and New profile from
+selection, and the menu's Add a scheduled pause (M4.12). Card clicks, lane
+segments and tile double-clicks navigate as described.
 
 ## States
 

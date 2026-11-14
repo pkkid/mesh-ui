@@ -454,6 +454,9 @@ export type PausesToday = {
 /** Result of profile.list. */
 export type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices; today: PausesToday };
 
+/** Result of profile.get: the profile and its lane of today's pauses (as in `profile.list`). */
+export type ProfileDetail = Profile & { today: Omit<PausesToday, "lanes"> & { segments: PauseSegment[] } };
+
 // ---------------------------------------------------------------------------
 // Guest and Wi-Fi
 
