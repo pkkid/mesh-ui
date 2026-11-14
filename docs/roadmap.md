@@ -939,7 +939,7 @@ restarts the network says so in its risk field.
 - scope: `eero.port.action` (only actions in the port's `actions[]`, disruptive) and `eero.remove` (destructive, refuses the gateway unless it is the only eero). Carried from M2: a list of attachments per port, the down or disabled `port_status` from the M5.1 capture, firmware history paging past 50 rows. Runs after M5.1, which also edits `test/fake-eero/routes/eeros.ts`.
 - done when: demo and fake-server tests incl. refused actions, the gateway rule and `needs_confirm`; several attachments on one port in demo and `--fake`; `pnpm ui:shot` of the port menu and remove dialog, light and dark; `MANUAL: restart PoE on a port with nothing critical | ... | the device power cycles | that port's device drops`.
 
-### M5.8 Troubleshooting tools ☐
+### M5.8 Troubleshooting tools ✅ (#174)
 - issue: [#145](https://github.com/pkkid/mesh-ui/issues/145)
 - after: M5.1
 - docs: ux/pages/troubleshooting.md, architecture/commands.md (diagnostics, eero coverage)
