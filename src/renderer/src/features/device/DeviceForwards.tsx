@@ -28,7 +28,7 @@ const PROTOCOL: Record<Protocol, string> = { tcp: "TCP", udp: "UDP", both: "TCP+
 const GRID = "grid grid-cols-[minmax(0,1fr)_7rem_4.5rem_1.75rem] items-center gap-3";
 
 export function DeviceForwards({ view, id }: { view: DeviceView; id: string }) {
-  const forwards = useQuery<ForwardList>("forward.list", { device: id }, { poll: 60 });
+  const forwards = useQuery<ForwardList>("forward.list", { device: id }, { poll: true });
   const rows = forwards.data?.forwards;
   const blocked = view.device?.blocked === true;
   const [sheet, setSheet] = useState<ForwardSheetMode | null>(null);

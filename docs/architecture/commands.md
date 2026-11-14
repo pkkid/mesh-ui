@@ -425,22 +425,31 @@ pinhole may not overlap another on the same device. Guest devices take no
 reservation, forward or pinhole. The eero backend reads routing back after
 each write (eero's write answers are not captured) and sends a PUT as the
 whole row. Forward ports are strings in `{net}/routing` and numbers in
-`{net}/forwards`; the mapper takes both.
+`{net}/forwards`; the mapper takes both. The lists poll every 60 s
+(`POLL.routing`), since the eero app changes them too.
+
+A remove whose ref is shaped like an id (no spaces, a digit) and matches
+nothing eero lists now answers `alreadyGone: true` with a null row instead
+of `bad_params`: it was removed elsewhere, and the write still refreshes the
+lists. A name with no match is still `bad_params`. When eero refuses a
+DELETE (404 or its own code) and a fresh routing read no longer lists the
+row, the eero backend counts it as removed; if the row is still there the
+error stands.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `reservation.list` | Reservations | `{}` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ reservations: Reservation[], lan: LanMap \| null, leases: string[], unavailable: string \| null }`: reservations A to Z, joined to devices, plus the LAN map (subnet, DHCP pool, static range, leased count) and `leases`, the addresses behind the leased count in address order, for the address map. |
 | `reservation.add` | Add a reservation | `{ device?: Ref, mac?: string, ip?: string, description?: string }` | w | `POST {net}/reservations` JSON `{description, mac, ip}` | One of `device` or `mac`. Without `ip`: the device's current IPv4 when free, else the first free address in the static range. A device or MAC that already has one fails. Returns the `Reservation`. eero's `error.reservation.ip.invalid` and `error.assignment.ip.unavailable` map to `bad_params`. |
 | `reservation.update` | Edit reservation | `{ reservation: Ref, ip?, description? }` | w | `PUT {net}/reservations/{id}` JSON `{description, mac, ip}` (whole row) | `reservation` matches id, MAC, IP, description or the device's name. Forwards on the old address follow it. Returns the `Reservation`. |
-| `reservation.remove` | Remove reservation | `{ reservation: Ref, removeForwards?: boolean }` | w | `DELETE {net}/reservations/{id}?delete_forwards=true\|false` | `removeForwards` defaults to false. Returns `{ reservation, removedForwards: Forward[] }` for Undo. |
+| `reservation.remove` | Remove reservation | `{ reservation: Ref, removeForwards?: boolean }` | w | `DELETE {net}/reservations/{id}?delete_forwards=true\|false` | `removeForwards` defaults to false. Returns `{ reservation, removedForwards: Forward[], alreadyGone }` for Undo; `reservation` is null when `alreadyGone`. |
 | `forward.list` | Port forwards | `{ device?: Ref }` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ forwards: Forward[], unavailable: string \| null }`, by external port, optionally for one device (device detail). An unknown device is `bad_params`. |
 | `forward.add` | Add port forward | `{ device: Ref, externalPort: PortSpec, internalPort?: PortSpec, protocol: "tcp" \| "udp" \| "both", description: string, enabled?: boolean }` | w | `POST {net}/reservations` if the device has none, then `POST {net}/forwards` JSON `{ip, gateway_port, client_port, protocol, description, enabled}` | `internalPort` defaults to `externalPort`, `enabled` to true, `description` 1 to 64 characters. Runs `forward.validate`'s checks. Returns `{ forward, reservation: Reservation \| null }` (the reservation it made). |
 | `forward.validate` **(added)** | Check port forward | `{ device: Ref, externalPort: PortSpec, internalPort?: PortSpec, protocol: "tcp" \| "udp" \| "both", forward?: Ref }` | q | none beyond the routing reads | `{ ok, issues: { field, message }[], needsReservation }`. Same checks `forward.add` and `forward.update` run (port bounds, range length, range capability, overlap with forwards of an overlapping protocol, a device that can take a reservation). `forward` is the one being edited, excluded from the overlap check. Cached on the `routing` topic. |
 | `forward.update` | Edit port forward | `{ forward: Ref, device?, externalPort?, internalPort?, protocol?, description?, enabled? }` | w | `PUT {net}/forwards/{id}` (whole row); `POST {net}/reservations` first when moved to a device without one | Also the Enabled switch. A new `externalPort` moves `internalPort` with it when they were equal. Returns the `Forward`. |
-| `forward.remove` | Remove port forward | `{ forward: Ref }` | w | `DELETE {net}/forwards/{id}` | The reservation stays. Returns the removed `Forward` for Undo. |
+| `forward.remove` | Remove port forward | `{ forward: Ref }` | w | `DELETE {net}/forwards/{id}` | The reservation stays. Returns `{ forward, alreadyGone }`, the removed `Forward` for Undo (null when `alreadyGone`). |
 | `pinhole.list` | IPv6 firewall rules | `{}` | q | `GET {net}`, `GET {net}/routing`, `GET {net}/devices` | `{ pinholes: Pinhole[], unavailable: string \| null }`, by port. Each pinhole is joined to its device by id or MAC; a missing address takes the device's first global IPv6. Empty on a real network so far ([endpoints.md section 17](../eero-api/endpoints.md)). |
 | `pinhole.add` | Add IPv6 rule | `{ device: Ref, protocol: "tcp" \| "udp" \| "both", port: PortSpec }` | w | `POST {net}/ipv6/pinholes` JSON `{device: url, protocol, port}` | Returns the `Pinhole`. |
-| `pinhole.remove` | Remove IPv6 rule | `{ pinhole: Ref }` | w | `DELETE {pinhole url}` (the url routing lists; `{net}/ipv6/pinholes/{id}` without one) | `pinhole` is its id or `device name:port`. Returns the removed `Pinhole` for Undo. |
+| `pinhole.remove` | Remove IPv6 rule | `{ pinhole: Ref }` | w | `DELETE {pinhole url}` (the url routing lists; `{net}/ipv6/pinholes/{id}` without one) | `pinhole` is its id or `device name:port`. Returns `{ pinhole, alreadyGone }`, the removed `Pinhole` for Undo (null when `alreadyGone`). |
 
 ### updates (`commands/updates.ts`)
 

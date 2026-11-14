@@ -23,6 +23,8 @@ export const POLL = {
   events: 60,
   /** notifications.list */
   notifications: 60,
+  /** reservation.list, forward.list, pinhole.list (rules change in the eero app too) */
+  routing: 60,
   /** usage.get, usage.breakdown */
   usage: 300,
   /** updates.get on the Updates page */
@@ -69,7 +71,7 @@ export const TTL: Record<Topic, number> = {
   settings: 2 * MIN,
   wifi: 2 * MIN,
   integrations: 2 * MIN,
-  routing: 2 * MIN,
+  routing: 30,
   updates: 5 * MIN,
   release_notes: 6 * 60 * MIN,
   speedtest: 5 * MIN,

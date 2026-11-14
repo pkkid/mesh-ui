@@ -124,7 +124,9 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
   command (from `src/core/poll.ts`), a number polls every that many
   seconds, and `enabled: false` skips the query. While the window is hidden
   polls stretch to at least 5 minutes, and it refetches at once when shown;
-  a `rate_limited` error waits at least `retryAfterSec`.
+  a `rate_limited` error waits at least `retryAfterSec`. A view that opens
+  on polled data older than its interval (it was closed meanwhile)
+  refetches at once instead of showing it until the next poll.
 - **`useWrite(id, options)`** is how a control runs a write. It returns
   `{ run, running, error, asking, confirming, answer }` and handles what
   every page would otherwise repeat: the confirm flow (below), a progress

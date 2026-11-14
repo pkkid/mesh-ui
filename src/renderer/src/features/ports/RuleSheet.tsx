@@ -20,7 +20,7 @@ import { Segmented } from "~/components/ui/segmented";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { Toggle } from "~/features/profile/ProfileSchedules";
 import { cn } from "~/lib/utils";
-import type { ForwardAdded, ForwardCheck, ReservationRemoved } from "../../../../core/commands/routing";
+import type { ForwardAdded, ForwardCheck, ForwardRemoved, PinholeRemoved, ReservationRemoved } from "../../../../core/commands/routing";
 import type { Device, DeviceList, Forward, Internet, Pinhole, Protocol, Reservation } from "../../../../core/model";
 
 const PROTOCOLS = [
@@ -166,10 +166,12 @@ export function removeReservation(r: Reservation, name: string) {
           : `${name} takes a DHCP address next time it joins. Applies instantly, no restart.`,
       confirmLabel: n > 0 ? `Remove reservation and ${n === 1 ? "forward" : "forwards"}` : "Remove reservation",
     },
-    success: `Removed the reservation for ${name}`,
+    // Removed elsewhere (the eero app) since the list was read: core says so, the list refreshes.
+    success: (res) => (res.alreadyGone ? `The reservation for ${name} was already removed` : `Removed the reservation for ${name}`),
     failure: `Couldn't remove the reservation for ${name}`,
     // Undo puts the reservation back; removed forwards are gone for good, so no Undo then.
-    undo: (res) => (res.removedForwards.length ? null : { id: "reservation.add", params: { mac: res.reservation.mac, ip: res.reservation.ip, description: res.reservation.name } }),
+    undo: (res) =>
+      res.reservation && !res.removedForwards.length ? { id: "reservation.add", params: { mac: res.reservation.mac, ip: res.reservation.ip, description: res.reservation.name } } : null,
     id: "reservation.remove",
   });
 }
@@ -346,17 +348,19 @@ export function setForwardEnabled(f: Forward, enabled: boolean) {
   });
 }
 
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 /** Removes a forward after a confirm, with Undo that adds it back. */
 export function removeForward(f: Forward) {
   const name = f.name || "this port forward";
-  return performWrite<Record<string, unknown>, Forward>({
+  return performWrite<Record<string, unknown>, ForwardRemoved>({
     params: { forward: f.id },
     askFirst: true,
     confirm: { title: `Remove ${name}?`, message: `Port ${f.externalPort} closes on the internet side. Applies instantly, no restart.`, confirmLabel: "Remove port forward" },
-    success: `Removed ${name}`,
+    success: (res) => (res.alreadyGone ? `${capitalize(name)} was already removed` : `Removed ${name}`),
     failure: `Couldn't remove ${name}`,
-    undo: (r) =>
-      r.deviceId
+    undo: ({ forward: r }) =>
+      r?.deviceId
         ? { id: "forward.add", params: { device: r.deviceId, description: r.name || "Port forward", externalPort: r.externalPort, internalPort: r.internalPort, protocol: r.protocol, enabled: r.enabled } }
         : null,
     id: "forward.remove",
@@ -417,13 +421,13 @@ function PinholeBody({ deviceId: initial, onClose }: { deviceId?: string; onClos
 
 /** Removes an IPv6 rule after a confirm, with Undo that adds it back. */
 export function removePinhole(p: Pinhole, deviceName: string) {
-  return performWrite<Record<string, unknown>, Pinhole>({
+  return performWrite<Record<string, unknown>, PinholeRemoved>({
     params: { pinhole: p.id },
     askFirst: true,
     confirm: { title: `Close port ${p.port} to ${deviceName}?`, message: "The IPv6 firewall blocks this port again. Applies instantly, no restart.", confirmLabel: "Remove rule" },
-    success: `Closed port ${p.port} to ${deviceName}`,
+    success: (res) => (res.alreadyGone ? `The rule on port ${p.port} was already removed` : `Closed port ${p.port} to ${deviceName}`),
     failure: `Couldn't remove the rule on port ${p.port}`,
-    undo: (r) => (r.deviceId ? { id: "pinhole.add", params: { device: r.deviceId, port: r.port, protocol: r.protocol } } : null),
+    undo: ({ pinhole: r }) => (r?.deviceId ? { id: "pinhole.add", params: { device: r.deviceId, port: r.port, protocol: r.protocol } } : null),
     id: "pinhole.remove",
   });
 }
