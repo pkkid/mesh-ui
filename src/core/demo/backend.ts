@@ -451,7 +451,19 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     }
   };
 
-  const scheduleIn = (p: NetworkData["profiles"][number], scheduleId: M.Id) => p.schedules.find((x) => x.id === scheduleId) ?? notFound("schedule");
+  /**
+   * Unassigned's scheduled pauses (eero's default profile), per network: core's
+   * UNASSIGNED ref (`unassigned`, commands/profile.ts) as a profile id.
+   */
+  const unassignedGroups = new WeakMap<NetworkData, { name: string; schedules: M.Schedule[] }>();
+  const unassignedIn = (data: NetworkData) => {
+    let g = unassignedGroups.get(data);
+    if (!g) unassignedGroups.set(data, (g = { name: "Unassigned", schedules: [] }));
+    return g;
+  };
+  /** A profile, or Unassigned for `unassigned`, for the schedule writes. */
+  const scheduleOwner = (data: NetworkData, profileId: M.Id) => (profileId === "unassigned" ? unassignedIn(data) : profileIn(data, profileId));
+  const scheduleIn = (p: { schedules: M.Schedule[] }, scheduleId: M.Id) => p.schedules.find((x) => x.id === scheduleId) ?? notFound("schedule");
 
   const changeEero = (id: M.Id, eeroId: M.Id, change: (e: NetworkData["eeros"][number]) => void): M.Eero => {
     const data = net(id);
@@ -886,6 +898,11 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       },
       get: async (id, profileId) => {
         const data = net(id);
+        if (profileId === "unassigned") {
+          // Core fills in Unassigned's devices and pause; the backend keeps its schedules.
+          const g = unassignedIn(data);
+          return { id: profileId, name: g.name, state: g.schedules.some((x) => x.enabled) ? "scheduled" : "active", paused: false, deviceIds: [], devicesOnline: 0, schedules: clone(g.schedules), nextChange: null };
+        }
         const p = data.profiles.find((x) => x.id === profileId) ?? notFound("profile");
         return profileView(data, p);
       },
@@ -916,16 +933,16 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       },
       addSchedule: async (id, profileId, input) => {
         const s: M.Schedule = { id: nextId("demo-schedule-"), ...clone(input) };
-        profileIn(net(id), profileId).schedules.push(s);
+        scheduleOwner(net(id), profileId).schedules.push(s);
         return clone(s);
       },
       updateSchedule: async (id, profileId, scheduleId, input) => {
-        const s = scheduleIn(profileIn(net(id), profileId), scheduleId);
+        const s = scheduleIn(scheduleOwner(net(id), profileId), scheduleId);
         Object.assign(s, clone(input), { id: s.id });
         return clone(s);
       },
       removeSchedule: async (id, profileId, scheduleId) => {
-        const p = profileIn(net(id), profileId);
+        const p = scheduleOwner(net(id), profileId);
         scheduleIn(p, scheduleId);
         p.schedules = p.schedules.filter((x) => x.id !== scheduleId);
       },

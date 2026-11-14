@@ -3,6 +3,9 @@
  * Unassigned summary are computed here, in core. Writes: create, rename,
  * pause, resume, devices, delete, and Unassigned pause and resume (eero's
  * `default: true` profile, which is never offered as a profile).
+ * Unassigned also has scheduled pauses: `profile.get` and the schedule
+ * commands take the ref `unassigned` (UNASSIGNED), which every backend maps
+ * to eero's default profile.
  * See docs/architecture/commands.md#profile-commandsprofilets.
  */
 
@@ -129,6 +132,47 @@ async function timezone(ctx: CommandContext): Promise<string | null> {
   }
 }
 
+/**
+ * The ref (and id) that names Unassigned in `profile.get` and the schedule
+ * commands. Backends take it as a profile id: the eero backend writes to the
+ * `default: true` profile, the demo keeps the schedules per network.
+ */
+export const UNASSIGNED = "unassigned";
+
+/** A profile id from a ref; `unassigned` (any case) names eero's default profile. */
+const profileOrUnassigned = (ctx: CommandContext, ref: string): Promise<M.Id> =>
+  ref.trim().toLowerCase() === UNASSIGNED ? Promise.resolve(UNASSIGNED) : ctx.resolve("profile", ref);
+
+/** Devices with no profile, or in eero's own Unassigned group (a `default` profile the list leaves out). */
+function unassignedOf(profiles: M.Profile[], devices: M.Device[]): M.Device[] {
+  const owned = new Set(profiles.flatMap((p) => p.deviceIds));
+  const listed = new Set(profiles.map((p) => p.id));
+  return devices.filter((d) => !d.blocked && !owned.has(d.id) && (!d.profileId || !listed.has(d.profileId)));
+}
+
+/** Unassigned's schedules; none when the network has no default profile (eeroOS before 7.12.4) or the read fails. */
+async function unassignedSchedules(ctx: CommandContext): Promise<M.Schedule[]> {
+  try {
+    return (await ctx.backend.profile.get(ctx.net, UNASSIGNED)).schedules;
+  } catch {
+    return [];
+  }
+}
+
+/** Unassigned as a profile: the default profile's schedules, and the devices and pause the list shows for it. */
+async function unassignedProfile(ctx: CommandContext): Promise<M.Profile> {
+  const [base, profiles, devices] = await Promise.all([ctx.backend.profile.get(ctx.net, UNASSIGNED), ctx.backend.profile.list(ctx.net), ctx.backend.device.list(ctx.net)]);
+  const unassigned = unassignedOf(profiles, devices);
+  return {
+    ...base,
+    id: UNASSIGNED,
+    name: "Unassigned",
+    paused: unassigned.length > 0 && unassigned.every((d) => d.paused),
+    deviceIds: unassigned.map((d) => d.id),
+    devicesOnline: unassigned.filter((d) => d.connected).length,
+  };
+}
+
 const withNext = (p: M.Profile, now: number, tz: string | null): M.Profile => ({ ...p, state: stateOf(p), nextChange: nextChange(p, now, tz) });
 
 /** Every profile write changes profiles, device chips and pauses, and the network's profile count. */
@@ -139,6 +183,8 @@ const profileName = z.string().trim().min(1, "Enter a name.").max(32, "Use 32 ch
 
 /** Names are refs, so two profiles cannot share one (case-insensitive). */
 async function uniqueName(ctx: CommandContext, name: string, self: M.Id | null): Promise<void> {
+  // `unassigned` is the ref for devices in no profile, so no profile can take the name.
+  if (name.trim().toLowerCase() === UNASSIGNED) throw new CommandError("bad_params", "Unassigned is the group for devices in no profile.", { issues: [{ path: "name", message: "Unassigned is the group for devices in no profile." }] });
   const taken = (await ctx.backend.profile.list(ctx.net)).some((p) => p.id !== self && p.name.toLowerCase() === name.toLowerCase());
   if (taken) throw new CommandError("bad_params", `A profile named ${name} already exists.`, { issues: [{ path: "name", message: `A profile named ${name} already exists.` }] });
 }
@@ -211,12 +257,14 @@ export const commands: AnyCommand[] = [
     poll: POLL.profiles,
     params: z.object({}),
     run: async (ctx): Promise<M.ProfileList> => {
-      const [profiles, devices, tz] = await Promise.all([ctx.backend.profile.list(ctx.net), ctx.backend.device.list(ctx.net), timezone(ctx)]);
+      const [profiles, devices, tz, schedules] = await Promise.all([
+        ctx.backend.profile.list(ctx.net),
+        ctx.backend.device.list(ctx.net),
+        timezone(ctx),
+        unassignedSchedules(ctx),
+      ]);
       const now = ctx.now();
-      const owned = new Set(profiles.flatMap((p) => p.deviceIds));
-      const listed = new Set(profiles.map((p) => p.id));
-      // No profile, or eero's own Unassigned group (a `default` profile the list leaves out).
-      const unassigned = devices.filter((d) => !d.blocked && !owned.has(d.id) && (!d.profileId || !listed.has(d.profileId)));
+      const unassigned = unassignedOf(profiles, devices);
       const sorted = profiles.map((p) => withNext(p, now, tz)).sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
       const unassignedPaused = unassigned.length > 0 && unassigned.every((d) => d.paused);
       const today = wallMs(now, tz ?? "UTC");
@@ -233,8 +281,8 @@ export const commands: AnyCommand[] = [
           now: Math.floor((today % 86_400_000) / MIN_MS),
           lanes: [
             ...sorted.map((p) => ({ profileId: p.id, segments: pausesToday(p, now, tz) })),
-            // Unassigned schedules are not readable (no endpoint), so only a manual pause shows.
-            { profileId: null, segments: pausesToday({ paused: unassignedPaused, schedules: [] }, now, tz) },
+            // Unassigned's schedules come from eero's default profile.
+            { profileId: null, segments: pausesToday({ paused: unassignedPaused, schedules }, now, tz) },
           ],
         },
       };
@@ -244,15 +292,16 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "profile.get",
     label: "Profile",
-    description: "One profile with its devices, schedules and the next scheduled change.",
+    description:
+      "One profile with its devices, schedules and the next scheduled change. `unassigned` gives Unassigned (devices in no profile) with its scheduled pauses, as id `unassigned`.",
     icon: "user",
     effect: "query",
     topic: "profiles",
     poll: POLL.profiles,
     params: z.object({ profile: ref("profile") }),
     run: async (ctx, p): Promise<M.ProfileDetail> => {
-      const id = await ctx.resolve("profile", p.profile);
-      const [profile, tz] = await Promise.all([ctx.backend.profile.get(ctx.net, id), timezone(ctx)]);
+      const id = await profileOrUnassigned(ctx, p.profile);
+      const [profile, tz] = await Promise.all([id === UNASSIGNED ? unassignedProfile(ctx) : ctx.backend.profile.get(ctx.net, id), timezone(ctx)]);
       const now = ctx.now();
       const today = wallMs(now, tz ?? "UTC");
       return {
@@ -384,14 +433,14 @@ export const commands: AnyCommand[] = [
     id: "profile.schedule.add",
     label: "Add a scheduled pause",
     description:
-      "Adds a scheduled pause to a profile: its devices pause from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
+      "Adds a scheduled pause to a profile (or `unassigned`, devices in no profile): its devices pause from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
     icon: "calendar-plus",
     effect: "write",
     gate: { area: "profiles", op: "create", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without pausing.") }),
     run: async (ctx, p): Promise<M.Schedule> => {
-      const id = await ctx.resolve("profile", p.profile);
+      const id = await profileOrUnassigned(ctx, p.profile);
       const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
       checkSchedule(await ctx.backend.profile.get(ctx.net, id), input, null);
       return ctx.backend.profile.addSchedule(ctx.net, id, input);
@@ -416,7 +465,7 @@ export const commands: AnyCommand[] = [
       enabled: z.boolean().optional(),
     }),
     run: async (ctx, p): Promise<M.Schedule> => {
-      const id = await ctx.resolve("profile", p.profile);
+      const id = await profileOrUnassigned(ctx, p.profile);
       const profile = await ctx.backend.profile.get(ctx.net, id);
       const s = findSchedule(profile, p.schedule);
       const input: M.ScheduleInput = {
@@ -441,7 +490,7 @@ export const commands: AnyCommand[] = [
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), schedule: ref("schedule") }),
     run: async (ctx, p): Promise<{ removed: M.Id; schedule: M.Schedule }> => {
-      const id = await ctx.resolve("profile", p.profile);
+      const id = await profileOrUnassigned(ctx, p.profile);
       const s = findSchedule(await ctx.backend.profile.get(ctx.net, id), p.schedule);
       await ctx.backend.profile.removeSchedule(ctx.net, id, s.id);
       return { removed: s.id, schedule: s };

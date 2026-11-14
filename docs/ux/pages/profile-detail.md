@@ -135,10 +135,15 @@ Profiles stays active.
   A hero (devices and online from `profile.list` `unassigned`, last 24 hours
   from `usage.breakdown`, Paused or Active) with **Pause unassigned** (inline
   confirm) or **Resume unassigned**, and the devices table with status and
-  data in the last 24 hours. No Rename, no Delete section, no Add a device
-  (devices land here by leaving other profiles); the schedules section is
-  left out until Unassigned schedules are built (the endpoint is likely
-  the default profile's own `resources.schedules`; see
+  data in the last 24 hours. Since M5.11-fix it also has the same
+  **Scheduled pauses** week timeline and **Schedules** list as a profile
+  (`ProfileSchedules.tsx`, a block click or row opens the schedule sheet),
+  read from `profile.get {profile: "unassigned"}` (eero's default profile,
+  as id `unassigned`), and the hero shows its state, next change and
+  scheduled off-time. Without a default profile (eeroOS before 7.12.4) the
+  schedules section shows the error with Retry. No Rename, no Delete
+  section, no Add a device (devices land here by leaving other profiles;
+  see
   [profiles.md](profiles.md#notes)). The route shares `/profiles/:profileId`
   (profile ids are numbers).
 - **Capability missing.** None specific beyond Unassigned support (eeroOS

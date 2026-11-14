@@ -15,6 +15,8 @@
  * request shape is from the clients (LD sends days as `MON`; FF as
  * `monday`), so the fake takes either and keeps what it was sent. A bad
  * body is a 400; the stored row gets its own `url`, as profile rows do.
+ * The `default: true` profile (Unassigned) takes schedules too (M5.11-fix):
+ * it carries `schedule[]` and `resources.schedules` like any other.
  */
 
 import type { RawDevice, RawProfile, RawSchedule } from "../../../src/core/eero/raw";
@@ -162,7 +164,7 @@ export const routes: Route[] = [
     path: "/networks/:net/profiles/:id/schedules",
     handle: (ctx) => {
       const p = find(ctx);
-      if (!p || p.default) return fail(404, "error.profile.not.found");
+      if (!p) return fail(404, "error.profile.not.found");
       const body = scheduleBody(ctx.req.body);
       if (!body) return fail(400, "error.schedule.invalid");
       const s: RawSchedule = { url: `${p.url}/schedules/${ctx.state.nextId()}`, ...body };
