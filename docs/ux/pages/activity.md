@@ -22,7 +22,7 @@ Titlebar: title "Activity", **Export CSV** button on the right of the titlebar a
    - Unread rows have a small dot in the left gutter.
    - Grouped rows (e.g. "Garage mesh link dropped to 2 bars", `2 events` badge) show an indented sub list of the underlying events with their times.
    - Footer: **Load older events** button while there is an older page; at the end, "Start of history. eero keeps about 7 days."
-   - Not yet built: the unread badge, unread dots and **Mark all read** wait for `notifications.list` (M3.7); row write actions (Assign profile, Resume, Unblock, overflow menu) are left out because the real stream carries no device, eero or profile refs. Rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting.
+   - Not yet built: the unread badge, unread dots and **Mark all read** are a follow-up now that `notifications.list` exists (M3.7); row write actions (Assign profile, Resume, Unblock, overflow menu) are left out because the real stream carries no device, eero or profile refs. Rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting.
 
 Row actions shown in the mockup:
 
