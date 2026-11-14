@@ -46,7 +46,7 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run again | `health.check` `{refresh: true}` | query | no | One run per click: the button is disabled and says "Checking..." with a spinning icon, the ring and grid fade, then checks refresh. Clicks while it runs are ignored; a later poll never replaces it with an older cached report |
+| Run again | `health.check`, fetched with `{ fresh: true }` (the CLI and MCP pass `{refresh: true}`) | query | no | One run per click: the button is disabled and says "Checking..." with a spinning icon, the ring and grid fade, then checks refresh. Clicks while it runs are ignored; the fresh report replaces the cached one, so a later poll never shows an older one |
 | Symptom chip | `diagnostics.run` `{symptom: "connection_drops" or "internet_slow" or "internet_offline" or "eeros_red"}` | write | no | A panel under the chips says eero is testing (up to a minute), then shows eero's findings and the next steps from core |
 | Run (speed test) | `speedtest.run` | write | no | Row shows progress, then down and up Mbps |
 | History | none (navigation) | | | Internet page speed test history |

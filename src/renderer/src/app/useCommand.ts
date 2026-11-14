@@ -8,6 +8,9 @@
  *   Opening a view whose polled data is older than its interval refetches.
  * - `useCommand(id)` runs a command on demand (writes, or a query the user
  *   triggers) and, after a successful write, refetches the queries it affects.
+ * - `refreshAll()` (the header Refresh, Ctrl+R) refetches every mounted query
+ *   once with `{ fresh: true }`, so the engine reads eero instead of its
+ *   cache. `useRefresh()` gives the button its running state.
  *
  * `execute` never throws: the bridge returns `{ ok, result }` or
  * `{ ok: false, error }` and anything that goes wrong in between becomes a
@@ -18,6 +21,7 @@
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+import type { ExecuteOptions } from "../../../core/engine";
 import type { ExecuteError, ExecuteResult } from "../../../core/errors";
 import type { HostEvent } from "../../../core/model";
 import { pollDelayMs } from "../../../core/poll";
@@ -28,7 +32,7 @@ import type { CommandInfo } from "../../../core/registry";
 
 /** The engine half of `window.mesh`, as the preload exposes it from M1.4. */
 export type MeshBridge = {
-  execute(id: string, params?: unknown): Promise<ExecuteResult>;
+  execute(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult>;
   commands(): Promise<CommandInfo[]>;
   /** Host events (session.changed, network.selected). Returns an unsubscribe. */
   on?(listener: (event: HostEvent) => void): () => void;
@@ -76,12 +80,12 @@ export function onSessionEnded(listener: (expired: boolean) => void): () => void
   return () => sessionListeners.delete(listener);
 }
 
-/** Runs a command. Never throws. */
-export async function execute<R = unknown>(id: string, params?: unknown): Promise<ExecuteResult<R>> {
+/** Runs a command. `{ fresh: true }` skips the engine cache for a query. Never throws. */
+export async function execute<R = unknown>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>> {
   if (id === "auth.logout") signedOutByUser = true;
   let res: ExecuteResult<R>;
   try {
-    res = (await bridge().execute(id, params)) as ExecuteResult<R>;
+    res = (await (options?.fresh ? bridge().execute(id, params, options) : bridge().execute(id, params))) as ExecuteResult<R>;
   } catch (err) {
     res = { ok: false, error: { code: "network_error", message: err instanceof Error ? err.message : String(err) } };
   }
@@ -163,6 +167,8 @@ type Entry = {
   params: unknown;
   snapshot: QuerySnapshot<unknown>;
   inflight: Promise<void> | null;
+  /** The in-flight request skips the engine cache. */
+  inflightFresh: boolean;
   listeners: Set<() => void>;
   /** Set when a write made the data stale; the next poll or mount refetches. */
   stale: boolean;
@@ -191,7 +197,7 @@ function entryFor(id: string, params: unknown): Entry {
   const key = queryKey(id, params);
   let entry = entries.get(key);
   if (!entry) {
-    entry = { id, params, snapshot: EMPTY, inflight: null, listeners: new Set(), stale: true };
+    entry = { id, params, snapshot: EMPTY, inflight: null, inflightFresh: false, listeners: new Set(), stale: true };
     entries.set(key, entry);
   }
   return entry;
@@ -202,17 +208,66 @@ function update(entry: Entry, patch: Partial<QuerySnapshot<unknown>>) {
   entry.listeners.forEach((l) => l());
 }
 
-/** Fetches an entry, merging with a request already in flight. */
-function fetchEntry(entry: Entry): Promise<void> {
-  if (entry.inflight) return entry.inflight;
+/**
+ * Fetches an entry, merging with a request already in flight. A `fresh`
+ * fetch skips the engine cache; it joins an in-flight fresh request, and
+ * waits for a plain one (which may be a cached answer) before asking again.
+ */
+function fetchEntry(entry: Entry, fresh = false): Promise<void> {
+  if (entry.inflight && (!fresh || entry.inflightFresh)) return entry.inflight;
+  if (entry.inflight) return entry.inflight.then(() => fetchEntry(entry, true));
   update(entry, { loading: true });
   entry.stale = false;
-  entry.inflight = execute(entry.id, entry.params).then((res) => {
+  entry.inflightFresh = fresh;
+  entry.inflight = execute(entry.id, entry.params, fresh ? { fresh } : undefined).then((res) => {
     entry.inflight = null;
+    entry.inflightFresh = false;
     if (res.ok) update(entry, { data: res.result, error: null, loading: false, fetchedAt: Date.now() });
     else update(entry, { error: res.error, loading: false });
   });
   return entry.inflight;
+}
+
+/** Subscribes to one query's snapshot (what `useQuery` mounts). Returns an unsubscribe. */
+export function watchQuery(id: string, params: unknown, listener: () => void): () => void {
+  const entry = entryFor(id, params);
+  entry.listeners.add(listener);
+  return () => void entry.listeners.delete(listener);
+}
+
+// ---------------------------------------------------------------------------
+// Refresh (header button, Ctrl+R / Cmd+R / F5, palette)
+
+let refreshing: Promise<void> | null = null;
+const refreshListeners = new Set<() => void>();
+
+/**
+ * Refetches every query on screen (any entry with a mounted reader: the page,
+ * the sidebar, the topbar) once, skipping the engine cache. Calls while one
+ * runs get the same promise and start nothing. Errors land on each query, so
+ * sections show their usual error notes.
+ */
+export function refreshAll(): Promise<void> {
+  if (refreshing) return refreshing;
+  const mounted = [...entries.values()].filter((e) => e.listeners.size > 0);
+  refreshing = Promise.all(mounted.map((e) => fetchEntry(e, true))).then(() => {
+    refreshing = null;
+    refreshListeners.forEach((l) => l());
+  });
+  refreshListeners.forEach((l) => l());
+  return refreshing;
+}
+
+/** True while `refreshAll` runs. */
+export const isRefreshing = (): boolean => refreshing !== null;
+
+/** The header Refresh state: `refreshing` while a refresh runs, and `refresh` to start one. */
+export function useRefresh(): { refreshing: boolean; refresh: () => Promise<void> } {
+  const busy = useSyncExternalStore(
+    (l) => (refreshListeners.add(l), () => refreshListeners.delete(l)),
+    isRefreshing,
+  );
+  return { refreshing: busy, refresh: refreshAll };
 }
 
 /**
@@ -272,7 +327,11 @@ export type QueryState<R> = QuerySnapshot<R> & {
    * `opacity-40` while it is set; never show a spinner in page content.
    */
   fading: boolean;
-  refetch: () => Promise<void>;
+  /**
+   * Fetches again now and resolves with the new snapshot; `{ fresh: true }`
+   * skips the engine cache (a "Check again" or "Run again" button).
+   */
+  refetch: (options?: { fresh?: boolean }) => Promise<QuerySnapshot<R>>;
 };
 
 const FADE_DELAY_MS = 150;
@@ -282,7 +341,7 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
   const key = queryKey(id, params);
   const entry = entryFor(id, params);
   const snapshot = useSyncExternalStore(
-    (l) => (entry.listeners.add(l), () => entry.listeners.delete(l)),
+    (l) => watchQuery(id, params, l),
     () => entry.snapshot,
   ) as QuerySnapshot<R>;
   const commands = useCommands();
@@ -331,7 +390,10 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
   }, [key, enabled, intervalSec]);
 
   const fading = useFade(snapshot.loading);
-  const refetch = useCallback(() => fetchEntry(entryFor(id, params)), [key]);
+  const refetch = useCallback((options?: { fresh?: boolean }) => {
+    const current = entryFor(id, params);
+    return fetchEntry(current, options?.fresh === true).then(() => current.snapshot as QuerySnapshot<R>);
+  }, [key]);
 
   return { ...snapshot, fading, refetch };
 }

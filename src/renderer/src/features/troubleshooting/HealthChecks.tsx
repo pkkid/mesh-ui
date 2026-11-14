@@ -1,24 +1,25 @@
 /**
  * The health check hero from `health.check`: a score ring with the status
- * summary, Run again (`health.check {refresh: true}`, one run at a time,
- * the button says "Checking..." until it ends), and a grid of checks (internet, DNS, each eero, mesh
+ * summary, Run again (the polled `health.check` fetched past the engine
+ * cache, like the header Refresh; one run at a time, the button says
+ * "Checking..." until it ends), and a grid of checks (internet, DNS, each eero, mesh
  * links, firmware), each with its mark, icon, name and one-line detail.
  * The symptom chips and their results (Diagnose.tsx) render in the
  * `symptoms` slot at the foot of the card.
  * docs/ux/pages/troubleshooting.md (Health check hero), mockup 16.
  */
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { CircleCheck, CircleHelp, CircleX, Download, Globe, type LucideIcon, RefreshCw, Router, Search, TriangleAlert, Waypoints } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
 import type { RouteId } from "~/app/routes";
-import { useCommand, useQuery } from "~/app/useCommand";
+import { useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
+import type { ExecuteError } from "../../../../core/errors";
 import type { Check, HealthReport } from "../../../../core/model";
-import { newerReport } from "./helpers";
 
 const MARK: Record<Check["status"], { icon: LucideIcon; className: string; word: string }> = {
   good: { icon: CircleCheck, className: "text-success-foreground", word: "Good" },
@@ -107,23 +108,30 @@ function CheckRow({ check }: { check: Check }) {
 }
 
 /**
- * The health check with Run again: `health.check` polled, plus a one-off
- * `{refresh: true}` run per click (a plain refetch was answered from the
- * engine's cache and looked like nothing happened). `report` is the newer of
- * the two, for the hero and the page subtitle alike.
+ * The health check with Run again: `health.check` polled, and Run again
+ * refetches it with `{ fresh: true }` (a plain refetch was answered from the
+ * engine's cache and looked like nothing happened). `report` feeds the hero
+ * and the page subtitle alike.
  */
 export function useHealthCheck() {
   const query = useQuery<HealthReport>("health.check", undefined, { poll: true });
-  const rerun = useCommand<{ refresh: boolean }, HealthReport>("health.check");
-  return { query, rerun, report: newerReport(query.data, rerun.result) };
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<ExecuteError | null>(null);
+  const runAgain = () => {
+    if (running) return;
+    setRunning(true);
+    setError(null);
+    void query.refetch({ fresh: true }).then((snap) => {
+      setRunning(false);
+      setError(snap.error);
+    });
+  };
+  return { query, report: query.data, running, error, runAgain };
 }
 
 export function HealthChecks({ health, symptoms }: { health: ReturnType<typeof useHealthCheck>; symptoms?: ReactNode }) {
-  const { query, rerun, report } = health;
-  const busy = rerun.running;
-  const runAgain = () => {
-    if (!busy) void rerun.run({ refresh: true });
-  };
+  const { query, report, runAgain } = health;
+  const busy = health.running;
   if (query.error && !report) return <SectionError what="the health check" error={query.error} onRetry={runAgain} />;
   const count = report?.checks.length;
   return (
@@ -144,7 +152,7 @@ export function HealthChecks({ health, symptoms }: { health: ReturnType<typeof u
               <RefreshCw className={cn(busy && "animate-spin")} />
               {busy ? "Checking..." : "Run again"}
             </Button>
-            {rerun.error && <p className="mt-2 text-destructive-foreground text-xs">Couldn't run the check again: {rerun.error.message}</p>}
+            {health.error && <p className="mt-2 text-destructive-foreground text-xs">Couldn't run the check again: {health.error.message}</p>}
           </div>
         </div>
       </div>

@@ -308,6 +308,22 @@ describe("cache", () => {
     expect(calls.devices).toBe(3);
   });
 
+  it("fresh: true skips the cached answer once and caches the new one for later reads", async () => {
+    const t = 1_000_000;
+    const { engine, calls } = setup({ now: () => t });
+    await engine.execute("test.devices");
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(1);
+    const fresh = await engine.execute("test.devices", {}, { fresh: true });
+    expect(fresh.ok).toBe(true);
+    expect(calls.devices).toBe(2);
+    // The fresh answer replaced the cached one; a plain read shares it.
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(2);
+    // Writes ignore it (still one run each, confirm rules unchanged).
+    expect(await engine.execute("test.network.restart", {}, { fresh: true })).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+  });
+
   it("lets a read during the write settle delay expire when eero has settled", async () => {
     let t = 1_000_000;
     const { engine, calls } = setup({ now: () => t });

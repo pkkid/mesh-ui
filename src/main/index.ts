@@ -40,7 +40,7 @@ import { createEngine, type Engine, fileSettings, memorySettings } from "../core
 import type { SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
-import { registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
+import { isRefreshKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import type { NotifyHost } from "./notify";
 import { guardCliHost } from "./cli-host";
 import { configPaths, resolveConfigDir } from "./paths";
@@ -214,6 +214,14 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false,
       ...(isHeadless ? { offscreen: true } : {}),
     },
+  });
+
+  // Ctrl+R / Cmd+R and F5 refresh the page's data instead of reloading the window.
+  const win = mainWindow;
+  win.webContents.on("before-input-event", (event, input) => {
+    if (!isRefreshKey(input, process.platform)) return;
+    event.preventDefault();
+    win.webContents.send(IPC.refresh);
   });
 
   if (!isHeadless) mainWindow.once("ready-to-show", () => mainWindow?.show());

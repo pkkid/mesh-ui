@@ -16,7 +16,7 @@ import { BackendError } from "../core/errors";
 import type { HostEvent } from "../core/model";
 import { defineCommand } from "../core/spec";
 import { IPC } from "../shared/types";
-import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, registerIpc, SAVE_MAX_CHARS, type SaveFileHost } from "./ipc";
+import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, isRefreshKey, type KeyInput, registerIpc, SAVE_MAX_CHARS, type SaveFileHost } from "./ipc";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName, type SafeStorageLike, storageKind } from "./secret-store";
 
@@ -255,7 +255,10 @@ function fakeIpc() {
   return { main, renderer, broadcast, payloads, handlers, setSender: (u: string) => (senderUrl = u) };
 }
 
+let counted = 0;
+
 async function bridgeSetup() {
+  counted = 0;
   const { secrets } = store("keychain");
   await secrets.save(TOKEN);
   const auth: AuthState = { signedIn: true, pending: false, login: "al***@example.com", storage: "keychain" };
@@ -286,6 +289,7 @@ async function bridgeSetup() {
           throw new Error(`request failed with Cookie: s=${await vault.token()}`);
         },
       }),
+      defineCommand({ id: "test.count", label: "Count", params: z.object({}), effect: "query", scope: "app", topic: "diagnostics", run: async () => ++counted }),
       defineCommand({ id: "test.reboot", label: "Reboot", params: z.object({}), effect: "disruptive", scope: "app", run: async () => ({ done: true }) }),
       defineCommand({
         id: "test.select",
@@ -323,7 +327,29 @@ describe("window.mesh bridge", () => {
     expect(info.ok && info.result.host.configDir).toBe(dir);
 
     const list = await mesh.commands();
-    expect(list.map((c) => c.id)).toEqual(["app.info", "test.leak", "test.reboot", "test.select"]);
+    expect(list.map((c) => c.id)).toEqual(["app.info", "test.leak", "test.count", "test.reboot", "test.select"]);
+  });
+
+  it("carries { fresh: true } to the engine so a query skips its cache, and nothing else", async () => {
+    const { mesh, ipc } = await bridgeSetup();
+    expect(await mesh.execute("test.count")).toEqual({ ok: true, result: 1 });
+    expect(await mesh.execute("test.count")).toEqual({ ok: true, result: 1 });
+    expect(await mesh.execute("test.count", {}, { fresh: true })).toEqual({ ok: true, result: 2 });
+    expect(await mesh.execute("test.count")).toEqual({ ok: true, result: 2 });
+    // A crafted options object reaches main only as a strict boolean.
+    const handler = ipc.handlers.get(IPC.execute);
+    expect(await handler?.({ senderFrame: { url: APP_URL } }, "test.count", {}, { fresh: "yes", extra: 1 })).toEqual({ ok: true, result: 2 });
+  });
+
+  it("delivers the host's Refresh request to onRefresh listeners until unsubscribed", async () => {
+    const { mesh, ipc } = await bridgeSetup();
+    let n = 0;
+    const off = mesh.onRefresh(() => n++);
+    ipc.broadcast(IPC.refresh, undefined as never);
+    expect(n).toBe(1);
+    off();
+    ipc.broadcast(IPC.refresh, undefined as never);
+    expect(n).toBe(1);
   });
 
   it("returns engine envelopes: unknown_command, needs_confirm, then ok with confirm", async () => {
@@ -386,6 +412,28 @@ describe("window.mesh bridge", () => {
     unregister();
     expect(await mesh.execute("app.info")).toMatchObject({ ok: false, error: { code: "network_error" } });
     expect(await mesh.commands()).toEqual([]);
+  });
+});
+
+describe("isRefreshKey", () => {
+  const key = (k: string, mods: Partial<KeyInput> = {}): KeyInput => ({ type: "keyDown", key: k, control: false, meta: false, alt: false, shift: false, ...mods });
+  it("is Ctrl+R on Windows and Linux, Cmd+R on macOS, and a bare F5 everywhere", () => {
+    for (const p of ["linux", "win32"]) {
+      expect(isRefreshKey(key("r", { control: true }), p)).toBe(true);
+      expect(isRefreshKey(key("R", { control: true }), p)).toBe(true);
+      expect(isRefreshKey(key("r", { meta: true }), p)).toBe(false);
+    }
+    expect(isRefreshKey(key("r", { meta: true }), "darwin")).toBe(true);
+    expect(isRefreshKey(key("r", { control: true }), "darwin")).toBe(false);
+    for (const p of ["linux", "win32", "darwin"]) expect(isRefreshKey(key("F5"), p)).toBe(true);
+  });
+  it("leaves force reload, other keys and key-up alone", () => {
+    expect(isRefreshKey(key("r", { control: true, shift: true }), "linux")).toBe(false);
+    expect(isRefreshKey(key("r", { control: true, alt: true }), "linux")).toBe(false);
+    expect(isRefreshKey(key("F5", { control: true }), "linux")).toBe(false);
+    expect(isRefreshKey(key("r"), "linux")).toBe(false);
+    expect(isRefreshKey(key("t", { control: true }), "linux")).toBe(false);
+    expect(isRefreshKey({ ...key("r", { control: true }), type: "keyUp" }, "linux")).toBe(false);
   });
 });
 

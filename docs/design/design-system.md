@@ -150,8 +150,11 @@ numbers.
 
 Sidebar on the left (`bg-sidebar`, 1px right border): app mark, network
 picker card, nav groups **Network** and **Settings**, user at the bottom.
-Main pane: a 44px top bar (breadcrumbs, search, notifications, window
-controls) over a scrolling content column. The top strip of each pane is the
+Main pane: a 44px top bar (breadcrumbs, page actions, Refresh, search,
+notifications, theme toggle, window controls) over a scrolling content
+column. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
+buttons with a `title` tooltip naming any shortcut ("Refresh (Ctrl+R)");
+a running Refresh only spins its icon (rotation, no other animation). The top strip of each pane is the
 window titlebar (`drag-region`); controls in it need `no-drag`, and it
 respects `--titlebar-inset-left/right`. See
 [architecture/ui.md](../architecture/ui.md#shell).
