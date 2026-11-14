@@ -86,15 +86,17 @@ export type QrCodeProps = {
   /** Rendered width and height in px. */
   size?: number;
   className?: string;
+  /** Centred over the empty frame while there is no code (Wi-Fi's "Show code" button). */
+  placeholder?: ReactNode;
 };
 
-/** Just the code on its light tile. An empty frame while `value` is missing. */
-export function QrCode({ value, ariaLabel, size = 116, className }: QrCodeProps) {
+/** Just the code on its light tile. An empty frame (with `placeholder` centred in it) while `value` is missing. */
+export function QrCode({ value, ariaLabel, size = 116, className, placeholder }: QrCodeProps) {
   const modules = qrModules(value);
   const n = (modules?.length ?? 25) + SCREEN_QUIET * 2;
   return (
     <div
-      className={cn("shrink-0 overflow-hidden rounded-lg border bg-white", !modules && "bg-muted/40", className)}
+      className={cn("relative shrink-0 overflow-hidden rounded-lg border bg-white", !modules && "bg-muted/40", className)}
       style={{ width: size, height: size }}
     >
       {modules ? (
@@ -102,7 +104,10 @@ export function QrCode({ value, ariaLabel, size = 116, className }: QrCodeProps)
           <path d={qrPath(modules, SCREEN_QUIET)} fill="#000" />
         </svg>
       ) : (
-        <span role="img" aria-label={`${ariaLabel}, not available`} />
+        <>
+          <span role="img" aria-label={`${ariaLabel}, not available`} />
+          {placeholder ? <div className="absolute inset-0 flex items-center justify-center">{placeholder}</div> : null}
+        </>
       )}
     </div>
   );

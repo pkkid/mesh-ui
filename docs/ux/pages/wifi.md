@@ -11,7 +11,7 @@ Shared patterns (hero, QR block, settings column plus side panel, confirm bar) a
 The page is read-only until the write commands land; every change is a disabled "Coming soon" control.
 
 - **Hero:** SSID, `Broadcasting` / `Not broadcasting` / `Offline`, "One name on every band" (or on the one band), **Wireless clients** and **Bands on** (`3 of 3`). "Password changed" is not shown: no response carries that date.
-- **QR block:** an empty frame until **Show code** runs `wifi.share`; **Copy password** and **Save QR** work from then on. **Print a card** is "Coming soon".
+- **QR block:** an empty muted frame with a **Show code** button (eye icon, neutral outline) centred in it; nothing is read until it is clicked, then it runs `wifi.share` and the code replaces the button where it was. There is no separate Show code button beside the frame. **Copy password** and **Save QR** work from then on. **Print a card** is "Coming soon".
 - **Name and password:** read-only fields. The name has copy and a byte count. The password shows dots until the eye reveals it; copy reads it on demand. Generate and **Change** are "Coming soon". The revealed password and QR payload live only in the page's state, are never polled or cached, and are dropped on a network switch.
 - **Encryption:** one row per band with a segmented control showing the current mode (other modes disabled). The WPA2 only column counts connected devices that joined a hybrid band with WPA2 (an estimate from each device's link security); it shows `-` for a WPA2 only or WPA3 band and while offline. The info note names them.
 - **Bands:** a card per band any eero offers (a single-band network shows one card), with On or Off, clients, widths, channels and share of clients, the 2.4 GHz only state with its expiry, and the **2.4 GHz only devices** link to Troubleshooting.
@@ -22,7 +22,7 @@ The page is read-only until the write commands land; every change is a disabled 
 
 Breadcrumb: `Settings / Wi-Fi`.
 
-1. **Hero.** Wi-Fi icon top left. Title is the SSID (`Maple Street`), status line `Broadcasting` plus "One name on every band". Metric row: **Wireless clients** (`27 of 31 online`) and **Password changed** (`142 days ago`). QR block at the top right ("Wi-Fi Network") with **Copy password**, **Save QR**, **Print a card** to its left.
+1. **Hero.** Wi-Fi icon top left. Title is the SSID (`Maple Street`), status line `Broadcasting` plus "One name on every band". Metric row: **Wireless clients** (`27 of 31 online`) and **Password changed** (`142 days ago`). QR block at the top right ("Wi-Fi Network") with **Copy password**, **Save QR**, **Print a card** to its left. Before reveal the frame is empty with **Show code** centred on it.
 2. Two columns: settings on the left, side panel on the right.
 
 Left column:
@@ -72,7 +72,7 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 
 ## States
 
-- **Loading:** hero placeholders; QR frame empty; band cards keep their size and fade.
+- **Loading:** hero placeholders; QR frame empty with **Show code** disabled; band cards keep their size and fade.
 - **No changes:** confirm bar hidden; impact panel shows "Nothing to save" in muted text and the stays fine list.
 - **Saving:** confirm bar shows progress per step ("Saving password..."). If the computer running Mesh UI is on Wi-Fi it will drop too; the bar warns about this before saving, and the app reconnects and refetches when the network returns.
 - **Error:** a failed step stops the sequence, keeps later edits staged and shows the eero error in the bar.
