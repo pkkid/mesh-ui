@@ -174,6 +174,11 @@ type Entry = {
   active: number;
   /** Set when a write made the data stale; the next poll or mount refetches. */
   stale: boolean;
+  /** Interval in seconds of each mounted reader that polls. One timer serves them all. */
+  pollers: number[];
+  /** The poll timer, and the interval it was set for. */
+  pollTimer: ReturnType<typeof setTimeout> | undefined;
+  pollSec: number | null;
 };
 
 const EMPTY: QuerySnapshot<never> = { data: undefined, error: null, loading: false, fetchedAt: null };
@@ -199,7 +204,7 @@ function entryFor(id: string, params: unknown): Entry {
   const key = queryKey(id, params);
   let entry = entries.get(key);
   if (!entry) {
-    entry = { id, params, snapshot: EMPTY, inflight: null, inflightFresh: false, listeners: new Set(), active: 0, stale: true };
+    entry = { id, params, snapshot: EMPTY, inflight: null, inflightFresh: false, listeners: new Set(), active: 0, stale: true, pollers: [], pollTimer: undefined, pollSec: null };
     entries.set(key, entry);
   }
   return entry;
@@ -319,7 +324,75 @@ export function affectedBy(id: string): ReadonlyArray<string> | undefined {
 // Visibility
 
 const HIDDEN_POLL_SEC = 300;
-const isVisible = () => document.visibilityState === "visible";
+const isVisible = () => typeof document === "undefined" || document.visibilityState === "visible";
+
+// ---------------------------------------------------------------------------
+// Polling: one timer per query, however many readers poll it
+
+/** Sets the entry's poll timer for its shortest reader interval (stretched while hidden or rate limited). */
+function schedulePoll(entry: Entry): void {
+  clearTimeout(entry.pollTimer);
+  entry.pollTimer = undefined;
+  entry.pollSec = entry.pollers.length > 0 ? Math.min(...entry.pollers) : null;
+  const sec = entry.pollSec;
+  if (sec === null) return;
+  const err = entry.snapshot.error;
+  const wait =
+    err?.code === "rate_limited" && err.detail?.retryAfterSec
+      ? Math.max(err.detail.retryAfterSec, sec)
+      : isVisible()
+        ? sec
+        : Math.max(sec, HIDDEN_POLL_SEC);
+  const timer = setTimeout(async () => {
+    await fetchEntry(entry);
+    // A reader may have rescheduled meanwhile; only the live timer carries on.
+    if (entry.pollTimer === timer) schedulePoll(entry);
+  }, pollDelayMs(wait));
+  entry.pollTimer = timer;
+}
+
+let visibilityHooked = false;
+
+/** When the window shows again, every polled query fetches now and restarts its timer. */
+function hookVisibility(): void {
+  if (visibilityHooked || typeof document === "undefined") return;
+  visibilityHooked = true;
+  document.addEventListener("visibilitychange", () => {
+    if (!isVisible()) return;
+    for (const entry of entries.values()) {
+      if (entry.pollers.length === 0) continue;
+      clearTimeout(entry.pollTimer);
+      entry.pollTimer = undefined;
+      void fetchEntry(entry).then(() => entry.pollTimer === undefined && schedulePoll(entry));
+    }
+  });
+}
+
+/**
+ * Polls a query every `sec` seconds until the returned stop is called (what
+ * `useQuery` does with `poll`). Readers of the same id and params share one
+ * timer at the shortest interval any of them asks for, so a query shown by
+ * five components still reaches the engine once per interval. Does not fetch
+ * on start; the mount does that.
+ */
+export function pollQuery(id: string, params: unknown, sec: number): () => void {
+  hookVisibility();
+  const entry = entryFor(id, params);
+  entry.pollers.push(sec);
+  // Keep a running countdown unless this reader wants a shorter interval.
+  if (entry.pollTimer === undefined || entry.pollSec === null || sec < entry.pollSec) schedulePoll(entry);
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    entry.pollers.splice(entry.pollers.indexOf(sec), 1);
+    if (entry.pollers.length === 0) {
+      clearTimeout(entry.pollTimer);
+      entry.pollTimer = undefined;
+      entry.pollSec = null;
+    }
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Hooks
@@ -373,33 +446,10 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
     if (current.stale || fetchedAt === null || old) void fetchEntry(current);
     if (intervalSec === null) return unmount;
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let cancelled = false;
-    const schedule = () => {
-      const err = current.snapshot.error;
-      const wait =
-        err?.code === "rate_limited" && err.detail?.retryAfterSec
-          ? Math.max(err.detail.retryAfterSec, intervalSec)
-          : isVisible()
-            ? intervalSec
-            : Math.max(intervalSec, HIDDEN_POLL_SEC);
-      timer = setTimeout(async () => {
-        await fetchEntry(current);
-        if (!cancelled) schedule();
-      }, pollDelayMs(wait));
-    };
-    const onVisible = () => {
-      if (!isVisible()) return;
-      clearTimeout(timer);
-      void fetchEntry(current).then(() => !cancelled && schedule());
-    };
-    schedule();
-    document.addEventListener("visibilitychange", onVisible);
+    const stop = pollQuery(id, params, intervalSec);
     return () => {
+      stop();
       unmount();
-      cancelled = true;
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisible);
     };
     // `params` is covered by `key`.
   }, [key, enabled, intervalSec]);

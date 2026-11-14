@@ -23,8 +23,8 @@ import { DangerZone, InternetGroup, ServicesGroup, WirelessGroup } from "./Setti
 export function AdvancedPage(_: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
-  const settings = useQuery<NetworkSettings>("settings.get");
-  const integrations = useQuery<IntegrationsData>("integrations.get");
+  const settings = useQuery<NetworkSettings>("settings.get", undefined, { poll: true });
+  const integrations = useQuery<IntegrationsData>("integrations.get", undefined, { poll: true });
 
   const s = settings.data;
   const mode = s?.connectionMode ?? network.data?.connectionMode;

@@ -25,6 +25,11 @@ export const POLL = {
   notifications: 60,
   /** reservation.list, forward.list, pinhole.list (rules change in the eero app too) */
   routing: 60,
+  /**
+   * settings.get, integrations.get, wifi.get, guest.get: settings someone can
+   * change in the eero app while the page is open (M5.R-fix9).
+   */
+  settings: 60,
   /** usage.get, usage.breakdown */
   usage: 300,
   /** updates.get on the Updates page */
@@ -67,10 +72,10 @@ export const TTL: Record<Topic, number> = {
   eero_ports: 30,
   devices: 30,
   profiles: 30,
-  guest: 2 * MIN,
-  settings: 2 * MIN,
-  wifi: 2 * MIN,
-  integrations: 2 * MIN,
+  guest: 30,
+  settings: 30,
+  wifi: 30,
+  integrations: 30,
   routing: 30,
   updates: 5 * MIN,
   release_notes: 6 * 60 * MIN,

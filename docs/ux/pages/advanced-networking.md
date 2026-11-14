@@ -10,7 +10,7 @@ Shared patterns (settings rows, restart badges, side panel, confirm bar, danger 
 
 Every control on the page is now live. Each runs through useWrite with its command's gate (`useGate(id)`) and the offline block.
 
-- **Network services:** eero Simple Setup is a switch with Undo. **Eco efficiency** and **Power saving schedule** switches run `settings.power_saving.set` with Undo. When eero reports the `power_saving` capability false (a gateway without it), the Eco efficiency row dims, its switch carries "Not available on this network" and the row reads "Your eero hardware does not support power saving". The Power saving schedule switch and the schedules stay usable there, as on a real network.
+- **Network services:** eero Simple Setup is a switch with Undo. **Eco efficiency** and **Power saving schedule** switches run `settings.power_saving.set` with Undo. When eero reports the `power_saving` capability false (a gateway without it), the whole Eco efficiency section dims with the hardware reason, as the eero app hides it there (M5.R-fix9): the Eco efficiency row reads "Your eero hardware does not support power saving", both switches, **Add schedule** and the pencils are off with that reason as their tooltip, the schedule row reads "Schedules do nothing on this hardware. You can still delete them." and the week strip is faded. Existing schedules stay listed read-only, each with a **Delete** (trash) button that asks inline and runs `settings.power_schedule.remove` with no Undo (adding back is refused there). Core refuses the other power saving writes on that hardware too.
 - **Power saving schedules:** **Add schedule** and each schedule's pencil open the schedule sheet (Schedule on, name, start and end with "next day" when it wraps past midnight, Repeats on, an Each day bar in the power saving colour). Save runs `settings.power_schedule.add` or `.update` (Undo removes or restores); **Delete schedule** asks inline and runs `.remove` with an Undo that adds it back. Clicking a timeline segment does not open the sheet yet (M5.11 owns the timeline).
 - **Wireless:** Multi-link operation is a segmented Off / Single link / Multi-link (shown only when eero reports it) that confirms inline with core's `settings.impact` summary and shows the pending change; Client steering and Fast roaming are switches with Undo; Legacy device mode (Restarts eeros) confirms inline.
 - **Thread** (`ThreadCard.tsx`): the switch asks before turning Thread off ("Thread accessories lose their border router while Thread is off"). **Reveal** reads `settings.thread.credentials` on each click and shows the key until **Hide**; nothing is cached. **Copy dataset** copies eero's dataset, or, when eero sends none (a real network sends none), the network name, channel, PAN IDs, network key and PSKc as lines. **Share credentials with phone keychain** is a switch with Undo. **Regenerate credentials** opens the confirm dialog with type-the-name (the Thread network name).
@@ -90,21 +90,23 @@ Breadcrumb `Settings / Advanced networking`, subtitle "Changes apply to every ee
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| WAN IP, double NAT hint, ISP name, lease age | `internet.get` | on load, every 5 min |
-| IPv6 state, prefixes, IPv6 DNS | `settings.get` (ipv6) with `internet.get` | on load |
+| WAN IP, double NAT hint, ISP name, lease age | `internet.get` | on load, every 60 s |
+| IPv6 state, prefixes, IPv6 DNS | `settings.get` (ipv6) with `internet.get` | on load, every 60 s |
 | Devices with IPv6 | `device.list` | on load |
 | Pinhole count | `pinhole.list` | on load |
-| ISP settings, VLAN, IPTV, static, PPPoE | `settings.get` (wan) | on load |
-| Simple Setup, DHCP and NAT, NAT port mode, DNS, caching, UPnP, SQM, power saving, MLO, client steering | `settings.get` | on load, after writes |
-| Power saving schedules | `settings.get` (power saving) | on load |
+| ISP settings, VLAN, IPTV, static, PPPoE | `settings.get` (wan) | on load, every 60 s |
+| Simple Setup, DHCP and NAT, NAT port mode, DNS, caching, UPnP, SQM, power saving, MLO, client steering | `settings.get` | on load, every 60 s, after writes |
+| Power saving schedules | `settings.get` (power saving) | on load, every 60 s |
 | Reservation and forward counts | `reservation.list`, `forward.list` | on load |
 | Custom DNS on a LAN device warning | `reservation.list`, `device.list` | when the DNS fields change |
-| Thread state, names, channel, IDs, border agent | `settings.get` (thread, secrets masked) | on load |
+| Thread state, names, channel, IDs, border agent | `settings.get` (thread, secrets masked) | on load, every 60 s |
 | Thread network key, dataset | `settings.thread.credentials` (reveals) | on demand only |
-| HomeKit, Amazon, eero Built-in, Smart Home Hub, Frustration-Free Setup | `integrations.get` | on load |
+| HomeKit, Amazon, eero Built-in, Smart Home Hub, Frustration-Free Setup | `integrations.get` | on load, every 60 s |
 | Feature availability (HomeKit, MLO, VLAN, NAT port mode) | `network.get` (capabilities) | on load |
 | Pending change steps and outage length | `settings.impact` `{changes: [{id, params}]}` | when edits change |
 | Owner only gating | `network.permissions` | on load |
+
+A change made in the eero app (Simple Setup, power saving, Thread, any setting here) shows within about a minute while the page is open, without Refresh (M5.R-fix9).
 
 ## Actions
 

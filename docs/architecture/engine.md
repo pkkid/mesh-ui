@@ -133,13 +133,15 @@ views, a CLI script or an agent ask for the same thing.
 | Topic | Commands | TTL |
 | --- | --- | --- |
 | `account` | `account.get`, `network.list` | 10 min |
-| `network` | `network.get`, `network.health`, `internet.get`, `wifi.get`, network part of `settings.get` | 30 s |
+| `network` | `network.get`, `network.health`, `internet.get` | 30 s |
 | `eeros` | `eero.list`, `eero.get` | 30 s |
 | `eero_ports` | `eero.ports.get` | 30 s |
 | `devices` | `device.list`, `device.get` | 30 s, 10 s while a burst is pending |
 | `profiles` | `profile.list`, `profile.get` | 30 s |
-| `guest` | `guest.get` | 2 min |
-| `settings` | `settings.get` extras (fast transition, power saving, Thread, ac_compat) | 2 min |
+| `guest` | `guest.get` | 30 s |
+| `settings` | `settings.get` | 30 s |
+| `wifi` | `wifi.get`, `wifi.impact` | 30 s |
+| `integrations` | `integrations.get` | 30 s |
 | `routing` | `reservation.list`, `forward.list`, `pinhole.list` | 30 s |
 | `updates` | `updates.get` | 5 min |
 | `release_notes` | `updates.notes` | 6 h |
@@ -155,7 +157,10 @@ views, a CLI script or an agent ask for the same thing.
 | `diagnostics` | `health.check`, `support.info`, `support.report` | 1 min |
 
 TTLs are a little under the poll intervals below, so a poll always reaches
-the backend while two views polling the same topic share one request.
+the backend while two views polling the same topic share one request. A
+test (`src/core/eero/pollbudget.test.ts`) holds every polled query's TTL
+under its poll; `events.summary` is the one exception (2 min on purpose:
+it pages through history, and `events.list` carries the live part).
 
 - Composite queries (`health.check`, `network.health`, `support.report`)
   read other topics through the cache and cost nothing when those are fresh.
@@ -195,8 +200,15 @@ the backend while two views polling the same topic share one request.
 Polling is driven by surfaces, not by the engine. Each query command can
 declare a `poll` interval, read from the constants in `src/core/poll.ts` and
 reported by `engine.commands()`. The renderer's `useQuery(..., { poll: true })`
-re-executes on that interval while the window is visible
-([ui.md](ui.md#data-access)); those calls hit the engine cache first. The CLI
+re-executes on that interval while the view is mounted and the window is
+visible ([ui.md](ui.md#data-access)); those calls hit the engine cache
+first. Readers of the same id and params share one timer (`pollQuery`) at
+the shortest interval any of them asks for, so a query shown by five
+components reaches the engine once per interval, and a reader that mounts
+later does not restart the countdown. Every read a page keeps on screen
+polls, so a change made in the eero app shows within about a minute
+(M5.R-fix9); only rarely changing or expensive reads wait for open, a
+write or Refresh. The CLI
 does not poll; a long-running `mesh-ui mcp` keeps its cache between tool
 calls but never polls in the background.
 
@@ -213,14 +225,36 @@ calls but never polls in the background.
 | Usage charts | `usage.get`, `usage.breakdown` | 5 min |
 | Speed test history | `speedtest.history` | on open and after `speedtest.run` (one re-read about 60 s later) |
 | Updates | `updates.get` | on open and after a write; 15 min on the Updates page |
-| Settings, guest, Wi-Fi, admins | `settings.get`, `guest.get`, `wifi.get`, `admin.list` | on open and after a write |
+| Settings, integrations, guest, Wi-Fi | `settings.get`, `integrations.get`, `guest.get`, `wifi.get` | 60 s (M5.R-fix9: Simple Setup, power saving, Thread and the rest change in the eero app too) |
+| Admins, permissions, account, networks | `admin.list`, `network.permissions`, `account.get` | on open and after a write (roles and owners rarely change); `network.list` 60 s from the network switcher, served from its 10 min cache |
+| Notification settings, impact, Thread credentials | `notifications.settings.get`, `settings.impact`, `wifi.impact`, `settings.thread.credentials` | on open (dialogs and confirms; credentials never cached) |
 | Firmware history, coverage, upgrade report, release notes | | on open only |
 | Health check | `health.check` | on open and on "Run again" (a fresh read) |
 
-Busiest case (Devices page with live rates, window focused): network 1,
-devices 2, profiles 1, notifications 1, burst 1: about 6 requests a minute,
-far below the limit. Polls are jittered by up to 10 percent, pause while the
-window is hidden, and run once to catch up when it is shown again.
+**Request budget.** `src/core/eero/pollbudget.test.ts` keeps each page
+open for ten minutes against the fake eero server, runs every poll due each
+minute through the engine and the real eero client with no read sharing
+(an upper bound: real polls are jittered and often share reads), and counts
+requests. Measured at M5.R-fix9, typical minute / busiest minute (when the 5
+minute usage polls and the 10 minute account read line up):
+
+| Page | Requests a minute |
+| --- | --- |
+| Overview | 31 / 64 |
+| eero detail | 29 / 50 |
+| Reservations & ports | 39 / 49 |
+| Troubleshooting | 26 / 36 |
+| Devices (live rates on) | 23 / 37 |
+| Wi-Fi | 21 / 31 |
+| Guest | 17 / 40 |
+| Advanced networking | 14 / 24 |
+
+The test fails if a typical minute goes over 40 or any minute over 70, under
+the client's 80 a minute limiter and eero's limit of about 100. One poll of
+`settings.get` costs 5 requests, `wifi.get` and `guest.get` 4,
+`integrations.get` 1. Polls are jittered by up to 10 percent, stretch to 5
+minutes while the window is hidden, and run once to catch up when it is
+shown again.
 
 ## Live device rates
 

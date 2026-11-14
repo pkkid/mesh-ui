@@ -210,7 +210,7 @@ export const commands: AnyCommand[] = [
     params: z.object({}),
     effect: "query",
     topic: "wifi",
-    poll: POLL.network,
+    poll: POLL.settings,
     run: (ctx): Promise<M.WifiSettings> => ctx.backend.wifi.get(ctx.net),
   }),
   defineCommand({

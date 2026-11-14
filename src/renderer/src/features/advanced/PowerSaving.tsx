@@ -7,9 +7,11 @@
  * runs `.remove` with an Undo that adds it back. An end before the start
  * wraps past midnight ("next day"). Validation is core's (bad_params lands
  * under the field). docs/ux/pages/advanced-networking.md (Network services),
- * mockup 13. On a gateway eero reports as not `power_saving` capable, the
- * Eco efficiency row dims and says why; the schedule switch and schedules
- * still work there, as on a real network.
+ * mockup 13. On a gateway eero reports as not `power_saving` capable the
+ * whole section dims with the hardware reason (M5.R-fix9), as the eero app
+ * hides it there: both switches, Add schedule and Edit are off, existing
+ * schedules stay listed read-only, and each keeps a Delete (core refuses
+ * every other power saving change on that hardware).
  */
 import { CalendarPlus, Leaf, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -19,6 +21,7 @@ import { Button } from "~/components/ui/button";
 import { InlineConfirm } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
+import type { Gate } from "~/app/useWrite";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { formatMinute, MINUTES_PER_DAY, WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
 import { seriesColors } from "~/lib/chartColors";
@@ -28,6 +31,9 @@ import { networkClock } from "../../../../core/format";
 import type { Day, NetworkSettings, Schedule, ScheduleInput } from "../../../../core/model";
 
 import { OFFLINE, Row, SubPanel, useOffline, useSettingsWrite, WriteSwitch } from "./SettingsGroups";
+
+/** Why the Eco efficiency section is dimmed on hardware without power saving (core's ECO_NOT_CAPABLE, as UI copy). */
+export const NO_POWER_SAVING = "Your eero hardware does not support power saving";
 
 const DAY_INDEX: Record<Day, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -70,16 +76,28 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   const clock = networkClock(timezone);
   const parts = clock.parts(now);
   const minute = parts.hour * 60 + Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone ?? "UTC", minute: "numeric" }).format(now));
-  const ecoWrite = useSettingsWrite<PowerParams>("settings.power_saving.set", "Eco efficiency", offline);
-  // eero reports power_saving not capable on a gateway without it and refuses `enable` (403): dim Eco and say why.
+  // eero reports power_saving not capable on a gateway without it and refuses `enable` (403); the eero app
+  // hides the section there. Dim all of it and say why; only Delete stays, to clean up old schedules.
   const ecoCapable = useGate({ area: "settings", capability: "power_saving" });
   const incapable = ecoCapable.reason === NOT_AVAILABLE;
-  const eco = incapable ? { ...ecoWrite, gate: ecoCapable } : ecoWrite;
+  const hardware: Gate = { allowed: false, reason: NO_POWER_SAVING };
+  const ecoWrite = useSettingsWrite<PowerParams>("settings.power_saving.set", "Eco efficiency", offline);
+  const schedWrite = useSettingsWrite<PowerParams>("settings.power_saving.set", "the power saving schedule", offline);
+  const eco = incapable ? { ...ecoWrite, gate: hardware } : ecoWrite;
+  const sched = incapable ? { ...schedWrite, gate: hardware } : schedWrite;
   const unsupported = settings !== undefined && ps?.enabled === null && ps.scheduleEnabled === null;
-  const sched = useSettingsWrite<PowerParams>("settings.power_saving.set", "the power saving schedule", offline);
   const baseGate = useGate("settings.power_schedule.add");
-  const addGate = baseGate.allowed && offline ? { allowed: false, reason: OFFLINE } : baseGate;
+  const addGate = incapable ? hardware : baseGate.allowed && offline ? { allowed: false, reason: OFFLINE } : baseGate;
+  const baseRemove = useGate("settings.power_schedule.remove");
+  const removeGate = baseRemove.allowed && offline ? { allowed: false, reason: OFFLINE } : baseRemove;
   const [sheet, setSheet] = useState<SheetMode | null>(null);
+  const [deleting, setDeleting] = useState<Schedule | null>(null);
+  const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("settings.power_schedule.remove");
+  // No Undo here: adding a schedule back is refused on this hardware.
+  const del = async (s: Schedule) => {
+    const res = await remove.run({ schedule: s.id }, { success: `Deleted ${s.name}`, failure: `Couldn't delete ${s.name}` });
+    if (res?.ok) setDeleting(null);
+  };
 
   const flip = (w: typeof eco, key: keyof PowerParams, what: string) => (on: boolean) =>
     void w.write.run(
@@ -91,14 +109,14 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
     <>
       <Row
         title="Eco efficiency"
-        description={incapable ? "Your eero hardware does not support power saving" : "Use less power when nobody needs full speed"}
+        description={incapable ? NO_POWER_SAVING : "Use less power when nobody needs full speed"}
         dim={unsupported || incapable}
         control={<WriteSwitch on={ps?.enabled} label="Eco efficiency" gate={eco.gate} busy={eco.write.running} onToggle={flip(eco, "enabled", "Eco efficiency")} />}
       />
       <Row
         title="Power saving schedule"
-        description="Radios drop to 1x1 and LEDs turn green. Wi-Fi blips for up to 5 seconds when it starts."
-        dim={unsupported}
+        description={incapable ? "Schedules do nothing on this hardware. You can still delete them." : "Radios drop to 1x1 and LEDs turn green. Wi-Fi blips for up to 5 seconds when it starts."}
+        dim={unsupported || incapable}
         control={<WriteSwitch on={ps?.scheduleEnabled} label="Power saving schedule" gate={sched.gate} busy={sched.write.running} onToggle={flip(sched, "scheduleEnabled", "The power saving schedule")} />}
       >
         {!unsupported && (
@@ -117,21 +135,34 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
                       {s.enabled ? "" : " · off"}
                     </span>
                     <span className="ms-auto">
-                      <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
-                        <Pencil />
-                      </GatedButton>
+                      {incapable ? (
+                        <GatedButton size="icon-xs" variant="ghost-muted" gate={removeGate} aria-label={`Delete ${s.name}`} onClick={() => setDeleting(s)}>
+                          <Trash2 />
+                        </GatedButton>
+                      ) : (
+                        <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
+                          <Pencil />
+                        </GatedButton>
+                      )}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
-            <WeekTimeline
-              schedules={schedules.map(toWeek)}
-              today={settings ? parts.weekday : null}
-              now={settings ? minute : null}
-              loading={loading}
-              ariaLabel={`Power saving schedules across the week: ${schedules.length === 0 ? "none" : schedules.map((s) => `${s.name}, ${daysLabel(s.days)}, ${s.start} to ${s.end}${s.enabled ? "" : ", off"}`).join("; ")}`}
-            />
+            {deleting && (
+              <InlineConfirm title={`Delete ${deleting.name}?`} confirmLabel="Delete schedule" onConfirm={() => void del(deleting)} onCancel={() => setDeleting(null)} running={remove.running}>
+                It cannot be added back on this hardware.
+              </InlineConfirm>
+            )}
+            <div className={cn(incapable && "opacity-50")}>
+              <WeekTimeline
+                schedules={schedules.map(toWeek)}
+                today={settings ? parts.weekday : null}
+                now={settings ? minute : null}
+                loading={loading}
+                ariaLabel={`Power saving schedules across the week: ${schedules.length === 0 ? "none" : schedules.map((s) => `${s.name}, ${daysLabel(s.days)}, ${s.start} to ${s.end}${s.enabled ? "" : ", off"}`).join("; ")}`}
+              />
+            </div>
             <div>
               <GatedButton size="xs" variant="outline" gate={addGate} disabled={!settings} onClick={() => setSheet({ kind: "add" })}>
                 <CalendarPlus />

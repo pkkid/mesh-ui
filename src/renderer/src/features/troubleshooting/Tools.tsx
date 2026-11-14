@@ -143,7 +143,7 @@ function TwoFourOnly({ offline }: { offline: boolean }) {
 }
 
 function LegacyMode() {
-  const settings = useQuery<NetworkSettings>("settings.get");
+  const settings = useQuery<NetworkSettings>("settings.get", undefined, { poll: true });
   const on = settings.data?.legacyMode ?? null;
   return (
     <FixCard title="Connect devices that can't detect Wi-Fi 6" badge={disruptive}>
