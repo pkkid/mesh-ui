@@ -75,7 +75,8 @@ export type RawNetwork = {
   wan_ip?: string;
   wan_type?: string;
   connection?: { mode?: "nat" | "bridged" | "ipPassthrough" | string };
-  lease?: { mode?: string; dhcp?: { ip?: string; mask?: string; router?: string } };
+  /** The WAN lease. eero sends no lease or renew time (real capture, 2026-11-13). */
+  lease?: { mode?: string; dhcp?: { ip?: string; mask?: string; router?: string } | null; static?: unknown };
   dhcp?: { mode?: string; custom?: { subnet_ip?: string; subnet_mask?: string; start_ip?: string; end_ip?: string } };
   dns?: { mode?: string; caching?: boolean; parent?: { ips?: string[] }; custom?: { ips?: string[] } };
   upnp?: boolean;
@@ -129,7 +130,13 @@ export type RawEero = {
   connection_type?: string;
   using_wan?: boolean;
   mesh_quality_bars?: number;
-  wireless_upstream_node?: { url?: string; location?: string } | null;
+  /**
+   * The parent of a wireless eero. eero sends its `name` (the parent's
+   * `location`) and a node id that is not an eero id; no url (real capture,
+   * 2026-11-13). `url` is read only if eero ever sends it.
+   */
+  ethernet_status?: { wiredInternet?: boolean; segmentId?: string; statuses?: RawEthernetPortStatus[] } | null;
+  wireless_upstream_node?: { url?: string; name?: string; primary_mesh_radio?: string; node_or_proxied_node_id?: number; is_proxied_node?: boolean } | null;
   connected_clients_count?: number;
   connected_wired_clients_count?: number;
   connected_wireless_clients_count?: number;
@@ -142,37 +149,82 @@ export type RawEero = {
   resources?: Record<string, RawLink>;
 };
 
-/** `GET resources.connections` (normally `{eero}/connections`). */
+/** One device behind a port: `EERO_DEVICE` (metadata `location, model, model_name, url`) or `CLIENT_DEVICE` (`display_name, device_type, url`). */
+export type RawPortConnection = {
+  type?: string;
+  metadata?: { url?: string; location?: string; model?: string; model_name?: string; display_name?: string; device_type?: string; advanced_attributes?: { connection_type?: string } };
+};
+
+/** `GET resources.connections` (normally `{eero}/connections`). Shape from a real capture (2026-11-13). */
 export type RawPortInterface = {
   interface_number?: number;
   name?: string | null;
+  /** "DATA_CONNECTED", "WAN" seen; other values (down, disabled) not yet. */
   port_status?: string;
   /** "P2500", "P1000"; absent when the link is down. */
   negotiated_speed?: string | null;
   supported_speed?: string | null;
+  /** "UNKNOWN" on both real ports, the WAN port included. */
   network_type?: string;
   poe_status?: string | null;
   ethernet_address?: string;
-  /** What is plugged in, when eero knows (shape partly unverified). */
-  neighbor?: { type?: string; metadata?: { url?: string; mac?: string; display_name?: string; location?: string } } | null;
-  actions?: { type?: string }[];
+  /** True on the port toward the internet or the parent eero. */
+  is_upstream?: boolean;
+  /**
+   * What is plugged in: `WAN_SOURCE` on the WAN port, `MULTIPLE_DEVICES`
+   * with `metadata.multiple_devices.connections[]` behind a switch.
+   */
+  connection_status?: {
+    type?: string;
+    metadata?: RawPortConnection["metadata"] & { multiple_devices?: { connections?: RawPortConnection[] } };
+  } | null;
+  actions?: { type?: string; position?: number }[];
 };
 
 export type RawConnections = {
-  ports?: { layout?: string; interfaces?: RawPortInterface[] };
+  ports?: { layout?: string | { layout_type?: string; position_rank_order?: number[] }; interfaces?: RawPortInterface[] };
   node_actions?: { type?: string }[];
-  wireless_devices?: { type?: string; metadata?: { display_name?: string; device_type?: string } }[];
+  wireless_devices?: { type?: string; metadata?: { display_name?: string; device_type?: string; url?: string } }[];
   provide_device_power?: boolean;
 };
 
-/** One row of `GET /2.2/eeros/{id}/firmware_update/history`. Shape unverified (only LD uses it). */
+/**
+ * One row of `GET /2.2/eeros/{id}/firmware_update/history`, whose `data` is
+ * `{data: [row], meta: {has_more}}`, newest first (real capture, 2026-11-13).
+ * `firmware_version` is the build string, the eero's `os_version` plus
+ * `+build`.
+ */
 export type RawFirmwareHistoryEntry = {
-  os_version?: string;
-  version?: string;
-  installed?: string;
-  installed_at?: string;
-  created?: string;
+  id?: string;
+  timestamp?: string;
+  finished_at?: string | null;
+  firmware_version?: string;
+  previous_version?: string | null;
+  /** "completed" seen. */
   status?: string;
+  /** "manual", "automatic". */
+  update_type?: string;
+  duration_seconds?: number;
+  /** "Success" seen. */
+  outcome?: string;
+  update_status?: string;
+  failure_reason?: string | null;
+};
+
+/** One port in an eero's `ethernet_status.statuses` (real capture, 2026-11-13). */
+export type RawEthernetPortStatus = {
+  interfaceNumber?: number;
+  hasCarrier?: boolean;
+  /** "P1000", "P10". */
+  speed?: string;
+  /** The port labelled WAN; on a wired satellite, the one toward its parent. */
+  isWanPort?: boolean;
+  isLte?: boolean;
+  /** False on every real port, the wired satellite's uplink included. */
+  isLeafWiredToUpstream?: boolean;
+  /** The eero on the other end, when it is one: `{type: "EERO", metadata: {port, port_name, location, url}}`. */
+  neighbor?: { type?: string; metadata?: { url?: string; location?: string; port?: number; port_name?: string } } | null;
+  port_name?: string;
 };
 
 // ---------------------------------------------------------------------------

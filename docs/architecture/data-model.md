@@ -196,9 +196,9 @@ type UsageBreakdown = {
 | `wanType` | `wan_type`, `lease.mode`, `pppoe_enabled` |
 | `ispGateway` | `gateway_ip` or `lease.dhcp.router` |
 | `dnsInUse`, `dnsMode` | `dns.parent.ips` or `dns.custom.ips`, `dns.mode` |
-| `leaseRenewsAt` | `lease.dhcp.renews_on`, else `expires_on` (field name unverified); null for a static WAN |
+| `leaseRenewsAt` | always null from eero: `lease.dhcp` has only `ip`, `mask`, `router` and `GET {net}` has no lease time (real capture, 2026-11-13). Only the demo fills it |
 | `verdict` | built in core from status, plan and the last speed test |
-| `gateway.wanPortSpeedMbps` | gateway eero `ethernet_status.statuses[isWanPort].speed` (`"P2500"` to 2500) |
+| `gateway.wanPortSpeedMbps` | gateway eero `ethernet_status.statuses[isWanPort].speed` (`"P2500"` to 2500), only when that port `hasCarrier` (an unlinked port reports `"P10"`) |
 | `lastSpeedTest` | `speed.{date,down.value,up.value}` |
 | `SpeedTest` | `GET {net}/speedtest` rows `{date, down_mbps, up_mbps}`; `rating` vs `planMbps` in core |
 | `UsageSeries.points` | `series[type=download\|upload].values[{time,value}]` zipped by `time` |
@@ -291,18 +291,18 @@ type UpgradeReport = {
 | `endOfLife` | `update_status.{support_expired,support_expiration_date}` |
 | `backhaul` | `wired` / `connection_type` |
 | `meshBars` | `mesh_quality_bars` |
-| `upstream` | `wireless_upstream_node.url`, else the eero in `ethernet_status.statuses[].neighbor` with `isLeafWiredToUpstream` |
+| `upstream` | wireless: `wireless_upstream_node.name` matched to exactly one eero's `location` (eero sends no url, and `node_or_proxied_node_id` is not an eero id; a `url` is used if ever sent). Wired: the `neighbor` of type `EERO` (`metadata.url`) on the port with `isLeafWiredToUpstream`, else on the `isWanPort` port with carrier, else the only EERO neighbour (`isLeafWiredToUpstream` is false on every real port). `eero.get` reads the list to resolve the name |
 | `clients` | `connected_clients_count`, `connected_wired_clients_count`, `connected_wireless_clients_count` |
 | `bands` | `bands[]` (`band_5GHz_low` and `_high` both map to `"5"`) |
 | `radios` | `radio_channel_stats.<band>.{channel,channel_width,channel_utilization,client_count}`; `txPowerDbm` from `tx_power`; `autoChannel` is always null (no known eero field) |
 | `hop`, `meshQuality` | derived in core in `eero.list` and `eero.get` from `upstream`, `backhaul` and `meshBars` |
-| `subnet`, `gatewayIp` | `subnet` from the network's custom DHCP settings (null in automatic DHCP); `gatewayIp` is the gateway eero's IP (null in bridge or passthrough) |
+| `subnet`, `gatewayIp` | `subnet` from the same `mapLan(dhcp)` as `reservation.list`: `dhcp.custom`, or eero's automatic 192.168.4.0/22 when `dhcp.mode` is `automatic` (null in bridge or passthrough); `gatewayIp` is the gateway eero's IP (null in bridge or passthrough) |
 | `led` | `led_on`, `led_brightness` |
 | `nightlight` | `nightlight` (`enabled` false = off; `schedule.enabled` picks schedule vs ambient) |
 | `ipv4`, `ipv6`, `mac`, `bssids` | `ip_address`, `ipv6_addresses[].address`, `mac_address`, `bssids_with_bands` |
 | `uptimeSec`, `joined` | `uptime.since_last_reboot_s`, `joined` |
-| `EeroPorts` | `resources.connections`: `ports.interfaces[]` (`negotiated_speed` `"P2500"`, `supported_speed`, `poe_status`, `actions[].type`) |
-| `FirmwareEntry` | `GET /2.2/eeros/{id}/firmware_update/history` (shape unverified, MANUAL); `current` is the entry matching `os_version` |
+| `EeroPorts` | `resources.connections`: `ports.interfaces[]`. `status`: `port_status` `DATA_CONNECTED` or `WAN` is up, `DISABLED` disabled, else down. `speedMbps`: `negotiated_speed` (`"P1000"`) when up; `supportedMbps`: `supported_speed`. `isWan`: `port_status` `WAN` or `connection_status.type` `WAN_SOURCE` (`network_type` is `UNKNOWN` on real ports). `attached`: from `connection_status.metadata.multiple_devices.connections[]` (`type` `EERO_DEVICE` or `CLIENT_DEVICE`, joined by `metadata.url`): an eero if one is there, else the only device, else `"N devices"` with no id. `poe_status`, `actions[].type` |
+| `FirmwareEntry` | `GET /2.2/eeros/{id}/firmware_update/history`, `data.data[]`: `version` is `firmware_version` up to `+` (the build tail dropped, so it equals the eero's `os_version`), `installedAt` is `finished_at`, else `timestamp`; rows whose `outcome` or `status` says failed are dropped; `current` is the newest entry matching `os_version` |
 | `CoverageScan`, `UpgradeReport` | `/2.4/` placement scans; shapes known only from LD, MANUAL capture needed |
 
 ## Devices
