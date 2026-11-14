@@ -1,12 +1,13 @@
 /**
  * The eero detail hero: product tile with an LED bar, name, status line
  * (status, model, radio badge, uptime), Devices and Data 24h, and the
- * Uplink card on the right. docs/ux/pages/eero-detail.md (Layout 1).
+ * Uplink card on the right. The LED bar pulses while Find blinks the eero. docs/ux/pages/eero-detail.md (Layout 1).
  */
 import { Badge } from "~/components/ui/badge";
 import { Metric, PageHeader } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
 import { eeroIcon } from "~/components/mesh/Topology";
+import { useBlinking } from "~/features/eeros/EeroCards";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount, formatDuration, formatPercent } from "../../../../core/format";
 import type { Eero, UsageBreakdownRow } from "../../../../core/model";
@@ -81,12 +82,13 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
   );
 }
 
-const LED_LABEL = { on: "Status light on", dim: "Status light dimmed", off: "Status light off", unknown: "Status light unknown" } as const;
+const LED_LABEL = { on: "Status light on", dim: "Status light dimmed", off: "Status light off", unknown: "Status light unknown", blink: "Status light blinking" } as const;
 
 /** A 150px rounded square with the router or lamp glyph and an LED bar at the top that mirrors the LED. */
 function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean }) {
   const Icon = eeroIcon({ model: eero?.model ?? null });
-  const led = ledState(eero, offline);
+  const blinking = useBlinking(eero?.id) !== null;
+  const led = blinking ? "blink" : ledState(eero, offline);
   return (
     <div
       role="img"
@@ -98,6 +100,7 @@ function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean })
         className={cn(
           "absolute top-4 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full",
           led === "on" && "bg-foreground/80",
+          led === "blink" && "animate-pulse bg-foreground/80",
           led === "dim" && "bg-foreground/40",
           (led === "off" || led === "unknown") && "bg-border",
         )}

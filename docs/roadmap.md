@@ -712,7 +712,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `wifi.name.set`, `wifi.password.set`, `wifi.security.set`, `wifi.hide5g.set` (all disruptive) and `wifi.impact` (devices that must reconnect, WPA2-only devices for a security change, a restart estimate). Wi-Fi page: name and password sheet with Generate, security per band, the 2.4 GHz only switch with its countdown, the impact panel and inline confirm before each save. A reveal right after a password change shows the new one (M4.2's credential bypass).
 - done when: demo and fake-server tests incl. `needs_confirm`, byte length of names, printable ASCII passwords, 6 GHz always WPA3, the `hide_5g` PUT and DELETE; passwords never in logs, audit log or CLI table without `--reveal`; `pnpm ui:shot --route '#/settings/wifi'` with the impact panel and confirm, light and dark; `MANUAL: rename the Wi-Fi network and back, only when a reconnect is fine | Settings > Wi-Fi, Change, save, then restore | every wireless device rejoins and the eero app shows the name | disruptive: all wireless devices drop for about a minute`.
 
-### M4.8 eero and network controls ☐
+### M4.8 eero and network controls ✅ (#PR)
 - issue: [#130](https://github.com/pkkid/mesh-ui/issues/130)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/eeros.md, ux/pages/eero-detail.md, architecture/commands.md (eero, network, Restart estimates)

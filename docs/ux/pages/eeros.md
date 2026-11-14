@@ -88,12 +88,12 @@ Sidebar count: number of eeros.
 | Test placement | `eero.placement.test {eero}` | write | No | Note shows "Testing placement..." then the rating ("Good spot", "Move closer to Office") with the measured bars |
 | Scan coverage | - | - | No | Troubleshooting, coverage section, which runs `coverage.scan` |
 | Grid / List | - (view state) | - | No | Switches card layout |
-| Find | `eero.find {eero}` | write | No | LED flashes blue and white for 30 s; header shows "Blinking · 30s" counting down |
-| Stop (while blinking) | `eero.find {eero, stop: true}` | write | No | Countdown ends; LED returns to its setting |
+| Find | `eero.find {eero}` | write | No | LED flashes blue and white for 30 s; toast "Blinking Office"; the button reads "Blinking · 30s" counting down |
+| Stop (while blinking) | not built: no stop call is known | - | - | Hidden; the countdown runs out |
 | Card chevron, card title | - | - | No | eero detail |
 | Day / Week (usage by eero) | - (re-queries `usage.get`) | - | No | Chart switches range |
 | Legend item | - (view state) | - | No | Hides or shows that eero's series |
-| Restart network | `network.restart {confirm: true}` | disruptive | Yes, inline | Progress toast "Restarting Maple Street, about 2 to 3 minutes"; all eeros show Restarting; faster polling until every eero is Online |
+| Restart network | `network.restart {confirm: true}` | disruptive | Yes, inline (the engine's `needs_confirm` message) | Progress toast "Restarting Maple Street" with "Back in about 2 to 3 minutes"; eeros show Updating; the eero and network queries refresh every 5 s until every restarted eero is back, then "Maple Street is back" |
 
 ## States
 
@@ -120,13 +120,20 @@ Sidebar count: number of eeros.
   test unsupported on a model: Test placement hidden for that eero.
 - **Bridge mode.** Page works as normal.
 
-## Built so far (M2.5)
+## Built so far (M2.5, M4.8)
 
-- Find, Test placement and Restart network are shown disabled with a
-  "Coming soon" tooltip until `eero.find`, `eero.placement.test` and
-  `network.restart` land; Scan coverage links to Troubleshooting. So the
-  Stop control, the blinking countdown and the open inline confirm in the
-  mockup are not built yet.
+- Find (`eero.find`) and Restart network (`network.restart`) work (M4.8).
+  Test placement stays disabled with "Coming soon" until
+  `eero.placement.test` lands; Scan coverage links to Troubleshooting. Stop
+  is hidden until a stop call is verified.
+- The restart watcher (`watchRestart` in `NetworkActions.tsx`) is shared by
+  the eeros page, the Overview hero and eero detail. It reads `eero.list`
+  after 1 s and then every 5 s (the engine cache answers most reads, so a
+  real network sees about one request per 30 s), counts a failed read as
+  down (the gateway takes this computer offline too), and clears the
+  progress toast once every restarted eero has been seen down and back, or
+  after 90 s if none was ever seen down. After 10 minutes it turns into an
+  error toast. Offline eeros are left out, since they cannot restart.
 - The Map, Tree and radio table live in `components/mesh/` (`Topology`,
   `TopologyTree`, `LinkChip`, `RadioTable`) so eero detail can draw one
   eero's uplink with the same pieces.
@@ -141,10 +148,11 @@ Sidebar count: number of eeros.
   view code in `components/`; the graph itself (who is upstream of whom,
   quality words from bars) comes from `eero.list` and core mapping. Quality
   words: 4 to 5 bars Excellent, 3 Good, 2 Weak, 0 to 1 Poor.
-- `eero.find` maps to `POST /2.2/eeros/{serial}/led_cycle` with a 30 s
-  duration. Open question: there is no known stop endpoint; `stop: true`
-  could re-apply the LED setting through `led_action`. Until verified, hide
-  Stop and let the countdown run out.
+- `eero.find` maps to `POST /2.2/eeros/{serial}/led_cycle` (form
+  `colors[]=blue&colors[]=white&duration=30&time_per_color=1`; the eero id
+  when it has no serial). Open question: there is no known stop endpoint,
+  so the command has no `stop` and the UI hides Stop; the countdown runs
+  out.
 - Open question on utilisation: current per-band `channel_utilization` comes
   from the eero object (`radio_channel_stats`), while historical channel
   utilisation is an eero Plus feature. Show the current value only when the
@@ -154,7 +162,10 @@ Sidebar count: number of eeros.
 - `eero.placement.test` uses `/2.3/` (placement test is 2.3 only) and runs
   against the chosen eero; the result comes back in a minute or less.
 - `network.restart` (`POST {net}/reboot`) restarts every eero. The run
-  confirms in the UI, and the engine requires `confirm: true`.
+  confirms in the UI, and the engine requires `confirm: true`. It returns
+  `{ eeroIds, estimate }`: the reachable eeros that restart.
+- MANUAL: blink one eero's light | eeros page, Find on one eero | the light
+  cycles blue and white for about 30 s | risk: none.
 - MANUAL: Test placement on one non-gateway eero | eeros page, Test
   placement on the weak eero | a rating appears within a minute | risk:
   none.
