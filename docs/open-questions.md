@@ -43,7 +43,7 @@ gathers them ([testing.md](testing.md#manual-checks)).
 - Outage length for `settings.mlo.set` and `settings.legacy_mode.set` (estimated at about 2 to 3 minutes). ([commands.md](architecture/commands.md#restart-estimates))
 - "Password changed N days ago" needs a timestamp not yet seen in a response. ([wifi.md](ux/pages/wifi.md#notes))
 - Network transfer: what the recipient sees and whether eero sends it by text when given a phone (built from the LD client in M5.6; never tried on the real network). ([updates-admins.md](ux/pages/updates-admins.md#notes))
-- Response shapes known only from one client: network nickname label, IPv6 lease, coverage and upgrade scans, invite expiry, Simple Setup, integrations. ([commands.md](architecture/commands.md), [data-model.md](architecture/data-model.md))
+- Response shapes known only from one client: network nickname label, IPv6 lease, invite expiry, Simple Setup, integrations. ([commands.md](architecture/commands.md), [data-model.md](architecture/data-model.md))
 - Schedule day format: `MON`..`SUN` (LD) vs lowercase (FF). ([commands.md](architecture/commands.md#profile-commandsprofilets))
 - `device.rename` with an empty nickname resets to the hostname; `device.type.set` on `/2.3/`. ([commands.md](architecture/commands.md#device-commandsdevicets))
 

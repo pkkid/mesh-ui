@@ -1,6 +1,7 @@
 /**
  * The health check hero from `health.check`: a score ring with the status
- * summary, Run again, and a grid of checks (internet, DNS, each eero, mesh
+ * summary, Run again (`health.check {refresh: true}`, one run at a time,
+ * the button says "Checking..." until it ends), and a grid of checks (internet, DNS, each eero, mesh
  * links, firmware), each with its mark, icon, name and one-line detail.
  * The symptom chips and their results (Diagnose.tsx) render in the
  * `symptoms` slot at the foot of the card.
@@ -11,12 +12,13 @@ import { CircleCheck, CircleHelp, CircleX, Download, Globe, type LucideIcon, Ref
 
 import { Link, pathFor } from "~/app/router";
 import type { RouteId } from "~/app/routes";
-import type { QueryState } from "~/app/useCommand";
+import { type QueryState, useCommand } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import type { Check, HealthReport } from "../../../../core/model";
+import { newerReport } from "./helpers";
 
 const MARK: Record<Check["status"], { icon: LucideIcon; className: string; word: string }> = {
   good: { icon: CircleCheck, className: "text-success-foreground", word: "Good" },
@@ -105,14 +107,20 @@ function CheckRow({ check }: { check: Check }) {
 }
 
 export function HealthChecks({ query, symptoms }: { query: QueryState<HealthReport>; symptoms?: ReactNode }) {
-  const report = query.data;
-  if (query.error && !report) return <SectionError what="the health check" error={query.error} onRetry={() => void query.refetch()} />;
+  // Run again skips the engine's cache (refresh: true); a plain refetch answered from it and looked like nothing happened.
+  const rerun = useCommand<{ refresh: boolean }, HealthReport>("health.check");
+  const report = newerReport(query.data, rerun.result);
+  const busy = rerun.running;
+  const runAgain = () => {
+    if (!busy) void rerun.run({ refresh: true });
+  };
+  if (query.error && !report) return <SectionError what="the health check" error={query.error} onRetry={runAgain} />;
   const count = report?.checks.length;
   return (
     <Card padded className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-6">
         <div className="flex flex-col items-center gap-2">
-          <ScoreRing report={report} loading={query.fading} />
+          <ScoreRing report={report} loading={query.fading || busy} />
           <div className="text-center">
             <div className="font-medium text-sm">{report ? OVERALL[report.overall].word : "-"}</div>
             <div className={cn("text-xs", report && report.overall !== "good" ? MARK[report.overall].className : "text-muted-foreground")}>{report ? summary(report) : "Checking"}</div>
@@ -122,15 +130,16 @@ export function HealthChecks({ query, symptoms }: { query: QueryState<HealthRepo
           <h2 className="font-medium text-base">Network health check</h2>
           <p className="text-muted-foreground text-xs">{count ? `${count} checks` : "Checks"} across internet, DNS, eeros, mesh links and firmware, from what eero last reported.</p>
           <div className="mt-2">
-            <Button size="sm" onClick={() => void query.refetch()} disabled={query.loading}>
-              <RefreshCw className={cn(query.loading && "animate-spin")} />
-              Run again
+            <Button size="sm" onClick={runAgain} disabled={busy} aria-busy={busy} data-run-again>
+              <RefreshCw className={cn(busy && "animate-spin")} />
+              {busy ? "Checking..." : "Run again"}
             </Button>
+            {rerun.error && <p className="mt-2 text-destructive-foreground text-xs">Couldn't run the check again: {rerun.error.message}</p>}
           </div>
         </div>
       </div>
       {/* The grid sits 1px low inside a clipping frame, so the last row's bottom border never doubles the frame's. */}
-      <div className={cn("overflow-hidden rounded-(--control-radius) border transition-opacity", query.fading && "opacity-40")}>
+      <div className={cn("overflow-hidden rounded-(--control-radius) border transition-opacity", (query.fading || busy) && "opacity-40")}>
         <div className="-mb-px grid sm:grid-cols-2">
           {report
             ? report.checks.map((c) => (

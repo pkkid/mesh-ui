@@ -103,22 +103,39 @@ beforeEach(() => Object.assign(WAIT, { intervalMs: 1, timeoutMs: 2_000 }));
 afterEach(() => Object.assign(WAIT, saved));
 
 describe("coverage (fake eero server)", () => {
-  it("coverage.scan reads /2.4/ wifi_coverage_scan with allDevices and maps bars, servers and advice", async () => {
+  it("coverage.scan reads /2.4/ wifi_coverage_scan (real shape: devices split by health) into a room per eero", async () => {
     const { engine, fake } = fakeEngine();
+    const net = fake.state.networks.get("100001");
+    const wireless = net?.devices.filter((d) => d.connected && d.wireless !== false) ?? [];
+    const weak = wireless[0];
+    if (!weak?.connectivity) throw new Error("fixture has no wireless device");
+    weak.connectivity = { ...weak.connectivity, score: 0.2, score_bars: 1 };
     const scan = await ok(engine.execute<M.CoverageScan>("coverage.scan", { networkId: "100001" }));
     const req = fake.log.find((l) => l.path.includes("wifi_coverage_scan"));
     expect(req).toMatchObject({ method: "GET", path: "/2.4/networks/100001/placement/wifi_coverage_scan", query: "?allDevices=true" });
-    expect(scan.rooms[0]).toMatchObject({ eeroId: "500004", location: "Garage", quality: 20, servedBy: "500002" });
-    expect(scan.rooms.find((r) => r.eeroId === "500001")).toMatchObject({ quality: 100, servedBy: null });
-    expect(scan.advice).toEqual(["Adjust eero placement. Garage sits too far from the eero it connects through."]);
+    // Before the fix the real shape mapped to no rooms ("No scan yet" after Scan now).
+    expect(scan.rooms.map((r) => r.eeroId).sort()).toEqual(["500001", "500002", "500003", "500004"]);
+    expect(scan.rooms.reduce((n, r) => n + (r.devices ?? 0), 0)).toBe(wireless.length);
+    const weakRoom = scan.rooms.find((r) => r.eeroId === weak.source?.url?.split("/").at(-1));
+    expect(weakRoom?.quality).toBeLessThan(90);
+    // Garage has no wireless devices: listed with no quality, served by Office.
+    expect(scan.rooms.find((r) => r.eeroId === "500004")).toMatchObject({ location: "Garage", quality: null, devices: 0, servedBy: "500002" });
+    expect(scan.rooms[0]?.eeroId).toBe(weakRoom?.eeroId);
+    expect(scan.advice).toEqual([`${weak.display_name} has a weak Wi-Fi link to ${weak.source?.location}. Moving it or the eero closer can help.`]);
+    expect(scan.scannedAt).toBe(new Date(NOW).toISOString());
   });
 
-  it("coverage.upgrade_report reads /2.4/ wifi_generation_scan and fills every generation", async () => {
+  it("coverage.upgrade_report reads /2.4/ wifi_generation_scan (real shape: device rows per numeric version) and counts every wireless device", async () => {
     const { engine, fake } = fakeEngine();
     const r = await ok(engine.execute<M.UpgradeReport>("coverage.upgrade_report", { networkId: "100001" }));
     expect(fake.log.find((l) => l.path.includes("wifi_generation_scan"))).toMatchObject({ method: "GET", path: "/2.4/networks/100001/placement/wifi_generation_scan", query: "?allDevices=true" });
     expect(r.byGeneration.map((g) => g.generation)).toEqual(GENERATIONS);
-    expect(r.notes.length).toBe(1);
+    const wireless = fake.state.networks.get("100001")?.devices.filter((d) => d.connected && d.wireless !== false) ?? [];
+    // Before the fix every count was 0 ("No wireless devices to report on").
+    expect(r.byGeneration.reduce((n, g) => n + g.devices, 0)).toBe(wireless.length);
+    const six = wireless.filter((d) => String(d.interface?.frequency).startsWith("6")).length;
+    expect(r.byGeneration.find((g) => g.generation === "wifi6e")?.devices).toBe(six);
+    expect(r.limitingEeros).toEqual([]);
   });
 
   it("eero.placement.test posts to /2.3/ placement_test/{serial}, waits while it runs, then maps the rating", async () => {
@@ -147,19 +164,34 @@ describe("placement and coverage mapping", () => {
     expect(mapPlacement("1", { result: { rating: "GOOD", recommendation: "Fine where it is" } })).toEqual({ eeroId: "1", rating: "good", advice: "Fine where it is" });
   });
 
-  it("reads rooms from rooms, eeros or nodes, with ids from eero_id or url", () => {
-    const s = mapCoverageScan({ rooms: [{ eero_id: 7, location: "Den", score: 130, devices: [1, 2] }, { url: "/2.2/eeros/8", coverage_score: 55, device_count: 3, upstream: { url: "/2.2/eeros/7" } }, { location: "No id" }], advice: ["One", { text: "Two" }] });
+  it("groups coverage devices by their eero, averaging link scores, with weak devices as advice", () => {
+    const dev = (eero: string, score: number | null, bars?: number, name = "Phone") => ({ display_name: name, source: { url: `/2.2/eeros/${eero}`, location: `Room ${eero}` }, connectivity: score === null ? { score_bars: bars } : { score } });
+    const s = mapCoverageScan({ healthy_devices: [dev("7", 1), dev("7", 0.8), dev("8", null, 4), { display_name: "No eero" }], unhealthy_devices: [dev("8", 0.2, 1, "Tablet")], network_id: 1, debug: { recommendation: "x", reason: "y" } });
     expect(s.rooms).toEqual([
-      { eeroId: "7", location: "Den", quality: 100, devices: 2, servedBy: null },
-      { eeroId: "8", location: "", quality: 55, devices: 3, servedBy: "7" },
+      { eeroId: "7", location: "Room 7", quality: 90, devices: 2, servedBy: null },
+      { eeroId: "8", location: "Room 8", quality: 50, devices: 2, servedBy: null },
     ]);
-    expect(s.advice).toEqual(["One", "Two"]);
+    expect(s.advice).toEqual(["Tablet has a weak Wi-Fi link to Room 8. Moving it or the eero closer can help."]);
     expect(mapCoverageScan(null)).toEqual({ scannedAt: null, rooms: [], advice: [] });
   });
 
-  it("reads generations as rows or a map, in any spelling", () => {
-    expect(["WIFI_7", "6E", "wifi6", "ac", "n", "b", "?"].map(generationOf)).toEqual(["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4", "wifi4", null]);
-    expect(mapGenerationScan({ generations: [{ generation: "WIFI_6", count: 3 }, { generation: "6", devices: 1 }] }).byGeneration).toEqual([{ generation: "wifi6", devices: 4 }]);
-    expect(mapGenerationScan({ generations: { wifi_5: 2 }, limiting_eeros: [{ eero_id: "9" }] })).toEqual({ byGeneration: [{ generation: "wifi5", devices: 2 }], limitingEeros: [{ eeroId: "9", reason: "Holds some devices back" }], notes: [] });
+  it("counts generation scan device rows per numeric version, 6 GHz Wi-Fi 6 as 6E, with a note when devices outgrow the eeros", () => {
+    expect(["WIFI_7", "6E", "wifi6", "ac", "n", "b", 4, "?"].map(generationOf)).toEqual(["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4", "wifi4", "wifi4", null]);
+    const d = (frequency = "5") => ({ interface: { frequency } });
+    const r = mapGenerationScan({
+      network_wifi_version: 5,
+      devices_per_wifi_version: [{ wifi_version: 4, devices: [d("2.4"), d("2.4")] }, { wifi_version: 7, devices: [d()] }, { wifi_version: 5, devices: [d()] }, { wifi_version: 6, devices: [d(), d("6")] }],
+      eeros_per_wifi_version: [{ wifi_version: 5, count: 3 }],
+      debug: { recommendation: "x", reason: "y" },
+    });
+    expect(r.byGeneration).toEqual([
+      { generation: "wifi4", devices: 2 },
+      { generation: "wifi7", devices: 1 },
+      { generation: "wifi5", devices: 1 },
+      { generation: "wifi6", devices: 1 },
+      { generation: "wifi6e", devices: 1 },
+    ]);
+    expect(r.notes).toEqual(["3 devices support a newer Wi-Fi generation than your eeros (Wi-Fi 5)."]);
+    expect(mapGenerationScan(null)).toEqual({ byGeneration: [], limitingEeros: [], notes: [] });
   });
 });

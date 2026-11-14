@@ -21,14 +21,22 @@ export function fillGenerations(report: M.UpgradeReport): M.UpgradeReport {
   return { ...report, byGeneration: GENERATIONS.map((generation) => ({ generation, devices: counts.get(generation) ?? 0 })) };
 }
 
-/** Rooms named from the current eero list when eero sent no location, weakest first. */
-async function namedRooms(ctx: CommandContext, scan: M.CoverageScan): Promise<M.CoverageScan> {
-  const missing = scan.rooms.some((r) => !r.location);
-  const eeros = missing ? await ctx.backend.eero.list(ctx.net).catch(() => []) : [];
-  const rooms = scan.rooms
-    .map((r) => ({ ...r, location: r.location || eeros.find((e) => e.id === r.eeroId)?.location || r.eeroId }))
+/**
+ * Fills what eero's scan leaves out from the current eero list: a room for
+ * every eero (eeros with no wireless device have none in the scan), names,
+ * the upstream eero, and the read time as scannedAt (the real scan is an
+ * instant read with no timestamp). Weakest first.
+ */
+async function completeScan(ctx: CommandContext, scan: M.CoverageScan): Promise<M.CoverageScan> {
+  const eeros = await ctx.backend.eero.list(ctx.net).catch(() => []);
+  const missing = eeros.filter((e) => !scan.rooms.some((r) => r.eeroId === e.id)).map((e) => ({ eeroId: e.id, location: e.location, quality: null, devices: 0, servedBy: null }));
+  const rooms = [...scan.rooms, ...missing]
+    .map((r) => {
+      const eero = eeros.find((e) => e.id === r.eeroId);
+      return { ...r, location: r.location || eero?.location || r.eeroId, servedBy: r.servedBy ?? eero?.upstream ?? null };
+    })
     .sort((a, b) => (a.quality ?? 101) - (b.quality ?? 101) || a.location.localeCompare(b.location));
-  return { ...scan, rooms };
+  return { ...scan, scannedAt: scan.scannedAt ?? new Date(ctx.now()).toISOString(), rooms };
 }
 
 export const commands: AnyCommand[] = [
@@ -36,13 +44,13 @@ export const commands: AnyCommand[] = [
     id: "coverage.scan",
     label: "Coverage scan",
     description:
-      "Link quality per room (0 to 100, the eero serving it and its device count) with eero's placement advice. A /2.4/ read that can take a while; refresh: true skips the cached result (Scan again).",
+      "Link quality per room (each eero: the mean 0 to 100 link score of its wireless devices, its device count and the eero it connects through) with advice for weak devices. A /2.4/ read of a few seconds; refresh: true skips the cached result (Scan again).",
     icon: "radar",
     effect: "query",
     topic: "coverage",
     ttl: (p) => (p.refresh ? 0 : TTL.coverage),
     params: z.object({ refresh: z.boolean().optional().describe("Skip the cached scan and ask eero again.") }),
-    run: async (ctx): Promise<M.CoverageScan> => namedRooms(ctx, await ctx.backend.diagnostics.coverageScan(ctx.net)),
+    run: async (ctx): Promise<M.CoverageScan> => completeScan(ctx, await ctx.backend.diagnostics.coverageScan(ctx.net)),
   }),
 
   defineCommand({

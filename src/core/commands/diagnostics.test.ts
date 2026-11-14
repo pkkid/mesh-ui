@@ -35,6 +35,18 @@ const byId = (r: M.HealthReport, id: string) => r.checks.find((c) => c.id === id
 const eeroChecks = (r: M.HealthReport) => r.checks.filter((c) => c.id.startsWith("eero."));
 
 describe("health.check (demo)", () => {
+  it("Run again (refresh: true) reads afresh; a plain read within the TTL is the cached report", async () => {
+    let t = NOW;
+    const backend = createDemoBackend({ clock: () => t });
+    const engine = createEngine({ backend, clock: () => t });
+    const first = await ok(engine.execute<M.HealthReport>("health.check", { networkId: MAPLE }));
+    t += 5_000;
+    // Before the fix Run again was this plain read: the same report came back at once, so the click looked ignored.
+    expect((await ok(engine.execute<M.HealthReport>("health.check", { networkId: MAPLE }))).at).toBe(first.at);
+    expect((await ok(engine.execute<M.HealthReport>("health.check", { networkId: MAPLE, refresh: true }))).at).toBe(new Date(t).toISOString());
+    expect(await code(engine.execute("health.check", { networkId: MAPLE, refresh: "yes" }))).toBe("bad_params");
+  });
+
   it("default: every check good except the Garage weak link, one warning, score 86", async () => {
     const { engine } = demo();
     const r = await ok(engine.execute<M.HealthReport>("health.check", { networkId: MAPLE }));

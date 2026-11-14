@@ -15,7 +15,7 @@ import { z } from "zod";
 import type { DiagnosticsSymptom } from "../backend";
 import { formatDuration, formatMbps, formatRelative, MISSING } from "../format";
 import type * as M from "../model";
-import { POLL } from "../poll";
+import { POLL, TTL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { knownDevices } from "./device";
 import { withTopology } from "./eero";
@@ -361,12 +361,13 @@ export const commands: AnyCommand[] = [
     id: "health.check",
     label: "Network health check",
     description:
-      "Checks internet, DNS, each eero, mesh links and firmware, each good, warning, problem or unknown with a one-line detail, plus an overall status and a 0 to 100 score. Built from the app's normal reads; runs no active probes.",
+      "Checks internet, DNS, each eero, mesh links and firmware, each good, warning, problem or unknown with a one-line detail, plus an overall status and a 0 to 100 score. Built from the app's normal reads; runs no active probes. refresh: true skips the cached report (Run again).",
     icon: "stethoscope",
-    params: empty,
+    params: z.object({ refresh: z.boolean().optional().describe("Skip the cached report and read again (Run again).") }),
     effect: "query",
     topic: "network",
     poll: POLL.network,
+    ttl: (p) => (p.refresh ? 0 : TTL.network),
     run: async (ctx): Promise<M.HealthReport> => healthReport(await readInputs(ctx), ctx.now()),
   }),
 

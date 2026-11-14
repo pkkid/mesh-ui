@@ -7,7 +7,7 @@
  */
 
 import type * as M from "../../model";
-import { linkUrl, type RawCoverageRoom, type RawCoverageScan, type RawDiagnostics, type RawGenerationScan, type RawLink, type RawPlacementTest, type RawSupport, type RawText } from "../raw";
+import { linkUrl, type RawCoverageScan, type RawDevice, type RawDiagnostics, type RawGenerationScan, type RawLink, type RawPlacementTest, type RawSupport, type RawText } from "../raw";
 import { idFromUrl } from "../urls";
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
@@ -44,10 +44,10 @@ export function mapSupport(raw: RawSupport | null | undefined): Omit<M.SupportIn
 }
 
 // ---------------------------------------------------------------------------
-// Placement and coverage (M5.8). Shapes not captured: read every likely field.
+// Placement and coverage (M5.8). The two `/2.4/` scans follow the 2026-11-14
+// capture; the placement test shape is still not captured.
 
 const text = (v: RawText | null | undefined): string | null => (typeof v === "string" ? str(v) : v ? (str(v.message) ?? str(v.text) ?? str(v.title)) : null);
-const texts = (...lists: (RawText[] | undefined)[]): string[] => lists.flatMap((l) => (Array.isArray(l) ? l : [])).flatMap((t) => text(t) ?? []);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const idOf = (id: unknown, link: RawLink | null | undefined): M.Id | null => {
   if (typeof id === "number" || (typeof id === "string" && id)) return String(id);
@@ -81,25 +81,50 @@ export function mapPlacement(eeroId: M.Id, raw: RawPlacementTest | null | undefi
   };
 }
 
-/** Link quality 0 to 100 from a score, or from 0 to 5 bars (each worth 20). */
-const quality = (r: RawCoverageRoom): number | null => {
-  const pct = num(r.quality) ?? num(r.score) ?? num(r.coverage_score);
-  const bars = num(r.bars);
-  const v = pct ?? (bars === null ? null : bars * 20);
-  return v === null ? null : Math.round(Math.max(0, Math.min(100, v)));
+/** A device's link score 0 to 100 from `connectivity.score` (0 to 1), or from `score_bars` (0 to 5, each worth 20). */
+const deviceQuality = (d: RawDevice): number | null => {
+  const score = num(d.connectivity?.score);
+  const bars = num(d.connectivity?.score_bars);
+  const v = score !== null ? score * 100 : bars !== null ? bars * 20 : null;
+  return v === null ? null : Math.max(0, Math.min(100, v));
 };
 
+const deviceName = (d: RawDevice): string => str(d.display_name) ?? str(d.nickname) ?? str(d.hostname) ?? "A device";
+
+/**
+ * The real scan lists devices, not rooms (captured 2026-11-14): each room is
+ * an eero (`source.url`) with its devices, its quality the mean of their link
+ * scores. Weak (unhealthy) devices become the advice. eero sends no time and
+ * no upstream; core fills both (scannedAt from the read, servedBy from the
+ * eero list).
+ */
 export function mapCoverageScan(raw: RawCoverageScan | null | undefined): M.CoverageScan {
-  const rows = raw?.rooms ?? raw?.eeros ?? raw?.nodes ?? [];
+  const list = (v: RawDevice[] | null | undefined) => (Array.isArray(v) ? v : []);
+  const healthy = list(raw?.healthy_devices);
+  const unhealthy = list(raw?.unhealthy_devices);
+  const rooms = new Map<M.Id, { location: string; scores: number[]; devices: number }>();
+  for (const d of [...healthy, ...unhealthy]) {
+    const eeroId = idOf(null, d?.source?.url);
+    if (!eeroId) continue;
+    const room = rooms.get(eeroId) ?? { location: str(d.source?.location) ?? "", scores: [], devices: 0 };
+    room.devices += 1;
+    const q = deviceQuality(d);
+    if (q !== null) room.scores.push(q);
+    rooms.set(eeroId, room);
+  }
   return {
-    scannedAt: str(raw?.scanned_at) ?? str(raw?.timestamp),
-    rooms: (Array.isArray(rows) ? rows : []).flatMap((r) => {
-      const eeroId = idOf(r?.eero_id, r?.url);
-      if (!eeroId) return [];
-      const devices = Array.isArray(r.devices) ? r.devices.length : (num(r.device_count) ?? num(r.devices));
-      return [{ eeroId, location: str(r.location) ?? "", quality: quality(r), devices, servedBy: idOf(null, r.served_by ?? r.upstream) }];
+    scannedAt: null,
+    rooms: [...rooms].map(([eeroId, r]) => ({
+      eeroId,
+      location: r.location,
+      quality: r.scores.length ? Math.round(r.scores.reduce((a, b) => a + b, 0) / r.scores.length) : null,
+      devices: r.devices,
+      servedBy: null,
+    })),
+    advice: unhealthy.map((d) => {
+      const where = str(d.source?.location);
+      return `${deviceName(d)} has a weak Wi-Fi link${where ? ` to ${where}` : ""}. Moving it or the eero closer can help.`;
     }),
-    advice: texts(raw?.advice, raw?.recommendations),
   };
 }
 
@@ -116,22 +141,37 @@ export function generationOf(v: unknown): Generation | null {
   return null;
 }
 
+/** eero says Wi-Fi 6 for 6E too; a Wi-Fi 6 device on the 6 GHz band is 6E. */
+const deviceGeneration = (version: unknown, d: RawDevice): Generation | null => {
+  const gen = generationOf(version);
+  return gen === "wifi6" && String(d?.interface?.frequency ?? "").startsWith("6") ? "wifi6e" : gen;
+};
+
+const GEN_WORD: Record<Generation, string> = { wifi7: "Wi-Fi 7", wifi6e: "Wi-Fi 6E", wifi6: "Wi-Fi 6", wifi5: "Wi-Fi 5", wifi4: "Wi-Fi 4" };
+
+/**
+ * The real scan groups full device rows under a numeric `wifi_version`
+ * (captured 2026-11-14). eero names no eero that holds devices back, so
+ * `limitingEeros` stays empty; when devices support a newer version than the
+ * eeros (`network_wifi_version`), one note says how many.
+ */
 export function mapGenerationScan(raw: RawGenerationScan | null | undefined): M.UpgradeReport {
   const counts = new Map<Generation, number>();
-  const add = (g: unknown, n: unknown) => {
-    const gen = generationOf(g);
-    const count = num(n);
-    if (gen && count !== null) counts.set(gen, (counts.get(gen) ?? 0) + count);
-  };
-  const gens = raw?.generations;
-  if (Array.isArray(gens)) for (const g of gens) add(g?.generation, g?.count ?? g?.devices);
-  else if (gens && typeof gens === "object") for (const [g, n] of Object.entries(gens)) add(g, n);
+  const network = num(raw?.network_wifi_version);
+  let newer = 0;
+  for (const g of Array.isArray(raw?.devices_per_wifi_version) ? raw.devices_per_wifi_version : []) {
+    const devices = Array.isArray(g?.devices) ? g.devices : [];
+    const version = num(g?.wifi_version);
+    for (const d of devices) {
+      const gen = deviceGeneration(version, d);
+      if (gen) counts.set(gen, (counts.get(gen) ?? 0) + 1);
+    }
+    if (network !== null && version !== null && version > network) newer += devices.length;
+  }
+  const word = network === null ? null : generationOf(network);
   return {
     byGeneration: [...counts].map(([generation, devices]) => ({ generation, devices })),
-    limitingEeros: (raw?.limiting_eeros ?? []).flatMap((e) => {
-      const eeroId = idOf(e?.eero_id, e?.url);
-      return eeroId ? [{ eeroId, reason: text(e.reason) ?? "Holds some devices back" }] : [];
-    }),
-    notes: texts(raw?.notes, raw?.insights),
+    limitingEeros: [],
+    notes: newer && word ? [`${newer} ${newer === 1 ? "device supports" : "devices support"} a newer Wi-Fi generation than your eeros (${GEN_WORD[word]}).`] : [],
   };
 }
