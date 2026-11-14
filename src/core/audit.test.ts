@@ -27,7 +27,8 @@ const passwordWrites: AnyCommand[] = ["guest.password.set", "wifi.password.set"]
   }),
 );
 
-const commands = [...allCommands(), ...passwordWrites];
+// Only for ids not registered yet: once the real command lands, the test runs against it.
+const commands = [...allCommands(), ...passwordWrites.filter((w) => !allCommands().some((c) => c.id === w.id))];
 
 /** The demo fixtures behind a live-kind backend: only live engines audit by default. */
 const liveLike = (): Backend => ({ ...createDemoBackend(), kind: "eero" });
