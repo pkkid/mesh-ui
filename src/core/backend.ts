@@ -120,8 +120,8 @@ export interface EeroBackend {
   firmwareHistory(net: M.Id, eero: M.Id, limit: number): Promise<M.FirmwareEntry[]>;
   /** Sets the room name (`location`). */
   rename(net: M.Id, eero: M.Id, location: string): Promise<M.Eero>;
-  /** Blinks the status light for a while (`led_cycle`). */
-  find(net: M.Id, eero: M.Id): Promise<void>;
+  /** Blinks the status light for `seconds` (default 30) (`led_cycle`). */
+  find(net: M.Id, eero: M.Id, seconds?: number): Promise<void>;
   /** Status light on or off and brightness 0 to 100, through `resources.led_action` (form body). */
   setLed(net: M.Id, eero: M.Id, led: LedInput): Promise<M.Eero>;
   /** Beacon only; other eeros fail with `eero_error`. */

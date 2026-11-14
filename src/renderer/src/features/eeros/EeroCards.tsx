@@ -1,9 +1,12 @@
 /**
- * "Your eeros": a card per eero (Grid) with the radio table, or one row per
- * eero (List) with per-band client counts. Find is disabled until
- * `eero.find` lands. docs/ux/pages/eeros.md (Layout 2).
+ * "Your eeros": a card per eero (Grid) with the radio table and Find, or one
+ * row per eero (List) with per-band client counts. Find (`eero.find`) blinks
+ * the LED and the button counts down ("Blinking · 24s"); the blink state is
+ * shared with eero detail (`useFind`). No Stop until a stop call is
+ * verified. docs/ux/pages/eeros.md (Layout 2).
  */
 import { ChevronRight, Lightbulb } from "lucide-react";
+import { useSyncExternalStore } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import { eeroIcon } from "~/components/mesh/Topology";
@@ -13,11 +16,70 @@ import { BandBadge } from "~/components/ui/band-badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
-import { ComingSoonButton, Row, RowList } from "~/components/ui/page";
+import { useWrite } from "~/app/useWrite";
+import { GatedButton, Row, RowList, useGate, useNow } from "~/components/ui/page";
 import { type StatusTone, Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import { formatCount, formatDuration } from "../../../../core/format";
 import type { Eero } from "../../../../core/model";
+
+// ---------------------------------------------------------------------------
+// Find: which eeros are blinking, until when (module state, so every page agrees)
+
+const blinking = new Map<string, number>();
+const blinkListeners = new Set<() => void>();
+let blinkVersion = 0;
+const emitBlink = () => {
+  blinkVersion++;
+  blinkListeners.forEach((l) => l());
+};
+
+/** Seconds left on this eero's blink, or null when it is not blinking. */
+export function useBlinking(eeroId: string | null | undefined): number | null {
+  useSyncExternalStore(
+    (l) => (blinkListeners.add(l), () => blinkListeners.delete(l)),
+    () => blinkVersion,
+  );
+  const until = eeroId ? blinking.get(eeroId) : undefined;
+  const now = useNow(1_000);
+  if (until === undefined) return null;
+  const left = Math.ceil((until - now) / 1000);
+  return left > 0 ? left : null;
+}
+
+/** Runs `eero.find` and marks the eero blinking for the seconds eero was asked for. */
+export function useFind(eero: Pick<Eero, "id" | "location" | "status"> | null) {
+  const write = useWrite<{ eero: string }, { eeroId: string; seconds: number }>("eero.find");
+  const gate = useGate({ area: "eeros" });
+  const left = useBlinking(eero?.id);
+  const offline = eero?.status === "offline";
+  const run = async () => {
+    if (!eero) return;
+    const r = await write.run({ eero: eero.id }, { success: `Blinking ${eero.location}` });
+    if (r?.ok) {
+      blinking.set(r.result.eeroId, Date.now() + r.result.seconds * 1000);
+      emitBlink();
+      setTimeout(emitBlink, r.result.seconds * 1000 + 50);
+    }
+  };
+  return {
+    run,
+    running: write.running,
+    left,
+    gate: offline ? { allowed: false, reason: `${eero?.location ?? "This eero"} is offline` } : gate,
+  };
+}
+
+/** Find button: "Find", or "Blinking · 24s" while the LED blinks. */
+export function FindButton({ eero, label = "Find" }: { eero: Eero; label?: string }) {
+  const find = useFind(eero);
+  return (
+    <GatedButton size="xs" variant="outline" gate={find.gate} disabled={find.running || find.left !== null} onClick={() => void find.run()}>
+      <Lightbulb />
+      {find.left !== null ? <span className="tabular-nums">Blinking · {find.left}s</span> : label}
+    </GatedButton>
+  );
+}
 
 export type EeroStatusWord = { tone: StatusTone; label: string };
 
@@ -92,10 +154,7 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
                 <div className="truncate text-muted-foreground text-xs">{facts(e, offlineDetail)}</div>
               </div>
               <Status tone={status.tone}>{status.label}</Status>
-              <ComingSoonButton size="xs" variant="outline">
-                <Lightbulb />
-                Find
-              </ComingSoonButton>
+              <FindButton eero={e} />
               <Button size="icon-xs" variant="outline" title="Details" aria-label={`${e.location} details`} render={<Link to={to} />}>
                 <ChevronRight />
               </Button>

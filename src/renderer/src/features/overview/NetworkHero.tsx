@@ -1,6 +1,8 @@
 /**
  * The Overview status hero: network name and status, gateway uptime, ISP,
- * public IP, last speed test, the action row and the two speed gauges.
+ * public IP, last speed test, the action row (Restart network confirms
+ * inline, then a progress toast until the eeros are back) and the two speed
+ * gauges.
  * docs/ux/pages/overview.md (Layout 1, States).
  */
 import { Gauge as GaugeIcon, PauseCircle, RotateCcw, Share2, TriangleAlert } from "lucide-react";
@@ -11,11 +13,13 @@ import { Gauge } from "~/components/charts/Gauge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
-import { ComingSoonButton, useNow } from "~/components/ui/page";
+import { WriteConfirm } from "~/components/ui/confirm";
+import { ComingSoonButton, GatedButton, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
 import { formatDuration, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, SpeedHistory } from "../../../../core/model";
+import { useRestartNetwork } from "~/features/eeros/NetworkActions";
 
 export function NetworkHero() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -23,6 +27,7 @@ export function NetworkHero() {
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const history = useQuery<SpeedHistory>("speedtest.history", undefined, { poll: true });
   const now = useNow();
+  const restart = useRestartNetwork();
 
   const n = network.data;
   const tz = n?.timezone ?? "UTC";
@@ -89,10 +94,12 @@ export function NetworkHero() {
                 Pause a profile
               </ComingSoonButton>
             )}
-            <ComingSoonButton variant="ghost">
-              <RotateCcw />
-              Restart network
-            </ComingSoonButton>
+            <WriteConfirm write={restart.write} className="basis-full">
+              <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
+                <RotateCcw />
+                Restart network
+              </GatedButton>
+            </WriteConfirm>
           </>
         }
         aside={

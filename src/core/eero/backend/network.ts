@@ -1,7 +1,8 @@
 /**
  * eero backend, network area: the account's networks, one network, its
  * health (derived from `GET {net}`, no extra calls) and the signed-in user's
- * permissions. See docs/architecture/commands.md (network).
+ * permissions, and restarting every eero (`POST resources.reboot`). See
+ * docs/architecture/commands.md (network).
  */
 
 import { BackendError } from "../../errors";
@@ -96,6 +97,12 @@ export const network: EeroArea<"network"> = (ctx) => {
       const perms = await fetchPermissions(ctx, id);
       if (!perms) throw new BackendError("eero_error", "eero did not send permissions for this network.");
       return mapPermissions(perms);
+    },
+
+    async restart(id) {
+      // resources.reboot when GET {net} has been read, else the usual path.
+      const base = links.get(`net:${id}`, networkPath(id));
+      await ctx.client.request({ method: "POST", path: links.get(`net:${id}.reboot`, `${base}/reboot`), encoding: "empty" });
     },
   };
 };
