@@ -42,16 +42,21 @@ const changedIds = (result: unknown): string[] | null => {
 
 /**
  * `req` with Undo through the inverse command, when there is one: the same
- * params the inverse accepts (`networkId` included, so it undoes on the same
- * network), with `devices` narrowed to the devices the write changed.
+ * params the inverse accepts, with `devices` narrowed to the devices the
+ * write changed. `networkId` (the network on screen) pins both the write and
+ * its Undo, so Undo after a network switch still undoes it there.
  */
-export function withUndo(req: WriteRequest, info: CommandInfo, commands: ReadonlyArray<CommandInfo>): WriteRequest {
+export function withUndo(req: WriteRequest, info: CommandInfo, commands: ReadonlyArray<CommandInfo>, networkId: string | null): WriteRequest {
   const inverse = inverseOf(info, commands);
   if (!inverse) return req;
   const accepted = new Set([...paramFields(inverse.params).map((f) => f.name), "networkId"]);
   const params = Object.fromEntries(Object.entries(req.params ?? {}).filter(([k]) => accepted.has(k) && k !== "confirm"));
+  // The write and its Undo name the same network.
+  const pinned = networkId && inverse.scope === "network" && info.scope === "network" ? networkId : null;
+  if (pinned) params.networkId ??= pinned;
   return {
     ...req,
+    params: pinned ? { networkId: pinned, ...req.params } : req.params,
     undo: (result: unknown) => {
       const changed = "devices" in params ? changedIds(result) : null;
       if (changed !== null && changed.length === 0) return null;

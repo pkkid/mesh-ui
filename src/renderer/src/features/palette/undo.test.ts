@@ -14,6 +14,7 @@ const NOW = Date.parse("2026-11-12T22:41:00Z");
 function setup() {
   const engine = createEngine({ backend: createDemoBackend({ clock: () => NOW }), clock: () => NOW });
   const commands = engine.commands();
+  let network: string | null = null;
   const executed: { id: string; params: unknown }[] = [];
   const deps: WriteDeps = {
     execute: (id, params) => (executed.push({ id, params }), engine.execute(id, params)),
@@ -35,9 +36,15 @@ function setup() {
   /** Runs `id` the way the palette does: writeRequest plus withUndo, through performWrite. */
   const runFromPalette = (id: string, params: Record<string, unknown>) => {
     const c = info(id);
-    return performWrite(withUndo(writeRequest(c, c.label, params), c, commands), deps);
+    return performWrite(withUndo(writeRequest(c, c.label, params), c, commands, network), deps);
   };
-  return { engine, commands, executed, info, device, runFromPalette };
+  const selectedNetwork = async () => {
+    const r = await engine.execute<{ id: string }>("network.get", {});
+    if (!r.ok) throw new Error(r.error.message);
+    network = r.result.id;
+    return network;
+  };
+  return { engine, commands, executed, info, device, runFromPalette, selectedNetwork };
 }
 
 describe("palette Undo", () => {
@@ -59,7 +66,9 @@ describe("palette Undo", () => {
 
   it("toasts a palette device.pause with Undo, and Undo resumes the device", async () => {
     const t = setup();
+    const net = await t.selectedNetwork();
     const res = await t.runFromPalette("device.pause", { devices: "PlayStation 5" });
+    expect(t.executed[0]).toEqual({ id: "device.pause", params: { networkId: net, devices: "PlayStation 5" } });
     expect(res).toMatchObject({ ok: true });
     expect((await t.device("PlayStation 5")).paused).toBe(true);
     const [done] = toast.list();
@@ -67,7 +76,8 @@ describe("palette Undo", () => {
 
     await done?.action?.run();
     const id = (await t.device("PlayStation 5")).id;
-    expect(t.executed.at(-1)).toEqual({ id: "device.resume", params: { devices: [id] } });
+    // Undo names the network the pause ran on, so a network switch in between does not move it.
+    expect(t.executed.at(-1)).toEqual({ id: "device.resume", params: { devices: [id], networkId: net } });
     expect((await t.device("PlayStation 5")).paused).toBe(false);
     expect(toast.list()).toMatchObject([{ kind: "success", title: "Undone: Pause device" }]);
   });
@@ -77,7 +87,7 @@ describe("palette Undo", () => {
     const ps5 = await t.device("PlayStation 5");
     await t.runFromPalette("device.block", { devices: ["PlayStation 5", "Flaky Plug"] });
     await toast.list()[0]?.action?.run();
-    expect(t.executed.at(-1)).toEqual({ id: "device.unblock", params: { devices: [ps5.id] } });
+    expect(t.executed.at(-1)).toMatchObject({ id: "device.unblock", params: { devices: [ps5.id] } });
 
     toast.clear();
     await t.runFromPalette("device.pause", { devices: ["Flaky Plug"] });

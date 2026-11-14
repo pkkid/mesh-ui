@@ -225,7 +225,7 @@ function PaletteBody({ close }: { close: () => void }) {
       res = await execute(target.info.id, chosen);
     } else {
       askedFor.current = key;
-      const { id: _id, params, ...options } = withUndo(writeRequest(target.info, target.label, chosen, fields), target.info, registry ?? []);
+      const { id: _id, params, ...options } = withUndo(writeRequest(target.info, target.label, chosen, fields), target.info, registry ?? [], network.data?.id ?? null);
       res = await write.run(params, options);
       inputRef.current?.focus(); // the confirm had focus; keep the keyboard on the palette
     }
