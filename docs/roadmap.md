@@ -52,7 +52,7 @@ read these before planning the next milestone):
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | planned |
-| M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | later |
+| M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | planned |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
 
 Why this order: M1 proves the riskiest parts first (command engine shared by
@@ -759,12 +759,9 @@ changes (paths and types). The exact request each write sends comes from
 
 ## M5: Advanced settings
 
+Issue: [#137](https://github.com/pkkid/mesh-ui/issues/137) (parent of every M5 story)
+
 Goal: the settings power users need, with clear restart warnings.
-Rough scope: Advanced networking (DNS, DHCP, IPv6, WAN, bridge mode, UPnP,
-SQM, band steering, Thread, power saving, integrations), reservations, port
-forwards and IPv6 pinholes, updates (install, preferred hour, notes), admins
-and invites, network transfer and delete, eero ports and remove,
-diagnostics, coverage scan and upgrade report, notification settings.
 Carried from M2: a real source for `Radio.autoChannel` (maybe
 `{net}/radio_settings`, shape unknown); firmware history paging past 50
 rows if eero ever returns more; eero ports hold a list of attachments per
@@ -782,6 +779,143 @@ release manifest, so `--fake` shows no release notes; `integrations.get` and
 Moved from M4 planning: Activity row actions (Assign profile, Resume,
 Unblock); real events carry no device, eero or profile links, so capture
 whether any event type does before building them.
+
+In: the write commands behind Advanced networking (DNS, DHCP, IPv6, WAN,
+connection mode, NAT randomization, UPnP, SQM, band steering, fast
+roaming, MLO, legacy mode, power saving and its schedules, time zone,
+Simple Setup, Thread incl. credentials and reset, network delete),
+integrations (eero Built-in, Zigbee discover, Frustration-Free Setup,
+Amazon unlink), reservations, port forwards (with validate) and IPv6
+pinholes, updates (install, preferred hour), admins and invites (invite,
+cancel, nickname, remove) and network transfer, eero port actions and eero
+remove, Troubleshooting tools (diagnose, placement test, coverage scan,
+upgrade report), notification settings, and `settings.impact`; every
+Carried from M2 and M3 item above.
+Out: App & account and release (M6), anything eero Plus.
+
+Done when:
+- `pnpm check` passes locally in under a minute and the CI smoke is green
+  on macOS, Windows and Linux.
+- Every new write command has demo tests through `engine.execute` that show
+  the change in the next read, plus `bad_params`, and `needs_confirm` for
+  `disruptive` and `destructive`; a fake-server test of the exact request
+  and of the topics it invalidates; a read-only real capture of the object
+  it changes in its PR (key paths and types only); and a `MANUAL:` line for
+  the real write. No write runs on the real network.
+- Disruptive settings show `settings.impact` (what restarts, for how long,
+  which devices drop) before the confirm; destructive ones (Thread reset,
+  admin remove, network transfer and delete, eero remove, Amazon unlink)
+  use the type-the-name dialog.
+- In demo and `--fake`, every M5 control that M3 showed as "Coming soon"
+  works, with M4's toasts, confirms and Undo. `pnpm ui:shot` light and dark
+  of each page's confirm, impact and toast states.
+- Every Carried from M2 and M3 item is closed or moved with a reason.
+
+Parallelism: 3 waves plus R (1, 8, 1, R); critical path M5.1 > M5.2 >
+M5.3 > M5.R. Hotspots: `src/core/model.ts`, `src/core/backend.ts`,
+`src/core/eero/raw.ts`, `src/core/demo/fixtures.ts`,
+`src/core/demo/backend.ts`, `src/core/demo/scenario.ts`,
+`test/fake-eero/state.ts` and `src/core/poll.ts` (owned by M5.1; later
+stories take small additive edits only and say so);
+`src/core/commands/settings.ts` and the Advanced networking page (M5.2,
+then M5.3). Shared-additive files (small edits by anyone, named in the PR):
+`docs/architecture/data-model.md`, `src/shared/types.ts`,
+`src/renderer/src/lib/chartColors.ts`, `src/cli/format.ts`, and each
+story's own area section of `docs/architecture/commands.md`. Registration
+files (one-line edits by anyone): `src/core/commands/index.ts`,
+`src/core/eero/backend/index.ts`, `test/fake-eero/routes/index.ts`,
+`src/renderer/src/app/routes.ts`, `package.json`, `pnpm-lock.yaml`.
+
+Safety for every story: as in M4, writes run only in demo and against the
+fake server; the real network gets one read-only capture of the object a
+write changes; real behaviour is a `MANUAL:` line, and anything that
+restarts the network says so in its risk field.
+
+### M5.1 Core contracts, captures and fixtures for M5 ☐
+- issue: [#138](https://github.com/pkkid/mesh-ui/issues/138)
+- after: M4.R
+- docs: architecture/backends.md, architecture/data-model.md, architecture/commands.md (settings, Restart estimates), testing.md (Fixtures), eero-api/endpoints.md
+- files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, src/core/poll.ts, test/fake-eero/state.ts, test/fake-eero/routes/eeros.ts, test/fake-eero/routes/updates.ts, src/core/eero/backend/index.ts, src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/commands/integrations.ts, src/core/commands/wifi.ts, docs/architecture/backends.md, docs/architecture/data-model.md, docs/eero-api/endpoints.md, docs/testing.md
+- scope: Everything wave 2 shares. Write methods on every M5 backend area (settings, integrations, routing, updates, admins, eero ports and remove, diagnostics, notifications settings); the eero backend answers "not available yet" until each story; the demo backend applies every write. Read-only captures (paths and types; one enum value for Simple Setup, as approved) of: `{net}` settings fields, `auto_setup_mode`, `{net}/routing` reservations, forwards and pinholes, `{net}/updates`, `{net}/members` and `{net}/invites`, an eero's `resources.connections` with a down port if any, `{net}/radio_settings` (for `Radio.autoChannel`), `{net}/notifications`, and whether any `app_events` type carries a device, eero or profile link. `settings.impact` in core from Restart estimates and cached devices. Carried from M3: map Simple Setup; fake `radio_channel_stats` and a raw release manifest on the fake server; `integrations.get` and `wifi.get` get their own poll topics.
+- done when: `pnpm check` passes; the PR lists every capture (paths and types, the one Simple Setup value) and no other values; `settings.impact` tests for each disruptive setting; demo writes applied and reset per scenario; `--fake` Wi-Fi shows width and channel and `--fake` Updates shows release notes (`ui:shot`); no real names, MACs or IPs.
+
+### M5.2 Internet-side settings ☐
+- issue: [#139](https://github.com/pkkid/mesh-ui/issues/139)
+- after: M5.1
+- docs: ux/pages/advanced-networking.md, architecture/commands.md (settings)
+- files: src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/eero/backend/settings.ts, src/core/eero/map/settings.ts, test/fake-eero/routes/settings.ts, src/renderer/src/features/advanced/AdvancedPage.tsx, src/renderer/src/features/advanced/SettingsGroups.tsx, src/renderer/src/features/advanced/ImpactPanel.tsx, docs/ux/pages/advanced-networking.md
+- scope: `settings.dns.set`, `settings.dhcp.set`, `settings.ipv6.set`, `settings.wan.set`, `settings.connection_mode.set` (bridge), `settings.nat_randomization.set`, `settings.upnp.set`, `settings.sqm.set`. Advanced networking groups for these with sheets, the impact panel and inline confirm. Carried from M3: Reservations & ports "IPv6 off" state reads `settings.get`.
+- done when: demo and fake-server tests incl. `needs_confirm`, IP and subnet validation, bridge mode hiding NAT-only settings; `pnpm ui:shot --route '#/settings/advanced'` of a sheet, the impact panel and a progress toast, light and dark, plus Mom's House; `MANUAL: toggle UPnP off and on | ... | the eero app agrees | none` and `MANUAL: DNS change on a test network only | ... | ... | disruptive: the network restarts`.
+
+### M5.3 Wireless, mesh and Thread settings, network delete ☐
+- issue: [#140](https://github.com/pkkid/mesh-ui/issues/140)
+- after: M5.2
+- docs: ux/pages/advanced-networking.md, architecture/commands.md (settings, network)
+- files: src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/eero/backend/settings.ts, src/core/eero/map/settings.ts, test/fake-eero/routes/settings.ts, src/core/commands/network.ts, src/core/commands/network.test.ts, test/fake-eero/routes/network.ts, src/renderer/src/features/advanced/SettingsGroups.tsx, src/renderer/src/features/advanced/PowerSaving.tsx, src/renderer/src/features/advanced/ThreadCard.tsx, src/renderer/src/features/advanced/DangerZone.tsx, src/cli/format.ts, docs/ux/pages/advanced-networking.md
+- scope: `settings.band_steering.set`, `settings.fast_transition.set`, `settings.mlo.set`, `settings.legacy_mode.set`, `settings.power_saving.set` and its schedule add, update and remove (shared week timeline), `settings.timezone.set`, `settings.simple_setup.set`, `settings.thread.set`, `settings.thread.credentials` (sensitive, Copy dataset), `settings.thread.reset` (destructive), `network.delete` (destructive, type-the-name).
+- done when: demo and fake-server tests incl. schedules past midnight, Thread credentials never in logs, audit log or the CLI table without `--reveal`, and `needs_confirm`; `pnpm ui:shot` of power saving schedules, the Thread card and the delete dialog, light and dark; `MANUAL: toggle band steering off and on | ... | the eero app agrees | brief roam for some devices`.
+
+### M5.4 Integrations ☐
+- issue: [#141](https://github.com/pkkid/mesh-ui/issues/141)
+- after: M5.1
+- docs: ux/pages/advanced-networking.md (Integrations), architecture/commands.md (integrations)
+- files: src/core/commands/integrations.ts, src/core/commands/integrations.test.ts, src/core/eero/backend/integrations.ts, test/fake-eero/routes/integrations.ts, src/renderer/src/features/advanced/Integrations.tsx
+- scope: `integrations.builtin.set`, `integrations.zigbee.discover`, `integrations.ffs.set`, `integrations.amazon.unlink` (destructive). Unavailable integrations stay read-only with the reason.
+- done when: demo and fake-server tests incl. unavailable cases and `needs_confirm`; `pnpm ui:shot` of the integrations card with a toast, light and dark; `MANUAL: toggle Frustration-Free Setup off and on | ... | the eero app agrees | none`.
+
+### M5.5 Reservations, port forwards and IPv6 pinholes ☐
+- issue: [#142](https://github.com/pkkid/mesh-ui/issues/142)
+- after: M5.1
+- docs: ux/pages/reservations-ports.md, architecture/commands.md (routing)
+- files: src/core/commands/routing.ts, src/core/commands/routing.test.ts, src/core/eero/backend/routing.ts, src/core/eero/map/routing.ts, test/fake-eero/routes/routing.ts, src/renderer/src/features/ports/PortsPage.tsx, src/renderer/src/features/ports/Reservations.tsx, src/renderer/src/features/ports/Forwards.tsx, src/renderer/src/features/ports/Pinholes.tsx, src/renderer/src/features/ports/RuleSheet.tsx, src/renderer/src/features/device/DeviceForwards.tsx, src/renderer/src/features/device/DeviceAddresses.tsx, docs/ux/pages/reservations-ports.md
+- scope: `reservation.add`, `.update`, `.remove`; `forward.add`, `.validate`, `.update`, `.remove`; `pinhole.add`, `.remove`. Sheets on Reservations & ports and the device detail shortcuts (reserve this IP, add a forward). Validation in core (pool, overlaps, port ranges).
+- done when: demo and fake-server tests incl. overlap and range errors and bridge refusal; `pnpm ui:shot --route '#/settings/ports'` of each sheet and a validation error, light and dark; `MANUAL: add and remove a port forward to a test device | ... | the eero app shows it | none`.
+
+### M5.6 Updates, admins and network transfer ☐
+- issue: [#143](https://github.com/pkkid/mesh-ui/issues/143)
+- after: M5.1
+- docs: ux/pages/updates-admins.md, architecture/commands.md (updates, admins)
+- files: src/core/commands/updates.ts, src/core/commands/updates.test.ts, src/core/commands/admins.ts, src/core/commands/admins.test.ts, src/core/eero/backend/updates.ts, src/core/eero/backend/admins.ts, src/core/eero/map/admins.ts, test/fake-eero/routes/updates.ts, test/fake-eero/routes/admins.ts, src/renderer/src/features/updates/UpdatesPage.tsx, src/renderer/src/features/updates/SoftwareCard.tsx, src/renderer/src/features/updates/QuietHours.tsx, src/renderer/src/features/updates/Admins.tsx, src/renderer/src/features/updates/TransferDialog.tsx, docs/ux/pages/updates-admins.md
+- scope: `updates.install` (disruptive, progress until eeros return), `updates.hour.set` (with the quiet-hours suggestion), `admin.invite.create`, `admin.invite.cancel`, `admin.nickname.set` (verify the request with a capture first; drop it if unverifiable), `admin.remove` (destructive), `network.transfer` (destructive, type-the-name). Owner and admin views.
+- done when: demo and fake-server tests incl. owner-only refusals, invite 403 for admins and `needs_confirm`; `pnpm ui:shot --route '#/settings/updates'` of the install confirm, hour picker, invite sheet and transfer dialog, light and dark; `MANUAL: set the preferred update hour and back | ... | the eero app agrees | none`.
+
+### M5.7 eero ports and remove ☐
+- issue: [#144](https://github.com/pkkid/mesh-ui/issues/144)
+- after: M5.1
+- docs: ux/pages/eero-detail.md (Ethernet ports), architecture/commands.md (eero)
+- files: src/core/commands/eero.ts, src/core/commands/eero.test.ts, src/core/eero/backend/eero.ts, src/core/eero/map/eero.ts, test/fake-eero/routes/eeros.ts, src/renderer/src/features/eero/EeroPorts.tsx, src/renderer/src/features/eero/EeroActions.tsx, docs/ux/pages/eero-detail.md
+- scope: `eero.port.action` (only actions in the port's `actions[]`, disruptive) and `eero.remove` (destructive, refuses the gateway unless it is the only eero). Carried from M2: a list of attachments per port, the down or disabled `port_status` from the M5.1 capture, firmware history paging past 50 rows. Runs after M5.1, which also edits `test/fake-eero/routes/eeros.ts`.
+- done when: demo and fake-server tests incl. refused actions, the gateway rule and `needs_confirm`; several attachments on one port in demo and `--fake`; `pnpm ui:shot` of the port menu and remove dialog, light and dark; `MANUAL: restart PoE on a port with nothing critical | ... | the device power cycles | that port's device drops`.
+
+### M5.8 Troubleshooting tools ☐
+- issue: [#145](https://github.com/pkkid/mesh-ui/issues/145)
+- after: M5.1
+- docs: ux/pages/troubleshooting.md, architecture/commands.md (diagnostics, eero coverage)
+- files: src/core/commands/diagnostics.ts, src/core/commands/diagnostics.test.ts, src/core/eero/backend/diagnostics.ts, src/core/eero/map/diagnostics.ts, test/fake-eero/routes/diagnostics.ts, src/core/commands/coverage.ts, src/core/commands/coverage.test.ts, src/core/eero/backend/coverage.ts, src/renderer/src/features/troubleshooting/TroubleshootingPage.tsx, src/renderer/src/features/troubleshooting/Tools.tsx, src/renderer/src/features/troubleshooting/Diagnose.tsx, src/renderer/src/features/troubleshooting/Coverage.tsx, docs/ux/pages/troubleshooting.md
+- scope: `diagnostics.run` (symptoms, cloud-side, progress), `eero.placement.test` (`/2.3/`), `coverage.scan` and `coverage.upgrade_report` (`/2.4/`), each moved into `commands/coverage.ts` from the eero area if that keeps `eero.ts` free for M5.7. Troubleshooting: Diagnose by symptom, the Fixes cards, radio channels with `Radio.autoChannel` from the M5.1 capture, coverage scan and upgrade report. Health check's "Run again" stays a read.
+- done when: demo and fake-server tests incl. the `/2.3/` and `/2.4/` paths and long-running progress; `pnpm ui:shot --route '#/troubleshooting'` of diagnose, coverage and the upgrade report, light and dark; `MANUAL: run a coverage scan | ... | rooms match the eero app | none`.
+
+### M5.9 Notification settings ☐
+- issue: [#146](https://github.com/pkkid/mesh-ui/issues/146)
+- after: M5.1
+- docs: ux/overview.md (notifications), architecture/commands.md (notifications)
+- files: src/core/commands/notifications.ts, src/core/commands/notifications.test.ts, src/core/eero/backend/notifications.ts, test/fake-eero/routes/notifications.ts, src/renderer/src/features/notifications/Bell.tsx, src/renderer/src/features/notifications/NotificationSettings.tsx, src/renderer/src/features/notifications/useDesktopAlerts.ts
+- scope: `notifications.settings.set`: eero keys (full merged map, dotted keys as sent, no eero Plus keys) and the desktop choices in `settings.json`; a settings sheet from the bell's gear; desktop alerts follow the choices.
+- done when: demo and fake-server tests incl. the merged map and Plus keys never sent; a test shows desktop alerts stop when turned off; `pnpm ui:shot` of the sheet, light and dark; `MANUAL: turn one eero notification off and on | ... | the eero app agrees | none`.
+
+### M5.10 Activity row actions ☐
+- issue: [#147](https://github.com/pkkid/mesh-ui/issues/147)
+- after: M5.1
+- docs: ux/pages/activity.md, architecture/commands.md (activity)
+- files: src/core/commands/activity.ts, src/core/commands/activity.test.ts, src/core/eero/backend/events.ts, test/fake-eero/routes/events.ts, src/renderer/src/features/activity/EventStream.tsx, docs/ux/pages/activity.md
+- scope: Moved from M4. From the M5.1 capture: if an event type carries a device, eero or profile link, map it and add row actions (Assign profile, Resume, Unblock) through the M4 commands; if none does, match by name only where it is unambiguous, otherwise keep the link to the page and say so in the doc.
+- done when: demo and fake-server tests of the link mapping and each action's command; `pnpm ui:shot --route '#/activity'` with a row action and its toast, light and dark; the PR states what the capture found.
+
+### M5.R Review ☐
+- issue: [#148](https://github.com/pkkid/mesh-ui/issues/148)
+- owner: maintainer
+- after: M5.1, M5.2, M5.3, M5.4, M5.5, M5.6, M5.7, M5.8, M5.9, M5.10
+
 
 ## M6: App, account and release
 
