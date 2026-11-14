@@ -4,7 +4,7 @@ import { createDemoBackend } from "../../../../core/demo";
 import { createEngine } from "../../../../core/engine";
 import type { NotificationPage } from "../../../../core/model";
 import type { DesktopAlert } from "../../../../shared/types";
-import { createAlerter, notificationPath } from "./useDesktopAlerts";
+import { createAlerter, notificationPath, openAlert } from "./useDesktopAlerts";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -32,7 +32,7 @@ describe("desktop alerts", () => {
     const set = await engine.execute("demo.scenario.set", { scenario: "eero_offline" });
     expect(set.ok).toBe(true);
     expect(alerter.update(MAPLE, await list(engine, MAPLE), true)).toBe(1);
-    expect(shown).toEqual([{ title: "Garage is offline", body: "Garage stopped checking in 9 minutes ago. Check its power.", target: "/eeros" }]);
+    expect(shown).toEqual([{ title: "Garage is offline", body: "Garage stopped checking in 9 minutes ago. Check its power.", target: "/eeros", networkId: MAPLE }]);
 
     // Polled again: nothing more.
     expect(alerter.update(MAPLE, await list(engine, MAPLE), true)).toBe(0);
@@ -62,5 +62,24 @@ describe("desktop alerts", () => {
     expect(notificationPath({ ...base, title: "Update tonight", category: "network" })).toBe("/settings/updates");
     expect(notificationPath({ ...base, title: "Leo is paused", category: "profile" })).toBe("/profiles");
     expect(notificationPath({ ...base, title: "Something", category: null })).toBe("/activity");
+  });
+
+  it("switches back to the alert's network before opening it", async () => {
+    const engine = createEngine({ backend: createDemoBackend({ clock: () => NOW }), clock: () => NOW });
+    const ran: string[] = [];
+    const run = async (id: string, params: unknown) => {
+      ran.push(id);
+      return engine.execute(id, params);
+    };
+    // Alert from Maple Street while Maple Street is selected: just open it.
+    expect(await openAlert({ target: "/eeros", networkId: MAPLE }, MAPLE, run)).toBe("/eeros");
+    expect(ran).toEqual([]);
+    // The user moved to Lake Cabin before clicking: select Maple Street first.
+    expect(await openAlert({ target: "/eeros", networkId: MAPLE }, LAKE, run)).toBe("/eeros");
+    expect(ran).toEqual(["network.select"]);
+    const list = await engine.execute<{ id: string; selected: boolean }[]>("network.list");
+    expect(list.ok && list.result.find((n) => n.selected)?.id).toBe(MAPLE);
+    // A network the account no longer has: nothing opens.
+    expect(await openAlert({ target: "/eeros", networkId: "999" }, MAPLE, run)).toBeNull();
   });
 });

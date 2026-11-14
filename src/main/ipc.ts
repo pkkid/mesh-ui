@@ -198,13 +198,14 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
     },
     notify: (alert) => {
       if (!alert || typeof alert !== "object") return;
-      const { title, body, target } = alert;
-      if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string") return;
-      ipc.send(IPC.notify, { title, body, target });
+      const { title, body, target, networkId } = alert;
+      if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string" || typeof networkId !== "string") return;
+      ipc.send(IPC.notify, { title, body, target, networkId });
     },
     onNotificationClick(listener) {
-      const wrapped = (_e: unknown, target: unknown) => {
-        if (typeof target === "string") listener(target);
+      const wrapped = (_e: unknown, click: unknown) => {
+        const { target, networkId } = (click ?? {}) as Record<string, unknown>;
+        if (typeof target === "string" && typeof networkId === "string") listener({ target, networkId });
       };
       ipc.on(IPC.notifyClick, wrapped);
       return () => void ipc.removeListener(IPC.notifyClick, wrapped);

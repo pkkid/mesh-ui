@@ -8,7 +8,7 @@
  * Alerts carry eero text (device and eero names), so nothing here logs.
  */
 
-import { type DesktopAlert, IPC } from "../shared/types";
+import { type AlertTarget, type DesktopAlert, IPC } from "../shared/types";
 import type { IpcMainLike, SenderEvent } from "./ipc";
 
 export const ALERT_MAX_TITLE = 120;
@@ -16,12 +16,14 @@ export const ALERT_MAX_BODY = 300;
 
 /** An app hash path such as "/devices/0a1b2c3d4e5f". Anything else is refused. */
 const TARGET = /^\/[A-Za-z0-9/_.-]{0,200}$/;
+/** A network id as eero and the demo send them. */
+const NETWORK_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** What the host provides: show one notification and call `onClick` when it is clicked. */
 export type NotifyHost = {
   show(alert: { title: string; body: string }, onClick: () => void): void;
-  /** Focuses (and if needed restores) the main window, then opens `target` in it. */
-  open(target: string): void;
+  /** Focuses (and if needed restores) the main window, then sends it `click` on `mesh:notify-click`. */
+  open(click: AlertTarget): void;
 };
 
 const clip = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
@@ -29,11 +31,11 @@ const clip = (s: string, max: number) => (s.length > max ? `${s.slice(0, max - 1
 /** Checks an alert from the renderer: short plain strings and an app path. null when refused. */
 export function checkAlert(v: unknown): DesktopAlert | null {
   if (!v || typeof v !== "object") return null;
-  const { title, body, target } = v as Record<string, unknown>;
-  if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string") return null;
+  const { title, body, target, networkId } = v as Record<string, unknown>;
+  if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string" || typeof networkId !== "string") return null;
   const t = title.trim();
-  if (!t || !TARGET.test(target) || target.includes("..")) return null;
-  return { title: clip(t, ALERT_MAX_TITLE), body: clip(body.trim(), ALERT_MAX_BODY), target };
+  if (!t || !TARGET.test(target) || target.includes("..") || !NETWORK_ID.test(networkId)) return null;
+  return { title: clip(t, ALERT_MAX_TITLE), body: clip(body.trim(), ALERT_MAX_BODY), target, networkId };
 }
 
 /** Wires `mesh:notify`. `trusted` says whether the sender is one of the app's pages. Returns an unregister. */
@@ -43,7 +45,7 @@ export function registerNotify(ipcMain: IpcMainLike, trusted: (e: SenderEvent) =
     const alert = checkAlert(payload);
     if (!alert) return;
     try {
-      host.show({ title: alert.title, body: alert.body }, () => host.open(alert.target));
+      host.show({ title: alert.title, body: alert.body }, () => host.open({ target: alert.target, networkId: alert.networkId }));
     } catch {
       // No notification service (some Linux desktops): drop it quietly.
     }

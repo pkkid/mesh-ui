@@ -7,7 +7,8 @@
  *   items with core's `findNewNotifications` and asks the host for one OS
  *   notification each through `window.mesh.notify`. Nothing on the first
  *   page seen for a network, and nothing while the desktop choice is off.
- *   A clicked alert comes back as a target path and opens that page.
+ *   A clicked alert comes back with its path and network: it switches to
+ *   that network if another is selected now, then opens the page.
  *
  * No `~` imports and no router import, so the pure parts are unit tested in
  * Node (useDesktopAlerts.test.ts); opening a page sets the hash the router follows.
@@ -16,10 +17,10 @@
  */
 import { useEffect, useRef } from "react";
 
-import { useQuery } from "../../app/useCommand";
+import { execute, useQuery } from "../../app/useCommand";
 import { desktopEnabled, findNewNotifications, isOfflineAlert } from "../../../../core/commands/notifications";
 import type { NetworkSummary, Notification, NotificationPage, NotificationSettings } from "../../../../core/model";
-import type { DesktopAlert, MeshApi } from "../../../../shared/types";
+import type { AlertTarget, DesktopAlert, MeshApi } from "../../../../shared/types";
 
 /** The page a notification is about: its device, the eeros, the network, Updates, Profiles or Activity. */
 export function notificationPath(n: Notification): string {
@@ -60,10 +61,25 @@ export function createAlerter(notify: (alert: DesktopAlert) => void): Alerter {
       seen = found.seen;
       // Off: keep remembering, so turning alerts on later does not replay old items.
       if (!enabled) return 0;
-      for (const n of found.alerts) notify({ title: n.title, body: n.body, target: notificationPath(n) });
+      for (const n of found.alerts) notify({ title: n.title, body: n.body, target: notificationPath(n), networkId });
       return found.alerts.length;
     },
   };
+}
+
+/**
+ * A clicked alert: selects the network it came from when another one is
+ * selected now, then returns the path to open (null when it cannot).
+ */
+export async function openAlert(
+  click: AlertTarget,
+  selected: string | null,
+  run: (id: string, params: unknown) => Promise<{ ok: boolean }>,
+): Promise<string | null> {
+  // main only passes app paths (src/main/notify.ts checkAlert).
+  if (!click.target.startsWith("/")) return null;
+  if (click.networkId !== selected && !(await run("network.select", { network: click.networkId })).ok) return null;
+  return click.target;
 }
 
 const mesh = (): Partial<MeshApi> | undefined => (window as { mesh?: Partial<MeshApi> }).mesh;
@@ -80,6 +96,8 @@ export function useNotificationPage() {
 export function useDesktopAlerts(networkId: string | null, page: NotificationPage | null): void {
   const settings = useQuery<NotificationSettings>("notifications.settings.get", networkId ? { networkId } : undefined, { enabled: networkId !== null });
   const alerter = useRef<Alerter | null>(null);
+  const current = useRef(networkId);
+  current.current = networkId;
   // Until settings load, remember ids without alerting; if they cannot load, alerts stay on (the default).
   const enabled = settings.data ? desktopEnabled(settings.data.desktop) : settings.error !== null;
 
@@ -93,9 +111,9 @@ export function useDesktopAlerts(networkId: string | null, page: NotificationPag
   useEffect(() => {
     const on = mesh()?.onNotificationClick;
     if (typeof on !== "function") return;
-    return on((target) => {
-      // main only passes app paths (src/main/notify.ts checkAlert).
-      if (target.startsWith("/")) window.location.hash = target;
+    return on(async (click) => {
+      const path = await openAlert(click, current.current, execute);
+      if (path) window.location.hash = path;
     });
   }, []);
 }

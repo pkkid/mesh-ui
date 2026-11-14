@@ -275,16 +275,16 @@ const notifyHost: NotifyHost = {
     shownAlerts.add(n);
     n.show();
   },
-  open(target) {
+  open(click) {
     if (!mainWindow) {
       const win = createWindow();
-      win.webContents.once("did-finish-load", () => win.webContents.send(IPC.notifyClick, target));
+      win.webContents.once("did-finish-load", () => win.webContents.send(IPC.notifyClick, click));
       return;
     }
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
     mainWindow.focus();
-    mainWindow.webContents.send(IPC.notifyClick, target);
+    mainWindow.webContents.send(IPC.notifyClick, click);
   },
 };
 

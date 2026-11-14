@@ -19,10 +19,10 @@ function fakeMain() {
 
 function fakeHost() {
   const shown: { title: string; body: string; click: () => void }[] = [];
-  const opened: string[] = [];
+  const opened: { target: string; networkId: string }[] = [];
   const host: NotifyHost = {
     show: (alert, onClick) => void shown.push({ ...alert, click: onClick }),
-    open: (target) => void opened.push(target),
+    open: (click) => void opened.push(click),
   };
   return { host, shown, opened };
 }
@@ -33,12 +33,12 @@ describe("mesh:notify", () => {
     const { host, shown, opened } = fakeHost();
     const off = registerNotify(ipc, (e) => e.senderFrame?.url === APP, host);
 
-    send(APP, { title: "Garage is offline", body: "Garage stopped checking in.", target: "/eeros" });
-    send(APP, { title: "New device joined", body: "", target: "/devices/0a1b2c3d4e5f" });
+    send(APP, { title: "Garage is offline", body: "Garage stopped checking in.", target: "/eeros", networkId: "100001" });
+    send(APP, { title: "New device joined", body: "", target: "/devices/0a1b2c3d4e5f", networkId: "100001" });
     expect(shown.map((s) => s.title)).toEqual(["Garage is offline", "New device joined"]);
     expect(opened).toEqual([]);
     shown[0]?.click();
-    expect(opened).toEqual(["/eeros"]);
+    expect(opened).toEqual([{ target: "/eeros", networkId: "100001" }]);
 
     off();
     expect(on.has(IPC.notify)).toBe(false);
@@ -48,16 +48,18 @@ describe("mesh:notify", () => {
     const { ipc, send } = fakeMain();
     const { host, shown } = fakeHost();
     registerNotify(ipc, (e) => e.senderFrame?.url === APP, host);
-    send("https://example.com/", { title: "x", body: "", target: "/eeros" });
-    send(APP, { title: "x", body: "", target: "https://example.com/" });
-    send(APP, { title: "x", body: "", target: "/../etc" });
-    send(APP, { title: "  ", body: "", target: "/eeros" });
+    send("https://example.com/", { title: "x", body: "", target: "/eeros", networkId: "100001" });
+    send(APP, { title: "x", body: "", target: "https://example.com/", networkId: "100001" });
+    send(APP, { title: "x", body: "", target: "/../etc", networkId: "100001" });
+    send(APP, { title: "  ", body: "", target: "/eeros", networkId: "100001" });
+    send(APP, { title: "x", body: "", target: "/eeros" });
+    send(APP, { title: "x", body: "", target: "/eeros", networkId: "../x" });
     send(APP, "not an object");
     expect(shown).toEqual([]);
   });
 
   it("clips long text and survives a host without a notification service", () => {
-    expect(checkAlert({ title: "t".repeat(500), body: "b", target: "/activity" })?.title).toHaveLength(ALERT_MAX_TITLE);
+    expect(checkAlert({ title: "t".repeat(500), body: "b", target: "/activity", networkId: "100001" })?.title).toHaveLength(ALERT_MAX_TITLE);
     const { ipc, send } = fakeMain();
     registerNotify(ipc, () => true, {
       show: () => {
@@ -65,7 +67,7 @@ describe("mesh:notify", () => {
       },
       open: () => {},
     });
-    expect(() => send(APP, { title: "x", body: "", target: "/eeros" })).not.toThrow();
+    expect(() => send(APP, { title: "x", body: "", target: "/eeros", networkId: "100001" })).not.toThrow();
   });
 });
 
@@ -80,15 +82,16 @@ describe("window.mesh notify bridge", () => {
       removeListener: (channel) => listeners.delete(channel),
     };
     const mesh = createMeshBridge(ipc, "linux");
-    mesh.notify({ title: "Garage is offline", body: "", target: "/eeros" });
-    mesh.notify({ title: 1, body: "", target: "/eeros" } as never);
-    expect(sent).toEqual([[IPC.notify, { title: "Garage is offline", body: "", target: "/eeros" }]]);
+    mesh.notify({ title: "Garage is offline", body: "", target: "/eeros", networkId: "100001" });
+    mesh.notify({ title: 1, body: "", target: "/eeros", networkId: "100001" } as never);
+    expect(sent).toEqual([[IPC.notify, { title: "Garage is offline", body: "", target: "/eeros", networkId: "100001" }]]);
 
-    const clicks: string[] = [];
-    const off = mesh.onNotificationClick((t) => clicks.push(t));
+    const clicks: unknown[] = [];
+    const off = mesh.onNotificationClick((c) => clicks.push(c));
+    listeners.get(IPC.notifyClick)?.({}, { target: "/eeros", networkId: "100001" });
     listeners.get(IPC.notifyClick)?.({}, "/eeros");
-    listeners.get(IPC.notifyClick)?.({}, 42);
-    expect(clicks).toEqual(["/eeros"]);
+    listeners.get(IPC.notifyClick)?.({}, null);
+    expect(clicks).toEqual([{ target: "/eeros", networkId: "100001" }]);
     off();
     expect(listeners.has(IPC.notifyClick)).toBe(false);
   });
