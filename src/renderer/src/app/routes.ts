@@ -105,6 +105,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   advanced: page(() => import("~/features/advanced/AdvancedPage"), "AdvancedPage"),
   profiles: page(() => import("~/features/profiles/ProfilesPage"), "ProfilesPage"),
   activity: page(() => import("~/features/activity/ActivityPage"), "ActivityPage"),
+  profile: page(() => import("~/features/profile/ProfilePage"), "ProfilePage"),
   ...(import.meta.env.DEV ? { "dev-charts": page(() => import("~/components/charts/ChartGallery"), "ChartGallery") } : {}),
 };
 
