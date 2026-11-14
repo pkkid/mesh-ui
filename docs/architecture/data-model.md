@@ -354,6 +354,12 @@ type DeviceList = {
     rates: { downMbps: number; upMbps: number; active: number; at: Iso } | null;
   };
 };
+
+// Bulk device writes (device.pause, .resume, .profile.set, .block, .unblock).
+type DeviceBulkResult = {
+  devices: Device[]; // the devices changed, in the order given
+  failed: { device: string; id: Id | null; name: string | null; code: string; message: string }[];
+};
 ```
 
 | Model | eero source (`GET {net}/devices`) |

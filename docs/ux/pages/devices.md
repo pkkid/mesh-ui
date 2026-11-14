@@ -121,10 +121,22 @@ Wi-Fi**. Sidebar count: all known devices (38).
 - **Guest devices.** Tagged GUEST; on the Guest segment the bulk bar offers
   only Block (pause and profiles do not apply to guests).
 
+## Built so far (M4.4)
+
+Selection (checkbox, `Shift` click for a range, the header checkbox for the
+rows on screen, `Ctrl+A`, `Esc` clears), the bulk bar (Pause, Resume, Assign
+profile, Block N, or Unblock N when every selected row is blocked; Clear) and
+the row menu (Pause or Resume, Rename... in place, Change profile submenu,
+Block... or Unblock) all run. Bulk and row Block ask in the app dialog. After
+a bulk write the failed rows stay selected and the toast says "Paused 2 of
+3. <name>: <reason>". Guest-only selections offer only Block; bridge mode
+hides pause, profiles and block. Buttons and menu items dim with the reason
+from the gates.
+
 ## Notes
 
 - Param design for bulk: `device.pause`, `device.resume`, `device.block`,
-  `device.unblock` and `device.profile.set` take `devices: Ref[]` (one or
+  `device.unblock` and `device.profile.set` take `devices: Ref | Ref[]` (one or
   many, ids or exact names; see
   [commands.md](../../architecture/commands.md#params-conventions)). The
   engine runs them one by one, within the rate budget, and returns one

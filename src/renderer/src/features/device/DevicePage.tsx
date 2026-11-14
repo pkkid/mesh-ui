@@ -1,23 +1,27 @@
 /**
- * Device detail (docs/ux/pages/device-detail.md, mockup 06), read-only in
- * M2: hero with the live Now box, data usage, device information, IP
- * addresses and port forwards. Writes (pause, appearance, profile, block,
- * reservations, forwards) are shown disabled until their commands land.
+ * Device detail (docs/ux/pages/device-detail.md, mockup 06): hero with the
+ * device writes and the live Now box, data usage, device information, IP
+ * addresses and port forwards. Block asks first with an inline confirm at
+ * the top of the right column. Reservations and forwards stay disabled
+ * until their commands land (M5).
  *
  * Prev and Next (also `[` and `]`) follow the Devices table's order, which
  * is view state the table remembers; opened without it (a restart, a deep
  * link) they follow `device.list`'s default order, A to Z.
  */
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
+import { performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
+import { InlineConfirm } from "~/components/ui/confirm";
 import { SectionError } from "~/components/ui/page";
 import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
+import { blockRequest } from "~/features/devices/BulkBar";
 import { devicesOrder } from "~/features/devices/DeviceTable";
 import type { Device, DeviceList, Network } from "../../../../core/model";
 
@@ -41,6 +45,9 @@ export function DevicePage({ params }: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const device = useQuery<Device>("device.get", { device: id }, { poll: true, enabled: id !== "" });
   const all = useQuery<DeviceList>("device.list", {}, { poll: true });
+  const [blocking, setBlocking] = useState<"ask" | "running" | null>(null);
+  // Another device (Prev, Next) closes the confirm.
+  useEffect(() => setBlocking(null), [id]);
 
   const d = device.data;
   const n = network.data;
@@ -121,7 +128,7 @@ export function DevicePage({ params }: PageProps) {
         <SectionError what="this device" error={device.error} onRetry={() => void device.refetch()} />
       ) : (
         <>
-          <DeviceHero view={view} fallback={(all.data?.devices ?? []).find((x) => x.id === id)} />
+          <DeviceHero view={view} fallback={(all.data?.devices ?? []).find((x) => x.id === id)} onBlock={() => setBlocking("ask")} />
           {view.bridged && (
             <Card padded className="text-muted-foreground text-xs">
               {n?.name ?? "This network"} is in bridge mode. Pausing, profiles, blocking, reservations and port forwards
@@ -134,6 +141,23 @@ export function DevicePage({ params }: PageProps) {
               <DeviceInfo view={view} />
             </div>
             <div className="flex min-w-0 flex-col gap-7">
+              {blocking && d && !d.blocked && (
+                <InlineConfirm
+                  title={`Block ${d.name}?`}
+                  confirmLabel="Block device"
+                  running={blocking === "running"}
+                  onCancel={() => setBlocking(null)}
+                  onConfirm={async () => {
+                    setBlocking("running");
+                    // The confirm is this note, so the write does not ask again.
+                    await performWrite(blockRequest([d], true, { networkName: n?.name, askFirst: false }));
+                    setBlocking(null);
+                  }}
+                >
+                  It will be disconnected from every eero and can't rejoin {n?.name ?? "this network"} until you unblock it from
+                  Devices &gt; Blocked.
+                </InlineConfirm>
+              )}
               <DeviceAddresses view={view} />
               {!view.bridged && !view.guest && <DeviceForwards view={view} id={id} />}
             </div>
