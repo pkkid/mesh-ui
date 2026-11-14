@@ -49,10 +49,14 @@ export function mapStatus(raw: unknown): M.Status {
   }
 }
 
-/** `owner`; `standard-admin` and other admin roles to `admin`. */
+/**
+ * `owner` and `network-owner` (what a real `{net}/permissions` sends, M5.1-fix
+ * capture) to `owner`; `standard-admin` and other admin roles to `admin`.
+ * Anything else (the account's `role` is `none`) to null.
+ */
 export function mapRole(raw: unknown): M.Role | null {
   const role = typeof raw === "string" ? raw.toLowerCase() : "";
-  if (role === "owner") return "owner";
+  if (role === "owner" || role.endsWith("-owner")) return "owner";
   if (role.includes("admin")) return "admin";
   return null;
 }

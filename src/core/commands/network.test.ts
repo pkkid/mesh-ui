@@ -219,7 +219,7 @@ describe("network commands (fake eero server)", () => {
 
     const gone = fakeEngine({ prepare: (fake) => fake.state.networks.delete("100002") });
     const nets = await ok(gone.engine.execute<M.NetworkSummary[]>("network.list"));
-    expect(nets[1]).toMatchObject({ id: "100002", name: "Lake Cabin", status: "unknown", role: "owner", eeroCount: null });
+    expect(nets[1]).toMatchObject({ id: "100002", name: "Lake Cabin", status: "unknown", role: null, eeroCount: null });
   });
 
   it("network.select emits network.selected; network.get reads the selected network", async () => {

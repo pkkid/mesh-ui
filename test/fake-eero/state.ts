@@ -165,7 +165,7 @@ function seedAccount(nets: FakeNetwork[]): RawAccount {
     email: { value: "alex@example.com", verified: true },
     phone: { value: "+15550100142", country_code: "1", national_number: "5550100142", verified: true },
     log_id: "FAKE0LOG01",
-    role: "owner",
+    role: "none",
     premium_status: "inactive",
     push_settings: { networkOffline: true, nodeOffline: true },
     auth: { type: "email" },
@@ -448,16 +448,44 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
 
   const full = { create: true, read: true, update: true, delete: true };
   const readOnly = { create: false, read: true, update: false, delete: false };
+  const readUpdate = { create: false, read: true, update: true, delete: false };
+  const none = { create: false, read: false, update: false, delete: false };
   return {
     id: seed.id,
     network,
     permissions: {
       role: seed.role,
-      // The admin keys as the real permissions name them (M5.6 capture).
+      // The real shape (M5.1-fix capture): `network` and `eeros` areas plus
+      // dotted keys, no devices/profiles/settings/updates; the owner's
+      // `network.create` is false, as on the real network.
       permissions:
         seed.role === "owner"
-          ? { eeros: full, network: full, "network.transfer": full, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": full, "network.admin_invites": full, "network.standard_admins": full, "network.ownership_transfer": full }
-          : { eeros: full, network: full, "network.transfer": readOnly, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": readOnly, "network.admin_invites": readOnly, "network.standard_admins": readOnly, "network.ownership_transfer": readOnly },
+          ? {
+              eeros: full,
+              network: { create: false, read: true, update: true, delete: true },
+              // All false on the real owner; no gate reads it (transfer uses network.ownership_transfer).
+              "network.transfer": full,
+              "network.proxied_nodes": readUpdate,
+              "network.smart_home_hub": full,
+              "network.radio_settings": { create: false, read: true, update: true, delete: true },
+              "network.static_ip_reservation": { create: true, read: true, update: true, delete: false },
+              "network.simple_setup": readUpdate,
+              "amazon.account": full,
+              "network.admin_invites": full,
+              "network.standard_admins": { create: false, read: true, update: false, delete: true },
+              "network.ownership_transfer": { create: true, read: true, update: false, delete: true },
+            }
+          : {
+              eeros: full,
+              network: readUpdate,
+              "network.transfer": readOnly,
+              "network.proxied_nodes": readUpdate,
+              "network.smart_home_hub": full,
+              "amazon.account": readOnly,
+              "network.admin_invites": readOnly,
+              "network.standard_admins": readOnly,
+              "network.ownership_transfer": none,
+            },
     },
     eeros,
     devices,
@@ -517,8 +545,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       "network.scheduledUpdate.earlyNotification": true,
       "network.scheduledUpdate.lateNotification": false,
     },
-    // Only `status` came back from a real network that had not run diagnostics.
-    diagnostics: { status: maple ? "completed" : "idle" },
+    // Maple has a past run; a real network that has not run diagnostics sends only `status: "not_started"`.
+    diagnostics: { status: maple ? "completed" : "not_started" },
     support: { support_phone: "+18775550123", contact_url: "https://support.example.com/contact", help_url: "https://support.example.com/help", email_web_form_url: "https://support.example.com/email", name: "eero" },
     members: maple
       ? [

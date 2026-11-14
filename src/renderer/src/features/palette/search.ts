@@ -111,7 +111,7 @@ export function commandUnavailable(
   permissions: Permissions | null | undefined,
   network: Network | null | undefined,
 ): string | null {
-  // An unknown role (null: the real network sent none, M5.6 capture) is not treated as admin; the permission gate still applies.
+  // Only a known admin is refused here. The real owner maps to "owner" (eero sends `network-owner`, M5.1-fix); an unknown role (null) falls to the permission gate and eero.
   if (info.effect === "destructive" && permissions?.role === "admin") return "Owner only";
   const gate = commandGate(info);
   return gate ? gateFor(gate, permissions ?? undefined, network ?? undefined).reason : null;

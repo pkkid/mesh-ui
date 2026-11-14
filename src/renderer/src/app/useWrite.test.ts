@@ -303,7 +303,7 @@ describe("gateFor", () => {
 
   it("closes with a reason for no permission, bridge mode and a missing capability", () => {
     expect(gateFor({ area: "eeros" }, admin, undefined)).toEqual({ allowed: false, reason: "Owner only" });
-    expect(gateFor({ area: "eeros" }, { role: null, can: {} }, undefined)).toEqual({ allowed: false, reason: NO_PERMISSION });
+    expect(gateFor({ area: "eeros" }, { role: null, can: { network: { read: true, create: false, update: false, delete: false } } }, undefined)).toEqual({ allowed: false, reason: NO_PERMISSION });
     expect(gateFor({ bridgeOff: true }, owner, net("bridged"))).toEqual({ allowed: false, reason: BRIDGE_OFF });
     expect(gateFor({ bridgeOff: true }, owner, net("ipPassthrough"))).toEqual({ allowed: false, reason: BRIDGE_OFF });
     expect(gateFor({ capability: "led" }, owner, net("nat", { led: false }))).toEqual({ allowed: false, reason: NOT_AVAILABLE });
