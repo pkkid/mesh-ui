@@ -259,8 +259,9 @@ Learned in M2:
 - Verdict thresholds kept: Great 75% or more of plan, Poor under 40%.
 - The palette has a Pages group.
 - `radio_channel_stats` gives channel and tx power on the real API.
-- Firmware history was empty on the real gateway (empty list or 404 still
-  being confirmed by M2.R-fix2).
+- Firmware history is `{data, meta.has_more}`, newest first (50 rows on the
+  real gateway); the mapper dropped every row until #78.
+- Lease time is not in the API: `lease.dhcp` has only ip, mask and router.
 - Routing works for an owner: reservations, forwards and the LAN map.
 - Four mappings were wrong on the real network although fake-server tests
   passed (lease time, eero ports, wireless upstream, eero subnet); fixed in
@@ -369,7 +370,9 @@ read-only capture on the real network (key paths and types only), and the
 fake server serves that confirmed shape; every new page gets a page-load
 request-budget test like `src/core/eero/pageload.test.ts`; demo fixtures
 cover every state the mockup shows (for example a plan set, leased devices,
-blocked and guest devices).
+blocked and guest devices); drop `Internet.leaseRenewsAt`, the Internet
+page's lease row, its value in mockup 02 and its data-model row, since eero
+sends no lease time (#78).
 
 ## M4: Everyday control
 
@@ -404,7 +407,11 @@ and invites, network transfer and delete, eero ports and remove,
 diagnostics, coverage scan and upgrade report, notification settings.
 Carried from M2: a real source for `Radio.autoChannel` (maybe
 `{net}/radio_settings`, shape unknown); firmware history paging past 50
-rows if eero ever returns more.
+rows if eero ever returns more; eero ports hold a list of attachments per
+port (the model keeps one item; eero sends several in
+`connection_status.metadata.multiple_devices.connections[]`); confirm the
+`port_status` of a down or disabled port with a read-only capture (only
+`DATA_CONNECTED` and `WAN` seen; `DISABLED` is a guess).
 
 ## M6: App, account and release
 
