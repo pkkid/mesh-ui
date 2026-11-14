@@ -46,6 +46,20 @@ export type PortFixture = Pick<M.EeroPort, "number" | "name" | "supportedMbps" |
 /** The network's update state as stored: the current version and per-eero versions come from the eeros. */
 export type UpdatesFixture = Omit<M.Updates, "current" | "eeros">;
 
+/** The guest network as stored: online guests and device ids come from the devices with `ssid: "guest"`. */
+export type GuestFixture = Pick<M.GuestNetwork, "enabled" | "name" | "security"> & { password: string | null };
+
+/** Wi-Fi as stored: the SSID is the network name; bands and client counts come from the eeros and devices. */
+export type WifiFixture = Pick<M.WifiSettings, "security" | "wpa2OnlyDevices" | "hide5g"> & { password: string };
+
+/**
+ * Settings as stored. DHCP comes from the LAN map, WAN and the ISP's DNS from
+ * the internet fixture, and the connection mode and time zone from the network.
+ */
+export type SettingsFixture = Omit<M.NetworkSettings, "dhcp" | "wan" | "connectionMode" | "timezone" | "dns"> & {
+  dns: Omit<M.NetworkSettings["dns"], "ispServers">;
+};
+
 export type NetworkData = {
   network: NetworkFixture;
   health: { internet: M.NetworkHealth["internet"]; mesh: M.NetworkHealth["mesh"]; messages: string[] };
@@ -73,6 +87,22 @@ export type NetworkData = {
   updates: UpdatesFixture;
   /** Typical traffic per device id. */
   usage: Record<M.Id, DeviceUsage>;
+  guest: GuestFixture;
+  wifi: WifiFixture;
+  settings: SettingsFixture;
+  /** Thread secrets; null when the network has no Thread. */
+  threadCredentials: M.ThreadCredentials | null;
+  /** The last cloud diagnostics run. */
+  diagnostics: M.DiagnosticsResult;
+  support: Omit<M.SupportInfo, "supportId">;
+  admins: M.Admin[];
+  /** Pending invites; empty for an admin, who cannot read them. */
+  invites: M.Invite[];
+  integrations: M.Integrations;
+  /** Newest first. */
+  notifications: M.Notification[];
+  /** eero's notification switches, keys as eero sends them. */
+  notificationSettings: Record<string, boolean>;
 };
 
 export type DemoFixtures = {
@@ -524,6 +554,53 @@ function firmwareOf(eero: EeroFixture, now: number, steps: [string, number][]): 
 const nextUpdateWindow = (now: number) => Math.ceil((now - 10 * HOUR) / DAY) * DAY + 10 * HOUR;
 
 // ---------------------------------------------------------------------------
+// Wave 2 reads: guest, Wi-Fi, settings, support, admins, integrations, notifications
+
+const ALL_DAYS: M.Day[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+/** eero's notification switches, minus the eero Plus ones (out of scope). Keys as eero sends them. */
+const NOTIFICATION_KEYS = [
+  "device.new",
+  "device.restrict.new.private",
+  "network.updated",
+  "network.dataUsageReport",
+  "permissions.updates",
+  "port.security.blocked",
+  "network.scheduledUpdate.earlyNotification",
+  "network.scheduledUpdate.lateNotification",
+] as const;
+
+const notificationSwitches = (off: string[] = []): Record<string, boolean> => Object.fromEntries(NOTIFICATION_KEYS.map((k) => [k, !off.includes(k)]));
+
+const EERO_SUPPORT: Omit<M.SupportInfo, "supportId">["eero"] = {
+  name: "eero",
+  phone: "+18775550123",
+  email: "support@example.com",
+  helpUrl: "https://support.example.com/eero",
+  contactUrl: "https://support.example.com/eero/contact",
+  emailFormUrl: "https://support.example.com/eero/email",
+};
+
+const integration = (available: boolean, enabled: boolean | null, detail: string | null = null): M.Integration => ({ available, enabled: available ? enabled : null, detail });
+
+type NotificationSeed = { min: number; title: string; body: string; read: boolean; category: string; deviceId?: M.Id };
+
+function toNotifications(seeds: NotificationSeed[], now: number, prefix: string): M.Notification[] {
+  return seeds
+    .slice()
+    .sort((a, b) => a.min - b.min)
+    .map((n, i) => ({
+      id: `${prefix}-n${String(i + 1).padStart(3, "0")}`,
+      at: new Date(now - n.min * MIN).toISOString(),
+      title: n.title,
+      body: n.body,
+      read: n.read,
+      category: n.category,
+      refs: n.deviceId ? { deviceId: n.deviceId } : {},
+    }));
+}
+
+// ---------------------------------------------------------------------------
 // The fixture set
 
 const roundToMinute = (ms: number) => Math.floor(ms / MIN) * MIN;
@@ -599,7 +676,6 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       dnsInUse: ["203.0.113.53", "203.0.113.54"],
       dnsMode: "automatic",
       doubleNat: false,
-      leaseRenewsAt: iso(-18 * HOUR),
       gateway: { eeroId: mapleIds.lr, location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 10000 },
     },
     eeros: mapleEeros,
@@ -654,6 +730,72 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       stuckEeros: [],
     },
     usage: Object.fromEntries(mapleBuilt.map(([d, u]) => [d.id, u])),
+    guest: { enabled: true, name: "Maple Street Guest", password: "lemon-harbor-42", security: { "2.4": "WPA2_WPA3", "5": "WPA2_WPA3", "6": "WPA3" } },
+    wifi: {
+      password: "maple-cedar-orbit-27",
+      security: { "2.4": "WPA2_WPA3", "5": "WPA2_WPA3", "6": "WPA3" },
+      // Old 2.4 GHz gear that would drop if the network went WPA3 only.
+      wpa2OnlyDevices: ["HP LaserJet", "Garage Door Opener", "Flaky Plug"].flatMap((name) => mapleDevices.find((d) => d.name === name)?.id ?? []),
+      hide5g: { active: false, expiresAt: null },
+    },
+    settings: {
+      dns: { mode: "automatic", servers: [], ipv6Servers: [], caching: true },
+      ipv6: { enabled: true },
+      natRandomization: false,
+      upnp: true,
+      sqm: false,
+      bandSteering: true,
+      fastTransition: true,
+      mlo: "multi",
+      legacyMode: false,
+      simpleSetup: true,
+      powerSaving: {
+        enabled: true,
+        scheduleEnabled: true,
+        schedules: [
+          { id: "9301", name: "Overnight", days: ALL_DAYS, start: "01:00", end: "06:00", enabled: true },
+          { id: "9302", name: "Weekday daytime", days: WEEKDAYS, start: "09:30", end: "15:00", enabled: false },
+        ],
+      },
+      thread: { enabled: true, credentialSync: true, name: "MapleThread", channel: 15, panId: "0x4d55", xpanId: "4d55dead0000beef", borderAgent: "192.168.4.1:49191", devices: 6 },
+    },
+    threadCredentials: { networkKey: "00112233445566778899aabbccddeeff", pskc: "445f2b5ca6f2a93a55ce570a70efeecb", dataset: null },
+    diagnostics: {
+      status: "completed",
+      issueArea: "mesh",
+      results: [
+        { name: "Internet", status: "good", detail: "Ziply Fiber is up; DNS answers in 9 ms" },
+        { name: "Mesh", status: "warning", detail: "Garage has a weak link to Office (2 bars)" },
+        { name: "eeros", status: "good", detail: "All 4 eeros checked in within the last minute" },
+      ],
+    },
+    support: { eero: EERO_SUPPORT, isp: { name: "Ziply Fiber", phone: "+18665550144", url: "https://isp.example.com/ziply/support" } },
+    admins: [
+      { id: "7001", name: "Alex Kim", email: "alex@example.com", role: "owner", isYou: true },
+      { id: "7002", name: "Jamie Kim", email: "jamie@example.com", role: "admin", isYou: false },
+    ],
+    // Matches the "Alex Kim invited sam@example.com" event 490 minutes ago; invites last 48 hours.
+    invites: [{ id: "7101", nickname: "Sam", createdAt: iso(490 * MIN), expiresAt: iso(490 * MIN - 48 * HOUR) }],
+    integrations: {
+      homekit: integration(true, false),
+      amazon: integration(true, true, "Linked to an Amazon account"),
+      builtin: integration(true, true, "1 Echo extends your network"),
+      smart_home_hub: integration(false, null, "Needs an eero with a Zigbee radio"),
+      ffs: integration(true, true),
+    },
+    notifications: toNotifications(
+      [
+        { min: 25, title: "Leo is paused", body: "Alex Kim paused Leo's 3 devices until resumed.", read: false, category: "profile" },
+        { min: 48, title: "New device joined", body: "Nest Thermostat joined Maple Street on Living Room.", read: false, category: "device", deviceId: deviceId("Nest Thermostat") },
+        { min: 180, title: "Update tonight", body: "eeroOS 7.13.0 installs tonight between 2 AM and 5 AM.", read: false, category: "network" },
+        { min: 220, title: "Weak link on Garage", body: "Garage dropped to 2 bars from Office. Moving it closer may help.", read: true, category: "eero" },
+        { min: 2 * 24 * 60 + 12 * 60 + 4, title: "Garage is offline", body: "Garage stopped checking in. It came back 4 minutes later.", read: true, category: "eero" },
+        { min: 3 * 24 * 60 + 40, title: "New device joined", body: "ESP_3A9F21 joined Maple Street on Garage.", read: true, category: "device", deviceId: deviceId("ESP_3A9F21") },
+      ],
+      now,
+      "ms",
+    ),
+    notificationSettings: notificationSwitches(["network.dataUsageReport"]),
   };
   const reserved = ["Alex's MacBook Pro", "Synology NAS", "PlayStation 5", "Office iMac", "HP LaserJet", "Living Room TV", "Hue Bridge", "Ring Doorbell"];
   const forwardRows: [device: string, name: string, external: string, internal: string, protocol: M.Protocol, enabled: boolean][] = [
@@ -715,7 +857,6 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       dnsInUse: ["198.51.100.53"],
       dnsMode: "automatic",
       doubleNat: false,
-      leaseRenewsAt: null,
       gateway: { eeroId: lakeIds.lc, location: "Great Room", model: "eero 6+", wanPortSpeedMbps: null },
     },
     eeros: lakeEeros,
@@ -755,6 +896,37 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       stuckEeros: [],
     },
     usage: Object.fromEntries(lakeBuilt.map(([d, u]) => [d.id, u])),
+    // An open guest network: no password, so no security either.
+    guest: { enabled: true, name: "Lake Cabin Guest", password: null, security: { "2.4": null, "5": null, "6": null } },
+    wifi: { password: "cabin-loon-quiet-31", security: { "2.4": "WPA2", "5": "WPA2", "6": null }, wpa2OnlyDevices: [], hide5g: { active: false, expiresAt: null } },
+    settings: {
+      dns: { mode: "automatic", servers: [], ipv6Servers: [], caching: true },
+      ipv6: { enabled: false },
+      natRandomization: false,
+      upnp: true,
+      sqm: null,
+      bandSteering: true,
+      fastTransition: false,
+      mlo: null,
+      legacyMode: false,
+      simpleSetup: false,
+      powerSaving: { enabled: false, scheduleEnabled: false, schedules: [] },
+      thread: { enabled: false, credentialSync: false, name: null, channel: null, panId: null, xpanId: null, borderAgent: null, devices: null },
+    },
+    threadCredentials: null,
+    diagnostics: { status: null, issueArea: null, results: [] },
+    support: { eero: EERO_SUPPORT, isp: null },
+    admins: [{ id: "7001", name: "Alex Kim", email: "alex@example.com", role: "owner", isYou: true }],
+    invites: [],
+    integrations: {
+      homekit: integration(true, false),
+      amazon: integration(true, false),
+      builtin: integration(true, false),
+      smart_home_hub: integration(false, null, "Needs an eero with a Zigbee radio"),
+      ffs: integration(true, false),
+    },
+    notifications: toNotifications([{ min: lakeOfflineMin, title: "Lake Cabin is offline", body: "Lake Cabin stopped checking in. Check power and the modem.", read: false, category: "network" }], now, "lc"),
+    notificationSettings: notificationSwitches(),
   };
 
   // --- Mom's House: admin role, bridge mode, no Thread or nightlight ------
@@ -794,7 +966,6 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       dnsInUse: ["192.168.1.1"],
       dnsMode: "automatic",
       doubleNat: null,
-      leaseRenewsAt: iso(-9 * HOUR),
       gateway: { eeroId: momIds.ki, location: "Kitchen", model: "eero 6+", wanPortSpeedMbps: 1000 },
     },
     eeros: momEeros,
@@ -831,6 +1002,41 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       stuckEeros: [],
     },
     usage: Object.fromEntries(momBuilt.map(([d, u]) => [d.id, u])),
+    // eero has no guest network in bridge mode.
+    guest: { enabled: false, name: "Kim Home Guest", password: "garden-gate-19", security: { "2.4": "WPA2_WPA3", "5": "WPA2_WPA3", "6": null } },
+    wifi: { password: "rose-garden-tea-55", security: { "2.4": "WPA2_WPA3", "5": "WPA2_WPA3", "6": null }, wpa2OnlyDevices: momDevices.filter((d) => d.name === "Den Printer").map((d) => d.id), hide5g: { active: false, expiresAt: null } },
+    settings: {
+      dns: { mode: "automatic", servers: [], ipv6Servers: [], caching: null },
+      ipv6: { enabled: null },
+      natRandomization: null,
+      upnp: null,
+      sqm: null,
+      bandSteering: true,
+      fastTransition: false,
+      mlo: null,
+      legacyMode: false,
+      simpleSetup: false,
+      powerSaving: { enabled: null, scheduleEnabled: null, schedules: [] },
+      thread: null,
+    },
+    threadCredentials: null,
+    diagnostics: { status: "completed", issueArea: null, results: [{ name: "Internet", status: "good", detail: "Harbor Cable is up" }] },
+    support: { eero: EERO_SUPPORT, isp: { name: "Harbor Cable", phone: "+15035550175", url: "https://isp.example.com/harbor/support" } },
+    // Alex is an admin here; Rose owns the network. Admins cannot read invites.
+    admins: [
+      { id: "7201", name: "Rose Kim", email: "rose@example.com", role: "owner", isYou: false },
+      { id: "7001", name: "Alex Kim", email: "alex@example.com", role: "admin", isYou: true },
+    ],
+    invites: [],
+    integrations: {
+      homekit: integration(false, null, "Not available in bridge mode"),
+      amazon: integration(true, false),
+      builtin: integration(false, null, "Not available in bridge mode"),
+      smart_home_hub: integration(false, null, "Needs an eero with a Zigbee radio"),
+      ffs: integration(true, true),
+    },
+    notifications: toNotifications([{ min: 90, title: "Update available", body: "eeroOS 7.13.0 is ready. The owner can install it.", read: true, category: "network" }], now, "mh"),
+    notificationSettings: notificationSwitches(["permissions.updates"]),
   };
 
   // Typical live rates, set on connected devices that are not paused.

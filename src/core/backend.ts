@@ -9,7 +9,8 @@
  *
  * The interface is split into one sub-interface per area, so each eero
  * backend area file implements exactly one of them. This file holds every
- * read through M2; later milestones add their writes here.
+ * read through M3; later milestones add their writes here. Areas the eero
+ * backend has not built yet answer "not available yet" (see composeBackend).
  */
 
 import { BackendError } from "./errors";
@@ -139,6 +140,57 @@ export interface EventsBackend {
   list(net: M.Id, cursor: string | null): Promise<EventChunk>;
 }
 
+/** A Wi-Fi name and its password (null: an open network). Sensitive: only the share and reveal commands read it. */
+export type WifiCredentials = { ssid: string; password: string | null };
+
+export interface GuestBackend {
+  /** No password, only `hasPassword`; `online` and `deviceIds` come from the devices on the guest network. */
+  get(net: M.Id): Promise<M.GuestNetwork>;
+  /** Sensitive. Core builds the `WIFI:` payload. */
+  credentials(net: M.Id): Promise<WifiCredentials>;
+}
+
+export interface WifiBackend {
+  /** No password. Bands merge every eero's radios; clients come from the devices. */
+  get(net: M.Id): Promise<M.WifiSettings>;
+  /** Sensitive. Core builds the `WIFI:` payload. */
+  credentials(net: M.Id): Promise<WifiCredentials>;
+}
+
+export interface SettingsBackend {
+  /** Thread secrets are never part of this result. */
+  get(net: M.Id): Promise<M.NetworkSettings>;
+  /** Sensitive: the Thread network key and friends. Null when the network has no Thread. */
+  threadCredentials(net: M.Id): Promise<M.ThreadCredentials | null>;
+}
+
+export interface DiagnosticsBackend {
+  /** The last cloud diagnostics run (`GET {net}/diagnostics`). The health check is built in core. */
+  latest(net: M.Id): Promise<M.DiagnosticsResult>;
+  /** Support contacts; `supportId` comes from the account in core. */
+  support(net: M.Id): Promise<Omit<M.SupportInfo, "supportId">>;
+}
+
+export interface AdminsBackend {
+  /** Seats are counted in core. Invites a role cannot read are an empty list, not an error. */
+  list(net: M.Id): Promise<Pick<M.AdminList, "admins" | "invites">>;
+}
+
+export interface IntegrationsBackend {
+  get(net: M.Id): Promise<M.Integrations>;
+}
+
+export type NotificationChunk = { notifications: M.Notification[]; nextCursor: string | null };
+
+export interface NotificationsBackend {
+  /** One page, newest first. `cursor` is the `nextCursor` of the previous page. */
+  list(net: M.Id, cursor: string | null): Promise<NotificationChunk>;
+  /** eero's own "has unread" flag. */
+  unread(net: M.Id): Promise<boolean>;
+  /** eero's notification switches, keys as sent (`device.new`). Push and desktop choices are added in core. */
+  settings(net: M.Id): Promise<Record<string, boolean>>;
+}
+
 // ---------------------------------------------------------------------------
 // The whole backend
 
@@ -154,6 +206,13 @@ export interface BackendAreas {
   events: EventsBackend;
   routing: RoutingBackend;
   updates: UpdatesBackend;
+  guest: GuestBackend;
+  wifi: WifiBackend;
+  settings: SettingsBackend;
+  diagnostics: DiagnosticsBackend;
+  admins: AdminsBackend;
+  integrations: IntegrationsBackend;
+  notifications: NotificationsBackend;
 }
 
 export type AreaName = keyof BackendAreas;
@@ -170,6 +229,13 @@ export const AREA_NAMES: readonly AreaName[] = [
   "events",
   "routing",
   "updates",
+  "guest",
+  "wifi",
+  "settings",
+  "diagnostics",
+  "admins",
+  "integrations",
+  "notifications",
 ];
 
 export interface Backend extends BackendAreas {

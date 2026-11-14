@@ -156,8 +156,6 @@ export type Internet = {
   dnsMode: "automatic" | "custom" | null;
   doubleNat: boolean | null;
   gateway: { eeroId: Id; location: string; model: string | null; wanPortSpeedMbps: number | null } | null;
-  /** When the WAN DHCP lease renews; null when not on DHCP or not reported. */
-  leaseRenewsAt: Iso | null;
   /** From app settings ("set by you"), filled in by core, not the backend. */
   planMbps: PlanSpeed | null;
   lastSpeedTest: SpeedTest | null;
@@ -438,8 +436,12 @@ export type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices }
 export type GuestNetwork = {
   enabled: boolean;
   name: string | null;
+  /** False: an open guest network. The password itself is only in guest.share. */
   hasPassword: boolean;
+  /** Guests connected now. */
   online: number;
+  /** Every device seen on the guest network, connected or not. */
+  deviceIds: Id[];
   security: Record<WirelessBand, Security | null>;
 };
 
@@ -590,7 +592,17 @@ export type EventPage = {
   counts: Record<EventCategory, number>;
 };
 
-export type Notification = { id: Id; at: Iso; title: string; body: string; read: boolean };
+export type Notification = {
+  id: Id;
+  at: Iso;
+  title: string;
+  body: string;
+  read: boolean;
+  /** eero `category` as sent; null when absent. */
+  category: string | null;
+  /** The device a notification is about (from `meta.device_url`). */
+  refs: { deviceId?: Id };
+};
 export type NotificationPage = { notifications: Notification[]; unread: boolean; nextCursor: string | null };
 
 export type NotificationSettings = {
@@ -619,9 +631,33 @@ export type DiagnosticsResult = {
 
 export type SupportInfo = {
   supportId: string | null;
-  eero: { phone: string | null; email: string | null; helpUrl: string | null };
+  /** Who answers support for this network (`name` in `{net}/support`), usually eero. */
+  eero: {
+    name: string | null;
+    phone: string | null;
+    email: string | null;
+    helpUrl: string | null;
+    contactUrl: string | null;
+    emailFormUrl: string | null;
+  };
   isp: { name: string | null; phone: string | null; url: string | null } | null;
 };
+
+// ---------------------------------------------------------------------------
+// Integrations
+
+export type IntegrationId = "homekit" | "amazon" | "builtin" | "smart_home_hub" | "ffs";
+
+export type Integration = {
+  /** False when eero reports no support for it here (a 403 or 404 counts as unavailable, not an error). */
+  available: boolean;
+  /** null when unavailable or unknown. */
+  enabled: boolean | null;
+  /** One line of context, e.g. "2 Echo devices extend your network". */
+  detail: string | null;
+};
+
+export type Integrations = Record<IntegrationId, Integration>;
 
 // ---------------------------------------------------------------------------
 // App

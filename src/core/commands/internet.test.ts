@@ -245,14 +245,13 @@ describe("internet commands (fake eero server)", () => {
       dnsMode: "automatic",
       doubleNat: false,
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
-      leaseRenewsAt: null,
       planMbps: { down: 1000, up: 50 },
       lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
       verdict: { kind: "steady", title: "Example Fiber is fast and steady", detail: "Last test 20 h ago hit 91% of your 1,000 Mbps plan" },
     });
   });
 
-  it("has no lease renew time: eero sends only the address, mask and router", async () => {
+  it("has no lease renew time (eero sends only the address, mask and router) and reads the WAN type", async () => {
     const seeded = (lease: unknown, wanType = "DHCP") =>
       fakeEngine({
         prepare: (fake) => {
@@ -262,9 +261,11 @@ describe("internet commands (fake eero server)", () => {
         },
       }).engine.execute<M.Internet>("internet.get", { networkId: "100001" });
     // The fake's default lease is the real shape: { mode, dhcp: { ip, mask, router }, static: null }.
-    expect(await ok(seeded(undefined))).toMatchObject({ wanType: "dhcp", ispGateway: "203.0.113.1", leaseRenewsAt: null });
-    // Old guessed field names are not read.
-    expect((await ok(seeded({ mode: "dhcp", dhcp: { ip: "203.0.113.9", renews_on: "2026-11-13T04:00:00Z" } }))).leaseRenewsAt).toBeNull();
+    const dhcp = await ok(seeded(undefined));
+    expect(dhcp).toMatchObject({ wanType: "dhcp", ispGateway: "203.0.113.1" });
+    expect(dhcp).not.toHaveProperty("leaseRenewsAt");
+    // A guessed renew field is never surfaced.
+    expect(await ok(seeded({ mode: "dhcp", dhcp: { ip: "203.0.113.9", renews_on: "2026-11-13T04:00:00Z" } }))).not.toHaveProperty("leaseRenewsAt");
     expect((await ok(seeded({ mode: "static", static: { ip: "203.0.113.9" } }, "STATIC"))).wanType).toBe("static");
   });
 

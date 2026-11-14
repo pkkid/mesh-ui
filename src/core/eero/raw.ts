@@ -78,7 +78,7 @@ export type RawNetwork = {
   /** The WAN lease. eero sends no lease or renew time (real capture, 2026-11-13). */
   lease?: { mode?: string; dhcp?: { ip?: string; mask?: string; router?: string } | null; static?: unknown };
   dhcp?: { mode?: string; custom?: { subnet_ip?: string; subnet_mask?: string; start_ip?: string; end_ip?: string } };
-  dns?: { mode?: string; caching?: boolean; parent?: { ips?: string[] }; custom?: { ips?: string[] } };
+  dns?: { mode?: string; caching?: boolean; parent?: { ips?: string[] }; custom?: { ips?: string[] } | null };
   upnp?: boolean;
   ipv6_upstream?: boolean;
   band_steering?: boolean;
@@ -86,7 +86,30 @@ export type RawNetwork = {
   sqm?: boolean;
   thread?: boolean;
   power_saving?: boolean;
-  guest_network?: { url?: string; name?: string; enabled?: boolean };
+  /** The main Wi-Fi password, sent in the clear (real capture, 2026-11-13). Only sensitive reads may map it. */
+  password?: string;
+  /** e.g. "multi"; absent when the network has no Wi-Fi 7 multi-link. */
+  mlo_mode?: string;
+  wireless_mode?: string;
+  /** eero Simple Setup state as a string. */
+  auto_setup_mode?: string;
+  nat_port_randomization?: boolean;
+  power_saving_schedule_enabled?: boolean;
+  ipv6?: { name_servers?: { mode?: string; custom?: string[] } };
+  pppoe_enabled?: boolean | null;
+  pppoe_username?: string | null;
+  vlan?: number | null;
+  /** Empty object when no flag is set; `hide_5g` while 2.4 GHz only is on. */
+  temporary_flags?: { hide_5g?: boolean | { value?: boolean; expires_on?: string | null } };
+  /** null when HomeKit was never set up. */
+  homekit?: { enabled?: boolean } | null;
+  amazon_account_linked?: boolean;
+  /** Amazon Frustration-Free Setup. */
+  ffs?: boolean;
+  alexa_skill?: boolean;
+  /** eero Built-in: partner devices acting as eeros (`GET {net}/proxied_nodes` is a 404). */
+  proxied_nodes?: { enabled?: boolean; devices?: RawProxiedNode[] };
+  guest_network?: RawGuestNetwork;
   updates?: RawUpdates;
   capabilities?: Record<string, RawCapability>;
   resources?: Record<string, RawLink>;
@@ -353,6 +376,104 @@ export type RawEvent = {
   eero?: RawRef & { serial?: string };
   profile?: RawRef;
 };
+
+// ---------------------------------------------------------------------------
+// Guest, Wi-Fi and settings reads (real capture, 2026-11-13: key paths and types only)
+
+/** `GET {net}/guestnetwork`, also embedded as the network's `guest_network`. `password` is in the clear. */
+export type RawGuestNetwork = { url?: string; name?: string; password?: string | null; enabled?: boolean; resources?: { password?: string } };
+
+/** `GET {net}/wpa3_per_band`. Only these two keys came back; values `WPA2` / `WPA2_WPA3` / `WPA3` per the clients (case varies). */
+export type RawWpa3PerBand = { band_2_4_ghz?: string; band_5_ghz?: string; band_6_ghz?: string };
+
+/** `GET {net}/fast_transition`. */
+export type RawFastTransition = { fast_transition?: boolean };
+
+/** One power saving schedule. The capture's list was empty; fields from the clients. */
+export type RawPowerSavingSchedule = { url?: string; id?: string | number; name?: string; days?: string[]; start_time?: string; end_time?: string; enabled?: boolean };
+
+/** `GET {net}/power_saving/schedules`. */
+export type RawPowerSavingSchedules = { schedules?: RawPowerSavingSchedule[] };
+
+/** `GET {net}/thread`. `master_key` and `commissioning_credential` are secrets; no `active_operational_dataset` came back. */
+export type RawThread = {
+  url?: string;
+  enabled?: boolean;
+  enable_credential_syncing?: boolean;
+  name?: string;
+  xpan_id?: string;
+  pan_id?: string;
+  channel?: number;
+  master_key?: string;
+  commissioning_credential?: string;
+  active_operational_dataset?: string;
+  border_agent?: { ip?: string; port?: number };
+};
+
+/** `GET {net}/ac_compat` (legacy device mode). */
+export type RawAcCompat = { enabled?: boolean };
+
+/** One device in `proxied_nodes.devices[]` (eero Built-in). */
+export type RawProxiedNode = {
+  url?: string;
+  client_device_url?: string;
+  mac_address?: string;
+  ip_address?: string;
+  display_name?: string;
+  model_name?: string;
+  manufacturer?: string;
+  status?: string;
+  enabled?: boolean;
+  is_meshing?: boolean;
+  is_guest?: boolean;
+  blocked?: boolean;
+  paused?: boolean;
+  serial?: string;
+  os?: string;
+  os_version?: string;
+  first_seen?: string;
+  profile?: RawRef;
+};
+
+// ---------------------------------------------------------------------------
+// Events and notifications (real capture, 2026-11-13)
+
+/** One row of `GET {net}/app_events`, which answers `{events: [...]}`. */
+export type RawAppEvent = { hash?: string; timestamp_ms?: number; description?: string; category?: string };
+export type RawAppEvents = { events?: RawAppEvent[] };
+
+/** One row of `GET {net}/notifications_history`, which answers `{notifications: [...]}`. No read flag per row. */
+export type RawNotification = {
+  uuid?: string;
+  category?: string;
+  title?: string;
+  body?: string;
+  created_at?: string;
+  meta?: { device_url?: string; network_url?: string };
+};
+export type RawNotificationsHistory = { notifications?: RawNotification[] };
+
+/** `GET {net}/notifications`: a flat map, keys with dots (`device.new`). */
+export type RawNotificationSettings = Record<string, boolean>;
+
+/** `GET {net}/notifications/has_unread`: an object or a bare bool (clients). */
+export type RawHasUnread = { has_unread?: boolean } | boolean;
+
+// ---------------------------------------------------------------------------
+// Diagnostics, support, admins (real capture, 2026-11-13)
+
+/** `GET {net}/diagnostics`. Only `status` came back; `issue_area` and `results` per the clients, after a run. */
+export type RawDiagnostics = { status?: string; issue_area?: string | null; results?: { name?: string; status?: string; detail?: string | null }[] };
+
+/** `GET {net}/support` on `/2.2/`. */
+export type RawSupport = { support_phone?: string; contact_url?: string; help_url?: string; email_web_form_url?: string; name?: string };
+
+/** One row of `GET {net}/members`, which answers `{members: [...]}`. No email came back. */
+export type RawMember = { user_id?: number; user_role?: string; user_name?: string; user_email?: string; user_tags?: string[] };
+export type RawMembers = { members?: RawMember[] };
+
+/** One row of `GET {net}/invites` (a bare array; empty in the capture, fields per the clients). */
+export type RawInvite = { invite_id?: string | number; invite_nickname?: string | null; created?: string; expires?: string | null };
 
 // ---------------------------------------------------------------------------
 // Helpers

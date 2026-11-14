@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BackendError, type UsageQuery } from "../backend";
 import type * as M from "../model";
 import { createDemoBackend, type DemoBackend, dayStart, EVENT_PAGE_SIZE, isDemoBackend } from "./backend";
+import { createEeroBackend } from "../eero/backend";
 import { createFixtures } from "./fixtures";
 import { SCENARIO_NAMES } from "./scenario";
 
@@ -319,12 +320,16 @@ describe("auth", () => {
 
 describe("scenarios", () => {
   it("every scenario answers every read consistently", async () => {
-    const b = demo();
+    const b = demo({ slowMs: 1 });
     for (const name of SCENARIO_NAMES) {
       b.setScenario(name);
       expect(b.scenario()).toBe(name);
       if (name === "signed_out") {
         await expect(b.network.list()).rejects.toMatchObject({ code: "not_signed_in" });
+        continue;
+      }
+      if (name === "errors") {
+        await expect(b.network.list()).rejects.toMatchObject({ code: "eero_error" });
         continue;
       }
       const nets = await b.network.list();
@@ -341,8 +346,42 @@ describe("scenarios", () => {
         await b.profile.list(n.id);
         await b.events.list(n.id, null);
         await series(b, n.id, "network", null);
+        await b.guest.get(n.id);
+        await b.wifi.get(n.id);
+        await b.settings.get(n.id);
+        await b.diagnostics.latest(n.id);
+        await b.diagnostics.support(n.id);
+        await b.admins.list(n.id);
+        await b.integrations.get(n.id);
+        await b.notifications.list(n.id, null);
+        await b.notifications.settings(n.id);
       }
     }
+  });
+
+  it("slow delays every read but sign-in", async () => {
+    const b = demo({ scenario: "slow", slowMs: 60 });
+    let t = performance.now();
+    await b.auth.status();
+    expect(performance.now() - t).toBeLessThan(40);
+    t = performance.now();
+    await b.network.list();
+    expect(performance.now() - t).toBeGreaterThanOrEqual(55);
+    t = performance.now();
+    await b.guest.get(MAPLE);
+    expect(performance.now() - t).toBeGreaterThanOrEqual(55);
+  });
+
+  it("errors fails every read with eero_error, keeps sign-in, and resets cleanly", async () => {
+    const b = demo({ scenario: "errors" });
+    expect(await b.auth.status()).toMatchObject({ signedIn: true });
+    for (const read of [() => b.network.list(), () => b.device.list(MAPLE), () => b.wifi.get(MAPLE), () => b.notifications.list(MAPLE, null)]) {
+      const err = await read().catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(BackendError);
+      expect(err).toMatchObject({ code: "eero_error" });
+    }
+    b.setScenario("default");
+    expect(await b.network.list()).toHaveLength(3);
   });
 
   it("drops the Garage eero and its devices in eero_offline", async () => {
@@ -445,10 +484,9 @@ describe("M2 fixtures", () => {
     expect(await b.updates.get(MOM)).toMatchObject({ status: "available", target: "7.13.0" });
   });
 
-  it("fill lease time, tx power, auto channel, subnet and link-local addresses", async () => {
+  it("fill tx power, auto channel, subnet and link-local addresses, and no lease time", async () => {
     const b = demo();
-    expect(Date.parse((await b.internet.get(MAPLE)).leaseRenewsAt ?? "")).toBeGreaterThan(NOW);
-    expect((await b.internet.get(LAKE)).leaseRenewsAt).toBeNull();
+    expect(await b.internet.get(MAPLE)).not.toHaveProperty("leaseRenewsAt");
     const office = await b.eero.get(MAPLE, "80012");
     expect(office).toMatchObject({ subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" });
     expect(office.radios.find((r) => r.band === "5")).toMatchObject({ txPowerDbm: 23, autoChannel: false });
@@ -482,5 +520,176 @@ describe("invented data only", () => {
     for (const email of text.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) ?? []) expect(email).toMatch(/@example\.com$/);
     expect(text).toContain("+15550100142");
     for (const asn of text.match(/AS\d+/g) ?? []) expect(Number(asn.slice(2))).toBeGreaterThanOrEqual(64496);
+  });
+});
+
+describe("wave 2 reads (M3)", () => {
+  const nets = [MAPLE, LAKE, MOM];
+
+  it("guests are the devices on the guest network", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const devices = await b.device.list(id);
+      const g = await b.guest.get(id);
+      const onGuest = devices.filter((d) => d.ssid === "guest");
+      expect(g.deviceIds.sort()).toEqual(onGuest.map((d) => d.id).sort());
+      expect(g.online).toBe(g.enabled ? count(onGuest, (d) => d.connected) : 0);
+      expect(g.hasPassword).toBe((await b.guest.credentials(id)).password !== null);
+    }
+    const maple = await b.guest.get(MAPLE);
+    expect(maple).toMatchObject({ enabled: true, name: "Maple Street Guest", hasPassword: true });
+    expect(maple.deviceIds.length).toBeGreaterThan(0);
+    // Guest usage is the guests' traffic.
+    expect(sum([(await series(b, MAPLE, "guest", null, week)).total])).toBeGreaterThan(0);
+    // Lake Cabin's guest network is open; Mom's House is in bridge mode, so it is off.
+    expect(await b.guest.get(LAKE)).toMatchObject({ enabled: true, hasPassword: false, security: { "2.4": null, "5": null, "6": null } });
+    expect(await b.guest.get(MOM)).toMatchObject({ enabled: false, online: 0 });
+  });
+
+  it("guest.get and wifi.get never carry a password", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const guestPw = (await b.guest.credentials(id)).password;
+      const wifiPw = (await b.wifi.credentials(id)).password;
+      const text = JSON.stringify([await b.guest.get(id), await b.wifi.get(id)]);
+      for (const pw of [guestPw, wifiPw]) if (pw) expect(text).not.toContain(pw);
+    }
+  });
+
+  it("pinholes and forwards point at reserved devices", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const r = await b.routing.get(id);
+      const devices = await b.device.list(id);
+      const reserved = new Map(r.reservations.map((x) => [x.deviceId, x]));
+      for (const f of r.forwards) {
+        expect(reserved.has(f.deviceId)).toBe(true);
+        expect(f.ip).toBe(reserved.get(f.deviceId)?.ip);
+      }
+      for (const p of r.pinholes) {
+        expect(reserved.has(p.deviceId)).toBe(true);
+        expect(devices.find((d) => d.id === p.deviceId)?.ipv6).toContain(p.address);
+      }
+    }
+    expect((await b.routing.get(MAPLE)).pinholes.length).toBeGreaterThan(0);
+  });
+
+  it("the unread flag matches the unread notifications", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const page = await b.notifications.list(id, null);
+      expect(await b.notifications.unread(id)).toBe(page.notifications.some((n) => !n.read));
+      const ats = page.notifications.map((n) => n.at);
+      expect(ats).toEqual([...ats].sort().reverse());
+      const ids = new Set((await b.device.list(id)).map((d) => d.id));
+      for (const n of page.notifications) if (n.refs.deviceId) expect(ids.has(n.refs.deviceId)).toBe(true);
+    }
+    expect(count((await b.notifications.list(MAPLE, null)).notifications, (n) => !n.read)).toBe(3);
+    expect(await b.notifications.unread(MOM)).toBe(false);
+    expect(await b.notifications.settings(MAPLE)).toMatchObject({ "device.new": true, "network.dataUsageReport": false });
+    await expect(b.notifications.list(MAPLE, "x")).rejects.toMatchObject({ code: "bad_params" });
+  });
+
+  it("Wi-Fi bands, clients and WPA2-only devices agree with the eeros and devices", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const w = await b.wifi.get(id);
+      const devices = await b.device.list(id);
+      const ids = new Set(devices.map((d) => d.id));
+      expect(w.ssid).toBe((await b.network.get(id)).name);
+      expect(w.wirelessClients).toBe(w.bands.reduce((n, x) => n + x.clients, 0));
+      for (const d of w.wpa2OnlyDevices) expect(ids.has(d)).toBe(true);
+    }
+    const maple = await b.wifi.get(MAPLE);
+    expect(maple.bands.map((x) => x.band)).toEqual(["2.4", "5", "6"]);
+    expect(maple.bands.find((x) => x.band === "6")).toMatchObject({ on: true, widthsMhz: [160], channels: [37, 69] });
+    expect(maple.wpa2OnlyDevices).toHaveLength(3);
+    expect((await b.wifi.get(MOM)).bands.map((x) => x.band)).toEqual(["2.4", "5"]);
+    // Lake Cabin is offline: no band is broadcasting.
+    expect((await b.wifi.get(LAKE)).bands.every((x) => !x.on && x.clients === 0)).toBe(true);
+  });
+
+  it("settings take DHCP from the LAN map, keep Thread secrets out, and cover bridge mode", async () => {
+    const b = demo();
+    const maple = await b.settings.get(MAPLE);
+    const lan = (await b.routing.get(MAPLE)).lan;
+    expect(maple.dhcp).toEqual({ mode: "automatic", subnetIp: "192.168.4.0", subnetMask: "255.255.252.0", gateway: lan?.gateway, startIp: lan?.pool.start, endIp: lan?.pool.end });
+    expect(maple.dns.ispServers).toEqual((await b.internet.get(MAPLE)).dnsInUse);
+    expect(maple).toMatchObject({ connectionMode: "nat", timezone: TZ, wan: { mode: "dhcp" }, thread: { enabled: true } });
+    expect(maple.powerSaving.schedules.some((s) => s.enabled)).toBe(true);
+    const secrets = await b.settings.threadCredentials(MAPLE);
+    expect(secrets?.networkKey).toBeTruthy();
+    expect(JSON.stringify(maple)).not.toContain(secrets?.networkKey);
+    const mom = await b.settings.get(MOM);
+    expect(mom).toMatchObject({ connectionMode: "bridged", dhcp: { mode: "bridged", startIp: null }, thread: null, sqm: null });
+    expect(await b.settings.threadCredentials(MOM)).toBeNull();
+  });
+
+  it("admins have one owner and one of them is you; invites are the owner's to see", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const { admins } = await b.admins.list(id);
+      expect(count(admins, (a) => a.role === "owner")).toBe(1);
+      expect(count(admins, (a) => a.isYou)).toBe(1);
+    }
+    const maple = await b.admins.list(MAPLE);
+    expect(maple.admins.map((a) => a.name)).toEqual(["Alex Kim", "Jamie Kim"]);
+    expect(maple.invites).toHaveLength(1);
+    const invite = maple.invites[0];
+    expect(Date.parse(invite?.expiresAt ?? "")).toBeGreaterThan(NOW);
+    expect(Date.parse(invite?.createdAt ?? "")).toBeLessThan(NOW);
+    // Events name admins by id; they must exist.
+    const adminIds = new Set(maple.admins.map((a) => a.id));
+    for (const e of (await b.events.list(MAPLE, null)).events) if (e.refs.adminId) expect(adminIds.has(e.refs.adminId)).toBe(true);
+    // Mom's House: Alex is an admin and cannot read invites.
+    const mom = await b.admins.list(MOM);
+    expect(mom.admins.find((a) => a.isYou)?.role).toBe("admin");
+    expect(mom.invites).toEqual([]);
+  });
+
+  it("the health inputs carry a warning, and support contacts are filled", async () => {
+    const b = demo();
+    const latest = await b.diagnostics.latest(MAPLE);
+    expect(latest.results.some((r) => r.status === "warning")).toBe(true);
+    const health = await b.network.health(MAPLE);
+    expect(health.eeros.some((e) => e.weakLink)).toBe(true);
+    const support = await b.diagnostics.support(MAPLE);
+    expect(support.eero.phone).toMatch(/^\+1\d{3}555\d{4}$/);
+    expect(support.isp?.name).toBe((await b.internet.get(MAPLE)).isp.name);
+    expect((await b.diagnostics.support(LAKE)).isp).toBeNull();
+  });
+
+  it("integrations list every partner feature; unavailable ones have no enabled state", async () => {
+    const b = demo();
+    for (const id of nets) {
+      const all = await b.integrations.get(id);
+      expect(Object.keys(all).sort()).toEqual(["amazon", "builtin", "ffs", "homekit", "smart_home_hub"]);
+      for (const x of Object.values(all)) if (!x.available) expect(x.enabled).toBeNull();
+    }
+  });
+
+  it("names no real-looking addresses: MACs are locally administered and IPs private or documentation ranges", async () => {
+    const b = demo();
+    const text = JSON.stringify(await Promise.all(nets.flatMap((id) => [b.settings.get(id), b.diagnostics.support(id), b.admins.list(id), b.notifications.list(id, null)])));
+    for (const ip of text.match(/\b\d{1,3}(\.\d{1,3}){3}\b/g) ?? []) expect(ip).toMatch(/^(192\.168\.|10\.|203\.0\.113\.|198\.51\.100\.|255\.)/);
+    for (const email of text.match(/[\w.+-]+@[\w.-]+/g) ?? []) expect(email).toMatch(/@example\.com$/);
+  });
+});
+
+describe("eero backend", () => {
+  it("answers not available yet for the M3 areas until their stories land", async () => {
+    const b = createEeroBackend({ secrets: { load: async () => "t", save: async () => "memory", clear: async () => {}, storage: async () => "memory" }, fetch: async () => Promise.reject(new Error("no network in tests")) });
+    const calls: [string, () => Promise<unknown>][] = [
+      ["guest.get", () => b.guest.get("1")],
+      ["wifi.get", () => b.wifi.get("1")],
+      ["settings.get", () => b.settings.get("1")],
+      ["diagnostics.latest", () => b.diagnostics.latest("1")],
+      ["admins.list", () => b.admins.list("1")],
+      ["integrations.get", () => b.integrations.get("1")],
+      ["notifications.list", () => b.notifications.list("1", null)],
+    ];
+    for (const [name, call] of calls) {
+      await expect(call()).rejects.toMatchObject({ code: "eero_error", message: `${name} is not available in the eero backend yet.` });
+    }
   });
 });
