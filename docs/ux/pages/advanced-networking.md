@@ -6,9 +6,22 @@ Mockup: [../../mockups/13-advanced-networking.html](../../mockups/13-advanced-ne
 
 Shared patterns (settings rows, restart badges, side panel, confirm bar, danger zone) are described in [../overview.md](../overview.md).
 
-## Built so far (M3.10, read view)
+## Built so far (M5.2, Internet and Network services)
 
-The page shows every group read only: values, switches and segmented choices reflect `settings.get`, `integrations.get`, `internet.get` and `network.get`, and every control is disabled with a "Coming soon" tooltip (writes and `settings.impact` come in M5). Differences from the full design below:
+The Internet and Network services groups are live; Wireless, Thread, the danger zone and the Simple Setup and power saving rows stay read only until M5.3.
+
+- **Switches:** IPv6, Local DNS caching, UPnP and SQM run their command on click. UPnP and SQM apply live and their success toast offers Undo; IPv6 and caching restart every eero, so they confirm inline under the row first.
+- **Segmented choices:** DHCP and NAT (Automatic / Manual / Bridge), NAT port mode (Direct / Randomized) and DNS (ISP default / Custom DNS). Manual and Custom DNS open their sheet; Automatic, ISP default and NAT port mode confirm inline; Bridge confirms in the dialog (it lists what turns off). From bridge mode only Automatic is offered, which runs `settings.connection_mode.set {mode: "nat"}`. **Edit range** and **Edit** reopen the sheets.
+- **Sheets:** ISP settings (**Edit** on the row: connection type, static address, PPPoE user name and a write-only password, VLAN tag switch and ID), Manual DHCP range (subnet IP, mask, starting and ending IP) and Custom DNS (two nameservers, one IPv6 nameserver). Fields check as you type with core's rules (`dhcpProblem`, `wanStaticProblem`, `isIpv4`, `isIpv6`), and each sheet shows the impact panel; Save opens the inline confirm in its place.
+- **Impact panel** (`ImpactPanel.tsx`): `settings.impact` for the change, with devices that lose internet, the restart estimate, core's summary and three "What happens" steps. The side panel shows it as **Pending change** while a confirm waits, else "How changes apply". There is no confirm bar: each change confirms and applies on its own.
+- **Toasts:** a restarting write shows a progress toast ("Applying IPv6...", "Every eero restarts, about 8 minutes" from core's `IMPACT`), then success or an error with Retry.
+- **Gates:** each control uses its command's gate (`useGate(id)`): the `settings` permission, off in bridge mode for every NAT-only write, and blocked with "Your network is offline, changes cannot reach the eeros" while the network is offline.
+- **Bridge mode:** NAT port mode, DNS, Local DNS caching, UPnP and SQM rows are hidden under the one bridge hint; IPv6 and ISP settings stay, dimmed with "Off in bridge mode".
+- Reservations & ports' "IPv6 off" state can read `settings.get` (`ipv6.enabled`), which `settings.ipv6.set` invalidates; the Pinholes card is M5.5's file, so that page change lands there.
+
+## Built in M3.10 (read view)
+
+The page showed every group read only: values, switches and segmented choices reflect `settings.get`, `integrations.get`, `internet.get` and `network.get`, and every control is disabled with a "Coming soon" tooltip (writes and `settings.impact` come in M5). Differences from the full design below:
 
 - No Pending change panel or confirm bar. The side panel says the page is read only, and adds the offline and bridge notes.
 - Fast roaming (802.11r) and Legacy device mode rows sit in Wireless (both are read by `settings.get`).
