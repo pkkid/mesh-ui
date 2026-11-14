@@ -13,15 +13,33 @@
  * (which replaces the membership), and `DELETE {profile}`. Unassigned pause
  * is `PUT {default profile} {paused}`; a network without a default profile
  * (eeroOS before 7.12.4) pauses each unprofiled device on `/2.3/` instead.
+ *
+ * Scheduled pauses (M4.12): `POST {profile}/schedules`, `PUT` and `DELETE
+ * {profile}/schedules/{id}`, JSON `{name, days, start, end, enabled}` with
+ * days as `MON`..`SUN` (LD, Los33c/unofficial_eero_desktop_native; FF sends
+ * lowercase names). Unverified on a real network: the GET there is a 404 and
+ * the captured network had no schedules, so a MANUAL check covers it. When
+ * eero answers without the schedule, it is read back from the profile.
  */
 
 import { BackendError } from "../../errors";
-import { mapProfile } from "../map/profile";
-import { asList, type RawDevice, type RawProfile, type RawProfileWrite, linkUrl } from "../raw";
+import { mapProfile, mapSchedule, type RawScheduleFull } from "../map/profile";
+import { asList, type RawDevice, type RawProfile, type RawProfileWrite, type RawScheduleWrite, linkUrl } from "../raw";
 import { idFromUrl, networkPath } from "../urls";
+import type * as M from "../../model";
 import type { EeroArea } from "./index";
 
 const isProfile = (raw: unknown): raw is RawProfile => !!raw && typeof raw === "object" && typeof (raw as RawProfile).url === "string";
+
+/** A schedule eero sent back with its own link or id (without one, its id is unknown). */
+const scheduleOf = (raw: unknown): M.Schedule | null => {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as RawScheduleFull;
+  return linkUrl(r.url) || r.id !== undefined ? mapSchedule(r, 0) : null;
+};
+
+/** The JSON eero takes, days in the `MON` form. Tolerates a missing input so the request (and eero's error) still happens. */
+const scheduleBody = ({ name, days, start, end, enabled } = {} as M.ScheduleInput): RawScheduleWrite => ({ name, days: Array.from(days ?? []), start, end, enabled });
 
 export const profile: EeroArea<"profile"> = ({ client }) => {
   const path = (net: string, id: string) => networkPath(net, `profiles/${encodeURIComponent(id)}`);
@@ -79,6 +97,29 @@ export const profile: EeroArea<"profile"> = ({ client }) => {
       if (profileUrl && listed.has(idFromUrl(profileUrl))) continue;
       await client.request({ method: "PUT", path: url, version: "2.3", body: { paused } });
     }
+  },
+
+  async addSchedule(net, id, input) {
+    const raw = await client.request({ method: "POST", path: `${path(net, id)}/schedules`, body: scheduleBody(input) });
+    const made = scheduleOf(raw);
+    if (made) return made;
+    // No schedule in the answer: the newest one that matches, from a fresh read of the profile.
+    const fresh = mapProfile(await client.request<RawProfile>({ method: "GET", path: path(net, id), effect: "write" }));
+    const match = fresh.schedules.filter((s) => s.name === input.name && s.start === input.start && s.end === input.end).at(-1);
+    if (match) return match;
+    throw new BackendError("eero_error", "eero did not return the new schedule.");
+  },
+
+  async updateSchedule(net, id, schedule, input) {
+    const raw = await client.request({ method: "PUT", path: `${path(net, id)}/schedules/${encodeURIComponent(schedule)}`, body: scheduleBody(input) });
+    const saved = scheduleOf(raw);
+    if (saved) return saved;
+    const fresh = mapProfile(await client.request<RawProfile>({ method: "GET", path: path(net, id), effect: "write" }));
+    return fresh.schedules.find((s) => s.id === schedule) ?? { id: schedule, ...input };
+  },
+
+  async removeSchedule(net, id, schedule) {
+    await client.request({ method: "DELETE", path: `${path(net, id)}/schedules/${encodeURIComponent(schedule)}` });
   },
   };
 };

@@ -146,13 +146,16 @@ Profiles stays active.
 
 ## Notes
 
-- Schedules use eero's `{profile}/schedules` endpoints; writing schedules on
-  the profile object is a silent no-op. Days are sent in eero's expected
-  case; an end before the start wraps past midnight.
-- `profile.schedule.add` and `.update` params: `name` (1 to 32 chars),
-  `start` and `end` (`HH:MM`, 24 h), `days` (non-empty subset of
-  `mon`...`sun`), `enabled`. Presets are UI shortcuts: School nights = Sun to
-  Thu, Weekdays = Mon to Fri, Weekends = Sat and Sun.
+- Schedules use eero's `{profile}/schedules` endpoints (POST, then PUT and
+  DELETE on `{profile}/schedules/{id}`); writing schedules on the profile
+  object is a silent no-op. Days are sent as `MON`..`SUN` (the LD client's
+  form; FF sends `monday`, so a MANUAL check confirms it); an end before the
+  start wraps past midnight.
+- `profile.schedule.add` and `.update` params: `name` (1 to 32 chars,
+  unique within the profile), `start` and `end` (`HH:MM`, 24 h, and not
+  equal), `days` (non-empty subset of `MON`..`SUN`), `enabled`. `.update`
+  takes only the fields that change. Presets are UI shortcuts: School
+  nights = Sun to Thu, Weekdays = Mon to Fri, Weekends = Sat and Sun.
 - Week lanes, the per-day preview, "60 h / week", the next event and the
   usage markers are all computed in core from the same schedule list so the
   CLI (`mesh-ui run profile.get`) returns them too.
@@ -163,22 +166,34 @@ Profiles stays active.
 - "Resumed during Homework · overrides until Bedtime" reflects eero's rule
   that a manual resume holds until the next scheduled start.
 - Delete is type-to-confirm on the exact name, case-sensitive.
-- MANUAL: add and remove a schedule on a test profile | profile detail, Add
-  a scheduled pause for a few minutes from now, wait for it to start, then
-  delete it | devices pause at the start time; the schedule shows in the
-  eero app; deleting removes it there too | risk: brief outage for that
-  profile's devices.
+- MANUAL: add, edit and remove a schedule on a test profile | profile
+  detail, Add a scheduled pause starting a few minutes from now, check the
+  eero app shows it with the right days, edit its end time, wait for it to
+  start, then delete it | the eero app shows it (days right, so `MON` is
+  accepted) and the edit; devices pause at the start time; deleting removes
+  it there too | risk: that profile pauses at the scheduled time.
 
-## Built so far (M3.5, M4.5)
+## Built so far (M3.5, M4.5, M4.12)
 
 The page lives in `src/renderer/src/features/profile/`. M4.5 wired Rename
 (sheet), Pause and Resume (hero, with Undo), Add a device (the devices
 picker sheet, `profile.devices.set`), Remove (x on a row, with Undo) and
 Delete profile (type-the-name dialog with the engine's message; toast
 "Deleted Mia", then Profiles). Controls dim by the `profiles` permission and
-bridge mode. Schedule add, edit, switch and delete stay "Coming soon" until
-M4.12; `profile.get` already returns `today` (this profile's segments, a
-manual pause included) for the week timeline to draw.
+bridge mode.
+
+M4.12 wired the schedules (`ProfileSchedules.tsx`, `ScheduleSheet.tsx`):
+**+ Add a scheduled pause**, a row or its pencil open the sheet; the row
+switch runs `profile.schedule.update {enabled}` with Undo. The sheet's
+times are native time inputs (hour, minute, AM or PM); End shows "next
+day" when it wraps, and equal times are refused under End. Save toasts with
+Undo (remove for a new schedule, the old fields for an edit); Delete
+schedule asks inline and its Undo adds the schedule back (with a new id).
+A manual pause draws on today's lane in the warning colour (as on the
+Profiles lanes) from `profile.get` `today`, with a "Manual pause" legend
+swatch. Clicking a lane segment does not open the sheet yet (the shared
+timeline has no click handler), and the Profiles card menu has no "Add a
+scheduled pause" item (`ProfileCards.tsx` was not this story's file).
 
 - **Hero.** State and the next change come from `profile.get` (`state`,
   `nextChange`, computed in core); the page only words them. In a scheduled
