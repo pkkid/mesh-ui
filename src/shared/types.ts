@@ -18,7 +18,16 @@ export const IPC = {
   event: "mesh:event",
   titlebar: "mesh:titlebar",
   saveFile: "mesh:save-file",
+  notify: "mesh:notify",
+  notifyClick: "mesh:notify-click",
 } as const;
+
+/**
+ * One desktop alert the renderer asks the host to show. `target` is the
+ * app's own hash path to open when it is clicked ("/eeros"); main hands it
+ * back unchanged on `mesh:notify-click`.
+ */
+export type DesktopAlert = { title: string; body: string; target: string };
 
 /**
  * What `saveFile` reports. Never the path: the renderer learns only the file
@@ -54,4 +63,8 @@ export type MeshApi = {
    * nothing from eero. Never throws.
    */
   saveFile(name: string, text: string): Promise<SaveFileResult>;
+  /** Shows one OS notification through the host. Not a command; fire and forget. */
+  notify(alert: DesktopAlert): void;
+  /** A desktop alert was clicked: the window is focused, open `target`. Returns an unsubscribe. */
+  onNotificationClick(listener: (target: string) => void): () => void;
 };
