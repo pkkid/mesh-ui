@@ -680,7 +680,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: The pieces every wave-2 page uses. Toasts as in ux/overview.md (success with Undo running the inverse command, progress kept until done, error with Retry, max 3, `aria-live`). Inline confirm for `disruptive` and a dialog with type-the-name for `destructive`, both reading the command's `needs_confirm` message. An edit sheet (header, fields with `bad_params` under the field, Save disabled until valid, Discard changes?). A `useWrite` hook: runs `execute`, passes `confirm` only after the person confirms, shows the toasts, refreshes the topics, leaves the control in its old state on error. Controls dim by capability and bridge mode from `network.permissions` and `network.get`, with a "no permission" tooltip, replacing `ComingSoonButton` where a command exists. Copy and Save feedback through toasts (Carried from M2). The chart gallery shows each piece.
 - done when: hook tests for success, Undo, confirm, `needs_confirm` and error paths against the demo engine; `pnpm ui:shot` of the gallery (toasts, confirm, dialog, sheet) light and dark; Copy and Export CSV show a toast; `pnpm check` passes.
 
-### M4.4 Device controls ☐
+### M4.4 Device controls ✅ (#157)
 - issue: [#126](https://github.com/pkkid/mesh-ui/issues/126)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/devices.md, ux/pages/device-detail.md, architecture/commands.md (device)

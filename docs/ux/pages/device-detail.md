@@ -72,7 +72,7 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | ‹ Prev / Next › | - | - | No | Next device in the Devices list order |
-| Pause device | `device.pause {devices: [device]}` | write | No | Status Paused, button becomes **Resume device**; toast with Undo |
+| Pause device | `device.pause {devices: device}` | write | No | Status Paused, button becomes **Resume device**; toast with Undo |
 | Resume device | `device.resume {devices: [device]}` | write | No | Status Online |
 | Appearance | - | - | No | Opens the Appearance sheet |
 | Sheet: reset to hostname | - (fills the field) | - | No | Nickname set to hostname, not saved yet |
@@ -118,12 +118,21 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
 - **Bridge mode.** Pause, Change profile, Block, Reserve and Port forwarding
   are hidden; Now box hidden; the bridge note sits under the hero.
 
-## Built so far (M2.7)
+## Built so far (M2.7, M4.4)
 
-Read-only: every write control above (Pause and Resume, Appearance, Change
-profile, Block and Unblock, Edit or Reserve, the trash and switch on a
-forward, + Open a port) is shown disabled with "Coming soon" until its
-command lands. The Block inline confirm is not shown yet. The Now box asks
+M4.4: Pause and Resume, Change profile (menu of profiles plus Unassigned,
+with a check on the current one) and Unblock run at once with an Undo toast.
+Block shows the inline confirm at the top of the right column and then
+blocks (toast with Undo). Appearance opens the sheet: nickname with "18 /
+32", the hostname and "reset to hostname" (empties the field, so saving
+clears the nickname and the device follows its own name), and the 32-type
+grid with labels; Save sends only what changed. Each control dims with the
+reason from `network.permissions` (devices update), bridge mode and, for
+Block, the `device_blacklist` capability.
+
+Still read-only: Edit or Reserve, the trash and switch on a forward, and
++ Open a port stay disabled with "Coming soon" until their commands land
+(M5). The Now box asks
 for `device.rates.refresh` once a minute while the page is visible and the
 device is online, sharing the engine's one burst per network with Devices.
 Prev and Next follow the Devices table's last row order (groups in order);
@@ -134,10 +143,11 @@ capability and permission checks of the write stories.
 ## Notes
 
 - Nickname max is 32 characters (shown in the sheet). `device.rename` with
-  the hostname clears the nickname, so the device follows its hostname
-  again.
-- The 32 icons in the type grid map to eero's `device_type` values in core;
-  the grid order is fixed so muscle memory holds.
+  an empty nickname clears it, so the device follows its hostname again.
+- The 32 icons in the type grid map to eero's `device_type` values in core
+  (`DEVICE_TYPES`); the grid order is fixed so muscle memory holds. Types
+  that share a category share an icon until `lib/deviceIcons.ts` maps
+  eero's type names, so each tile carries its label.
 - Device writes use `/2.3/` (`/2.2/` returns 200 and drops the change).
 - Unblocking from the mockup's copy points to "Devices > Blocked"; the
   Blocked group on Devices is that place.

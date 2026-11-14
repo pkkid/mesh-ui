@@ -1,18 +1,18 @@
 /**
  * "Unassigned devices": a tile per device in no profile with its icon, name
  * and "Online · 142 GB in 24h", "Offline · 3 days ago" or "Blocked", plus a
- * faint avatar per profile to assign it (assigning comes with
- * `device.profile.set`, M4.4). Pause unassigned asks inline first; Resume
+ * faint avatar per profile that assigns it (`device.profile.set`, with Undo). Pause unassigned asks inline first; Resume
  * unassigned undoes it. docs/ux/pages/profiles.md (Layout 4).
  */
 import { Info, Pause, Play, UserRoundPlus } from "lucide-react";
 
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
-import { useWrite } from "~/app/useWrite";
+import { performWrite, useWrite } from "~/app/useWrite";
 import { WriteConfirm } from "~/components/ui/confirm";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, HeaderLink, SectionError, useGate, useNow } from "~/components/ui/page";
+import { profileRequest } from "~/features/devices/BulkBar";
 import { unassignedPauseMessage } from "~/features/profile/helpers";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
@@ -32,6 +32,7 @@ type Props = {
 
 export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: Props) {
   const now = useNow(60_000);
+  const assignGate = useGate({ area: "devices", bridgeOff: true });
   const owned = new Set((profiles?.profiles ?? []).flatMap((p) => p.deviceIds));
   const listed = new Set((profiles?.profiles ?? []).map((p) => p.id));
   // Same rule as the core Unassigned summary (no profile, or eero's own Unassigned group),
@@ -99,9 +100,19 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
                     <div className="truncate font-medium text-[12.5px]">{d.name}</div>
                     <div className="truncate text-2xs text-muted-foreground">{detail(d)}</div>
                   </div>
-                  <div className="flex shrink-0 gap-0.5" title="Assign to a profile: coming soon">
+                  <div className="flex shrink-0 gap-0.5" title={assignGate.allowed ? undefined : (assignGate.reason ?? undefined)}>
                     {(profiles?.profiles ?? []).slice(0, 6).map((p) => (
-                      <Avatar key={p.id} name={p.name} color={colorOf(p.id)} className="size-[18px] text-[9px] opacity-35" />
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={!assignGate.allowed}
+                        aria-label={`Assign ${d.name} to ${p.name}`}
+                        title={assignGate.allowed ? `Assign to ${p.name}` : undefined}
+                        onClick={() => void performWrite(profileRequest([d], { id: p.id, name: p.name }))}
+                        className="cursor-pointer rounded-full opacity-35 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:hover:opacity-35"
+                      >
+                        <Avatar name={p.name} color={colorOf(p.id)} className="size-[18px] text-[9px]" />
+                      </button>
                     ))}
                   </div>
                 </div>
