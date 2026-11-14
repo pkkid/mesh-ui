@@ -1004,9 +1004,12 @@ eero's own refusal, #162); the CLI and agents panel reads the audit log
 Carried from M5: the Activity overflow menu and settings icon from the
 mockup (#178; M5 review question 3); Wi-Fi network nickname edit and the
 Wi-Fi "Print a card" are still Coming soon (no command yet); manual checks
-not run at the M5 review (M5 review question 2: Wi-Fi rename, DNS change,
-PPPoE, update install, eero remove) and, if not run then, the M4 list
-(question 1), with their answers applied to `endpoints.md` sections 18
+not run at the M5 review (the "Carried to M6.1" list in
+`docs/reviews/M5.md`: IPv6 firewall rule, Activity name links, placement
+test, client steering, PoE restart, port disable, Wi-Fi rename, DNS change,
+PPPoE, update install, eero remove, Unassigned scheduled pause) and, if not
+run then, the M4 list (question 1); the time zone write may not stick
+(#191 reports it instead of faking success), with their answers applied to `endpoints.md` sections 18
 and 19 and the fixtures; the real `{net}/admins` role value is unverified
 (the fake admins list uses `owner`); network transfer's request shape is
 unproven and must never be tried on the real network.
