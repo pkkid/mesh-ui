@@ -1,6 +1,7 @@
 /**
- * Fake profile routes: `GET {net}/profiles`, `GET {profile}` and
- * `GET {profile}/schedules`. See docs/eero-api/endpoints.md (profiles).
+ * Fake profile routes: `GET {net}/profiles` and `GET {profile}`. Like the
+ * real API, `GET {profile}/schedules` is a 404 (docs/eero-api/endpoints.md
+ * section 17); schedules live on the profile's own `schedule[]`.
  */
 
 import { fail, ok, type Route, type RouteContext } from "../server";
@@ -27,9 +28,6 @@ export const routes: Route[] = [
   {
     method: "GET",
     path: "/networks/:net/profiles/:id/schedules",
-    handle: (ctx) => {
-      const p = find(ctx);
-      return p ? ok(p.schedule ?? []) : fail(404, "error.profile.not.found");
-    },
+    handle: () => fail(404, "error.not.found"),
   },
 ];

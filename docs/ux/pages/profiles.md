@@ -57,12 +57,13 @@ count: number of profiles, not counting Unassigned.
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Profile cards (name, colour, device counts, online, device types, status) | `profile.list` | 60 s |
+| Profile cards (name, colour, device counts, online, status, next schedule) | `profile.list` | 60 s |
+| Device type icons on cards | `device.list` (all devices, shared with Unassigned) | 30 s |
 | Today's usage per profile and sparklines | `usage.get {scope: "profile", range: "day"}` (no `id`: one series per profile) | 5 min |
 | Today's pauses lanes | `profile.list` (`today` segments per profile, computed in core from schedules and manual pause state, in the network time zone) | 60 s; the now line moves every minute |
 | Usage by profile (totals, shares, per day bars) | `usage.get {scope: "profile", range}` (includes the Unassigned series; the toggle hides it in the view) | 5 min |
-| Unassigned device tiles | `device.list {profile: null}` | 30 s |
-| Unassigned count | `device.list` summary | 30 s |
+| Unassigned device tiles | `device.list` (devices with no profile, blocked ones included, guests left out) | 30 s |
+| "142 GB today" on a tile | `usage.breakdown {range: "day", by: "device"}` | 5 min |
 | Avatar row on tiles | `profile.list` | 60 s |
 
 ## Actions
@@ -86,10 +87,16 @@ count: number of profiles, not counting Unassigned.
 | New profile from selection | `profile.create {name, devices}` | write | No | Name sheet prefilled with the selection |
 | Pause unassigned | `profile.unassigned.pause {}` | write | Yes, UI inline ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
 
+Until the profile writes land, every control in this table that runs a
+`write` command shows disabled with a "Coming soon" tooltip: Add a profile,
+Pause all, Pause and Resume, the `...` menu, avatars on unassigned tiles, New
+profile from selection and Pause unassigned. Card clicks, lane segments and
+tile double-clicks navigate as described.
+
 ## States
 
-- **Loading.** Cards at normal size with `-`; lanes empty with the now line;
-  chart gridlines; tile grid blank.
+- **Loading.** Cards at normal size with `-`; one empty lane without the now
+  line until the network time zone is known; chart gridlines; tile grid blank.
 - **Empty: no profiles.** The Profiles section shows "No profiles yet. Group
   devices by person to pause them together." with **Add a profile**. Today's
   pauses shows only the Unassigned lane. Usage by profile shows Unassigned

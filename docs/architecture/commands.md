@@ -254,8 +254,8 @@ ENABLE_POE | DISABLE_POE | RESTART_POWER`. Node-wide
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `profile.list` | Profiles | `{}` | q | `GET {net}/profiles` | `Profile[]` with state (active, paused, scheduled), device counts, next schedule. Also returns an `unassigned` summary (device ids, online count, paused state) beside the list; it is not a profile and has no id. |
-| `profile.get` | Profile | `{ profile: Ref }` | q | `GET {profile}`, `GET {profile}/schedules` | `Profile` with devices and schedules. |
+| `profile.list` | Profiles | `{}` | q | `GET {net}/profiles` (schedules from each profile's `schedule[]`) | `ProfileList`: `Profile[]` with state, device counts and next schedule, all computed in core in the network time zone. State: `paused` for a manual pause, else `scheduled` when an enabled schedule exists (or eero says so), else `active`. Also returns an `unassigned` summary (device ids, online count, paused state; it is not a profile and has no id) and `today`: the date, zone and minute it was computed, and one lane per profile plus Unassigned (`profileId: null`) of `PauseSegment`s in minutes after midnight (today's schedule spans, the end of yesterday's overnight ones, and a manual pause from now to the next scheduled start or midnight). |
+| `profile.get` | Profile | `{ profile: Ref }` | q | `GET {profile}` | `Profile` with devices and schedules. Schedules come from the profile's own `schedule[]`: `GET {profile}/schedules` is a 404 on a real network although `resources.schedules` names it ([endpoints.md section 17](../eero-api/endpoints.md)). |
 | `profile.create` | Add a profile | `{ name: string(1..32), devices?: Ref[] }` | w | `POST {net}/profiles` JSON `{name, paused: false, devices: [{url}]}` | |
 | `profile.rename` | Rename profile | `{ profile: Ref, name: string(1..32) }` | w | `PUT {profile}` JSON `{name}` | |
 | `profile.pause` | Pause profile | `{ profile: Ref }` | w | `PUT {profile}` JSON `{paused: true}` | Lasts until resumed. eero has no timed pause, so Mesh UI offers none and the engine keeps no resume timers. |
@@ -270,12 +270,18 @@ ENABLE_POE | DISABLE_POE | RESTART_POWER`. Node-wide
 
 Unassigned devices are handled by `profile.unassigned.pause` and
 `.resume`, `device.list {profile: null}` and `device.profile.set` with
-`profile: null`. There is no reserved "unassigned" profile id. The eero app
+`profile: null`. There is no reserved "unassigned" profile id. On a real
+network (2026-11-13) eero returns its own Unassigned group as a profile with
+`default: true` that holds every unprofiled device; the eero backend leaves it
+out of the profile list, so its devices count as Unassigned in `profile.list`
+and the usage Unassigned series. The eero app
 can schedule pauses for its Unassigned group (eeroOS 7.12.4+), but no client
 we studied shows the endpoint, so Mesh UI leaves Unassigned schedules out.
 
 Writing `schedule`, filters or blocked apps onto the profile object is a
-silent no-op (FF); schedules always go through `{profile}/schedules`.
+silent no-op (FF); schedule writes go through `{profile}/schedules` (POST,
+PUT, DELETE per the clients; unverified, since the GET there is a 404).
+Reads always take the profile's own `schedule[]`.
 
 ### guest (`commands/guest.ts`)
 

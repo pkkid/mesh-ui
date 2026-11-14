@@ -53,7 +53,7 @@ export function mapSchedule(raw: RawScheduleFull, index: number): M.Schedule | n
   };
 }
 
-/** Maps a profile. `schedules` from `{profile}/schedules` wins over the profile's own `schedule[]`. */
+/** Maps a profile. `schedules`, when given, wins over the profile's own `schedule[]` (the only real source today). */
 export function mapProfile(raw: RawProfile, schedules?: RawScheduleFull[] | null): M.Profile {
   const url = linkUrl(raw.url);
   const devices = raw.devices ?? [];
