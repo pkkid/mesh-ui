@@ -249,7 +249,14 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     default: false,
     state: { value: name === "Leo" ? "paused" : "active" },
     devices: [],
-    schedule: name === "Mia" ? [{ url: `${netUrl}/profiles/${700 + i}/schedules/1`, name: "Bedtime", days: ["MON", "TUE", "WED", "THU", "SUN"], start: "21:00", end: "07:00", enabled: true }] : [],
+    // Mia: the LD day form and FF's lowercase day names with seconds, so the mapper sees both.
+    schedule:
+      name === "Mia"
+        ? [
+            { url: `${netUrl}/profiles/${700 + i}/schedules/1`, name: "Bedtime", days: ["MON", "TUE", "WED", "THU", "SUN"], start: "21:00", end: "07:00", enabled: true },
+            { url: `${netUrl}/profiles/${700 + i}/schedules/2`, name: "Homework", days: ["monday", "friday"], start: "16:00:00", end: "18:00:00", enabled: false },
+          ]
+        : [],
     resources: { schedules: `${netUrl}/profiles/${700 + i}/schedules` },
   }));
 

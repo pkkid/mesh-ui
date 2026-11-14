@@ -448,7 +448,7 @@ port, decided in M3.2).
 - scope: Docs only. Align the M3 mockups' numbers and names with the demo fixtures, as M2.3 did; replace the old `3c:22:fb` sample MACs in 05, 10 and 14 (Carried from M2). Grey out or mark anything the captures in M3.1 showed is not available for this account. Layout and design stay as approved.
 - done when: every changed value matches `mesh-ui --demo run` output for the same field (table in the PR); no `3c:22:fb` left; the mockup index opens every page.
 
-### M3.4 Profiles page ☐
+### M3.4 Profiles page ✅ (#102)
 - issue: [#85](https://github.com/pkkid/mesh-ui/issues/85)
 - after: M3.1, M3.2
 - docs: ux/pages/profiles.md, architecture/commands.md (profile)
