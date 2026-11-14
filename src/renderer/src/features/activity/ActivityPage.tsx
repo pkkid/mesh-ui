@@ -6,7 +6,9 @@
  *
  * Every figure, filter and group comes from `events.summary` and
  * `events.list`; this page keeps only view state (types shown, filters,
- * Per day / Per hour, Grouped / Raw, pages loaded).
+ * Per day / Per hour, Grouped / Raw, pages loaded). The stream's "Unread"
+ * marker is eero's one network-wide `has_unread` flag from `notifications.list`
+ * (the bell's poll): eero keeps no read flag per event, so rows carry no dots.
  */
 import { Check, FileDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -15,9 +17,10 @@ import type { PageProps } from "~/app/routes";
 import { execute, useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { SectionError } from "~/components/ui/page";
+import { ComingSoonButton, SectionError } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { Status } from "~/components/ui/status";
+import { useNotificationPage } from "~/features/notifications/useDesktopAlerts";
 import { TopBarActions } from "~/features/shell/TopBar";
 import { datedName, saveTextFile } from "~/lib/saveFile";
 import { networkClock } from "../../../../core/format";
@@ -48,6 +51,7 @@ export function ActivityPage(_props: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const clock = networkClock(network.data?.timezone);
   const visible = useVisible();
+  const unread = useNotificationPage().data?.unread === true;
 
   const [bucket, setBucket] = useState<Bucket>("day");
   const [mode, setMode] = useState<Mode>("grouped");
@@ -208,7 +212,16 @@ export function ActivityPage(_props: PageProps) {
       />
 
       <Section
-        title="Event stream"
+        title={
+          <span className="inline-flex items-center gap-3">
+            Event stream
+            {unread && (
+              <Status tone="info" title="eero says some notifications are unread">
+                Unread
+              </Status>
+            )}
+          </span>
+        }
         subtitle="Newest first · polled every 60 s"
         tools={
           <>
@@ -222,6 +235,9 @@ export function ActivityPage(_props: PageProps) {
                 { value: "raw", label: "Raw" },
               ]}
             />
+            <ComingSoonButton size="xs" variant="outline">
+              Mark all read
+            </ComingSoonButton>
           </>
         }
       >
