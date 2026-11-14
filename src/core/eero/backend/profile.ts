@@ -20,6 +20,14 @@
  * lowercase names). Unverified on a real network: the GET there is a 404 and
  * the captured network had no schedules, so a MANUAL check covers it. When
  * eero answers without the schedule, it is read back from the profile.
+ *
+ * Unassigned schedules (M5.11-fix): the profile id `unassigned` (core's
+ * UNASSIGNED ref) names the `default: true` profile, found through
+ * `GET {net}/profiles`; its schedules use the same `{profile}/schedules`
+ * routes. The default profile carries `schedule[]` and `resources.schedules`
+ * like any other (M5.1 capture), but a write there is unproven on a real
+ * network (MANUAL check). Without a default profile (eeroOS before 7.12.4)
+ * Unassigned has no schedules.
  */
 
 import { BackendError } from "../../errors";
@@ -41,10 +49,23 @@ const scheduleOf = (raw: unknown): M.Schedule | null => {
 /** The JSON eero takes, days in the `MON` form. Tolerates a missing input so the request (and eero's error) still happens. */
 const scheduleBody = ({ name, days, start, end, enabled } = {} as M.ScheduleInput): RawScheduleWrite => ({ name, days: Array.from(days ?? []), start, end, enabled });
 
+/** core's UNASSIGNED ref (commands/profile.ts): eero's `default: true` profile. Backends sit below commands, so the literal is repeated. */
+const UNASSIGNED = "unassigned";
+
 export const profile: EeroArea<"profile"> = ({ client }) => {
   const path = (net: string, id: string) => networkPath(net, `profiles/${encodeURIComponent(id)}`);
+  /** The default profile, or an eero_error when the network has none. A write looks it up fresh. */
+  const defaultProfile = async (net: string, effect: "query" | "write"): Promise<RawProfile> => {
+    const all = asList<RawProfile>(await client.request({ method: "GET", path: networkPath(net, "profiles"), effect }), "profiles");
+    const group = all.find((p) => p.default === true && isProfile(p));
+    if (!group) throw new BackendError("eero_error", "This network has no Unassigned group for schedules. It needs eeroOS 7.12.4 or later.", { status: 404 });
+    return group;
+  };
+  /** The eero profile id behind an id, mapping `unassigned` to the default profile's. */
+  const realId = async (net: string, id: string, effect: "query" | "write") => (id === UNASSIGNED ? idFromUrl(linkUrl((await defaultProfile(net, effect)).url) ?? "") : id);
   const devices = (net: string, ids: string[]) => Array.from(ids ?? [], (id) => ({ url: networkPath(net, `devices/${encodeURIComponent(id)}`) }));
-  const get = async (net: string, id: string) => {
+  const get = async (net: string, id: string): Promise<M.Profile> => {
+    if (id === UNASSIGNED) return { ...mapProfile(await defaultProfile(net, "query")), id: UNASSIGNED, name: "Unassigned" };
     const raw = await client.request<RawProfile>({ method: "GET", path: path(net, id) });
     if (!isProfile(raw)) throw new BackendError("eero_error", "That profile is not on this network.", { status: 404 });
     return mapProfile(raw);
@@ -99,7 +120,8 @@ export const profile: EeroArea<"profile"> = ({ client }) => {
     }
   },
 
-  async addSchedule(net, id, input) {
+  async addSchedule(net, ref, input) {
+    const id = await realId(net, ref, "write");
     const raw = await client.request({ method: "POST", path: `${path(net, id)}/schedules`, body: scheduleBody(input) });
     const made = scheduleOf(raw);
     if (made) return made;
@@ -110,7 +132,8 @@ export const profile: EeroArea<"profile"> = ({ client }) => {
     throw new BackendError("eero_error", "eero did not return the new schedule.");
   },
 
-  async updateSchedule(net, id, schedule, input) {
+  async updateSchedule(net, ref, schedule, input) {
+    const id = await realId(net, ref, "write");
     const raw = await client.request({ method: "PUT", path: `${path(net, id)}/schedules/${encodeURIComponent(schedule)}`, body: scheduleBody(input) });
     const saved = scheduleOf(raw);
     if (saved) return saved;
@@ -118,7 +141,8 @@ export const profile: EeroArea<"profile"> = ({ client }) => {
     return fresh.schedules.find((s) => s.id === schedule) ?? { id: schedule, ...input };
   },
 
-  async removeSchedule(net, id, schedule) {
+  async removeSchedule(net, ref, schedule) {
+    const id = await realId(net, ref, "write");
     await client.request({ method: "DELETE", path: `${path(net, id)}/schedules/${encodeURIComponent(schedule)}` });
   },
   };

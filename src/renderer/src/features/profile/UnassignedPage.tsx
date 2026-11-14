@@ -2,10 +2,12 @@
  * Unassigned (`#/profiles/unassigned`): the devices in no profile (eero's own
  * `default: true` group, which is never offered as a profile). A hero with
  * the device count, online count and pause state, Pause unassigned (asks
- * first) or Resume unassigned, and the devices with their data in the last
- * 24 hours. From `profile.list` (`unassigned`), `device.list` and
- * `usage.breakdown {range: day, by: device}`. docs/ux/pages/profile-detail.md
- * (Unassigned).
+ * first) or Resume unassigned, the week of scheduled pauses and the schedule
+ * list (the same ProfileSchedules and sheet as a profile, on eero's default
+ * profile through `profile.get {profile: unassigned}`), and the devices with
+ * their data in the last 24 hours. From `profile.list` (`unassigned`),
+ * `profile.get`, `device.list` and `usage.breakdown {range: day, by:
+ * device}`. docs/ux/pages/profile-detail.md (Unassigned).
  */
 import { UsersRound } from "lucide-react";
 
@@ -17,19 +19,23 @@ import { Card, Empty, Section } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
 import { SectionError, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
+import { PROFILE_STATE } from "~/features/profiles/ProfileCards";
 import { UnassignedPauseButton } from "~/features/profiles/UnassignedCard";
 import { TopBarTitle } from "~/features/shell/TopBar";
 import { seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount, formatPercent } from "../../../../core/format";
-import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
+import type { DeviceList, Eero, Network, ProfileDetail, ProfileList, UsageBreakdown } from "../../../../core/model";
 
-import { connectionLine, type DeviceRow, deviceRows } from "./helpers";
+import { connectionLine, type DeviceRow, deviceRows, heroLine, hoursLine, inScheduledPause } from "./helpers";
+import { ProfileSchedules } from "./ProfileSchedules";
 
 export function UnassignedPage(_props: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
+  // Unassigned as a profile (core's `unassigned` ref): its schedules, state and today's pauses.
+  const detail = useQuery<ProfileDetail>("profile.get", { profile: "unassigned" }, { poll: true });
   const devices = useQuery<DeviceList>("device.list", undefined, { poll: true });
   const usage = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }, { poll: true });
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
@@ -43,6 +49,9 @@ export function UnassignedPage(_props: PageProps) {
   const total = rows ? rows.reduce((sum, r) => sum + (r.down ?? 0) + (r.up ?? 0), 0) : null;
   const location = new Map((eeros.data ?? []).map((e) => [e.id, e.location] as const));
   const paused = summary?.paused ?? false;
+  const group = detail.data ?? null;
+  const state = group ? PROFILE_STATE[group.state] : null;
+  const line = group ? heroLine(group, timezone, now) : null;
   const failed = (!profiles.data && profiles.error) || (!devices.data && devices.error) || null;
 
   return (
@@ -53,7 +62,13 @@ export function UnassignedPage(_props: PageProps) {
         icon={UsersRound}
         title="Unassigned"
         status={
-          summary ? (
+          group && state ? (
+            <>
+              <Status tone={state.tone}>{state.label}</Status>
+              {inScheduledPause(group) ? <Status tone="warning">Paused by schedule</Status> : null}
+              {line ? <span>{line}</span> : null}
+            </>
+          ) : summary ? (
             <>
               <Status tone={paused ? "warning" : "success"}>{paused ? "Paused" : "Active"}</Status>
               <span>{paused ? "Paused until resumed" : "Devices in no profile"}</span>
@@ -64,6 +79,7 @@ export function UnassignedPage(_props: PageProps) {
           <>
             <Metric label="Devices" value={summary ? `${formatCount(summary.deviceIds.length)} · ${formatCount(summary.devicesOnline)} online` : null} />
             <Metric label="Last 24 hours" value={total === null ? null : formatBytes(total)} />
+            <Metric label="Scheduled off-time" value={group ? (hoursLine(group.schedules) ?? "None") : null} />
           </>
         }
         aside={
@@ -77,6 +93,15 @@ export function UnassignedPage(_props: PageProps) {
           ) : null
         }
       />
+
+      {!group && detail.error ? (
+        // No default profile (eeroOS before 7.12.4) or a failed read: say so instead of a timeline that never loads.
+        <Section title="Scheduled pauses">
+          <SectionError what="scheduled pauses" error={detail.error} onRetry={() => void detail.refetch()} />
+        </Section>
+      ) : (
+        <ProfileSchedules profile={group} timezone={timezone} fading={detail.fading} />
+      )}
 
       <Section title="Devices" subtitle="New devices and devices with private (randomized) addresses land here · data in the last 24 hours">
         {failed ? (

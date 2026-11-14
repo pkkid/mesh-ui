@@ -135,14 +135,17 @@ navigate as described.
 - `profile.pause` takes one `profile` (an id or exact name) and lasts until
   resumed; there are no timed pauses. Pause all calls it per profile.
   Unassigned devices have their own commands, `profile.unassigned.pause` and
-  `profile.unassigned.resume`; there is no "unassigned" profile id.
-- Unassigned schedules are left out for now: the eero app can schedule
-  pauses for Unassigned (eeroOS 7.12.4+), and the M5.1 capture shows eero's
-  default profile carries `schedule[]` and `resources.schedules` like any
-  other profile, so the same schedule endpoints should work on it. Building
-  it needs the profile commands, backends and the Unassigned page, which
-  were outside M5.11's files; it is a follow-up task with a `MANUAL:` check
-  of a real write.
+  `profile.unassigned.resume`. Only `profile.get` and the schedule commands
+  take Unassigned, as the ref `unassigned`; no profile can be named
+  Unassigned.
+- Unassigned schedules (M5.11-fix): the eero app can schedule pauses for
+  Unassigned (eeroOS 7.12.4+), and the M5.1 capture shows eero's default
+  profile carries `schedule[]` and `resources.schedules` like any other
+  profile, so `profile.schedule.add`, `update` and `remove` with `profile:
+  "unassigned"` write to the default profile's `{profile}/schedules`.
+  Today's Unassigned lane on this page draws them. A real write there is
+  unproven (a `MANUAL:` check). A network without a default profile
+  (eeroOS before 7.12.4) has no Unassigned schedules.
 - Manual pause start time ("Paused 25 min ago", the manual segment start)
   comes from the latest pause event in `events.list` when eero does not
   return a start time.
