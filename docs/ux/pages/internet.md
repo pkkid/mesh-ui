@@ -79,11 +79,11 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run speed test | `speedtest.run` | write | No | Button "Testing..."; gauges fade; result appears in about a minute; hero, chart and table update; toast with the result |
+| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; gauges fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero, chart and table update. The same control and toast on Overview and Troubleshooting |
 | Troubleshoot | - | - | No | Troubleshooting page |
 | Copy details | `internet.get {format: "text"}` | query | No | Copies a plain-text block of both cards (formatted in core); toast "Connection details copied" |
 | ISP settings → | - | - | No | Advanced networking, WAN section |
-| Plan value (click the "set by you" row) | `internet.plan.set {down, up, label?}` | write | No | Small popover with download and upload Mbps and an optional name; gauges, meters and verdicts recompute |
+| Set plan / Edit plan (the plan line under the gauges; Overview "Set your plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
 | Day / Week (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart and averages switch range |
 | Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog (`window.mesh.saveFile`), file `speed-tests-maple-street-2026-11-12.csv`; the button reads "CSV saved" for a moment, or "Couldn't save" with eero's or the host's message as its tooltip |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
@@ -98,9 +98,11 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 - **Empty.** No speed tests yet: chart area says "No speed tests in this
   window." and the hero line reads "No speed test yet". No usage: "No
   activity in this window."
-- **Test running.** Only one at a time; the button stays disabled until the
-  result lands or 3 minutes pass, then shows "Speed test did not finish"
-  in a toast.
+- **Test running.** Only one at a time per network; the button reads
+  "Testing..." and stays disabled until the result lands or 3 minutes pass,
+  then the toast turns into "Speed test did not finish". A test started
+  elsewhere in the app (the palette, before a reload) shows the same way:
+  `speedtest.history` reports it as `running`.
 - **Error.** Per card or section note with Retry.
 - **Offline (this computer).** Shell banner; Run speed test disabled;
   "Using the most right now" shows "Live rates need a connection to eero".
@@ -140,9 +142,10 @@ Topbar: title "Internet", subtitle freshness, no page actions.
   never burst twice.
 - Usage history is limited to about 7 days for free accounts, so there is
   no Month range.
-- Built in M2.4: Run speed test and the plan popover are disabled
-  ("Coming soon") until `speedtest.run` and `internet.plan.set` land. There
-  is no toast yet, so Copy details and Export CSV confirm on the button
+- Built in M4.9: Run speed test (here, Overview and Troubleshooting share
+  one runner and toast) and the plan sheet. The plan sheet opens from the
+  plan line under the gauges; the Connection card's Plan row still only
+  shows the value. Built in M2.4: there was no toast yet, so Copy details and Export CSV confirm on the button
   ("Details copied", "CSV saved"). The Per day card always shows the last 7
   days (one bar for Day would say nothing); the Day / Week toggle switches the
   Per hour chart and both tables. Since M3.2 the speed test chart scales to

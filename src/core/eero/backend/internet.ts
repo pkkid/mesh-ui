@@ -1,7 +1,9 @@
 /**
  * eero backend, internet area: connection details from `GET {net}` (gateway
  * from its embedded eeros, else `GET {net}/eeros`) and speed test history
- * from `GET {net}/speedtest`. Plan speed and ratings are added in core.
+ * from `GET {net}/speedtest`, and starting a test (`POST {net}/speedtest`,
+ * 202 with no body; the result shows in the history about a minute later).
+ * Plan speed and ratings are added in core.
  */
 
 import { mapInternet, mapSpeedTests } from "../map/network";
@@ -31,6 +33,11 @@ export const internet: EeroArea<"internet"> = (ctx) => {
         query: { startTime: q.from, endTime: q.to, limit: q.limit },
       });
       return mapSpeedTests(asList<RawSpeedTest>(rows)).slice(0, Math.max(0, q.limit));
+    },
+
+    async runSpeedTest(id) {
+      // resources.speedtest when GET {net} has been read, else the usual path.
+      await ctx.client.request({ method: "POST", path: links.get(`net:${id}.speedtest`, `${base(id)}/speedtest`), encoding: "empty" });
     },
   };
 };
