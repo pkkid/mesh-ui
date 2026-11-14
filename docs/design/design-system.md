@@ -90,6 +90,8 @@ series palette so they read on both light and dark.
 | Wired (ethernet) | `--c-wired` (`--s-aqua`) | `#8ec07c` | `#427b58` |
 | Each eero, each profile | Assigned in order from blue, purple, aqua, orange, yellow, green, stable per id | | |
 | Neutral or "other" | Mix of `--foreground` with the background | | |
+| Power saving schedules | `seriesColors.powerSaving` (`--s-green`) | `#b8bb26` | `#79740e` |
+| Activity event types | `eventCategoryColors`: devices blue, paused / blocked orange, schedules red, eero status yellow, speed tests aqua, firmware gray, admin purple, ports & temperature green, other neutral | | |
 
 Download and upload never appear in the same chart as bands, so sharing blue
 and purple is safe. Themes other than Gruvbox Hard use T3-style mid-tones

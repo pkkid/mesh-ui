@@ -20,27 +20,23 @@ import { useMemo } from "react";
 
 import type { ChartSeries } from "~/components/charts/AreaChart";
 import { BarChart } from "~/components/charts/BarChart";
-import { hue, seriesColors } from "~/lib/chartColors";
+import { eventCategoryColors } from "~/lib/chartColors";
 import { formatCount, networkClock } from "../../../../core/format";
 import type { EventCategory, EventSummary } from "../../../../core/model";
 
 export type CategoryMeta = { label: string; icon: LucideIcon; color: string };
 
-/**
- * One colour per event category, the same in legend, chart and share. Kept
- * here because only Activity charts categories; the hues come from the theme
- * series palette through chartColors.ts.
- */
+/** Label, icon and colour per event category; colours come from chartColors.ts. */
 export const CATEGORIES: Readonly<Record<EventCategory, CategoryMeta>> = {
-  devices: { label: "Devices joined / left", icon: Smartphone, color: hue("blue") },
-  pause_block: { label: "Paused / blocked", icon: PauseCircle, color: hue("orange") },
-  schedules: { label: "Schedules", icon: CalendarClock, color: hue("red") },
-  eero_status: { label: "eero status", icon: Router, color: hue("yellow") },
-  speed_tests: { label: "Speed tests", icon: Gauge, color: hue("aqua") },
-  firmware: { label: "Firmware", icon: Download, color: hue("gray") },
-  admin: { label: "Admin actions", icon: ShieldCheck, color: hue("purple") },
-  ports_temperature: { label: "Ports & temperature", icon: Cable, color: hue("green") },
-  other: { label: "Other", icon: Bell, color: seriesColors.neutral },
+  devices: { label: "Devices joined / left", icon: Smartphone, color: eventCategoryColors.devices },
+  pause_block: { label: "Paused / blocked", icon: PauseCircle, color: eventCategoryColors.pause_block },
+  schedules: { label: "Schedules", icon: CalendarClock, color: eventCategoryColors.schedules },
+  eero_status: { label: "eero status", icon: Router, color: eventCategoryColors.eero_status },
+  speed_tests: { label: "Speed tests", icon: Gauge, color: eventCategoryColors.speed_tests },
+  firmware: { label: "Firmware", icon: Download, color: eventCategoryColors.firmware },
+  admin: { label: "Admin actions", icon: ShieldCheck, color: eventCategoryColors.admin },
+  ports_temperature: { label: "Ports & temperature", icon: Cable, color: eventCategoryColors.ports_temperature },
+  other: { label: "Other", icon: Bell, color: eventCategoryColors.other },
 };
 
 export const CATEGORY_ORDER = Object.keys(CATEGORIES) as EventCategory[];
