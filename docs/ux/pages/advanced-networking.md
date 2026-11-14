@@ -30,6 +30,7 @@ The page showed every group read only: values, switches and segmented choices re
 - The Reservations row links to Reservations & ports without counts.
 - Power saving schedules draw on the shared week timeline (`components/ui/timeline.tsx`) in the theme's green, with one line per schedule above it.
 - A setting eero does not report shows a dashed, empty switch or `-`; an integration eero leaves out (HomeKit `null` included) shows `Unavailable`, dimmed.
+- Integrations work (M5.4): the eero Built-in and Frustration-Free Setup switches toast with Undo, **Discover Zigbee devices** toasts "Looking for Zigbee devices. Finish pairing in the Alexa app", and **Unlink Amazon** opens the type-the-name dialog (the network name) with core's `needs_confirm` text. Each control dims with its spec's gate reason. An unavailable integration stays read only with eero's reason; HomeKit has no write (set up in the Apple Home app). The rows are flat, not an Amazon sub panel.
 
 ## Layout
 

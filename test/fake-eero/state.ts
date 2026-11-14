@@ -446,7 +446,10 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     network,
     permissions: {
       role: seed.role,
-      permissions: seed.role === "owner" ? { eeros: full, network: full, "network.transfer": full } : { eeros: full, network: full, "network.transfer": readOnly },
+      permissions:
+        seed.role === "owner"
+          ? { eeros: full, network: full, "network.transfer": full, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": full }
+          : { eeros: full, network: full, "network.transfer": readOnly, "network.proxied_nodes": full, "network.smart_home_hub": full, "amazon.account": readOnly },
     },
     eeros,
     devices,

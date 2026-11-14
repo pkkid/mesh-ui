@@ -1212,7 +1212,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const data = net(id);
         const amazon = integrationIn(data, "amazon");
         amazon.enabled = false;
-        amazon.detail = null;
+        amazon.detail = "Link in the eero app";
         return clone(data.integrations);
       },
     },

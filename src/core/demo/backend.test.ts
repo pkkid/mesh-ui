@@ -1074,8 +1074,9 @@ describe("writes (M5)", () => {
     expect((await b.integrations.setFfs(MAPLE, false)).ffs.enabled).toBe(false);
     expect((await b.integrations.setBuiltin(MAPLE, false)).builtin.enabled).toBe(false);
     expect((await b.integrations.unlinkAmazon(MAPLE)).amazon.enabled).toBe(false);
-    // Smart Home Hub is unavailable on Maple Street, so discovery refuses as eero would.
-    await expect(b.integrations.discoverZigbee(MAPLE)).rejects.toBeInstanceOf(BackendError);
+    await b.integrations.discoverZigbee(MAPLE);
+    // Smart Home Hub is unavailable on Lake Cabin, so discovery refuses as eero would.
+    await expect(b.integrations.discoverZigbee(LAKE)).rejects.toBeInstanceOf(BackendError);
     const key = Object.keys(await b.notifications.settings(MAPLE))[0] as string;
     const was = (await b.notifications.settings(MAPLE))[key];
     expect((await b.notifications.setSettings(MAPLE, { [key]: !was }))[key]).toBe(!was);
