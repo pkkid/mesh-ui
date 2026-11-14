@@ -15,7 +15,7 @@ Breadcrumb `Settings / Updates & admins`, subtitle `Checked for updates 2h ago`,
 3. **Preferred update time** ("Average data per hour, last 7 days"). Header select with the window (`2:00 AM to 5:00 AM`). A 24 bar chart of average data per hour with the selected window overlaid and labelled "Update window". Footer legend: selected hours average, busiest hour average, and a success line "Quietest window on your network" when the choice is the quietest.
 4. **User permissions** ("2 of 10 admin seats used"). Rows: owner (avatar, name, "(you)", "Owner of this network", `Owner` with crown), admins (avatar, name, "Can manage the network", `Admin`, **Remove**), pending invites (dashed avatar, nickname, "Invite pending" with the expiry, `Pending` status, **Resend**, **Cancel**). eero sends no email for members or invites, so none is shown. The mockup's admin overflow menu ("Jamie's menu") had **Nickname** and **Remove admin**; eero has no member nickname endpoint, so only Remove is left and it is a plain button.
 5. Below, two cards side by side:
-   - **Invite an admin**: a short note and **Create invite**, which opens the invite sheet: **Invitee nickname**, **Create invite**, then the QR code with **Copy link** and **New code** (a new link; the old one is cancelled). No email: eero has no email invite endpoint and the window may not open a `mailto:` link (navigation lockdown), so the link is shared by hand.
+   - **Invite an admin**: a short note and **Create invite**, which opens the invite sheet: **Invitee nickname**, **Create invite**, then the QR code with **Copy link** and **New code** (the old link is cancelled, then a new one made). No email: eero has no email invite endpoint and the window may not open a `mailto:` link (navigation lockdown), so the link is shared by hand.
    - **What each role can do**: table of capabilities with Owner and Admin columns (see, change Wi-Fi and advanced networking, install updates and restart, invite or remove admins, Amazon and transfer or delete).
 6. **Transfer network** (`Destructive · owner only` badge, "Hand Maple Street to someone else"). Four numbered steps: Review, Confirm (type the name), Share QR or link (single use, 48 hours), Recipient accepts. Danger note: cannot be undone; admins and settings move, subscriptions do not; not on ISP or installer managed networks. Input "Type "Maple Street" to continue" and **Start transfer** (solid danger, disabled until the name matches).
 
@@ -45,10 +45,10 @@ Side panel **During an update**: internet and Wi-Fi drop about 10 minutes, eeros
 | Preferred window select | `updates.hour.set` `{hour}` | write | no | Chart overlay moves; toast with Undo |
 | Use quietest | `updates.hour.set` `{hour: quietest.start}` | write | no | Shown when the quietest window is not the chosen one |
 | Remove (admin row) | `admin.remove` `{admin}` | destructive | dialog naming the person; type their name | Row disappears |
-| Resend | `admin.invite.create` (same nickname or email) | write | no | Old link cancelled, new one sent |
+| Resend | `admin.invite.cancel` on the old one, then `admin.invite.create` (same nickname) | write | no | Old link cancelled first (it frees its seat), new one shown in the invite sheet |
 | Cancel (invite) | `admin.invite.cancel` `{invite}` | write | no | Row disappears |
 | Create invite (sheet) | `admin.invite.create` `{nickname?}` | write | no | QR and link; pending row appears |
-| New code (sheet) | `admin.invite.create`, then `admin.invite.cancel` on the old one | write | no | New QR and link |
+| New code (sheet) | `admin.invite.cancel` on the old one, then `admin.invite.create` | write | no | New QR and link |
 | Copy link | none | | | Copies the invite URL |
 | Type the network name | none (local check) | | | Enables Start transfer |
 | Start transfer | opens the transfer dialog | | | |

@@ -47,9 +47,10 @@ export function watchInstall(networkId: string, version: string, onDone: () => v
     const [eeros, updates] = await Promise.all([execute<Eero[]>("eero.list", { networkId }), execute<Updates>("updates.get", { networkId })]);
     invalidate(["eero.", "network.", "updates."]);
     const elapsed = Date.now() - started;
-    const installing = updates.ok && updates.result.status === "installing";
+    // Done only when a successful read says so; a failed read is not proof.
+    const finished = updates.ok && updates.result.status !== "installing";
     if (!eeros.ok || eeros.result.some(isDown)) seenDown = true;
-    else if (!installing && (seenDown || elapsed > SEE_DOWN_MS)) {
+    else if (finished && (seenDown || elapsed > SEE_DOWN_MS)) {
       toast.update(id, "success", { title: `eeroOS ${version} is installed`, detail: "Every eero is back online" });
       onDone();
       return;

@@ -84,12 +84,12 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
   const cancelInvite = (i: Invite) =>
     cancel.run({ invite: i.id }, { success: `Cancelled the invite${i.nickname ? ` for ${i.nickname}` : ""}`, failure: "Couldn't cancel the invite" });
 
-  // Resend: a new link with the same nickname, then the old one stops working.
+  // Resend: the old link stops working first (so a full network still has its seat), then a new one with the same nickname.
   const resend = async (i: Invite) => {
+    const old = await cancel.run({ invite: i.id }, { failure: "Couldn't cancel the old invite" });
+    if (!old?.ok) return;
     const r = await create.run(i.nickname ? { nickname: i.nickname } : {}, { failure: "Couldn't make a new invite" });
-    if (!r?.ok) return;
-    await cancel.run({ invite: i.id }, { failure: "Couldn't cancel the old invite" });
-    setSheet({ created: r.result, nickname: i.nickname ?? "" });
+    if (r?.ok) setSheet({ created: r.result, nickname: i.nickname ?? "" });
   };
 
   return (
@@ -193,12 +193,15 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
 
   const make = async () => {
     setError(null);
+    // New code replaces the link on screen: the old one stops working first, so it frees its seat.
+    if (created) {
+      const old = await cancel.run({ invite: created.invite.id }, { failure: "Couldn't cancel the old invite" });
+      if (!old?.ok) return;
+      setCreated(null);
+    }
     const r = await create.run(n ? { nickname: n } : {}, { form: true, success: n ? `Invite ready for ${n}` : "Invite ready", failure: "Couldn't create the invite" });
-    if (r?.ok) {
-      // New code replaces the link on screen, so the old one stops working.
-      if (created) await cancel.run({ invite: created.invite.id }, { failure: "Couldn't cancel the old invite" });
-      setCreated(r.result);
-    } else if (r) setError(r.error.message);
+    if (r?.ok) setCreated(r.result);
+    else if (r) setError(r.error.message);
   };
 
   return (
