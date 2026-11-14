@@ -150,7 +150,8 @@ export const commands: AnyCommand[] = [
     async run(ctx): Promise<RestartResult> {
       const eeros = await ctx.backend.eero.list(ctx.net).catch(() => [] as M.Eero[]);
       await ctx.backend.network.restart(ctx.net);
-      return { eeroIds: eeros.map((e) => e.id), estimate: RESTART_ESTIMATE.network };
+      // An offline eero cannot take the restart, so it is not waited for.
+      return { eeroIds: eeros.filter((e) => e.status !== "offline").map((e) => e.id), estimate: RESTART_ESTIMATE.network };
     },
   }),
 ];

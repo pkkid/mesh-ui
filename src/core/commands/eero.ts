@@ -167,7 +167,10 @@ const writeCommands: AnyCommand[] = [
       const eeros = await ctx.backend.eero.list(ctx.net);
       const e = eeros.find((x) => x.id === id);
       await ctx.backend.eero.restart(ctx.net, id);
-      return { eeroIds: e ? restartedBy(e, eeros) : [id], estimate: e?.isGateway ? RESTART_ESTIMATE.network : RESTART_ESTIMATE.eero };
+      // An offline eero cannot take the restart, so it is not waited for.
+      const offline = new Set(eeros.filter((x) => x.status === "offline").map((x) => x.id));
+      const down = (e ? restartedBy(e, eeros) : [id]).filter((x) => !offline.has(x));
+      return { eeroIds: down, estimate: e?.isGateway ? RESTART_ESTIMATE.network : RESTART_ESTIMATE.eero };
     },
   }),
 ];
