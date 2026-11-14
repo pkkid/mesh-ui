@@ -137,6 +137,7 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | PUT | `{net}/thread` | JSON `{thread_enable?: bool, enable_credential_syncing?: bool}` | W | FF, LD | FF corrected key to `thread_enable`. |
 | PUT | `{net}/thread/enable` | JSON `{enabled: bool}` | W | SX | Older path used by SX. |
 | POST | `{net}/thread` | none | **D** | FF, LD | **Regenerates Thread credentials**: every Thread device must re-pair. |
+| PUT | `{net}/auto_setup_mode` | JSON `{mode: "DEFAULT"|"ZTS"|"LTS"|"OFF"}` | W | LD | Simple Setup. Read from network `auto_setup_mode` (a real network reads `LTS` while on). Used by `settings.simple_setup.set` (M5.3): on sends `LTS`, off sends `OFF` (MANUAL check). |
 | GET | `{net}/radio_settings` | - | R | LD | Channel and power per eero radio. |
 | GET | `/2.2/networks/{id}/safe_filter_levels?safeFilterType=SubnetFilter|ProfileFilter` | - | R | LD | |
 | PUT | `{net}/business_guest_network`, `{net}/captive_portal/*`, `{net}/network_customer_type`, `{net}/holding_state`, `{net}/community`, `{net}/cobranding` | various | W | LD | eero for Business only. Skip. |
@@ -165,7 +166,7 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | GET | `/2.4/networks/{id}/placement/wifi_coverage_scan?allDevices=true` | - | coverage scan | R | LD | Version 2.4 only. |
 | GET | `/2.4/networks/{id}/placement/wifi_generation_scan?allDevices=true` | - | "upgrade report" | R | LD | Version 2.4 only. |
 | DELETE | `{eero}` | none | - | **D** | LD | **Removes the node from the network** (factory-reset-like). Removing the gateway kills the network. |
-| POST | `/2.2/eeros?requireSession=true`, `{net}/node_setup`, `/2.2/eeros/networks/{id}/notify_swap`, `{net}/auto_discovered_eeros`, `{net}/auto_setup_mode`, `/2.3/networks/{id}/pending_eeros`, `{net}/packaged_eeros`, `/2.3/networks` (create network) | various | - | W | LD | Onboarding / add-a-node / create network. Out of scope. |
+| POST | `/2.2/eeros?requireSession=true`, `{net}/node_setup`, `/2.2/eeros/networks/{id}/notify_swap`, `{net}/auto_discovered_eeros`, `/2.3/networks/{id}/pending_eeros`, `{net}/packaged_eeros`, `/2.3/networks` (create network) | various | - | W | LD | Onboarding / add-a-node / create network. Out of scope. |
 | GET | `/2.2/eero_models/capabilities?networkId={id}` | - | per-model capability matrix | R | FF, LD | Note camelCase `networkId`. |
 | GET | `{net}/ouicheck?serial=&version=` | both required (404 otherwise) | `{can_add, must_update}` | R | FF, LD, ES | Can this eero join the network. |
 

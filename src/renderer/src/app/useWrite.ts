@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { ExecuteError, ExecuteResult } from "../../../core/errors";
-import { permissionFor } from "../../../core/spec";
+import { ownerOnly, permissionFor } from "../../../core/spec";
 import type { Effect, Network, Permission, Permissions } from "../../../core/model";
 import { toast } from "../components/ui/toast";
 import { affectedBy, commandInfo, execute, invalidate } from "./useCommand";
@@ -256,7 +256,7 @@ export function gateFor(opts: GateOptions, permissions: Permissions | undefined,
   if (capability && network && network.capabilities[capability] !== true) return { allowed: false, reason: NOT_AVAILABLE };
   if (area && permissions) {
     const can = permissionFor(permissions, area);
-    if (can && !can[op]) return { allowed: false, reason: permissions.role === "admin" ? "Owner only" : NO_PERMISSION };
+    if (can && !can[op]) return { allowed: false, reason: ownerOnly(permissions.role) ?? NO_PERMISSION };
   }
   return { allowed: true, reason: null };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allCommands, createRegistry } from "./registry";
-import { permissionFor } from "./spec";
+import { OWNER_ONLY, ownerOnly, permissionFor } from "./spec";
 
 describe("write gates", () => {
   it("every write, disruptive and destructive command declares a gate in its spec", () => {
@@ -51,5 +51,14 @@ describe("permissionFor", () => {
   it("is null when nothing covers the area", () => {
     expect(permissionFor({ can: {} }, "devices")).toBeNull();
     expect(permissionFor({ can: { eeros: p(true, true, true, true) } }, "settings")).toBeNull();
+  });
+});
+
+describe("ownerOnly", () => {
+  it("refuses a known admin only; the owner and an unknown role are not refused", () => {
+    expect(ownerOnly("admin")).toBe(OWNER_ONLY);
+    expect(ownerOnly("owner")).toBeNull();
+    expect(ownerOnly(null)).toBeNull();
+    expect(ownerOnly(undefined)).toBeNull();
   });
 });

@@ -383,7 +383,7 @@ describe("dimming writes on the real permissions shape", () => {
       .map((c) => [c.id, commandUnavailable(c, REAL_OWNER, network)] as const)
       .filter(([, reason]) => reason === NO_PERMISSION || reason === "Owner only");
     expect(blocked).toEqual([]);
-    for (const id of ["wifi.name.set", "device.pause", "device.block", "profile.create", "profile.delete", "reservation.add", "forward.add", "pinhole.remove", "network.transfer", "admin.remove", "integrations.amazon.unlink"]) {
+    for (const id of ["wifi.name.set", "device.pause", "device.block", "profile.create", "profile.delete", "reservation.add", "forward.add", "pinhole.remove", "network.transfer", "network.delete", "admin.remove", "integrations.amazon.unlink"]) {
       const c = t.commands.find((x) => x.id === id);
       expect(c && commandUnavailable(c, REAL_OWNER, network), id).toBeNull();
     }

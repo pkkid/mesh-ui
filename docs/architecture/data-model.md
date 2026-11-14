@@ -165,8 +165,12 @@ and every other surface:
 5. When nothing covers the area (no `network` either) permission does not
    gate; the engine and eero decide.
 
-Destructive commands are owner only on top of this (a known `admin` role is
-refused). The demo fixtures and the fake eero server use this shape.
+Destructive commands are owner only on top of this, by one rule, `ownerOnly`
+(`src/core/spec.ts`), used by the palette, pages (`useGate`, the danger
+zone) and core (`network.delete`): a known `admin` is refused "Owner only";
+the owner and an unknown role (eero sent no permissions) are not, so a failed
+read never locks the owner out. The demo fixtures and the fake eero server use
+this shape.
 
 ## Internet, speed and usage
 

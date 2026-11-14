@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import type { Backend } from "./backend";
-import type { AppSettings, BackendKind, Effect, HostEvent, Id, Permission, Permissions } from "./model";
+import type { AppSettings, BackendKind, Effect, HostEvent, Id, Permission, Permissions, Role } from "./model";
 import type { Topic } from "./poll";
 
 export type { Effect } from "./model";
@@ -91,6 +91,20 @@ export const resolveGate = (g: WriteGate): ResolvedGate => ({
   bridgeOff: g.bridgeOff === true,
   capability: g.capability ?? null,
 });
+
+export const OWNER_ONLY = "Owner only";
+
+/**
+ * The owner-only rule for destructive commands, shared by core
+ * (`network.delete`), the palette and pages: refused with `OWNER_ONLY` for a
+ * known non-owner (an admin), null otherwise. A real owner maps to `owner`
+ * (eero sends `network-owner`); an unknown role (null: eero sent no
+ * permissions) is left to the permission gate and eero, so a failed read
+ * never locks the owner out.
+ */
+export function ownerOnly(role: Role | null | undefined): string | null {
+  return role && role !== "owner" ? OWNER_ONLY : null;
+}
 
 /**
  * The permission a gate's `area` resolves to, or null when eero reports

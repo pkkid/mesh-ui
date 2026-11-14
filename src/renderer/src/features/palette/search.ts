@@ -13,7 +13,7 @@ import { z } from "zod";
 import { toolName } from "../../../../core/mcpNames";
 import type { Device, Effect, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import type { CommandInfo, JsonSchema } from "../../../../core/registry";
-import { needsConfirm } from "../../../../core/spec";
+import { needsConfirm, ownerOnly } from "../../../../core/spec";
 import { type GateOptions, gateFor, type WriteRequest } from "../../app/useWrite";
 
 // ---------------------------------------------------------------------------
@@ -111,8 +111,10 @@ export function commandUnavailable(
   permissions: Permissions | null | undefined,
   network: Network | null | undefined,
 ): string | null {
-  // Only a known admin is refused here. The real owner maps to "owner" (eero sends `network-owner`, M5.1-fix); an unknown role (null) falls to the permission gate and eero.
-  if (info.effect === "destructive" && permissions?.role === "admin") return "Owner only";
+  if (info.effect === "destructive") {
+    const refused = ownerOnly(permissions?.role);
+    if (refused) return refused;
+  }
   const gate = commandGate(info);
   return gate ? gateFor(gate, permissions ?? undefined, network ?? undefined).reason : null;
 }
