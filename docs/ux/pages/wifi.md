@@ -6,6 +6,18 @@ Mockup: [../../mockups/12-wifi-settings.html](../../mockups/12-wifi-settings.htm
 
 Shared patterns (hero, QR block, settings column plus side panel, confirm bar) are described in [../overview.md](../overview.md).
 
+## Built in M3.9 (read view)
+
+The page is read-only until the write commands land; every change is a disabled "Coming soon" control.
+
+- **Hero:** SSID, `Broadcasting` / `Not broadcasting` / `Offline`, "One name on every band" (or on the one band), **Wireless clients** and **Bands on** (`3 of 3`). "Password changed" is not shown: no response carries that date.
+- **QR block:** an empty frame until **Show code** runs `wifi.share`; **Copy password** and **Save QR** work from then on. **Print a card** is "Coming soon".
+- **Name and password:** read-only fields. The name has copy and a byte count. The password shows dots until the eye reveals it; copy reads it on demand. Generate and **Change** are "Coming soon". The revealed password and QR payload live only in the page's state, are never polled or cached, and are dropped on a network switch.
+- **Encryption:** one row per band with a segmented control showing the current mode (other modes disabled). The WPA2 only column counts connected devices that joined a hybrid band with WPA2 (an estimate from each device's link security); it shows `-` for a WPA2 only or WPA3 band and while offline. The info note names them.
+- **Bands:** a card per band any eero offers (a single-band network shows one card), with On or Off, clients, widths, channels and share of clients, the 2.4 GHz only state with its expiry, and the **2.4 GHz only devices** link to Troubleshooting.
+- **Nickname and location:** nickname and time zone from `network.get`, with the local time there. Edit is "Coming soon".
+- Not yet: the impact panel and confirm bar (with the write commands), WPA3 master switch, compatibility mode hiding, schedule list.
+
 ## Layout
 
 Breadcrumb: `Settings / Wi-Fi`.

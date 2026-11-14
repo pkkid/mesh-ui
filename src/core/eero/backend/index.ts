@@ -52,6 +52,7 @@ import { routing } from "./routing";
 import { settings } from "./settings";
 import { updates } from "./updates";
 import { usage } from "./usage";
+import { wifi } from "./wifi";
 
 /** Area factories, one line each, alphabetical. */
 const areas: { [K in AreaName]?: EeroArea<K> } = {
@@ -71,6 +72,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   settings,
   updates,
   usage,
+  wifi,
 };
 
 export function createEeroBackend(options: EeroBackendOptions): Backend {

@@ -304,15 +304,15 @@ endpoint).
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `wifi.get` | Wi-Fi | `{}` | q | `GET {net}` (`name`, `wpa3`, `temporary_flags`), `GET {net}/wpa3_per_band`, radios from `GET {net}/eeros` | `WifiSettings`: SSID, security per band, bands with clients, widths, channels, hide-5 GHz state. No password. |
-| `wifi.password.get` | Reveal Wi-Fi password | `{}` | q, sensitive | `GET {net}/password` | Only on explicit reveal. |
+| `wifi.get` | Wi-Fi | `{}` | q | `GET {net}` (`name`, `wpa3`, `temporary_flags`), `GET {net}/wpa3_per_band` (404 on older firmware: the `wpa3` switch stands in), `GET {net}/eeros` (`bands`, `radio_channel_stats`), `GET {net}/devices` | `WifiSettings`: SSID, security per band (6 GHz always WPA3; a band no eero has is null and left out of `bands`), bands with clients, widths, channels (5 GHz low and high both kept), the 2.4 GHz only flag and its expiry. No password. Topic `settings`, polled every 60 s. `wpa2OnlyDevices` is an estimate: devices whose link used WPA2 on a band offering WPA2 + WPA3. |
+| `wifi.password.get` | Reveal Wi-Fi password | `{}` | q, sensitive | `GET {net}` (`password`, in the clear) | `{ ssid, password }`; `password` null on an open network. Only on explicit reveal or copy. Never cached. |
 | `wifi.name.set` | Wi-Fi name | `{ name: string }` 1 to 32 bytes | d | `PUT {net}/settings` form `name` | Every wireless device must reconnect. |
 | `wifi.password.set` | Wi-Fi password | `{ password: string(8..63) }` printable ASCII | d | `PUT {net}/password` form `password` | Main network can not be made open; `DELETE {net}/password` is not exposed. |
 | `wifi.security.set` | Wi-Fi security | `{ band24?: Security, band5?: Security }` | d | `PUT {net}/wpa3_per_band` JSON `{band_2_4_ghz, band_5_ghz}` | `Security` = `WPA2 \| WPA2_WPA3 \| WPA3`. 6 GHz is always WPA3. Result lists devices that only speak WPA2. |
 | `wifi.hide5g.set` | Connect 2.4 GHz only devices | `{ enabled: boolean }` | d | on: `PUT {net}/temporary_flags/hide_5g` `{value: true}`; off: `DELETE` same | Effect changed from the brief's `write` to `disruptive`: it moves every 5 and 6 GHz client. eero expires it on its own (`temporary_flags.hide_5g.expires_on`, surfaced as `hide5g.expiresAt` for the countdown); the write takes no duration and the engine keeps no timer, so there is no `minutes` param. Turn it off sooner with `enabled: false`. Replaces the palette mockup's old `wifi.band24_only.start`. |
 | `wifi.impact` **(added)** | Impact of a Wi-Fi change | `{ change: "name" \| "password" \| "security" \| "hide5g", band?: "band24" \| "band5", security?: Security }` | q | none (cached `wifi` and `devices` topics) | `WifiImpact`: devices that must reconnect, devices that only speak WPA2 for a security change, and the estimate from `settings.impact`. Wi-Fi and Guest pages, before the inline confirm. |
 | `wifi.password.generate` **(added)** | Generate password | `{ length?: 12..63 }` default 16 | q | none | Random printable password from core (crypto RNG, no look-alike characters). Not saved; the UI fills the field and the person still saves with `wifi.password.set` or `guest.password.set`. Not `sensitive`: it is not a password in use. |
-| `wifi.share` | Share Wi-Fi | `{}` | q, sensitive | `GET {net}`, `GET {net}/password` | `WifiShare` for the QR and copy buttons. |
+| `wifi.share` | Share Wi-Fi | `{}` | q, sensitive | `GET {net}` (`name`, `password`) | `WifiShare` for the QR and copy buttons: `qr` is `WIFI:T:WPA;S:<ssid>;P:<password>;;` (`T:nopass` when open) with `\ ; , : "` escaped, built in core (`wifiShare` in `commands/guest.ts`, shared with `guest.share`). Only on "Show code" or copy. Never cached. |
 
 ### settings (`commands/settings.ts`)
 
