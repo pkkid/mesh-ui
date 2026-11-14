@@ -2,17 +2,21 @@
  * Device detail "Port forwarding" (docs/ux/pages/device-detail.md, Layout 2):
  * one row per forward to this device from `forward.list {device}`, with the
  * name, port or range, protocol and a trash button; a disabled forward is
- * muted with an off switch. Remove, the switch and + Open a port are
- * disabled until forward writes land. Hidden for guest devices and in
- * bridge mode (DevicePage).
+ * muted with an off switch that turns it back on. The trash button removes
+ * (after a confirm, with Undo) and + Open a port opens the port forward
+ * sheet with this device picked (features/ports/RuleSheet.tsx). Hidden for
+ * guest devices and in bridge mode (DevicePage).
  */
 import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
+import type { Gate } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, HeaderLink, SectionError } from "~/components/ui/page";
+import { GatedButton, HeaderLink, SectionError, useGate } from "~/components/ui/page";
+import { ForwardSheet, type ForwardSheetMode, removeForward, setForwardEnabled } from "~/features/ports/RuleSheet";
 import { cn } from "~/lib/utils";
 import type { ForwardList } from "../../../../core/commands/routing";
 import type { Forward, Protocol } from "../../../../core/model";
@@ -27,6 +31,10 @@ export function DeviceForwards({ view, id }: { view: DeviceView; id: string }) {
   const forwards = useQuery<ForwardList>("forward.list", { device: id }, { poll: 60 });
   const rows = forwards.data?.forwards;
   const blocked = view.device?.blocked === true;
+  const [sheet, setSheet] = useState<ForwardSheetMode | null>(null);
+  const addGate = useGate("forward.add");
+  const editGate = useGate("forward.update");
+  const removeGate = useGate("forward.remove");
 
   return (
     <Section
@@ -37,6 +45,7 @@ export function DeviceForwards({ view, id }: { view: DeviceView; id: string }) {
         </HeaderLink>
       }
     >
+      <ForwardSheet mode={sheet} onClose={() => setSheet(null)} />
       {forwards.error && !rows ? (
         <SectionError what="port forwards" error={forwards.error} onRetry={() => void forwards.refetch()} />
       ) : (
@@ -54,16 +63,16 @@ export function DeviceForwards({ view, id }: { view: DeviceView; id: string }) {
                 </span>
               </div>
               {(rows ?? []).map((f) => (
-                <Row key={f.id} forward={f} />
+                <Row key={f.id} forward={f} editGate={editGate} removeGate={removeGate} />
               ))}
               {!rows && <div className="h-[34px]" />}
             </div>
           )}
           {!blocked && (
-            <ComingSoonButton size="xs" variant="outline" className="mt-2">
+            <GatedButton gate={addGate} size="xs" variant="outline" className="mt-2" onClick={() => setSheet({ kind: "add", deviceId: id })}>
               <Plus />
               Open a port
-            </ComingSoonButton>
+            </GatedButton>
           )}
         </Card>
       )}
@@ -71,7 +80,7 @@ export function DeviceForwards({ view, id }: { view: DeviceView; id: string }) {
   );
 }
 
-function Row({ forward: f }: { forward: Forward }) {
+function Row({ forward: f, editGate, removeGate }: { forward: Forward; editGate: Gate; removeGate: Gate }) {
   const port = f.externalPort === f.internalPort ? f.externalPort : `${f.externalPort} → ${f.internalPort}`;
   return (
     <div role="row" className={cn(GRID, "min-h-[34px] border-border/50 border-t")}>
@@ -90,24 +99,27 @@ function Row({ forward: f }: { forward: Forward }) {
         {f.enabled ? (
           <button
             type="button"
-            disabled
-            title="Coming soon"
+            disabled={!removeGate.allowed}
+            title={removeGate.allowed ? `Remove ${f.name || "port forward"}` : (removeGate.reason ?? undefined)}
             aria-label={`Remove ${f.name}`}
-            className="grid size-6 cursor-not-allowed place-items-center rounded-md text-muted-foreground opacity-70"
+            onClick={() => void removeForward(f)}
+            className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
           >
             <Trash2 className="size-3.5" />
           </button>
         ) : (
-          <span
+          <button
+            type="button"
             role="switch"
             aria-checked={false}
-            aria-disabled
             aria-label={`${f.name} is off`}
-            title="Off. Coming soon"
-            className="inline-flex h-3.5 w-6 cursor-not-allowed items-center rounded-full bg-muted p-0.5 shadow-[inset_0_0_0_1px_var(--color-border)]"
+            disabled={!editGate.allowed}
+            title={editGate.allowed ? "Off. Turn it on" : (editGate.reason ?? undefined)}
+            onClick={() => void setForwardEnabled(f, true)}
+            className="inline-flex h-3.5 w-6 cursor-pointer items-center rounded-full bg-muted p-0.5 shadow-[inset_0_0_0_1px_var(--color-border)] disabled:cursor-not-allowed"
           >
             <span className="size-2.5 rounded-full bg-muted-foreground/60" />
-          </span>
+          </button>
         )}
       </span>
     </div>

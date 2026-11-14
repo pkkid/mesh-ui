@@ -1,21 +1,29 @@
 /**
  * IPv4 reservations table, plus the small pieces the Ports page tables
- * share: the device lookup, the device cell and the protocol label. The
- * filter is view state; add, edit and remove are "Coming soon".
+ * share: the device lookup, the device cell, the protocol label and the row
+ * menu. The filter is view state; Add and the row menu's Edit open the
+ * reservation sheet (RuleSheet.tsx), Remove asks first and, when forwards
+ * use the address, removes them too. Each control dims with its command's
+ * gate (off in bridge mode, needs settings permission).
  */
-import { BookmarkPlus, Ellipsis, Search } from "lucide-react";
+import { Menu } from "@base-ui/react/menu";
+import { BookmarkPlus, Ellipsis, ExternalLink, type LucideIcon, Pencil, Search, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
-import { Link, pathFor } from "~/app/router";
+import { Link, navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
 import { bandLabel } from "~/components/ui/band-badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { GatedButton, SectionError, useGate } from "~/components/ui/page";
+import type { Gate } from "~/app/useWrite";
+import { menuClasses } from "~/features/devices/BulkBar";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import type { ReservationList } from "../../../../core/commands/routing";
-import type { Device, Protocol } from "../../../../core/model";
+import type { Device, Protocol, Reservation } from "../../../../core/model";
+
+import { removeReservation, ReservationSheet, type ReservationSheetMode } from "./RuleSheet";
 
 /** What the tables need to show a device: the device itself, and its eero's name and colour. */
 export type Lookup = {
@@ -30,12 +38,37 @@ export function ProtocolTag({ protocol }: { protocol: Protocol }) {
   return <span className="inline-flex h-5 items-center whitespace-nowrap rounded-[5px] border bg-muted px-1.5 font-medium text-[11px] text-foreground/80">{PROTOCOL_LABEL[protocol]}</span>;
 }
 
-/** The disabled overflow menu of a row, until the writes land. */
-export function RowMenu({ label }: { label: string }) {
+export type RowAction = { label: string; icon?: LucideIcon; onClick: () => void; gate?: Gate; destructive?: boolean };
+
+/** The overflow menu of a row; an item whose gate is closed is dimmed with the reason. */
+export function RowMenu({ label, actions }: { label: string; actions: RowAction[] }) {
   return (
-    <ComingSoonButton size="icon-xs" variant="ghost-muted" aria-label={label}>
-      <Ellipsis />
-    </ComingSoonButton>
+    <Menu.Root>
+      <Menu.Trigger
+        aria-label={label}
+        className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-muted"
+      >
+        <Ellipsis className="size-[15px]" />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
+          <Menu.Popup className={menuClasses.popup}>
+            {actions.map((a) => (
+              <Menu.Item
+                key={a.label}
+                className={cn(menuClasses.item, a.destructive && "text-destructive-foreground")}
+                disabled={a.gate ? !a.gate.allowed : false}
+                title={a.gate && !a.gate.allowed ? (a.gate.reason ?? undefined) : undefined}
+                onClick={a.onClick}
+              >
+                {a.icon && <a.icon className="size-3.5" />}
+                {a.label}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
 
@@ -73,6 +106,15 @@ const td = "px-3 py-2.5";
 
 export function Reservations({ query, lookup }: { query: QueryState<ReservationList>; lookup: Lookup }) {
   const [filter, setFilter] = useState("");
+  const [sheet, setSheet] = useState<ReservationSheetMode | null>(null);
+  const addGate = useGate("reservation.add");
+  const editGate = useGate("reservation.update");
+  const removeGate = useGate("reservation.remove");
+  const actions = (r: Reservation, name: string): RowAction[] => [
+    { label: "Edit...", icon: Pencil, gate: editGate, onClick: () => setSheet({ kind: "edit", reservation: r }) },
+    ...(r.deviceId ? [{ label: "Open device", icon: ExternalLink, onClick: () => navigate(pathFor("device", { deviceId: r.deviceId ?? "" })) }] : []),
+    { label: r.forwards > 0 ? "Remove with its forwards..." : "Remove", icon: Trash2, gate: removeGate, destructive: true, onClick: () => void removeReservation(r, name) },
+  ];
   const rows = query.data?.reservations;
   const q = filter.trim().toLowerCase();
   const shown = rows?.filter((r) => {
@@ -94,15 +136,16 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
           onChange={(e) => setFilter(e.currentTarget.value)}
         />
       )}
-      <ComingSoonButton size="sm" variant="outline">
+      <GatedButton gate={addGate} size="sm" variant="outline" onClick={() => setSheet({ kind: "add" })}>
         <BookmarkPlus />
         Add a reservation
-      </ComingSoonButton>
+      </GatedButton>
     </>
   );
 
   return (
     <Section title="IPv4 reservations" subtitle="Devices that always get the same address" tools={tools}>
+      <ReservationSheet mode={sheet} onClose={() => setSheet(null)} />
       {query.error && !query.data ? (
         <SectionError what="reservations" error={query.error} onRetry={() => void query.refetch()} />
       ) : rows && rows.length === 0 ? (
@@ -148,7 +191,7 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
                         </td>
                         <td className={cn(td, "text-right text-xs tabular-nums")}>{r.forwards > 0 ? r.forwards : <span className="text-muted-foreground">-</span>}</td>
                         <td className={cn(td, "w-8 py-1 text-right")}>
-                          <RowMenu label={`Options for ${d?.name ?? r.name}`} />
+                          <RowMenu label={`Options for ${d?.name ?? r.name}`} actions={actions(r, d?.name ?? (r.name || r.mac))} />
                         </td>
                       </tr>
                     );

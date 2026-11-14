@@ -915,7 +915,7 @@ restarts the network says so in its risk field.
 - scope: `integrations.builtin.set`, `integrations.zigbee.discover`, `integrations.ffs.set`, `integrations.amazon.unlink` (destructive). Unavailable integrations stay read-only with the reason.
 - done when: demo and fake-server tests incl. unavailable cases and `needs_confirm`; `pnpm ui:shot` of the integrations card with a toast, light and dark; `MANUAL: toggle Frustration-Free Setup off and on | ... | the eero app agrees | none`.
 
-### M5.5 Reservations, port forwards and IPv6 pinholes ☐
+### M5.5 Reservations, port forwards and IPv6 pinholes ✅ (#173)
 - issue: [#142](https://github.com/pkkid/mesh-ui/issues/142)
 - after: M5.1
 - docs: ux/pages/reservations-ports.md, architecture/commands.md (routing)

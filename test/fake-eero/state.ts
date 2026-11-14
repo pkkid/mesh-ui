@@ -420,6 +420,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       device_blacklist: { capable: true },
       led_action: { capable: true },
       thread_network: { capable: seed.id === "100001" },
+      port_forward_range: { capable: seed.id === "100001" },
       sqm: { capable: true },
       wpa3: { capable: true },
       historical_usage: { capable: true },
