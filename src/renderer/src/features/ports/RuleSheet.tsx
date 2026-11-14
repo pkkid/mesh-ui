@@ -6,15 +6,15 @@
  * port). Every check is core's: the forward sheet shows `forward.validate`
  * as the fields change, and a save's `bad_params` lands under its field.
  *
- * The routing lists share one routing read in core, so a write here
- * refreshes all of them (and device detail's reservation), and so does its
- * Undo (`withRefresh`). Removals ask first in the app's confirm dialog.
+ * The routing lists share one routing read in core, so a write here (or its
+ * Undo) refreshes all of them and device detail's reservation (`RELATED` in
+ * useCommand). Removals ask first in the app's confirm dialog.
  */
 import { ArrowRight, Bookmark, BookmarkPlus, Check, CircleAlert, Globe, Plus, Router, ShieldPlus } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
-import { invalidate, useQuery } from "~/app/useCommand";
-import { fieldErrors, performWrite, type WriteRequest, useWrite } from "~/app/useWrite";
+import { useQuery } from "~/app/useCommand";
+import { fieldErrors, performWrite, useWrite } from "~/app/useWrite";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet, SheetField } from "~/components/ui/sheet";
@@ -22,31 +22,6 @@ import { Toggle } from "~/features/profile/ProfileSchedules";
 import { cn } from "~/lib/utils";
 import type { ForwardAdded, ForwardCheck, ReservationRemoved } from "../../../../core/commands/routing";
 import type { Device, DeviceList, Forward, Internet, Pinhole, Protocol, Reservation } from "../../../../core/model";
-
-/** Every routing list and device detail's reservation read the same routing data. */
-const ROUTING_READS = ["reservation.", "forward.", "pinhole.", "device."];
-
-export function refreshRouting(): void {
-  invalidate(ROUTING_READS);
-}
-
-type Request<R> = Partial<WriteRequest<Record<string, unknown>, R>>;
-
-/** A write whose success (and Undo's) refreshes every routing read. */
-export function withRefresh<R>(req: Request<R>): Request<R> {
-  const { success, undo } = req;
-  return {
-    ...req,
-    success: (r: R) => {
-      refreshRouting();
-      return typeof success === "function" ? success(r) : (success ?? "");
-    },
-    undo: (r: R) => {
-      const u = typeof undo === "function" ? undo(r) : undo;
-      return u ? { ...withRefresh<unknown>({ success: "Undone", ...u }), id: u.id } : null;
-    },
-  };
-}
 
 const PROTOCOLS = [
   { value: "tcp", label: "TCP" },
@@ -120,19 +95,19 @@ function ReservationBody({ mode, onClose }: { mode: ReservationSheetMode; onClos
     if (mode.kind === "add") {
       return add.run(
         { device: deviceId, ...(shownIp.trim() ? { ip: shownIp.trim() } : {}), ...(name.trim() ? { description: name.trim() } : {}) },
-        withRefresh<Reservation>({
+        {
           success: (r) => `Reserved ${r.ip} for ${device?.name ?? r.name}`,
           undo: (r) => ({ id: "reservation.remove", params: { reservation: r.id } }),
-        }),
+        },
       );
     }
     const r = mode.reservation;
     return update.run(
       { reservation: r.id, ip: shownIp.trim(), description: name.trim() },
-      withRefresh<Reservation>({
+      {
         success: (saved) => `Saved the reservation for ${device?.name ?? saved.name}`,
         undo: { id: "reservation.update", params: { reservation: r.id, ip: r.ip, description: r.name } },
-      }),
+      },
     );
   };
 
@@ -181,22 +156,20 @@ function ReservationBody({ mode, onClose }: { mode: ReservationSheetMode; onClos
 export function removeReservation(r: Reservation, name: string) {
   const n = r.forwards;
   return performWrite<Record<string, unknown>, ReservationRemoved>({
-    ...withRefresh<ReservationRemoved>({
-      params: { reservation: r.id, removeForwards: n > 0 },
-      askFirst: true,
-      confirm: {
-        title: `Remove the reservation for ${name}?`,
-        message:
-          n > 0
-            ? `This also removes ${n === 1 ? "the port forward" : `the ${n} port forwards`} on ${r.ip}. ${name} takes a DHCP address next time it joins.`
-            : `${name} takes a DHCP address next time it joins. Applies instantly, no restart.`,
-        confirmLabel: n > 0 ? `Remove reservation and ${n === 1 ? "forward" : "forwards"}` : "Remove reservation",
-      },
-      success: `Removed the reservation for ${name}`,
-      failure: `Couldn't remove the reservation for ${name}`,
-      // Undo puts the reservation back; removed forwards are gone for good, so no Undo then.
-      undo: (res) => (res.removedForwards.length ? null : { id: "reservation.add", params: { mac: res.reservation.mac, ip: res.reservation.ip, description: res.reservation.name } }),
-    }),
+    params: { reservation: r.id, removeForwards: n > 0 },
+    askFirst: true,
+    confirm: {
+      title: `Remove the reservation for ${name}?`,
+      message:
+        n > 0
+          ? `This also removes ${n === 1 ? "the port forward" : `the ${n} port forwards`} on ${r.ip}. ${name} takes a DHCP address next time it joins.`
+          : `${name} takes a DHCP address next time it joins. Applies instantly, no restart.`,
+      confirmLabel: n > 0 ? `Remove reservation and ${n === 1 ? "forward" : "forwards"}` : "Remove reservation",
+    },
+    success: `Removed the reservation for ${name}`,
+    failure: `Couldn't remove the reservation for ${name}`,
+    // Undo puts the reservation back; removed forwards are gone for good, so no Undo then.
+    undo: (res) => (res.removedForwards.length ? null : { id: "reservation.add", params: { mac: res.reservation.mac, ip: res.reservation.ip, description: res.reservation.name } }),
     id: "reservation.remove",
   });
 }
@@ -255,17 +228,17 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
     mode.kind === "add"
       ? add.run(
           params,
-          withRefresh<ForwardAdded>({
+          {
             success: (r) => (r.reservation ? `Added ${r.forward.name} and reserved ${r.reservation.ip}` : `Added ${r.forward.name}`),
             undo: (r) => ({ id: "forward.remove", params: { forward: r.forward.id } }),
-          }),
+          },
         )
       : update.run(
           { forward: mode.forward.id, ...params },
-          withRefresh<Forward>({
+          {
             success: `Saved ${label}`,
             undo: { id: "forward.update", params: forwardParams(mode.forward) },
-          }),
+          },
         );
 
   const publicIp = internet.data?.publicIpv4 ?? null;
@@ -365,12 +338,10 @@ const forwardParams = (f: Forward) => ({
 export function setForwardEnabled(f: Forward, enabled: boolean) {
   const name = f.name || "Port forward";
   return performWrite<Record<string, unknown>, Forward>({
-    ...withRefresh<Forward>({
-      params: { forward: f.id, enabled },
-      success: `${enabled ? "Turned on" : "Turned off"} ${name}`,
-      failure: `Couldn't turn ${enabled ? "on" : "off"} ${name}`,
-      undo: { id: "forward.update", params: { forward: f.id, enabled: !enabled } },
-    }),
+    params: { forward: f.id, enabled },
+    success: `${enabled ? "Turned on" : "Turned off"} ${name}`,
+    failure: `Couldn't turn ${enabled ? "on" : "off"} ${name}`,
+    undo: { id: "forward.update", params: { forward: f.id, enabled: !enabled } },
     id: "forward.update",
   });
 }
@@ -379,17 +350,15 @@ export function setForwardEnabled(f: Forward, enabled: boolean) {
 export function removeForward(f: Forward) {
   const name = f.name || "this port forward";
   return performWrite<Record<string, unknown>, Forward>({
-    ...withRefresh<Forward>({
-      params: { forward: f.id },
-      askFirst: true,
-      confirm: { title: `Remove ${name}?`, message: `Port ${f.externalPort} closes on the internet side. Applies instantly, no restart.`, confirmLabel: "Remove port forward" },
-      success: `Removed ${name}`,
-      failure: `Couldn't remove ${name}`,
-      undo: (r) =>
-        r.deviceId
-          ? { id: "forward.add", params: { device: r.deviceId, description: r.name || "Port forward", externalPort: r.externalPort, internalPort: r.internalPort, protocol: r.protocol, enabled: r.enabled } }
-          : null,
-    }),
+    params: { forward: f.id },
+    askFirst: true,
+    confirm: { title: `Remove ${name}?`, message: `Port ${f.externalPort} closes on the internet side. Applies instantly, no restart.`, confirmLabel: "Remove port forward" },
+    success: `Removed ${name}`,
+    failure: `Couldn't remove ${name}`,
+    undo: (r) =>
+      r.deviceId
+        ? { id: "forward.add", params: { device: r.deviceId, description: r.name || "Port forward", externalPort: r.externalPort, internalPort: r.internalPort, protocol: r.protocol, enabled: r.enabled } }
+        : null,
     id: "forward.remove",
   });
 }
@@ -414,10 +383,10 @@ function PinholeBody({ deviceId: initial, onClose }: { deviceId?: string; onClos
   const save = () =>
     add.run(
       { device: deviceId, port: port.trim(), protocol },
-      withRefresh<Pinhole>({
+      {
         success: (p) => `Opened port ${p.port} to ${device?.name ?? "the device"}`,
         undo: (p) => ({ id: "pinhole.remove", params: { pinhole: p.id } }),
-      }),
+      },
     );
 
   return (
@@ -449,14 +418,12 @@ function PinholeBody({ deviceId: initial, onClose }: { deviceId?: string; onClos
 /** Removes an IPv6 rule after a confirm, with Undo that adds it back. */
 export function removePinhole(p: Pinhole, deviceName: string) {
   return performWrite<Record<string, unknown>, Pinhole>({
-    ...withRefresh<Pinhole>({
-      params: { pinhole: p.id },
-      askFirst: true,
-      confirm: { title: `Close port ${p.port} to ${deviceName}?`, message: "The IPv6 firewall blocks this port again. Applies instantly, no restart.", confirmLabel: "Remove rule" },
-      success: `Closed port ${p.port} to ${deviceName}`,
-      failure: `Couldn't remove the rule on port ${p.port}`,
-      undo: (r) => (r.deviceId ? { id: "pinhole.add", params: { device: r.deviceId, port: r.port, protocol: r.protocol } } : null),
-    }),
+    params: { pinhole: p.id },
+    askFirst: true,
+    confirm: { title: `Close port ${p.port} to ${deviceName}?`, message: "The IPv6 firewall blocks this port again. Applies instantly, no restart.", confirmLabel: "Remove rule" },
+    success: `Closed port ${p.port} to ${deviceName}`,
+    failure: `Couldn't remove the rule on port ${p.port}`,
+    undo: (r) => (r.deviceId ? { id: "pinhole.add", params: { device: r.deviceId, port: r.port, protocol: r.protocol } } : null),
     id: "pinhole.remove",
   });
 }

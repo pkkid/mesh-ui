@@ -233,6 +233,10 @@ const RELATED: Record<string, ReadonlyArray<string>> = {
   profile: ["device."],
   eero: ["device.", "network."],
   guest: ["device."],
+  // The routing lists share one routing read in core, and device detail shows a device's reservation.
+  reservation: ["forward.", "pinhole.", "device."],
+  forward: ["reservation.", "pinhole.", "device."],
+  pinhole: ["reservation.", "forward.", "device."],
 };
 
 /** What a successful write makes stale: its own area, related areas and network.get. */
