@@ -157,6 +157,46 @@ async function setPaused(ctx: CommandContext, ref: string, paused: boolean): Pro
   return withNext(await ctx.backend.profile.setPaused(ctx.net, id, paused), ctx.now(), await timezone(ctx));
 }
 
+
+// ---------------------------------------------------------------------------
+// Scheduled pauses
+
+const DAY_ORDER: M.Day[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const daysParam = z
+  .array(z.enum(DAY_ORDER))
+  .min(1, "Pick at least one day.")
+  .max(14)
+  .transform((days) => DAY_ORDER.filter((d) => days.includes(d)))
+  .describe("Days the pause starts on, MON to SUN. Order and repeats do not matter.");
+const hhmmParam = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM, 00:00 to 23:59.");
+const scheduleName = z.string().trim().min(1, "Enter a name.").max(32, "Use 32 characters or fewer.").describe("Schedule name, 1 to 32 characters.");
+const scheduleFields = {
+  name: scheduleName,
+  days: daysParam,
+  start: hhmmParam.describe("When the pause starts, HH:MM in the network time zone."),
+  end: hhmmParam.describe("When the pause ends, HH:MM. Before start wraps past midnight (into the next day)."),
+};
+
+const fieldError = (path: string, message: string) => new CommandError("bad_params", message, { issues: [{ path, message }] });
+
+/** A schedule on the profile by id, or by exact name (case-insensitive). */
+function findSchedule(profile: M.Profile, ref: string): M.Schedule {
+  const r = ref.trim();
+  const byId = profile.schedules.find((s) => s.id === r);
+  if (byId) return byId;
+  const named = profile.schedules.filter((s) => s.name.toLowerCase() === r.toLowerCase());
+  if (named.length === 1 && named[0]) return named[0];
+  if (named.length > 1) throw fieldError("schedule", `${profile.name} has ${named.length} schedules named ${r}; use the id.`);
+  throw fieldError("schedule", `${profile.name} has no schedule ${r}.`);
+}
+
+/** Start and end must differ (eero has no 24 h pause; pause the profile instead), and names are unique per profile. */
+function checkSchedule(profile: M.Profile, input: M.ScheduleInput, self: M.Id | null): void {
+  if (input.start === input.end) throw fieldError("end", "End must differ from start.");
+  const taken = profile.schedules.some((s) => s.id !== self && s.name.toLowerCase() === input.name.toLowerCase());
+  if (taken) throw fieldError("name", `${profile.name} already has a schedule named ${input.name}.`);
+}
+
 export const commands: AnyCommand[] = [
   defineCommand({
     id: "profile.list",
@@ -329,5 +369,69 @@ export const commands: AnyCommand[] = [
     invalidates: WRITES,
     params: z.object({}),
     run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, false), { paused: false }),
+  }),
+  defineCommand({
+    id: "profile.schedule.add",
+    label: "Add a scheduled pause",
+    description:
+      "Adds a scheduled pause to a profile: its devices pause from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
+    icon: "calendar-plus",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile"), ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without pausing.") }),
+    run: async (ctx, p): Promise<M.Schedule> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
+      checkSchedule(await ctx.backend.profile.get(ctx.net, id), input, null);
+      return ctx.backend.profile.addSchedule(ctx.net, id, input);
+    },
+  }),
+
+  defineCommand({
+    id: "profile.schedule.update",
+    label: "Edit schedule",
+    description: "Changes a scheduled pause. Fields left out keep their value; enabled: false keeps it without pausing.",
+    icon: "calendar-clock",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({
+      profile: ref("profile"),
+      schedule: ref("schedule"),
+      name: scheduleFields.name.optional(),
+      days: scheduleFields.days.optional(),
+      start: scheduleFields.start.optional(),
+      end: scheduleFields.end.optional(),
+      enabled: z.boolean().optional(),
+    }),
+    run: async (ctx, p): Promise<M.Schedule> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const profile = await ctx.backend.profile.get(ctx.net, id);
+      const s = findSchedule(profile, p.schedule);
+      const input: M.ScheduleInput = {
+        name: p.name ?? s.name,
+        days: p.days ?? s.days,
+        start: p.start ?? s.start,
+        end: p.end ?? s.end,
+        enabled: p.enabled ?? s.enabled,
+      };
+      checkSchedule(profile, input, s.id);
+      return ctx.backend.profile.updateSchedule(ctx.net, id, s.id, input);
+    },
+  }),
+
+  defineCommand({
+    id: "profile.schedule.remove",
+    label: "Delete schedule",
+    description: "Removes a scheduled pause from a profile. The result holds the removed schedule, so it can be added back.",
+    icon: "calendar-x",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile"), schedule: ref("schedule") }),
+    run: async (ctx, p): Promise<{ removed: M.Id; schedule: M.Schedule }> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const s = findSchedule(await ctx.backend.profile.get(ctx.net, id), p.schedule);
+      await ctx.backend.profile.removeSchedule(ctx.net, id, s.id);
+      return { removed: s.id, schedule: s };
+    },
   }),
 ];

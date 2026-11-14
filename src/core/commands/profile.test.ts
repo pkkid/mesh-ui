@@ -425,7 +425,7 @@ describe("profile writes (demo)", () => {
   });
 
   it("are writes, delete destructive, and invalidate profiles, devices and network", () => {
-    const specs = profileCommands.filter((c) => c.id.startsWith("profile.") && !c.id.startsWith("profile.schedule") && c.effect !== "query");
+    const specs = profileCommands.filter((c) => c.effect !== "query");
     expect(Object.fromEntries(specs.map((c) => [c.id, c.effect]))).toEqual({
       "profile.create": "write",
       "profile.rename": "write",
@@ -435,6 +435,9 @@ describe("profile writes (demo)", () => {
       "profile.delete": "destructive",
       "profile.unassigned.pause": "write",
       "profile.unassigned.resume": "write",
+      "profile.schedule.add": "write",
+      "profile.schedule.update": "write",
+      "profile.schedule.remove": "write",
     });
     for (const c of specs) expect(c.invalidates).toEqual(["profiles", "devices", "network"]);
   });
@@ -542,5 +545,202 @@ describe("profile writes (fake eero server)", () => {
     const puts = fake.writes.filter((w) => w.method === "PUT");
     expect(puts.map((w) => w.route)).toEqual(["/networks/100001/devices/0a1b2c000006", "/networks/100001/devices/0a1b2c000007", "/networks/100001/devices/0a1b2c000008"]);
     expect(puts.every((w) => w.version === "2.3" && (w.body as { paused?: unknown }).paused === true)).toBe(true);
+  });
+});
+
+describe("scheduled pauses (demo)", () => {
+  const ok = <T>(r: { ok: true; result: T } | { ok: false; error: { message: string } }): T => {
+    if (!r.ok) throw new Error(r.error.message);
+    return r.result;
+  };
+  const issue = (r: unknown) => (r as { error?: { code?: string; detail?: { issues?: { path: string }[] } } }).error;
+
+  it("adds a schedule that wraps past midnight; it shows in the next read, today's lanes and the next change", async () => {
+    const { engine } = demo();
+    const before = ok(await engine.execute<M.ProfileList>("profile.list")); // cached; the write must invalidate it
+    expect(before.profiles.find((p) => p.name === "Alex")?.state).toBe("active");
+    // Thursday 2:41 PM in Los Angeles; days come back in week order, repeats dropped.
+    const s = ok(await engine.execute<M.Schedule>("profile.schedule.add", { profile: "alex", name: " Late night ", days: ["THU", "MON", "THU"], start: "22:30", end: "06:00" }));
+    expect(s).toMatchObject({ name: "Late night", days: ["MON", "THU"], start: "22:30", end: "06:00", enabled: true });
+    const alex = ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "Alex" }));
+    expect(alex.schedules).toContainEqual(s);
+    expect(alex.state).toBe("scheduled");
+    // 10:30 PM Los Angeles is 06:30Z the next day; tonight's span stops at midnight on today's lane.
+    expect(alex.nextChange).toEqual({ at: "2026-11-13T06:30:00.000Z", to: "paused", scheduleId: s.id });
+    expect(alex.today.segments).toEqual([{ kind: "scheduled", label: "Late night", scheduleId: s.id, start: 22 * 60 + 30, end: 1440 }]);
+    const after = ok(await engine.execute<M.ProfileList>("profile.list"));
+    expect(after.profiles.find((p) => p.name === "Alex")?.state).toBe("scheduled");
+    const lane = after.today.lanes.find((l) => l.profileId === alex.id);
+    expect(lane?.segments.map((x) => [x.start, x.end])).toEqual([[22 * 60 + 30, 1440]]);
+  });
+
+  it("draws yesterday's overnight half on today's lane", async () => {
+    const { engine } = demo();
+    // Wednesday 11 PM to Thursday 3 AM: Thursday's lane shows 12 AM to 3 AM.
+    const s = ok(await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Jamie", name: "Gaming curfew", days: ["WED"], start: "23:00", end: "03:00", enabled: true }));
+    const jamie = ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "Jamie" }));
+    expect(jamie.today.segments).toEqual([{ kind: "scheduled", label: "Gaming curfew", scheduleId: s.id, start: 0, end: 180 }]);
+  });
+
+  it("refuses bad times, days and names with the field in bad_params, and writes nothing", async () => {
+    const { engine } = demo();
+    const base = { profile: "Alex", name: "Bedtime", days: ["MON"], start: "21:00", end: "07:00" };
+    const cases: [Record<string, unknown>, string][] = [
+      [{ start: "24:00" }, "start"],
+      [{ start: "9:00" }, "start"],
+      [{ end: "7pm" }, "end"],
+      [{ end: "21:00" }, "end"],
+      [{ days: [] }, "days"],
+      [{ days: ["monday"] }, "days.0"],
+      [{ days: ["Mon"] }, "days.0"],
+      [{ name: "  " }, "name"],
+      [{ name: "x".repeat(33) }, "name"],
+      [{ enabled: "yes" }, "enabled"],
+      [{ profile: "Nobody" }, "profile"],
+    ];
+    for (const [patch, path] of cases) {
+      const r = await engine.execute("profile.schedule.add", { ...base, ...patch });
+      expect(r, JSON.stringify(patch)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+      if (path !== "profile") expect(issue(r)?.detail?.issues?.[0]?.path, JSON.stringify(patch)).toBe(path);
+    }
+    // A name the profile already uses (case-insensitive), and params it does not take.
+    expect(issue(await engine.execute("profile.schedule.add", { ...base, profile: "Mia", name: "bedtime" }))?.detail?.issues?.[0]?.path).toBe("name");
+    expect(await engine.execute("profile.schedule.add", { ...base, color: "red" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    const alex = ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "Alex" }));
+    expect(alex.schedules).toEqual([]);
+  });
+
+  it("updates only the fields given, by schedule id or name", async () => {
+    const { engine } = demo();
+    ok(await engine.execute("profile.list"));
+    const off = ok(await engine.execute<M.Schedule>("profile.schedule.update", { profile: "Mia", schedule: "bedtime", enabled: false }));
+    expect(off).toEqual({ id: "9201", name: "Bedtime", days: ["SUN", "MON", "TUE", "WED", "THU"], start: "21:00", end: "07:00", enabled: false });
+    const moved = ok(await engine.execute<M.Schedule>("profile.schedule.update", { profile: "9103", schedule: "9202", start: "15:30", days: ["SAT", "SUN"] }));
+    expect(moved).toMatchObject({ id: "9202", name: "Homework", days: ["SAT", "SUN"], start: "15:30", end: "18:00", enabled: true });
+    const mia = ok(await engine.execute<M.ProfileList>("profile.list")).profiles.find((p) => p.name === "Mia");
+    expect(mia?.schedules.find((s) => s.id === "9201")?.enabled).toBe(false);
+    // Thursday, Bedtime off: next is Homework on Saturday at 3:30 PM Los Angeles.
+    expect(mia?.nextChange).toEqual({ at: "2026-11-14T23:30:00.000Z", to: "paused", scheduleId: "9202" });
+  });
+
+  it("refuses an unknown schedule, an end equal to the start and a name another schedule has", async () => {
+    const { engine } = demo();
+    expect(issue(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Nap", enabled: false }))?.detail?.issues?.[0]?.path).toBe("schedule");
+    expect(issue(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Bedtime", start: "07:00" }))?.detail?.issues?.[0]?.path).toBe("end");
+    expect(issue(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Bedtime", name: "HOMEWORK" }))?.detail?.issues?.[0]?.path).toBe("name");
+    // Its own name, in another case, is fine.
+    expect((await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Bedtime", name: "BEDTIME" })).ok).toBe(true);
+    expect(await engine.execute("profile.schedule.update", { profile: "Mia" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("removes a schedule and returns it, so Undo can add it back", async () => {
+    const { engine } = demo();
+    const r = ok(await engine.execute<{ removed: string; schedule: M.Schedule }>("profile.schedule.remove", { profile: "Mia", schedule: "Homework" }));
+    expect(r).toMatchObject({ removed: "9202", schedule: { name: "Homework", start: "16:00" } });
+    let mia = ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "Mia" }));
+    expect(mia.schedules.map((s) => s.name)).toEqual(["Bedtime", "Weekend lights out"]);
+    const { id: _id, ...input } = r.schedule;
+    ok(await engine.execute("profile.schedule.add", { profile: "Mia", ...input }));
+    mia = ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "Mia" }));
+    expect(mia.schedules.map((s) => s.name).sort()).toEqual(["Bedtime", "Homework", "Weekend lights out"]);
+    expect(await engine.execute("profile.schedule.remove", { profile: "Mia", schedule: "Homework", extra: 1 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(issue(await engine.execute("profile.schedule.remove", { profile: "Alex", schedule: "Homework" }))?.detail?.issues?.[0]?.path).toBe("schedule");
+  });
+
+  it("are writes that invalidate profiles, devices and network, and need no confirm", () => {
+    for (const id of ["profile.schedule.add", "profile.schedule.update", "profile.schedule.remove"]) {
+      const c = profileCommands.find((x) => x.id === id);
+      expect(c?.effect, id).toBe("write");
+      expect(c?.invalidates, id).toEqual(["profiles", "devices", "network"]);
+    }
+  });
+});
+
+describe("scheduled pauses (fake eero server)", () => {
+  let close: (() => Promise<void>) | null = null;
+  afterEach(async () => {
+    await close?.();
+    close = null;
+  });
+  const start = (options: Parameters<typeof createFakeEero>[0] = {}) => {
+    const t = fakeEngine(options);
+    close = t.fake.close;
+    return t;
+  };
+
+  it("adds with POST {profile}/schedules, JSON, days as MON..SUN, and the next read shows it", async () => {
+    const { fake, engine } = start();
+    await engine.execute("profile.get", { profile: "Alex" }); // cached; the write must invalidate it
+    const r = await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Alex", name: "Late night", days: ["SUN", "MON", "TUE"], start: "22:00", end: "06:30" });
+    expect(r).toMatchObject({ ok: true, result: { name: "Late night", days: ["MON", "TUE", "SUN"], start: "22:00", end: "06:30", enabled: true } });
+    expect(fake.writes).toHaveLength(1);
+    expect(fake.writes.at(-1)).toMatchObject({
+      method: "POST",
+      version: "2.2",
+      route: "/networks/100001/profiles/700/schedules",
+      encoding: "json",
+      body: { name: "Late night", days: ["MON", "TUE", "SUN"], start: "22:00", end: "06:30", enabled: true },
+    });
+    const id = r.ok ? r.result.id : "";
+    const alex = await engine.execute<M.ProfileDetail>("profile.get", { profile: "Alex" });
+    expect(alex.ok && alex.result.schedules).toEqual([{ id, name: "Late night", days: ["MON", "TUE", "SUN"], start: "22:00", end: "06:30", enabled: true }]);
+    expect(alex.ok && alex.result.state).toBe("scheduled");
+  });
+
+  it("updates with PUT {profile}/schedules/{id}, sending every field in the MON form even when eero stored lowercase names", async () => {
+    const { fake, engine } = start();
+    // Mia's Homework (id 2) is stored as ["monday", "friday"] on the fake.
+    const r = await engine.execute<M.Schedule>("profile.schedule.update", { profile: "Mia", schedule: "Homework", enabled: true, end: "18:30" });
+    expect(r).toMatchObject({ ok: true, result: { id: "2", name: "Homework", days: ["MON", "FRI"], start: "16:00", end: "18:30", enabled: true } });
+    expect(fake.writes.at(-1)).toMatchObject({
+      method: "PUT",
+      version: "2.2",
+      route: "/networks/100001/profiles/702/schedules/2",
+      encoding: "json",
+      body: { name: "Homework", days: ["MON", "FRI"], start: "16:00", end: "18:30", enabled: true },
+    });
+    const list = await engine.execute<M.ProfileList>("profile.list");
+    expect(list.ok && list.result.profiles.find((p) => p.name === "Mia")?.schedules.find((s) => s.id === "2")).toMatchObject({ end: "18:30", enabled: true });
+  });
+
+  it("removes with DELETE {profile}/schedules/{id}", async () => {
+    const { fake, engine } = start();
+    const r = await engine.execute("profile.schedule.remove", { profile: "702", schedule: "1" });
+    expect(r).toMatchObject({ ok: true, result: { removed: "1", schedule: { name: "Bedtime" } } });
+    expect(fake.writes.at(-1)).toMatchObject({ method: "DELETE", version: "2.2", route: "/networks/100001/profiles/702/schedules/1" });
+    const mia = await engine.execute<M.ProfileDetail>("profile.get", { profile: "Mia" });
+    expect(mia.ok && mia.result.schedules.map((s) => s.name)).toEqual(["Homework"]);
+  });
+
+  it("sends nothing for bad params, an unknown schedule or eero's default profile", async () => {
+    const { fake, engine } = start();
+    const base = { name: "Nap", days: ["MON"], start: "13:00", end: "14:00" };
+    expect(await engine.execute("profile.schedule.add", { profile: "Alex", ...base, end: "13:00" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("profile.schedule.add", { profile: "Alex", ...base, days: ["monday"] })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("profile.schedule.add", { profile: "790", ...base })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("profile.schedule.add", { profile: "Unassigned", ...base })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "99", enabled: false })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("profile.schedule.remove", { profile: "Alex", schedule: "Bedtime" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(fake.writes).toHaveLength(0);
+  });
+
+  it("reads the new schedule back from the profile when eero answers without it", async () => {
+    const { fake, engine } = start({
+      routes: [
+        {
+          method: "POST",
+          path: "/networks/:net/profiles/:id/schedules",
+          handle: ({ params, network, req }) => {
+            const net = network(params.net ?? "");
+            const p = net.profiles.find((x) => x.url?.endsWith(`/profiles/${params.id}`));
+            p?.schedule?.push({ url: `${p.url}/schedules/77`, ...(req.body as object) });
+            return { data: {} };
+          },
+        },
+      ],
+    });
+    const r = await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Alex", name: "Nap", days: ["MON"], start: "13:00", end: "14:00" });
+    expect(r).toMatchObject({ ok: true, result: { id: "77", name: "Nap" } });
+    expect(fake.log.filter((e) => e.method === "GET" && e.path.endsWith("/profiles/700")).length).toBeGreaterThan(0);
   });
 });
