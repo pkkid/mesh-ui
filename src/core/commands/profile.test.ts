@@ -3,6 +3,7 @@ import { createFakeEero } from "../../../test/fake-eero/server";
 import { type AuthState, composeBackend, type SecretStore } from "../backend";
 import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
+import { READ_SHARE_MS } from "../eero/client";
 import { dayOf, mapProfile, type RawScheduleFull } from "../eero/map/profile";
 import { createEngine } from "../engine";
 import type * as M from "../model";
@@ -190,7 +191,7 @@ describe("profile commands (fake eero server)", () => {
     if (!r.ok) throw new Error(r.error.message);
     expect(r.result.profiles.map((p) => [p.id, p.name, p.state, p.deviceIds])).toEqual([
       ["700", "Alex", "active", ["0a1b2c000001", "0a1b2c000002"]],
-      ["701", "Jamie", "active", ["0a1b2c000003"]],
+      ["701", "Jamie", "active", ["0a1b2c000003", "0a1b2c000009"]],
       ["703", "Leo", "paused", ["0a1b2c000005"]],
       ["702", "Mia", "scheduled", ["0a1b2c000004"]],
     ]);
@@ -212,6 +213,25 @@ describe("profile commands (fake eero server)", () => {
     expect(lane("703")).toEqual([["manual", 17 * 60 + 41, 1440]]);
     expect(lane(null)).toEqual([]);
     expect(fake.log.some((e) => e.path.includes("/schedules"))).toBe(false);
+  });
+
+  it("lists offline profile members that GET {net}/devices leaves out, as on a real network", async () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    // The fake's devices list omits Jamie's Tablet (offline a while); only Jamie's profile has it.
+    const raw = (await (await fake.fetch(`${fake.origin}/2.2/networks/100001/devices`, { headers: { cookie: `s=${fake.signIn()}` } })).json()) as { data: { url: string }[] };
+    expect(raw.data.some((d) => d.url.endsWith("/0a1b2c000009"))).toBe(false);
+    const jamie = await engine.execute<M.Profile>("profile.get", { profile: "Jamie" });
+    expect(jamie.ok && [jamie.result.deviceIds.length, jamie.result.devicesOnline]).toEqual([2, 1]);
+    // Every surface agrees: the profile's device list has both members. eero sends no last seen for the offline one.
+    const devices = await engine.execute<M.DeviceList>("device.list", { profile: "Jamie" });
+    if (!devices.ok) throw new Error(devices.error.message);
+    expect(devices.result.devices.map((d) => [d.id, d.name, d.connected, d.profileId])).toEqual([
+      ["0a1b2c000003", "Jamie's Phone", true, "701"],
+      ["0a1b2c000009", "Jamie's Tablet", false, "701"],
+    ]);
+    expect(devices.result.devices[1]?.lastActive).toBeNull();
+    expect(await engine.execute("device.get", { device: "Jamie's Tablet" })).toMatchObject({ ok: true, result: { id: "0a1b2c000009", connected: false } });
   });
 
   it("reads schedules from the profile object for profile.get, never {profile}/schedules (a 404 on eero)", async () => {
@@ -248,7 +268,8 @@ describe("profile commands (fake eero server)", () => {
     close = fake.close;
     const token = fake.signIn();
     const secrets: SecretStore = { load: async () => token, save: async () => "memory", clear: async () => {}, storage: async () => "memory" };
-    const engine = createEngine({ backend: createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch }) });
+    // With the app's 5 s read sharing: device.list reads the profiles too (offline members), after profile.list's read.
+    const engine = createEngine({ backend: createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch, readShareMs: READ_SHARE_MS }) });
     // docs/ux/pages/profiles.md, Data: every read at once, as React mounts them.
     const page: [string, unknown?][] = [
       ["auth.status"],

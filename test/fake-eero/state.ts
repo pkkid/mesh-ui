@@ -75,6 +75,11 @@ export type FakeNetwork = {
   speedtests: RawSpeedTest[];
   /** Blocked MACs. */
   blacklist: string[];
+  /**
+   * Device urls `GET {net}/devices` leaves out: profile members offline a
+   * while, which a real network lists only in their profile's `devices[]`.
+   */
+  unlisted: string[];
   /** `GET {eero}/connections` per eero id. */
   connections: Record<string, RawConnections>;
   /** `GET /2.2/eeros/{id}/firmware_update/history` rows per eero id, newest first as eero sends them. */
@@ -184,7 +189,7 @@ function seedAccount(nets: FakeNetwork[]): RawAccount {
 
 /** `up`: index of the parent eero (default the gateway, index 0). */
 type EeroSeed = { id: string; serial: string; location: string; model: string; gateway?: boolean; status?: string; bars?: number; wired?: boolean; up?: number; clients: number };
-type DeviceSeed = { n: number; name: string | null; host: string; type: string; eero: number; band: "2.4" | "5" | "6" | "wired"; online?: boolean; paused?: boolean; profile?: number; guest?: boolean };
+type DeviceSeed = { n: number; name: string | null; host: string; type: string; eero: number; band: "2.4" | "5" | "6" | "wired"; online?: boolean; paused?: boolean; profile?: number; guest?: boolean; unlisted?: boolean };
 
 function seedNetworks(): FakeNetwork[] {
   return [
@@ -209,6 +214,8 @@ function seedNetworks(): FakeNetwork[] {
         { n: 6, name: "Living Room TV", host: "living-tv", type: "television", eero: 0, band: "wired" },
         { n: 7, name: null, host: "esp-plug-07", type: "plug", eero: 1, band: "2.4", guest: true },
         { n: 8, name: "Old Printer", host: "printer", type: "printer", eero: 0, band: "2.4", online: false },
+        // Offline a while: only Jamie's profile lists it, as on a real network (M5.R-fix6).
+        { n: 9, name: "Jamie's Tablet", host: "jamie-tablet", type: "tablet", eero: 0, band: "5", online: false, profile: 1, unlisted: true },
       ],
     }),
     buildNetwork({
@@ -343,7 +350,10 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       blocked: false,
       profile: profile ? { url: profile.url, name: profile.name, paused: profile.paused } : null,
     };
-    if (profile) profile.devices?.push({ url: device.url, mac: m, nickname: d.name, display_name: device.display_name, connected: device.connected });
+    // A real profile's row for an unlisted member has no last seen (capture 2026-11-14).
+    if (d.unlisted) device.last_active = null;
+    // A profile's `devices[]` holds device rows (docs/eero-api/endpoints.md, Profiles).
+    if (profile) profile.devices?.push({ ...device, profile: undefined });
     return device;
   });
 
@@ -503,6 +513,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       { date: "2026-11-10T03:00:00+0000", down_mbps: 901.9, up_mbps: 41.0 },
     ],
     blacklist: [],
+    unlisted: seed.devices.flatMap((d, i) => (d.unlisted ? [devices[i]?.url ?? ""] : [])),
     connections: Object.fromEntries(seed.eeros.map((e, i) => [e.id, seedConnections(e, i, devices)])),
     firmwareHistory: Object.fromEntries(
       eeros.map((e) => [

@@ -24,7 +24,7 @@ const find = (net: FakeNetwork, mac: string) => net.devices.find((x) => compact(
 /** Moves a device into a profile: its `profile` link and both profiles' `devices` lists. */
 function moveTo(net: FakeNetwork, d: RawDevice, profile: RawProfile): void {
   for (const p of net.profiles) p.devices = (p.devices ?? []).filter((x) => x.url !== d.url);
-  profile.devices = [...(profile.devices ?? []), { url: d.url, mac: d.mac, nickname: d.nickname, display_name: d.display_name, connected: d.connected }];
+  profile.devices = [...(profile.devices ?? []), { ...d, profile: undefined }];
   d.profile = { url: profile.url, name: profile.name, paused: profile.paused };
 }
 
@@ -36,7 +36,8 @@ export const routes: Route[] = [
     path: "/networks/:net/devices",
     handle: ({ params, network }) => {
       const net = network(params.net ?? "");
-      return ok(net.devices.map((d) => (blocked(net, d) ? { ...d, blocked: true, connected: false } : d)));
+      // Profile members offline a while are only in their profile's `devices[]`, as on a real network.
+      return ok(net.devices.filter((d) => !net.unlisted.includes(d.url ?? "")).map((d) => (blocked(net, d) ? { ...d, blocked: true, connected: false } : d)));
     },
   },
   {

@@ -250,8 +250,8 @@ describe("network commands (fake eero server)", () => {
       const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId }));
       expect(net.counts.devices).toBe(devices.summary.total);
     }
-    // Maple: 8 known (7 connected, which is eero's clients.count) plus one blocklist-only MAC.
-    expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).counts.devices).toBe(9);
+    // Maple: 8 listed (7 connected, which is eero's clients.count), one offline profile member only its profile lists, and one blocklist-only MAC.
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).counts.devices).toBe(10);
   });
 
   it("network.health derives eero status and weak links from GET {net}", async () => {
