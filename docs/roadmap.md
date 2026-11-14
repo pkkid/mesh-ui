@@ -488,7 +488,7 @@ port, decided in M3.2).
 - scope: Core: `guest.get` (no password, `hasPassword` only, online guests) and `guest.share` (sensitive: SSID, password, security, the `WIFI:` payload); guest usage on the eero backend (Carried from M1). Page (mockup 11): status, name and security, the QR block with Copy password and Save QR, guest devices, guest usage. Enable, rename and password changes are disabled ("Coming soon"). Off, open (no password), offline and bridge states.
 - done when: demo tests for both commands incl. `bad_params`, the open network and the `WIFI:` escaping of `;`, `,`, `:` and `\`; fake-server tests for guest mapping and usage; a real shape check of `guest.get` in the PR (no password printed); `guest.share` is marked sensitive and its result never reaches logs (test); page-load budget test; `pnpm ui:shot --route '#/guest'` demo and `--fake`, light and dark, plus guest off.
 
-### M3.9 Wi-Fi page ☐
+### M3.9 Wi-Fi page ✅ (#104)
 - issue: [#90](https://github.com/pkkid/mesh-ui/issues/90)
 - after: M3.1, M3.2
 - docs: ux/pages/wifi.md, architecture/commands.md (wifi)

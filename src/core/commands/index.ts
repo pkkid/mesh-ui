@@ -23,3 +23,4 @@ export { commands as routing } from "./routing";
 export { commands as settings } from "./settings";
 export { commands as updates } from "./updates";
 export { commands as usage } from "./usage";
+export { commands as wifi } from "./wifi";
