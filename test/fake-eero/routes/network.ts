@@ -10,7 +10,7 @@
  */
 
 import { fail, ok, type Route } from "../server";
-import type { FakeNetwork } from "../state";
+import { isOwnerRole, type FakeNetwork } from "../state";
 
 /**
  * `lease` as eero sends it on a DHCP WAN: the address, mask and router, and
@@ -99,7 +99,7 @@ export const routes: Route[] = [
     path: "/networks/:net",
     handle: ({ params, network, state }) => {
       const net = network(params.net ?? "");
-      if (net.permissions.role !== "owner") return fail(403, "error.network.forbidden");
+      if (!isOwnerRole(net.permissions.role)) return fail(403, "error.network.forbidden");
       state.networks.delete(net.id);
       const refs = state.account.networks;
       if (refs && Array.isArray(refs.data)) {

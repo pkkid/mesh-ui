@@ -36,6 +36,11 @@ import type {
   RawWpa3PerBand,
 } from "../../src/core/eero/raw";
 
+/** The real owner role is `network-owner`; accept `owner` and any `*-owner` too. */
+export function isOwnerRole(role: string | undefined): boolean {
+  return role === "owner" || (role?.endsWith("-owner") ?? false);
+}
+
 /** The one code the fake sign-in accepts. */
 export const FAKE_CODE = "123456";
 
@@ -186,7 +191,7 @@ function seedNetworks(): FakeNetwork[] {
     buildNetwork({
       id: "100001",
       name: "Maple Street",
-      role: "owner",
+      role: "network-owner",
       status: "connected",
       eeros: [
         { id: "500001", serial: "FAKE00LR0001", location: "Living Room", model: "eero Max 7", gateway: true, wired: true, clients: 5 },
@@ -459,12 +464,12 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       // dotted keys, no devices/profiles/settings/updates; the owner's
       // `network.create` is false, as on the real network.
       permissions:
-        seed.role === "owner"
+        isOwnerRole(seed.role)
           ? {
               eeros: full,
               network: { create: false, read: true, update: true, delete: true },
               // All false on the real owner; no gate reads it (transfer uses network.ownership_transfer).
-              "network.transfer": full,
+              "network.transfer": none,
               "network.proxied_nodes": readUpdate,
               "network.smart_home_hub": full,
               "network.radio_settings": { create: false, read: true, update: true, delete: true },

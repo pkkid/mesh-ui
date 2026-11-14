@@ -11,7 +11,7 @@
  */
 
 import { fail, FakeAnswer, ok, type Route, type RouteContext } from "../server";
-import type { FakeNetwork } from "../state";
+import { isOwnerRole, type FakeNetwork } from "../state";
 
 /** Invites are single use and expire after 48 hours. */
 const INVITE_MS = 48 * 3_600_000;
@@ -19,7 +19,7 @@ const INVITE_MS = 48 * 3_600_000;
 /** The network, when the caller owns it; else a 403 answer. */
 function owned({ params, network }: RouteContext): FakeNetwork {
   const net = network(params.net ?? "");
-  if (net.permissions.role !== "owner" || net.invites === null) throw new FakeAnswer(fail(403, "error.network.forbidden"));
+  if (!isOwnerRole(net.permissions.role) || net.invites === null) throw new FakeAnswer(fail(403, "error.network.forbidden"));
   return net;
 }
 
