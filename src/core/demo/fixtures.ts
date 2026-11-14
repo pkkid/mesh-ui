@@ -572,6 +572,27 @@ const NOTIFICATION_KEYS = [
 
 const notificationSwitches = (off: string[] = []): Record<string, boolean> => Object.fromEntries(NOTIFICATION_KEYS.map((k) => [k, !off.includes(k)]));
 
+/** Invented eeroOS release notes by version, the demo's answer to `updates.notes`. */
+export const RELEASE_NOTES: Record<string, M.ReleaseNotes> = {
+  "7.13.0": {
+    version: "7.13.0",
+    releasedAt: "2026-11-10T17:00:00.000Z",
+    title: "eeroOS 7.13.0",
+    features: [
+      "Faster roaming between eeros for phones and laptops on 5 GHz",
+      "Wi-Fi 7 multi-link stability fixes for newer clients",
+      "Quicker recovery after a power outage",
+      "Security fixes",
+    ],
+  },
+  "7.11.4": {
+    version: "7.11.4",
+    releasedAt: "2026-09-18T17:00:00.000Z",
+    title: "eeroOS 7.11.4",
+    features: ["Improved DHCP lease handling on busy networks", "Security fixes"],
+  },
+};
+
 const EERO_SUPPORT: Omit<M.SupportInfo, "supportId">["eero"] = {
   name: "eero",
   phone: "+18775550123",
@@ -772,8 +793,8 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     },
     support: { eero: EERO_SUPPORT, isp: { name: "Ziply Fiber", phone: "+18665550144", url: "https://isp.example.com/ziply/support" } },
     admins: [
-      { id: "7001", name: "Alex Kim", email: "alex@example.com", role: "owner", isYou: true },
-      { id: "7002", name: "Jamie Kim", email: "jamie@example.com", role: "admin", isYou: false },
+      { id: "7001", name: "Alex Kim", role: "owner", isYou: true },
+      { id: "7002", name: "Jamie Kim", role: "admin", isYou: false },
     ],
     // Matches the "Alex Kim invited sam@example.com" event 490 minutes ago; invites last 48 hours.
     invites: [{ id: "7101", nickname: "Sam", createdAt: iso(490 * MIN), expiresAt: iso(490 * MIN - 48 * HOUR) }],
@@ -917,7 +938,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     threadCredentials: null,
     diagnostics: { status: null, issueArea: null, results: [] },
     support: { eero: EERO_SUPPORT, isp: null },
-    admins: [{ id: "7001", name: "Alex Kim", email: "alex@example.com", role: "owner", isYou: true }],
+    admins: [{ id: "7001", name: "Alex Kim", role: "owner", isYou: true }],
     invites: [],
     integrations: {
       homekit: integration(true, false),
@@ -1025,8 +1046,8 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     support: { eero: EERO_SUPPORT, isp: { name: "Harbor Cable", phone: "+15035550175", url: "https://isp.example.com/harbor/support" } },
     // Alex is an admin here; Rose owns the network. Admins cannot read invites.
     admins: [
-      { id: "7201", name: "Rose Kim", email: "rose@example.com", role: "owner", isYou: false },
-      { id: "7001", name: "Alex Kim", email: "alex@example.com", role: "admin", isYou: true },
+      { id: "7201", name: "Rose Kim", role: "owner", isYou: false },
+      { id: "7001", name: "Alex Kim", role: "admin", isYou: true },
     ],
     invites: [],
     integrations: {

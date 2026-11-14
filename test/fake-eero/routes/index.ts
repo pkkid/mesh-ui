@@ -7,6 +7,7 @@
  */
 
 export { routes as account } from "./account";
+export { routes as admins } from "./admins";
 export { routes as auth } from "./auth";
 export { routes as devices } from "./devices";
 export { routes as eeros } from "./eeros";

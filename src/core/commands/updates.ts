@@ -17,4 +17,15 @@ export const commands: AnyCommand[] = [
     poll: POLL.updates,
     run: (ctx): Promise<M.Updates> => ctx.backend.updates.get(ctx.net),
   }),
+  defineCommand({
+    id: "updates.notes",
+    label: "Release notes",
+    description:
+      "What's new in the eeroOS version the network is updating to (or runs now): version, release date, title and feature lines. Null when eero names no release notes. Read from eero's public manifest without the session.",
+    icon: "scroll-text",
+    params: z.object({}),
+    effect: "query",
+    topic: "release_notes",
+    run: (ctx): Promise<M.ReleaseNotes | null> => ctx.backend.updates.notes(ctx.net),
+  }),
 ];

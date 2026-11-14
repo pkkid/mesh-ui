@@ -578,7 +578,22 @@ export type Updates = {
 
 export type ReleaseNotes = { version: string; releasedAt: Iso | null; title: string | null; features: string[] };
 
-export type Admin = { id: Id; name: string | null; email: string | null; role: Role; isYou: boolean };
+/** Average traffic per hour of day (network time) and the quietest 3-hour window, for the preferred update time. */
+export type QuietHours = {
+  range: UsageRange;
+  /** 24 rows, hour 0 to 23. `avg` is bytes (down plus up) per hour; null when no sample fell in that hour. */
+  hours: { hour: number; avg: number | null }[];
+  /** Window length in hours (eero's update window). */
+  windowHours: number;
+  /** Start hour (0 to 23) of the quietest window, which may wrap past midnight; null without a full day of samples. */
+  quietest: { start: number; avg: number } | null;
+  busiest: { hour: number; avg: number } | null;
+  /** Only when asked with `start`: the mean of that window, null when an hour of it has no data. */
+  selected?: { start: number; avg: number | null };
+};
+
+/** A member of the network. eero sends no email for members (captured M3.1), so there is none here. */
+export type Admin = { id: Id; name: string | null; role: Role; isYou: boolean };
 export type Invite = { id: Id; nickname: string | null; createdAt: Iso | null; expiresAt: Iso | null };
 export type AdminList = { admins: Admin[]; invites: Invite[]; seatsUsed: number; seatsMax: 10 };
 

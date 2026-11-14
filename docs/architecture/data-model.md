@@ -514,7 +514,16 @@ type Updates = {
 
 type ReleaseNotes = { version: string; releasedAt: Iso | null; title: string | null; features: string[] };
 
-type Admin = { id: Id; name: string | null; email: string | null; role: Role; isYou: boolean };
+type QuietHours = {
+  range: UsageRange;
+  hours: { hour: number; avg: number | null }[]; // 24 rows, bytes per hour, network time
+  windowHours: number;            // 3, eero's update window
+  quietest: { start: number; avg: number } | null;
+  busiest: { hour: number; avg: number } | null;
+  selected?: { start: number; avg: number | null }; // only with `start`
+};
+
+type Admin = { id: Id; name: string | null; role: Role; isYou: boolean }; // eero sends no member email
 type Invite = { id: Id; nickname: string | null; createdAt: Iso | null; expiresAt: Iso | null };
 type AdminList = { admins: Admin[]; invites: Invite[]; seatsUsed: number; seatsMax: 10 };
 ```
@@ -522,8 +531,9 @@ type AdminList = { admins: Admin[]; invites: Invite[]; seatsUsed: number; seatsM
 | Model | eero source |
 | --- | --- |
 | `Updates` | `GET {net}/updates`: `has_update`, `update_required`, `can_update_now`, `target_firmware`, `scheduled_update_time`, `preferred_update_hour`, `last_update_started`, `last_user_update.{unresponsive_eeros,incomplete_eeros}` |
-| `ReleaseNotes` | `manifest_resource` JSON `{title, os_version, release_date, features}` |
-| `Admin` | `GET {net}/members` `{members: [{user_id: number, user_role, user_name, user_tags[]}]}`; a real network sent no email, so `email` is usually null |
+| `ReleaseNotes` | `manifest_resource` JSON `{target, history[]}`, each `{title, os_version, release_date, features: string[]}` (real capture, M3.13); `os_version` is `vX.Y.Z` while `target_firmware` carries a build suffix |
+| `QuietHours` | built in core from the hourly `GET {net}/data_usage` series |
+| `Admin` | `GET {net}/members` `{members: [{user_id: number, user_role, user_name, user_tags[]}]}`; a real network sent no email, so the model has none. `isYou` is decided in core |
 | `Invite` | `GET {net}/invites`, a bare array (empty in the capture; `{invite_id, invite_nickname, created}` per the clients); expiry is created plus 48 h (MANUAL). An admin may get a 403: an empty list, not an error |
 
 ## Activity and notifications

@@ -20,7 +20,7 @@
 
 import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
 import type * as M from "../model";
-import { createFixtures, type DemoFixtures, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
+import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
 import { applyScenario, type ReadMode, type ScenarioName } from "./scenario";
 
 export type DemoBackendOptions = {
@@ -510,6 +510,12 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
           current: gateway?.firmware ?? null,
           eeros: data.eeros.map((e) => ({ id: e.id, location: e.location, firmware: e.firmware })),
         };
+      },
+      notes: async (id) => {
+        const data = net(id);
+        const version = data.updates.target ?? (data.eeros.find((e) => e.isGateway) ?? data.eeros[0])?.firmware ?? null;
+        const notes = version ? RELEASE_NOTES[version] : undefined;
+        return notes ? clone(notes) : null;
       },
     },
 

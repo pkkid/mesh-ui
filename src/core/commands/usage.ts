@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { dayStart, hourStart } from "../demo/backend";
+import { dayStart, hourStart, tzOffset } from "../demo/backend";
 import { BackendError, CommandError } from "../errors";
 import { type CsvColumn, toCsv } from "../format";
 import type * as M from "../model";
@@ -223,4 +223,86 @@ const usageBreakdown = defineCommand({
   },
 });
 
-export const commands = [usageGet, usageBreakdown];
+// ---------------------------------------------------------------------------
+// Quiet hours
+
+/** eero's update window is about 3 hours; the preferred hour is its start. */
+export const UPDATE_WINDOW_HOURS = 3;
+
+/**
+ * Average bytes per hour of day (network time) from hourly points, leaving
+ * out the hour in progress at `now` since it is partial. An hour with no
+ * point is null.
+ */
+export function hourlyAverages(points: M.UsagePoint[], now: number, tz: string): (number | null)[] {
+  const current = hourStart(now, tz);
+  const sums = Array.from({ length: 24 }, () => ({ bytes: 0, n: 0 }));
+  for (const p of points) {
+    const at = Date.parse(p.at);
+    if (!Number.isFinite(at) || at >= current) continue;
+    const hour = new Date(at + tzOffset(at, tz)).getUTCHours();
+    const slot = sums[hour];
+    if (!slot) continue;
+    slot.bytes += bytesOf(p);
+    slot.n++;
+  }
+  return sums.map((s) => (s.n > 0 ? s.bytes / s.n : null));
+}
+
+/** Mean of `len` hours from `start`, wrapping past midnight; null when any of them has no data. */
+export function windowAverage(avgs: (number | null)[], start: number, len = UPDATE_WINDOW_HOURS): number | null {
+  let sum = 0;
+  for (let i = 0; i < len; i++) {
+    const v = avgs[(start + i) % 24];
+    if (v === null || v === undefined) return null;
+    sum += v;
+  }
+  return sum / len;
+}
+
+/** The quietest window (lowest mean, earliest start on a tie) and the busiest hour; none of them when there was no traffic. */
+export function quietHours(avgs: (number | null)[], range: M.UsageRange, selected?: number): M.QuietHours {
+  // No traffic at all (an offline network): nothing is quietest or busiest.
+  if (!avgs.some((v) => v !== null && v > 0)) {
+    const out: M.QuietHours = { range, hours: avgs.map((avg, hour) => ({ hour, avg })), windowHours: UPDATE_WINDOW_HOURS, quietest: null, busiest: null };
+    if (selected !== undefined) out.selected = { start: selected, avg: null };
+    return out;
+  }
+  let quietest: M.QuietHours["quietest"] = null;
+  for (let start = 0; start < 24; start++) {
+    const avg = windowAverage(avgs, start);
+    if (avg !== null && (quietest === null || avg < quietest.avg)) quietest = { start, avg };
+  }
+  let busiest: M.QuietHours["busiest"] = null;
+  for (let hour = 0; hour < 24; hour++) {
+    const avg = avgs[hour] ?? null;
+    if (avg !== null && (busiest === null || avg > busiest.avg)) busiest = { hour, avg };
+  }
+  const out: M.QuietHours = { range, hours: avgs.map((avg, hour) => ({ hour, avg })), windowHours: UPDATE_WINDOW_HOURS, quietest, busiest };
+  if (selected !== undefined) out.selected = { start: selected, avg: windowAverage(avgs, selected) };
+  return out;
+}
+
+const usageQuietHours = defineCommand({
+  id: "usage.quiet_hours",
+  label: "Quietest hours",
+  description:
+    "Average network traffic for each hour of the day (network time) over the last day or week, the quietest 3-hour window, and the busiest hour. Pass `start` to also get the average of the window that starts at that hour (the preferred update time).",
+  icon: "moon",
+  params: z.object({
+    range: z.enum(["day", "week"]).default("week").describe("day: the last 24 hours. week: the last 7 days."),
+    start: z.number().int().min(0).max(23).optional().describe("Start hour (0 to 23) of a window to average, such as the preferred update hour."),
+  }),
+  effect: "query",
+  topic: "usage",
+  ttl: (p) => USAGE_TTL[p.range],
+  async run(ctx, p): Promise<M.QuietHours> {
+    const tz = await networkZone(ctx);
+    const now = ctx.now();
+    const w = usageWindow(p.range, "hourly", now, tz);
+    const s = await ctx.backend.usage.series(ctx.net, { scope: "network", id: null, range: p.range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: "hourly", timezone: tz });
+    return quietHours(hourlyAverages(finishSeries(s, w, tz).points, now, tz), p.range, p.start);
+  },
+});
+
+export const commands = [usageGet, usageBreakdown, usageQuietHours];

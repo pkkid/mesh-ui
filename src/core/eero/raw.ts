@@ -457,7 +457,7 @@ export type RawDiagnostics = { status?: string; issue_area?: string | null; resu
 export type RawSupport = { support_phone?: string; contact_url?: string; help_url?: string; email_web_form_url?: string; name?: string };
 
 /** One row of `GET {net}/members`, which answers `{members: [...]}`. No email came back. */
-export type RawMember = { user_id?: number; user_role?: string; user_name?: string; user_email?: string; user_tags?: string[] };
+export type RawMember = { user_id?: number; user_role?: string; user_name?: string; user_tags?: string[] };
 export type RawMembers = { members?: RawMember[] };
 
 /** One row of `GET {net}/invites` (a bare array; empty in the capture, fields per the clients). */
