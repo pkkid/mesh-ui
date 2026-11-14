@@ -76,6 +76,20 @@ export const commands: AnyCommand[] = [
     },
   }),
   defineCommand({
+    id: "notifications.mark_read",
+    label: "Mark all read",
+    description:
+      "Marks every notification on the network read, which clears eero's network-wide unread flag (the bell's dot). eero has no per-notification read flag and no way to mark them unread again.",
+    icon: "check-check",
+    params: z.object({}),
+    effect: "write",
+    invalidates: ["notifications"],
+    async run(ctx): Promise<{ unread: false }> {
+      await ctx.backend.notifications.markRead(ctx.net);
+      return { unread: false };
+    },
+  }),
+  defineCommand({
     id: "notifications.settings.get",
     label: "Notification settings",
     description: "eero's alert switches for this network (keys as eero sends them, e.g. device.new), the account's push choices, and the desktop alert choices from app settings.",

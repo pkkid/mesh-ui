@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BackendError, type UsageQuery } from "../backend";
+import { BackendError, partialArea, type UsageQuery, WRITE_METHODS } from "../backend";
+import { createEeroBackend } from "../eero/backend";
+import { DEVICE_TYPE_IDS, deviceCategory } from "../eero/map/device";
+import { createEngine } from "../engine";
 import type * as M from "../model";
-import { createDemoBackend, type DemoBackend, dayStart, EVENT_PAGE_SIZE, isDemoBackend } from "./backend";
+import { createDemoBackend, type DemoBackend, dayStart, EVENT_PAGE_SIZE, FLAKY_DEVICE, isDemoBackend, RESTART_MS } from "./backend";
 import { createFixtures } from "./fixtures";
 import { SCENARIO_NAMES } from "./scenario";
 
@@ -31,6 +34,16 @@ describe("demo fixtures", () => {
     const b = demo();
     expect(b.kind).toBe("demo");
     expect(isDemoBackend(b)).toBe(true);
+  });
+
+  it("use eero device_type names with the mapper's category", () => {
+    const known = new Set([...DEVICE_TYPE_IDS, "unknown_computer", "exercise_bike"]);
+    for (const n of createFixtures(NOW).networks) {
+      for (const d of n.devices) {
+        expect(known.has(d.type), `${d.name}: ${d.type}`).toBe(true);
+        expect(d.category, d.name).toBe(deviceCategory(d.type));
+      }
+    }
   });
 });
 
@@ -677,3 +690,238 @@ describe("wave 2 reads (M3)", () => {
   });
 });
 
+
+describe("writes (M4)", () => {
+  const connected = async (b: DemoBackend) => {
+    const devices = await b.device.list(MAPLE);
+    const d = devices.find((x) => x.connected && !x.paused && !x.blocked && x.profileId !== null && x.rates !== null);
+    if (!d) throw new Error("fixture: no connected device in a profile");
+    return d;
+  };
+
+  it("pauses, renames, retypes, moves and blocks a device, and the next read shows it", async () => {
+    const b = demo();
+    const d = await connected(b);
+    expect((await b.device.setPaused(MAPLE, d.id, true)).paused).toBe(true);
+    const paused = await b.device.get(MAPLE, d.id);
+    expect(paused).toMatchObject({ paused: true, rates: null });
+
+    await b.device.rename(MAPLE, d.id, "Desk Lamp");
+    expect(await b.device.get(MAPLE, d.id)).toMatchObject({ name: "Desk Lamp", nickname: "Desk Lamp" });
+    const cleared = await b.device.rename(MAPLE, d.id, null);
+    expect(cleared.nickname).toBeNull();
+    expect(cleared.name).toBe(d.hostname ?? d.model ?? d.manufacturer ?? d.mac);
+
+    expect(await b.device.setType(MAPLE, d.id, "game_console")).toMatchObject({ type: "game_console", category: "entertainment" });
+
+    expect((await b.device.setProfile(MAPLE, d.id, null)).profileId).toBeNull();
+    const unassigned = await b.profile.get(MAPLE, d.profileId as string);
+    expect(unassigned.deviceIds).not.toContain(d.id);
+    await expect(b.device.setProfile(MAPLE, d.id, "no-such-profile")).rejects.toMatchObject({ code: "eero_error" });
+
+    const blocked = await b.device.setBlocked(MAPLE, d.id, true);
+    expect(blocked).toMatchObject({ blocked: true, connected: false });
+    expect((await b.device.setBlocked(MAPLE, d.id, false)).connected).toBe(true);
+    await expect(b.device.setPaused(MAPLE, "no-such-device", true)).rejects.toMatchObject({ code: "eero_error" });
+  });
+
+  it("creates, renames, pauses, fills and deletes a profile, with schedules", async () => {
+    const b = demo();
+    const [d1, d2] = (await b.device.list(MAPLE)).filter((x) => !x.blocked);
+    if (!d1 || !d2) throw new Error("fixture: two devices");
+    const p = await b.profile.create(MAPLE, { name: "Guests", deviceIds: [d1.id] });
+    expect(p).toMatchObject({ name: "Guests", paused: false, state: "active", deviceIds: [d1.id], schedules: [] });
+    expect((await b.profile.list(MAPLE)).map((x) => x.id)).toContain(p.id);
+
+    expect((await b.profile.rename(MAPLE, p.id, "Visitors")).name).toBe("Visitors");
+    expect((await b.profile.setPaused(MAPLE, p.id, true)).state).toBe("paused");
+    expect(await b.device.get(MAPLE, d1.id)).toMatchObject({ paused: true, rates: null });
+    await b.profile.setPaused(MAPLE, p.id, false);
+    expect((await b.device.get(MAPLE, d1.id)).paused).toBe(false);
+    await b.profile.setPaused(MAPLE, p.id, true);
+    // The profile is paused: d2 joins paused, d1 leaves unpaused.
+    expect((await b.profile.setDevices(MAPLE, p.id, [d2.id])).deviceIds).toEqual([d2.id]);
+    expect(await b.device.get(MAPLE, d1.id)).toMatchObject({ profileId: null, paused: false });
+    expect((await b.device.get(MAPLE, d2.id)).paused).toBe(true);
+
+    const s = await b.profile.addSchedule(MAPLE, p.id, { name: "Bedtime", days: ["MON", "TUE"], start: "21:00", end: "07:00", enabled: true });
+    expect((await b.profile.get(MAPLE, p.id)).schedules).toEqual([s]);
+    const changed = await b.profile.updateSchedule(MAPLE, p.id, s.id, { ...s, end: "06:30", enabled: false });
+    expect(changed).toEqual({ ...s, end: "06:30", enabled: false });
+    await b.profile.removeSchedule(MAPLE, p.id, s.id);
+    expect((await b.profile.get(MAPLE, p.id)).schedules).toEqual([]);
+    await expect(b.profile.removeSchedule(MAPLE, p.id, s.id)).rejects.toMatchObject({ code: "eero_error" });
+
+    // Deleting the still paused profile lifts its pause.
+    await b.profile.remove(MAPLE, p.id);
+    expect((await b.profile.list(MAPLE)).map((x) => x.id)).not.toContain(p.id);
+    expect(await b.device.get(MAPLE, d2.id)).toMatchObject({ profileId: null, paused: false });
+  });
+
+  it("pauses and resumes the Unassigned devices", async () => {
+    const b = demo();
+    await b.profile.setUnassignedPaused(MAPLE, true);
+    const loose = (await b.device.list(MAPLE)).filter((d) => d.profileId === null && !d.blocked);
+    expect(loose.length).toBeGreaterThan(0);
+    expect(loose.every((d) => d.paused)).toBe(true);
+    await b.profile.setUnassignedPaused(MAPLE, false);
+    expect((await b.device.list(MAPLE)).filter((d) => d.profileId === null && !d.blocked).some((d) => d.paused)).toBe(false);
+  });
+
+  it("turns the guest network off, renames it and opens it", async () => {
+    const b = demo();
+    expect((await b.guest.setEnabled(MAPLE, false)).enabled).toBe(false);
+    expect((await b.guest.get(MAPLE)).online).toBe(0);
+    expect((await b.guest.rename(MAPLE, "Visitors")).name).toBe("Visitors");
+    const open = await b.guest.setPassword(MAPLE, null);
+    expect(open).toMatchObject({ hasPassword: false, security: { "2.4": null, "5": null, "6": null } });
+    expect((await b.guest.credentials(MAPLE)).password).toBeNull();
+    const closed = await b.guest.setPassword(MAPLE, "new-guest-pass-9");
+    expect(closed.hasPassword).toBe(true);
+    expect(closed.security["2.4"]).not.toBeNull();
+    expect(await b.guest.credentials(MAPLE)).toEqual({ ssid: "Visitors", password: "new-guest-pass-9" });
+  });
+
+  it("changes the Wi-Fi name, password, security and 2.4 GHz only window", async () => {
+    const b = demo();
+    expect((await b.wifi.setName(MAPLE, "Maple Street 2")).ssid).toBe("Maple Street 2");
+    expect((await b.network.get(MAPLE)).name).toBe("Maple Street 2");
+    await b.wifi.setPassword(MAPLE, "fresh-demo-pass-1");
+    expect((await b.wifi.credentials(MAPLE)).password).toBe("fresh-demo-pass-1");
+    const sec = await b.wifi.setSecurity(MAPLE, { "2.4": "WPA2" });
+    expect(sec.security).toMatchObject({ "2.4": "WPA2", "5": "WPA2_WPA3", "6": "WPA3" });
+    expect((await b.guest.get(MAPLE)).security).toEqual(sec.security);
+    // Lake Cabin has no 6 GHz radio, so its 6 GHz security stays null.
+    expect((await b.wifi.setSecurity(LAKE, { "6": "WPA3" })).security["6"]).toBeNull();
+    const on = await b.wifi.setHide5g(MAPLE, true);
+    expect(on.hide5g).toEqual({ active: true, expiresAt: iso(NOW + 20 * 60_000) });
+    expect((await b.wifi.setHide5g(MAPLE, false)).hide5g).toEqual({ active: false, expiresAt: null });
+  });
+
+  it("ends the 2.4 GHz only window when eero's expiry passes", async () => {
+    let t = NOW;
+    const b = createDemoBackend({ clock: () => t });
+    await b.wifi.setHide5g(MAPLE, true);
+    t += 21 * 60_000;
+    expect((await b.wifi.get(MAPLE)).hide5g).toEqual({ active: false, expiresAt: null });
+  });
+
+  it("renames an eero, sets its light and nightlight, and restarts it or the network", async () => {
+    const b = demo();
+    const eeros = await b.eero.list(MAPLE);
+    const beacon = eeros.find((e) => e.nightlight !== null);
+    const plain = eeros.find((e) => e.nightlight === null && e.status !== "offline");
+    if (!beacon || !plain) throw new Error("fixture: a Beacon and a plain eero");
+    expect((await b.eero.rename(MAPLE, plain.id, "Attic")).location).toBe("Attic");
+    expect((await b.eero.setLed(MAPLE, plain.id, { brightness: 30 })).led).toEqual({ on: plain.led.on, brightness: 30 });
+    expect((await b.eero.setLed(MAPLE, plain.id, { on: false })).led).toEqual({ on: false, brightness: 30 });
+    const night: M.Nightlight = { mode: "schedule", brightness: 60, on: "20:00", off: "06:30" };
+    expect((await b.eero.setNightlight(MAPLE, beacon.id, night)).nightlight).toEqual(night);
+    await expect(b.eero.setNightlight(MAPLE, plain.id, night)).rejects.toMatchObject({ code: "eero_error" });
+    await b.eero.find(MAPLE, plain.id);
+  });
+
+  it("restarts an eero or the network: updating for a few seconds, then back", async () => {
+    let t = NOW;
+    const b = createDemoBackend({ clock: () => t });
+    const eeros = await b.eero.list(MAPLE);
+    const one = eeros.find((e) => e.status === "online" && !e.isGateway);
+    if (!one) throw new Error("fixture: an online eero");
+    await b.eero.restart(MAPLE, one.id);
+    expect(await b.eero.get(MAPLE, one.id)).toMatchObject({ status: "updating", uptimeSec: 0 });
+    t += RESTART_MS;
+    expect((await b.eero.get(MAPLE, one.id)).status).toBe("online");
+
+    const before = await b.network.get(MAPLE);
+    await b.network.restart(MAPLE);
+    expect(await b.network.get(MAPLE)).toMatchObject({ status: "updating", lastReboot: iso(t), gatewayUptimeSec: 0 });
+    expect((await b.network.health(MAPLE)).eeros.filter((e) => e.status === "updating").length).toBe(eeros.filter((e) => e.status !== "offline").length);
+    t += RESTART_MS;
+    expect((await b.network.list()).find((n) => n.id === MAPLE)?.status).toBe(before.status);
+    expect((await b.network.get(MAPLE)).status).toBe(before.status);
+    expect((await b.eero.list(MAPLE)).map((e) => e.status)).toEqual(eeros.map((e) => e.status));
+
+    // Lake Cabin is offline: its eero cannot be reached.
+    const offline = (await b.eero.list(LAKE)).find((e) => e.status === "offline");
+    if (!offline) throw new Error("fixture: an offline eero");
+    await expect(b.eero.restart(LAKE, offline.id)).rejects.toMatchObject({ code: "eero_error" });
+  });
+
+  it("fails device writes on Flaky Plug, for error states", async () => {
+    const b = demo();
+    const flaky = (await b.device.list(MAPLE)).find((d) => d.name === FLAKY_DEVICE);
+    if (!flaky) throw new Error("fixture: Flaky Plug");
+    await expect(b.device.setPaused(MAPLE, flaky.id, true)).rejects.toMatchObject({ code: "eero_error", detail: { status: 503, eeroError: "error.eero.offline" } });
+    expect((await b.device.get(MAPLE, flaky.id)).paused).toBe(false);
+  });
+
+  it("runs a speed test and marks notifications read", async () => {
+    const b = demo();
+    const before = (await b.internet.get(MAPLE)).lastSpeedTest;
+    await b.internet.runSpeedTest(MAPLE);
+    const last = (await b.internet.get(MAPLE)).lastSpeedTest;
+    expect(last?.at).toBe(iso(NOW));
+    expect(last?.downMbps).toBeGreaterThan((before?.downMbps ?? 0) * 0.9);
+    expect(await b.notifications.unread(MAPLE)).toBe(true);
+    await b.notifications.markRead(MAPLE);
+    expect(await b.notifications.unread(MAPLE)).toBe(false);
+  });
+
+  it("fails writes in the errors scenario and needs a session", async () => {
+    await expect(demo({ scenario: "errors" }).device.setPaused(MAPLE, "x", true)).rejects.toMatchObject({ code: "eero_error" });
+    await expect(demo({ scenario: "signed_out" }).guest.setEnabled(MAPLE, false)).rejects.toMatchObject({ code: "not_signed_in" });
+  });
+
+  it("are undone by demo.scenario.set, which rebuilds the fixtures", async () => {
+    const b = demo();
+    const engine = createEngine({ backend: b, clock: () => NOW });
+    const d = await connected(b);
+    await b.device.setPaused(MAPLE, d.id, true);
+    await b.device.rename(MAPLE, d.id, "Renamed");
+    await b.device.setBlocked(MAPLE, d.id, true);
+    await b.guest.setEnabled(MAPLE, false);
+    const p = await b.profile.create(MAPLE, { name: "Temp", deviceIds: [] });
+    await b.notifications.markRead(MAPLE);
+    const r = await engine.execute("demo.scenario.set", { scenario: "default" });
+    expect(r.ok).toBe(true);
+    expect(await b.device.get(MAPLE, d.id)).toMatchObject({ paused: false, blocked: false, connected: true, name: d.name });
+    expect((await b.guest.get(MAPLE)).enabled).toBe(true);
+    expect((await b.profile.list(MAPLE)).map((x) => x.id)).not.toContain(p.id);
+    expect(await b.notifications.unread(MAPLE)).toBe(true);
+    // Ids start over too, so a scenario is reproducible.
+    expect((await b.profile.create(MAPLE, { name: "Temp", deviceIds: [] })).id).toBe(p.id);
+  });
+});
+
+describe("write contracts (M4)", () => {
+  it("lists every write of each area, and the demo backend implements them all", () => {
+    const b = demo();
+    for (const [area, methods] of Object.entries(WRITE_METHODS)) {
+      for (const m of methods) expect(typeof (b as unknown as Record<string, Record<string, unknown>>)[area]?.[m], `${area}.${m}`).toBe("function");
+    }
+  });
+
+  it("the eero backend answers 'not available yet' for each write it has not built", async () => {
+    const secrets = { load: async () => "t", save: async () => "memory" as const, clear: async () => {}, storage: async () => "memory" as const };
+    let calls = 0;
+    // 400, not 500: a built write may read first (guest.rename), and reads retry a 500 with backoff.
+    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", fetch: (async () => (calls++, new Response("{}", { status: 400 }))) as typeof fetch });
+    for (const [area, methods] of Object.entries(WRITE_METHODS)) {
+      for (const m of methods) {
+        const fn = (eero as unknown as Record<string, Record<string, (...a: unknown[]) => Promise<unknown>>>)[area]?.[m];
+        if (!fn) throw new Error(`${area}.${m} missing`);
+        const before = calls;
+        const err = await fn("1", "2", "3").then(() => null, (e: unknown) => e);
+        // A write that reached eero is built (its story tests it); the rest say "not available yet".
+        if (calls === before) expect(String(err), `${area}.${m}`).toContain(`${area}.${m} is not available in the eero backend yet.`);
+      }
+    }
+  });
+
+  it("partialArea leaves reads and unknown names alone", () => {
+    const area = partialArea("eero", "notifications", { list: async () => ({ notifications: [], nextCursor: null }), unread: async () => false, settings: async () => ({}) });
+    expect(typeof area.unread).toBe("function");
+    expect(typeof area.markRead).toBe("function");
+    expect((area as unknown as Record<string, unknown>).nope).toBeUndefined();
+  });
+});

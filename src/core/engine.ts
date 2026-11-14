@@ -8,11 +8,12 @@
  */
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type { Backend } from "./backend";
 import { CommandError, type ExecuteResult, toExecuteError } from "./errors";
 import type { AppSettings, HostEvent, Id } from "./model";
-import { TTL, type Topic } from "./poll";
+import { type AuditLog, auditEntry, fileAudit } from "./audit";
+import { CACHE_NETWORKS, TTL, type Topic, WRITE_SETTLE_SEC } from "./poll";
 import { type CommandInfo, createRegistry, type RegisteredCommand } from "./registry";
 import {
   type AnyCommand,
@@ -35,6 +36,12 @@ export type EngineOptions = {
   host?: Partial<HostInfo>;
   /** Epoch ms; injectable for tests. */
   clock?: () => number;
+  /**
+   * Where CLI and MCP calls are recorded. Default: `audit.jsonl` in
+   * `host.configDir` for cli and mcp on the live backend; none for the UI,
+   * demo, fake, or without a config dir. null turns it off.
+   */
+  audit?: AuditLog | null;
 };
 
 export interface Engine {
@@ -105,19 +112,33 @@ export function fileSettings(path: string, initial: Partial<AppSettings> = {}): 
 // ---------------------------------------------------------------------------
 // Query cache
 
-type CacheEntry = { promise: Promise<unknown>; topic: Topic; expires: number };
+type CacheEntry = { promise: Promise<unknown>; topic: Topic; net: Id | null; expires: number };
 
-function createCache(now: () => number) {
+function createCache(now: () => number, keepNetworks = CACHE_NETWORKS) {
   const entries = new Map<string, CacheEntry>();
   /** Topic to the time cached data fetched before it becomes stale. */
   const staleAt = new Map<Topic, number>();
+  /** Networks with cached entries, most recently used first. */
+  const recent: Id[] = [];
+
+  /** Marks a network as used; entries of networks beyond the last `keepNetworks` are dropped. */
+  const touch = (net: Id | null) => {
+    if (net === null || recent[0] === net) return;
+    const i = recent.indexOf(net);
+    if (i > 0) recent.splice(i, 1);
+    recent.unshift(net);
+    for (const old of recent.splice(keepNetworks)) {
+      for (const [k, e] of entries) if (e.net === old) entries.delete(k);
+    }
+  };
 
   return {
-    get<T>(key: string, topic: Topic, ttlSec: number, load: () => Promise<T>): Promise<T> {
+    get<T>(key: string, topic: Topic, net: Id | null, ttlSec: number, load: () => Promise<T>): Promise<T> {
+      touch(net);
       const hit = entries.get(key);
       if (hit && now() < hit.expires) return hit.promise as Promise<T>;
       const fetchedAt = now();
-      const entry: CacheEntry = { promise: load(), topic, expires: Number.POSITIVE_INFINITY };
+      const entry: CacheEntry = { promise: load(), topic, net, expires: Number.POSITIVE_INFINITY };
       entries.set(key, entry);
       entry.promise.then(
         () => {
@@ -140,6 +161,7 @@ function createCache(now: () => number) {
     clear() {
       entries.clear();
       staleAt.clear();
+      recent.length = 0;
     },
   };
 }
@@ -183,6 +205,10 @@ export function createEngine(opts: EngineOptions): Engine {
   const host: HostInfo = { version: "0.0.0", electron: null, configDir: null, keychainName: null, ...opts.host };
   const registry = createRegistry(opts.commands, { backend: backend.kind });
   const cache = createCache(now);
+  // Demo and fake runs change nothing real, and may run with the real config dir, so only live ones are audited.
+  const live = backend.kind === "eero" && !backend.fake;
+  const audit =
+    opts.audit !== undefined ? opts.audit : surface !== "ui" && live && host.configDir ? fileAudit(join(host.configDir, "audit.jsonl")) : null;
   const listeners = new Set<(e: HostEvent) => void>();
   const writeQueues = new Map<string, Promise<unknown>>();
   let selected: Id | null | undefined; // undefined until read from settings
@@ -197,7 +223,7 @@ export function createEngine(opts: EngineOptions): Engine {
     }
   };
 
-  const listNetworks = () => cache.get("account|ref:network", "account", TTL.account, () => backend.network.list());
+  const listNetworks = () => cache.get("account|ref:network", "account", null, TTL.account, () => backend.network.list());
 
   const selectedId = async (): Promise<Id | null> => {
     if (selected === undefined) selected = (await settings.get()).lastNetworkId;
@@ -227,17 +253,17 @@ export function createEngine(opts: EngineOptions): Engine {
   const refSources: Record<RefKind, (net: Id | null) => Promise<RefCandidate[]>> = {
     network: async () => (await listNetworks()).map((n) => ({ id: n.id, names: [n.name, n.nickname] })),
     eero: async (net) =>
-      (await cache.get(`eeros|${net}|ref:eero`, "eeros", TTL.eeros, () => backend.eero.list(need(net)))).map((e) => ({
+      (await cache.get(`eeros|${net}|ref:eero`, "eeros", net, TTL.eeros, () => backend.eero.list(need(net)))).map((e) => ({
         id: e.id,
         names: [e.location, e.serial, e.mac],
       })),
     device: async (net) =>
-      (await cache.get(`devices|${net}|ref:device`, "devices", TTL.devices, () => backend.device.list(need(net)))).map((d) => ({
+      (await cache.get(`devices|${net}|ref:device`, "devices", net, TTL.devices, () => backend.device.list(need(net)))).map((d) => ({
         id: d.id,
         names: [d.name, d.nickname, d.hostname, d.mac],
       })),
     profile: async (net) =>
-      (await cache.get(`profiles|${net}|ref:profile`, "profiles", TTL.profiles, () => backend.profile.list(need(net)))).map((p) => ({
+      (await cache.get(`profiles|${net}|ref:profile`, "profiles", net, TTL.profiles, () => backend.profile.list(need(net)))).map((p) => ({
         id: p.id,
         names: [p.name],
       })),
@@ -293,7 +319,7 @@ export function createEngine(opts: EngineOptions): Engine {
       const ttl = typeof spec.ttl === "function" ? spec.ttl(rest) : (spec.ttl ?? (spec.topic ? TTL[spec.topic] : 0));
       if (!spec.topic || spec.sensitive || ttl <= 0) return spec.run(ctx, rest);
       const key = `${spec.topic}|${networkId}|${spec.id}|${stableJson(rest)}`;
-      return cache.get(key, spec.topic, ttl, () => spec.run(ctx, rest));
+      return cache.get(key, spec.topic, networkId, ttl, () => spec.run(ctx, rest));
     }
 
     const queueKey = networkId ?? "_";
@@ -307,7 +333,12 @@ export function createEngine(opts: EngineOptions): Engine {
       return await result;
     } finally {
       // Also after a failure: a write that timed out may still have landed.
-      if (spec.invalidates?.length) cache.invalidate(spec.invalidates, now());
+      // Stale at once, and a read fetched while eero settles expires when it has.
+      if (spec.invalidates?.length) {
+        const at = now();
+        cache.invalidate(spec.invalidates, at);
+        cache.invalidate(spec.invalidates, at + WRITE_SETTLE_SEC * 1000);
+      }
     }
   };
 
@@ -320,29 +351,39 @@ export function createEngine(opts: EngineOptions): Engine {
     },
     selectedNetworkId: () => selected ?? null,
     async execute<R>(id: string, params?: unknown): Promise<ExecuteResult<R>> {
-      const cmd = registry.get(id);
-      if (!cmd) return { ok: false, error: { code: "unknown_command", message: `Unknown command "${id}".` } };
-
-      const parsed = cmd.schema.safeParse(params ?? {});
-      if (!parsed.success) {
-        const issues = parsed.error.issues.map((i) => ({ path: i.path.map(String).join("."), message: i.message }));
-        const first = issues[0];
-        const message = first ? `Invalid params: ${first.path ? `${first.path}: ` : ""}${first.message}` : "Invalid params.";
-        return { ok: false, error: { code: "bad_params", message, detail: { issues } } };
+      const outcome = await executeOnce<R>(id, params);
+      if (audit) {
+        const effect = registry.get(id)?.spec.effect ?? null;
+        // Awaited so a CLI that exits right after still has its line; a failed write never fails the command.
+        await audit.append(auditEntry({ time: now(), surface, id, effect, params, outcome })).catch(() => undefined);
       }
-
-      try {
-        const result = (await runCommand(cmd, parsed.data as Record<string, unknown>)) as R;
-        return { ok: true, result };
-      } catch (err) {
-        const error = toExecuteError(err);
-        if (error.code === "not_signed_in" && !(err instanceof CommandError)) {
-          // The backend found the session dead: drop every cached answer.
-          cache.clear();
-          emit({ type: "session.changed", state: "signed_out", storage: "memory" });
-        }
-        return { ok: false, error };
-      }
+      return outcome;
     },
   };
+
+  async function executeOnce<R>(id: string, params?: unknown): Promise<ExecuteResult<R>> {
+    const cmd = registry.get(id);
+    if (!cmd) return { ok: false, error: { code: "unknown_command", message: `Unknown command "${id}".` } };
+
+    const parsed = cmd.schema.safeParse(params ?? {});
+    if (!parsed.success) {
+      const issues = parsed.error.issues.map((i) => ({ path: i.path.map(String).join("."), message: i.message }));
+      const first = issues[0];
+      const message = first ? `Invalid params: ${first.path ? `${first.path}: ` : ""}${first.message}` : "Invalid params.";
+      return { ok: false, error: { code: "bad_params", message, detail: { issues } } };
+    }
+
+    try {
+      const result = (await runCommand(cmd, parsed.data as Record<string, unknown>)) as R;
+      return { ok: true, result };
+    } catch (err) {
+      const error = toExecuteError(err);
+      if (error.code === "not_signed_in" && !(err instanceof CommandError)) {
+        // The backend found the session dead: drop every cached answer.
+        cache.clear();
+        emit({ type: "session.changed", state: "signed_out", storage: "memory" });
+      }
+      return { ok: false, error };
+    }
+  }
 }

@@ -149,7 +149,9 @@ Left to right (mockup `.topbar`):
   eero, profile, Updates). eero can only mark everything read, so there is
   no per-item mark read.
 - **Footer:** "Mark all read" (`notifications.mark_read {}`, which clears the
-  network-wide flag; not built yet, so it is shown disabled with "Coming soon"),
+  network-wide flag and the dot; a "Marked all read" toast with no Undo,
+  since eero cannot mark anything unread; disabled with "Nothing unread"
+  when the flag is clear, and gated like other network writes),
   "All activity" (to Activity) and a gear to notification settings in
   App & account (`notifications.settings.get` / `notifications.settings.set`).
 - **Desktop notifications:** the host shows an OS notification for new items
@@ -367,6 +369,13 @@ visible before clicking.
 Copy rules: name the target, say the consequence in plain words with a
 duration where known, never "Are you sure?". No emdashes.
 
+**How the UI gets the copy.** The write kit runs the command first without
+`confirm`. A `disruptive` or `destructive` command answers `needs_confirm`
+with a message for people (the spec's `confirmMessage`), and that message is
+the consequence sentence in the note or dialog, so the copy lives in core
+and reads the same in the CLI and MCP. Pages add the title, the button label
+and, for destructive actions on a named thing, the name to type.
+
 ## Sheets
 
 Editors that need more than one field open as a sheet (mockups: Appearance on
@@ -386,6 +395,9 @@ Editors that need more than one field open as a sheet (mockups: Appearance on
   with the error otherwise.
 - `Esc`, the backdrop and the close button all cancel. If there are unsaved
   changes, ask "Discard changes?" first.
+
+Built as `components/ui/sheet.tsx` (`Sheet`, `SheetField`). "Discard
+changes?" replaces the footer buttons with Keep editing and Discard.
 
 ## Loading, empty and error
 
@@ -535,6 +547,13 @@ engine.md wins.
 - **Error** stays until dismissed and has Retry when that makes sense.
 - No toasts for queries or background polls. Results from the command
   palette and CLI-equivalent actions use the same toasts.
+- Copy and Save (Export CSV, Save QR text) say so in a toast: "Copied",
+  "Copied password", "Saved speed-tests-2026-11-13.csv", or an error toast.
+  A cancelled save dialog shows nothing.
+
+Built by the write kit: `components/ui/toast.tsx` (store and `Toaster`,
+mounted once by the shell) and `app/useWrite.ts`, which shows these toasts
+for every write. See [design-system.md](../design/design-system.md#write-kit).
 
 ## Formatting
 

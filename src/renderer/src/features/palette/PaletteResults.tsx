@@ -258,7 +258,7 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
           </>
         )}
         {(item.kind === "device" || item.kind === "profile") && (
-          <span title="Coming soon" className="flex items-center gap-2 opacity-60">
+          <span title={item.actionBlocked ?? undefined} className={cn("flex items-center gap-2", item.actionBlocked && "opacity-60")}>
             <span className="text-[11.5px] text-muted-foreground">{item.action}</span>
             <EffectTag effect="write" />
           </span>

@@ -1,11 +1,15 @@
 /**
- * profile commands (read side). `state`, `nextChange`, today's pauses and
- * the Unassigned summary are computed here, in core. See docs/architecture/commands.md#profile-commandsprofilets.
+ * profile commands. `state`, `nextChange`, today's pauses and the
+ * Unassigned summary are computed here, in core. Writes: create, rename,
+ * pause, resume, devices, delete, and Unassigned pause and resume (eero's
+ * `default: true` profile, which is never offered as a profile).
+ * See docs/architecture/commands.md#profile-commandsprofilets.
  */
 
 import { z } from "zod";
 import type * as M from "../model";
-import { POLL } from "../poll";
+import { CommandError } from "../errors";
+import { POLL, type Topic } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 
 const WEEKDAYS: M.Day[] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -127,6 +131,74 @@ async function timezone(ctx: CommandContext): Promise<string | null> {
 
 const withNext = (p: M.Profile, now: number, tz: string | null): M.Profile => ({ ...p, state: stateOf(p), nextChange: nextChange(p, now, tz) });
 
+/** Every profile write changes profiles, device chips and pauses, and the network's profile count. */
+const WRITES: Topic[] = ["profiles", "devices", "network"];
+
+/** eero's app allows short names; 32 matches it and keeps cards tidy. */
+const profileName = z.string().trim().min(1, "Enter a name.").max(32, "Use 32 characters or fewer.").describe("Profile name, 1 to 32 characters.");
+
+/** Names are refs, so two profiles cannot share one (case-insensitive). */
+async function uniqueName(ctx: CommandContext, name: string, self: M.Id | null): Promise<void> {
+  const taken = (await ctx.backend.profile.list(ctx.net)).some((p) => p.id !== self && p.name.toLowerCase() === name.toLowerCase());
+  if (taken) throw new CommandError("bad_params", `A profile named ${name} already exists.`, { issues: [{ path: "name", message: `A profile named ${name} already exists.` }] });
+}
+
+async function resolveDevices(ctx: CommandContext, refs: string[]): Promise<M.Id[]> {
+  const ids: M.Id[] = [];
+  for (const r of refs) {
+    const id = await ctx.resolve("device", r);
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+async function setPaused(ctx: CommandContext, ref: string, paused: boolean): Promise<M.Profile> {
+  const id = await ctx.resolve("profile", ref);
+  return withNext(await ctx.backend.profile.setPaused(ctx.net, id, paused), ctx.now(), await timezone(ctx));
+}
+
+
+// ---------------------------------------------------------------------------
+// Scheduled pauses
+
+const DAY_ORDER: M.Day[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const daysParam = z
+  .array(z.enum(DAY_ORDER))
+  .min(1, "Pick at least one day.")
+  .max(14)
+  .transform((days) => DAY_ORDER.filter((d) => days.includes(d)))
+  .describe("Days the pause starts on, MON to SUN. Order and repeats do not matter.");
+const hhmmParam = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use 24-hour HH:MM, 00:00 to 23:59.");
+const scheduleName = z.string().trim().min(1, "Enter a name.").max(32, "Use 32 characters or fewer.").describe("Schedule name, 1 to 32 characters.");
+const scheduleFields = {
+  name: scheduleName,
+  days: daysParam,
+  start: hhmmParam.describe("When the pause starts, HH:MM in the network time zone."),
+  end: hhmmParam.describe("When the pause ends, HH:MM. Before start wraps past midnight (into the next day)."),
+};
+
+const fieldError = (path: string, message: string) => new CommandError("bad_params", message, { issues: [{ path, message }] });
+
+/** A schedule on the profile by id, or by exact name (case-insensitive). */
+function findSchedule(profile: M.Profile, ref: string): M.Schedule {
+  const r = ref.trim();
+  const byId = profile.schedules.find((s) => s.id === r);
+  if (byId) return byId;
+  const named = profile.schedules.filter((s) => s.name.toLowerCase() === r.toLowerCase());
+  if (named.length === 1 && named[0]) return named[0];
+  if (named.length > 1) throw fieldError("schedule", `${profile.name} has ${named.length} schedules named ${r}; use the id.`);
+  throw fieldError("schedule", `${profile.name} has no schedule ${r}.`);
+}
+
+/** Start and end must differ (eero has no 24 h pause; pause the profile instead), and names are unique per profile. */
+function checkSchedule(profile: M.Profile, input: M.ScheduleInput, self: M.Schedule | null): void {
+  if (input.start === input.end) throw fieldError("end", "End must differ from start.");
+  // Only a new or changed name is checked, so schedules eero already has under one name can still be edited.
+  if (self && self.name.toLowerCase() === input.name.toLowerCase()) return;
+  const taken = profile.schedules.some((s) => s.id !== self?.id && s.name.toLowerCase() === input.name.toLowerCase());
+  if (taken) throw fieldError("name", `${profile.name} already has a schedule named ${input.name}.`);
+}
+
 export const commands: AnyCommand[] = [
   defineCommand({
     id: "profile.list",
@@ -178,10 +250,190 @@ export const commands: AnyCommand[] = [
     topic: "profiles",
     poll: POLL.profiles,
     params: z.object({ profile: ref("profile") }),
-    run: async (ctx, p): Promise<M.Profile> => {
+    run: async (ctx, p): Promise<M.ProfileDetail> => {
       const id = await ctx.resolve("profile", p.profile);
       const [profile, tz] = await Promise.all([ctx.backend.profile.get(ctx.net, id), timezone(ctx)]);
-      return withNext(profile, ctx.now(), tz);
+      const now = ctx.now();
+      const today = wallMs(now, tz ?? "UTC");
+      return {
+        ...withNext(profile, now, tz),
+        today: { date: dateIn(now, tz), timezone: tz, now: Math.floor((today % 86_400_000) / MIN_MS), segments: pausesToday(profile, now, tz) },
+      };
+    },
+  }),
+
+  defineCommand({
+    id: "profile.create",
+    label: "Add a profile",
+    description: "Adds a profile with a name and, optionally, devices (moved out of their old profiles).",
+    icon: "user-plus",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ name: profileName, devices: z.array(ref("device")).max(200).optional() }),
+    run: async (ctx, p): Promise<M.Profile> => {
+      await uniqueName(ctx, p.name, null);
+      const deviceIds = await resolveDevices(ctx, p.devices ?? []);
+      return withNext(await ctx.backend.profile.create(ctx.net, { name: p.name, deviceIds }), ctx.now(), await timezone(ctx));
+    },
+  }),
+
+  defineCommand({
+    id: "profile.rename",
+    label: "Rename profile",
+    icon: "pencil",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile"), name: profileName }),
+    run: async (ctx, p): Promise<M.Profile> => {
+      const id = await ctx.resolve("profile", p.profile);
+      await uniqueName(ctx, p.name, id);
+      return withNext(await ctx.backend.profile.rename(ctx.net, id, p.name), ctx.now(), await timezone(ctx));
+    },
+  }),
+
+  defineCommand({
+    id: "profile.pause",
+    label: "Pause profile",
+    description: "Pauses internet on every device in the profile until resumed. eero has no timed pause.",
+    icon: "pause",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile") }),
+    run: async (ctx, p): Promise<M.Profile> => setPaused(ctx, p.profile, true),
+  }),
+
+  defineCommand({
+    id: "profile.resume",
+    label: "Resume profile",
+    description: "Resumes internet on every device in the profile. During a scheduled pause, eero keeps it online until the next schedule.",
+    icon: "play",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile") }),
+    run: async (ctx, p): Promise<M.Profile> => setPaused(ctx, p.profile, false),
+  }),
+
+  defineCommand({
+    id: "profile.devices.set",
+    label: "Profile devices",
+    description: "Sets exactly which devices are in the profile. Listed devices move in; others leave to Unassigned.",
+    icon: "users",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile"), devices: z.array(ref("device")).max(200) }),
+    run: async (ctx, p): Promise<M.Profile> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const deviceIds = await resolveDevices(ctx, p.devices);
+      return withNext(await ctx.backend.profile.setDevices(ctx.net, id, deviceIds), ctx.now(), await timezone(ctx));
+    },
+  }),
+
+  defineCommand({
+    id: "profile.delete",
+    label: "Delete profile",
+    description: "Deletes the profile. Its devices move to Unassigned, its schedules are removed and any pause is lifted. Cannot be undone.",
+    icon: "trash-2",
+    effect: "destructive",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile") }),
+    confirmMessage: async (ctx, p) => {
+      const id = await ctx.resolve("profile", p.profile);
+      const profile = await ctx.backend.profile.get(ctx.net, id);
+      const n = profile.deviceIds.length;
+      const devices = n === 0 ? `${profile.name} has no devices;` : `${profile.name}'s ${n} device${n === 1 ? " moves" : "s move"} to Unassigned,`;
+      return `${devices} its schedules are removed and any pause is lifted. This cannot be undone.`;
+    },
+    run: async (ctx, p): Promise<{ deleted: M.Id; name: string }> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const profile = await ctx.backend.profile.get(ctx.net, id);
+      await ctx.backend.profile.remove(ctx.net, id);
+      return { deleted: id, name: profile.name };
+    },
+  }),
+
+  defineCommand({
+    id: "profile.unassigned.pause",
+    label: "Pause unassigned devices",
+    description: "Pauses internet on every device with no profile (eero's Unassigned group), until resumed. Includes TVs and smart home gear.",
+    icon: "pause",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({}),
+    run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, true), { paused: true }),
+  }),
+
+  defineCommand({
+    id: "profile.unassigned.resume",
+    label: "Resume unassigned devices",
+    description: "Resumes internet on every device with no profile (eero's Unassigned group).",
+    icon: "play",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({}),
+    run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, false), { paused: false }),
+  }),
+  defineCommand({
+    id: "profile.schedule.add",
+    label: "Add a scheduled pause",
+    description:
+      "Adds a scheduled pause to a profile: its devices pause from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
+    icon: "calendar-plus",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile"), ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without pausing.") }),
+    run: async (ctx, p): Promise<M.Schedule> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
+      checkSchedule(await ctx.backend.profile.get(ctx.net, id), input, null);
+      return ctx.backend.profile.addSchedule(ctx.net, id, input);
+    },
+  }),
+
+  defineCommand({
+    id: "profile.schedule.update",
+    label: "Edit schedule",
+    description: "Changes a scheduled pause. Fields left out keep their value; enabled: false keeps it without pausing.",
+    icon: "calendar-clock",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({
+      profile: ref("profile"),
+      schedule: ref("schedule"),
+      name: scheduleFields.name.optional(),
+      days: scheduleFields.days.optional(),
+      start: scheduleFields.start.optional(),
+      end: scheduleFields.end.optional(),
+      enabled: z.boolean().optional(),
+    }),
+    run: async (ctx, p): Promise<M.Schedule> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const profile = await ctx.backend.profile.get(ctx.net, id);
+      const s = findSchedule(profile, p.schedule);
+      const input: M.ScheduleInput = {
+        name: p.name ?? s.name,
+        days: p.days ?? s.days,
+        start: p.start ?? s.start,
+        end: p.end ?? s.end,
+        enabled: p.enabled ?? s.enabled,
+      };
+      checkSchedule(profile, input, s);
+      return ctx.backend.profile.updateSchedule(ctx.net, id, s.id, input);
+    },
+  }),
+
+  defineCommand({
+    id: "profile.schedule.remove",
+    label: "Delete schedule",
+    description: "Removes a scheduled pause from a profile. The result holds the removed schedule, so it can be added back.",
+    icon: "calendar-x",
+    effect: "write",
+    invalidates: WRITES,
+    params: z.object({ profile: ref("profile"), schedule: ref("schedule") }),
+    run: async (ctx, p): Promise<{ removed: M.Id; schedule: M.Schedule }> => {
+      const id = await ctx.resolve("profile", p.profile);
+      const s = findSchedule(await ctx.backend.profile.get(ctx.net, id), p.schedule);
+      await ctx.backend.profile.removeSchedule(ctx.net, id, s.id);
+      return { removed: s.id, schedule: s };
     },
   }),
 ];

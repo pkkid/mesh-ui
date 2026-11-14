@@ -6,7 +6,7 @@ import { createEeroBackend } from "./backend";
 import { EeroClient, type EeroClientOptions, READ_SHARE_MS, type RequestLogEntry } from "./client";
 import { RateLimiter } from "./ratelimit";
 import { asList } from "./raw";
-import { checkOrigin, deviceWritePath, idFromUrl, redactPath, resolveUrl } from "./urls";
+import { checkOrigin, deviceWritePath, idFromUrl, networkPath, redactPath, resolveUrl } from "./urls";
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -311,6 +311,82 @@ describe("session refresh", () => {
       expect(secrets.current()).toBeNull();
       expect(fake.log.filter((e) => e.path === "/2.2/login/refresh")).toHaveLength(0);
     }
+  });
+});
+
+describe("shared session store", () => {
+  it("re-reads the SecretStore on a 401 and replays with a token another process saved, without a refresh", async () => {
+    const { fake, client, secrets, token } = setup();
+    await echo(client, 1);
+    // The app signs in again (or rotates the session): the old token is gone, the store has the new one.
+    const next = fake.signIn();
+    fake.state.sessions.delete(token);
+    await secrets.store.save(next);
+    const res = await echo(client, 2);
+    expect(res.query).toEqual({ n: "2" });
+    expect(fake.log.map((e) => `${e.path} ${e.status}`)).toEqual(["/2.2/test/echo 200", "/2.2/test/echo 401", "/2.2/test/echo 200"]);
+    expect(fake.log.map((e) => e.token)).toEqual([token, token, next]);
+    expect((await client.status()).signedIn).toBe(true);
+    expect(secrets.current()).toBe(next);
+  });
+
+  it("refreshes as before when the store holds the same token, and gives up after one re-read", async () => {
+    const { fake, client, secrets } = setup();
+    fake.scenarios.sessionRefresh().refreshFails();
+    await expect(echo(client)).rejects.toMatchObject({ code: "not_signed_in" });
+    expect(fake.log.map((e) => e.path)).toEqual(["/2.2/test/echo", "/2.2/login/refresh"]);
+    expect(secrets.current()).toBeNull();
+  });
+});
+
+describe("credential reads", () => {
+  const backend = () => {
+    const fake = createFakeEero();
+    const secrets = memorySecrets(fake.signIn());
+    const eero = createEeroBackend({ secrets: secrets.store, origin: fake.origin, fetch: fake.fetch, readShareMs: READ_SHARE_MS });
+    const [net] = [...fake.state.networks.values()];
+    if (!net) throw new Error("no fake network");
+    return { fake, eero, net };
+  };
+
+  it("bypass the shared GET {net}: a password changed on eero shows on the next reveal", async () => {
+    const { fake, eero, net } = backend();
+    const reads = () => fake.log.filter((e) => e.method === "GET" && e.path === networkPath(net.id)).length;
+    // Page reads share GET {net} (which carries the password) for READ_SHARE_MS.
+    await eero.wifi.get(net.id);
+    await eero.wifi.get(net.id);
+    expect(reads()).toBe(1);
+    const before = await eero.wifi.credentials(net.id);
+    net.network.password = "changed-elsewhere-01";
+    const after = await eero.wifi.credentials(net.id);
+    expect(reads()).toBe(3);
+    expect(before.password).not.toBe("changed-elsewhere-01");
+    expect(after.password).toBe("changed-elsewhere-01");
+  });
+
+  it("bypass the shared guest network read too", async () => {
+    const { eero, net } = backend();
+    const guest = net.network.guest_network;
+    if (!guest) throw new Error("no fake guest network");
+    await eero.guest.get(net.id);
+    guest.password = "guest-changed-01";
+    expect((await eero.guest.credentials(net.id)).password).toBe("guest-changed-01");
+  });
+
+  it("never take a finished shared answer, but join one in flight, and later reads share the fresh one", async () => {
+    const { fake, client } = setup({ client: { readShareMs: READ_SHARE_MS } });
+    const credential = () => client.request({ method: "GET", path: "/2.2/test/echo", query: { n: undefined }, share: false });
+    await echo(client);
+    await credential();
+    expect(fake.log).toHaveLength(2);
+    await echo(client);
+    expect(fake.log).toHaveLength(2);
+    await credential();
+    expect(fake.log).toHaveLength(3);
+    // A page load that reads and reveals at once still sends one request.
+    fake.log.length = 0;
+    await Promise.all([echo(client, 9), client.request({ method: "GET", path: "/2.2/test/echo", query: { n: 9 }, share: false })]);
+    expect(fake.log).toHaveLength(1);
   });
 });
 

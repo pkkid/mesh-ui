@@ -1,21 +1,34 @@
 /**
  * The Overview status hero: network name and status, gateway uptime, ISP,
- * public IP, last speed test, the action row and the two speed gauges.
+ * public IP, last speed test, the action row (Run speed test with a
+ * progress toast until the result lands; Share Wi-Fi opens the Wi-Fi page
+ * and its QR block; Pause a profile picks a profile and pauses it with Undo;
+ * Restart network confirms inline, then a progress toast until the eeros are
+ * back) and the two speed gauges
+ * ("Set your plan" opens the plan sheet).
  * docs/ux/pages/overview.md (Layout 1, States).
  */
-import { Gauge as GaugeIcon, PauseCircle, RotateCcw, Share2, TriangleAlert } from "lucide-react";
+import { Popover } from "@base-ui/react/popover";
+import { PauseCircle, RotateCcw, Share2, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
+import { useWrite } from "~/app/useWrite";
 import { Gauge } from "~/components/charts/Gauge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
-import { ComingSoonButton, useNow } from "~/components/ui/page";
+import { WriteConfirm } from "~/components/ui/confirm";
+import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
-import { formatDuration, formatRelative, mbpsParts } from "../../../../core/format";
-import type { Internet, Network, NetworkHealth, SpeedHistory } from "../../../../core/model";
+import { formatDuration, formatRelative, mbpsParts, MISSING } from "../../../../core/format";
+import type { Internet, Network, NetworkHealth, Profile, ProfileList, SpeedHistory } from "../../../../core/model";
+import { useRestartNetwork } from "~/features/eeros/NetworkActions";
+import { RunSpeedTestButton, useRunningSpeedTest } from "~/features/internet/InternetHero";
+import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
+import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 
 export function NetworkHero() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -23,6 +36,8 @@ export function NetworkHero() {
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const history = useQuery<SpeedHistory>("speedtest.history", undefined, { poll: true });
   const now = useNow();
+  const restart = useRestartNetwork();
+  const testing = useRunningSpeedTest(network.data?.id) !== null;
 
   const n = network.data;
   const tz = n?.timezone ?? "UTC";
@@ -44,7 +59,8 @@ export function NetworkHero() {
   // No plan set: the gauge max falls back to the best result in history.
   const best = Math.max(0, ...(history.data?.tests ?? []).flatMap((t) => [t.downMbps ?? 0, t.upMbps ?? 0]));
   const fallbackMax = best > 0 ? Math.ceil(best / 100) * 100 : 1000;
-  const gaugesLoading = history.loading && !history.data;
+  // The gauges fade while a test runs and fill in with its result.
+  const gaugesLoading = (history.loading && !history.data) || testing;
 
   return (
     <div className="flex flex-col gap-3">
@@ -75,24 +91,18 @@ export function NetworkHero() {
         }
         actions={
           <>
-            <ComingSoonButton>
-              <GaugeIcon />
-              Run speed test
-            </ComingSoonButton>
-            <ComingSoonButton variant="outline">
+            <RunSpeedTestButton />
+            <Button variant="outline" render={<Link to={pathFor("wifi")} />}>
               <Share2 />
               Share Wi-Fi
-            </ComingSoonButton>
-            {!bridged && (
-              <ComingSoonButton variant="outline">
-                <PauseCircle />
-                Pause a profile
-              </ComingSoonButton>
-            )}
-            <ComingSoonButton variant="ghost">
-              <RotateCcw />
-              Restart network
-            </ComingSoonButton>
+            </Button>
+            {!bridged && <PauseProfileButton />}
+            <WriteConfirm write={restart.write} className="basis-full">
+              <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
+                <RotateCcw />
+                Restart network
+              </GatedButton>
+            </WriteConfirm>
           </>
         }
         aside={
@@ -115,9 +125,9 @@ export function NetworkHero() {
             </div>
             {!plan && internet.data && (
               <div className="text-center text-3xs text-muted-foreground">
-                <Link to={pathFor("internet")} className="hover:text-foreground hover:underline">
+                <button type="button" className="hover:text-foreground hover:underline" onClick={openPlanSheet}>
                   Set your plan
-                </Link>{" "}
+                </button>{" "}
                 to scale the gauges
               </div>
             )}
@@ -135,6 +145,7 @@ export function NetworkHero() {
           </Button>
         </Card>
       )}
+      <PlanSheet />
     </div>
   );
 }
@@ -165,5 +176,72 @@ function SpeedGauge({
       loading={loading}
       ariaLabel={value === null ? `${label}: no speed test yet` : `${label}: ${parts.value} Mbps of ${max} Mbps`}
     />
+  );
+}
+
+/**
+ * "Pause a profile": a menu of the profiles not yet paused; picking one runs
+ * `profile.pause` with a toast and Undo (`profile.resume`).
+ */
+function PauseProfileButton() {
+  const gate = useGate(PROFILE_GATE);
+  const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
+  const [open, setOpen] = useState(false);
+  const write = useWrite<{ profile: string }>("profile.pause");
+  const list = profiles.data?.profiles ?? [];
+  const targets = list.filter((p) => !p.paused);
+  const pause = (p: Profile) => {
+    setOpen(false);
+    void write.run(
+      { profile: p.id },
+      {
+        success: `Paused ${p.name}`,
+        failure: `Couldn't pause ${p.name}`,
+        undo: { id: "profile.resume", params: { profile: p.id }, success: `Resumed ${p.name}` },
+      },
+    );
+  };
+  const button = (
+    <>
+      <PauseCircle />
+      Pause a profile
+    </>
+  );
+  if (!gate.allowed) {
+    return (
+      <GatedButton gate={gate} variant="outline">
+        {button}
+      </GatedButton>
+    );
+  }
+  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted disabled:pointer-events-none disabled:opacity-60";
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger render={<Button variant="outline" disabled={write.running} />}>{button}</Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
+          <Popover.Popup aria-label="Pick a profile to pause" className="w-56 rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
+            {!profiles.data ? (
+              <div className="px-2 py-1.5 text-muted-foreground">{MISSING}</div>
+            ) : list.length === 0 ? (
+              <Link to={pathFor("profiles")} className={item} onClick={() => setOpen(false)}>
+                No profiles yet. Add one on Profiles.
+              </Link>
+            ) : targets.length === 0 ? (
+              <div className="px-2 py-1.5 text-muted-foreground">Every profile is paused</div>
+            ) : (
+              targets.map((p) => (
+                <button key={p.id} type="button" className={item} onClick={() => pause(p)}>
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {p.deviceIds.length} {p.deviceIds.length === 1 ? "device" : "devices"}
+                  </span>
+                </button>
+              ))
+            )}
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

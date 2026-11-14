@@ -55,12 +55,19 @@ Steps, in order:
 6. Queries: return the cached result if it is fresh for this
    `(id, networkId, params)`; otherwise run and cache. Sensitive queries are
    never cached.
-7. Writes: run, then invalidate the spec's `invalidates` topics so the next
-   query of any of them goes to the backend.
+7. Writes: run (one at a time per network), then invalidate the spec's
+   `invalidates` topics, also when the write failed (a write that timed
+   out may still have landed). They are stale at once, and a read of them
+   fetched in the next `WRITE_SETTLE_SEC` (2 s) expires when that window
+   ends, so the read after it sees eero's settled state. See Cache.
 8. Map any thrown error to an error code. `execute` never throws.
 9. CLI and MCP calls append an audit line (see
-   [security.md](security.md#audit-log)). Not yet built in M1: the engine
-   writes no audit log.
+   [security.md](security.md#audit-log)): `execute` awaits the append, so a
+   CLI that exits at once keeps its line, and a failed append never fails
+   the command. The default log is `audit.jsonl` in `host.configDir` for
+   the `cli` and `mcp` surfaces on the live backend; the UI, demo and fake
+   runs are not audited. `createEngine({ audit })` overrides it (tests pass
+   `memoryAudit()`).
 
 Concurrency: queries run in parallel and are deduplicated (two callers
 asking for the same cold key share one backend call). Writes to one network
@@ -101,9 +108,9 @@ it. It never appears in `Session`, results, events, errors or logs.
   but each holds its own copy in memory. If one rotates the token, the
   other's copy can go stale. Before treating a 401 as final, the engine
   re-reads `secrets.load()`; if the stored token differs from its own, it
-  adopts it and replays once. Only then does it return `not_signed_in`.
-  Not yet built in M1: the client reads the store once and does not re-read
-  it on a 401.
+  adopts it and replays once, before trying a refresh. Only then does it
+  return `not_signed_in`. The eero client does this
+  ([eero-client.md](eero-client.md#refresh-and-replay)).
 - **Session dead** (`error.session.expired`, `invalid` after refresh,
   `revoked`, other 401 or 419): clear memory and store, drop every cache
   entry, emit `session.changed`. The UI routes to sign in.
@@ -151,14 +158,19 @@ the backend while two views polling the same topic share one request.
 - Composite queries (`health.check`, `network.health`, `support.report`)
   read other topics through the cache and cost nothing when those are fresh.
 - Sensitive results (`wifi.password.get`, `wifi.share`, `guest.share`,
-  `settings.thread.credentials`) are never cached.
-- After a write the invalidated topics are stale at once. Where eero is slow
-  to reflect a change (device pause, profile writes), the read after it
-  should wait about 2 s. The engine offers `ctx.invalidate(topics, atMs)`
-  with a future time: cached answers are served until then, and anything
-  fetched before it expires at that time. A cold read still fetches at
-  once. Not yet built in M1: no command uses it, and the engine's own
-  invalidation after a write is immediate.
+  `settings.thread.credentials`) are never cached. Their eero reads also
+  never take a finished 5 s shared GET (`share: false`), so a password
+  changed elsewhere shows on the next reveal.
+- After a write the invalidated topics are stale at once, and eero may be
+  slow to reflect the change (device pause, profile writes). So the engine
+  also marks them stale at `WRITE_SETTLE_SEC` (2 s, `src/core/poll.ts`)
+  after the write: a read fetched inside that window is served only until
+  it ends, and the next read after it goes to eero again. The renderer's
+  refresh right after a write still gets an answer at once.
+- `ctx.invalidate(topics, atMs)` with a future time does the same for a
+  command: cached answers are served until then, and anything fetched
+  before it expires at that time. `device.rates.refresh` uses it to keep
+  `devices` until the burst is in.
 - A backend `not_signed_in` clears the whole cache and emits
   `session.changed`.
 - After a `disruptive` write that restarts eeros (`network.restart`,
@@ -204,13 +216,13 @@ only after a burst:
 
 1. `device.rates.refresh` calls `POST {net}/burst_reporters`. The response
    has `next_burst`, about 12 s ahead. eero allows one burst per minute per
-   network; core (not the eero client) keeps a per-network timestamp and a
-   second call inside the minute returns the pending `nextBurstAt` without
-   calling eero. Not yet built in M1.
-2. The engine shortens the `devices` TTL until `next_burst` plus 2 s, so the
-   next `device.list` after that point reads fresh `usage.down_mbps` and
-   `usage.up_mbps`. Not yet built in M1 (a spec's `ttl` may be a
-   function of params, which is where this will go).
+   network; core (not the eero client) keeps a per-network timestamp
+   (`commands/device.ts`) and a second call inside `BURST_COOLDOWN_SEC`
+   returns the pending `nextBurstAt` without calling eero.
+2. The command marks `devices` stale at `next_burst` plus
+   `BURST_SETTLE_SEC` (2 s) with `ctx.invalidate`, so the next
+   `device.list` after that point reads fresh `usage.down_mbps` and
+   `usage.up_mbps`, while reads before it share the cache.
 3. The mapper stamps each device's `rates` with the read time. Rates older
    than 90 s become `null`, which the UI shows as `-`, never `0`.
 4. `DeviceList.summary.rates` sums current rates and counts active devices
@@ -261,10 +273,10 @@ type HostEvent =
 - `network.select` (app-local, no eero call) sets the id, saves it, and
   emits `network.selected`. The renderer drops its query state for the old
   network and re-runs its visible queries.
-- The engine cache is keyed per network. It is meant to keep the last two
-  networks so switching back is instant and drop older entries. Not yet
-  built in M1: the cache keeps entries for every network until they expire
-  or are cleared.
+- The engine cache is keyed per network and keeps the last
+  `CACHE_NETWORKS` (2) networks used, so switching back is instant; using a
+  third drops the entries of the least recently used one. Account-wide
+  entries (`network.list`) are kept regardless.
 - Every network-scoped command accepts `networkId?` (an id or a name), so a
   CLI script or agent can act on another network without changing the
   selection. `--network` in the CLI and MCP is shorthand for it.

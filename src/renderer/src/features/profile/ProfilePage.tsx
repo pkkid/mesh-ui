@@ -1,37 +1,51 @@
 /**
  * Profile detail: one person's profile. Hero with state and the next
  * scheduled change, the weekly schedule of pauses with its list, data usage
- * with top devices, and the profile's devices. Read-only for now: every write
- * (rename, pause, schedules, devices, delete) is a disabled "Coming soon"
- * control until its command lands. Layout, data and states:
+ * with top devices, and the profile's devices. Rename, pause, devices and
+ * delete run their write commands (schedules come with M4.12).
+ * `#/profiles/unassigned` is the Unassigned page. Layout, data and states:
  * docs/ux/pages/profile-detail.md and docs/mockups/08-profile-detail.html.
  * `[` and `]` move between profiles.
  */
 import { Pencil, Trash2 } from "lucide-react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { GatedButton, SectionError, useGate } from "~/components/ui/page";
+import { PROFILE_GATE, ProfileSheet, type SheetMode, useDeleteProfile } from "~/features/profiles/ProfileCards";
 import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
 import { entityColors, seriesColors } from "~/lib/chartColors";
-import type { Network, Profile, ProfileList } from "../../../../core/model";
+import type { Network, ProfileDetail, ProfileList } from "../../../../core/model";
 
 import { neighbour } from "./helpers";
 import { ProfileDevices } from "./ProfileDevices";
 import { ProfileHero } from "./ProfileHero";
 import { ProfileSchedules } from "./ProfileSchedules";
 import { ProfileUsage } from "./ProfileUsage";
+import { UnassignedPage } from "./UnassignedPage";
 
-export function ProfilePage({ params }: PageProps) {
+export function ProfilePage(props: PageProps) {
+  // Unassigned is not a profile and has no id; it shares the route (profile ids are numbers).
+  return props.params.profileId === UNASSIGNED ? <UnassignedPage {...props} /> : <OneProfile {...props} />;
+}
+
+/** The Unassigned page's route param: `pathFor("profile", { profileId: UNASSIGNED })`. */
+export const UNASSIGNED = "unassigned";
+
+function OneProfile({ params }: PageProps) {
   const id = params.profileId ?? "";
+  const [sheet, setSheet] = useState<SheetMode | null>(null);
+  const gate = useGate(PROFILE_GATE);
+  const deleteGate = useGate({ ...PROFILE_GATE, op: "delete" });
+  const del = useDeleteProfile(() => navigate(pathFor("profiles")));
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const bridged = network.data?.connectionMode === "bridged" || network.data?.connectionMode === "ipPassthrough";
   const enabled = id !== "" && !bridged;
-  const profile = useQuery<Profile>("profile.get", { profile: id }, { poll: true, enabled });
+  const profile = useQuery<ProfileDetail>("profile.get", { profile: id }, { poll: true, enabled });
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true, enabled: !bridged });
 
   const list = profiles.data?.profiles ?? [];
@@ -76,27 +90,28 @@ export function ProfilePage({ params }: PageProps) {
     <>
       <TopBarTitle>{name}</TopBarTitle>
       <TopBarActions>
-        <ComingSoonButton size="sm" variant="outline">
+        <GatedButton gate={gate} size="sm" variant="outline" disabled={!data} onClick={() => data && setSheet({ kind: "rename", profile: data })}>
           <Pencil />
           Rename
-        </ComingSoonButton>
+        </GatedButton>
       </TopBarActions>
+      <ProfileSheet mode={sheet} onClose={() => setSheet(null)} />
 
       <ProfileHero profile={data} color={color} timezone={timezone} fading={profile.fading} />
       <ProfileSchedules profile={data} timezone={timezone} fading={profile.fading} />
 
       <ProfileUsage profileId={id} profile={data} timezone={timezone} />
-      <ProfileDevices profileId={id} profile={data} color={color} timezone={timezone} />
+      <ProfileDevices profileId={id} profile={data} color={color} timezone={timezone} onEdit={() => data && setSheet({ kind: "devices", profile: data })} />
 
       <Section title={<span className="text-destructive">Delete profile</span>}>
         <Card padded className="flex flex-wrap items-center gap-4">
           <p className="min-w-0 flex-1 text-muted-foreground text-xs">
             {name ? `${name}'s` : "Its"} devices move to Unassigned, the schedules are removed and any pause is lifted. Usage history stays with the devices.
           </p>
-          <ComingSoonButton size="sm" variant="destructive">
+          <GatedButton gate={deleteGate} size="sm" variant="destructive" disabled={!data || del.running} onClick={() => data && void del.run(data)}>
             <Trash2 />
             Delete profile
-          </ComingSoonButton>
+          </GatedButton>
         </Card>
       </Section>
     </>

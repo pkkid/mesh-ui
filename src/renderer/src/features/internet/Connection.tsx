@@ -1,7 +1,7 @@
 /**
  * Internet "Connection": the gateway line, Copy details (the plain-text block
  * from `internet.get {format: "text"}`), and the Internet provider and
- * Addressing cards. docs/ux/pages/internet.md (Layout 2, States).
+ * Addressing cards; the Plan row opens the plan sheet. docs/ux/pages/internet.md (Layout 2, States).
  */
 import { Check, Copy, Globe, Network as NetworkIcon, Settings2 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -19,6 +19,8 @@ import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { formatMbps, formatRelative } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth } from "../../../../core/model";
+
+import { openPlanSheet } from "./PlanSheet";
 
 const WAN_LABEL: Record<NonNullable<Internet["wanType"]>, string> = { dhcp: "DHCP", static: "Static", pppoe: "PPPoE" };
 
@@ -112,13 +114,19 @@ export function Connection() {
     {
       label: "Plan",
       value: i?.planMbps ? (
-        <span className="inline-flex items-center gap-1.5" title="Changing the plan is coming soon">
+        <span className="inline-flex items-center gap-1.5">
           {formatMbps(i.planMbps.down)} / {formatMbps(i.planMbps.up)}
           <Badge>set by you</Badge>
+          <button type="button" className="text-muted-foreground text-xs hover:text-foreground hover:underline" onClick={openPlanSheet}>
+            Change
+          </button>
         </span>
       ) : i ? (
-        <span className="text-muted-foreground" title="Setting the plan is coming soon">
-          Not set
+        <span className="inline-flex items-center gap-1.5">
+          <span className="text-muted-foreground">Not set</span>
+          <button type="button" className="text-muted-foreground text-xs hover:text-foreground hover:underline" onClick={openPlanSheet}>
+            Set your plan
+          </button>
         </span>
       ) : null,
     },

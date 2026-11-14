@@ -106,9 +106,10 @@ The MCP server can control the user's network, so:
 - **Sensitive results** (`wifi.password.get`, `wifi.share`, `guest.share`) are
   labelled in their descriptions. `--read-only` still exposes them, since they
   are queries; use `--allow` to leave them out.
-- **Audit.** Every tool call is to be appended to the audit log, shown in App
-  & account (see [security.md](security.md#audit-log)). Not yet built in M1:
-  the engine writes no audit log.
+- **Audit.** Every tool call that reaches `engine.execute` is appended to
+  the audit log with surface `mcp` (see [security.md](security.md#audit-log)),
+  secret params removed and never the result. Calls refused before that (a
+  tool hidden by `--read-only` or `--allow`) are not.
 
 ## Not included
 

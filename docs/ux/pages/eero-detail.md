@@ -108,8 +108,8 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Garage link in the Nightlight note | - | - | No | Garage detail |
 | Change (update window) | - | - | No | Updates & admins page |
 | Copy (IP addresses) | - (clipboard of the shown values) | - | No | Toast "IP addresses copied" |
-| Blink | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar animates |
-| Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, inline | Status Restarting, progress toast "Restarting Office, about 1 minute", faster polling until Online |
+| Blink | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar pulses |
+| Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, inline (the engine's message: the gateway outage, or the eeros downstream that drop too) | Status Updating, progress toast "Restarting Office" with "Back in about 1 minute", refreshing every 5 s until the restarted eeros are back (see [eeros.md](eeros.md#built-so-far-m25-m48)) |
 | Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, inline | Toast "Office removed from Maple Street"; navigates to eeros |
 
 ## States
@@ -156,10 +156,23 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 - Version history uses `eero.firmware.history {eero}` (per eero, from
   M2.6). An empty list reads "No version history reported."; an error reads
   "Version history isn't available." and the rest of the card still shows.
-- Read-only until the write commands land (M2.9): Location, Status light,
-  Nightlight, port actions, Blink, Restart and Remove show their current
-  values with disabled controls ("Coming soon"). The presets live in the
-  page for now and move to core with `eero.rename`.
+- Built in M4.8: Location (input saves on Enter or blur, Esc reverts;
+  preset chips; Custom selects the input), Status light (switch, brightness
+  saved on release), Nightlight (Beacon: mode, brightness, On at and Off at
+  as time inputs saved on blur), Blink and Restart. Each write shows a
+  toast with Undo (the previous value), except Blink and Restart. Writes
+  dim with the reason when the eero is offline ("Office is offline") or
+  restarting, or when `network.permissions` denies `eeros.update`; the
+  status light also needs the network's `led_action` capability. Port
+  actions and Remove stay "Coming soon" (M5). The presets stay in the page:
+  they are labels, not a rule core needs.
+- Nightlight on a non-Beacon fails `bad_params` in core ("Office has no
+  nightlight. Only eero Beacon has one."), before any request. Its write
+  shape is from the open source clients (every captured eero has
+  `nightlight: null`).
+- MANUAL: rename an eero and back | eero detail, Location, type a new name,
+  Enter, then Undo in the toast | the eero app shows the new name, then the
+  old one | risk: none.
 - MANUAL: rename one eero and turn its LED off and on | eero detail, edit
   Location, toggle Status light | name and LED change in the eero app too |
   risk: none.

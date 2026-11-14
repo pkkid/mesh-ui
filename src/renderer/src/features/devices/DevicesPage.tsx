@@ -1,6 +1,8 @@
 /**
- * Devices (docs/ux/pages/devices.md, mockup 05), read-only in M1: summary
- * strip, toolbar with the Filters popover, and the grouped table with live rates.
+ * Devices (docs/ux/pages/devices.md, mockup 05): summary strip, toolbar with
+ * the Filters popover, the bulk bar while rows are selected, and the grouped
+ * table with live rates and a row menu. Selection is view state kept here;
+ * Ctrl+A selects every row on screen, Esc clears.
  *
  * Filters, search and sort are `device.list` params, applied in core; this
  * page only keeps what the user picked (per network, for the session) and
@@ -11,6 +13,7 @@ import { Share2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
+import { useGate } from "~/components/ui/page";
 import { useLiveRates } from "~/app/useLiveRates";
 import { Button } from "~/components/ui/button";
 import { entityColors } from "~/lib/chartColors";
@@ -27,8 +30,9 @@ import {
   type SortKey,
   UNASSIGNED,
 } from "./DeviceFilters";
+import { BulkBar, type ProfileOption } from "./BulkBar";
 import { DeviceSummary } from "./DeviceSummary";
-import { BulkBar, DeviceTable, type ProfileInfo } from "./DeviceTable";
+import { DeviceTable, type ProfileInfo, visibleDevices } from "./DeviceTable";
 
 type ViewState = { filters: DeviceFilterState; sort: SortKey; groupBy: GroupBy };
 
@@ -81,6 +85,8 @@ export function DevicesPage() {
   const [searchText, setSearchText] = useState(view.filters.search);
   const [hidden, setHidden] = useState<Set<ColumnKey>>(readHidden);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const select = (ids: Iterable<string>) => setSelectedIds(new Set(ids));
 
   // Switching network brings back that network's filters.
   const shownNet = useRef(netId);
@@ -90,6 +96,7 @@ export function DevicesPage() {
     const next = views.get(netId) ?? DEFAULT_VIEW;
     setView(next);
     setSearchText(next.filters.search);
+    setSelectedIds(new Set());
   }, [netId]);
   useEffect(() => {
     if (netId) views.set(netId, view);
@@ -104,12 +111,21 @@ export function DevicesPage() {
     return () => clearTimeout(t);
   }, [searchText, view.filters.search]);
 
-  // "/" focuses search.
+  // "/" focuses search; Ctrl+A selects every row on screen; Esc clears the selection.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        setSelectedIds(new Set(visibleDevices()));
+        return;
+      }
+      if (e.key === "Escape" && !e.defaultPrevented) {
+        setSelectedIds((prev) => (prev.size ? new Set() : prev));
+        return;
+      }
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
       e.preventDefault();
       searchRef.current?.focus();
     };
@@ -130,6 +146,17 @@ export function DevicesPage() {
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
   const usage = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }, { poll: true });
   const ratesPending = useLiveRates(netId !== "", netId);
+
+  const bridged = network.data?.connectionMode === "bridged" || network.data?.connectionMode === "ipPassthrough";
+  const gate = useGate({ area: "devices", bridgeOff: true });
+  const blockGate = useGate({ area: "devices", bridgeOff: true, capability: "device_blacklist" });
+  const profileOptions = useMemo<ProfileOption[]>(() => {
+    const list = profiles.data?.profiles ?? [];
+    const colors = entityColors(list.map((p) => p.id));
+    return list.map((p) => ({ id: p.id, name: p.name, color: colors[p.id] }));
+  }, [profiles.data]);
+  // Selected rows still listed, in list order (a filter can hide some; they stay selected).
+  const selected = useMemo(() => (shown?.devices ?? []).filter((d) => selectedIds.has(d.id)), [shown, selectedIds]);
 
   const eeroName = useMemo(() => new Map((eeros.data ?? []).map((e) => [e.id, e.location])), [eeros.data]);
   const profileInfo = useMemo(() => {
@@ -201,7 +228,15 @@ export function DevicesPage() {
           }
           searchRef={searchRef}
         />
-        <BulkBar />
+        <BulkBar
+          selected={selected}
+          profiles={profileOptions}
+          networkName={network.data?.name ?? null}
+          bridged={bridged}
+          gate={gate}
+          blockGate={blockGate}
+          onSelect={select}
+        />
         <DeviceTable
           devices={list.error && !list.data ? undefined : shown?.devices}
           groupBy={view.groupBy}
@@ -218,6 +253,12 @@ export function DevicesPage() {
           onResetFilters={resetFilters}
           networkName={network.data?.name ?? null}
           total={summary?.total}
+          selected={selectedIds}
+          onSelect={select}
+          profileOptions={profileOptions}
+          bridged={bridged}
+          gate={gate}
+          blockGate={blockGate}
         />
       </section>
     </>

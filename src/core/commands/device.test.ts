@@ -6,7 +6,7 @@ import { createEeroBackend } from "../eero/backend";
 import { deviceCategory, deviceName, mapDevice } from "../eero/map/device";
 import { createEngine } from "../engine";
 import type * as M from "../model";
-import { summarize } from "./device";
+import { commands as deviceCommands, summarize } from "./device";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const LAKE = "5130264";
@@ -401,5 +401,220 @@ describe("device mapper", () => {
     });
     expect(d).toMatchObject({ id: "0a0000000002", type: "generic", band: "6", ipv6: ["2001:db8::2", "2001:db8::3"], signal: { dbm: -61, bars: 5 }, link: { rxMbps: 2401.9, widthMhz: 160, standard: "Wi-Fi 7", snr: 31 }, rates: null });
     expect(() => mapDevice({})).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Writes (M4.4)
+
+async function ok<R>(engine: ReturnType<typeof createEngine>, id: string, params: Record<string, unknown> = {}): Promise<R> {
+  const r = await engine.execute<R>(id, params);
+  if (!r.ok) throw new Error(`${id}: ${r.error.code}: ${r.error.message}`);
+  return r.result;
+}
+
+const WRITES = ["device.pause", "device.resume", "device.rename", "device.type.set", "device.profile.set", "device.block", "device.unblock"];
+
+describe("device writes (demo)", () => {
+  it("are reversible writes that refresh devices, network counts and profiles", () => {
+    const { engine } = demo();
+    const info = engine.commands();
+    for (const id of WRITES) {
+      const c = info.find((x) => x.id === id);
+      expect(c, id).toBeDefined();
+      expect(c?.effect, id).toBe("write");
+    }
+  });
+
+  it("pauses and resumes one device or several, and the next read shows it", async () => {
+    const { engine } = demo();
+    const before = await list(engine);
+    await ok(engine, "device.get", { device: "Alex's MacBook Pro" });
+    const r = await ok<M.DeviceBulkResult>(engine, "device.pause", { devices: "Alex's MacBook Pro" });
+    expect(r.failed).toEqual([]);
+    expect(r.devices.map((d) => [d.name, d.paused])).toEqual([["Alex's MacBook Pro", true]]);
+    // The cached device.get and device.list are refreshed.
+    expect((await ok<M.Device>(engine, "device.get", { device: "Alex's MacBook Pro" })).paused).toBe(true);
+    expect((await list(engine)).summary.paused).toBe(before.summary.paused + 1);
+
+    const both = await ok<M.DeviceBulkResult>(engine, "device.resume", { devices: ["Alex's MacBook Pro", "PlayStation 5"] });
+    expect(both.devices.map((d) => d.paused)).toEqual([false, false]);
+    expect((await list(engine, { search: "PlayStation 5" })).devices[0]?.paused).toBe(false);
+  });
+
+  it("reports a partial failure per device and fails when every device fails", async () => {
+    const { engine } = demo();
+    const r = await ok<M.DeviceBulkResult>(engine, "device.pause", { devices: ["Alex's MacBook Pro", "Flaky Plug"] });
+    expect(r.devices.map((d) => d.name)).toEqual(["Alex's MacBook Pro"]);
+    expect(r.failed).toMatchObject([{ device: "Flaky Plug", code: "eero_error" }]);
+    expect(await engine.execute("device.pause", { devices: ["Flaky Plug"] })).toMatchObject({ ok: false, error: { code: "eero_error" } });
+  });
+
+  it("renames, and an empty nickname clears it", async () => {
+    const { engine } = demo();
+    const d = await ok<M.Device>(engine, "device.rename", { device: "PlayStation 5", nickname: "  Den console " });
+    expect(d).toMatchObject({ name: "Den console", nickname: "Den console" });
+    expect((await ok<M.Device>(engine, "device.get", { device: d.id })).name).toBe("Den console");
+    const back = await ok<M.Device>(engine, "device.rename", { device: d.id, nickname: "" });
+    expect(back.nickname).toBeNull();
+    expect(back.name).not.toBe("Den console");
+  });
+
+  it("sets the type and its category", async () => {
+    const { engine } = demo();
+    const d = await ok<M.Device>(engine, "device.type.set", { device: "PlayStation 5", type: "television" });
+    expect(d).toMatchObject({ type: "television", category: "entertainment" });
+    const p = await ok<M.Device>(engine, "device.type.set", { device: d.id, type: "laptop_computer" });
+    expect(p.category).toBe("computers");
+  });
+
+  it("moves devices to a profile and back to Unassigned", async () => {
+    const { engine } = demo();
+    const profiles = await ok<M.ProfileList>(engine, "profile.list");
+    const target = profiles.profiles[0];
+    if (!target) throw new Error("fixture");
+    const r = await ok<M.DeviceBulkResult>(engine, "device.profile.set", { devices: ["PlayStation 5"], profile: target.name });
+    expect(r.devices[0]?.profileId).toBe(target.id);
+    expect((await list(engine, { profile: target.id })).devices.map((d) => d.name)).toContain("PlayStation 5");
+    const back = await ok<M.DeviceBulkResult>(engine, "device.profile.set", { devices: ["PlayStation 5"], profile: null });
+    expect(back.devices[0]?.profileId).toBeNull();
+    expect((await list(engine, { profile: null })).devices.map((d) => d.name)).toContain("PlayStation 5");
+  });
+
+  it("blocks and unblocks, and network.get's online count follows", async () => {
+    const { engine } = demo();
+    const n0 = await ok<M.Network>(engine, "network.get");
+    const r = await ok<M.DeviceBulkResult>(engine, "device.block", { devices: ["PlayStation 5"] });
+    expect(r.devices[0]).toMatchObject({ blocked: true, connected: false });
+    expect((await list(engine, { status: "blocked" })).devices.map((d) => d.name)).toContain("PlayStation 5");
+    const n1 = await ok<M.Network>(engine, "network.get");
+    expect(n1.devicesOnline).toBe((n0.devicesOnline ?? 0) - 1);
+    const u = await ok<M.DeviceBulkResult>(engine, "device.unblock", { devices: ["PlayStation 5"] });
+    expect(u.devices[0]).toMatchObject({ blocked: false, connected: true });
+    expect((await ok<M.Network>(engine, "network.get")).devicesOnline).toBe(n0.devicesOnline);
+  });
+
+  it("fails bad_params before writing anything", async () => {
+    const { engine } = demo();
+    const bad: [string, Record<string, unknown>][] = [
+      ["device.pause", {}],
+      ["device.pause", { devices: [] }],
+      ["device.pause", { devices: Array.from({ length: 51 }, (_, i) => `d${i}`) }],
+      ["device.pause", { devices: ["Alex's MacBook Pro", "No Such Device"] }],
+      ["device.pause", { device: "Alex's MacBook Pro" }],
+      ["device.resume", { devices: 7 }],
+      ["device.rename", { device: "PlayStation 5", nickname: "x".repeat(33) }],
+      ["device.rename", { device: "PlayStation 5" }],
+      ["device.type.set", { device: "PlayStation 5", type: "toaster_oven" }],
+      ["device.profile.set", { devices: ["PlayStation 5"] }],
+      ["device.profile.set", { devices: ["PlayStation 5"], profile: "Nobody" }],
+      ["device.block", { devices: [""] }],
+      ["device.unblock", { devices: ["No Such Device"] }],
+    ];
+    for (const [id, params] of bad) expect(await engine.execute(id, params), `${id} ${JSON.stringify(params)}`).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    // Nothing was paused by the call with one unknown ref.
+    expect((await ok<M.Device>(engine, "device.get", { device: "Alex's MacBook Pro" })).paused).toBe(false);
+  });
+
+  it("works signed out only with an error", async () => {
+    const { backend } = demo();
+    const engine = createEngine({ backend, clock: () => NOW });
+    await ok(engine, "demo.scenario.set", { scenario: "signed_out" });
+    expect(await engine.execute("device.pause", { devices: ["Alex's MacBook Pro"] })).toMatchObject({ ok: false });
+  });
+});
+
+describe("device writes (fake eero server)", () => {
+  let close: (() => Promise<void>) | null = null;
+  afterEach(async () => {
+    await close?.();
+    close = null;
+  });
+
+  const setup = () => {
+    const { fake, engine } = fakeEngine();
+    close = fake.close;
+    const maple = fake.state.networks.get("100001");
+    if (!maple) throw new Error("fixture");
+    return { fake, engine, maple };
+  };
+  const writes = (fake: ReturnType<typeof setup>["fake"]) => fake.writes.map((w) => ({ method: w.method, path: w.path, version: w.version, encoding: w.encoding, body: w.body }));
+
+  it("pauses and resumes with a JSON PUT on /2.3/, and the next read shows it", async () => {
+    const { fake, engine } = setup();
+    expect((await ok<M.Device>(engine, "device.get", { device: "Alex's Phone" })).paused).toBe(false);
+    const r = await ok<M.DeviceBulkResult>(engine, "device.pause", { devices: ["Alex's Phone"] });
+    expect(r.devices[0]).toMatchObject({ name: "Alex's Phone", paused: true, profileId: "700" });
+    expect(writes(fake)).toEqual([{ method: "PUT", path: "/2.3/networks/100001/devices/0a1b2c000001", version: "2.3", encoding: "json", body: { paused: true } }]);
+    expect((await ok<M.Device>(engine, "device.get", { device: "Alex's Phone" })).paused).toBe(true);
+    await ok(engine, "device.resume", { devices: "Alex's Phone" });
+    expect(fake.writes[1]?.body).toEqual({ paused: false });
+    expect((await ok<M.Device>(engine, "device.get", { device: "Alex's Phone" })).paused).toBe(false);
+  });
+
+  it("the fake drops a device write on /2.2/ with a 200, as eero does", async () => {
+    const { fake, maple } = setup();
+    const token = fake.signIn();
+    const res = await fake.fetch(`${fake.origin}/2.2/networks/100001/devices/0a1b2c000001`, { method: "PUT", headers: { "content-type": "application/json", cookie: `s=${token}` }, body: JSON.stringify({ paused: true }) });
+    expect(res.status).toBe(200);
+    expect(maple.devices.find((d) => d.mac === "0a:1b:2c:00:00:01")?.paused).toBe(false);
+  });
+
+  it("renames and sets the type with JSON PUTs on /2.3/", async () => {
+    const { fake, engine } = setup();
+    const d = await ok<M.Device>(engine, "device.rename", { device: "Alex's Phone", nickname: "Pocket" });
+    expect(d.name).toBe("Pocket");
+    await ok(engine, "device.rename", { device: d.id, nickname: "" });
+    const t = await ok<M.Device>(engine, "device.type.set", { device: d.id, type: "tablet" });
+    expect(t).toMatchObject({ type: "tablet", category: "phones_tablets" });
+    expect(writes(fake)).toEqual([
+      { method: "PUT", path: "/2.3/networks/100001/devices/0a1b2c000001", version: "2.3", encoding: "json", body: { nickname: "Pocket" } },
+      { method: "PUT", path: "/2.3/networks/100001/devices/0a1b2c000001", version: "2.3", encoding: "json", body: { nickname: null } },
+      { method: "PUT", path: "/2.3/networks/100001/devices/0a1b2c000001", version: "2.3", encoding: "json", body: { device_type: "tablet" } },
+    ]);
+  });
+
+  it("sets a profile by url, and Unassigned is eero's default profile", async () => {
+    const { fake, engine, maple } = setup();
+    const r = await ok<M.DeviceBulkResult>(engine, "device.profile.set", { devices: ["Living Room TV"], profile: "Jamie" });
+    expect(r.devices[0]?.profileId).toBe("701");
+    const back = await ok<M.DeviceBulkResult>(engine, "device.profile.set", { devices: ["Living Room TV"], profile: null });
+    expect(back.devices[0]?.profileId).toBeNull();
+    expect(writes(fake).map((w) => w.body)).toEqual([{ profile: { url: "/2.2/networks/100001/profiles/701" } }, { profile: { url: "/2.2/networks/100001/profiles/790" } }]);
+    expect(fake.writes.every((w) => w.version === "2.3" && w.encoding === "json" && w.path.startsWith("/2.3/networks/100001/devices/"))).toBe(true);
+    expect(maple.devices.find((d) => d.nickname === "Living Room TV")?.profile?.url).toBe("/2.2/networks/100001/profiles/790");
+    // The default profile is never offered as a profile.
+    expect(await engine.execute("device.profile.set", { devices: ["Living Room TV"], profile: "790" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("device.profile.set", { devices: ["Living Room TV"], profile: "Unassigned" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("blocks with a form POST and unblocks with a DELETE", async () => {
+    const { fake, engine } = setup();
+    const b = await ok<M.DeviceBulkResult>(engine, "device.block", { devices: ["Alex's Phone"] });
+    expect(b.devices[0]).toMatchObject({ blocked: true, connected: false });
+    expect((await list(engine, { status: "blocked" })).devices.map((d) => d.name)).toEqual(["Alex's Phone"]);
+    const u = await ok<M.DeviceBulkResult>(engine, "device.unblock", { devices: ["Alex's Phone"] });
+    expect(u.devices[0]?.blocked).toBe(false);
+    expect(writes(fake)).toEqual([
+      { method: "POST", path: "/2.2/networks/100001/blacklist", version: "2.2", encoding: "form", body: { mac: "0a:1b:2c:00:00:01" } },
+      { method: "DELETE", path: "/2.2/networks/100001/blacklist/0a1b2c000001", version: "2.2", encoding: "none", body: {} },
+    ]);
+  });
+
+  it("invalidates devices, network and profiles so cached reads refresh", async () => {
+    const { fake, engine } = setup();
+    for (const id of WRITES) expect(deviceCommands.find((c) => c.id === id)?.invalidates, id).toEqual(expect.arrayContaining(["devices", "network", "profiles"]));
+    await ok(engine, "device.list");
+    await ok(engine, "profile.list");
+    const reads = () => fake.log.filter((e) => e.method === "GET").length;
+    const n = reads();
+    await ok(engine, "device.list");
+    expect(reads()).toBe(n);
+    await ok(engine, "device.pause", { devices: ["Alex's Phone"] });
+    const p = await ok<M.ProfileList>(engine, "profile.list");
+    const l = await list(engine, { paused: true });
+    expect(reads()).toBeGreaterThan(n);
+    expect(l.devices.map((d) => d.name)).toContain("Alex's Phone");
+    expect(p.profiles.length).toBeGreaterThan(0);
   });
 });

@@ -157,6 +157,13 @@ Passwordless, two steps, driven by the `auth.*` commands.
 
 ### Refresh and replay
 
+First, on any 401 or 419 to a session request, the client re-reads the
+`SecretStore` once. The app and a CLI or MCP process share `session.json`,
+and either may have signed in again or saved a rotated token. If the stored
+token differs from the one the request used (and is not a retired
+`eero-web-` token), the client adopts it, drops shared reads and replays
+the request once, with no refresh. Otherwise it goes on as below.
+
 On HTTP 401 with `meta.error` = `error.session.refresh`:
 
 1. Single-flight: if a refresh is already running, wait for it instead of
@@ -171,7 +178,7 @@ or 419, or `error.session.expired` / `error.session.revoked`, means the session
 is gone: clear it and return `not_signed_in`.
 
 Refresh is safe to replay for writes because the original write was rejected
-before it ran; this is the one case where a write is sent twice.
+before it ran; this and the store re-read above are the only cases where a write is sent twice.
 
 ### Token custody
 
@@ -199,16 +206,26 @@ eero tolerates roughly 100 requests a minute per account before answering 429.
   sign-out drops shared answers, and failures are never shared. Tests that
   inject an in-process `fetch` share only in-flight reads, since they change
   fake server state between reads.
+- **Credential reads.** A request with `share: false` never takes an answer
+  that already came back; it joins an identical read still in flight
+  (started a moment ago, so a page that reads and reveals at once still
+  sends one request) or sends its own, which later reads then share. The
+  credential reads behind
+  `wifi.password.get`, `wifi.share` and `guest.share` (`GET {net}` and
+  `GET {net}/guestnetwork`) use it, so a password changed on eero or in
+  another process shows on the next reveal instead of up to 5 s late.
 - **429.** Honour `Retry-After` (seconds or HTTP date); without one, back off
   30 s. Also treat `meta.error` = `error.rate.limit` on any status as a 429.
 - **Retries.** Only `query` requests are retried: on 429 after the wait, and on
   network errors or 5xx with backoff (1 s, 4 s), at most twice. Writes are
-  never retried; a failed write returns its error. If the wait would exceed
+  never retried, on 429 or otherwise; a failed write returns its error (a
+  429 still pauses the limiter). The one replay of a write is after a
+  session refresh or store re-read, when eero rejected it before it ran. If the wait would exceed
   20 s the request fails with `rate_limited` and `retryAfterSec` instead of
   blocking the caller.
 - **Burst reporter.** `POST {net}/burst_reporters` (behind
   `device.rates.refresh`) is allowed once a minute per network. Core
-  enforces this, not the limiter (not yet built in M1) (see `DeviceBackend.requestBurst`); a second
+  enforces this in `commands/device.ts`, not the limiter (see `DeviceBackend.requestBurst`); a second
   call inside the minute returns the last result's `nextBurst` without
   calling eero. Fresh `usage.down_mbps` /
   `up_mbps` appear on devices about 12 s after a burst.

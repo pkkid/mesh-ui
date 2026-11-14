@@ -3,12 +3,15 @@
  * (docs/ux/overview.md#window-layout). Signed-out sessions get the sign-in
  * steps (docs/ux/sign-in.md), which stay up after the code checks until they
  * have opened the last used network (else the first), then hand over to the
- * dashboard.
+ * dashboard. The shell also hosts the write kit's toasts and confirm dialog
+ * (app/useWrite.ts).
  */
 import { useEffect, useState } from "react";
 
 import { RouterOutlet, useNavigationShortcuts } from "~/app/router";
 import { followHostEvents, onSessionEnded, useQuery } from "~/app/useCommand";
+import { ConfirmHost } from "~/components/ui/confirm";
+import { Toaster } from "~/components/ui/toast";
 import { CommandPalette } from "~/features/palette/CommandPalette";
 import { SignInView } from "~/features/sign-in/SignInView";
 import { Sidebar } from "~/features/shell/Sidebar";
@@ -70,6 +73,8 @@ function Shell() {
         </main>
       </TopBarProvider>
       <CommandPalette />
+      <Toaster />
+      <ConfirmHost />
     </div>
   );
 }

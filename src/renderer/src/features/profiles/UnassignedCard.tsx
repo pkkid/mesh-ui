@@ -1,22 +1,25 @@
 /**
  * "Unassigned devices": a tile per device in no profile with its icon, name
  * and "Online · 142 GB in 24h", "Offline · 3 days ago" or "Blocked", plus a
- * faint avatar per profile to assign it. Assigning and pausing are writes
- * from a later milestone, so they show disabled ("Coming soon").
- * docs/ux/pages/profiles.md (Layout 4).
+ * faint avatar per profile that assigns it (`device.profile.set`, with Undo). Pause unassigned asks inline first; Resume
+ * unassigned undoes it. docs/ux/pages/profiles.md (Layout 4).
  */
-import { Info, Pause, UserRoundPlus } from "lucide-react";
+import { Info, Pause, Play, UserRoundPlus } from "lucide-react";
 
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
+import { performWrite, useWrite } from "~/app/useWrite";
+import { WriteConfirm } from "~/components/ui/confirm";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError, useNow } from "~/components/ui/page";
+import { GatedButton, HeaderLink, SectionError, useGate, useNow } from "~/components/ui/page";
+import { profileRequest } from "~/features/devices/BulkBar";
+import { unassignedPauseMessage } from "~/features/profile/helpers";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatRelative } from "../../../../core/format";
 import type { Device, DeviceList, ProfileList, UsageBreakdown } from "../../../../core/model";
 
-import { Avatar } from "./ProfileCards";
+import { Avatar, PROFILE_GATE } from "./ProfileCards";
 import type { ProfileColor } from "./ProfilesPage";
 
 type Props = {
@@ -29,6 +32,7 @@ type Props = {
 
 export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: Props) {
   const now = useNow(60_000);
+  const assignGate = useGate({ area: "devices", bridgeOff: true });
   const owned = new Set((profiles?.profiles ?? []).flatMap((p) => p.deviceIds));
   const listed = new Set((profiles?.profiles ?? []).map((p) => p.id));
   // Same rule as the core Unassigned summary (no profile, or eero's own Unassigned group),
@@ -40,6 +44,8 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
   const today = new Map((usage?.rows ?? []).map((r) => [r.id, r.down + r.up]));
   const loaded = !!devices.data && !!profiles;
   const empty = loaded && list.length === 0;
+  const paused = profiles?.unassigned.paused ?? false;
+  const pausable = list.filter((d) => !d.blocked);
 
   const detail = (d: Device) => {
     if (d.blocked) return <span className="text-destructive-foreground">Blocked</span>;
@@ -54,10 +60,12 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
       subtitle={loaded && !empty ? `${list.length} ${list.length === 1 ? "device" : "devices"} not in a profile` : undefined}
       tools={
         !loaded || empty ? null : (
-          <ComingSoonButton size="xs" variant="outline">
-            <Pause />
-            Pause unassigned
-          </ComingSoonButton>
+          <>
+            <UnassignedPauseButton paused={paused} devices={pausable} />
+            <HeaderLink to={pathFor("profile", { profileId: "unassigned" })} arrow>
+              Open
+            </HeaderLink>
+          </>
         )
       }
     >
@@ -92,9 +100,19 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
                     <div className="truncate font-medium text-[12.5px]">{d.name}</div>
                     <div className="truncate text-2xs text-muted-foreground">{detail(d)}</div>
                   </div>
-                  <div className="flex shrink-0 gap-0.5" title="Assign to a profile: coming soon">
+                  <div className="flex shrink-0 gap-0.5" title={assignGate.allowed ? undefined : (assignGate.reason ?? undefined)}>
                     {(profiles?.profiles ?? []).slice(0, 6).map((p) => (
-                      <Avatar key={p.id} name={p.name} color={colorOf(p.id)} className="size-[18px] text-[9px] opacity-35" />
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={!assignGate.allowed}
+                        aria-label={`Assign ${d.name} to ${p.name}`}
+                        title={assignGate.allowed ? `Assign to ${p.name}` : undefined}
+                        onClick={() => void performWrite(profileRequest([d], { id: p.id, name: p.name }))}
+                        className="cursor-pointer rounded-full opacity-35 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:hover:opacity-35"
+                      >
+                        <Avatar name={p.name} color={colorOf(p.id)} className="size-[18px] text-[9px]" />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -113,5 +131,41 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
         </>
       )}
     </Section>
+  );
+}
+
+/**
+ * Pause unassigned (asks inline first: it includes the TV, printer and smart
+ * home gear) or Resume unassigned. Shared with the Unassigned page.
+ */
+export function UnassignedPauseButton({ paused, devices, size = "xs" }: { paused: boolean; devices: ReadonlyArray<Device>; size?: "xs" | "lg" }) {
+  const gate = useGate(PROFILE_GATE);
+  const copy = unassignedPauseMessage(devices);
+  const pause = useWrite("profile.unassigned.pause", {
+    askFirst: true,
+    confirm: { ...copy, confirmLabel: "Pause unassigned" },
+    success: "Paused unassigned devices",
+    undo: { id: "profile.unassigned.resume", success: "Resumed unassigned devices" },
+  });
+  const resume = useWrite("profile.unassigned.resume", {
+    success: "Resumed unassigned devices",
+    undo: { id: "profile.unassigned.pause", success: "Paused unassigned devices" },
+  });
+  const write = paused ? resume : pause;
+  const label = paused ? "Resume unassigned" : "Pause unassigned";
+  return (
+    <WriteConfirm write={pause} className="max-w-sm">
+      <GatedButton
+        gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
+        size={size}
+        variant={paused ? "default" : "outline"}
+        className={size === "lg" ? "w-full" : undefined}
+        disabled={write.running}
+        onClick={() => void write.run()}
+      >
+        {paused ? <Play /> : <Pause />}
+        {label}
+      </GatedButton>
+    </WriteConfirm>
   );
 }

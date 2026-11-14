@@ -11,9 +11,10 @@
 import { z } from "zod";
 
 import { toolName } from "../../../../core/mcpNames";
-import type { Device, Effect, Eero, Permissions, ProfileList } from "../../../../core/model";
+import type { Device, Effect, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import type { CommandInfo, JsonSchema } from "../../../../core/registry";
 import { needsConfirm } from "../../../../core/spec";
+import { type GateOptions, gateFor, type WriteRequest } from "../../app/useWrite";
 
 // ---------------------------------------------------------------------------
 // Items
@@ -26,7 +27,7 @@ export type CommandItem = {
   label: string;
   /** Preset params (`device.list {"status":"online"}`); `{}` for the plain command. */
   params: Record<string, unknown>;
-  /** Why it cannot run here ("Coming soon", "Owner only"), or null. */
+  /** Why it cannot run here ("Owner only", "Off in bridge mode"), or null. */
   unavailable: string | null;
 };
 
@@ -43,6 +44,8 @@ export type DeviceItem = {
   /** "Mia · Upstairs Hall". */
   context: string;
   action: "Pause" | "Resume";
+  /** Why the row action cannot run ("Coming soon", "Off in bridge mode"), or null. Set by `withActions`. */
+  actionBlocked?: string | null;
 };
 
 export type ProfileItem = {
@@ -53,6 +56,8 @@ export type ProfileItem = {
   state: "Paused" | "Scheduled" | null;
   context: string;
   action: "Pause" | "Resume";
+  /** Why the row action cannot run, or null. Set by `withActions`. */
+  actionBlocked?: string | null;
 };
 
 export type Item = CommandItem | PageItem | DeviceItem | ProfileItem;
@@ -77,19 +82,96 @@ export const PRESETS: ReadonlyArray<CommandPreset> = [
 /** Commands that need a person and a window, so the palette does not offer them. */
 const HIDDEN = new Set(["auth.login.start", "auth.login.verify", "auth.login.resend"]);
 
-export type AvailabilityContext = { signedIn: boolean; permissions: Permissions | null };
+export type AvailabilityContext = {
+  signedIn: boolean;
+  permissions: Permissions | null;
+  /** The open network, for capability and bridge mode gates. */
+  network?: Network | null;
+};
+
+/**
+ * Permission area (`network.permissions` `can` key) per command area. A
+ * command area not listed here is not gated by permission.
+ */
+const PERMISSION_AREA: Record<string, string> = {
+  admin: "network.admin_invites",
+  device: "devices",
+  eero: "eeros",
+  forward: "settings",
+  guest: "settings",
+  internet: "network",
+  network: "network",
+  notifications: "network",
+  pinhole: "settings",
+  profile: "profiles",
+  reservation: "settings",
+  settings: "settings",
+  speedtest: "network",
+  updates: "updates",
+  wifi: "settings",
+};
+
+/** Commands off in bridge or IP passthrough mode (eero has no router there), by id prefix. */
+const BRIDGE_OFF: ReadonlyArray<string> = [
+  "device.block",
+  "device.pause",
+  "device.profile",
+  "device.resume",
+  "device.unblock",
+  "forward",
+  "guest",
+  "profile",
+  "reservation",
+  "settings.sqm",
+];
+
+/** The `network.get` capability a command needs, by id prefix. */
+const CAPABILITY: ReadonlyArray<readonly [string, string]> = [
+  ["device.block", "device_blacklist"],
+  ["device.unblock", "device_blacklist"],
+  ["eero.led", "led_action"],
+  ["settings.band_steering", "band_steering"],
+  ["settings.dns_caching", "dns_caching"],
+  ["settings.ipv6", "ipv6_editable"],
+  ["settings.power_saving", "power_saving"],
+  ["settings.sqm", "sqm"],
+  ["settings.thread", "thread_network"],
+];
+
+const hasPrefix = (id: string, prefix: string) => id === prefix || id.startsWith(`${prefix}.`);
+
+/**
+ * What a write needs to run on this network, read from its id: the
+ * permission area and operation (`create` for add and create, `delete` for
+ * delete, remove and destructive commands, else `update`), bridge mode and
+ * capability. Null for queries and commands outside a network.
+ */
+export function commandGate(info: Pick<CommandInfo, "id" | "effect" | "scope">): GateOptions | null {
+  if (info.effect === "query" || info.scope !== "network") return null;
+  const parts = info.id.split(".");
+  const verb = parts[parts.length - 1] ?? "";
+  const op: GateOptions["op"] =
+    verb === "create" || verb === "add" ? "create" : verb === "delete" || verb === "remove" || info.effect === "destructive" ? "delete" : "update";
+  return {
+    area: PERMISSION_AREA[parts[0] ?? ""],
+    op,
+    bridgeOff: BRIDGE_OFF.some((p) => hasPrefix(info.id, p)),
+    capability: CAPABILITY.find(([p]) => hasPrefix(info.id, p))?.[1],
+  };
+}
 
 /**
  * Whether the palette lists a command (`false`), and if so why it cannot run
  * (`string`) or that it can (`null`). Signed out, only app and auth commands
- * are listed. Only queries run from the palette for now; the rest say
- * "Coming soon".
+ * are listed. Writes dim by role, permission, bridge mode and capability
+ * with the reason; the engine still has the last word when they run.
  */
 export function availability(info: CommandInfo, ctx: AvailabilityContext): string | null | false {
   if (HIDDEN.has(info.id)) return false;
   if (!ctx.signedIn && info.scope === "network") return false;
   if (info.effect === "destructive" && ctx.permissions && ctx.permissions.role !== "owner") return "Owner only";
-  if (info.effect !== "query") return "Coming soon";
+  const gate = commandGate(info);
+  if (gate) return gateFor(gate, ctx.permissions ?? undefined, ctx.network ?? undefined).reason;
   return null;
 }
 
@@ -458,6 +540,83 @@ export function missingRequired(schema: JsonSchema, params: Record<string, unkno
   return paramFields(schema)
     .filter((f) => f.required && params[f.name] === undefined)
     .map((f) => f.name);
+}
+
+// ---------------------------------------------------------------------------
+// Writes
+
+/** The first entity picker's value ("Leo's iPad"), which names what a write changes. */
+function targetName(fields: ReadonlyArray<ParamField>, params: Record<string, unknown>): string | null {
+  for (const f of fields) {
+    const v = params[f.name];
+    if (f.kind === "ref" && typeof v === "string" && v !== "") return v;
+  }
+  return null;
+}
+
+/**
+ * How the palette runs a write through the write kit, for any command:
+ * success toast, progress toast for disruptive ones, and a confirm titled
+ * with the target. Destructive commands with a target ask for its name to be
+ * typed. The consequence text is the engine's `needs_confirm` message.
+ */
+export function writeRequest(
+  info: CommandInfo,
+  label: string,
+  params: Record<string, unknown>,
+  fields: ReadonlyArray<ParamField> = paramFields(info.params),
+): WriteRequest {
+  const target = targetName(fields, params);
+  return {
+    id: info.id,
+    params,
+    success: target ? `Done: ${label}, ${target}` : `Done: ${label}`,
+    progress: info.effect === "disruptive" ? (target ? `${label}: ${target}` : label) : undefined,
+    failure: `Couldn't run ${label}`,
+    confirm: {
+      title: target ? `${label}: ${target}?` : `${label}?`,
+      confirmLabel: label,
+      typeToConfirm: info.effect === "destructive" && target ? target : undefined,
+    },
+  };
+}
+
+/** The command a device or profile row action runs: `device.pause`, `profile.resume`. */
+export const entityActionId = (item: DeviceItem | ProfileItem) => `${item.kind}.${item.action.toLowerCase()}`;
+
+/**
+ * The write a device or profile row action runs, from the registry: the
+ * action's command with the entity in its picker param, and Undo through the
+ * opposite action when the registry has it. Null when the command does not
+ * exist yet.
+ */
+export function entityWrite(item: DeviceItem | ProfileItem, commands: ReadonlyArray<CommandInfo>): WriteRequest | null {
+  const info = commands.find((c) => c.id === entityActionId(item));
+  if (!info) return null;
+  const param = paramFields(info.params).find((f) => f.kind === "ref" && f.refKind === item.kind)?.name ?? item.kind;
+  const params = { [param]: item.id };
+  const inverse = commands.find((c) => c.id === `${item.kind}.${item.action === "Pause" ? "resume" : "pause"}`);
+  return {
+    id: info.id,
+    params,
+    success: `${item.action === "Pause" ? "Paused" : "Resumed"} ${item.label}`,
+    failure: `Couldn't ${item.action.toLowerCase()} ${item.label}`,
+    confirm: { title: `${item.action} ${item.label}?`, confirmLabel: item.action },
+    undo: inverse ? { id: inverse.id, params } : undefined,
+  };
+}
+
+/** Sets each row's `actionBlocked`: "Coming soon" until its command exists, else its gate. */
+export function withActions<T extends DeviceItem | ProfileItem>(
+  items: ReadonlyArray<T>,
+  commands: ReadonlyArray<CommandInfo>,
+  ctx: AvailabilityContext,
+): T[] {
+  return items.map((item) => {
+    const info = commands.find((c) => c.id === entityActionId(item));
+    const blocked = info ? availability(info, ctx) : "Coming soon";
+    return { ...item, actionBlocked: blocked === false ? "Coming soon" : blocked };
+  });
 }
 
 // ---------------------------------------------------------------------------

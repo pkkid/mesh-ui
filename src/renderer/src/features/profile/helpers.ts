@@ -194,3 +194,56 @@ export function zoneName(timezone: string | null, now = Date.now()): string {
     return timezone;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Writes (M4.5): picker order and confirm copy.
+
+/** "Alex", "Alex and Jamie", "Alex, Jamie and Mia". */
+export function nameList(names: ReadonlyArray<string>): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+const devicesWord = (n: number) => `${n} device${n === 1 ? "" : "s"}`;
+
+export type PickerRow = { id: string; name: string; note: string | null; device: Device };
+
+/**
+ * Devices for a profile's picker: unassigned first, then the rest by their
+ * profile, each by name. `note` says where a device is now ("Moves from
+ * Alex"); this profile's own devices say nothing. Guests and blocked devices
+ * are left out (they are not the household's, or cannot connect).
+ */
+export function pickerRows(devices: ReadonlyArray<Device>, profiles: ReadonlyArray<Pick<Profile, "id" | "name">>, self: string | null): PickerRow[] {
+  const nameOf = new Map(profiles.map((p) => [p.id, p.name]));
+  const owner = (d: Device) => (d.profileId && nameOf.has(d.profileId) ? d.profileId : null);
+  const rank = (d: Device) => (owner(d) === self ? 0 : owner(d) === null ? 1 : 2);
+  return devices
+    .filter((d) => !d.blocked && d.ssid !== "guest")
+    .sort((a, b) => rank(a) - rank(b) || (nameOf.get(owner(a) ?? "") ?? "").localeCompare(nameOf.get(owner(b) ?? "") ?? "") || a.name.localeCompare(b.name))
+    .map((d) => {
+      const from = owner(d);
+      return { id: d.id, name: d.name, device: d, note: from === null ? (self === null ? null : "Unassigned") : from === self ? null : `Moves from ${nameOf.get(from)}` };
+    });
+}
+
+/** Pause all's confirm: "Pause Alex, Jamie and Mia? 15 devices lose internet until you resume them." */
+export function pauseAllMessage(profiles: ReadonlyArray<Pick<Profile, "name" | "deviceIds">>): { title: string; message: string } {
+  const n = profiles.reduce((sum, p) => sum + p.deviceIds.length, 0);
+  return {
+    title: `Pause ${nameList(profiles.map((p) => p.name))}?`,
+    message: `${devicesWord(n)} ${n === 1 ? "loses" : "lose"} internet until you resume ${profiles.length === 1 ? "it" : "them"}.`,
+  };
+}
+
+/** Pause unassigned's confirm, naming up to three devices (online first). */
+export function unassignedPauseMessage(devices: ReadonlyArray<Pick<Device, "name" | "connected">>): { title: string; message: string } {
+  const named = [...devices].sort((a, b) => Number(b.connected) - Number(a.connected)).slice(0, 3).map((d) => d.name);
+  const rest = devices.length - named.length;
+  return {
+    title: `Pause ${devicesWord(devices.length).replace("device", "unassigned device")}?`,
+    message: named.length
+      ? `This includes ${rest > 0 ? `${named.join(", ")} and ${rest} more` : nameList(named)}. They lose internet until you resume them.`
+      : "They lose internet until you resume them.",
+  };
+}

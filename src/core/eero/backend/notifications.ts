@@ -1,7 +1,8 @@
 /**
  * eero backend, notifications area: `GET {net}/notifications_history`
  * (`limit=50`, paged by `timestamp`, the `created_at` of the last row),
- * `GET {net}/notifications/has_unread` and `GET {net}/notifications`.
+ * `GET {net}/notifications/has_unread` and `GET {net}/notifications`, and
+ * `POST {net}/notifications/mark_read` (empty-JSON body, network-wide).
  */
 
 import type { NotificationChunk } from "../../backend";
@@ -29,6 +30,9 @@ export const notifications: EeroArea<"notifications"> = ({ client }) => ({
   },
   async unread(net) {
     return mapHasUnread(await client.request<RawHasUnread | null>({ method: "GET", path: networkPath(net, "notifications/has_unread") }));
+  },
+  async markRead(net) {
+    await client.request<unknown>({ method: "POST", path: networkPath(net, "notifications/mark_read"), encoding: "empty" });
   },
   async settings(net) {
     return mapNotificationSettings(await client.request<RawNotificationSettings | null>({ method: "GET", path: networkPath(net, "notifications") }));

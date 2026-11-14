@@ -17,9 +17,10 @@ import type { PageProps } from "~/app/routes";
 import { execute, useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { SectionError } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { Status } from "~/components/ui/status";
+import { MarkAllReadButton } from "~/features/notifications/NotificationList";
 import { useNotificationPage } from "~/features/notifications/useDesktopAlerts";
 import { TopBarActions } from "~/features/shell/TopBar";
 import { datedName, saveTextFile } from "~/lib/saveFile";
@@ -51,7 +52,8 @@ export function ActivityPage(_props: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const clock = networkClock(network.data?.timezone);
   const visible = useVisible();
-  const unread = useNotificationPage().data?.unread === true;
+  const notifications = useNotificationPage();
+  const unread = notifications.data?.unread === true;
 
   const [bucket, setBucket] = useState<Bucket>("day");
   const [mode, setMode] = useState<Mode>("grouped");
@@ -235,9 +237,7 @@ export function ActivityPage(_props: PageProps) {
                 { value: "raw", label: "Raw" },
               ]}
             />
-            <ComingSoonButton size="xs" variant="outline">
-              Mark all read
-            </ComingSoonButton>
+            <MarkAllReadButton networkId={notifications.networkId} page={notifications.data} />
           </>
         }
       >

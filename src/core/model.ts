@@ -21,7 +21,7 @@ export type Security = "WPA2" | "WPA2_WPA3" | "WPA3";
 export type Effect = "query" | "write" | "disruptive" | "destructive";
 export type SessionStorageKind = "keychain" | "memory";
 export type BackendKind = "eero" | "demo";
-/** eero `device_type` as sent ("phone", "laptop", ...); "generic" if absent. */
+/** eero `device_type` as sent ("phone", "laptop_computer", ...); "generic" if absent. */
 export type DeviceType = string;
 export type PortAction =
   | "ENABLE_PORT"
@@ -134,7 +134,8 @@ export type SpeedTest = {
   rating: "great" | "below_plan" | "poor" | null;
 };
 
-export type PlanSpeed = { down: number; up: number };
+/** The plan speed the person set (Mbps), with an optional name such as "Fiber Gig". */
+export type PlanSpeed = { down: number; up: number; label?: string };
 
 export type Internet = {
   status: Status;
@@ -170,9 +171,14 @@ export type InternetVerdict = {
   detail: string | null;
 };
 
+/** A speed test this app started that has no result yet (`speedtest.run`). */
+export type SpeedTestRun = { networkId: Id; startedAt: Iso; resultAt: Iso };
+
 export type SpeedHistory = {
   tests: SpeedTest[];
   avg7d: { downMbps: number | null; upMbps: number | null };
+  /** The test started from this process that is still waiting for its result, else null. */
+  running: SpeedTestRun | null;
 };
 
 /** Bytes moved in one bucket. */
@@ -399,6 +405,12 @@ export type DeviceList = { devices: Device[]; summary: DeviceSummary };
 /** Result of device.rates.refresh. */
 export type BurstResult = { nextBurstAt: Iso };
 
+/** One device a bulk write could not change; `device` is the ref as given. */
+export type DeviceWriteFailure = { device: string; id: Id | null; name: string | null; code: string; message: string };
+
+/** A bulk device write (pause, resume, profile, block, unblock): the changed devices, in order, and the ones that failed. */
+export type DeviceBulkResult = { devices: Device[]; failed: DeviceWriteFailure[] };
+
 // ---------------------------------------------------------------------------
 // Profiles
 
@@ -411,6 +423,9 @@ export type Schedule = {
   end: Hhmm;
   enabled: boolean;
 };
+
+/** A schedule to add or replace; eero assigns the id. */
+export type ScheduleInput = Omit<Schedule, "id">;
 
 export type Profile = {
   /** eero profile id. Unassigned is not a Profile. */
@@ -450,6 +465,9 @@ export type PausesToday = {
 
 /** Result of profile.list. */
 export type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices; today: PausesToday };
+
+/** Result of profile.get: the profile and its lane of today's pauses (as in `profile.list`). */
+export type ProfileDetail = Profile & { today: Omit<PausesToday, "lanes"> & { segments: PauseSegment[] } };
 
 // ---------------------------------------------------------------------------
 // Guest and Wi-Fi

@@ -2,13 +2,17 @@
  * The grouped device table (docs/ux/pages/devices.md, Layout 4 and 5). Rows
  * arrive filtered and sorted by `device.list`; this file only groups them
  * (view state), lays out the columns and opens device detail on click.
- * Selection, the bulk bar and the row menu are shown but disabled until the
- * device actions land (M4).
+ * Selection (checkbox, Shift click for a range, the header checkbox) is view
+ * state held by DevicesPage for the bulk bar (BulkBar.tsx). The row menu
+ * runs the device writes: pause or resume, rename in place, change profile,
+ * block (after the app's confirm dialog) or unblock.
  */
+import { Menu } from "@base-ui/react/menu";
 import {
   Ban,
   ChevronDown,
   ChevronRight,
+  CircleCheck,
   Ellipsis,
   History,
   House,
@@ -16,18 +20,19 @@ import {
   Laptop,
   type LucideIcon,
   Pause,
+  Pencil,
   Play,
   Router,
   Shapes,
   Tv,
-  UserRoundPlus,
+  UserRound,
   Users,
   Wifi,
-  X,
 } from "lucide-react";
-import { Fragment, type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
+import { type Gate, performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Card, Empty } from "~/components/ui/card";
@@ -38,6 +43,7 @@ import { cn } from "~/lib/utils";
 import { formatBytes, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Device, DeviceCategory } from "../../../../core/model";
 
+import { blockRequest, menuClasses, pauseRequest, type ProfileOption, ProfileItems, profileRequest } from "./BulkBar";
 import { COLUMN_LABELS, type ColumnKey, type GroupBy } from "./DeviceFilters";
 
 // ---------------------------------------------------------------------------
@@ -156,6 +162,17 @@ type DeviceTableProps = {
   networkName: string | null;
   /** Devices on the whole network (0 means nothing has joined). */
   total: number | undefined;
+  /** Selected device ids (view state, DevicesPage). */
+  selected: ReadonlySet<string>;
+  onSelect: (ids: string[]) => void;
+  /** Profiles for the row menu's Change profile. */
+  profileOptions: ReadonlyArray<ProfileOption>;
+  /** Bridge mode: no pause, profiles or block in the row menu. */
+  bridged: boolean;
+  /** Pause, resume, rename and profiles. */
+  gate: Gate;
+  /** Block and unblock. */
+  blockGate: Gate;
 };
 
 const DEFAULT_COLLAPSED = new Set(["category:home"]);
@@ -163,10 +180,15 @@ const DEFAULT_COLLAPSED = new Set(["category:home"]);
 /** The table's last row order (groups in order), for Prev and Next on device detail. View state. */
 let shownOrder: readonly string[] = [];
 export const devicesOrder = (): readonly string[] => shownOrder;
+/** Rows on screen (collapsed groups left out), for Ctrl+A. View state. */
+let visibleOrder: readonly string[] = [];
+export const visibleDevices = (): readonly string[] => visibleOrder;
 
 export function DeviceTable(props: DeviceTableProps) {
-  const { devices, groupBy, hidden } = props;
+  const { devices, groupBy, hidden, selected, onSelect } = props;
   const [collapsed, setCollapsed] = useState<Set<string>>(DEFAULT_COLLAPSED);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const anchor = useRef<string | null>(null);
   const show = (c: ColumnKey) => !hidden.has(c);
   // Checkbox, Device, Status and the row menu, plus the optional columns shown.
   const columns = 4 + (Object.keys(COLUMN_LABELS) as ColumnKey[]).filter(show).length;
@@ -178,6 +200,21 @@ export function DeviceTable(props: DeviceTableProps) {
       else next.add(key);
       return next;
     });
+
+  // Rows on screen (collapsed groups left out), for the header checkbox and Shift ranges.
+  let visible: string[] = [];
+  /** Checkbox on a row: toggles it, or with Shift selects the range from the last one clicked. */
+  const pick = (id: string, shift: boolean) => {
+    const from = anchor.current ? visible.indexOf(anchor.current) : -1;
+    const to = visible.indexOf(id);
+    if (shift && from >= 0 && to >= 0) {
+      const range = visible.slice(Math.min(from, to), Math.max(from, to) + 1);
+      onSelect([...new Set([...selected, ...range])]);
+    } else {
+      onSelect(selected.has(id) ? [...selected].filter((x) => x !== id) : [...selected, id]);
+    }
+    anchor.current = id;
+  };
 
   let body: ReactNode;
   if (props.error && !devices) {
@@ -215,6 +252,7 @@ export function DeviceTable(props: DeviceTableProps) {
   } else {
     const groups = groupDevices(devices, groupBy, props.eeroName, props.profiles);
     shownOrder = groups.flatMap((g) => g.devices.map((d) => d.id));
+    visible = groups.flatMap((g) => (collapsed.has(`${groupBy}:${g.key}`) ? [] : g.devices.map((d) => d.id)));
     body = groups.map((g) => {
       // Groups with no devices are left out, whatever the filters.
       if (g.devices.length === 0) return null;
@@ -243,12 +281,25 @@ export function DeviceTable(props: DeviceTableProps) {
               </td>
             </tr>
           )}
-          {!isCollapsed && g.devices.map((d) => <Row key={d.id} device={d} show={show} {...props} />)}
+          {!isCollapsed &&
+            g.devices.map((d) => (
+              <Row
+                key={d.id}
+                device={d}
+                show={show}
+                {...props}
+                isSelected={selected.has(d.id)}
+                onPick={(shift) => pick(d.id, shift)}
+                renaming={renaming === d.id}
+                onRename={(on) => setRenaming(on ? d.id : null)}
+              />
+            ))}
         </Fragment>
       );
     });
   }
 
+  visibleOrder = visible;
   const th = "whitespace-nowrap px-2.5 py-[9px] text-start font-normal text-muted-foreground text-xs";
   return (
     <Card>
@@ -257,7 +308,13 @@ export function DeviceTable(props: DeviceTableProps) {
           <thead>
             <tr className="border-b">
               <th className={cn(th, "w-7")}>
-                <Checkbox label="Select all devices" />
+                <Checkbox
+                  label="Select all devices"
+                  checked={visible.length > 0 && visible.every((id) => selected.has(id))}
+                  mixed={visible.some((id) => selected.has(id)) && !visible.every((id) => selected.has(id))}
+                  disabled={visible.length === 0}
+                  onPick={() => onSelect(visible.every((id) => selected.has(id)) ? [] : visible)}
+                />
               </th>
               <th className={th}>
                 <span className="font-medium text-foreground">Device</span>
@@ -301,23 +358,46 @@ function FullRow({ columns, children }: { columns: number; children: ReactNode }
   );
 }
 
-const SELECT_SOON = "Selecting devices comes with device actions in a later update";
-
-function Checkbox({ label }: { label: string }) {
+function Checkbox({
+  label,
+  checked,
+  mixed = false,
+  disabled = false,
+  onPick,
+}: {
+  label: string;
+  checked: boolean;
+  mixed?: boolean;
+  disabled?: boolean;
+  onPick: (shift: boolean) => void;
+}) {
   return (
     <input
       type="checkbox"
-      disabled
       aria-label={label}
-      title={SELECT_SOON}
-      className="size-3.5 cursor-not-allowed rounded-[4px] border accent-primary opacity-60"
+      checked={checked}
+      disabled={disabled}
+      ref={(el) => {
+        if (el) el.indeterminate = mixed;
+      }}
+      onChange={() => {}}
+      onClick={(e) => onPick(e.shiftKey)}
+      className="size-3.5 cursor-pointer rounded-[4px] border accent-primary disabled:cursor-not-allowed disabled:opacity-60"
     />
   );
 }
 
-type RowProps = DeviceTableProps & { device: Device; show: (c: ColumnKey) => boolean };
+type RowProps = DeviceTableProps & {
+  device: Device;
+  show: (c: ColumnKey) => boolean;
+  isSelected: boolean;
+  onPick: (shift: boolean) => void;
+  renaming: boolean;
+  onRename: (on: boolean) => void;
+};
 
-function Row({ device: d, show, eeroName, profiles, usage, newIds, ratesPending }: RowProps) {
+function Row(props: RowProps) {
+  const { device: d, show, eeroName, profiles, usage, newIds, ratesPending, isSelected, onPick, renaming, onRename } = props;
   const state = deviceState(d);
   const off = state === "offline" || state === "blocked";
   const profile = d.profileId ? profiles.get(d.profileId) : undefined;
@@ -329,22 +409,33 @@ function Row({ device: d, show, eeroName, profiles, usage, newIds, ratesPending 
   return (
     <tr
       onClick={(e) => {
+        // Menus render in a portal; their clicks still bubble here through React.
+        if (!e.currentTarget.contains(e.target as Node)) return;
         if ((e.target as HTMLElement).closest("a,button,input")) return;
         navigate(to);
       }}
-      className={cn("cursor-pointer border-border/50 border-b last:border-b-0 hover:bg-muted/50", off && "text-muted-foreground")}
+      aria-selected={isSelected}
+      className={cn(
+        "cursor-pointer border-border/50 border-b last:border-b-0 hover:bg-muted/50",
+        off && "text-muted-foreground",
+        isSelected && "bg-accent hover:bg-accent",
+      )}
     >
-      <td className={td}>
-        <Checkbox label={`Select ${d.name}`} />
+      <td className={cn(td, isSelected && "shadow-[inset_2px_0_0_var(--color-foreground)]")}>
+        <Checkbox label={`Select ${d.name}`} checked={isSelected} onPick={onPick} />
       </td>
       <td className={td}>
         <div className="flex min-w-0 items-center gap-2.5">
           <IconTile icon={deviceIcon(d)} size="sm" className={cn("size-7", off && "opacity-60")} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <Link to={to} className="truncate font-medium text-foreground outline-none focus-visible:underline">
-                {d.name}
-              </Link>
+              {renaming ? (
+                <RenameInput device={d} onDone={() => onRename(false)} />
+              ) : (
+                <Link to={to} className="truncate font-medium text-foreground outline-none focus-visible:underline">
+                  {d.name}
+                </Link>
+              )}
               {newIds.has(d.id) && <Tag>NEW</Tag>}
               {d.ssid === "guest" && <Tag muted>GUEST</Tag>}
             </div>
@@ -403,17 +494,134 @@ function Row({ device: d, show, eeroName, profiles, usage, newIds, ratesPending 
         <Status tone={STATE[state].tone}>{STATE[state].label}</Status>
       </td>
       <td className={td}>
-        <button
-          type="button"
-          disabled
-          aria-label={`Actions for ${d.name}`}
-          title="Device actions come in a later update"
-          className="grid size-6 cursor-not-allowed place-items-center rounded-md text-muted-foreground opacity-70"
-        >
-          <Ellipsis className="size-[15px]" />
-        </button>
+        <RowMenu {...props} />
       </td>
     </tr>
+  );
+}
+
+/** The row's `...` menu (devices.md, Actions): pause or resume, rename, change profile, block or unblock. */
+function RowMenu({ device: d, bridged, gate, blockGate, profileOptions, networkName, onRename }: RowProps) {
+  const guest = d.ssid === "guest";
+  const canPause = !bridged && !guest && !d.blocked;
+  const reason = (g: Gate) => (g.allowed ? undefined : (g.reason ?? undefined));
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        aria-label={`Actions for ${d.name}`}
+        className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-muted"
+      >
+        <Ellipsis className="size-[15px]" />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
+          <Menu.Popup className={menuClasses.popup}>
+            {canPause && (
+              <Menu.Item
+                className={menuClasses.item}
+                disabled={!gate.allowed}
+                title={reason(gate)}
+                onClick={() => void performWrite(pauseRequest([d], !d.paused))}
+              >
+                {d.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
+                {d.paused ? "Resume" : "Pause"}
+              </Menu.Item>
+            )}
+            <Menu.Item className={menuClasses.item} disabled={!gate.allowed} title={reason(gate)} onClick={() => onRename(true)}>
+              <Pencil className="size-3.5" />
+              Rename...
+            </Menu.Item>
+            {canPause && (
+              <Menu.SubmenuRoot>
+                <Menu.SubmenuTrigger className={menuClasses.item} disabled={!gate.allowed} title={reason(gate)}>
+                  <UserRound className="size-3.5" />
+                  <span className="flex-1">Change profile</span>
+                  <ChevronRight className="size-3.5 text-muted-foreground" />
+                </Menu.SubmenuTrigger>
+                <Menu.Portal>
+                  <Menu.Positioner side="left" align="start" sideOffset={4} className="z-50">
+                    <Menu.Popup className={menuClasses.popup}>
+                      <ProfileItems profiles={profileOptions} current={d.profileId} onPick={(p) => void performWrite(profileRequest([d], p))} />
+                    </Menu.Popup>
+                  </Menu.Positioner>
+                </Menu.Portal>
+              </Menu.SubmenuRoot>
+            )}
+            {!bridged && (
+              <>
+                <Menu.Separator className="my-1 h-px bg-border" />
+                {d.blocked ? (
+                  <Menu.Item
+                    className={menuClasses.item}
+                    disabled={!blockGate.allowed}
+                    title={reason(blockGate)}
+                    onClick={() => void performWrite(blockRequest([d], false))}
+                  >
+                    <CircleCheck className="size-3.5" />
+                    Unblock
+                  </Menu.Item>
+                ) : (
+                  <Menu.Item
+                    className={cn(menuClasses.item, "text-destructive-foreground")}
+                    disabled={!blockGate.allowed}
+                    title={reason(blockGate)}
+                    onClick={() => void performWrite(blockRequest([d], true, { networkName }))}
+                  >
+                    <Ban className="size-3.5" />
+                    Block...
+                  </Menu.Item>
+                )}
+              </>
+            )}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+
+/** The name cell while renaming: Enter saves (with Undo), Esc or leaving the field cancels. */
+function RenameInput({ device: d, onDone }: { device: Device; onDone: () => void }) {
+  const [value, setValue] = useState(d.nickname ?? d.name);
+  const ref = useRef<HTMLInputElement>(null);
+  const saving = useRef(false);
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  const save = async () => {
+    const nickname = value.trim();
+    if (saving.current) return;
+    if (nickname === (d.nickname ?? d.name)) return onDone();
+    saving.current = true;
+    const res = await performWrite({
+      id: "device.rename",
+      params: { device: d.id, nickname },
+      success: nickname ? `Renamed to ${nickname}` : `Cleared the nickname of ${d.name}`,
+      failure: `Couldn't rename ${d.name}`,
+      undo: { id: "device.rename", params: { device: d.id, nickname: d.nickname ?? "" } },
+    });
+    saving.current = false;
+    if (res?.ok) onDone();
+  };
+  return (
+    <input
+      ref={ref}
+      aria-label={`New name for ${d.name}`}
+      value={value}
+      maxLength={32}
+      placeholder={d.hostname ?? d.name}
+      onChange={(e) => setValue(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") void save();
+        if (e.key === "Escape") onDone();
+      }}
+      onBlur={() => {
+        if (!saving.current) onDone();
+      }}
+      className="h-6 w-48 rounded-md border bg-background px-1.5 font-medium text-foreground text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    />
   );
 }
 
@@ -455,43 +663,5 @@ function SignalBars({ bars }: { bars: number }) {
         <span key={h} className={cn("w-[3px] rounded-[1px]", i < n ? on : "bg-border")} style={{ height: h }} />
       ))}
     </span>
-  );
-}
-
-/** The bulk action bar, shown but disabled until device actions land (M4). */
-export function BulkBar() {
-  return (
-    <div
-      title={SELECT_SOON}
-      className="flex items-center gap-2.5 rounded-xl border bg-muted/60 py-2 ps-3.5 pe-2.5"
-    >
-      <Checkbox label="Select devices" />
-      <span className="shrink-0 font-medium text-[13px]">0 selected</span>
-      <span className="min-w-0 truncate text-muted-foreground text-xs">Pause, block or assign a profile to several devices at once in a later update.</span>
-      <div className="ms-auto flex shrink-0 items-center gap-2">
-        <Button variant="outline" size="xs" disabled>
-          <Pause />
-          Pause
-        </Button>
-        <Button variant="outline" size="xs" disabled>
-          <Play />
-          Resume
-        </Button>
-        <Button variant="outline" size="xs" disabled>
-          <UserRoundPlus />
-          Assign profile
-          <ChevronDown />
-        </Button>
-        <Button variant="outline" size="xs" disabled className="text-destructive-foreground">
-          <Ban />
-          Block
-        </Button>
-        <span aria-hidden className="h-[18px] w-px bg-border" />
-        <Button variant="ghost" size="xs" disabled>
-          <X />
-          Clear
-        </Button>
-      </div>
-    </div>
   );
 }

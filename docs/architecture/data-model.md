@@ -157,7 +157,7 @@ type Internet = {
   dnsMode: "automatic" | "custom" | null;
   doubleNat: boolean | null;
   gateway: { eeroId: Id; location: string; model: string | null; wanPortSpeedMbps: number | null } | null;
-  planMbps: { down: number; up: number } | null;   // from app settings, "set by you"
+  planMbps: { down: number; up: number; label?: string } | null;   // from app settings, "set by you" (internet.plan.set)
   lastSpeedTest: SpeedTest | null;
   verdict: { kind: "steady" | "slow" | "down"; title: string; detail: string | null } | null;  // built in core
 };
@@ -165,7 +165,12 @@ type Internet = {
 // rating vs plan, in core: great when every direction is at least 75%, poor when any is under 40%, else below_plan
 type SpeedTest = { at: Iso; downMbps: number | null; upMbps: number | null; rating: "great" | "below_plan" | "poor" | null };
 
-type SpeedHistory = { tests: SpeedTest[]; avg7d: { downMbps: number | null; upMbps: number | null } };
+type SpeedTestRun = { networkId: Id; startedAt: Iso; resultAt: Iso };   // speedtest.run; resultAt about 60 s later
+type SpeedHistory = {
+  tests: SpeedTest[];
+  avg7d: { downMbps: number | null; upMbps: number | null };
+  running: SpeedTestRun | null;   // a test this process started that has no result yet
+};
 
 type UsagePoint = { at: Iso; down: number; up: number };   // bytes in the bucket
 type UsageSeries = {
@@ -354,6 +359,12 @@ type DeviceList = {
     rates: { downMbps: number; upMbps: number; active: number; at: Iso } | null;
   };
 };
+
+// Bulk device writes (device.pause, .resume, .profile.set, .block, .unblock).
+type DeviceBulkResult = {
+  devices: Device[]; // the devices changed, in the order given
+  failed: { device: string; id: Id | null; name: string | null; code: string; message: string }[];
+};
 ```
 
 | Model | eero source (`GET {net}/devices`) |
@@ -402,6 +413,8 @@ type Schedule = {
   end: Hhmm;                      // before start: wraps past midnight
   enabled: boolean;
 };
+
+type ScheduleInput = Omit<Schedule, "id">; // schedule add and update (M4); eero assigns the id
 ```
 
 | Model | eero source (`GET {net}/profiles`, `GET {profile}`) |
@@ -443,6 +456,12 @@ type PausesToday = {
 type PauseSegment = { start: number; end: number; kind: "scheduled" | "manual"; label: string; scheduleId: Id | null };
 ```
 
+`profile.get` returns a `ProfileDetail`, the profile plus its own lane:
+
+```ts
+type ProfileDetail = Profile & { today: { date: string; timezone: string | null; now: number; segments: PauseSegment[] } };
+```
+
 `today` is computed in core from each profile's enabled schedules (a span
 that wraps past midnight starts yesterday's lane) and, for a paused profile,
 a manual segment from now until the next scheduled segment starts (or midnight).
@@ -470,6 +489,19 @@ type WifiSettings = {
 };
 
 type WifiShare = { ssid: string; password: string | null; security: "WPA" | "nopass"; qr: string };
+
+// wifi.impact (type in commands/wifi.ts): who a Wi-Fi change affects, computed in core.
+type ImpactDevice = { id: Id; name: string; band: WirelessBand | null; category: DeviceCategory };
+type WifiImpact = {
+  change: "name" | "password" | "security" | "hide5g";
+  reconnect: ImpactDevice[];   // connected wireless devices that drop and rejoin
+  drop: ImpactDevice[];        // WPA2 only devices on a band moving to WPA3
+  needsSetup: ImpactDevice[];  // estimate: smart home devices among `reconnect` (name, password)
+  guestAffected: boolean;
+  wiredAffected: boolean;
+  restart: string | null;      // "about 2 to 3 minutes" for a security change
+  summary: string;             // also the writes' needs_confirm message
+};
 ```
 
 | Model | eero source |
@@ -479,7 +511,8 @@ type WifiShare = { ssid: string; password: string | null; security: "WPA" | "nop
 | `security` | `GET {net}/wpa3_per_band` (`band_2_4_ghz`, `band_5_ghz`, case normalised; a real network sends no 6 GHz key, and 6 GHz is always WPA3) |
 | `WifiShare` password | network `password` (in the clear in `GET {net}`) or `GET {net}/password`; sensitive reads only |
 | `bands` | merged `radio_channel_stats` across eeros, clients from devices |
-| `hide5g` | `temporary_flags.hide_5g.{value,expires_on}` (or a bare bool) |
+| `hide5g` | `temporary_flags.hide_5g.{value,expires_on}` (or a bare bool); on while it is set and not past `expires_on` |
+| `WifiImpact` | `wifi.get` and the device list; no eero call of its own |
 | `WifiShare.qr` | `WIFI:T:WPA;S:<ssid>;P:<password>;;` with `\`, `;`, `,`, `:` escaped |
 
 ## Settings and routing
@@ -671,7 +704,7 @@ type AppInfo = {
 type AppSettings = {
   lastNetworkId: Id | null;
   userAgent: string | null;       // null = default app-like UA
-  planMbps: Record<Id, { down: number; up: number }>;
+  planMbps: Record<Id, { down: number; up: number; label?: string }>;
   desktopNotifications: Record<string, boolean>;
   openOnLaunch: Id | null;
 };

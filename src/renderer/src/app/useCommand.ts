@@ -124,6 +124,17 @@ function loadRegistry(): Promise<CommandInfo[]> {
   return registryLoad;
 }
 
+/** One command's registry entry (effect, label), loading the registry if needed. */
+export async function commandInfo(id: string): Promise<CommandInfo | undefined> {
+  return (registry ?? (await loadRegistry())).find((c) => c.id === id);
+}
+
+/** Forgets the loaded registry (tests that swap the bridge). */
+export function resetRegistry(): void {
+  registry = null;
+  registryLoad = null;
+}
+
 /** The command registry (`window.mesh.commands()`), or null while it loads. */
 export function useCommands(): CommandInfo[] | null {
   const list = useSyncExternalStore(

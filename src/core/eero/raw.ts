@@ -509,3 +509,40 @@ export function linkUrl(link: RawLink | null | undefined): string | null {
   if (typeof link === "string") return link;
   return typeof link.url === "string" ? link.url : null;
 }
+
+// ---------------------------------------------------------------------------
+// Write bodies (M4). Request shapes from docs/eero-api/endpoints.md and the
+// open source clients; none was sent to a real network. Each wave-2 story
+// confirms its own against the fake server's recorded request.
+
+/**
+ * `PUT /2.3/networks/{id}/devices/{mac}`, JSON, one or more fields (2.2
+ * answers 200 and drops the change). `profile` is `{url}` of a profile; on a
+ * real network every device has one, Unassigned being the `default: true`
+ * profile (capture 2026-11-13).
+ */
+export type RawDeviceWrite = { paused?: boolean; nickname?: string | null; device_type?: string; profile?: { url: string } };
+
+/** `POST {net}/blacklist`, form. Unblock is `DELETE {net}/blacklist/{mac}`, no body. */
+export type RawBlockWrite = { mac: string };
+
+/** `POST {net}/profiles` (create: all three) or `PUT {profile}` (any one), JSON. `devices` replaces the whole list. */
+export type RawProfileWrite = { name?: string; paused?: boolean; devices?: { url: string }[] };
+
+/** `POST {profile}/schedules` or `PUT {schedule url}`, JSON. `end` before `start` wraps past midnight. */
+export type RawScheduleWrite = { name: string; days: string[]; start: string; end: string; enabled: boolean };
+
+/** `PUT {net}/guestnetwork`, form. The password has its own path: `PUT {net}/guestnetwork/password` (form `password`), `DELETE` to make it open. */
+export type RawGuestWrite = { enabled?: boolean; name?: string };
+
+/** `PUT {net}/password`, form (8 to 63 printable ASCII). */
+export type RawPasswordWrite = { password: string };
+
+/** `PUT resources.led_action` (normally `/2.2/eeros/{id}/led`), form: either field. A JSON PUT to `{eero}` does nothing. */
+export type RawLedWrite = { led_on?: boolean; led_brightness?: number };
+
+/** `PUT {eero}/nightlight/settings`, JSON. Beacon only. */
+export type RawNightlightWrite = { enabled: boolean; brightness_percentage: number; schedule: { enabled: boolean; on: string; off: string } };
+
+/** `PUT {net}/temporary_flags/hide_5g`, JSON or form; off is `DELETE` with no body. */
+export type RawHide5gWrite = { value: true };

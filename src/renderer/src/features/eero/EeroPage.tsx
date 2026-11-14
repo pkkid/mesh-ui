@@ -1,8 +1,9 @@
 /**
  * eero detail: one eero's hero and uplink, data usage, radios, connected
  * devices, Ethernet ports, settings (shown as values) and more actions.
- * Read-only for now: every write is a disabled "Coming soon" control until
- * its command lands. Layout, data and states: docs/ux/pages/eero-detail.md
+ * Rename, status light, nightlight, Blink and Restart run their commands
+ * through the write kit; port actions and Remove stay "Coming soon" (M5).
+ * Layout, data and states: docs/ux/pages/eero-detail.md
  * and docs/mockups/04-eero-detail.html. `[` and `]` move between eeros.
  */
 import { useEffect } from "react";

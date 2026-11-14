@@ -11,6 +11,12 @@
  * Paths in a route omit the version prefix: "/networks/:net/devices" answers
  * /2.2/, /2.3/ and /2.4/ unless `versions` says otherwise. Each route gets the
  * parsed request, its path params, the state and the caller's session.
+ *
+ * Writes (PUT, POST, DELETE) are parsed like reads (form, JSON or the
+ * empty-JSON `""` body) and also recorded in `fake.writes`, so a test can
+ * assert the exact request a write sent:
+ *
+ *   expect(fake.writes.at(-1)).toMatchObject({ method: "PUT", version: "2.3", route: "/networks/1/devices/0a1b2c000001", encoding: "json", body: { paused: true } });
  */
 
 import { createServer, type IncomingMessage, type Server } from "node:http";
@@ -86,6 +92,24 @@ export type FakeLogEntry = {
   at: number;
 };
 
+/** One write request as the server parsed it, whatever route answered it (404 included). */
+export type FakeWrite = {
+  method: Exclude<Method, "GET">;
+  /** Full path including the version. */
+  path: string;
+  version: ApiVersion | "";
+  /** Path without the version. */
+  route: string;
+  /** Lower-case, without parameters ("application/json"); "" when none was sent. */
+  contentType: string;
+  encoding: FakeRequest["encoding"];
+  /** Parsed body: JSON object or form fields. */
+  body: Record<string, unknown>;
+  rawBody: string;
+  status: number;
+  at: number;
+};
+
 export type FakeEeroOptions = StateOptions & {
   /** Extra routes for one test, checked before the registered ones. */
   routes?: Route[];
@@ -96,6 +120,8 @@ export type FakeEero = {
   scenarios: Scenarios;
   /** Every request, in arrival order. */
   log: FakeLogEntry[];
+  /** Every PUT, POST and DELETE, parsed, in arrival order. */
+  writes: FakeWrite[];
   /** Requests in flight now and the most seen at once. */
   stats: { inFlight: number; maxInFlight: number };
   /** "http://127.0.0.1" for in-process use; the real origin after listen(). */
@@ -118,6 +144,7 @@ export function createFakeEero(options: FakeEeroOptions = {}): FakeEero {
   const state = createState(options);
   const scenarios = new Scenarios();
   const log: FakeLogEntry[] = [];
+  const writes: FakeWrite[] = [];
   const stats = { inFlight: 0, maxInFlight: 0 };
   const routes = [...(options.routes ?? []), ...registeredRoutes()].map(compile);
   let server: Server | null = null;
@@ -187,6 +214,11 @@ export function createFakeEero(options: FakeEeroOptions = {}): FakeEero {
     const req = parse(method, url, headers, rawBody);
     const entry: FakeLogEntry = { method: req.method, path: req.path, query: url.search, headers, body: rawBody, token: req.token, status: 0, at: state.now() };
     log.push(entry);
+    const write: FakeWrite | null =
+      req.method === "GET"
+        ? null
+        : { method: req.method, path: req.path, version: req.version, route: req.route, contentType: (headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase() ?? "", encoding: req.encoding, body: req.body, rawBody, status: 0, at: entry.at };
+    if (write) writes.push(write);
     stats.inFlight++;
     stats.maxInFlight = Math.max(stats.maxInFlight, stats.inFlight);
     try {
@@ -194,6 +226,7 @@ export function createFakeEero(options: FakeEeroOptions = {}): FakeEero {
       if (out.delayMs) await wait(out.delayMs, signal);
       if (out.hang) await wait(Infinity, signal);
       entry.status = out.status;
+      if (write) write.status = out.status;
       return out;
     } finally {
       stats.inFlight--;
@@ -236,6 +269,7 @@ export function createFakeEero(options: FakeEeroOptions = {}): FakeEero {
     state,
     scenarios,
     log,
+    writes,
     stats,
     origin: "http://127.0.0.1",
     fetch: inProcessFetch,

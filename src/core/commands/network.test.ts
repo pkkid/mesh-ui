@@ -339,3 +339,37 @@ describe("network mapping", () => {
     expect(["10.0.0.1", "172.20.1.1", "192.168.1.1", "100.64.0.1", "203.0.113.9", "172.32.0.1", "nope"].map(isPrivateIpv4)).toEqual([true, true, true, true, false, false, false]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// network.restart (M4.8)
+
+describe("network.restart", () => {
+  it("asks first with the outage estimate, then restarts every eero (demo)", async () => {
+    const { engine } = demoEngine();
+    const info = engine.commands().find((c) => c.id === "network.restart");
+    expect(info).toMatchObject({ effect: "disruptive", scope: "network" });
+    expect(await engine.execute("network.restart", {})).toMatchObject({
+      ok: false,
+      error: { code: "needs_confirm", message: "Restarts every eero on Maple Street. Every device loses internet for about 2 to 3 minutes." },
+    });
+    expect((await ok(engine.execute<M.NetworkHealth>("network.health"))).status).not.toBe("updating");
+    expect(await code(engine.execute("network.restart", { bogus: 1, confirm: true }))).toBe("bad_params");
+    const r = await ok(engine.execute<{ eeroIds: string[]; estimate: string }>("network.restart", { confirm: true }));
+    expect(r.estimate).toBe("about 2 to 3 minutes");
+    expect(r.eeroIds).toHaveLength(4);
+    // The cached health was invalidated: the next read shows the restart.
+    const health = await ok(engine.execute<M.NetworkHealth>("network.health"));
+    expect(health.status).toBe("updating");
+    expect(health.eeros.every((e) => e.status === "updating")).toBe(true);
+  });
+
+  it("posts {net}/reboot with an empty JSON body (fake eero server)", async () => {
+    const { engine, fake } = fakeEngine();
+    expect(await code(engine.execute("network.restart", {}))).toBe("needs_confirm");
+    expect(fake.writes).toHaveLength(0);
+    const r = await ok(engine.execute<{ eeroIds: string[] }>("network.restart", { confirm: true }));
+    expect(r.eeroIds).toEqual(["500001", "500002", "500003", "500004"]);
+    expect(fake.writes).toEqual([expect.objectContaining({ method: "POST", path: "/2.2/networks/100001/reboot", encoding: "empty", rawBody: '""', status: 200 })]);
+  });
+});
+

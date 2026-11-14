@@ -4,11 +4,13 @@
  * docs/ux/pages/overview.md (Layout 4).
  */
 import { Plus } from "lucide-react";
+import { useState } from "react";
 
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
+import { GatedButton, HeaderLink, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
+import { PROFILE_GATE, ProfileSheet } from "~/features/profiles/ProfileCards";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
@@ -45,6 +47,8 @@ export function ProfilesList() {
   const list = profiles.data?.profiles ?? [];
   const colors = entityColors(list.map((p) => p.id));
   const today = new Map((usage.data ?? []).map((s) => [s.id, s.todaySoFar]));
+  const [adding, setAdding] = useState(false);
+  const createGate = useGate({ ...PROFILE_GATE, op: "create" });
 
   return (
     <Section title="Profiles" tools={<HeaderLink to={pathFor("profiles")}>Manage</HeaderLink>}>
@@ -56,10 +60,11 @@ export function ProfilesList() {
         <Card>
           <Empty className="flex flex-col items-center gap-3">
             <span>No profiles yet. Group devices by person to pause them together.</span>
-            <ComingSoonButton size="xs" variant="outline">
+            <GatedButton gate={createGate} size="xs" variant="outline" onClick={() => setAdding(true)}>
               <Plus />
               Add a profile
-            </ComingSoonButton>
+            </GatedButton>
+            <ProfileSheet mode={adding ? { kind: "create" } : null} onClose={() => setAdding(false)} />
           </Empty>
         </Card>
       ) : (

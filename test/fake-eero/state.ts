@@ -1,7 +1,8 @@
 /**
  * State of the fake eero server: one account, two networks, and the
  * sessions it has issued. Created fresh per test (`createState()`), mutated
- * by routes so writes stick. Every name, MAC, IP and serial is invented.
+ * by routes so writes stick (M4 write routes change these objects in place,
+ * so the next GET shows the change). Every name, MAC, IP and serial is invented.
  *
  * To extend: add a field to `FakeNetwork` (or `FakeState.extra` for
  * something small) and seed it in `seedNetworks`. Raw shapes come from
@@ -104,12 +105,15 @@ export type FakeState = {
   now(): number;
   /** A new opaque token, e.g. "fake-session-3". */
   nextToken(kind: FakeSession["kind"]): string;
+  /** A new numeric id for something a write creates (a profile, a schedule): "9001", "9002", ... */
+  nextId(): string;
 };
 
 export type StateOptions = { now?: () => number };
 
 export function createState(options: StateOptions = {}): FakeState {
   let counter = 0;
+  let ids = 9000;
   const networks = new Map<string, FakeNetwork>();
   for (const net of seedNetworks()) networks.set(net.id, net);
   return {
@@ -119,6 +123,7 @@ export function createState(options: StateOptions = {}): FakeState {
     extra: {},
     now: options.now ?? (() => Date.now()),
     nextToken: (kind) => `fake-${kind}-${++counter}-${Math.random().toString(36).slice(2, 10)}`,
+    nextId: () => String(++ids),
   };
 }
 

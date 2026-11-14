@@ -1,12 +1,15 @@
 /**
- * device commands (read side and live rates). Filtering, search, sort and
- * the summary are applied here, in core, so the UI, CLI and MCP share one
- * implementation. See docs/architecture/commands.md#device-commandsdevicets
+ * device commands: reads, live rates and writes (pause, resume, rename,
+ * type, profile, block, unblock). Filtering, search, sort and the summary
+ * are applied here, in core, so the UI, CLI and MCP share one
+ * implementation. Bulk writes run one device at a time and report each. See docs/architecture/commands.md#device-commandsdevicets
  * and docs/architecture/engine.md#live-device-rates.
  */
 
 import { z } from "zod";
 import type { Backend } from "../backend";
+import { BackendError, CommandError } from "../errors";
+import { DEVICE_TYPE_IDS } from "../eero/map/device";
 import { toCsv } from "../format";
 import type * as M from "../model";
 import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, POLL, RATES_STALE_SEC } from "../poll";
@@ -267,6 +270,56 @@ async function refreshRates(ctx: CommandContext): Promise<M.BurstResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Writes.
+
+/** One device or several (1 to 50): ids or exact names. */
+const devicesParam = z
+  .union([ref("device"), z.array(ref("device")).min(1).max(50)])
+  .describe("A device id or exact name (case-insensitive), or a list of them (1 to 50).");
+
+/** What a device write changes: the device, the sidebar counts, profile membership. */
+const DEVICE_WRITE_TOPICS = ["devices", "network", "profiles"] as const;
+
+/**
+ * Resolves every ref first (an unknown one fails the whole call with
+ * bad_params before anything is sent), then runs `change` one device at a
+ * time. A device that fails is reported in `failed`; when every device
+ * fails, the first error is the command's error. Sign-in and rate limits
+ * stop the run: the rest are reported with the same error.
+ */
+async function eachDevice(ctx: CommandContext, refs: string | string[], change: (id: M.Id) => Promise<M.Device>): Promise<M.DeviceBulkResult> {
+  const list = [...new Set(Array.isArray(refs) ? refs : [refs])];
+  const ids: M.Id[] = [];
+  for (const r of list) ids.push(await ctx.resolve("device", r));
+  const unique = [...new Set(ids)];
+  const names = new Map<M.Id, string>();
+  const devices: M.Device[] = [];
+  const failed: M.DeviceWriteFailure[] = [];
+  let stop: BackendError | CommandError | null = null;
+  let first: unknown = null;
+  for (const id of unique) {
+    const asGiven = list[ids.indexOf(id)] ?? id;
+    if (stop) {
+      failed.push({ device: asGiven, id, name: names.get(id) ?? null, code: stop.code, message: stop.message });
+      continue;
+    }
+    try {
+      devices.push(await change(id));
+    } catch (err) {
+      if (!(err instanceof BackendError || err instanceof CommandError)) throw err;
+      first ??= err;
+      if (err.code === "not_signed_in" || err.code === "rate_limited") stop = err;
+      failed.push({ device: asGiven, id, name: null, code: err.code, message: err.message });
+    }
+  }
+  if (devices.length === 0 && first) throw first;
+  return { devices: await withUnassigned(ctx, devices), failed };
+}
+
+/** The profile param: a person's profile, or null for Unassigned (eero's default profile). */
+const profileParam = ref("profile").nullable().describe("A profile id or exact name; null moves the devices to Unassigned (eero's default profile).");
+
+// ---------------------------------------------------------------------------
 
 export const commands: AnyCommand[] = [
   defineCommand({
@@ -314,5 +367,96 @@ export const commands: AnyCommand[] = [
     poll: POLL.rates,
     params: z.object({}),
     run: (ctx): Promise<M.BurstResult> => refreshRates(ctx),
+  }),
+
+  defineCommand({
+    id: "device.pause",
+    label: "Pause device",
+    description: "Pauses internet for one or more devices. They stay connected to Wi-Fi. Undo with device.resume.",
+    icon: "pause",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS],
+    params: z.object({ devices: devicesParam }),
+    run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setPaused(ctx.net, id, true)),
+  }),
+
+  defineCommand({
+    id: "device.resume",
+    label: "Resume device",
+    description: "Resumes internet for one or more paused devices.",
+    icon: "play",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS],
+    params: z.object({ devices: devicesParam }),
+    run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setPaused(ctx.net, id, false)),
+  }),
+
+  defineCommand({
+    id: "device.rename",
+    label: "Rename device",
+    description: "Sets a device's nickname, shown in Mesh UI and the eero app. An empty nickname clears it, so the device follows its own name again.",
+    icon: "pencil",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS, "usage"],
+    params: z.object({
+      device: ref("device"),
+      nickname: z.string().trim().max(32).describe("Up to 32 characters; empty clears the nickname."),
+    }),
+    run: async (ctx, p): Promise<M.Device> => {
+      const id = await ctx.resolve("device", p.device);
+      const [d] = await withUnassigned(ctx, [await ctx.backend.device.rename(ctx.net, id, p.nickname === "" ? null : p.nickname)]);
+      return d as M.Device;
+    },
+  }),
+
+  defineCommand({
+    id: "device.type.set",
+    label: "Set device type",
+    description: "Sets a device's type (its icon and category), one of eero's device_type values.",
+    icon: "shapes",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS],
+    params: z.object({ device: ref("device"), type: z.enum(DEVICE_TYPE_IDS).describe("eero device_type.") }),
+    run: async (ctx, p): Promise<M.Device> => {
+      const id = await ctx.resolve("device", p.device);
+      const [d] = await withUnassigned(ctx, [await ctx.backend.device.setType(ctx.net, id, p.type)]);
+      return d as M.Device;
+    },
+  }),
+
+  defineCommand({
+    id: "device.profile.set",
+    label: "Change profile",
+    description: "Moves one or more devices to a profile, or to Unassigned with profile null. A paused profile pauses the devices that join it.",
+    icon: "users",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS, "usage"],
+    params: z.object({ devices: devicesParam, profile: profileParam }),
+    run: async (ctx, p) => {
+      const profile = p.profile === null ? null : await ctx.resolve("profile", p.profile);
+      return eachDevice(ctx, p.devices, (id) => ctx.backend.device.setProfile(ctx.net, id, profile));
+    },
+  }),
+
+  defineCommand({
+    id: "device.block",
+    label: "Block device",
+    description: "Blocks one or more devices: they are disconnected from every eero and cannot rejoin until unblocked. Undo with device.unblock.",
+    icon: "ban",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS],
+    params: z.object({ devices: devicesParam }),
+    run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setBlocked(ctx.net, id, true)),
+  }),
+
+  defineCommand({
+    id: "device.unblock",
+    label: "Unblock device",
+    description: "Unblocks one or more devices so they can rejoin the network.",
+    icon: "circle-check",
+    effect: "write",
+    invalidates: [...DEVICE_WRITE_TOPICS],
+    params: z.object({ devices: devicesParam }),
+    run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setBlocked(ctx.net, id, false)),
   }),
 ];

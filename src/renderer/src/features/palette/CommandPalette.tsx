@@ -6,8 +6,10 @@
  * Opened by the titlebar search or Ctrl K / Cmd K (`openPalette`). It is a
  * surface like the CLI: commands come from `window.mesh.commands()` and run
  * through `window.mesh.execute`; nothing here knows what a command does.
- * Pages, devices and profiles navigate. Only query commands run for now;
- * the rest are listed dimmed with "Coming soon".
+ * Pages, devices and profiles navigate. Queries run and show their result;
+ * writes run through the write kit (`useWrite`): a toast for `write`, the
+ * inline confirm for `disruptive`, the confirm dialog for `destructive`, all
+ * built from the registry by `writeRequest` with no per-command code.
  */
 import { Search } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -15,9 +17,11 @@ import { type KeyboardEvent, useEffect, useMemo, useRef, useState, useSyncExtern
 import { navigate, pathFor } from "~/app/router";
 import { ROUTES } from "~/app/routes";
 import { execute, useCommands, useQuery } from "~/app/useCommand";
+import { useWrite } from "~/app/useWrite";
+import { ConfirmDialog, WriteConfirm } from "~/components/ui/confirm";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { cn } from "~/lib/utils";
-import type { AuthStatus, DeviceList, Eero, Permissions, ProfileList } from "../../../../core/model";
+import type { AuthStatus, DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import { EffectTag, KIND_ICON, KIND_LABEL, Keys, PaletteResults, useCommandIcons } from "./PaletteResults";
 import type { EntityOptions } from "./ParamsForm";
 import { PalettePreview, type RunState } from "./PalettePreview";
@@ -27,6 +31,7 @@ import {
   commandItems,
   defaultParams,
   deviceItems,
+  entityWrite,
   type Item,
   KINDS,
   pageItems,
@@ -36,6 +41,8 @@ import {
   search,
   missingRequired,
   validateParams,
+  withActions,
+  writeRequest,
 } from "./search";
 
 // ---------------------------------------------------------------------------
@@ -113,6 +120,7 @@ function PaletteBody({ close }: { close: () => void }) {
   const profiles = useQuery<ProfileList>("profile.list", undefined, { enabled: signedIn });
   const eeros = useQuery<Eero[]>("eero.list", undefined, { enabled: signedIn });
   const permissions = useQuery<Permissions>("network.permissions", undefined, { enabled: signedIn });
+  const network = useQuery<Network>("network.get", undefined, { enabled: signedIn });
 
   // Refetch lists older than a minute when the palette opens.
   useEffect(() => {
@@ -122,15 +130,16 @@ function PaletteBody({ close }: { close: () => void }) {
   }, []);
 
   const sources = useMemo(() => {
-    const ctx = { signedIn, permissions: permissions.data ?? null };
+    const ctx = { signedIn, permissions: permissions.data ?? null, network: network.data ?? null };
+    const cmds = registry ?? [];
     return {
-      commands: commandItems(registry ?? [], ctx),
+      commands: commandItems(cmds, ctx),
       pages: signedIn ? pageItems(ROUTES) : [],
-      devices: signedIn ? deviceItems(devices.data?.devices ?? [], profiles.data ?? null, eeros.data ?? null) : [],
-      profiles: signedIn ? profileItems(profiles.data ?? null) : [],
+      devices: signedIn ? withActions(deviceItems(devices.data?.devices ?? [], profiles.data ?? null, eeros.data ?? null), cmds, ctx) : [],
+      profiles: signedIn ? withActions(profileItems(profiles.data ?? null), cmds, ctx) : [],
       recent,
     };
-  }, [registry, signedIn, permissions.data, devices.data, profiles.data, eeros.data]);
+  }, [registry, signedIn, permissions.data, network.data, devices.data, profiles.data, eeros.data]);
 
   const result = useMemo(() => search(query, sources, scope), [query, sources, scope]);
   const hit = result.flat.find((h) => h.item.key === selected) ?? result.flat[0] ?? null;
@@ -184,17 +193,50 @@ function PaletteBody({ close }: { close: () => void }) {
 
   const runLabel = !item || item.kind === "command" ? "Run" : `Open ${item.label}`;
 
+  // Writes: one useWrite for whatever is selected. Its confirm shows inline
+  // in the preview (disruptive) or as a dialog over the palette (destructive).
+  const action = item?.kind === "device" || item?.kind === "profile" ? entityWrite(item, registry ?? []) : null;
+  const writeId = item?.kind === "command" ? item.info.id : (action?.id ?? "");
+  const write = useWrite(writeId);
+  const writeEffect = item?.kind === "command" ? item.info.effect : "write";
+  const busy = write.running || write.asking !== null;
+
+  // A confirm belongs to the item it was asked for.
+  const askedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (write.asking && askedFor.current !== item?.key) write.answer(false);
+  }, [item?.key, write.asking, write.answer]);
+
+  const remember = (key: string) => recent.splice(0, recent.length, key, ...recent.filter((k) => k !== key).slice(0, 9));
+
   const runItem = async (target: Item | null) => {
     if (!target) return;
     if (target.kind === "page") return void (close(), navigate(target.path));
     if (target.kind === "device") return void (close(), navigate(pathFor("device", { deviceId: target.id })));
     if (target.kind === "profile") return void (close(), navigate(pathFor("profile", { profileId: target.id })));
-    if (target !== item || blocked !== null) return; // rows other than the selected one run after being selected
+    if (target !== item || blocked !== null || busy) return; // rows other than the selected one run after being selected
     const key = target.key;
     setRun({ key, state: { running: true, result: null } });
-    const res = await execute(target.info.id, chosen);
-    recent.splice(0, recent.length, key, ...recent.filter((k) => k !== key).slice(0, 9));
+    let res: Awaited<ReturnType<typeof execute>> | null;
+    if (target.info.effect === "query") {
+      res = await execute(target.info.id, chosen);
+    } else {
+      askedFor.current = key;
+      const { id: _id, params, ...options } = writeRequest(target.info, target.label, chosen, fields);
+      res = await write.run(params, options);
+      inputRef.current?.focus(); // the confirm had focus; keep the keyboard on the palette
+    }
+    if (res) remember(key);
     setRun((r) => (r.key === key ? { key, state: { running: false, result: res } } : r));
+  };
+
+  /** The row action (Pause, Resume) of the selected device or profile. */
+  const runAction = async () => {
+    if (!item || (item.kind !== "device" && item.kind !== "profile") || !action || item.actionBlocked || busy) return;
+    askedFor.current = item.key;
+    const { id: _id, params, ...options } = action;
+    await write.run(params, options);
+    inputRef.current?.focus();
   };
 
   const copyCli = async (): Promise<boolean> => {
@@ -347,6 +389,15 @@ function PaletteBody({ close }: { close: () => void }) {
               blocked={blocked}
               runLabel={runLabel}
               onCopy={copyCli}
+              onAction={() => void runAction()}
+              actionRunning={write.running}
+              confirm={
+                write.asking && writeEffect !== "destructive" ? (
+                  <WriteConfirm write={write} className="w-full">
+                    {null}
+                  </WriteConfirm>
+                ) : null
+              }
             />
           ) : (
             <div className="grid flex-1 place-items-center bg-card px-6 text-center text-muted-foreground text-sm">
@@ -355,6 +406,9 @@ function PaletteBody({ close }: { close: () => void }) {
           )}
         </div>
       </div>
+
+      {/* Destructive commands confirm in a dialog nested in the palette, so focus and Esc stay with it. */}
+      <ConfirmDialog ask={writeEffect === "destructive" && !write.confirming ? write.asking : null} onAnswer={write.answer} />
 
       <div className="flex h-[42px] shrink-0 items-center gap-4 border-t bg-muted/60 px-4 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">

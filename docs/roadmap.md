@@ -51,7 +51,7 @@ read these before planning the next milestone):
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
-| M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | planned |
+| M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/4), [review](reviews/M4.md)) |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | planned |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
 
@@ -656,7 +656,7 @@ changes (paths and types). The exact request each write sends comes from
 `docs/eero-api/` and the open source clients, and its real behaviour is a
 `MANUAL:` line for the maintainer.
 
-### M4.1 Core write contracts, demo writes and fake write state ☐
+### M4.1 Core write contracts, demo writes and fake write state ✅ (#151)
 - issue: [#123](https://github.com/pkkid/mesh-ui/issues/123)
 - after: M3.R
 - docs: architecture/backends.md, architecture/data-model.md, architecture/commands.md (Effects, Confirmation), testing.md (Fixtures), eero-api/endpoints.md
@@ -664,7 +664,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: Everything wave 2 shares. Write methods on every M4 backend area (devices, profiles, schedules, guest, wifi, eeros, network, speed test, notifications) in `backend.ts`; the eero backend answers "not available yet" for each until its story. The demo backend applies every write to its fixtures (so pause, rename, block and guest off visibly change the next read) and resets per scenario. The fake server accepts PUT, POST and DELETE with form and JSON bodies, keeps state, and records each write request so tests can assert method, path, version and body. Read-only captures of the objects M4 writes change, recorded in `endpoints.md` (paths and types): a device (`profile`, `paused`, `nickname`, `device_type`), a profile with `schedule[]` and the `default: true` profile, `guestnetwork`, `{net}` Wi-Fi fields and `temporary_flags`, `wpa3_per_band`, an eero (`led_on`, `led_brightness`, `resources`, nightlight on a Beacon if any), `speedtest`. Adds `wifi.password.generate` (pure core, crypto RNG, no look-alike characters).
 - done when: `pnpm check` passes; the PR lists every capture with key paths and types and no values; demo tests show a write applied and reset by `demo.scenario.set`; a fake-server test records a PUT with a form body and a `/2.3/` JSON body; `wifi.password.generate` tests (length, alphabet, no look-alikes, `bad_params`); no real names, MACs or IPs.
 
-### M4.2 Engine and client write rules, audit log ☐
+### M4.2 Engine and client write rules, audit log ✅ (#149)
 - issue: [#124](https://github.com/pkkid/mesh-ui/issues/124)
 - after: M3.R
 - docs: architecture/engine.md, architecture/eero-client.md, architecture/security.md (Audit log), architecture/cli.md, architecture/mcp.md
@@ -672,7 +672,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: Carried from M1 and M3. A write invalidates the topics its spec lists, after a short settle delay so the next read sees eero's new state; burst cooldown and the devices TTL after a burst; the engine cache keeps only the last two networks; the eero client re-reads the SecretStore on a 401 before refreshing, so app and CLI share one session; credential reads (`wifi.password.get`, `wifi.share`, `guest.share`) and every write bypass or clear the 5 s shared `GET {net}`; writes are never retried (429 or otherwise). Audit log in core: one line per CLI and MCP command (time, surface, id, effect, ok or error code, params with sensitive fields and passwords removed), stored in the user data dir with a size cap; no token, password or `WIFI:` payload ever.
 - done when: engine tests for invalidation after settle, the two-network cache and burst cooldown; client tests against the fake server for the SecretStore re-read on 401, the credential bypass (a password changed on the fake shows on the next reveal) and no retry of a write on 429; audit tests show CLI and MCP calls logged and a `wifi.password.set` or `guest.password.set` line with no password; `pnpm check` passes.
 
-### M4.3 Renderer write kit ☐
+### M4.3 Renderer write kit ✅ (#150)
 - issue: [#125](https://github.com/pkkid/mesh-ui/issues/125)
 - after: M3.R
 - docs: ux/overview.md (Toasts, Sheets, Loading, empty and error), design/design-system.md, architecture/ui.md
@@ -680,7 +680,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: The pieces every wave-2 page uses. Toasts as in ux/overview.md (success with Undo running the inverse command, progress kept until done, error with Retry, max 3, `aria-live`). Inline confirm for `disruptive` and a dialog with type-the-name for `destructive`, both reading the command's `needs_confirm` message. An edit sheet (header, fields with `bad_params` under the field, Save disabled until valid, Discard changes?). A `useWrite` hook: runs `execute`, passes `confirm` only after the person confirms, shows the toasts, refreshes the topics, leaves the control in its old state on error. Controls dim by capability and bridge mode from `network.permissions` and `network.get`, with a "no permission" tooltip, replacing `ComingSoonButton` where a command exists. Copy and Save feedback through toasts (Carried from M2). The chart gallery shows each piece.
 - done when: hook tests for success, Undo, confirm, `needs_confirm` and error paths against the demo engine; `pnpm ui:shot` of the gallery (toasts, confirm, dialog, sheet) light and dark; Copy and Export CSV show a toast; `pnpm check` passes.
 
-### M4.4 Device controls ☐
+### M4.4 Device controls ✅ (#157)
 - issue: [#126](https://github.com/pkkid/mesh-ui/issues/126)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/devices.md, ux/pages/device-detail.md, architecture/commands.md (device)
@@ -688,7 +688,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `device.pause`, `device.resume`, `device.rename`, `device.type.set`, `device.profile.set` (to `null` means eero's default profile; capture first), `device.block`, `device.unblock`, all on `/2.3/` where eero needs it. Device detail: pause, rename sheet, type, profile picker, block with Undo. Devices page: row actions and multi-select bulk pause, resume, profile and block. Writes refresh `network.get` counts.
 - done when: demo and fake-server tests for every command (method, `/2.3/` path, body, invalidated topics, Unassigned as the default profile); a capture of a device's profile link; `pnpm ui:shot` of device detail and Devices bulk select, light and dark, plus a toast; `MANUAL: pause and resume one device | ... | the device drops and returns, the eero app agrees | brief loss for that device`.
 
-### M4.5 Profile writes ☐
+### M4.5 Profile writes ✅ (#155)
 - issue: [#127](https://github.com/pkkid/mesh-ui/issues/127)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/profiles.md, ux/pages/profile-detail.md, architecture/commands.md (profile)
@@ -696,7 +696,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `profile.create`, `profile.rename`, `profile.pause`, `profile.resume`, `profile.devices.set`, `profile.delete` (destructive, type-the-name), `profile.unassigned.pause` and `.resume`. Profiles page: Add a profile sheet, Pause all, pause and resume per card, Unassigned pause. Profile detail: rename, pause, devices picker, delete. Carried from M3: `profile.get` returns today's pauses so the hero and lane draw a manual pause; an Unassigned detail route (`#/profiles/unassigned`).
 - done when: demo and fake-server tests for every command incl. `needs_confirm` on delete and the default profile never offered as a profile; today's pauses test for `profile.get`; `pnpm ui:shot` of Profiles (sheet, paused card, toast) and a profile (delete dialog) and the Unassigned page, light and dark; `MANUAL: pause and resume a test profile | ... | its devices drop and return | brief loss for that profile`.
 
-### M4.6 Guest writes ☐
+### M4.6 Guest writes ✅ (#154)
 - issue: [#128](https://github.com/pkkid/mesh-ui/issues/128)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/guest.md, architecture/commands.md (guest)
@@ -704,7 +704,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `guest.enable`, `guest.disable` (disruptive), `guest.rename` (disruptive, must differ from the main SSID), `guest.password.set` (disruptive; `null` makes it open). Guest page: on and off with confirm, Name & password sheet with Generate (`wifi.password.generate`), the QR refreshing after a change. Carried from M3: Print a card (a print-only card with name, password and QR through the window's print) and Send to a guest (copies a short invite text with name and password).
 - done when: demo and fake-server tests incl. `needs_confirm`, the main-SSID check, open network and form bodies; a new password never reaches logs, the audit log or the CLI table without `--reveal` (tests); `pnpm ui:shot --route '#/guest'` of the confirm, sheet and off state, light and dark; `MANUAL: guest off and on | ... | guests drop, then can rejoin | guests lose Wi-Fi briefly`.
 
-### M4.7 Wi-Fi writes ☐
+### M4.7 Wi-Fi writes ✅ (#156)
 - issue: [#129](https://github.com/pkkid/mesh-ui/issues/129)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/wifi.md, architecture/commands.md (wifi)
@@ -712,7 +712,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `wifi.name.set`, `wifi.password.set`, `wifi.security.set`, `wifi.hide5g.set` (all disruptive) and `wifi.impact` (devices that must reconnect, WPA2-only devices for a security change, a restart estimate). Wi-Fi page: name and password sheet with Generate, security per band, the 2.4 GHz only switch with its countdown, the impact panel and inline confirm before each save. A reveal right after a password change shows the new one (M4.2's credential bypass).
 - done when: demo and fake-server tests incl. `needs_confirm`, byte length of names, printable ASCII passwords, 6 GHz always WPA3, the `hide_5g` PUT and DELETE; passwords never in logs, audit log or CLI table without `--reveal`; `pnpm ui:shot --route '#/settings/wifi'` with the impact panel and confirm, light and dark; `MANUAL: rename the Wi-Fi network and back, only when a reconnect is fine | Settings > Wi-Fi, Change, save, then restore | every wireless device rejoins and the eero app shows the name | disruptive: all wireless devices drop for about a minute`.
 
-### M4.8 eero and network controls ☐
+### M4.8 eero and network controls ✅ (#158)
 - issue: [#130](https://github.com/pkkid/mesh-ui/issues/130)
 - after: M4.1, M4.2, M4.3
 - docs: ux/pages/eeros.md, ux/pages/eero-detail.md, architecture/commands.md (eero, network, Restart estimates)
@@ -720,7 +720,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `eero.rename`, `eero.find` (no Stop until verified), `eero.led.set` (through `resources.led_action`), `eero.nightlight.set` (Beacon only, capability check), `eero.restart` and `network.restart` (disruptive, message from Restart estimates, the gateway warning). eero detail and eeros page actions; Overview and eeros "Restart network" with a progress toast that clears when eeros come back.
 - done when: demo and fake-server tests for each command incl. the `led_action` link, the Beacon check, `needs_confirm` and the gateway message; `pnpm ui:shot` of eero detail actions, the restart confirm and progress toast, light and dark; `MANUAL: blink one eero's light | ... | the light cycles blue and white | none` and `MANUAL: rename an eero and back | ... | the eero app shows the name | none`.
 
-### M4.9 Speed test and internet plan ☐
+### M4.9 Speed test and internet plan ✅ (#162)
 - issue: [#131](https://github.com/pkkid/mesh-ui/issues/131)
 - after: M4.1, M4.2, M4.3, M4.8
 - docs: ux/pages/internet.md, ux/pages/overview.md, architecture/commands.md (internet), architecture/engine.md (speed test poller)
@@ -728,7 +728,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `speedtest.run` (202, then the result read after about 60 s and the `speedtest` topic invalidated; at most one at a time per network) and `internet.plan.set` (app-local, invalidates network and speedtest). Run speed test on Overview, Internet and Troubleshooting with a progress toast; the plan sheet on Internet. Runs after M4.8, which also edits `test/fake-eero/routes/network.ts` and `NetworkHero.tsx`.
 - done when: demo and fake-server tests for the run and result, one at a time, and the plan set and clear; `pnpm ui:shot` of the running and finished states and the plan sheet, light and dark; `MANUAL: run a speed test | ... | a new result appears and matches the eero app | uses the WAN for about 30 s`.
 
-### M4.10 Palette runs write commands ☐
+### M4.10 Palette runs write commands ✅ (#152)
 - issue: [#132](https://github.com/pkkid/mesh-ui/issues/132)
 - after: M4.3
 - docs: ux/pages/command-palette.md, architecture/ui.md
@@ -736,7 +736,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: The palette runs `write` commands on Enter with a toast, `disruptive` ones after the inline confirm and `destructive` ones through the dialog, all with `useWrite`. Commands dim by capability, bridge mode and role with the reason (Carried from M2). Works for every write command as it lands, with no per-command code.
 - done when: tests for running a write, the confirm path and dimming; `pnpm ui:shot` of the palette confirming `network.restart` and running `device.pause`, light and dark; `pnpm check` passes.
 
-### M4.11 Mark all read ☐
+### M4.11 Mark all read ✅ (#153)
 - issue: [#133](https://github.com/pkkid/mesh-ui/issues/133)
 - after: M4.1, M4.2, M4.3
 - docs: ux/overview.md (notifications), architecture/commands.md (notifications)
@@ -744,7 +744,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `notifications.mark_read` (network-wide, since eero keeps only `has_unread`) on the bell and the Activity Unread marker; the dot clears and the next poll agrees.
 - done when: demo and fake-server tests (POST, `has_unread` false after); `pnpm ui:shot` of the bell before and after, light and dark; `MANUAL: Mark all read | ... | the eero app shows no unread | none`.
 
-### M4.12 Scheduled pauses ☐
+### M4.12 Scheduled pauses ✅ (#161)
 - issue: [#134](https://github.com/pkkid/mesh-ui/issues/134)
 - after: M4.5
 - docs: ux/pages/profile-detail.md (Schedules), architecture/commands.md (profile schedules)
@@ -752,7 +752,7 @@ changes (paths and types). The exact request each write sends comes from
 - scope: `profile.schedule.add`, `.update` and `.remove` through `{profile}/schedules` (the GET there is a 404, so capture the profile's `schedule[]` and keep the write request from the clients; day form `MON` or `monday` decided from the capture). The schedule sheet (name, days, start and end with "next day" past midnight, enabled) on profile detail; the week timeline and today's lanes update.
 - done when: demo and fake-server tests incl. wrap past midnight, days form and `bad_params`; `pnpm ui:shot` of the sheet and the updated timeline, light and dark; `MANUAL: add, edit and remove a schedule on a test profile | ... | the eero app shows it and it pauses on time | that profile pauses at the scheduled time`.
 
-### M4.R Review ☐
+### M4.R Review ✅
 - issue: [#135](https://github.com/pkkid/mesh-ui/issues/135)
 - owner: maintainer
 - after: M4.1, M4.2, M4.3, M4.4, M4.5, M4.6, M4.7, M4.8, M4.9, M4.10, M4.11, M4.12
@@ -779,6 +779,47 @@ release manifest, so `--fake` shows no release notes; `integrations.get` and
 Moved from M4 planning: Activity row actions (Assign profile, Resume,
 Unblock); real events carry no device, eero or profile links, so capture
 whether any event type does before building them.
+Carried from M4: move each write's gate (permission, bridge mode,
+capability) into its command spec in core so pages and the palette share
+it, replacing the id-prefix table in `palette/search.ts` (#152, #154); one
+Share Wi-Fi sheet for Overview and Devices (Devices' button is still
+disabled; Overview links to the Wi-Fi page, #164); "New profile from
+selection" on the Unassigned card (#157); bulk device results carry
+`failed[].name` (#157); clicking a week timeline segment opens the
+schedule sheet (#161); schedules for Unassigned devices (no endpoint known;
+capture first, #161); restart copy in `helpers.restartLine` and Network
+actions still hard-codes times, and the Wi-Fi security change estimate is
+borrowed from the network restart: both come from `settings.impact` (#156,
+#158); `endpoints.md` section 18 says `led_cycle` takes `{id}` while the
+client sends the serial: fix whichever the M4 Find manual check disproves
+(#158); the palette preview shows "Running..." under a pending disruptive
+confirm, and a palette `device.pause` run toasts "Done" without the Undo
+that row actions get (M4 review). Update the docs and fixtures from the
+answers to the M4 manual checks (`hide_5g` shape, schedule day form `MON`,
+Unassigned pause, nightlight shape). The Wi-Fi rename manual check was
+skipped at the M4 review (maintainer, 2026-11-14), so `PUT {net}/settings`
+vs `PUT {net}` is still unverified and its `MANUAL:` line carries to M5.1.
+Owners: M5.1 (docs, fixtures, captures, the Wi-Fi rename check), M5.11
+(everything else).
+Learned in M4: the write kit is the pattern for every M5 control: run
+through `useWrite`, show core's `needs_confirm` message as the confirm text
+(so `settings.impact` should produce that message), offer Undo only for a
+reversible write that changed something, and never hold a password or
+secret in a toast. Contract tests that read before a write retry a fake 500
+with backoff and time out; answer 400, or do lookups inside the write.
+Test-only stand-in commands must register only for ids not yet in the
+registry, or they collide with the real spec. `src/core/demo/backend.test.ts`
+and `src/core/audit.test.ts` are touched by every write story; M5.1 owns
+them and fixes them for the rest. eero accepted shapes are not proven by a
+capture of an unset value: when the real network has none (schedules,
+nightlight, `hide_5g` on), take the shape from the clients, accept both
+forms on read, and keep a `MANUAL:` line. Each Done when line should name
+its test: M4's CLI and MCP confirm parity was only proven at the review
+(#166). Headless `ui:shot` can drive the palette: target
+`input[aria-label="Search or run a command"]` (the titlebar button has the
+same label), set the value with the native setter, and prefix ids with `>`.
+A provider rate limit can stop several workers at once; small PRs and a
+pushed branch make the resume cheap.
 
 In: the write commands behind Advanced networking (DNS, DHCP, IPv6, WAN,
 connection mode, NAT randomization, UPnP, SQM, band steering, fast
@@ -790,7 +831,7 @@ pinholes, updates (install, preferred hour), admins and invites (invite,
 cancel, nickname, remove) and network transfer, eero port actions and eero
 remove, Troubleshooting tools (diagnose, placement test, coverage scan,
 upgrade report), notification settings, and `settings.impact`; every
-Carried from M2 and M3 item above.
+Carried from M2, M3 and M4 item above.
 Out: App & account and release (M6), anything eero Plus.
 
 Done when:
@@ -809,9 +850,9 @@ Done when:
 - In demo and `--fake`, every M5 control that M3 showed as "Coming soon"
   works, with M4's toasts, confirms and Undo. `pnpm ui:shot` light and dark
   of each page's confirm, impact and toast states.
-- Every Carried from M2 and M3 item is closed or moved with a reason.
+- Every Carried from M2, M3 and M4 item is closed or moved with a reason.
 
-Parallelism: 3 waves plus R (1, 8, 1, R); critical path M5.1 > M5.2 >
+Parallelism: 3 waves plus R (1, 9, 1, R); critical path M5.1 > M5.2 >
 M5.3 > M5.R. Hotspots: `src/core/model.ts`, `src/core/backend.ts`,
 `src/core/eero/raw.ts`, `src/core/demo/fixtures.ts`,
 `src/core/demo/backend.ts`, `src/core/demo/scenario.ts`,
@@ -836,8 +877,8 @@ restarts the network says so in its risk field.
 - after: M4.R
 - docs: architecture/backends.md, architecture/data-model.md, architecture/commands.md (settings, Restart estimates), testing.md (Fixtures), eero-api/endpoints.md
 - files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, src/core/poll.ts, test/fake-eero/state.ts, test/fake-eero/routes/eeros.ts, test/fake-eero/routes/updates.ts, src/core/eero/backend/index.ts, src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/commands/integrations.ts, src/core/commands/wifi.ts, docs/architecture/backends.md, docs/architecture/data-model.md, docs/eero-api/endpoints.md, docs/testing.md
-- scope: Everything wave 2 shares. Write methods on every M5 backend area (settings, integrations, routing, updates, admins, eero ports and remove, diagnostics, notifications settings); the eero backend answers "not available yet" until each story; the demo backend applies every write. Read-only captures (paths and types; one enum value for Simple Setup, as approved) of: `{net}` settings fields, `auto_setup_mode`, `{net}/routing` reservations, forwards and pinholes, `{net}/updates`, `{net}/members` and `{net}/invites`, an eero's `resources.connections` with a down port if any, `{net}/radio_settings` (for `Radio.autoChannel`), `{net}/notifications`, and whether any `app_events` type carries a device, eero or profile link. `settings.impact` in core from Restart estimates and cached devices. Carried from M3: map Simple Setup; fake `radio_channel_stats` and a raw release manifest on the fake server; `integrations.get` and `wifi.get` get their own poll topics.
-- done when: `pnpm check` passes; the PR lists every capture (paths and types, the one Simple Setup value) and no other values; `settings.impact` tests for each disruptive setting; demo writes applied and reset per scenario; `--fake` Wi-Fi shows width and channel and `--fake` Updates shows release notes (`ui:shot`); no real names, MACs or IPs.
+- scope: Everything wave 2 shares. Write methods on every M5 backend area (settings, integrations, routing, updates, admins, eero ports and remove, diagnostics, notifications settings); the eero backend answers "not available yet" until each story; the demo backend applies every write. Read-only captures (paths and types; one enum value for Simple Setup, as approved) of: `{net}` settings fields, `auto_setup_mode`, `{net}/routing` reservations, forwards and pinholes, `{net}/updates`, `{net}/members` and `{net}/invites`, an eero's `resources.connections` with a down port if any, `{net}/radio_settings` (for `Radio.autoChannel`), `{net}/notifications`, and whether any `app_events` type carries a device, eero or profile link. `settings.impact` in core from Restart estimates and cached devices. Carried from M3: map Simple Setup; fake `radio_channel_stats` and a raw release manifest on the fake server; `integrations.get` and `wifi.get` get their own poll topics. Carried from M4: apply the answers to the M4 manual checks to `endpoints.md`, the data model docs and fixtures (`led_cycle` by id or serial, `hide_5g` while on, schedule days, Unassigned pause, nightlight); capture whether eero's default profile carries a `schedule[]` (for Unassigned schedules in M5.11).
+- done when: `pnpm check` passes; the PR lists every capture (paths and types, the one Simple Setup value) and no other values; `endpoints.md` section 18 agrees with the M4 manual check answers; the PR carries `MANUAL: rename the Wi-Fi network and back, only when a reconnect is fine | Settings > Wi-Fi, Change, save, then restore | every wireless device rejoins and the eero app shows the name (settles PUT {net}/settings) | disruptive: all wireless devices drop for about a minute`; `settings.impact` tests for each disruptive setting; demo writes applied and reset per scenario; `--fake` Wi-Fi shows width and channel and `--fake` Updates shows release notes (`ui:shot`); no real names, MACs or IPs.
 
 ### M5.2 Internet-side settings ☐
 - issue: [#139](https://github.com/pkkid/mesh-ui/issues/139)
@@ -911,10 +952,18 @@ restarts the network says so in its risk field.
 - scope: Moved from M4. From the M5.1 capture: if an event type carries a device, eero or profile link, map it and add row actions (Assign profile, Resume, Unblock) through the M4 commands; if none does, match by name only where it is unambiguous, otherwise keep the link to the page and say so in the doc.
 - done when: demo and fake-server tests of the link mapping and each action's command; `pnpm ui:shot --route '#/activity'` with a row action and its toast, light and dark; the PR states what the capture found.
 
+### M5.11 Carried from M4: gates in core and leftover controls ☐
+- issue: [#168](https://github.com/pkkid/mesh-ui/issues/168)
+- after: M5.1
+- docs: architecture/commands.md (Effects, Confirmation), architecture/ui.md, ux/pages/command-palette.md, ux/pages/devices.md, ux/pages/overview.md, ux/pages/profiles.md, ux/pages/profile-detail.md
+- files: src/core/spec.ts, src/core/commands/device.ts, src/core/commands/device.test.ts, src/renderer/src/components/ui/page.tsx, src/renderer/src/features/palette/search.ts, src/renderer/src/features/palette/search.test.ts, src/renderer/src/features/palette/PalettePreview.tsx, src/renderer/src/features/palette/CommandPalette.tsx, src/renderer/src/features/wifi/ShareSheet.tsx, src/renderer/src/features/devices/DevicesPage.tsx, src/renderer/src/features/overview/NetworkHero.tsx, src/renderer/src/features/profiles/UnassignedCard.tsx, src/renderer/src/components/ui/timeline.tsx, src/renderer/src/features/profile/ProfileSchedules.tsx, src/renderer/src/features/eero/helpers.ts, src/renderer/src/features/eero/helpers.test.ts, src/renderer/src/features/eeros/NetworkActions.tsx, src/core/commands/wifi.ts, docs/architecture/ui.md, docs/ux/pages/command-palette.md
+- scope: Carried from M4. Each write's gate (permission, bridge mode, capability) moves into its command spec in core (`src/core/spec.ts`, listed by `mesh-ui commands`), and pages and the palette read it; the id-prefix table in `palette/search.ts` goes. One Share Wi-Fi sheet (QR, Copy password) opened from Overview and Devices. "New profile from selection" on the Unassigned card. Bulk device results carry `failed[].name`. Clicking a week timeline segment opens the schedule sheet. Unassigned schedules only if the M5.1 capture shows the default profile takes a `schedule[]`, else say so in the doc. Restart copy in `eero/helpers.ts` and Network actions, and the Wi-Fi security change estimate, come from `settings.impact`. The palette shows no "Running..." under a pending confirm, and a palette `device.pause` (or any write with an inverse) toasts with Undo.
+- done when: `mesh-ui commands` shows each write's gate and a test shows the palette and a page dim the same command for the same reason; demo tests for `failed[].name`; `pnpm ui:shot` light and dark of the Share Wi-Fi sheet from Devices, New profile from selection, a timeline click opening the sheet, and the palette confirm without "Running..."; `pnpm check` passes.
+
 ### M5.R Review ☐
 - issue: [#148](https://github.com/pkkid/mesh-ui/issues/148)
 - owner: maintainer
-- after: M5.1, M5.2, M5.3, M5.4, M5.5, M5.6, M5.7, M5.8, M5.9, M5.10
+- after: M5.1, M5.2, M5.3, M5.4, M5.5, M5.6, M5.7, M5.8, M5.9, M5.10, M5.11
 
 
 ## M6: App, account and release
@@ -937,3 +986,7 @@ Carried from M3: the packaged Linux launcher strips `DISPLAY` and
 `dist:smoke` window step fails with no display (set `MESH_UI_HEADLESS`);
 sidebar and sign-in avatars use an inline `hue("orange")` (from M1.7), move
 it to `chartColors.ts` or make avatars neutral.
+Carried from M4: the speed test one-at-a-time lock is per process, so the
+app and a CLI in another process can each start one (share it, or accept
+eero's own refusal, #162); the CLI and agents panel reads the audit log
+(`audit.jsonl`, live CLI and MCP only, #149).
