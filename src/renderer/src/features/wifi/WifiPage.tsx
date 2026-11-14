@@ -2,7 +2,9 @@
  * Wi-Fi: the main network's name, password (revealed only on request), QR
  * block, security per band, bands and their clients, nickname and time zone.
  * Name, password, security and 2.4 GHz only change through the write kit
- * (M4.7); nickname and time zone are still "Coming soon". Layout, data and
+ * (M4.7); the time zone changes in TimezoneSheet (`settings.timezone.set`,
+ * M5). The network nickname is read only: no command sets it yet (M6).
+ * Layout, data and
  * states: docs/ux/pages/wifi.md and docs/mockups/12-wifi-settings.html.
  *
  * The password comes from `wifi.password.get` (reveal or copy) and the QR
@@ -12,19 +14,20 @@
  * store, so nothing polls them. A name or password change drops them too, so
  * the next reveal reads the new ones (with M4.2's credential bypass).
  */
-import { CalendarClock, Clock, Tag } from "lucide-react";
+import { CalendarClock, Clock, Pencil, Tag } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PageProps } from "~/app/routes";
 import { bridge, execute, useQuery } from "~/app/useCommand";
 import { Card, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError, useNow } from "~/components/ui/page";
+import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
 import { TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative, networkClock } from "../../../../core/format";
 import type { WifiPassword } from "../../../../core/commands/wifi";
 import type { DeviceList, Network, NetworkHealth, WifiSettings, WifiShare } from "../../../../core/model";
 
 import { WifiBands } from "./WifiBands";
+import { TimezoneSheet } from "./TimezoneSheet";
 import { WifiHero } from "./WifiHero";
 import { ReadField, WifiNamePassword, WifiSecurity } from "./WifiSecurity";
 
@@ -117,14 +120,16 @@ export function WifiPage(_props: PageProps) {
         </>
       )}
 
-      <Nickname network={network.data ?? null} />
+      <Nickname network={network.data ?? null} offline={offline} />
     </>
   );
 }
 
-/** Network nickname and time zone, with the local time there. Both change later ("Coming soon"). */
-function Nickname({ network }: { network: Network | null }) {
+/** Network nickname (read only until M6) and time zone, with the local time there; Edit opens TimezoneSheet. */
+function Nickname({ network, offline }: { network: Network | null; offline: boolean }) {
   const now = useNow(30_000);
+  const [editing, setEditing] = useState(false);
+  const gate = useGate("settings.timezone.set");
   const tz = network?.timezone ?? null;
   const local = tz ? networkClock(tz).time(now) : null;
   return (
@@ -142,11 +147,19 @@ function Nickname({ network }: { network: Network | null }) {
         <div className="flex items-center gap-3 text-[13px]">
           <CalendarClock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1 text-muted-foreground">Profile schedules, power saving and updates follow this time zone.</span>
-          <ComingSoonButton size="sm" variant="outline">
+          <GatedButton
+            size="sm"
+            variant="outline"
+            gate={offline ? { allowed: false, reason: "The network is offline" } : gate}
+            disabled={!network}
+            onClick={() => setEditing(true)}
+          >
+            <Pencil />
             Edit
-          </ComingSoonButton>
+          </GatedButton>
         </div>
       </Card>
+      <TimezoneSheet open={editing} onClose={() => setEditing(false)} current={tz} />
     </Section>
   );
 }

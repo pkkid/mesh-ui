@@ -123,8 +123,11 @@ Sidebar count: number of eeros.
 ## Built so far (M2.5, M4.8)
 
 - Find (`eero.find`) and Restart network (`network.restart`) work (M4.8).
-  Test placement stays disabled with "Coming soon" until
-  `eero.placement.test` lands; Scan coverage links to Troubleshooting. Stop
+  Test placement runs `eero.placement.test` (M5) with the same hook and
+  rating as Troubleshooting's coverage table (`usePlacementTest`,
+  `PlacementRating` in `troubleshooting/Coverage.tsx`): "Testing
+  placement..." while it runs, then the rating and eero's advice under the
+  suggestions, and **Test again**. Scan coverage links to Troubleshooting. Stop
   is hidden until a stop call is verified.
 - The restart watcher (`watchRestart` in `NetworkActions.tsx`) is shared by
   the eeros page, the Overview hero and eero detail. It reads `eero.list`

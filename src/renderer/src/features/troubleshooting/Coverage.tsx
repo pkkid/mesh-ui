@@ -55,16 +55,38 @@ function QualityCells({ quality }: { quality: number | null }) {
   );
 }
 
+/** A placement rating as a status dot and word, eero's advice as its tooltip. Shared with the eeros page's weak-link note. */
+export function PlacementRating({ result }: { result: PlacementResult }) {
+  const r = result.rating ? RATING[result.rating] : null;
+  return (
+    <span title={result.advice ?? undefined}>
+      <Status tone={r?.tone ?? "muted"}>{r?.label ?? "No rating"}</Status>
+    </span>
+  );
+}
+
+/**
+ * `eero.placement.test` through the write kit, with the gate, the eero being
+ * tested and each eero's last result. Shared by the coverage table and the
+ * eeros page's weak-link note.
+ */
+export function usePlacementTest() {
+  const gate = useGate("eero.placement.test");
+  const placement = useWrite<{ eero: string }, PlacementResult>("eero.placement.test", { failure: "Couldn't test placement" });
+  const [results, setResults] = useState<Record<string, PlacementResult>>({});
+  const [testing, setTesting] = useState<string | null>(null);
+  const test = async (id: string) => {
+    setTesting(id);
+    const r = await placement.run({ eero: id });
+    setTesting(null);
+    if (r?.ok) setResults((t) => ({ ...t, [id]: r.result }));
+  };
+  return { gate, results, testing, test };
+}
+
 function PlacementCell({ eero, result, testing, onTest, gate }: { eero: Eero | undefined; result: PlacementResult | undefined; testing: boolean; onTest: () => void; gate: ReturnType<typeof useGate> }) {
   if (testing) return <span className="text-muted-foreground text-xs">Testing...</span>;
-  if (result) {
-    const r = result.rating ? RATING[result.rating] : null;
-    return (
-      <span title={result.advice ?? undefined}>
-        <Status tone={r?.tone ?? "muted"}>{r?.label ?? "No rating"}</Status>
-      </span>
-    );
-  }
+  if (result) return <PlacementRating result={result} />;
   if (!eero || eero.isGateway) return null;
   return (
     <GatedButton gate={eero.status === "offline" ? { allowed: false, reason: `${eero.location} is offline` } : gate} size="xs" variant="ghost-muted" onClick={onTest}>
@@ -76,22 +98,13 @@ function PlacementCell({ eero, result, testing, onTest, gate }: { eero: Eero | u
 export function CoverageScanCard({ eeros }: { eeros: Eero[] | undefined }) {
   const query = useQuery<CoverageScan>("coverage.scan");
   const rescan = useCommand<{ refresh: boolean }, CoverageScan>("coverage.scan");
-  const gate = useGate("eero.placement.test");
-  const placement = useWrite<{ eero: string }, PlacementResult>("eero.placement.test", { failure: "Couldn't test placement" });
-  const [tests, setTests] = useState<Record<string, PlacementResult>>({});
-  const [testing, setTesting] = useState<string | null>(null);
+  const { gate, results: tests, testing, test } = usePlacementTest();
   const now = useNow();
   const scan = rescan.result ?? query.data;
   const scanning = rescan.running || (query.loading && !scan);
 
   if (unsupported(query) || unsupported(rescan)) return null;
   const error = rescan.error ?? query.error;
-  const test = async (id: string) => {
-    setTesting(id);
-    const r = await placement.run({ eero: id });
-    setTesting(null);
-    if (r?.ok) setTests((t) => ({ ...t, [id]: r.result }));
-  };
   const scanAgain = () => void rescan.run({ refresh: true });
   const nameOf = (id: string | null) => (id ? (eeros?.find((e) => e.id === id)?.location ?? MISSING) : MISSING);
 
