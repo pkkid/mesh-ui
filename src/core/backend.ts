@@ -9,8 +9,14 @@
  *
  * The interface is split into one sub-interface per area, so each eero
  * backend area file implements exactly one of them. This file holds every
- * read through M3; later milestones add their writes here. Areas the eero
- * backend has not built yet answer "not available yet" (see composeBackend).
+ * read through M3 and the M4 writes (each area's `...Writes` interface).
+ * Areas, and write methods, the eero backend has not built yet answer "not
+ * available yet" (see composeBackend and partialArea).
+ *
+ * Writes take model-shaped inputs, apply the change, and return the changed
+ * object as the next read would show it (or nothing when eero answers later,
+ * e.g. a restart or a speed test). They never retry; the engine owns
+ * confirmation, cache invalidation and the settle delay.
  */
 
 import { BackendError } from "./errors";
@@ -64,6 +70,8 @@ export interface NetworkBackend {
   /** `issues` are derived in core, so backends leave them out. */
   health(net: M.Id): Promise<Omit<M.NetworkHealth, "issues">>;
   permissions(net: M.Id): Promise<M.Permissions>;
+  /** Reboots every eero (`POST {net}/reboot`). Answers once eero accepts it, not when the mesh is back. */
+  restart(net: M.Id): Promise<void>;
 }
 
 export type SpeedTestQuery = { from: M.Iso; to: M.Iso; limit: number };
@@ -73,6 +81,8 @@ export interface InternetBackend {
   get(net: M.Id): Promise<Omit<M.Internet, "planMbps" | "verdict">>;
   /** Newest first. `rating` is computed in core, so backends leave it null. */
   speedTests(net: M.Id, q: SpeedTestQuery): Promise<M.SpeedTest[]>;
+  /** Starts a speed test (`POST {net}/speedtest`, 202). The result shows in `speedTests` about a minute later (demo: at once). */
+  runSpeedTest(net: M.Id): Promise<void>;
 }
 
 export type UsageQuery = {
@@ -108,7 +118,20 @@ export interface EeroBackend {
   ports(net: M.Id, eero: M.Id): Promise<M.EeroPorts>;
   /** Installed versions, newest first, at most `limit`; the running one has `current: true`. */
   firmwareHistory(net: M.Id, eero: M.Id, limit: number): Promise<M.FirmwareEntry[]>;
+  /** Sets the room name (`location`). */
+  rename(net: M.Id, eero: M.Id, location: string): Promise<M.Eero>;
+  /** Blinks the status light for a while (`led_cycle`). */
+  find(net: M.Id, eero: M.Id): Promise<void>;
+  /** Status light on or off and brightness 0 to 100, through `resources.led_action` (form body). */
+  setLed(net: M.Id, eero: M.Id, led: LedInput): Promise<M.Eero>;
+  /** Beacon only; other eeros fail with `eero_error`. */
+  setNightlight(net: M.Id, eero: M.Id, nightlight: M.Nightlight): Promise<M.Eero>;
+  /** Reboots one eero (`POST {eero}/reboot`). */
+  restart(net: M.Id, eero: M.Id): Promise<void>;
 }
+
+/** Either or both. */
+export type LedInput = { on?: boolean; brightness?: number };
 
 export interface DeviceBackend {
   /** Includes blocked devices (merged from the blacklist). */
@@ -116,13 +139,38 @@ export interface DeviceBackend {
   get(net: M.Id, device: M.Id): Promise<M.Device>;
   /** Asks eero for a burst of live rates. Core enforces once a minute. */
   requestBurst(net: M.Id): Promise<M.BurstResult>;
+  // Writes go to `/2.3/networks/{id}/devices/{mac}` (2.2 answers 200 and drops them).
+  setPaused(net: M.Id, device: M.Id, paused: boolean): Promise<M.Device>;
+  /** null clears the nickname, so eero's own name shows again. */
+  rename(net: M.Id, device: M.Id, nickname: string | null): Promise<M.Device>;
+  setType(net: M.Id, device: M.Id, type: M.DeviceType): Promise<M.Device>;
+  /** null: out of every profile. eero keeps such devices in its `default: true` profile, which the model shows as Unassigned. */
+  setProfile(net: M.Id, device: M.Id, profile: M.Id | null): Promise<M.Device>;
+  /** Block (`POST {net}/blacklist`) or unblock (`DELETE {net}/blacklist/{mac}`). */
+  setBlocked(net: M.Id, device: M.Id, blocked: boolean): Promise<M.Device>;
 }
 
 export interface ProfileBackend {
   /** `nextChange` is computed in core; backends may leave it null. */
   list(net: M.Id): Promise<M.Profile[]>;
   get(net: M.Id, profile: M.Id): Promise<M.Profile>;
+  /** A new profile holding `deviceIds` (moved out of their old profiles). */
+  create(net: M.Id, input: ProfileInput): Promise<M.Profile>;
+  rename(net: M.Id, profile: M.Id, name: string): Promise<M.Profile>;
+  setPaused(net: M.Id, profile: M.Id, paused: boolean): Promise<M.Profile>;
+  /** Exactly these devices: listed ones move in, others leave to Unassigned. */
+  setDevices(net: M.Id, profile: M.Id, deviceIds: M.Id[]): Promise<M.Profile>;
+  /** Its devices become Unassigned. */
+  remove(net: M.Id, profile: M.Id): Promise<void>;
+  /** Pauses or resumes the Unassigned devices (eero's `default: true` profile). */
+  setUnassignedPaused(net: M.Id, paused: boolean): Promise<void>;
+  /** Schedules are written through `{profile}/schedules`; the GET there is a 404, so reads come from the profile. */
+  addSchedule(net: M.Id, profile: M.Id, schedule: M.ScheduleInput): Promise<M.Schedule>;
+  updateSchedule(net: M.Id, profile: M.Id, schedule: M.Id, input: M.ScheduleInput): Promise<M.Schedule>;
+  removeSchedule(net: M.Id, profile: M.Id, schedule: M.Id): Promise<void>;
 }
+
+export type ProfileInput = { name: string; deviceIds: M.Id[] };
 
 export interface RoutingBackend {
   /** Reservations, forwards and pinholes joined to devices, plus the LAN map. */
@@ -150,6 +198,10 @@ export interface GuestBackend {
   get(net: M.Id): Promise<M.GuestNetwork>;
   /** Sensitive. Core builds the `WIFI:` payload. */
   credentials(net: M.Id): Promise<WifiCredentials>;
+  setEnabled(net: M.Id, enabled: boolean): Promise<M.GuestNetwork>;
+  rename(net: M.Id, name: string): Promise<M.GuestNetwork>;
+  /** null makes the guest network open. */
+  setPassword(net: M.Id, password: string | null): Promise<M.GuestNetwork>;
 }
 
 export interface WifiBackend {
@@ -157,6 +209,13 @@ export interface WifiBackend {
   get(net: M.Id): Promise<M.WifiSettings>;
   /** Sensitive. Core builds the `WIFI:` payload. */
   credentials(net: M.Id): Promise<WifiCredentials>;
+  /** The SSID, which is also the network's name. */
+  setName(net: M.Id, ssid: string): Promise<M.WifiSettings>;
+  setPassword(net: M.Id, password: string): Promise<M.WifiSettings>;
+  /** Only the bands given change (`PUT {net}/wpa3_per_band`). */
+  setSecurity(net: M.Id, security: Partial<Record<M.WirelessBand, M.Security>>): Promise<M.WifiSettings>;
+  /** 2.4 GHz only on (`PUT {net}/temporary_flags/hide_5g`) or off (`DELETE`). eero sets the expiry. */
+  setHide5g(net: M.Id, enabled: boolean): Promise<M.WifiSettings>;
 }
 
 export interface SettingsBackend {
@@ -191,6 +250,8 @@ export interface NotificationsBackend {
   unread(net: M.Id): Promise<boolean>;
   /** eero's notification switches, keys as sent (`device.new`). Push and desktop choices are added in core. */
   settings(net: M.Id): Promise<Record<string, boolean>>;
+  /** Network-wide: eero keeps only `has_unread`, no per-row read flag. */
+  markRead(net: M.Id): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +279,27 @@ export interface BackendAreas {
 }
 
 export type AreaName = keyof BackendAreas;
+
+/**
+ * The write methods of each area (M4). The eero backend may leave any of
+ * them out until its story builds it (see `EeroArea` and `partialArea`);
+ * the demo backend implements them all.
+ */
+export const WRITE_METHODS = {
+  network: ["restart"],
+  internet: ["runSpeedTest"],
+  eero: ["rename", "find", "setLed", "setNightlight", "restart"],
+  device: ["setPaused", "rename", "setType", "setProfile", "setBlocked"],
+  profile: ["create", "rename", "setPaused", "setDevices", "remove", "setUnassignedPaused", "addSchedule", "updateSchedule", "removeSchedule"],
+  guest: ["setEnabled", "rename", "setPassword"],
+  wifi: ["setName", "setPassword", "setSecurity", "setHide5g"],
+  notifications: ["markRead"],
+} as const satisfies { [K in AreaName]?: readonly (keyof BackendAreas[K])[] };
+
+export type WriteMethod<K extends AreaName> = K extends keyof typeof WRITE_METHODS ? (typeof WRITE_METHODS)[K][number] : never;
+
+/** An area with every read and any subset of its writes. */
+export type PartialWrites<K extends AreaName> = Omit<BackendAreas[K], WriteMethod<K>> & Partial<Pick<BackendAreas[K], Extract<WriteMethod<K>, keyof BackendAreas[K]>>>;
 
 export const AREA_NAMES: readonly AreaName[] = [
   "auth",
@@ -264,9 +346,29 @@ export function unimplementedArea<K extends AreaName>(kind: M.BackendKind, area:
   });
 }
 
-/** Builds a Backend from the areas given, filling the rest with `unimplementedArea`. */
-export function composeBackend(kind: M.BackendKind, areas: Partial<BackendAreas>): Backend {
+/**
+ * An area with some writes built: any write in WRITE_METHODS that `impl`
+ * lacks answers "not available yet". The eero backend wraps every area in it, so an M4 write
+ * lands one method at a time without the rest failing typecheck.
+ */
+export function partialArea<K extends AreaName>(kind: M.BackendKind, area: K, impl: PartialWrites<K>): BackendAreas[K] {
+  const writes: readonly string[] = (WRITE_METHODS as Partial<Record<AreaName, readonly string[]>>)[area] ?? [];
+  return new Proxy(impl as BackendAreas[K], {
+    get(target, method, receiver) {
+      const value = Reflect.get(target, method, receiver);
+      // Only declared writes fall back; anything else stays as the area has it.
+      if (value !== undefined || typeof method !== "string" || !writes.includes(method)) return value;
+      return () => notAvailable(kind, area, method);
+    },
+  });
+}
+
+/** Builds a Backend from the areas given (writes optional, see `partialArea`), filling the rest with `unimplementedArea`. */
+export function composeBackend(kind: M.BackendKind, areas: { [K in AreaName]?: PartialWrites<K> }): Backend {
   const full = { kind } as { kind: M.BackendKind } & Record<AreaName, unknown>;
-  for (const name of AREA_NAMES) full[name] = areas[name] ?? unimplementedArea(kind, name);
+  for (const name of AREA_NAMES) {
+    const given = areas[name] as PartialWrites<AreaName> | undefined;
+    full[name] = given ? partialArea(kind, name, given) : unimplementedArea(kind, name);
+  }
   return full as Backend;
 }

@@ -27,22 +27,23 @@ singular to match the area files (`src/core/commands/<area>.ts` and
 export interface BackendAreas {
   auth: AuthBackend;         // status, start, verify, resend, logout
   account: AccountBackend;   // get
-  network: NetworkBackend;   // list, get, health, permissions
-  internet: InternetBackend; // get, speedTests
+  network: NetworkBackend;   // list, get, health, permissions; restart
+  internet: InternetBackend; // get, speedTests; runSpeedTest
   usage: UsageBackend;       // series, breakdown
-  eero: EeroBackend;         // list, get, ports, firmwareHistory
-  device: DeviceBackend;     // list (includes blocked), get, requestBurst
-  profile: ProfileBackend;   // list, get
+  eero: EeroBackend;         // list, get, ports, firmwareHistory; rename, find, setLed, setNightlight, restart
+  device: DeviceBackend;     // list (includes blocked), get, requestBurst; setPaused, rename, setType, setProfile, setBlocked
+  profile: ProfileBackend;   // list, get; create, rename, setPaused, setDevices, remove, setUnassignedPaused,
+                             //   addSchedule, updateSchedule, removeSchedule
   events: EventsBackend;     // list(net, cursor): one page, newest first
   routing: RoutingBackend;   // get: reservations, forwards, pinholes, LAN map
   updates: UpdatesBackend;   // get
-  guest: GuestBackend;       // get (no password), credentials (sensitive)
-  wifi: WifiBackend;         // get (no password), credentials (sensitive)
+  guest: GuestBackend;       // get (no password), credentials (sensitive); setEnabled, rename, setPassword
+  wifi: WifiBackend;         // get (no password), credentials (sensitive); setName, setPassword, setSecurity, setHide5g
   settings: SettingsBackend; // get (no Thread secrets), threadCredentials (sensitive)
   diagnostics: DiagnosticsBackend; // latest, support
   admins: AdminsBackend;     // list: admins and invites (seats in core)
   integrations: IntegrationsBackend; // get
-  notifications: NotificationsBackend; // list(net, cursor), unread, settings
+  notifications: NotificationsBackend; // list(net, cursor), unread, settings; markRead
 }
 
 export interface Backend extends BackendAreas {
@@ -57,15 +58,45 @@ answers "not available yet" until the M2 stories that map them (M2.5 updates,
 M2.6 ports and firmware, M2.7 routing). M3.1 added the `guest`, `wifi`,
 `settings`, `diagnostics`, `admins`, `integrations` and `notifications`
 areas the same way: the demo backend answers them, and the eero backend
-answers "not available yet" until the M3 story that maps each one. Later
-milestones add their writes (renames, pause, restarts, settings) to the
-matching area. There is no `activity` area: events have their own `events`
+answers "not available yet" until the M3 story that maps each one. M4.1
+added the M4 writes (after the `;` above) the same way: the demo backend
+applies them all, and the eero backend answers "not available yet" for each
+until the wave-2 story that builds it. M5 adds its settings writes later.
+There is no `activity` area: events have their own `events`
 area and notifications theirs. Wi-Fi and guest passwords never travel in
 `get`; each has a `credentials` method that only the sensitive share and
 reveal commands call, and core builds the `WIFI:` QR payload.
 
 `SecretStore`, the host contract for the session token, is defined in the
 same file.
+
+### Writes
+
+A write takes model-shaped input (ids, a nickname, a `ScheduleInput`, a
+`LedInput`), makes the change and returns the changed object as the next
+read would show it (`Device`, `Profile`, `GuestNetwork`, `WifiSettings`,
+`Eero`, `Schedule`), or nothing when eero only accepts the request and acts
+later (restarts, speed test, remove, mark read). Writes never retry and do
+no confirmation or cache work: the engine owns `needs_confirm`, the topics
+a write invalidates and the settle delay. Notes on the contracts:
+
+- `device.setProfile(net, device, null)` takes the device out of every
+  profile. On a real network every device has a `profile` (capture
+  2026-11-13), and "no profile" is eero's `default: true` profile, which
+  the model shows as Unassigned; the eero backend maps `null` to that
+  profile's url.
+- `profile.setUnassignedPaused` pauses the Unassigned devices (the default
+  profile), which is not a `Profile` in the model.
+- Schedules are written through `{profile}/schedules`, but read only from
+  the profile's `schedule[]` (the GET there is a 404).
+- `wifi.setName` changes the SSID, which is also the network's `name`.
+- `eero.setNightlight` is Beacon only; other eeros fail with `eero_error`.
+
+`WRITE_METHODS` in `backend.ts` lists each area's writes. An eero area
+file returns `PartialWrites<K>`: every read, and whichever writes are built.
+`composeBackend` wraps each area in `partialArea`, so a missing write
+answers "not available yet" instead of failing typecheck, and each wave-2
+story adds its methods without touching the others.
 
 ### Composing a backend
 
@@ -74,8 +105,9 @@ fills every missing one with `unimplementedArea(kind, area)`, whose methods
 all reject with `eero_error` "`<area>.<method>` is not available in the
 `<kind>` backend yet". So the engine and every surface run while a backend
 is only partly built. The eero backend is made this way: it registers one
-factory per area file in `src/core/eero/backend/index.ts`. The demo backend
-(`src/core/demo/backend.ts`) implements every M1 area itself.
+factory per area file in `src/core/eero/backend/index.ts`, each wrapped in
+`partialArea` (see Writes). The demo backend (`src/core/demo/backend.ts`)
+implements every area and write itself.
 
 ### Derived fields are filled by core
 
@@ -181,12 +213,20 @@ the open source clients' redacted fixtures, rewritten with invented values.
 `src/core/demo/` implements `Backend` over a mutable in-memory copy of the
 fixtures.
 
-- **Writes apply** (not yet built in M1: the demo backend has only the M1
-  reads). Pausing a device flips the fixture,
-  deleting a profile moves its devices to unassigned, and a new port
-  forward appears in the routing list. Restarts set the network or eero to `updating`
-  and back to `online` after a short simulated delay (5 s, not minutes), so
-  the restart flow can be checked.
+- **Writes apply** (M4.1). Every write changes the in-memory fixtures, so
+  the next read shows it and derived fields follow: pausing a device clears
+  its live rates, blocking it drops it off (unblocking puts it back as it
+  was), a profile's state follows its pause and schedules, deleting a
+  profile moves its devices to Unassigned, the guest network's online count
+  drops to 0 when it is off, an open guest network has no security, and a
+  speed test result appears at once (eero takes about a minute). Restarts
+  set the eero, or the network and every reachable eero, to `updating` and
+  back to the old status after `RESTART_MS` (5 s, not minutes), so the
+  restart flow can be checked; an offline eero refuses to restart. The 2.4
+  GHz only window lasts 20 minutes (`HIDE_5G_MS`; eero picks its own) and
+  ends on its own. New profiles and schedules get `demo-profile-<n>` and
+  `demo-schedule-<n>` ids, counted from 1 again on reset. M5 settings writes
+  are not in the demo yet.
 - **Auth.** Any login is accepted; the code `000000` (or any 6 digits)
   verifies, `111111` returns a wrong-code `eero_error` so the error state
   can be tested.
@@ -222,12 +262,13 @@ fixtures.
   `auth` by `slowMs` (1.5 s by default), and `errors` makes them fail with
   `eero_error` (status 503), so loading and error states show in demo while
   sign-in and `demo.scenario.set` keep working.
-- **Errors on purpose** (not yet built in M1, as it needs writes). A
-  device named "Flaky Plug" fails writes with
-  `eero_error` (`error.eero.offline`) so error states are reachable in the
-  UI without a real network.
-- **Reset.** Each process starts from the pristine fixtures. Tests create a
-  fresh demo backend per test.
+- **Errors on purpose.** Device writes on "Flaky Plug" (Maple Street) fail
+  with `eero_error` (status 503, `error.eero.offline`) and change nothing,
+  so error states are reachable in the UI without a real network. The
+  `errors` scenario fails every write too.
+- **Reset.** Each process starts from the pristine fixtures, and
+  `demo.scenario.set` rebuilds them, which undoes every write. Tests create
+  a fresh demo backend per test.
 - The demo backend never opens a socket. `--demo` must work offline.
 
 ## Fixtures
@@ -300,3 +341,14 @@ seed also holds raw `connections` per eero, `firmware_update/history` per
 eero (seeded oldest first, so mappers must sort), `routing` and `updates`
 (the same object the network embeds); the routes that serve them land with
 the stories that map them.
+
+Writes (M4.1). PUT, POST and DELETE are parsed like reads (form, JSON, or
+the empty-JSON `""` body) and each is also recorded, parsed, in
+`fake.writes` (`method`, `path`, `version`, `route`, `contentType`,
+`encoding`, `body`, `rawBody`, `status`), whichever route answered it, so a
+test asserts the exact request a write sent. Write routes change the seeded
+objects in place, so the next GET shows the change; `state.nextId()` gives
+ids for created profiles and schedules. Each wave-2 story adds the routes
+for its writes, with `versions: ["2.3"]` where eero needs `/2.3/`; a `/2.2/`
+device write may answer 200 and change nothing, as eero does, and the test
+asserts the recorded `version`.

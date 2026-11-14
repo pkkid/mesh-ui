@@ -412,6 +412,9 @@ export type Schedule = {
   enabled: boolean;
 };
 
+/** A schedule to add or replace; eero assigns the id. */
+export type ScheduleInput = Omit<Schedule, "id">;
+
 export type Profile = {
   /** eero profile id. Unassigned is not a Profile. */
   id: Id;

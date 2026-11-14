@@ -13,12 +13,19 @@
  * radios, and settings take DHCP, WAN and the ISP's DNS from the LAN map and
  * internet fixtures.
  *
- * The `slow` and `errors` scenarios wrap every area but `auth`: reads wait
- * `slowMs` first, or fail with `eero_error`, so loading and error states can
- * be shown while sign-in and scenario switching keep working.
+ * The `slow` and `errors` scenarios wrap every area but `auth`: reads and
+ * writes wait `slowMs` first, or fail with `eero_error`, so loading and error
+ * states can be shown while sign-in and scenario switching keep working.
+ *
+ * Writes (M4) change the in-memory fixtures, so pause, rename, block or guest
+ * off show in the next read; derived fields (profile state, counts, rates)
+ * follow on their own. Restarts show `updating` for RESTART_MS, then the old
+ * status. Device writes on "Flaky Plug" fail, for error states.
+ * `setScenario` rebuilds the fixtures, which undoes every write.
  */
 
 import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
+import { deviceCategory } from "../eero/map/device";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
 import { applyScenario, type ReadMode, type ScenarioName } from "./scenario";
@@ -49,6 +56,12 @@ export const NOTIFICATION_PAGE_SIZE = 50;
 /** The `slow` scenario's delay per read. */
 export const SLOW_READ_MS = 1_500;
 const BURST_LEAD_MS = 3_000;
+/** How long the demo's 2.4 GHz only window lasts (eero picks its own). */
+export const HIDE_5G_MS = 20 * 60_000;
+/** How long a demo restart shows `updating` before the eero or network is back (eero takes minutes). */
+export const RESTART_MS = 5_000;
+/** Device writes on this fixture fail with `eero_error`, so error states can be shown. */
+export const FLAKY_DEVICE = "Flaky Plug";
 const WRONG_CODE = "111111";
 
 // ---------------------------------------------------------------------------
@@ -169,6 +182,13 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
   let typical: Map<M.Id, M.DeviceRates>;
   let walk: Map<M.Id, number>;
   let burstStep = 0;
+  /** Ids for profiles and schedules the demo creates. */
+  let writeSeq = 0;
+  /** Whether a device was connected before it was blocked, so unblocking puts it back. */
+  let beforeBlock: Map<M.Id, boolean>;
+  /** Restarts in progress: the status to go back to, and when. Keyed by eero id or `net:<id>`. */
+  let restarting: Map<string, { until: number; status: M.Status }>;
+  let flaky: Set<M.Id>;
   let reads: ReadMode = "normal";
   const slowMs = opts.slowMs ?? SLOW_READ_MS;
 
@@ -181,6 +201,10 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     typical = new Map(fx.networks.flatMap((n) => n.devices.flatMap((d) => (d.rates ? [[d.id, d.rates] as const] : []))));
     walk = new Map();
     burstStep = 0;
+    writeSeq = 0;
+    beforeBlock = new Map();
+    restarting = new Map();
+    flaky = new Set(fx.networks.flatMap((n) => n.devices.filter((d) => d.name === FLAKY_DEVICE).map((d) => d.id)));
   };
   reset(scenario);
 
@@ -190,7 +214,27 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
 
   const net = (id: M.Id): NetworkData => {
     signedIn();
-    return fx.networks.find((n) => n.network.id === id) ?? notFound("network");
+    const data = fx.networks.find((n) => n.network.id === id) ?? notFound("network");
+    settleRestarts(data);
+    return data;
+  };
+
+  /** Brings back eeros (and the network) whose restart has run its course. */
+  const settleRestarts = (data: NetworkData) => {
+    if (!restarting.size) return;
+    const t = now();
+    for (const e of data.eeros) {
+      const r = restarting.get(e.id);
+      if (r && r.until <= t) {
+        e.status = r.status;
+        restarting.delete(e.id);
+      }
+    }
+    const r = restarting.get(`net:${data.network.id}`);
+    if (r && r.until <= t) {
+      data.network.status = r.status;
+      restarting.delete(`net:${data.network.id}`);
+    }
   };
 
   const tzOf = (data: NetworkData) => data.network.timezone ?? "UTC";
@@ -302,7 +346,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       security: clone(data.wifi.security),
       wpa2OnlyDevices: [...data.wifi.wpa2OnlyDevices],
       bands,
-      hide5g: clone(data.wifi.hide5g),
+      // eero ends the 2.4 GHz only window on its own.
+      hide5g: data.wifi.hide5g.active && data.wifi.hide5g.expiresAt !== null && Date.parse(data.wifi.hide5g.expiresAt) <= now() ? { active: false, expiresAt: null } : clone(data.wifi.hide5g),
       wirelessClients: on.length,
     };
   };
@@ -340,6 +385,56 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         if (!data.profiles.some((p) => p.id === id)) notFound("profile");
         return data.devices.filter((d) => d.profileId === id);
     }
+  };
+
+  // --- writes -------------------------------------------------------------
+  // Each write changes the fixtures in place, so the next read shows it, and
+  // returns what that read would. setScenario rebuilds the fixtures.
+
+  const deviceIn = (data: NetworkData, deviceId: M.Id) => data.devices.find((x) => x.id === deviceId) ?? notFound("device");
+  const profileIn = (data: NetworkData, profileId: M.Id) => data.profiles.find((x) => x.id === profileId) ?? notFound("profile");
+  const nextId = (prefix: string) => `${prefix}${++writeSeq}`;
+
+  const changeDevice = async (id: M.Id, deviceId: M.Id, change: (d: M.Device, data: NetworkData) => void): Promise<M.Device> => {
+    const data = net(id);
+    const d = deviceIn(data, deviceId);
+    if (flaky.has(d.id)) throw new BackendError("eero_error", "The eero this device is on did not answer.", { status: 503, eeroError: "error.eero.offline" });
+    change(d, data);
+    return areas.device.get(id, deviceId);
+  };
+
+  const changeProfile = (id: M.Id, profileId: M.Id, change: (p: NetworkData["profiles"][number], data: NetworkData) => void): M.Profile => {
+    const data = net(id);
+    const p = profileIn(data, profileId);
+    change(p, data);
+    return profileView(data, p);
+  };
+
+  /** Exactly `deviceIds` in the profile; devices that leave become Unassigned. */
+  const assign = (data: NetworkData, profileId: M.Id, deviceIds: M.Id[]) => {
+    for (const deviceId of deviceIds) deviceIn(data, deviceId);
+    for (const d of data.devices) {
+      if (deviceIds.includes(d.id)) d.profileId = profileId;
+      else if (d.profileId === profileId) d.profileId = null;
+    }
+  };
+
+  const scheduleIn = (p: NetworkData["profiles"][number], scheduleId: M.Id) => p.schedules.find((x) => x.id === scheduleId) ?? notFound("schedule");
+
+  const changeEero = (id: M.Id, eeroId: M.Id, change: (e: NetworkData["eeros"][number]) => void): M.Eero => {
+    const data = net(id);
+    const e = eeroIn(data, eeroId);
+    change(e);
+    return eeroView(data, e);
+  };
+
+  /** An online eero goes `updating` for RESTART_MS, then back; an offline one cannot be reached. */
+  const restartEero = (e: NetworkData["eeros"][number]) => {
+    if (e.status === "offline") return;
+    if (!restarting.has(e.id)) restarting.set(e.id, { until: 0, status: e.status });
+    restarting.get(e.id)!.until = now() + RESTART_MS;
+    e.status = "updating";
+    e.uptimeSec = 0;
   };
 
   const range = (q: { from: M.Iso; to: M.Iso }) => {
@@ -415,6 +510,16 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         };
       },
       permissions: async (id) => clone(net(id).permissions),
+      restart: async (id) => {
+        const data = net(id);
+        const key = `net:${id}`;
+        if (!restarting.has(key)) restarting.set(key, { until: 0, status: data.network.status });
+        restarting.get(key)!.until = now() + RESTART_MS;
+        data.network.status = "updating";
+        data.network.lastReboot = new Date(now()).toISOString();
+        data.network.gatewayUptimeSec = 0;
+        data.eeros.forEach(restartEero);
+      },
     },
 
     internet: {
@@ -426,6 +531,14 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const data = net(id);
         const { from, to } = range(q);
         return clone(data.speedTests.filter((t) => Date.parse(t.at) >= from && Date.parse(t.at) <= to).slice(0, Math.max(0, q.limit)));
+      },
+      runSpeedTest: async (id) => {
+        const data = net(id);
+        // The demo answers at once, near the last result (eero takes about a minute).
+        const last = data.speedTests[0];
+        const jitter = 0.97 + 0.06 * hash01(`${seed}|speed|${data.speedTests.length}`);
+        const r = (n: number | null | undefined, fallback: number) => Math.round((n ?? fallback) * jitter);
+        data.speedTests.unshift({ at: new Date(now()).toISOString(), downMbps: r(last?.downMbps, 500), upMbps: r(last?.upMbps, 50), rating: null });
       },
     },
 
@@ -486,6 +599,24 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const list = (data.firmware[e.id] ?? []).slice(0, Math.max(0, limit));
         return list.map((f, i) => ({ ...f, current: i === 0 && f.version === e.firmware }));
       },
+      rename: async (id, eeroId, location) => changeEero(id, eeroId, (e) => (e.location = location)),
+      find: async (id, eeroId) => {
+        eeroIn(net(id), eeroId);
+      },
+      setLed: async (id, eeroId, led) =>
+        changeEero(id, eeroId, (e) => {
+          e.led = { on: led.on ?? e.led.on, brightness: led.brightness ?? e.led.brightness };
+        }),
+      setNightlight: async (id, eeroId, nightlight) =>
+        changeEero(id, eeroId, (e) => {
+          if (!e.nightlight) throw new BackendError("eero_error", "This eero has no nightlight.", { status: 400 });
+          e.nightlight = clone(nightlight);
+        }),
+      restart: async (id, eeroId) => {
+        const e = eeroIn(net(id), eeroId);
+        if (e.status === "offline") throw new BackendError("eero_error", `${e.location} is offline, so it cannot restart.`, { status: 400 });
+        restartEero(e);
+      },
     },
 
     routing: {
@@ -537,6 +668,34 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         }
         return { nextBurstAt: new Date(now() + BURST_LEAD_MS).toISOString() };
       },
+      setPaused: (id, deviceId, paused) => changeDevice(id, deviceId, (d) => (d.paused = paused)),
+      rename: (id, deviceId, nickname) =>
+        changeDevice(id, deviceId, (d) => {
+          d.nickname = nickname;
+          d.name = nickname ?? d.hostname ?? d.model ?? d.manufacturer ?? d.mac;
+        }),
+      setType: (id, deviceId, type) =>
+        changeDevice(id, deviceId, (d) => {
+          d.type = type;
+          d.category = deviceCategory(type);
+        }),
+      setProfile: (id, deviceId, profileId) =>
+        changeDevice(id, deviceId, (d, data) => {
+          if (profileId !== null) profileIn(data, profileId);
+          d.profileId = profileId;
+        }),
+      setBlocked: (id, deviceId, blocked) =>
+        changeDevice(id, deviceId, (d) => {
+          if (blocked === d.blocked) return;
+          d.blocked = blocked;
+          if (blocked) {
+            beforeBlock.set(d.id, d.connected);
+            d.connected = false;
+          } else {
+            d.connected = beforeBlock.get(d.id) ?? false;
+            beforeBlock.delete(d.id);
+          }
+        }),
     },
 
     profile: {
@@ -548,6 +707,41 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const data = net(id);
         const p = data.profiles.find((x) => x.id === profileId) ?? notFound("profile");
         return profileView(data, p);
+      },
+      create: async (id, input) => {
+        const data = net(id);
+        const p = { id: nextId("demo-profile-"), name: input.name, paused: false, schedules: [] };
+        assign(data, p.id, input.deviceIds);
+        data.profiles.push(p);
+        return profileView(data, p);
+      },
+      rename: async (id, profileId, name) => changeProfile(id, profileId, (p) => (p.name = name)),
+      setPaused: async (id, profileId, paused) => changeProfile(id, profileId, (p) => (p.paused = paused)),
+      setDevices: async (id, profileId, deviceIds) => changeProfile(id, profileId, (p, data) => assign(data, p.id, deviceIds)),
+      remove: async (id, profileId) => {
+        const data = net(id);
+        const p = profileIn(data, profileId);
+        assign(data, p.id, []);
+        data.profiles = data.profiles.filter((x) => x.id !== p.id);
+      },
+      setUnassignedPaused: async (id, paused) => {
+        // Unassigned: devices in no profile (eero's default profile).
+        for (const d of net(id).devices) if (d.profileId === null && !d.blocked) d.paused = paused;
+      },
+      addSchedule: async (id, profileId, input) => {
+        const s: M.Schedule = { id: nextId("demo-schedule-"), ...clone(input) };
+        profileIn(net(id), profileId).schedules.push(s);
+        return clone(s);
+      },
+      updateSchedule: async (id, profileId, scheduleId, input) => {
+        const s = scheduleIn(profileIn(net(id), profileId), scheduleId);
+        Object.assign(s, clone(input), { id: s.id });
+        return clone(s);
+      },
+      removeSchedule: async (id, profileId, scheduleId) => {
+        const p = profileIn(net(id), profileId);
+        scheduleIn(p, scheduleId);
+        p.schedules = p.schedules.filter((x) => x.id !== scheduleId);
       },
     },
 
@@ -568,6 +762,25 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const data = net(id);
         return { ssid: data.guest.name ?? `${data.network.name} Guest`, password: data.guest.password };
       },
+      setEnabled: async (id, enabled) => {
+        const data = net(id);
+        data.guest.enabled = enabled;
+        return guestView(data);
+      },
+      rename: async (id, name) => {
+        const data = net(id);
+        data.guest.name = name;
+        return guestView(data);
+      },
+      setPassword: async (id, password) => {
+        const data = net(id);
+        const wasOpen = data.guest.password === null;
+        data.guest.password = password;
+        // Open has no security; a password brings back the main network's.
+        if (password === null) data.guest.security = { "2.4": null, "5": null, "6": null };
+        else if (wasOpen) data.guest.security = clone(data.wifi.security);
+        return guestView(data);
+      },
     },
 
     wifi: {
@@ -575,6 +788,30 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       credentials: async (id) => {
         const data = net(id);
         return { ssid: data.network.name, password: data.wifi.password };
+      },
+      setName: async (id, ssid) => {
+        const data = net(id);
+        data.network.name = ssid;
+        return wifiView(data);
+      },
+      setPassword: async (id, password) => {
+        const data = net(id);
+        data.wifi.password = password;
+        return wifiView(data);
+      },
+      setSecurity: async (id, security) => {
+        const data = net(id);
+        for (const band of WIRELESS) {
+          const next = security[band];
+          // A band no eero has stays null.
+          if (next && data.wifi.security[band] !== null) data.wifi.security[band] = next;
+        }
+        return wifiView(data);
+      },
+      setHide5g: async (id, enabled) => {
+        const data = net(id);
+        data.wifi.hide5g = enabled ? { active: true, expiresAt: new Date(now() + HIDE_5G_MS).toISOString() } : { active: false, expiresAt: null };
+        return wifiView(data);
       },
     },
 
@@ -609,6 +846,9 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       },
       unread: async (id) => net(id).notifications.some((n) => !n.read),
       settings: async (id) => clone(net(id).notificationSettings),
+      markRead: async (id) => {
+        for (const n of net(id).notifications) n.read = true;
+      },
     },
   };
 

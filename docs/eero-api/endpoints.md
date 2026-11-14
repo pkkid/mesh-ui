@@ -6,7 +6,8 @@ against the live API by the Mesh UI project, and eero can change any of it
 without notice. Agents never call this API (see [Testing](../testing.md));
 Rows that were checked with a read-only capture on a real network (key
 paths and types only) say so, and [Real captures for M3](#17-real-captures-for-m3-2026-11-13)
-lists them. The client that does is described in
+lists them ([section 18](#18-real-captures-for-m4-2026-11-13) for the
+objects the M4 writes change). The client that does is described in
 [architecture/eero-client.md](../architecture/eero-client.md), and the fields
 are in [data-model.md](data-model.md).
 
@@ -382,6 +383,25 @@ clients and are marked so in `src/core/eero/raw.ts`.
 | `{net}/invites` | 200 | bare array (empty) |
 | `{net}/proxied_nodes` | 404 | (state is the network's embedded `proxied_nodes`) |
 | `{net}/guestnetwork/devices` | 404 | (guests are devices with `is_guest`) |
+
+## 18. Real captures for M4 (2026-11-13)
+
+Before the M4 writes, one read-only `GET` of each object they change, on the
+same network, recorded the same way (key paths and types, no values; `xN`
+counts are left out). No write was sent: each write's request comes from the
+rows above and the clients, and its real behaviour is a `MANUAL:` line in its
+story.
+
+| Endpoint | Result | Key paths and types | What it settles |
+|---|---|---|---|
+| `{net}/devices` | 200 | per row: `url`, `device_type`: string; `nickname`, `display_name`: string or null; `paused`, `is_guest`: bool; `blacklisted`: bool or null; `profile{url, name: string, paused: bool}` on **every** row; `source{location, is_gateway, model, display_name, serial_number, is_proxied_node, url}` | No device has `profile: null`: "no profile" is the `default: true` profile, so `device.setProfile(null)` sends that profile's url (M4.4) |
+| `{net}/profiles` | 200 | per row: `url`, `name`: string; `paused`, `default`: bool; `resources{schedules: string}`; `devices[]`; `schedule`: array (empty on every row); `state{value: string, schedule: null}`; `proxied_nodes[]` | The default profile is a row like the others, so Unassigned pause is `PUT {default profile} {paused}` (M4.5). `schedule[]` is empty here, so the schedule row shape and day form still come from the clients (M4.12) |
+| `{net}/guestnetwork` | 200 | `url`, `name`, `password`: string; `enabled`: bool; `resources{password: string}` | Unchanged since M3; the password has its own link (M4.6) |
+| `{net}` (Wi-Fi fields) | 200 | `name`, `password`, `wireless_mode`: string; `wpa3`, `band_steering`: bool; `temporary_flags`: object with no keys while 2.4 GHz only is off; `guest_network{url, name, password, enabled, resources}`; `resources{password, guestnetwork, speedtest, reboot, eeros, devices, device_blacklist, profiles, settings, ...}`; no `hide_5g` key anywhere | `resources.password` and `resources.reboot` are published; the `hide_5g` shape while on is still from the clients (M4.7) |
+| `{net}/wpa3_per_band` | 200 | `band_2_4_ghz`, `band_5_ghz`: string; no 6 GHz key | Unchanged since M3 (M4.7) |
+| `{net}/eeros` | 200 | per row: `url`, `location`, `model`, `compact_model`: string; `led_on`: bool; `led_brightness`: number; `nightlight`: null on every row; `resources{led_action, reboot, connections}`: string | LED writes go to `resources.led_action`, restarts to `resources.reboot`; no `led_cycle` link is published, so find uses `/2.2/eeros/{id}/led_cycle`; the nightlight shape is from the clients (M4.8) |
+| `{net}/speedtest` | 200 | array of `{date: string, down_mbps: number, up_mbps: number}` | History shape for after `POST {net}/speedtest` (M4.9) |
+| `{net}/blacklist` | 200 | array (empty) | Block and unblock round-trips are fake-server only (M4.4) |
 
 ---
 

@@ -104,6 +104,13 @@ process-wide like this.
   and switching scenarios keep working in both. A CLI run is one process,
   so set the scenario and read in one script:
   `mesh-ui --demo run steps.jsonl` with a `demo.scenario.set` line first.
+- Demo writes (M4) change the in-memory fixtures, so a write test runs the
+  command and then the read that shows it (pause, then `device.get` says
+  `paused`). `demo.scenario.set` rebuilds the fixtures, undoing every write,
+  and a fresh demo backend per test starts clean. Device writes on "Flaky
+  Plug" fail with `eero_error` for error states, and restarts show
+  `updating` for 5 s (`RESTART_MS`); see
+  [backends.md](architecture/backends.md#demo-backend).
 - Fixtures live in one place and are typed against `src/core/model.ts` (demo)
   or `src/core/eero/raw.ts` (fake server), so model changes break them at
   compile time.
@@ -145,8 +152,19 @@ converts to JSON Schema, and a test file that mentions its id.
 ### Fake eero server
 
 A small Node `http` server started per test file on a random port. It holds
-state (one account, two networks) and records every request. Scenarios are
-switched per test:
+state (one account, two networks) and records every request in `fake.log`.
+Every PUT, POST and DELETE is also in `fake.writes`, parsed (method, path,
+API version, route, content type, form or JSON or empty-JSON encoding,
+body, status), so a write test asserts the exact request:
+
+```ts
+expect(fake.writes.at(-1)).toMatchObject({ method: "PUT", version: "2.3", encoding: "json", body: { paused: true } });
+```
+
+Write routes change the seeded state in place, so the next GET shows the
+change (`state.nextId()` gives ids for created objects). A write with no
+route yet is still recorded, with status 404. Scenarios are switched per
+test:
 
 | Scenario | Proves |
 | --- | --- |

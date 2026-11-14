@@ -8,7 +8,7 @@ import type { RawEeroFull } from "../eero/map/eero";
 import { mapHide5g, mapSecurity, mapWifi } from "../eero/map/wifi";
 import { createEngine } from "../engine";
 import type * as M from "../model";
-import type { WifiPassword } from "./wifi";
+import { type GeneratedPassword, generatePassword, PASSWORD_ALPHABET, type WifiPassword } from "./wifi";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -243,4 +243,109 @@ describe("Wi-Fi page load (fake eero server)", () => {
       await fake.close();
     }
   });
+});
+
+describe("wifi.password.generate", () => {
+  const LOOK_ALIKES = /[0O1Il]/;
+
+  it("returns 16 characters from the alphabet by default, with upper, lower and a digit", async () => {
+    const engine = demoEngine();
+    for (let i = 0; i < 50; i++) {
+      const { password } = await ok(engine.execute<GeneratedPassword>("wifi.password.generate", {}));
+      expect(password).toHaveLength(16);
+      expect([...password].every((c) => PASSWORD_ALPHABET.includes(c))).toBe(true);
+      expect(password).toMatch(/[A-Z]/);
+      expect(password).toMatch(/[a-z]/);
+      expect(password).toMatch(/\d/);
+      expect(password).not.toMatch(LOOK_ALIKES);
+    }
+  });
+
+  it("keeps look-alike characters out of the alphabet", () => {
+    expect(PASSWORD_ALPHABET).not.toMatch(LOOK_ALIKES);
+    expect(new Set(PASSWORD_ALPHABET).size).toBe(PASSWORD_ALPHABET.length);
+    expect(PASSWORD_ALPHABET).toHaveLength(55);
+  });
+
+  it("honours length from 12 to 63 and gives a new password each time", async () => {
+    const engine = demoEngine();
+    expect((await ok(engine.execute<GeneratedPassword>("wifi.password.generate", { length: 12 }))).password).toHaveLength(12);
+    expect((await ok(engine.execute<GeneratedPassword>("wifi.password.generate", { length: 63 }))).password).toHaveLength(63);
+    const seen = new Set(Array.from({ length: 20 }, () => generatePassword()));
+    expect(seen.size).toBe(20);
+  });
+
+  it("uses every character of the alphabet over many draws", () => {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 400; i++) for (const c of generatePassword(63)) counts.set(c, (counts.get(c) ?? 0) + 1);
+    expect(counts.size).toBe(PASSWORD_ALPHABET.length);
+  });
+
+  it("rejects a bad length", async () => {
+    const engine = demoEngine();
+    for (const params of [{ length: 11 }, { length: 64 }, { length: 16.5 }, { length: "16" }, { extra: 1 }]) {
+      expect(await code(engine.execute("wifi.password.generate", params)), JSON.stringify(params)).toBe("bad_params");
+    }
+  });
+
+  it("is an app-scoped query, not sensitive, not cached, and works signed out", async () => {
+    const info = demoEngine().commands().find((c) => c.id === "wifi.password.generate");
+    expect(info).toMatchObject({ effect: "query", scope: "app", sensitive: false });
+    const engine = demoEngine();
+    const [a, b] = [await ok(engine.execute<GeneratedPassword>("wifi.password.generate")), await ok(engine.execute<GeneratedPassword>("wifi.password.generate"))];
+    expect(a.password).not.toBe(b.password);
+    expect((await ok(demoEngine("signed_out").execute<GeneratedPassword>("wifi.password.generate"))).password).toHaveLength(16);
+  });
+});
+
+describe("fake eero server records writes", () => {
+  it("records a PUT with a form body and a /2.3/ JSON body, method, path, version and body", async () => {
+    const fake = createFakeEero({ now: () => NOW });
+    const token = fake.signIn();
+    const headers = (type: string) => ({ "content-type": type, cookie: `s=${token}` });
+    await fake.fetch(`${fake.origin}/2.2/eeros/9001/led`, { method: "PUT", headers: headers("application/x-www-form-urlencoded"), body: "led_on=false&led_brightness=30" });
+    await fake.fetch(`${fake.origin}/2.3/networks/100001/devices/0a1b2c000001`, { method: "PUT", headers: headers("application/json; charset=utf-8"), body: JSON.stringify({ paused: true }) });
+    await fake.fetch(`${fake.origin}/2.2/networks/100001/reboot`, { method: "POST", headers: headers("application/json"), body: '""' });
+    await fake.fetch(`${fake.origin}/2.2/networks/100001/devices`, { headers: headers("application/json") });
+
+    expect(fake.writes).toHaveLength(3);
+    expect(fake.writes[0]).toMatchObject({ method: "PUT", path: "/2.2/eeros/9001/led", version: "2.2", route: "/eeros/9001/led", contentType: "application/x-www-form-urlencoded", encoding: "form", body: { led_on: "false", led_brightness: "30" } });
+    expect(fake.writes[1]).toMatchObject({ method: "PUT", path: "/2.3/networks/100001/devices/0a1b2c000001", version: "2.3", route: "/networks/100001/devices/0a1b2c000001", contentType: "application/json", encoding: "json", body: { paused: true }, rawBody: '{"paused":true}' });
+    expect(fake.writes[2]).toMatchObject({ method: "POST", version: "2.2", encoding: "empty", body: {} });
+    // Recorded whatever answers: these routes come with each wave-2 story, so today they are 404s.
+    expect(fake.writes.map((w) => w.status)).toEqual([404, 404, 404]);
+    expect(fake.log).toHaveLength(4);
+  });
+
+  it("lets a write route change the state, so the next GET shows it", async () => {
+    // How a wave-2 story adds its route: match the version, change the network in place.
+    const fake = createFakeEero({
+      now: () => NOW,
+      routes: [
+        {
+          method: "PUT",
+          path: "/networks/:net/devices/:mac",
+          versions: ["2.3"],
+          handle: ({ req, params, network }) => {
+            const d = network(params.net ?? "").devices.find((x) => (x.mac ?? "").replace(/:/g, "") === params.mac);
+            if (!d) return { status: 404, error: "error.device.not.found" };
+            if (typeof req.body.paused === "boolean") d.paused = req.body.paused;
+            return { data: d };
+          },
+        },
+      ],
+    });
+    const token = fake.signIn();
+    const headers = { "content-type": "application/json", cookie: `s=${token}` };
+    const before = (await (await fake.fetch(`${fake.origin}/2.2/networks/100001/devices/0a1b2c000001`, { headers })).json()) as { data: { paused: boolean } };
+    expect(before.data.paused).toBe(false);
+    const put = await fake.fetch(`${fake.origin}/2.3/networks/100001/devices/0a1b2c000001`, { method: "PUT", headers, body: JSON.stringify({ paused: true }) });
+    expect(put.status).toBe(200);
+    const after = (await (await fake.fetch(`${fake.origin}/2.2/networks/100001/devices/0a1b2c000001`, { headers })).json()) as { data: { paused: boolean } };
+    expect(after.data.paused).toBe(true);
+    // This route is /2.3/ only, so the same PUT on /2.2/ is a 404 here (eero answers 200 and drops it); either way the version is recorded.
+    await fake.fetch(`${fake.origin}/2.2/networks/100001/devices/0a1b2c000001`, { method: "PUT", headers, body: JSON.stringify({ paused: false }) });
+    expect(fake.writes.map((w) => [w.version, w.status])).toEqual([["2.3", 200], ["2.2", 404]]);
+  });
+
 });
