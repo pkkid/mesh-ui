@@ -1,14 +1,17 @@
 /**
  * Device detail "IP addresses" (docs/ux/pages/device-detail.md, Layout 2):
  * IPv4 with a Reserved badge (from `reservation.list`, matched on MAC, or
- * the reservation `device.get` carries) and Edit or Reserve (disabled until
- * reservation writes land), each IPv6 address on its own line, and the
- * link-local address in muted text. Bridge mode has no reservations, so no
- * badge and no Reserve.
+ * the reservation `device.get` carries) and Edit or Reserve, which open the
+ * reservation sheet (features/ports/RuleSheet.tsx) for this device, each
+ * IPv6 address on its own line, and the link-local address in muted text.
+ * Bridge mode has no reservations, so no badge and no Reserve.
  */
 import { Lock } from "lucide-react";
+import { useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
+import { useGate } from "~/components/ui/page";
+import { ReservationSheet, type ReservationSheetMode } from "~/features/ports/RuleSheet";
 import { Badge } from "~/components/ui/badge";
 import { Card, Section } from "~/components/ui/card";
 import { KvList } from "~/components/ui/kv-list";
@@ -25,9 +28,17 @@ export function DeviceAddresses({ view }: { view: DeviceView }) {
   const reserved = !view.bridged && !!d && (!!listed || !!d.reservation);
   const ipv4 = d ? (d.ipv4 ?? listed?.ip ?? d.reservation?.ip ?? null) : null;
   const canReserve = !view.bridged && !view.guest && !!d && !d.blocked;
+  const [sheet, setSheet] = useState<ReservationSheetMode | null>(null);
+  const gate = useGate(listed ? "reservation.update" : "reservation.add");
+  const open = () => {
+    if (!d) return;
+    if (listed) setSheet({ kind: "edit", reservation: listed });
+    else setSheet({ kind: "add", deviceId: d.id });
+  };
 
   return (
     <Section title="IP addresses">
+      <ReservationSheet mode={sheet} onClose={() => setSheet(null)} />
       <Card padded>
         <KvList
           items={[
@@ -42,10 +53,16 @@ export function DeviceAddresses({ view }: { view: DeviceView }) {
                       Reserved
                     </Badge>
                   )}
-                  {canReserve && (
-                    <span title="Coming soon" className="cursor-not-allowed text-muted-foreground text-xs">
+                  {canReserve && (reservations.data || !reserved) && (
+                    <button
+                      type="button"
+                      disabled={!gate.allowed}
+                      title={gate.allowed ? (reserved ? "Edit the reservation" : "Always give this device this address") : (gate.reason ?? undefined)}
+                      onClick={open}
+                      className="cursor-pointer text-muted-foreground text-xs underline-offset-2 hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:no-underline"
+                    >
                       {reserved ? "Edit" : "Reserve"}
-                    </span>
+                    </button>
                   )}
                 </span>
               ) : null,

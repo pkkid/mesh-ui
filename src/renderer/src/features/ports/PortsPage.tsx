@@ -1,8 +1,8 @@
 /**
  * Reservations & ports: the LAN address map, IPv4 reservations, port
- * forwards and IPv6 firewall rules, each joined to devices in core. Read-only
- * for now: add, edit, toggle and remove are disabled "Coming soon" controls
- * until their commands land. The three lists come from one cached routing
+ * forwards and IPv6 firewall rules, each joined to devices in core. Add,
+ * edit, the Enabled switch and remove run the routing writes through the
+ * sheets in RuleSheet.tsx. The three lists come from one cached routing
  * read. Layout, data and states: docs/ux/pages/reservations-ports.md and
  * docs/mockups/14-reservations-ports.html.
  */

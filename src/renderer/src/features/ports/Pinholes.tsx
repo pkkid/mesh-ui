@@ -1,28 +1,35 @@
 /**
  * IPv6 firewall rules: one row per pinhole with its device, the device's
- * IPv6 address, the port and protocol. Add and remove are "Coming soon".
+ * IPv6 address, the port and protocol. Add opens the rule sheet
+ * (RuleSheet.tsx); the row menu's Remove asks first.
  */
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 import type { QueryState } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
+import { GatedButton, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import type { PinholeList } from "../../../../core/commands/routing";
 
 import { DeviceCell, type Lookup, ProtocolTag, RowMenu } from "./Reservations";
+import { PinholeSheet, removePinhole } from "./RuleSheet";
 
 export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lookup: Lookup }) {
   const rows = query.data?.pinholes;
+  const [adding, setAdding] = useState(false);
+  const addGate = useGate("pinhole.add");
+  const removeGate = useGate("pinhole.remove");
   const tools = (
-    <ComingSoonButton size="sm" variant="outline">
+    <GatedButton gate={addGate} size="sm" variant="outline" onClick={() => setAdding(true)}>
       <Plus />
       Add
-    </ComingSoonButton>
+    </GatedButton>
   );
 
   return (
     <Section title="IPv6 firewall rules" subtitle="Pinholes to one device" tools={tools}>
+      <PinholeSheet open={adding} onClose={() => setAdding(false)} />
       {query.error && !query.data ? (
         <SectionError what="IPv6 firewall rules" error={query.error} onRetry={() => void query.refetch()} />
       ) : !rows ? (
@@ -42,7 +49,10 @@ export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lo
                 </div>
                 <span className="font-mono text-xs tabular-nums">{p.port}</span>
                 <ProtocolTag protocol={p.protocol} />
-                <RowMenu label={`Options for the rule on port ${p.port}`} />
+                <RowMenu
+                  label={`Options for the rule on port ${p.port}`}
+                  actions={[{ label: "Remove", icon: Trash2, gate: removeGate, destructive: true, onClick: () => void removePinhole(p, d?.name ?? "this device") }]}
+                />
               </Row>
             );
           })}

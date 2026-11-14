@@ -1,49 +1,41 @@
 /**
  * Port forwards table: name, device, internal IP, external and internal
- * port or range, protocol and whether it is on. Read-only: the Enabled
- * switch, Add and the row menu are "Coming soon". Disabled forwards are dimmed.
+ * port or range, protocol and whether it is on. Add and the row menu's Edit
+ * open the port forward sheet (RuleSheet.tsx); the Enabled switch runs
+ * `forward.update` with Undo; Remove asks first. Disabled forwards are dimmed.
  */
-import { ArrowRight, Plus } from "lucide-react";
+import { ArrowRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 import type { QueryState } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { ComingSoonButton, SectionError } from "~/components/ui/page";
+import { GatedButton, SectionError, useGate } from "~/components/ui/page";
+import { Toggle } from "~/features/profile/ProfileSchedules";
 import { cn } from "~/lib/utils";
 import type { ForwardList } from "../../../../core/commands/routing";
 
 import { type Lookup, ProtocolTag, RowMenu } from "./Reservations";
+import { ForwardSheet, type ForwardSheetMode, removeForward, setForwardEnabled } from "./RuleSheet";
 
 const th = "px-3 py-2 font-normal";
 const td = "px-3 py-2.5";
 
-/** A read-only switch showing whether a forward is on. */
-function EnabledSwitch({ on, label }: { on: boolean; label: string }) {
-  return (
-    <span title="Coming soon" className="inline-flex align-middle">
-      <span
-        role="switch"
-        aria-checked={on}
-        aria-disabled
-        aria-label={label}
-        className={cn("relative inline-block h-[18px] w-8 rounded-full border opacity-80 transition-colors", on ? "border-primary bg-primary" : "bg-muted")}
-      >
-        <span className={cn("absolute top-px size-3.5 rounded-full shadow-xs", on ? "left-[15px] bg-primary-foreground" : "left-px bg-background")} />
-      </span>
-    </span>
-  );
-}
-
 export function Forwards({ query, lookup, publicIp }: { query: QueryState<ForwardList>; lookup: Lookup; publicIp: string | null }) {
   const rows = query.data?.forwards;
+  const [sheet, setSheet] = useState<ForwardSheetMode | null>(null);
+  const addGate = useGate("forward.add");
+  const editGate = useGate("forward.update");
+  const removeGate = useGate("forward.remove");
   const tools = (
-    <ComingSoonButton size="sm">
+    <GatedButton gate={addGate} size="sm" onClick={() => setSheet({ kind: "add" })}>
       <Plus />
       Add port forward
-    </ComingSoonButton>
+    </GatedButton>
   );
 
   return (
     <Section title="Port forwards" subtitle={publicIp ? `Open to the internet on ${publicIp}` : "Open to the internet"} tools={tools}>
+      <ForwardSheet mode={sheet} onClose={() => setSheet(null)} />
       {query.error && !query.data ? (
         <SectionError what="port forwards" error={query.error} onRetry={() => void query.refetch()} />
       ) : rows && rows.length === 0 ? (
@@ -88,10 +80,18 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
                           <ProtocolTag protocol={f.protocol} />
                         </td>
                         <td className={cn(td, "text-right")}>
-                          <EnabledSwitch on={f.enabled} label={`${f.name || "Forward"} enabled`} />
+                          <span className="inline-flex align-middle" title={editGate.allowed ? undefined : (editGate.reason ?? undefined)}>
+                            <Toggle checked={f.enabled} label={`${f.name || "Forward"} enabled`} disabled={!editGate.allowed} onChange={(on) => void setForwardEnabled(f, on)} />
+                          </span>
                         </td>
                         <td className={cn(td, "w-8 py-1 text-right")}>
-                          <RowMenu label={`Options for ${f.name || "forward"}`} />
+                          <RowMenu
+                            label={`Options for ${f.name || "forward"}`}
+                            actions={[
+                              { label: "Edit...", icon: Pencil, gate: editGate, onClick: () => setSheet({ kind: "edit", forward: f }) },
+                              { label: "Remove", icon: Trash2, gate: removeGate, destructive: true, onClick: () => void removeForward(f) },
+                            ]}
+                          />
                         </td>
                       </tr>
                     );

@@ -40,42 +40,48 @@ Side panel **Good to know** (below the sections on windows narrower than 1536 px
 
 ## Actions
 
-M3 ships the page read-only: Add, the row menus and the Enabled switch are
-disabled "Coming soon" controls until the write commands below land. All of these are plain writes: they apply instantly and never restart eeros, so none needs `confirm`.
+Built in M5.5. All of these are plain writes: they apply instantly and never
+restart eeros, so none needs `confirm`; the UI asks first only before a
+removal. Each control dims with its command's gate (`settings` update
+permission, off in bridge mode). Every success toast has Undo, except a
+reservation removed together with its forwards. The sheets live in
+`features/ports/RuleSheet.tsx` and are shared with device detail.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Reservation filter | none (view state) | | | Filters rows by name, MAC or IP |
-| Add a reservation | `reservation.add` `{device or mac, ip, description}` | write | no | Sheet with device picker and a suggested free IP in the static range |
-| Reservation menu: Edit | `reservation.update` `{reservation, ip?, description?}` | write | no | |
-| Reservation menu: Remove | `reservation.remove` `{reservation, removeForwards}` | write | inline confirm when forwards use it ("Also remove 3 port forwards?") | |
+| Add a reservation | `reservation.add` `{device, ip?, description?}` | write | no | Sheet with a device picker; the address starts as the device's current one, and left empty core picks the first free address in the static range |
+| Reservation menu: Edit | `reservation.update` `{reservation, ip?, description?}` | write | no | Same sheet, device fixed |
+| Reservation menu: Remove | `reservation.remove` `{reservation, removeForwards}` | write | dialog; when forwards use the address it says they go too ("This also removes the 3 port forwards on 192.168.4.23") and `removeForwards` is true | |
 | Reservation menu: Open device | none (navigation) | | | Device detail |
 | Add port forward | opens the sheet | | | |
-| Sheet Save port forward | `forward.add` `{device, description, externalPort, internalPort, protocol, enabled}` | write | no | Creates the reservation first if the device has none |
+| Sheet Save port forward | `forward.add` `{device, description, externalPort, internalPort, protocol, enabled}` | write | no | Creates the reservation first if the device has none; the toast says so ("Added Lamp UI and reserved 192.168.4.190") |
 | Sheet Cancel, X, backdrop | none | | | Closes the sheet |
 | Enabled switch | `forward.update` `{forward, enabled}` | write | no | |
 | Forward menu: Edit | `forward.update` | write | no | Same sheet, filled in |
-| Forward menu: Remove | `forward.remove` `{forward}` | write | inline confirm | |
+| Forward menu: Remove | `forward.remove` `{forward}` | write | dialog | |
 | Pinhole Add | `pinhole.add` `{device, port, protocol}` | write | no | Sheet with device, port or range, protocol |
-| Pinhole row menu: Remove | `pinhole.remove` `{pinhole}` | write | inline confirm | |
+| Pinhole row menu: Remove | `pinhole.remove` `{pinhole}` | write | dialog | |
+| Device detail: Reserve or Edit (IP addresses) | `reservation.add` or `reservation.update` | write | no | The reservation sheet with the device picked |
+| Device detail: + Open a port, trash, off switch (Port forwarding) | `forward.add`, `forward.remove`, `forward.update` | write | dialog for remove | The port forward sheet with the device picked |
 
 ## States
 
 - **Loading:** map grid shows empty squares; tables show placeholder rows.
 - **Empty:** "No reservations yet.", "No port forwards yet.", "No IPv6 rules yet." each with its add button.
-- **Error:** inline note per section with **Retry**. Write errors map eero codes to plain text (`error.reservation.ip.invalid` = "That address is outside your network", `error.assignment.ip.unavailable` = "That address is already in use").
+- **Error:** inline note per section with **Retry**. Sheet errors are core's `bad_params` issues under their field ("That address is outside your network (192.168.4.0/22).", "Port 8080 is already forwarded to Alex's MacBook Pro (Web dev server).", "Alex's iPhone is using that address now."); eero's own codes (`error.reservation.ip.invalid`, `error.assignment.ip.unavailable`) also come back as `bad_params`. Other write errors toast with Retry.
 - **Offline:** a muted line above the map says the network is offline and the lists are what eero last reported.
 - **Bridge mode:** the whole page shows a single note "Reservations and port forwards are off while the network is in bridge mode" (IP passthrough says so too) with a link to [Advanced networking](advanced-networking.md); tables are hidden.
 - **IPv6 off** (not built in M3; needs the IPv6 setting): the IPv6 section shows "Turn on IPv6 to add firewall rules" with a link.
-- **Capability missing:** port ranges need the `port_forward_range` capability; without it the sheet accepts single ports only and says so.
-- **No permission:** add, edit and remove hidden if `network.permissions` denies routing updates.
+- **Capability missing:** port ranges need the `port_forward_range` capability; without it `forward.validate` says "This network takes single ports only, not ranges." under the port.
+- **No permission:** add, edit, the switch and remove are dimmed with the reason when `network.permissions` denies `settings` updates.
 
 ## Notes
 
 - `GET {net}/routing` returns devices, reservations, forwards and pinholes in one call. Core can use it to serve all three list commands from one request.
 - Removing a reservation uses `?delete_forwards=true|false`; the confirm decides which.
 - A forward needs a reserved IP. `forward.add` creates the reservation in core when the device has none, so the CLI gets the same behaviour.
-- `forward.validate` checks overlap with existing forwards (same protocol, overlapping external range), port range bounds and that the device has or can get a reservation. The same checks run inside `forward.add`, which fails with `bad_params` on conflict.
+- `forward.validate` checks overlap with existing forwards (overlapping protocol, overlapping external range), port range bounds, range length, the range capability and that the device has or can get a reservation. The sheet runs it 300 ms after the fields settle and shows its issues under the fields and the "No conflict" line. The same checks run inside `forward.add` and `forward.update`, which fail with `bad_params`.
 - The address map only needs the DHCP config, reservations and current leases; it never scans the LAN.
 - The sheet for reservations and pinholes is not in the mockup; reuse the port forward sheet layout.
 - Commands added: `forward.validate` q.
