@@ -21,7 +21,7 @@ export type Security = "WPA2" | "WPA2_WPA3" | "WPA3";
 export type Effect = "query" | "write" | "disruptive" | "destructive";
 export type SessionStorageKind = "keychain" | "memory";
 export type BackendKind = "eero" | "demo";
-/** eero `device_type` as sent ("phone", "laptop", ...); "generic" if absent. */
+/** eero `device_type` as sent ("phone", "laptop_computer", ...); "generic" if absent. */
 export type DeviceType = string;
 export type PortAction =
   | "ENABLE_PORT"

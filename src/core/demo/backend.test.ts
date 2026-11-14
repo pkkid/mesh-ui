@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BackendError, partialArea, type UsageQuery, WRITE_METHODS } from "../backend";
 import { createEeroBackend } from "../eero/backend";
+import { DEVICE_TYPE_IDS, deviceCategory } from "../eero/map/device";
 import { createEngine } from "../engine";
 import type * as M from "../model";
 import { createDemoBackend, type DemoBackend, dayStart, EVENT_PAGE_SIZE, FLAKY_DEVICE, isDemoBackend, RESTART_MS } from "./backend";
@@ -33,6 +34,16 @@ describe("demo fixtures", () => {
     const b = demo();
     expect(b.kind).toBe("demo");
     expect(isDemoBackend(b)).toBe(true);
+  });
+
+  it("use eero device_type names with the mapper's category", () => {
+    const known = new Set([...DEVICE_TYPE_IDS, "unknown_computer", "exercise_bike"]);
+    for (const n of createFixtures(NOW).networks) {
+      for (const d of n.devices) {
+        expect(known.has(d.type), `${d.name}: ${d.type}`).toBe(true);
+        expect(d.category, d.name).toBe(deviceCategory(d.type));
+      }
+    }
   });
 });
 
