@@ -77,6 +77,52 @@ describe("notifications.list (demo)", () => {
   });
 });
 
+describe("notifications.mark_read (demo)", () => {
+  it("clears unread for the network, and the next list agrees", async () => {
+    const { engine } = demo();
+    // Cache the first page, as the bell's poll does.
+    const before = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: MAPLE }));
+    expect([before.unread, unreadCount(before)]).toEqual([true, 3]);
+    expect(await ok(engine.execute("notifications.mark_read", { networkId: MAPLE }))).toEqual({ unread: false });
+    const after = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: MAPLE }));
+    expect(after.unread).toBe(false);
+    expect(after.notifications.every((n) => n.read)).toBe(true);
+    expect(unreadCount(after)).toBe(0);
+    // Network-wide for this network only.
+    const lake = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: LAKE }));
+    expect([lake.unread, unreadCount(lake)]).toEqual([true, 1]);
+  });
+
+  it("acts on the selected network and is harmless when nothing is unread", async () => {
+    const { engine } = demo();
+    await ok(engine.execute("network.select", { network: MOM }));
+    expect(await ok(engine.execute("notifications.mark_read"))).toEqual({ unread: false });
+    expect((await ok(engine.execute<M.NotificationPage>("notifications.list"))).unread).toBe(false);
+  });
+
+  it("is undone by demo.scenario.set", async () => {
+    const { engine } = demo();
+    await ok(engine.execute("notifications.mark_read", { networkId: MAPLE }));
+    await ok(engine.execute("demo.scenario.set", { scenario: "default" }));
+    expect((await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: MAPLE }))).unread).toBe(true);
+  });
+
+  it("rejects bad params and needs a session", async () => {
+    const { engine } = demo();
+    expect(await code(engine.execute("notifications.mark_read", { extra: 1 }))).toBe("bad_params");
+    expect(await code(engine.execute("notifications.mark_read", { networkId: "Nowhere" }))).toBe("bad_params");
+    expect(await code(demo("signed_out").engine.execute("notifications.mark_read"))).toBe("not_signed_in");
+  });
+
+  it("is a write that needs no confirm", async () => {
+    const { engine } = demo();
+    const info = engine.commands().find((c) => c.id === "notifications.mark_read");
+    expect(info).toMatchObject({ effect: "write", scope: "network", label: "Mark all read" });
+    // A plain write: confirm is not a param, so passing it is bad_params, and no call ever needs it.
+    expect(await code(engine.execute("notifications.mark_read", { networkId: MAPLE, confirm: true }))).toBe("bad_params");
+  });
+});
+
 describe("notifications.settings.get (demo)", () => {
   it("returns eero keys, push choices and desktop on by default", async () => {
     const s = await ok(demo().engine.execute<M.NotificationSettings>("notifications.settings.get", { networkId: MAPLE }));
@@ -226,6 +272,28 @@ describe("notifications (fake eero server)", () => {
       "network.scheduledUpdate.lateNotification": false,
     });
     expect(s.desktop).toEqual({ enabled: true });
+  });
+
+  it("mark_read POSTs an empty-JSON body, and has_unread is false after", async () => {
+    const { fake, engine } = fakeEngine();
+    expect((await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: "100001" }))).unread).toBe(true);
+    expect(await ok(engine.execute("notifications.mark_read", { networkId: "100001" }))).toEqual({ unread: false });
+    expect(fake.writes).toHaveLength(1);
+    expect(fake.writes[0]).toMatchObject({
+      method: "POST",
+      path: "/2.2/networks/100001/notifications/mark_read",
+      version: "2.2",
+      contentType: "application/json",
+      encoding: "empty",
+      rawBody: '""',
+      body: {},
+      status: 200,
+    });
+    expect(fake.state.networks.get("100001")?.hasUnread).toBe(false);
+    // The write invalidated the notifications topic, so this read goes back to eero.
+    const after = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: "100001" }));
+    expect(after.unread).toBe(false);
+    expect(after.notifications.every((n) => n.read)).toBe(true);
   });
 });
 

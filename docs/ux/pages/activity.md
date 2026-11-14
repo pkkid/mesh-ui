@@ -16,13 +16,13 @@ Titlebar: title "Activity", **Export CSV** button on the right of the titlebar a
    - Right: stacked bar chart, one bar per day for the last 7 days, or in Per hour mode one bar per hour for the last 24 hours (168 hourly bars are too thin to read), one segment colour per type (`eventCategoryColors` in `lib/chartColors.ts`, hues from the theme series palette; see [design system](../../design/design-system.md#series-colours)).
    - The hero line leaves out the change when history does not reach the prior period (a week on a free account keeps about 7 days, so "vs prior week" usually cannot be known).
 2. **Filter bar** (card): text filter ("Filter events"), **Device**, **eero** and **Profile** selects (each defaulting to "Any ..."), **Range** select (dates inside the last 7 days), **Reset** ghost button on the right.
-3. **Event stream** (section). Header: title, an **Unread** status marker (info dot plus "Unread") while eero's network-wide `has_unread` is set, sub line `Newest first · polled every 60 s`, then on the right a live dot ("Live"), segmented toggle **Grouped** / **Raw**, **Mark all read** button (disabled, "Coming soon") and a settings icon button that opens Notifications on [App & account](app-account.md).
+3. **Event stream** (section). Header: title, an **Unread** status marker (info dot plus "Unread") while eero's network-wide `has_unread` is set, sub line `Newest first · polled every 60 s`, then on the right a live dot ("Live"), segmented toggle **Grouped** / **Raw**, **Mark all read** button (`notifications.mark_read`; disabled with "Nothing unread" while the flag is clear) and a settings icon button that opens Notifications on [App & account](app-account.md).
    - Day bars: `Today`, `Yesterday`, then weekday names. Each shows the date, event count and a small per hour sparkline strip.
    - Event rows: time (mono, right aligned), icon, title with bold entities, a muted detail line (entity chip, band, channel, MAC, IP, profile), and a right side slot holding a contextual action or a status.
    - Rows carry no unread dots or counts: eero keeps no read flag per event or notification, only one `has_unread` for the whole network.
    - Grouped rows (e.g. "Garage mesh link dropped to 2 bars", `2 events` badge) show an indented sub list of the underlying events with their times.
    - Footer: **Load older events** button while there is an older page; at the end, "Start of history. eero keeps about 7 days."
-   - Not yet built: **Mark all read** (`notifications.mark_read`) and the settings icon; row write actions (Assign profile, Resume, Unblock, overflow menu) are left out because the real stream carries no device, eero or profile refs. Rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting.
+   - Not yet built: the settings icon; row write actions (Assign profile, Resume, Unblock, overflow menu) are left out because the real stream carries no device, eero or profile refs. Rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting.
 
 Row actions shown in the mockup:
 
@@ -63,7 +63,7 @@ Row actions shown in the mockup:
 | Filter text, Device, eero, Profile, Range | none (view state, passed to `events.list`) | | | Refetches the stream |
 | Reset | none | | | Clears all filters and types |
 | Grouped / Raw | none (passed as `grouped`) | | | Regroups the stream |
-| Mark all read | `notifications.mark_read` (not built yet, shown disabled) | write | no | Unread marker and bell dot clear |
+| Mark all read | `notifications.mark_read` | write | no | Unread marker and bell dot clear; "Marked all read" toast, no Undo |
 | Settings icon | none (navigation) | | | Opens App & account, Notifications |
 | Assign profile | `device.profile.set` `{devices: [device], profile}` | write | no | Profile picker popover; row detail updates |
 | Row overflow menu | `device.rename`, `device.block`, navigation to device detail | write | no | |

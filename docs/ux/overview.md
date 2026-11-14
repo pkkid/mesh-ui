@@ -149,7 +149,9 @@ Left to right (mockup `.topbar`):
   eero, profile, Updates). eero can only mark everything read, so there is
   no per-item mark read.
 - **Footer:** "Mark all read" (`notifications.mark_read {}`, which clears the
-  network-wide flag; not built yet, so it is shown disabled with "Coming soon"),
+  network-wide flag and the dot; a "Marked all read" toast with no Undo,
+  since eero cannot mark anything unread; disabled with "Nothing unread"
+  when the flag is clear, and gated like other network writes),
   "All activity" (to Activity) and a gear to notification settings in
   App & account (`notifications.settings.get` / `notifications.settings.set`).
 - **Desktop notifications:** the host shows an OS notification for new items

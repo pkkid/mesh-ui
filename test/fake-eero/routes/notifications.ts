@@ -2,7 +2,8 @@
  * Fake notifications: `GET {net}/notifications_history?limit=50&timestamp=`
  * (newest first; `timestamp` returns only rows created before it),
  * `GET {net}/notifications/has_unread` and `GET {net}/notifications`, in the
- * captured shapes. See docs/eero-api/endpoints.md section 15.
+ * captured shapes, and `POST {net}/notifications/mark_read`, which clears
+ * `has_unread` for the network. See docs/eero-api/endpoints.md section 15.
  */
 
 import { fail, ok, type Route } from "../server";
@@ -32,6 +33,14 @@ export const routes: Route[] = [
     method: "GET",
     path: "/networks/:net/notifications/has_unread",
     handle: ({ params, network }) => ok({ has_unread: network(params.net ?? "").hasUnread }),
+  },
+  {
+    method: "POST",
+    path: "/networks/:net/notifications/mark_read",
+    handle: ({ params, network }) => {
+      network(params.net ?? "").hasUnread = false;
+      return ok(null);
+    },
   },
   {
     method: "GET",

@@ -27,7 +27,7 @@ export function Bell({ className }: { className?: string }) {
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
           <Popover.Popup className="no-drag w-[340px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-            <NotificationList page={data} error={error !== null && !data} onClose={() => setOpen(false)} />
+            <NotificationList networkId={networkId} page={data} error={error !== null && !data} onClose={() => setOpen(false)} />
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
