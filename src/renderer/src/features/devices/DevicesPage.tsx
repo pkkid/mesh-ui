@@ -32,7 +32,7 @@ import {
 } from "./DeviceFilters";
 import { BulkBar, type ProfileOption } from "./BulkBar";
 import { DeviceSummary } from "./DeviceSummary";
-import { DeviceTable, devicesOrder, type ProfileInfo } from "./DeviceTable";
+import { DeviceTable, type ProfileInfo, visibleDevices } from "./DeviceTable";
 
 type ViewState = { filters: DeviceFilterState; sort: SortKey; groupBy: GroupBy };
 
@@ -118,7 +118,7 @@ export function DevicesPage() {
       if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        setSelectedIds(new Set(devicesOrder()));
+        setSelectedIds(new Set(visibleDevices()));
         return;
       }
       if (e.key === "Escape" && !e.defaultPrevented) {

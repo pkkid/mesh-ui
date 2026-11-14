@@ -180,6 +180,9 @@ const DEFAULT_COLLAPSED = new Set(["category:home"]);
 /** The table's last row order (groups in order), for Prev and Next on device detail. View state. */
 let shownOrder: readonly string[] = [];
 export const devicesOrder = (): readonly string[] => shownOrder;
+/** Rows on screen (collapsed groups left out), for Ctrl+A. View state. */
+let visibleOrder: readonly string[] = [];
+export const visibleDevices = (): readonly string[] => visibleOrder;
 
 export function DeviceTable(props: DeviceTableProps) {
   const { devices, groupBy, hidden, selected, onSelect } = props;
@@ -296,6 +299,7 @@ export function DeviceTable(props: DeviceTableProps) {
     });
   }
 
+  visibleOrder = visible;
   const th = "whitespace-nowrap px-2.5 py-[9px] text-start font-normal text-muted-foreground text-xs";
   return (
     <Card>

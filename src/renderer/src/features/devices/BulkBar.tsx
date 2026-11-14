@@ -34,7 +34,14 @@ function outcome(verb: string, devices: ReadonlyArray<DeviceRef>, r: DeviceBulkR
 }
 
 const ids = (devices: ReadonlyArray<DeviceRef>) => devices.map((d) => d.id);
-const changed = (r: DeviceBulkResult) => r.devices.map((d) => d.id);
+/** Devices the write really changed: it succeeded and they were not already in that state. Undo reverses only these. */
+const changed = (r: DeviceBulkResult, devices: ReadonlyArray<DeviceRef>, was: (d: DeviceRef) => boolean) => {
+  const already = new Set(devices.filter(was).map((d) => d.id));
+  return r.devices.map((d) => d.id).filter((id) => !already.has(id));
+};
+
+/** The bulk commands take at most this many devices. */
+export const BULK_MAX = 50;
 
 /** Pause or resume, with Undo running the other one on the devices that changed. */
 export function pauseRequest(devices: ReadonlyArray<DeviceRef>, paused: boolean): WriteRequest<{ devices: string[] }, DeviceBulkResult> {
@@ -44,7 +51,10 @@ export function pauseRequest(devices: ReadonlyArray<DeviceRef>, paused: boolean)
     params: { devices: ids(devices) },
     success: (r) => outcome(verb, devices, r),
     failure: `Couldn't ${paused ? "pause" : "resume"} ${who(devices)}`,
-    undo: (r) => (r.devices.length ? { id: paused ? "device.resume" : "device.pause", params: { devices: changed(r) } } : null),
+    undo: (r) => {
+      const undo = changed(r, devices, (d) => d.paused === paused);
+      return undo.length ? { id: paused ? "device.resume" : "device.pause", params: { devices: undo } } : null;
+    },
   };
 }
 
@@ -64,7 +74,10 @@ export function blockRequest(
     params: { devices: ids(devices) },
     success: (r) => outcome(blocked ? "Blocked" : "Unblocked", devices, r),
     failure: `Couldn't ${blocked ? "block" : "unblock"} ${who(devices)}`,
-    undo: (r) => (r.devices.length ? { id: blocked ? "device.unblock" : "device.block", params: { devices: changed(r) } } : null),
+    undo: (r) => {
+      const undo = changed(r, devices, (d) => d.blocked === blocked);
+      return undo.length ? { id: blocked ? "device.unblock" : "device.block", params: { devices: undo } } : null;
+    },
     askFirst: blocked && (opts.askFirst ?? true),
     confirm: blocked
       ? {
@@ -91,7 +104,10 @@ export function profileRequest(
     params: { devices: ids(devices), profile: profile?.id ?? null },
     success: (r) => movedText(target, devices, r),
     failure: `Couldn't move ${who(devices)} to ${target}`,
-    undo: (r) => (before.size === 1 && r.devices.length ? { id: "device.profile.set", params: { devices: changed(r), profile: prev ?? null } } : null),
+    undo: (r) => {
+      const undo = changed(r, devices, (d) => d.profileId === (profile?.id ?? null));
+      return before.size === 1 && undo.length ? { id: "device.profile.set", params: { devices: undo, profile: prev ?? null } } : null;
+    },
   };
 }
 
@@ -205,8 +221,12 @@ type BulkBarProps = {
 };
 
 /** The bar over the table while rows are selected (devices.md, Layout 4). */
-export function BulkBar({ selected, profiles, networkName, bridged, gate, blockGate, onSelect }: BulkBarProps) {
+export function BulkBar({ selected, profiles, networkName, bridged, gate: writeGate, blockGate: blockWriteGate, onSelect }: BulkBarProps) {
   if (selected.length === 0) return null;
+  const tooMany: Gate = { allowed: false, reason: `Select ${BULK_MAX} devices or fewer` };
+  const over = selected.length > BULK_MAX;
+  const gate = over ? tooMany : writeGate;
+  const blockGate = over ? tooMany : blockWriteGate;
   const guestsOnly = selected.every((d) => d.ssid === "guest");
   const allBlocked = selected.every((d) => d.blocked);
   const names = selected.map((d) => d.name).join(", ");
