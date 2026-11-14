@@ -63,9 +63,11 @@ is a `RequestSpec`: `{ method, path, version?, query?, body?, encoding?, effect?
    which is for dev and tests only: `checkOrigin` accepts nothing but the
    real API or a loopback `http` origin (`127.0.0.1`, `localhost`, `[::1]`)
    for the fake eero server.
-   The one exception is the firmware release notes manifest, to be fetched
-   with a separate unauthenticated call (no cookie, no token header). Not
-   yet built in M1.
+   The one exception is the firmware release notes manifest
+   (`updates.manifest_resource`), fetched by `fetchPublic`, a separate
+   unauthenticated GET (no cookie, no token header): https only (the fake
+   server's loopback origin aside), no credentials in the URL, no redirects,
+   the usual timeout, a 1 MB cap and no rate limiting (built in M3.13).
 3. **Wait for budget** in the limiter (see [Rate limits](#rate-limits)).
 4. **Send** with the standard headers and a 30 s timeout. No redirects
    (`redirect: "error"`).
@@ -309,7 +311,7 @@ The main calls behind each command family. Full rows are in
 | `network.nickname.set` | `PUT {net}/label?labelType=specialMarket` |
 | `network.restart` | `POST {net}/reboot` |
 | `internet.get`, `speedtest.*` | `GET {net}` (`speed`, `geo_ip`, `ip_settings`), `GET/POST {net}/speedtest` |
-| `usage.get`, `usage.breakdown` | `GET {net}/data_usage[/devices/{mac} \| /eeros/{id} \| /profiles/{id}]`, `/data_usage/breakdown` |
+| `usage.get`, `usage.breakdown` | `GET {net}/data_usage[/devices/{mac} \| /eeros/{id} \| /profiles/{id}]`, `/data_usage/breakdown` (profile rows are `{profile_id, profile_name, upload, download}`; the id is `profile_id`) |
 | `eero.list`, `eero.get` | `GET {net}/eeros`, `GET {eero}` |
 | `eero.rename`, `eero.restart` | `PUT {eero}` (form `location`), `POST {eero}/reboot` |
 | `eero.led.set`, `eero.find`, `eero.nightlight.set` | `PUT resources.led_action` (form), `POST /2.2/eeros/{serial}/led_cycle`, `PUT {eero}/nightlight/settings` |

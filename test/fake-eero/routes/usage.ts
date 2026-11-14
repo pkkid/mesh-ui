@@ -4,7 +4,11 @@
  * hour from a hash of its MAC, so every view sums the same device-hours and
  * agrees. Like a free eero account, nothing older than 7 days (or later than
  * now) comes back. Shapes: docs/eero-api/data-model.md (Charts). The
- * breakdown and per-eero list shapes are not verified against eero yet.
+ * breakdown follows a real capture (2026-11-13, key paths and types only):
+ * `{start, end, upload, download, eeros, devices, unprofiled, profiles}`,
+ * profile rows `{profile_id: number, profile_name, upload, download}` with
+ * no row for eero's default (Unassigned) profile. The per-eero list shape is
+ * not verified against eero yet.
  */
 
 import type { RawDevice } from "../../../src/core/eero/raw";
@@ -142,21 +146,23 @@ export const routes: Route[] = [
       const net = ctx.network(ctx.params.net ?? "");
       const w = window(ctx, false);
       const now = ctx.state.now();
-      const devices = net.devices
-        .map((d) => ({ d, s: sum([d], w.start, w.end, now) }))
-        .filter(({ s }) => s.down + s.up > 0)
-        .map(({ d, s }) => ({ url: d.url, mac: d.mac, nickname: d.nickname, display_name: d.display_name, hostname: d.hostname, device_type: d.device_type, download: s.down, upload: s.up }));
-      // Only people's profiles: eero's default (Unassigned) group is the remainder the backend adds.
-      const profiles = net.profiles.filter((p) => p.default !== true).map((p) => {
+      const people = net.profiles.filter((p) => p.default !== true);
+      const used = net.devices.map((d) => ({ d, s: sum([d], w.start, w.end, now) })).filter(({ s }) => s.down + s.up > 0);
+      const row = ({ d, s }: (typeof used)[number]) => ({ url: d.url, mac: d.mac, nickname: d.nickname, display_name: d.display_name, hostname: d.hostname, device_type: d.device_type, download: s.down, upload: s.up });
+      const devices = used.map(row);
+      const unprofiled = used.filter(({ d }) => !people.some((p) => p.url === d.profile?.url)).map(row);
+      // Only people's profiles: eero sends no row for its default (Unassigned) group.
+      const profiles = people.map((p) => {
         const s = sum(
           net.devices.filter((d) => d.profile?.url === p.url),
           w.start,
           w.end,
           now,
         );
-        return { url: p.url, name: p.name, download: s.down, upload: s.up };
+        return { profile_id: Number(lastSegment(p.url)), profile_name: p.name, upload: s.up, download: s.down };
       });
-      return ok({ devices, profiles });
+      const all = sum(net.devices, w.start, w.end, now);
+      return ok({ start: new Date(w.start).toISOString(), end: new Date(w.end).toISOString(), upload: all.up, download: all.down, devices, unprofiled, profiles });
     },
   },
   {
