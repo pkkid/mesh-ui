@@ -285,14 +285,16 @@ const DEVICE_WRITE_TOPICS = ["devices", "network", "profiles"] as const;
  * bad_params before anything is sent), then runs `change` one device at a
  * time. A device that fails is reported in `failed`; when every device
  * fails, the first error is the command's error. Sign-in and rate limits
- * stop the run: the rest are reported with the same error.
+ * stop the run: the rest are reported with the same error. Each failure
+ * carries the device's display name, read once (only when something fails)
+ * from the device list; null when that read fails too or the run was stopped
+ * by sign-in or a rate limit, so nothing more is sent.
  */
 async function eachDevice(ctx: CommandContext, refs: string | string[], change: (id: M.Id) => Promise<M.Device>): Promise<M.DeviceBulkResult> {
   const list = [...new Set(Array.isArray(refs) ? refs : [refs])];
   const ids: M.Id[] = [];
   for (const r of list) ids.push(await ctx.resolve("device", r));
   const unique = [...new Set(ids)];
-  const names = new Map<M.Id, string>();
   const devices: M.Device[] = [];
   const failed: M.DeviceWriteFailure[] = [];
   let stop: BackendError | CommandError | null = null;
@@ -300,7 +302,7 @@ async function eachDevice(ctx: CommandContext, refs: string | string[], change: 
   for (const id of unique) {
     const asGiven = list[ids.indexOf(id)] ?? id;
     if (stop) {
-      failed.push({ device: asGiven, id, name: names.get(id) ?? null, code: stop.code, message: stop.message });
+      failed.push({ device: asGiven, id, name: null, code: stop.code, message: stop.message });
       continue;
     }
     try {
@@ -313,7 +315,19 @@ async function eachDevice(ctx: CommandContext, refs: string | string[], change: 
     }
   }
   if (devices.length === 0 && first) throw first;
-  return { devices: await withUnassigned(ctx, devices), failed };
+  return { devices: await withUnassigned(ctx, devices), failed: stop ? failed : await withNames(ctx, failed) };
+}
+
+/** Fills `failed[].name` from one device list read; leaves null if that read fails. */
+async function withNames(ctx: CommandContext, failed: M.DeviceWriteFailure[]): Promise<M.DeviceWriteFailure[]> {
+  if (failed.length === 0) return failed;
+  let names: Map<M.Id, string>;
+  try {
+    names = new Map((await ctx.backend.device.list(ctx.net)).map((d) => [d.id, d.name]));
+  } catch {
+    return failed;
+  }
+  return failed.map((f) => ({ ...f, name: (f.id && names.get(f.id)) ?? null }));
 }
 
 /** The profile param: a person's profile, or null for Unassigned (eero's default profile). */

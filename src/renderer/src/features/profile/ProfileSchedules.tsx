@@ -5,7 +5,7 @@
  * schedules with their times, days and on or off. Schedules come only from
  * `profile.get` (the profile's own `schedule[]`); today's manual pause comes
  * from its `today` segments and draws in the warning colour on today's lane.
- * "Add a scheduled pause", a row or its pencil open the schedule sheet
+ * "Add a scheduled pause", a timeline block, a row or its pencil open the schedule sheet
  * (ScheduleSheet.tsx); the row switch runs `profile.schedule.update
  * {enabled}` with Undo.
  */
@@ -56,7 +56,7 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
       color: colors[s.id] ?? "",
       icon: <ScheduleIcon name={s.name} />,
     })),
-    ...manual.map((x) => ({ id: `manual-${x.start}`, label: "Paused", color: MANUAL_COLOR, days: [today.lane], start: x.start, end: x.end })),
+    ...manual.map((x) => ({ id: `manual-${x.start}`, label: "Paused", color: MANUAL_COLOR, days: [today.lane], start: x.start, end: x.end, inert: true })),
   ];
   const name = p?.name ?? "this profile";
   const empty = p && schedules.length === 0;
@@ -83,6 +83,14 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
             today={p ? today.lane : null}
             now={p ? today.minute : null}
             loading={fading || !p}
+            onSelect={
+              p && gate.allowed
+                ? (w) => {
+                    const s = schedules.find((x) => x.id === w.id);
+                    if (s) setSheet({ kind: "edit", schedule: s });
+                  }
+                : undefined
+            }
             ariaLabel={`Scheduled pauses for ${name} this week, Monday to Sunday${manual.length ? `, and a manual pause today` : ""}`}
           />
           {empty ? (

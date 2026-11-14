@@ -450,6 +450,19 @@ describe("device writes (demo)", () => {
     expect(await engine.execute("device.pause", { devices: ["Flaky Plug"] })).toMatchObject({ ok: false, error: { code: "eero_error" } });
   });
 
+  it("names each failed device in failed[].name, given by name, MAC or id", async () => {
+    const { engine } = demo();
+    const flaky = (await list(engine, { search: "Flaky Plug" })).devices[0];
+    if (!flaky?.mac) throw new Error("fixture: Flaky Plug");
+    for (const given of ["flaky plug", flaky.mac, flaky.id]) {
+      const r = await ok<M.DeviceBulkResult>(engine, "device.block", { devices: ["PlayStation 5", given] });
+      expect(r.failed).toEqual([{ device: given, id: flaky.id, name: "Flaky Plug", code: "eero_error", message: expect.any(String) }]);
+      await ok(engine, "device.unblock", { devices: "PlayStation 5" });
+    }
+    const moved = await ok<M.DeviceBulkResult>(engine, "device.profile.set", { devices: [flaky.id, "PlayStation 5"], profile: null });
+    expect(moved.failed.map((f) => f.name)).toEqual(["Flaky Plug"]);
+  });
+
   it("renames, and an empty nickname clears it", async () => {
     const { engine } = demo();
     const d = await ok<M.Device>(engine, "device.rename", { device: "PlayStation 5", nickname: "  Den console " });

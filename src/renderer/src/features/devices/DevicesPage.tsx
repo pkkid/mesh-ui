@@ -9,13 +9,12 @@
  * groups the rows it gets back. Live rates come from `device.rates.refresh`
  * once a minute while the page is visible; the engine enforces the limit.
  */
-import { Share2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { useGate } from "~/components/ui/page";
 import { useLiveRates } from "~/app/useLiveRates";
-import { Button } from "~/components/ui/button";
+import { ShareWifiButton } from "~/features/wifi/ShareSheet";
 import { entityColors } from "~/lib/chartColors";
 import { TopBarActions, TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative } from "../../../../core/format";
@@ -187,10 +186,7 @@ export function DevicesPage() {
         <Updated at={list.fetchedAt} />
       </TopBarSubtitle>
       <TopBarActions>
-        <Button variant="outline" size="xs" disabled title="Sharing Wi-Fi comes with the Wi-Fi page">
-          <Share2 />
-          Share Wi-Fi
-        </Button>
+        <ShareWifiButton size="xs" />
       </TopBarActions>
 
       <DeviceSummary

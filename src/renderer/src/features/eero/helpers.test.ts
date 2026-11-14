@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { Eero, EeroPort, Radio } from "../../../../core/model";
-import { autoChannelLine, ethernet, ipText, ledState, portName, portsLine, radioBadge, restartLine, updateWindow, uplinkOf } from "./helpers";
+import type { Device, Eero, EeroPort, Radio } from "../../../../core/model";
+import { RESTART_ESTIMATE } from "../../../../core/commands/network";
+import { IMPACT, settingsImpact } from "../../../../core/commands/settings";
+import { autoChannelLine, ethernet, ipText, ledState, portName, portsLine, radioBadge, restartLine, restartNetworkLine, updateWindow, uplinkOf } from "./helpers";
 
 /** An invented eero; only the fields a test names matter. */
 function eero(over: Partial<Eero> & Pick<Eero, "id" | "location">): Eero {
@@ -179,5 +181,25 @@ describe("restartLine", () => {
   it("names downstream eeros for a leaf", () => {
     expect(restartLine(office, [gateway, office, garage], "Maple Street")).toBe("Its devices and Garage (downstream) drop for about 1 minute");
     expect(restartLine(garage, [gateway, office, garage], "Maple Street")).toBe("Its devices drop for about 1 minute");
+  });
+});
+
+describe("restart copy comes from core's estimates", () => {
+  const gateway = eero({ id: "g", location: "Living Room", isGateway: true });
+  const leaf = eero({ id: "o", location: "Office", upstream: "g" });
+
+  it("uses settings.impact's network.restart estimate for the gateway and eero.restart's for a leaf", () => {
+    const network = IMPACT["network.restart"]?.estimate;
+    expect(network).toBeTruthy();
+    expect(restartLine(gateway, [gateway, leaf], "Maple Street")).toBe(`Everyone on Maple Street loses internet for ${network}`);
+    expect(restartLine(leaf, [gateway, leaf], "Maple Street")).toBe(`Its devices drop for ${RESTART_ESTIMATE.eero}`);
+  });
+
+  it("Network actions counts the devices settings.impact says drop", () => {
+    const device = (id: string, connected: boolean) => ({ id, connected, blocked: false, band: "5", ssid: "main" }) as unknown as Device;
+    const impact = settingsImpact(["network.restart"], [device("a", true), device("b", true), device("c", false)]);
+    expect(restartNetworkLine(impact)).toBe(`Disruptive: 2 devices online lose internet for ${IMPACT["network.restart"]?.estimate}.`);
+    expect(restartNetworkLine(settingsImpact(["network.restart"], [device("a", true)]))).toContain("1 device online loses internet");
+    expect(restartNetworkLine(undefined)).toBe(`Disruptive: everyone loses internet for ${IMPACT["network.restart"]?.estimate}.`);
   });
 });

@@ -9,7 +9,9 @@
  * Pages, devices and profiles navigate. Queries run and show their result;
  * writes run through the write kit (`useWrite`): a toast for `write`, the
  * inline confirm for `disruptive`, the confirm dialog for `destructive`, all
- * built from the registry by `writeRequest` with no per-command code.
+ * built from the registry by `writeRequest` with no per-command code. A
+ * write with an inverse in the registry toasts with Undo (`withUndo`), and
+ * the preview shows "Running..." only once a confirm is answered.
  */
 import { Search } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -44,6 +46,7 @@ import {
   withActions,
   writeRequest,
 } from "./search";
+import { withUndo } from "./undo";
 
 // ---------------------------------------------------------------------------
 // Open state, shared with the titlebar button
@@ -222,7 +225,7 @@ function PaletteBody({ close }: { close: () => void }) {
       res = await execute(target.info.id, chosen);
     } else {
       askedFor.current = key;
-      const { id: _id, params, ...options } = writeRequest(target.info, target.label, chosen, fields);
+      const { id: _id, params, ...options } = withUndo(writeRequest(target.info, target.label, chosen, fields), target.info, registry ?? []);
       res = await write.run(params, options);
       inputRef.current?.focus(); // the confirm had focus; keep the keyboard on the palette
     }
@@ -384,7 +387,7 @@ function PaletteBody({ close }: { close: () => void }) {
               onValuesChange={setValues}
               errors={errors}
               entities={entities}
-              run={runState}
+              run={write.asking ? { ...runState, running: false } : runState}
               onRun={() => void runItem(item)}
               blocked={blocked}
               runLabel={runLabel}

@@ -100,9 +100,12 @@ devices has an **Open** link to the Unassigned page
 Every write control dims by the `profiles` permission and bridge mode.
 
 Avatars on unassigned tiles run `device.profile.set` (M4.4) with an Undo
-toast, dimmed by the `devices` permission and bridge mode. Still "Coming
-soon": tile selection and New profile from selection. Card clicks, lane
-segments and tile double-clicks navigate as described.
+toast, dimmed by the `devices` permission and bridge mode. A tile click
+(or Space) toggles its selection; **New profile from selection** is enabled
+once a tile is selected and opens the Add a profile sheet with the selection
+picked (`profile.create {name, devices}`, M5.11), dimmed by the
+`profile.create` gate. Card clicks, lane segments and tile double-clicks
+navigate as described.
 
 ## States
 
@@ -133,8 +136,13 @@ segments and tile double-clicks navigate as described.
   resumed; there are no timed pauses. Pause all calls it per profile.
   Unassigned devices have their own commands, `profile.unassigned.pause` and
   `profile.unassigned.resume`; there is no "unassigned" profile id.
-- Unassigned schedules are left out: the eero app can schedule pauses for
-  Unassigned (eeroOS 7.12.4+), but no client we studied shows the endpoint.
+- Unassigned schedules are left out for now: the eero app can schedule
+  pauses for Unassigned (eeroOS 7.12.4+), and the M5.1 capture shows eero's
+  default profile carries `schedule[]` and `resources.schedules` like any
+  other profile, so the same schedule endpoints should work on it. Building
+  it needs the profile commands, backends and the Unassigned page, which
+  were outside M5.11's files; it is a follow-up task with a `MANUAL:` check
+  of a real write.
 - Manual pause start time ("Paused 25 min ago", the manual segment start)
   comes from the latest pause event in `events.list` when eero does not
   return a start time.
