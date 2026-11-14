@@ -461,6 +461,7 @@ describe("forward writes (demo)", () => {
     expect(await check({ externalPort: "http" })).toMatchObject({ ok: false, issues: [{ field: "externalPort" }] });
     expect(await check({ externalPort: "5000-5010", internalPort: "6000-6005" })).toMatchObject({ ok: false, issues: [{ field: "internalPort", message: "The internal range must be as long as the external range." }] });
     expect(await check({ externalPort: "5000-5010", internalPort: "6000-6010" })).toMatchObject({ ok: true });
+    expect(await check({ externalPort: "5000-5010", internalPort: "5000" })).toMatchObject({ ok: false, issues: [{ field: "internalPort" }] });
     // Overlap: 8080 TCP is Alex's web dev server; UDP on it is free; 27020 UDP sits inside the game server range.
     expect(await check({ externalPort: "8000-8100" })).toMatchObject({ ok: false, issues: [{ field: "externalPort", message: "Port 8080 is already forwarded to Alex's MacBook Pro (Web dev server)." }] });
     expect(await check({ externalPort: "8080", protocol: "udp" })).toMatchObject({ ok: true });

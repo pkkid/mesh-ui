@@ -315,10 +315,8 @@ function checkForward(j: Joined & { network: M.Network }, draft: ForwardDraft, s
     const ranged = ext.end > ext.start || int.end > int.start;
     if (ranged && j.network.capabilities.port_forward_range !== true) {
       issues.push({ field: ext.end > ext.start ? "externalPort" : "internalPort", message: "This network takes single ports only, not ranges." });
-    } else if (int.start !== int.end && int.end - int.start !== ext.end - ext.start) {
+    } else if (int.end - int.start !== ext.end - ext.start) {
       issues.push({ field: "internalPort", message: "The internal range must be as long as the external range." });
-    } else if (ext.start !== ext.end && int.start === int.end && int.start !== ext.start) {
-      issues.push({ field: "internalPort", message: "A range forwards to the same range, or a range as long." });
     }
     for (const f of j.routing.forwards) {
       if (f.id === self || !sharesProtocol(f.protocol, draft.protocol)) continue;

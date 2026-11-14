@@ -234,7 +234,8 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
   const device = devices.find((d) => d.id === deviceId);
 
   const draft = { device: deviceId, externalPort: ext.trim(), internalPort: int.trim() || ext.trim(), protocol, ...(f ? { forward: f.id } : {}) };
-  const settled = useSettled(draft);
+  // Settle a string, not the object: a fresh object each render would never settle.
+  const settled = JSON.parse(useSettled(JSON.stringify(draft))) as typeof draft;
   const ready = settled.device !== "" && settled.externalPort !== "";
   const check = useQuery<ForwardCheck>("forward.validate", settled, { enabled: ready });
   const issues = check.data && ready ? Object.fromEntries(check.data.issues.map((i) => [i.field, i.message])) : {};
