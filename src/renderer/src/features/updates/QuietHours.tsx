@@ -115,7 +115,12 @@ export function QuietHours({ preferredHour, canChange }: { preferredHour: number
                   height: "10rem",
                 }}
               >
-                {from === start && <span className="absolute top-1 left-1.5 whitespace-nowrap text-3xs text-muted-foreground uppercase tracking-wide">Update window</span>}
+                {from === start && (
+                  // Centred in a strip along the top of the window, clear of the bars below.
+                  <span className="absolute inset-x-0 top-0 flex h-6 items-center justify-center whitespace-nowrap text-3xs text-muted-foreground uppercase leading-none tracking-wide">
+                    Update window
+                  </span>
+                )}
               </div>
             ))}
           </div>

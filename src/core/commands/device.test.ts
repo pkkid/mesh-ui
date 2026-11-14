@@ -273,11 +273,15 @@ describe("device commands (fake eero server)", () => {
     expect(l.devices.find((d) => d.id === "0a1b2c000fff")).toMatchObject({ name: "0a:1b:2c:00:0f:ff", blocked: true, connected: false });
     expect(l.devices.find((d) => d.name === "Living Room TV")).toMatchObject({ band: "wired", category: "entertainment", signal: null, profileId: null });
     expect(l.devices.find((d) => d.name === "Alex's Phone")).toMatchObject({ profileId: "700", ssid: "main", ipv4: "192.168.4.101" });
-    expect(l.summary).toMatchObject({ total: 9, online: 6, offline: 1, paused: 1, blocked: 2, rates: null });
-    // The profile list tells eero's default (Unassigned) profile from people's profiles.
+    // Jamie's Tablet is offline and only in Jamie's profile, not in GET {net}/devices (M5.R-fix6).
+    expect(l.devices.find((d) => d.name === "Jamie's Tablet")).toMatchObject({ profileId: "701", connected: false });
+    expect(l.summary).toMatchObject({ total: 10, online: 6, offline: 2, paused: 1, blocked: 2, rates: null });
+    // The profiles give offline members, then tell eero's default (Unassigned) profile from people's
+    // profiles. The app shares the second read (READ_SHARE_MS); this test client shares only in flight.
     expect(fake.log.map((e) => `${e.method} ${e.path}`).sort()).toEqual([
       "GET /2.2/networks/100001/blacklist",
       "GET /2.2/networks/100001/devices",
+      "GET /2.2/networks/100001/profiles",
       "GET /2.2/networks/100001/profiles",
     ]);
   });

@@ -9,6 +9,13 @@
  * them). "No profile" is eero's `default: true` profile, so it sends that
  * profile's url. Block is `POST {net}/blacklist` form `mac`, unblock
  * `DELETE {net}/blacklist/{mac}`.
+ *
+ * Offline profile members (M5.R-fix6): on a real network `GET {net}/devices`
+ * leaves out devices that are in a profile but have been offline a while,
+ * while the profile's own `devices[]` still lists them as device rows
+ * (capture 2026-11-14: two profiles had 6 members missing from the list).
+ * The list adds them from `GET {net}/profiles`, offline and in that profile,
+ * so a profile's devices and counts match the eero app on every surface.
  */
 
 import { BackendError } from "../../errors";
@@ -45,11 +52,36 @@ export const device: EeroArea<"device"> = (ctx) => {
     }
   };
 
+  /** Profile members as device rows, each pointing at its profile. A failed read adds none: the device list still loads. */
+  const profileMembers = async (net: M.Id): Promise<RawDeviceFull[]> => {
+    try {
+      const profiles = asList<RawProfile>(await client.request({ method: "GET", path: networkPath(net, "profiles") }), "profiles");
+      return profiles.flatMap((p) => {
+        const url = linkUrl(p?.url);
+        if (!url) return [];
+        return (p.devices ?? []).map((d): RawDeviceFull => ({ ...d, connected: d.connected === true, profile: d.profile ?? { url } }));
+      });
+    } catch {
+      return [];
+    }
+  };
+
   const list = async (net: M.Id): Promise<M.Device[]> => {
-    const [devices, blocked] = await Promise.all([
+    const [listed, blocked, members] = await Promise.all([
       client.request({ method: "GET", path: networkPath(net, "devices") }).then((d) => asList<RawDeviceFull>(d, "devices")),
       blacklist(net),
+      profileMembers(net),
     ]);
+    // Members the device list left out (offline a while), once each, after the listed ones. Matched on MAC or link id.
+    const keysOf = (d: RawDeviceFull) => [compactMac(d.mac ?? ""), idFromUrl(linkUrl(d.url) ?? "")].filter(Boolean);
+    const known = new Set(listed.flatMap(keysOf));
+    const devices = [...listed];
+    for (const m of members) {
+      const keys = keysOf(m);
+      if (keys.length === 0 || keys.some((k) => known.has(k))) continue;
+      for (const k of keys) known.add(k);
+      devices.push(m);
+    }
     const at = ratesAt(net);
     const blockedMacs = new Set(blocked.map((b) => compactMac(b.mac ?? "")).filter(Boolean));
     const out = devices.map((d) => mapDevice(d, { blocked: blockedMacs.has(compactMac(d.mac ?? "")), ratesAt: at }));

@@ -273,7 +273,8 @@ describe("routing commands (fake eero server)", () => {
     // The three lists share one GET {net}/routing; the whole page stays a handful of requests.
     expect(fake.log.filter((e) => e.path.endsWith("/routing")).length).toBe(1);
     expect(fake.log.filter((e) => e.path.endsWith("/devices")).length).toBeLessThanOrEqual(2);
-    expect(fake.log.length).toBeLessThanOrEqual(14);
+    // device.list also reads the profiles, for offline members GET {net}/devices leaves out (M5.R-fix6).
+    expect(fake.log.length).toBeLessThanOrEqual(15);
   });
 
   it("does not count a blocked device as leased", async () => {
