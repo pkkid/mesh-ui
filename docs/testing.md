@@ -70,6 +70,13 @@ Plus two guards:
   `~/.config/mesh-ui/`, `~/Library/Application Support/mesh-ui/` or
   `%APPDATA%\mesh-ui\`, and nothing copies or decrypts files there.
 
+The test setup (`test/setup.ts`) also warms ICU (a collator, a time-zone date
+format and a number format) before any test runs. The first use in a process
+loads ICU data, which has taken 1 to 9s on CI runners and timed out whichever
+test happened to sort by name or do local-time math first. Do not raise test
+timeouts for a slow first test; check whether it is the first use of something
+process-wide like this.
+
 ## Fixtures
 
 - Invented data only, in `src/core/demo/fixtures.ts`: three networks for
