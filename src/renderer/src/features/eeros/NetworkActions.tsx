@@ -46,11 +46,13 @@ export function watchRestart(result: RestartResult, what: string): void {
   const started = Date.now();
   let seenDown = false;
   const tick = async () => {
-    const r = await execute<Eero[]>("eero.list");
+    // Read the restarted network, even if another one is selected meanwhile.
+    const r = await execute<Eero[]>("eero.list", { networkId: result.networkId });
     const elapsed = Date.now() - started;
     invalidate(["eero.", "network."]);
     if (!r.ok) seenDown = true;
-    else if (r.result.filter((e) => ids.has(e.id)).some(isDown)) seenDown = true;
+    // A restarted eero missing from the list is not back yet.
+    else if (r.result.filter((e) => ids.has(e.id) && !isDown(e)).length < ids.size) seenDown = true;
     else if (seenDown || elapsed > SEE_DOWN_MS) {
       toast.update(id, "success", { title: `${what} is back` });
       return;

@@ -30,7 +30,7 @@ export const RESTART_ESTIMATE = {
 } as const;
 
 /** What a restart returns: the eeros that go down and how long for. */
-export type RestartResult = { eeroIds: M.Id[]; estimate: string };
+export type RestartResult = { networkId: M.Id; eeroIds: M.Id[]; estimate: string };
 
 /**
  * Problems worth a banner, most serious first. A network that is not
@@ -151,7 +151,7 @@ export const commands: AnyCommand[] = [
       const eeros = await ctx.backend.eero.list(ctx.net).catch(() => [] as M.Eero[]);
       await ctx.backend.network.restart(ctx.net);
       // An offline eero cannot take the restart, so it is not waited for.
-      return { eeroIds: eeros.filter((e) => e.status !== "offline").map((e) => e.id), estimate: RESTART_ESTIMATE.network };
+      return { networkId: ctx.net, eeroIds: eeros.filter((e) => e.status !== "offline").map((e) => e.id), estimate: RESTART_ESTIMATE.network };
     },
   }),
 ];

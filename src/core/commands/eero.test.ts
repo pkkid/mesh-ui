@@ -451,7 +451,7 @@ describe("eero writes (demo)", () => {
   it("restarts with confirm: the eero and those through it show updating", async () => {
     const engine = demoEngine();
     const r = await ok(engine.execute("eero.restart", { eero: "Office", confirm: true }));
-    expect(r).toEqual({ eeroIds: ["80012", "80014"], estimate: "about 1 minute" });
+    expect(r).toEqual({ networkId: MAPLE, eeroIds: ["80012", "80014"], estimate: "about 1 minute" });
     const office = await ok(engine.execute<M.Eero>("eero.get", { eero: "Office" }));
     expect(office.status).toBe("updating");
     const gw = await ok(engine.execute("eero.restart", { eero: "Living Room", confirm: true }));
@@ -551,7 +551,7 @@ describe("eero writes (fake eero server)", () => {
     expect(await engine.execute("eero.restart", { eero: "Living Room" })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringContaining("is the gateway") } });
     expect(fake.writes).toHaveLength(0);
     const r = await ok(engine.execute("eero.restart", { eero: "Upstairs Hall", confirm: true }));
-    expect(r).toEqual({ eeroIds: ["500003"], estimate: "about 1 minute" });
+    expect(r).toEqual({ networkId: "100001", eeroIds: ["500003"], estimate: "about 1 minute" });
     expect(fake.writes).toEqual([expect.objectContaining({ method: "POST", path: "/2.2/eeros/500003/reboot", encoding: "empty", rawBody: '""', status: 201 })]);
   });
 
