@@ -373,3 +373,47 @@ describe("network.restart", () => {
   });
 });
 
+
+describe("network.delete (M5.3)", () => {
+  it("is destructive, owner-gated, needs confirm and the exact name, then is gone and the session moves on (demo)", async () => {
+    const settings = memorySettings();
+    const { engine, events } = demoEngine({ settings });
+    await ok(engine.execute("network.select", { network: MAPLE }));
+    events.length = 0;
+    expect(engine.commands().find((c) => c.id === "network.delete")).toMatchObject({ effect: "destructive", gate: { area: "network", op: "delete" } });
+    expect(await engine.execute("network.delete", { networkName: "Maple Street" })).toMatchObject({
+      ok: false,
+      error: { code: "needs_confirm", message: expect.stringContaining("Deletes Maple Street") },
+    });
+    expect(await code(engine.execute("network.delete", { networkName: "maple street", confirm: true }))).toBe("bad_params");
+    expect(await code(engine.execute("network.delete", { networkName: "Maple", confirm: true }))).toBe("bad_params");
+    expect(await code(engine.execute("network.delete", { confirm: true }))).toBe("bad_params");
+    expect(await code(engine.execute("network.delete", { networkName: "Maple Street", bogus: 1, confirm: true }))).toBe("bad_params");
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).map((n) => n.id)).toContain(MAPLE);
+
+    const r = await ok(engine.execute<{ deleted: string; selectedNetworkId: string | null }>("network.delete", { networkName: "Maple Street", confirm: true }));
+    expect(r).toMatchObject({ deleted: MAPLE, name: "Maple Street", selectedNetworkId: LAKE });
+    // The cached list was invalidated: the next read no longer has it.
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).map((n) => n.id)).toEqual([LAKE, MOM]);
+    expect(events).toContainEqual({ type: "network.selected", networkId: LAKE });
+    expect((await settings.get()).lastNetworkId).toBe(LAKE);
+    expect((await ok(engine.execute<M.Network>("network.get"))).id).toBe(LAKE);
+  });
+
+  it("refuses an admin network in core", async () => {
+    const { engine } = demoEngine();
+    expect(await engine.execute("network.delete", { networkId: MOM, networkName: "Kim Home", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params", message: "Only the network owner can delete it." } });
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).map((n) => n.id)).toContain(MOM);
+  });
+
+  it("sends DELETE {net} once, after confirm, and the account no longer lists it (fake eero server)", async () => {
+    const { engine, fake } = fakeEngine();
+    expect(await code(engine.execute("network.delete", { networkId: "100001", networkName: "Maple Street" }))).toBe("needs_confirm");
+    expect(await code(engine.execute("network.delete", { networkId: "100001", networkName: "Wrong", confirm: true }))).toBe("bad_params");
+    expect(fake.writes).toHaveLength(0);
+    await ok(engine.execute("network.list"));
+    await ok(engine.execute("network.delete", { networkId: "100001", networkName: "Maple Street", confirm: true }));
+    expect(fake.writes).toEqual([expect.objectContaining({ method: "DELETE", path: "/2.2/networks/100001", status: 200 })]);
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).map((n) => n.id)).toEqual(["100002"]);
+  });
+});

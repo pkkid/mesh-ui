@@ -17,8 +17,8 @@ export const red = ansi("31");
 
 export const MASK = "********";
 
-/** Keys that hold a credential in a `sensitive` command's result. `qr` is a `WIFI:` payload, password included. */
-const SECRET_KEY = /pass(word|phrase)?|secret|psk|token|key$|^qr$/i;
+/** Keys that hold a credential in a `sensitive` command's result. `qr` is a `WIFI:` payload, password included; a Thread `dataset` holds the network key. */
+const SECRET_KEY = /pass(word|phrase)?|secret|psk|token|key$|^qr$|dataset/i;
 
 /** A `WIFI:` join string carries the password (`P:`), whatever key it sits under. */
 const WIFI_PAYLOAD = /^\s*WIFI:/i;

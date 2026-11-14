@@ -6,9 +6,20 @@ Mockup: [../../mockups/13-advanced-networking.html](../../mockups/13-advanced-ne
 
 Shared patterns (settings rows, restart badges, side panel, confirm bar, danger zone) are described in [../overview.md](../overview.md).
 
-## Built so far (M5.2, Internet and Network services)
+## Built in M5.3 (Wireless, power saving, Thread, danger zone)
 
-The Internet and Network services groups are live; Wireless, Thread, the danger zone and the Simple Setup and power saving rows stay read only until M5.3.
+Every control on the page is now live. Each runs through useWrite with its command's gate (`useGate(id)`) and the offline block.
+
+- **Network services:** eero Simple Setup is a switch with Undo. **Eco efficiency** and **Power saving schedule** switches run `settings.power_saving.set` with Undo.
+- **Power saving schedules:** **Add schedule** and each schedule's pencil open the schedule sheet (Schedule on, name, start and end with "next day" when it wraps past midnight, Repeats on, an Each day bar in the power saving colour). Save runs `settings.power_schedule.add` or `.update` (Undo removes or restores); **Delete schedule** asks inline and runs `.remove` with an Undo that adds it back. Clicking a timeline segment does not open the sheet yet (M5.11 owns the timeline).
+- **Wireless:** Multi-link operation is a segmented Off / Single link / Multi-link (shown only when eero reports it) that confirms inline with core's `settings.impact` summary and shows the pending change; Client steering and Fast roaming are switches with Undo; Legacy device mode (Restarts eeros) confirms inline.
+- **Thread** (`ThreadCard.tsx`): the switch asks before turning Thread off ("Thread accessories lose their border router while Thread is off"). **Reveal** reads `settings.thread.credentials` on each click and shows the key until **Hide**; nothing is cached. **Copy dataset** copies eero's dataset, or, when eero sends none (a real network sends none), the network name, channel, PAN IDs, network key and PSKc as lines. **Share credentials with phone keychain** is a switch with Undo. **Regenerate credentials** opens the confirm dialog with type-the-name (the Thread network name).
+- **Danger zone** (`DangerZone.tsx`): **Restart network** confirms inline and starts the restart watcher, as on the eeros page. **Delete network** opens the confirm dialog with core's message and type-the-name (the network name); after it, core selects another network and the page goes to Overview. Admins see it disabled with "Owner only"; a network that reports no role (common on real networks) leaves the check to eero.
+- **Time zone** (`settings.timezone.set`) has no row here; it is a command for the CLI, MCP and palette until the Wi-Fi page gets its row.
+
+## Built in M5.2 (Internet and Network services)
+
+The Internet and Network services groups are live.
 
 - **Switches:** IPv6, Local DNS caching, UPnP and SQM run their command on click. UPnP and SQM apply live and their success toast offers Undo; IPv6 and caching restart every eero, so they confirm inline under the row first.
 - **Segmented choices:** DHCP and NAT (Automatic / Manual / Bridge), NAT port mode (Direct / Randomized) and DNS (ISP default / Custom DNS). Manual and Custom DNS open their sheet; Automatic, ISP default and NAT port mode confirm inline; Bridge confirms in the dialog (it lists what turns off). From bridge mode only Automatic is offered, which runs `settings.connection_mode.set {mode: "nat"}`. **Edit range** and **Edit** reopen the sheets.
@@ -114,8 +125,8 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 | UPnP | `settings.upnp.set` `{enabled}` | write | no | |
 | SQM | `settings.sqm.set` `{enabled}` | write | no | |
 | Power saving schedule switch | `settings.power_saving.set` `{scheduleEnabled}` | write | no | Wi-Fi may blip when a schedule starts |
-| Add schedule | `settings.power_saving.schedule.add` `{name, days, start, end}` | write | no | Sheet with name, days, times |
-| Edit or remove a schedule | `settings.power_saving.schedule.update` / `.remove` | write | no | |
+| Add schedule | `settings.power_schedule.add` `{name, days, start, end}` | write | no | Sheet with name, days, times |
+| Edit or remove a schedule | `settings.power_schedule.update` / `.remove` | write | no | |
 | Multi-link operation | `settings.mlo.set` `{mode}` | disruptive | confirm bar | outage from `settings.impact` |
 | Client steering | `settings.band_steering.set` `{enabled}` | write | no | |
 | Thread switch | `settings.thread.set` `{enabled}` | write | no | |
@@ -151,4 +162,4 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 - Static IP and PPPoE values are secrets in transit only; never log them. PPPoE credentials may go through `POST {eero}/pppoe` first (returns an encrypted blob).
 - Thread credentials are secrets: `settings.get` masks them and only `settings.thread.credentials` returns them.
 - Smart Home Hub appears among eero Business features in our notes; confirm it is free before building it (open question). Amazon linking itself (Connect to Amazon) needs Amazon sign-in in a browser and is out of scope; an unlinked network just shows "Link in the eero app".
-- Commands added: `settings.simple_setup.set` w, `settings.nat_randomization.set` d, `settings.power_saving.schedule.add|update|remove` w, `settings.thread.credentials` q, `settings.impact` q, `integrations.get` q, `integrations.amazon.unlink` x, `integrations.builtin.set` w, `integrations.zigbee.discover` w, `integrations.ffs.set` w, `network.delete` x. `settings.connection_mode.set` is NAT, bridged or IP passthrough; legacy 802.11ac mode is `settings.legacy_mode.set` (see [Troubleshooting](troubleshooting.md)).
+- Commands added: `settings.simple_setup.set` w, `settings.nat_randomization.set` d, `settings.power_schedule.add|update|remove` w, `settings.thread.credentials` q, `settings.impact` q, `integrations.get` q, `integrations.amazon.unlink` x, `integrations.builtin.set` w, `integrations.zigbee.discover` w, `integrations.ffs.set` w, `network.delete` x. `settings.connection_mode.set` is NAT, bridged or IP passthrough; legacy 802.11ac mode is `settings.legacy_mode.set` (see [Troubleshooting](troubleshooting.md)).

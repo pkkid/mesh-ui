@@ -1,21 +1,35 @@
 /**
- * Eco efficiency: the power saving switch and its schedules on the shared
+ * Eco efficiency: the power saving switches and their schedules on the shared
  * week timeline (components/ui/timeline.tsx), with one line per schedule.
- * Adding and editing schedules come later; the buttons are disabled.
- * docs/ux/pages/advanced-networking.md (Network services), mockup 13.
+ * M5.3: both switches run `settings.power_saving.set` (with Undo); Add
+ * schedule and each schedule's Edit open the schedule sheet
+ * (`settings.power_schedule.add` / `.update`), whose Delete asks inline and
+ * runs `.remove` with an Undo that adds it back. An end before the start
+ * wraps past midnight ("next day"). Validation is core's (bad_params lands
+ * under the field). docs/ux/pages/advanced-networking.md (Network services),
+ * mockup 13.
  */
-import { Leaf } from "lucide-react";
+import { CalendarPlus, Leaf, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 
-import { ComingSoonButton, useNow } from "~/components/ui/page";
-import { formatMinute, WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
+import { fieldErrors, useWrite } from "~/app/useWrite";
+import { Button } from "~/components/ui/button";
+import { InlineConfirm } from "~/components/ui/confirm";
+import { Input } from "~/components/ui/input";
+import { GatedButton, useGate, useNow } from "~/components/ui/page";
+import { Sheet, SheetField } from "~/components/ui/sheet";
+import { formatMinute, MINUTES_PER_DAY, WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
 import { seriesColors } from "~/lib/chartColors";
+import { cn } from "~/lib/utils";
+import { daySpans } from "~/features/profile/ScheduleSheet";
 import { networkClock } from "../../../../core/format";
-import type { Day, NetworkSettings, Schedule } from "../../../../core/model";
+import type { Day, NetworkSettings, Schedule, ScheduleInput } from "../../../../core/model";
 
-import { ReadSwitch, Row, SubPanel } from "./SettingsGroups";
+import { OFFLINE, Row, SubPanel, useOffline, useSettingsWrite, WriteSwitch } from "./SettingsGroups";
 
 const DAY_INDEX: Record<Day, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MON_FIRST: ReadonlyArray<Day> = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 const minutes = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -43,37 +57,63 @@ const toWeek = (s: Schedule): WeekSchedule => ({
   enabled: s.enabled,
 });
 
+type SheetMode = { kind: "add" } | { kind: "edit"; schedule: Schedule };
+type PowerParams = { enabled?: boolean; scheduleEnabled?: boolean };
+
 export function PowerSaving({ settings, timezone, loading }: { settings: NetworkSettings | undefined; timezone: string | null; loading: boolean }) {
   const now = useNow(60_000);
+  const offline = useOffline();
   const ps = settings?.powerSaving;
   const schedules = ps?.schedules ?? [];
   const clock = networkClock(timezone);
   const parts = clock.parts(now);
   const minute = parts.hour * 60 + Number(new Intl.DateTimeFormat("en-US", { timeZone: timezone ?? "UTC", minute: "numeric" }).format(now));
   const unsupported = settings !== undefined && ps?.enabled === null && ps.scheduleEnabled === null;
+  const eco = useSettingsWrite<PowerParams>("settings.power_saving.set", "Eco efficiency", offline);
+  const sched = useSettingsWrite<PowerParams>("settings.power_saving.set", "the power saving schedule", offline);
+  const baseGate = useGate("settings.power_schedule.add");
+  const addGate = baseGate.allowed && offline ? { allowed: false, reason: OFFLINE } : baseGate;
+  const [sheet, setSheet] = useState<SheetMode | null>(null);
+
+  const flip = (w: typeof eco, key: keyof PowerParams, what: string) => (on: boolean) =>
+    void w.write.run(
+      { [key]: on },
+      { success: `${what} turned ${on ? "on" : "off"}`, undo: { id: "settings.power_saving.set", params: { [key]: !on }, success: `${what} turned ${on ? "off" : "on"}` } },
+    );
 
   return (
     <>
-      <Row title="Eco efficiency" description="Use less power when nobody needs full speed" dim={unsupported} control={<ReadSwitch on={ps?.enabled} label="Eco efficiency" />} />
+      <Row
+        title="Eco efficiency"
+        description="Use less power when nobody needs full speed"
+        dim={unsupported}
+        control={<WriteSwitch on={ps?.enabled} label="Eco efficiency" gate={eco.gate} busy={eco.write.running} onToggle={flip(eco, "enabled", "Eco efficiency")} />}
+      />
       <Row
         title="Power saving schedule"
         description="Radios drop to 1x1 and LEDs turn green. Wi-Fi blips for up to 5 seconds when it starts."
         dim={unsupported}
-        control={<ReadSwitch on={ps?.scheduleEnabled} label="Power saving schedule" />}
+        control={<WriteSwitch on={ps?.scheduleEnabled} label="Power saving schedule" gate={sched.gate} busy={sched.write.running} onToggle={flip(sched, "scheduleEnabled", "The power saving schedule")} />}
       >
         {!unsupported && (
           <SubPanel className="flex flex-col gap-3">
             {schedules.length === 0 ? (
-              <span className="text-muted-foreground text-xs">{settings ? "No power saving schedules yet." : " "}</span>
+              <span className="text-muted-foreground text-xs">{settings ? "No power saving schedules yet." : " "}</span>
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {schedules.map((s) => (
                   <li key={s.id} className="flex items-center gap-2 text-xs">
                     <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: seriesColors.powerSaving }} aria-hidden />
                     <span className="font-medium">{s.name}</span>
-                    <span className="text-muted-foreground">
+                    <span className="min-w-0 truncate text-muted-foreground">
                       {daysLabel(s.days)} · {formatMinute(minutes(s.start))} to {formatMinute(minutes(s.end))}
+                      {minutes(s.end) < minutes(s.start) ? " next day" : ""}
                       {s.enabled ? "" : " · off"}
+                    </span>
+                    <span className="ms-auto">
+                      <GatedButton size="icon-xs" variant="ghost-muted" gate={addGate} aria-label={`Edit ${s.name}`} onClick={() => setSheet({ kind: "edit", schedule: s })}>
+                        <Pencil />
+                      </GatedButton>
                     </span>
                   </li>
                 ))}
@@ -87,13 +127,158 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
               ariaLabel={`Power saving schedules across the week: ${schedules.length === 0 ? "none" : schedules.map((s) => `${s.name}, ${daysLabel(s.days)}, ${s.start} to ${s.end}${s.enabled ? "" : ", off"}`).join("; ")}`}
             />
             <div>
-              <ComingSoonButton size="xs" variant="outline">
+              <GatedButton size="xs" variant="outline" gate={addGate} disabled={!settings} onClick={() => setSheet({ kind: "add" })}>
+                <CalendarPlus />
                 Add schedule
-              </ComingSoonButton>
+              </GatedButton>
             </div>
           </SubPanel>
         )}
       </Row>
+      {sheet && <PowerScheduleSheet key={sheet.kind === "add" ? "add" : sheet.schedule.id} mode={sheet} onClose={() => setSheet(null)} />}
     </>
+  );
+}
+
+/** A new power saving schedule starts overnight, every day. */
+export const NEW_POWER_SCHEDULE: ScheduleInput = { name: "Overnight", days: [...MON_FIRST], start: "23:00", end: "06:00", enabled: true };
+
+const sameDays = (a: ReadonlyArray<Day>, b: ReadonlyArray<Day>) => a.length === b.length && a.every((d) => b.includes(d));
+
+function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () => void }) {
+  const initial: ScheduleInput = mode.kind === "edit" ? mode.schedule : NEW_POWER_SCHEDULE;
+  const [enabled, setEnabled] = useState(initial.enabled);
+  const [name, setName] = useState(initial.name);
+  const [start, setStart] = useState(initial.start);
+  const [end, setEnd] = useState(initial.end);
+  const [days, setDays] = useState<ReadonlyArray<Day>>(initial.days);
+  const [deleting, setDeleting] = useState(false);
+
+  const add = useWrite<Record<string, unknown>, Schedule>("settings.power_schedule.add", { form: true });
+  const update = useWrite<Record<string, unknown>, Schedule>("settings.power_schedule.update", { form: true });
+  const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("settings.power_schedule.remove");
+  const errors = fieldErrors((mode.kind === "add" ? add : update).error);
+
+  const trimmed = name.trim();
+  const input: ScheduleInput = { name: trimmed, days: MON_FIRST.filter((d) => days.includes(d)), start, end, enabled };
+  const changed = trimmed !== initial.name || start !== initial.start || end !== initial.end || enabled !== initial.enabled || !sameDays(days, initial.days);
+  const sameTimes = start !== "" && start === end;
+  const valid = trimmed.length > 0 && trimmed.length <= 32 && days.length > 0 && start !== "" && end !== "" && !sameTimes;
+  const wraps = start !== "" && end !== "" && minutes(end) < minutes(start);
+  const plain = (s: ScheduleInput) => ({ name: s.name, days: [...s.days], start: s.start, end: s.end, enabled: s.enabled });
+
+  const save = () =>
+    mode.kind === "add"
+      ? add.run(input, { success: (r) => `Added ${r.name}`, undo: (r) => ({ id: "settings.power_schedule.remove", params: { schedule: r.id } }) })
+      : update.run({ ...plain(input), schedule: mode.schedule.id }, { success: `Saved ${trimmed}`, undo: { id: "settings.power_schedule.update", params: { ...plain(mode.schedule), schedule: mode.schedule.id } } });
+
+  const del = async () => {
+    if (mode.kind !== "edit") return;
+    const s = mode.schedule;
+    const res = await remove.run(
+      { schedule: s.id },
+      { success: `Deleted ${s.name}`, failure: `Couldn't delete ${s.name}`, undo: (r) => ({ id: "settings.power_schedule.add", params: plain(r.schedule), success: `Added ${r.schedule.name} back` }) },
+    );
+    if (res?.ok) onClose();
+  };
+
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      icon={mode.kind === "add" ? <CalendarPlus /> : <Leaf />}
+      title={mode.kind === "add" ? "Add power saving schedule" : "Edit power saving schedule"}
+      subtitle="Every eero · radios drop to 1x1 while it runs"
+      dirty={mode.kind === "add" || changed}
+      valid={valid}
+      onSave={save}
+      saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
+      error={errors._form}
+      footerStart={
+        mode.kind === "edit" && !deleting ? (
+          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" onClick={() => setDeleting(true)}>
+            <Trash2 />
+            Delete schedule
+          </Button>
+        ) : null
+      }
+    >
+      {deleting && mode.kind === "edit" ? (
+        <InlineConfirm title={`Delete ${mode.schedule.name}?`} confirmLabel="Delete schedule" onConfirm={() => void del()} onCancel={() => setDeleting(false)} running={remove.running}>
+          The eeros stop saving power at {formatMinute(minutes(mode.schedule.start))}. Undo adds it back.
+        </InlineConfirm>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="font-medium text-sm">Schedule on</div>
+          <div className="text-muted-foreground text-xs">Turn off to keep it without running it</div>
+        </div>
+        <WriteSwitch on={enabled} label="Schedule on" gate={{ allowed: true, reason: null }} onToggle={setEnabled} />
+      </div>
+
+      <SheetField label="Schedule name" htmlFor="power-sheet-name" error={trimmed.length > 32 ? "Use 32 characters or fewer." : errors.name} helper={`${trimmed.length} / 32`}>
+        <Input id="power-sheet-name" value={name} autoFocus={mode.kind === "add"} onChange={(e) => setName(e.target.value)} />
+      </SheetField>
+
+      <div className="grid grid-cols-2 gap-3.5">
+        <SheetField label="Start time" htmlFor="power-sheet-start" error={errors.start}>
+          <Input id="power-sheet-start" type="time" step={60} required value={start} onChange={(e) => setStart(e.target.value)} />
+        </SheetField>
+        <SheetField
+          label={
+            <span className="flex items-baseline justify-between">
+              End time
+              {wraps ? <span className="font-normal text-2xs text-muted-foreground">next day</span> : null}
+            </span>
+          }
+          htmlFor="power-sheet-end"
+          error={sameTimes ? "End must differ from start." : errors.end}
+        >
+          <Input id="power-sheet-end" type="time" step={60} required value={end} aria-invalid={sameTimes || undefined} onChange={(e) => setEnd(e.target.value)} />
+        </SheetField>
+      </div>
+
+      <SheetField label="Repeats on" error={errors.days ?? (days.length === 0 ? "Pick at least one day." : undefined)}>
+        <div className="flex gap-1" role="group" aria-label="Repeats on">
+          {MON_FIRST.map((d) => {
+            const on = days.includes(d);
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]))}
+                className={cn("h-7 flex-1 rounded-[var(--control-radius)] font-medium text-xs transition-colors", on ? "bg-foreground/80 text-background" : "bg-muted text-muted-foreground hover:text-foreground")}
+              >
+                {d.charAt(0) + d.slice(1).toLowerCase()}
+              </button>
+            );
+          })}
+        </div>
+      </SheetField>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="font-medium text-xs">Each day</div>
+        <div
+          role="img"
+          aria-label={sameTimes || !start || !end ? "No power saving" : `Power saving ${formatMinute(minutes(start))} to ${formatMinute(minutes(end))}${wraps ? " the next day" : ""}`}
+          className={cn("relative h-5 overflow-hidden rounded-md border bg-muted/40", !enabled && "opacity-60")}
+        >
+          {daySpans(start, end).map((s) => (
+            <i
+              key={s.from}
+              className={cn("absolute inset-y-0", !enabled && "border-[1.5px] border-dashed")}
+              style={{ left: `${(s.from / MINUTES_PER_DAY) * 100}%`, width: `${((s.to - s.from) / MINUTES_PER_DAY) * 100}%`, ...(enabled ? { backgroundColor: seriesColors.powerSaving } : { borderColor: seriesColors.powerSaving }) }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-3xs text-muted-foreground uppercase tracking-wide" aria-hidden>
+          {["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"].map((t, i) => (
+            <span key={i}>{t}</span>
+          ))}
+        </div>
+      </div>
+    </Sheet>
   );
 }

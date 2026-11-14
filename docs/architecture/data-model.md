@@ -566,7 +566,7 @@ type Routing = { reservations: Reservation[]; forwards: Forward[]; pinholes: Pin
 | `thread` | `GET {net}/thread` minus `master_key` and `commissioning_credential` (`borderAgent` is `border_agent.ip:port`; no device count is sent) |
 | `ThreadCredentials` | those two fields; `dataset` from `active_operational_dataset`, which a real network did not send (null) |
 | `powerSaving.schedules` | `GET {net}/power_saving/schedules` `{schedules: [{url, id, name, days, start_time, end_time, enabled}]}` (fields from the clients: the real list was empty) |
-| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings). A real network sends `auto_setup_mode: "LTS"` (M5.1 capture, the one value printed), read as on; clear off words are false, anything else null |
+| `mlo`, `simpleSetup` | `mlo_mode`, `auto_setup_mode` (strings). A real network sends `auto_setup_mode: "LTS"` (M5.1 capture, the one value printed), read as on; LD's other policies `DEFAULT` and `ZTS` read as on and `OFF` as off (M5.3); clear off words are false, anything else null |
 | `Reservation`, `Forward`, `Pinhole` | `GET {net}/routing` `reservations.data[]`, `forwards.data[]`, `pinholes.data[]`, joined to devices by MAC or IP |
 | `LanMap` | `dhcp.custom` (or defaults), reservations and connected device count |
 

@@ -11,12 +11,20 @@
  * `dhcp`, `ipv6_upstream`, `lease` + `pppoe` + `vlan` (string, "" for off),
  * `connection`, `nat_port_randomization`, `upnp`, `sqm`. Each answers with the
  * next `get` (a write drops every shared read). Core skips unchanged writes.
+ * M5.3 writes: `band_steering` and `timezone{value}` through the same
+ * `PUT {net}/settings`; `PUT {net}/fast_transition`, `{net}/mlo_mode`,
+ * `{net}/ac_compat` (form), `{net}/power_saving` (`enable`,
+ * `power_saving_schedule_enabled`), `{net}/auto_setup_mode` (`{mode}`),
+ * `{net}/thread` (`thread_enable`, `enable_credential_syncing`); `POST
+ * {net}/thread` regenerates the Thread credentials; power saving schedules
+ * are `POST`, `PUT` and `DELETE` under `{net}/power_saving/schedules`.
  * See docs/architecture/commands.md (settings) and docs/eero-api/endpoints.md
  * sections 4 and 17.
  */
 
 import { BackendError } from "../../errors";
-import { mapSettings, mapThreadCredentials } from "../map/settings";
+import type * as M from "../../model";
+import { mapPowerSavingSchedule, mapSettings, mapThreadCredentials } from "../map/settings";
 import { asList, type RawAcCompat, type RawFastTransition, type RawPowerSavingSchedule, type RawThread } from "../raw";
 import type { DhcpInput, DnsInput, WanInput } from "../../backend";
 import { networkPath } from "../urls";
@@ -57,7 +65,8 @@ export const settings: EeroArea<"settings"> = (ctx) => {
   const links = networkLinks(ctx);
   const base = (id: string) => links.get(`net:${id}`, networkPath(id));
   const put = (id: string, body: Record<string, unknown>) => ctx.client.request({ method: "PUT", path: networkPath(id, "settings"), body, encoding: "json" });
-  const thread = (id: string) => readOptional<RawThread>(ctx, links.get(`net:${id}.thread`, `${base(id)}/thread`));
+  const threadPath = (id: string) => links.get(`net:${id}.thread`, `${base(id)}/thread`);
+  const thread = (id: string) => readOptional<RawThread>(ctx, threadPath(id));
 
   const area = {
     async get(id: string) {
@@ -90,5 +99,74 @@ export const settings: EeroArea<"settings"> = (ctx) => {
     setNatRandomization: (id, randomized) => write(id, { nat_port_randomization: randomized }),
     setUpnp: (id, enabled) => write(id, { upnp: enabled }),
     setSqm: (id, enabled) => write(id, { sqm: enabled }),
+
+    // M5.3: wireless, mesh and Thread. Each has its own endpoint unless noted.
+    setBandSteering: (id, enabled) => write(id, { band_steering: enabled }),
+    setTimezone: (id, timezone) => write(id, { timezone: { value: timezone } }),
+    setFastTransition: (id, enabled) => own(id, "PUT", "fast_transition", { fast_transition: enabled }),
+    setMlo: (id, mode) => own(id, "PUT", "mlo_mode", { mlo_mode: mode }),
+    setLegacyMode: (id, enabled) => own(id, "PUT", "ac_compat", { enabled }, "form"),
+    setPowerSaving: (id, input) =>
+      own(id, "PUT", "power_saving", {
+        ...(input.enabled === undefined ? {} : { enable: input.enabled }),
+        ...(input.scheduleEnabled === undefined ? {} : { power_saving_schedule_enabled: input.scheduleEnabled }),
+      }),
+    // LD: `PUT {net}/auto_setup_mode` JSON `{mode}`; LTS is what a real network reads while on, OFF is LD's off (MANUAL check).
+    setSimpleSetup: (id, enabled) => own(id, "PUT", "auto_setup_mode", { mode: enabled ? "LTS" : "OFF" }),
+    async setThread(id, input) {
+      const body = {
+        ...(input.enabled === undefined ? {} : { thread_enable: input.enabled }),
+        ...(input.credentialSync === undefined ? {} : { enable_credential_syncing: input.credentialSync }),
+      };
+      await ctx.client.request({ method: "PUT", path: threadPath(id), body, encoding: "json" });
+      return area.get(id);
+    },
+    async resetThread(id) {
+      // Regenerates the credentials: every Thread accessory must re-pair.
+      await ctx.client.request({ method: "POST", path: threadPath(id), encoding: "empty" });
+    },
+    async addPowerSavingSchedule(id, input) {
+      const raw = await ctx.client.request<RawPowerSavingSchedule | null>({ method: "POST", path: `${base(id)}/power_saving/schedules`, body: scheduleBody(input), encoding: "json" });
+      return savedSchedule(id, raw, input);
+    },
+    async updatePowerSavingSchedule(id, sid, input) {
+      const raw = await ctx.client.request<RawPowerSavingSchedule | null>({ method: "PUT", path: `${base(id)}/power_saving/schedules/${sid}`, body: scheduleBody(input), encoding: "json" });
+      return savedSchedule(id, raw, input, sid);
+    },
+    async removePowerSavingSchedule(id, sid) {
+      await ctx.client.request({ method: "DELETE", path: `${base(id)}/power_saving/schedules/${sid}` });
+    },
+  };
+
+  /** A write to one of the network's own endpoints (`{net}/fast_transition`), answered with the next `get`. */
+  async function own(id: string, method: "PUT", path: string, body: Record<string, unknown>, encoding: "json" | "form" = "json") {
+    await ctx.client.request({ method, path: `${base(id)}/${path}`, body, encoding });
+    return area.get(id);
+  }
+
+  /** eero answers a schedule write with the schedule; if it sends none, find it in the next list by name. */
+  async function savedSchedule(id: string, raw: RawPowerSavingSchedule | null, input: M.ScheduleInput, sid?: string): Promise<M.Schedule> {
+    const mapped = raw && typeof raw === "object" ? mapPowerSavingSchedule(raw, 0) : null;
+    if (mapped && (raw?.id !== undefined || raw?.url !== undefined)) return mapped;
+    const list = asList<RawPowerSavingSchedule>(await ctx.client.request({ method: "GET", path: `${base(id)}/power_saving/schedules` }), "schedules");
+    const found = list.map(mapPowerSavingSchedule).find((x) => x !== null && (sid ? x.id === sid : x.name === input.name));
+    return found ?? { id: sid ?? "", ...input };
+  }
+};
+
+/** `{name, days, start_time, end_time, enabled}` as FF and LD send it. */
+export const scheduleBody = (s: M.ScheduleInput) => ({ name: s.name, days: s.days, start_time: s.start, end_time: s.end, enabled: s.enabled });
+
+/**
+ * Deleting the network (`DELETE {net}`), joined to the network area in
+ * ./index.ts (as coverage joins the eero area), so M5.3 does not edit the
+ * network file other stories own.
+ */
+export const networkDelete = (ctx: EeroContext): { remove(id: string): Promise<void> } => {
+  const links = networkLinks(ctx);
+  return {
+    async remove(id) {
+      await ctx.client.request({ method: "DELETE", path: links.get(`net:${id}`, networkPath(id)) });
+    },
   };
 };

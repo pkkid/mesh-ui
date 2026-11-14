@@ -9,6 +9,9 @@
  * before any network-scoped command runs (which would auto-pick the first
  * network).
  *
+ * `network.delete` (M5.3, destructive) takes the network name as
+ * type-to-confirm and moves the session to another network.
+ *
  * `network.restart` (M4.8) restarts every eero; its confirm and result quote
  * RESTART_ESTIMATE, the outage estimates the eero commands share.
  */
@@ -16,7 +19,8 @@
 import { z } from "zod";
 import type * as M from "../model";
 import { POLL } from "../poll";
-import { type AnyCommand, defineCommand, ref } from "../spec";
+import { CommandError } from "../errors";
+import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { knownDevices } from "./device";
 
 const empty = z.object({});
@@ -47,6 +51,18 @@ export function healthIssues(health: Omit<M.NetworkHealth, "issues">, eeros: Pic
     ...health.eeros.filter((e) => e.status === "offline").map((e) => issue("eero_offline", e.id, false)),
     ...health.eeros.filter((e) => e.status !== "offline" && e.weakLink).map((e) => issue("weak_link", e.id, true)),
   ];
+}
+
+/**
+ * The network to delete, after the owner and type-the-name checks. eero has
+ * the last word on the role (a real network often reports none, so only a
+ * known admin is refused here).
+ */
+async function deletable(ctx: CommandContext, typed: string): Promise<M.Network> {
+  const n = await ctx.backend.network.get(ctx.net);
+  if (n.role === "admin") throw new CommandError("bad_params", "Only the network owner can delete it.");
+  if (typed.trim() !== n.name) throw new CommandError("bad_params", `Type the network name, ${n.name}, exactly to delete it.`, { issues: [{ path: "networkName", message: `Type ${n.name} exactly.` }] });
+  return n;
 }
 
 export const commands: AnyCommand[] = [
@@ -154,6 +170,31 @@ export const commands: AnyCommand[] = [
       await ctx.backend.network.restart(ctx.net);
       // An offline eero cannot take the restart, so it is not waited for.
       return { networkId: ctx.net, eeroIds: eeros.filter((e) => e.status !== "offline").map((e) => e.id), estimate: RESTART_ESTIMATE.network };
+    },
+  }),
+
+  defineCommand({
+    id: "network.delete",
+    label: "Delete network",
+    description:
+      "Deletes the network: every eero resets, and its profiles, history and admins are gone. Cannot be undone. Owner only. `networkName` must equal the network's current name (type-to-confirm). Afterwards the session moves to another network, if there is one.",
+    icon: "trash-2",
+    params: z.object({ networkName: z.string().trim().min(1).describe("The network's current name, exactly, to confirm.") }),
+    effect: "destructive",
+    gate: { area: "network", op: "delete" },
+    invalidates: ["account", "network", "eeros", "devices", "profiles", "settings", "wifi", "guest", "routing", "updates", "admins", "permissions"],
+    async confirmMessage(ctx, p) {
+      const n = await deletable(ctx, p.networkName);
+      return `Deletes ${n.name}: every eero resets, and its profiles, history and admins are gone. Every device loses internet until the eeros are set up again. This cannot be undone.`;
+    },
+    async run(ctx, p): Promise<{ deleted: M.Id; name: string; selectedNetworkId: M.Id | null }> {
+      const n = await deletable(ctx, p.networkName);
+      await ctx.backend.network.remove(ctx.net);
+      ctx.invalidate(["account"]);
+      // Move the session off the deleted network; with none left, the next network-scoped command says so.
+      const next = ctx.selectedNetworkId === n.id ? ((await ctx.backend.network.list()).find((x) => x.id !== n.id)?.id ?? null) : ctx.selectedNetworkId;
+      if (next && next !== ctx.selectedNetworkId) await ctx.selectNetwork(next);
+      return { deleted: n.id, name: n.name, selectedNetworkId: next };
     },
   }),
 ];

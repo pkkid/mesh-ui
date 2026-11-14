@@ -899,7 +899,7 @@ restarts the network says so in its risk field.
 - scope: `settings.dns.set`, `settings.dhcp.set`, `settings.ipv6.set`, `settings.wan.set`, `settings.connection_mode.set` (bridge), `settings.nat_randomization.set`, `settings.upnp.set`, `settings.sqm.set`. Advanced networking groups for these with sheets, the impact panel and inline confirm. Carried from M3: Reservations & ports "IPv6 off" state reads `settings.get`.
 - done when: demo and fake-server tests incl. `needs_confirm`, IP and subnet validation, bridge mode hiding NAT-only settings; `pnpm ui:shot --route '#/settings/advanced'` of a sheet, the impact panel and a progress toast, light and dark, plus Mom's House; `MANUAL: toggle UPnP off and on | ... | the eero app agrees | none` and `MANUAL: DNS change on a test network only | ... | ... | disruptive: the network restarts`.
 
-### M5.3 Wireless, mesh and Thread settings, network delete ☐
+### M5.3 Wireless, mesh and Thread settings, network delete ✅ (#182)
 - issue: [#140](https://github.com/pkkid/mesh-ui/issues/140)
 - after: M5.2
 - docs: ux/pages/advanced-networking.md, architecture/commands.md (settings, network)

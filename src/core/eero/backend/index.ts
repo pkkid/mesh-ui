@@ -52,7 +52,7 @@ import { network } from "./network";
 import { notifications } from "./notifications";
 import { profile } from "./profile";
 import { routing } from "./routing";
-import { settings } from "./settings";
+import { networkDelete, settings } from "./settings";
 import { updates } from "./updates";
 import { usage } from "./usage";
 import { wifi } from "./wifi";
@@ -69,7 +69,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   guest,
   integrations,
   internet,
-  network,
+  network: (ctx) => ({ ...network(ctx), ...networkDelete(ctx) }),
   notifications,
   profile,
   routing,

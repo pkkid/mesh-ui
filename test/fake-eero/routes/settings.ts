@@ -13,6 +13,16 @@
  * `upnp`, `sqm`. A bad value answers 400 and changes nothing. A form `name`
  * (the Wi-Fi rename) goes to the route in ./wifi.ts, which owns it. The fake
  * keeps the PPPoE user name only; the password is in `fake.writes`.
+ *
+ * M5.3: `band_steering` and `timezone{value}` on `PUT {net}/settings`; JSON
+ * `PUT {net}/fast_transition`, `{net}/mlo_mode` (400 on a network without
+ * it), `{net}/power_saving` (`enable`, `power_saving_schedule_enabled`),
+ * `{net}/auto_setup_mode` (`{mode}`: DEFAULT, ZTS, LTS or OFF, per LD) and
+ * `{net}/thread` (`thread_enable`, `enable_credential_syncing`); form `PUT
+ * {net}/ac_compat` (`enabled`); `POST {net}/thread` makes new secrets; power
+ * saving schedules are `POST`, `PUT` and `DELETE` under
+ * `{net}/power_saving/schedules`. Thread writes on a network without Thread
+ * answer 404.
  */
 
 import { fail, FakeAnswer, ok, type Route, type RouteContext } from "../server";
@@ -27,7 +37,7 @@ const bad = (error: string): never => {
   throw new FakeAnswer(fail(400, error));
 };
 
-const SETTINGS_KEYS = new Set(["dns", "ipv6", "dhcp", "ipv6_upstream", "lease", "pppoe", "vlan", "connection", "nat_port_randomization", "upnp", "sqm"]);
+const SETTINGS_KEYS = new Set(["dns", "ipv6", "dhcp", "ipv6_upstream", "lease", "pppoe", "vlan", "connection", "nat_port_randomization", "upnp", "sqm", "band_steering", "timezone"]);
 
 /** Applies one JSON settings write to a copy of the network, then swaps it in, so a 400 changes nothing. */
 function applySettings(net: FakeNetwork, body: Record<string, unknown>): Record<string, unknown> {
@@ -109,13 +119,164 @@ function applySettings(net: FakeNetwork, body: Record<string, unknown>): Record<
     if (key !== "sqm" && !routed) bad("error.network.bridged");
     n[key] = body[key] as boolean;
   }
+  if ("band_steering" in body) {
+    if (!isBool(body.band_steering)) bad("error.band_steering.invalid");
+    n.band_steering = body.band_steering as boolean;
+  }
+  if ("timezone" in body) {
+    const tz = obj(body.timezone)?.value;
+    if (typeof tz !== "string" || !/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(tz)) bad("error.timezone.invalid");
+    n.timezone = { ...(obj(n.timezone) ?? {}), value: tz as string };
+  }
   net.network = n;
   return body;
 }
 
+/** A JSON body for one of the network's own endpoints, or 400. */
+function jsonBody(ctx: RouteContext): Record<string, unknown> {
+  if (ctx.req.encoding !== "json") bad("error.encoding");
+  return ctx.req.body;
+}
+
+const DAYS = new Set(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** A power saving schedule body (`{name, days, start_time, end_time, enabled}`), or 400. */
+function scheduleOf(body: Record<string, unknown>): { name: string; days: string[]; start_time: string; end_time: string; enabled: boolean } {
+  const { name, days, start_time, end_time, enabled } = body;
+  if (typeof name !== "string" || name.trim() === "") bad("error.schedule.name.invalid");
+  if (!Array.isArray(days) || days.length === 0 || !days.every((d) => typeof d === "string" && DAYS.has(d))) bad("error.schedule.days.invalid");
+  if (typeof start_time !== "string" || !HHMM.test(start_time) || typeof end_time !== "string" || !HHMM.test(end_time)) bad("error.schedule.time.invalid");
+  if (enabled !== undefined && !isBool(enabled)) bad("error.schedule.enabled.invalid");
+  return { name: name as string, days: days as string[], start_time: start_time as string, end_time: end_time as string, enabled: enabled !== false };
+}
+
+const AUTO_SETUP_MODES = new Set(["DEFAULT", "ZTS", "LTS", "OFF"]);
+
 const renameRoute = wifiRoutes.find((r) => r.method === "PUT" && r.path === "/networks/:net/settings");
 
+let threadSeq = 0;
+
 export const routes: Route[] = [
+  {
+    method: "PUT",
+    path: "/networks/:net/fast_transition",
+    handle: (ctx) => {
+      const v = jsonBody(ctx).fast_transition;
+      if (!isBool(v)) bad("error.fast_transition.invalid");
+      ctx.network(ctx.params.net ?? "").fastTransition = { fast_transition: v as boolean };
+      return ok({ fast_transition: v });
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/mlo_mode",
+    handle: (ctx) => {
+      const v = jsonBody(ctx).mlo_mode;
+      const net = ctx.network(ctx.params.net ?? "");
+      if (net.network.mlo_mode === undefined) bad("error.mlo_mode.unsupported");
+      if (v !== "disabled" && v !== "single" && v !== "multi") bad("error.mlo_mode.invalid");
+      net.network.mlo_mode = v as string;
+      return ok({ mlo_mode: v });
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/ac_compat",
+    handle: ({ req, params, network }) => {
+      if (req.encoding !== "form") bad("error.encoding");
+      const v = String(req.body.enabled);
+      if (v !== "true" && v !== "false") bad("error.ac_compat.invalid");
+      network(params.net ?? "").acCompat = { enabled: v === "true" };
+      return ok({ enabled: v === "true" });
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/power_saving",
+    handle: (ctx) => {
+      const body = jsonBody(ctx);
+      const keys = Object.keys(body);
+      if (keys.length === 0 || keys.some((k) => k !== "enable" && k !== "power_saving_schedule_enabled") || !keys.every((k) => isBool(body[k]))) bad("error.power_saving.invalid");
+      const n = ctx.network(ctx.params.net ?? "").network;
+      if (isBool(body.enable)) n.power_saving = body.enable;
+      if (isBool(body.power_saving_schedule_enabled)) n.power_saving_schedule_enabled = body.power_saving_schedule_enabled;
+      return ok({ power_saving: n.power_saving, power_saving_schedule_enabled: n.power_saving_schedule_enabled });
+    },
+  },
+  {
+    method: "POST",
+    path: "/networks/:net/power_saving/schedules",
+    handle: (ctx) => {
+      const net = ctx.network(ctx.params.net ?? "");
+      const s = scheduleOf(jsonBody(ctx));
+      const id = Math.max(0, ...net.powerSavingSchedules.map((x) => Number(x.id) || 0)) + 1;
+      const saved = { url: `${net.network.url}/power_saving/schedules/${id}`, id, ...s };
+      net.powerSavingSchedules.push(saved);
+      return ok(saved);
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/power_saving/schedules/:id",
+    handle: (ctx) => {
+      const net = ctx.network(ctx.params.net ?? "");
+      const i = net.powerSavingSchedules.findIndex((x) => String(x.id) === ctx.params.id);
+      if (i < 0) return fail(404, "error.schedule.not_found");
+      const saved = { ...net.powerSavingSchedules[i], ...scheduleOf(jsonBody(ctx)) };
+      net.powerSavingSchedules[i] = saved;
+      return ok(saved);
+    },
+  },
+  {
+    method: "DELETE",
+    path: "/networks/:net/power_saving/schedules/:id",
+    handle: ({ params, network }) => {
+      const net = network(params.net ?? "");
+      if (!net.powerSavingSchedules.some((x) => String(x.id) === params.id)) return fail(404, "error.schedule.not_found");
+      net.powerSavingSchedules = net.powerSavingSchedules.filter((x) => String(x.id) !== params.id);
+      return ok(null);
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/auto_setup_mode",
+    handle: (ctx) => {
+      const mode = jsonBody(ctx).mode;
+      if (typeof mode !== "string" || !AUTO_SETUP_MODES.has(mode)) bad("error.auto_setup_mode.invalid");
+      ctx.network(ctx.params.net ?? "").network.auto_setup_mode = mode as string;
+      return ok({ mode });
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/thread",
+    handle: (ctx) => {
+      const body = jsonBody(ctx);
+      const net = ctx.network(ctx.params.net ?? "");
+      if (!net.thread) return fail(404, "error.thread.not_found");
+      const keys = Object.keys(body);
+      if (keys.length === 0 || keys.some((k) => k !== "thread_enable" && k !== "enable_credential_syncing") || !keys.every((k) => isBool(body[k]))) bad("error.thread.invalid");
+      if (isBool(body.thread_enable)) {
+        net.thread.enabled = body.thread_enable;
+        net.network.thread = body.thread_enable;
+      }
+      if (isBool(body.enable_credential_syncing)) net.thread.enable_credential_syncing = body.enable_credential_syncing;
+      const { master_key: _k, commissioning_credential: _c, ...shown } = net.thread;
+      return ok(shown);
+    },
+  },
+  {
+    method: "POST",
+    path: "/networks/:net/thread",
+    handle: ({ params, network }) => {
+      const net = network(params.net ?? "");
+      if (!net.thread) return fail(404, "error.thread.not_found");
+      const n = String(++threadSeq).padStart(4, "0");
+      net.thread = { ...net.thread, master_key: `fake-thread-master-key-reset-${n}`, commissioning_credential: `fake-thread-pskc-reset-${n}`, xpan_id: `fa4e${n}fa4e${n}` };
+      return ok(null);
+    },
+  },
   {
     method: "PUT",
     path: "/networks/:net/settings",
