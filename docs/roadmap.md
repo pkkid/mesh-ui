@@ -23,7 +23,7 @@ and every write.
 |---|---|---|
 | M1 | Sign in (or use demo or the fake server) and see the Overview and Devices pages, from the app, the CLI and MCP | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/1), [review](reviews/M1.md)) |
 | M2 | See the network and its devices: Internet, eeros, eero detail, device detail, command palette | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/2), [review](reviews/M2.md)) |
-| M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ready ([milestone](https://github.com/pkkid/mesh-ui/milestone/3)) |
+| M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | later |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | later |
 | M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
@@ -528,7 +528,7 @@ port, decided in M3.2).
 - scope: Core: `admin.list` (admins and invites, seats of 10; invites that 403 for an admin are empty, not an error), `updates.notes` (release notes from the absolute manifest URL, fetched by the eero client without the session cookie, https only, size capped) and `usage.quiet_hours` (Carried from M1; the quietest 3-hour window from the hourly usage call). Page (mockup 15): software status and per-eero versions, release notes, preferred update time with the quiet-hours chart, admins and invites. Install, preferred hour, invite and remove are disabled ("Coming soon"). Owner and admin views. Runs after M3.8, which also edits the usage command files.
 - done when: demo tests for the three commands incl. `bad_params` and the owner and admin views; a test shows `updates.notes` sends no cookie and refuses http and oversize bodies; real shape checks of `admin.list` and `updates.notes` in the PR; page-load budget test; `pnpm ui:shot --route '#/updates'` demo and `--fake`, light and dark, plus the admin view.
 
-### M3.R Review ☐
+### M3.R Review ✅
 - issue: [#95](https://github.com/pkkid/mesh-ui/issues/95)
 - owner: maintainer
 - after: M3.1, M3.2, M3.3, M3.4, M3.5, M3.6, M3.7, M3.8, M3.9, M3.10, M3.11, M3.12, M3.13
@@ -555,6 +555,13 @@ and export feedback through the undo toast system; writes are never tried
 on the real network, so before each write story capture, with a read-only
 call, the object the write will change, and keep a `MANUAL:` line for the
 write itself.
+Carried from M3: `profile.get` returns today's pauses so profile detail
+draws a manual pause; an Unassigned detail route; Activity row actions
+(Assign profile, Resume, Unblock) need device, eero or profile links that
+real events do not carry; guest Print card and Send to a guest; Mark all
+read; the eero client shares an identical `GET {net}` (which holds the
+password) for 5 s, so a reveal right after an outside password change can
+show the old one (bypass or clear it for credential reads).
 
 ## M5: Advanced settings
 
@@ -571,6 +578,13 @@ port (the model keeps one item; eero sends several in
 `connection_status.metadata.multiple_devices.connections[]`); confirm the
 `port_status` of a down or disabled port with a read-only capture (only
 `DATA_CONNECTED` and `WAN` seen; `DISABLED` is a guess).
+Carried from M3: map eero Simple Setup (`auto_setup_mode`): print only that
+enum value with one read-only call and map it (maintainer approved, M3
+review question 1); Reservations & ports "IPv6 off" state from
+`settings.get`; the fake eero list has no `radio_channel_stats`, so `--fake`
+Wi-Fi shows `-` for width and channel; the fake server cannot serve the raw
+release manifest, so `--fake` shows no release notes; `integrations.get` and
+`wifi.get` share the `settings` poll topic (give them their own).
 
 ## M6: App, account and release
 
@@ -587,3 +601,8 @@ my account" (`account.delete`); move to the async safeStorage API (the sync
 call is deprecated in Electron 45); an `author` with email in package.json
 for deb and rpm; prove `pnpm dist:dir` and `pnpm ui:shot` on macOS and
 Windows; add the `pnpm test:ui` script or drop it from testing.md.
+Carried from M3: the packaged Linux launcher strips `DISPLAY` and
+`WAYLAND_DISPLAY` for `--cli`, like the dev launcher (#115); the
+`dist:smoke` window step fails with no display (set `MESH_UI_HEADLESS`);
+sidebar and sign-in avatars use an inline `hue("orange")` (from M1.7), move
+it to `chartColors.ts` or make avatars neutral.
