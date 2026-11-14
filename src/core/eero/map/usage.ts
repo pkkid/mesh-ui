@@ -7,7 +7,7 @@
  */
 
 import type * as M from "../../model";
-import type { RawBreakdownRow, RawUsage, RawUsageSeries } from "../raw";
+import type { RawBreakdownRow, RawProfileUsageRow, RawUsage, RawUsageSeries } from "../raw";
 import { compactMac, idFromUrl } from "../urls";
 
 /** A byte count from eero: whole, finite and not negative, else 0. */
@@ -47,8 +47,10 @@ function seriesSum(s: RawUsageSeries): number {
   return (s.values ?? []).reduce((n, v) => n + bytes(v.value), 0);
 }
 
-/** A breakdown row as eero may send it: flat totals, or a chart of its own. */
-export type RawUsageRow = RawBreakdownRow & { location?: string; series?: RawUsageSeries[] };
+/** A breakdown row as eero may send it: flat totals, or a chart of its own. Profile rows carry `profile_id` and `profile_name`. */
+export type RawUsageRow = RawBreakdownRow & RawProfileUsageRow & { location?: string; series?: RawUsageSeries[] };
+
+const idText = (v: unknown): string | null => (typeof v === "number" && Number.isFinite(v)) || (typeof v === "string" && v.trim()) ? String(v).trim() : null;
 
 const text = (...vs: unknown[]): string | null => {
   for (const v of vs) if (typeof v === "string" && v.trim()) return v.trim();
@@ -65,13 +67,15 @@ export function mapBreakdownRow(row: RawUsageRow, by: M.UsageBreakdown["by"]): M
       ? typeof row.mac === "string" && row.mac
         ? compactMac(row.mac)
         : urlId
-      : (urlId ?? (row.id !== undefined && row.id !== null ? String(row.id) : null));
+      : by === "profile"
+        ? (idText(row.profile_id) ?? urlId ?? idText(row.id))
+        : (urlId ?? idText(row.id));
   const name =
     by === "device"
       ? text(row.nickname, row.display_name, row.name, row.hostname, row.mac)
       : by === "eero"
         ? text(row.location, row.name, row.display_name)
-        : text(row.name, row.display_name);
+        : text(row.profile_name, row.name, row.display_name);
   const fromSeries = row.series ? usageTotals({ series: row.series }) : null;
   return {
     id: id || null,

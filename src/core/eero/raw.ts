@@ -363,7 +363,28 @@ export type RawBreakdownRow = {
   download?: number;
   upload?: number;
 };
-export type RawBreakdown = { devices?: RawBreakdownRow[]; profiles?: RawBreakdownRow[]; eeros?: RawBreakdownRow[] };
+/**
+ * A `data_usage/breakdown` profile row. Real capture (2026-11-13, key paths
+ * and types only): no `url`, `id` or `name`, only these four keys. eero's
+ * default (Unassigned) profile had no row.
+ */
+export type RawProfileUsageRow = { profile_id?: number | string; profile_name?: string; download?: number; upload?: number };
+
+/**
+ * `GET {net}/data_usage/breakdown?start&end`. Real capture (2026-11-13):
+ * `{start, end, upload, download, eeros[], devices[], unprofiled[], profiles[]}`;
+ * `unprofiled` rows are device rows.
+ */
+export type RawBreakdown = {
+  start?: string;
+  end?: string;
+  download?: number;
+  upload?: number;
+  devices?: RawBreakdownRow[];
+  unprofiled?: RawBreakdownRow[];
+  profiles?: RawProfileUsageRow[];
+  eeros?: RawBreakdownRow[];
+};
 
 // ---------------------------------------------------------------------------
 // Guest, Wi-Fi and settings reads (real capture, 2026-11-13: key paths and types only)

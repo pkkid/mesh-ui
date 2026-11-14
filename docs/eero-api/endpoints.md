@@ -242,7 +242,7 @@ Response shape (charts): `{network_id, start, end, series: [{type | insight_type
 | Method | Path | Params | Kind | Clients | Notes |
 |---|---|---|---|---|---|
 | GET | `{net}/data_usage` | `start,end,cadence` (all required), `timezone?` | R | SX, FF, LD, YV | Network up/down bytes over time. |
-| GET | `{net}/data_usage/breakdown` | `start,end` | R | FF, LD | Usage per device and profile ("who used the most"). |
+| GET | `{net}/data_usage/breakdown` | `start,end` | R | FF, LD | Usage per device and profile ("who used the most"). Real shape (2026-11-13): `{start, end, upload, download, eeros: [{id, model_number, serial, location, url, upload, download}], devices: [device row], unprofiled: [device row], profiles: [{profile_id: number, profile_name, upload, download}]}`. Device rows: `{url, mac, nickname, hostname, display_name, manufacturer, device_type, connection_type, inferred_make, inferred_model, model_name, is_private, is_proxied_node, amazon_device_type_id, upload, download}`. Profile rows have no `url`, `id` or `name`; eero's default (Unassigned) profile has no row. |
 | GET | `{net}/data_usage/devices` | `start,end,cadence` | R | SX, FF, ED, YV | Per-device totals. |
 | GET | `{net}/data_usage/devices/{mac}` | `start,end,cadence` | R | SX, FF, LD | One device. |
 | GET | `{net}/data_usage/eeros`, `/eeros/summary`, `/eeros/{eero_id}` | `start,end,cadence` | R | FF, LD | Per node. |
