@@ -1,0 +1,14 @@
+// Cloudflare Workers static assets: meshui.pkarma.com is the files in ./public, no server code.
+// Deploy by hand: `npx wrangler deploy` from this folder (the site is never deployed from GitHub).
+// The custom domain below makes Cloudflare create the DNS record and certificate on deploy.
+{
+  "name": "meshui-website",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "meshui.pkarma.com", "custom_domain": true }],
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "404-page"
+  }
+}
