@@ -9,7 +9,7 @@
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ErrorCode, ExecuteResult } from "./errors";
-import type { AuditList, Effect } from "./model";
+import type { AuditList, Effect, AuditEntry as ModelAuditEntry } from "./model";
 import type { Surface } from "./spec";
 
 /** The file keeps the newest this many lines. */
@@ -119,22 +119,79 @@ export function memoryAudit(): AuditLog & { entries: AuditEntry[] } {
   };
 }
 
+/** A local day as YYYY-MM-DD. */
+const localDay = (ms: number) => {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 /** The 7 local days ending today, oldest first, as YYYY-MM-DD. */
 export function weekDays(nowMs: number): string[] {
   const days: string[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(nowMs);
     d.setDate(d.getDate() - i);
-    days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    days.push(localDay(d.getTime()));
   }
   return days;
 }
 
+const EFFECTS: readonly Effect[] = ["query", "write", "disruptive", "destructive"];
+
+/** One audit line as App & account lists it, or null when it is malformed. Params are never read. */
+function parseLine(line: string): (ModelAuditEntry & { ms: number }) | null {
+  let v: unknown;
+  try {
+    v = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  if (!v || typeof v !== "object") return null;
+  const e = v as Record<string, unknown>;
+  const ms = typeof e.time === "string" ? Date.parse(e.time) : Number.NaN;
+  if (!Number.isFinite(ms) || (e.surface !== "cli" && e.surface !== "mcp") || typeof e.id !== "string" || !e.id || typeof e.ok !== "boolean") return null;
+  const effect = typeof e.effect === "string" && (EFFECTS as readonly unknown[]).includes(e.effect) ? (e.effect as Effect) : null;
+  return { at: new Date(ms).toISOString(), ms, surface: e.surface, id: e.id, effect, ok: e.ok, code: typeof e.code === "string" ? e.code : null };
+}
+
 /**
- * Reads `audit.jsonl` into the App & account summary (`app.audit.list`).
- * Stub until M6.6: answers an empty week, so the command and its callers
- * are in place. `path` is null when the host has no config dir.
+ * Reads `audit.jsonl` into the App & account summary (`app.audit.list`):
+ * this week's commands newest first (at most `limit`), the count per local
+ * day, how many were refused with `needs_confirm`, and the newest MCP
+ * command at any age. Reads only the newest AUDIT_MAX_LINES lines, skips
+ * malformed ones and never reads params or results. `path` is null when the
+ * host has no config dir; a missing file is an empty log.
  */
-export async function readAudit(_path: string | null, opts: { now: number; limit: number }): Promise<AuditList> {
-  return { entries: [], week: weekDays(opts.now).map((date) => ({ date, count: 0 })), weekTotal: 0, needsConfirm: 0, mcpLastAt: null };
+export async function readAudit(path: string | null, opts: { now: number; limit: number }): Promise<AuditList> {
+  const days = weekDays(opts.now);
+  const counts = new Map(days.map((d) => [d, 0]));
+  let text = "";
+  if (path) {
+    try {
+      text = await readFile(path, "utf8");
+    } catch {
+      text = "";
+    }
+  }
+  const lines = text.split("\n").filter((l) => l.trim()).slice(-AUDIT_MAX_LINES);
+  const week: (ModelAuditEntry & { ms: number })[] = [];
+  let mcpLast: number | null = null;
+  for (const line of lines) {
+    const e = parseLine(line);
+    if (!e) continue;
+    if (e.surface === "mcp" && (mcpLast === null || e.ms > mcpLast)) mcpLast = e.ms;
+    const day = localDay(e.ms);
+    const n = counts.get(day);
+    if (n === undefined) continue;
+    counts.set(day, n + 1);
+    week.push(e);
+  }
+  week.sort((a, b) => b.ms - a.ms);
+  return {
+    entries: week.slice(0, opts.limit).map(({ ms: _ms, ...e }) => e),
+    week: days.map((date) => ({ date, count: counts.get(date) ?? 0 })),
+    weekTotal: week.length,
+    needsConfirm: week.filter((e) => e.code === "needs_confirm").length,
+    mcpLastAt: mcpLast === null ? null : new Date(mcpLast).toISOString(),
+  };
 }

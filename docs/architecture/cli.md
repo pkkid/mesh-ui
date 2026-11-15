@@ -74,8 +74,28 @@ The installer puts a `mesh-ui` launcher on `PATH`. Details per OS are in
 | Linux deb / rpm | The package's after-install script writes the `/usr/bin/mesh-ui` launcher; after-remove deletes it |
 | Linux AppImage | "Install CLI" button in App & account writes `~/.local/bin/mesh-ui` pointing at the AppImage path |
 
-The App & account button runs `app.cli.install`, which reports where the
-launcher is and whether it is on `PATH`.
+The App & account button runs `app.cli.install` (`src/main/cli-install.ts`),
+which reports where the launcher is and whether it is on `PATH`
+(`CliStatus`):
+
+- **macOS** runs `osascript` with a fixed script and the paths as its
+  arguments; the script reaches the shell only through AppleScript's
+  `quoted form of`, so no path is spliced into a command string. The system
+  shows its admin prompt. Declining is not an error: the panel shows the
+  `export PATH=...` line for the bundle's `Contents/Resources/bin`, which
+  needs no admin. `onPath` also counts `/etc/paths`, since an app opened
+  from Finder gets a short `PATH`.
+- **AppImage** writes `~/.local/bin/mesh-ui` itself (no prompt). It is
+  offered only when the AppImage holds the running app (`APPDIR`), not when
+  `APPIMAGE` leaked in from a parent process.
+- **deb, rpm, NSIS** only report the launcher their installer wrote;
+  **portable** (Windows zip) reports its `bin` folder and the PowerShell line
+  that adds it to the user `PATH`. An unpacked build on Linux or macOS and a
+  dev build have no launcher (`path` null).
+- **Reinstall** shows when the macOS link or the AppImage script points at
+  a different copy of the app; running it again fixes the link.
+- The CLI and MCP have no installer: `app.cli.install` answers `bad_params`
+  "Only in the Mesh UI window." there, and `app.info.cli` is null.
 
 ## Usage
 

@@ -164,8 +164,13 @@ dir (`src/core/audit.ts`, written by `engine.execute`), one JSON line each:
   lines.
 - UI-originated commands are not logged, and neither are demo or fake runs
   (they change nothing real and may run with the real config dir).
-- App & account shows the last week ("38 commands from the CLI and
-  agents"), flagging any that needed confirm (M6).
+- App & account reads it through `app.audit.list` (`readAudit`): the last
+  7 local days ("38 commands from the CLI and agents"), a count per day,
+  how many were refused with `needs_confirm`, this week's newest entries
+  (time, surface, id, effect, ok, code) and the newest MCP command at any
+  age (`mcpLastAt`). It reads only the newest 1,000 lines, skips malformed
+  ones, and never returns params, so nothing from the file but those fields
+  reaches the window.
 
 ## Logging
 

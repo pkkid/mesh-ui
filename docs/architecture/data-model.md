@@ -765,6 +765,8 @@ type CliStatus = {
   onPath: boolean;
   canInstall: boolean;            // app.cli.install can do it (macOS, AppImage)
   reinstall: boolean;             // installed, but the app moved or was replaced
+  pathLine: string | null;        // shell (PowerShell on Windows) line that adds the launcher's folder
+                                  // to PATH, when it is not on PATH (macOS: the bundle's bin, no admin)
 };
 
 type AppSettings = {
@@ -782,7 +784,7 @@ type AuditEntry = { at: Iso; surface: "cli" | "mcp"; id: string; effect: Effect 
 
 /** app.audit.list */
 type AuditList = {
-  entries: AuditEntry[];          // newest first, at most `limit`
+  entries: AuditEntry[];          // this week's, newest first, at most `limit`
   week: { date: string; count: number }[]; // the last 7 local days, oldest first, YYYY-MM-DD
   weekTotal: number;
   needsConfirm: number;           // this week, refused with needs_confirm

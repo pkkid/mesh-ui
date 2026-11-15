@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -8,7 +8,7 @@ import { z } from "zod";
 import { type CliHost, nodeHost, runCli } from "../cli/index";
 import { createMcpServer } from "../cli/mcp";
 import type { Backend } from "./backend";
-import { type AuditEntry, fileAudit, memoryAudit, redactParams } from "./audit";
+import { AUDIT_MAX_LINES, type AuditEntry, fileAudit, memoryAudit, readAudit, redactParams, weekDays } from "./audit";
 import { allCommands } from "./registry";
 import { createDemoBackend } from "./demo";
 import { createEngine } from "./engine";
@@ -179,5 +179,96 @@ describe("fileAudit", () => {
     const again = fileAudit(path, 10);
     for (let i = 40; i < 45; i++) await again.append({ time: new Date(i).toISOString(), surface: "mcp", id: `n.${i}`, effect: "query", ok: true, params: {} });
     expect((await readLines(path)).map((l) => l.id)).toEqual(Array.from({ length: 10 }, (_, i) => `n.${35 + i}`));
+  });
+});
+
+describe("readAudit", () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "mesh-ui-M6.6-audit-"));
+  });
+  afterEach(() => rm(dir, { recursive: true, force: true }));
+
+  /** Local noon on Sat Nov 14 2026, so day boundaries are the viewer's own. */
+  const now = new Date(2026, 10, 14, 12).getTime();
+  const at = (daysAgo: number, hour = 9) => new Date(2026, 10, 14 - daysAgo, hour).toISOString();
+  const line = (o: Partial<AuditEntry> & { time: string }) =>
+    JSON.stringify({ surface: "cli", id: "device.list", effect: "query", ok: true, params: {}, ...o });
+  const write = async (lines: string[]) => {
+    const file = join(dir, "audit.jsonl");
+    await writeFile(file, `${lines.join("\n")}\n`);
+    return file;
+  };
+
+  it("summarises the week by local day, newest first, with the needs-confirm count and the last MCP use", async () => {
+    const file = await write([
+      line({ time: at(9), surface: "mcp", id: "network.list" }), // before the week: only mcpLastAt
+      line({ time: at(6, 8), id: "eero.reboot", effect: "disruptive", ok: false, code: "needs_confirm" }),
+      line({ time: at(2), surface: "mcp", id: "device.pause", effect: "write", params: { password: "[removed]" } }),
+      line({ time: at(0, 7), id: "eero.reboot", effect: "disruptive", ok: false, code: "needs_confirm" }),
+      line({ time: at(0, 10), id: "usage.get" }),
+    ]);
+    const r = await readAudit(file, { now, limit: 20 });
+    expect(r.week).toEqual(weekDays(now).map((date, i) => ({ date, count: [1, 0, 0, 0, 1, 0, 2][i] })));
+    expect(r.week[6]?.date).toBe("2026-11-14");
+    expect(r.weekTotal).toBe(4);
+    expect(r.needsConfirm).toBe(2);
+    expect(r.mcpLastAt).toBe(at(2));
+    expect(r.entries.map((e) => e.id)).toEqual(["usage.get", "eero.reboot", "device.pause", "eero.reboot"]);
+    expect(r.entries[1]).toEqual({ at: at(0, 7), surface: "cli", id: "eero.reboot", effect: "disruptive", ok: false, code: "needs_confirm" });
+    // Params are never part of the summary.
+    expect(JSON.stringify(r)).not.toContain("password");
+  });
+
+  it("limits the entries but still counts the whole week", async () => {
+    const file = await write(Array.from({ length: 30 }, (_, i) => line({ time: new Date(2026, 10, 14, 0, i).toISOString() })));
+    const r = await readAudit(file, { now, limit: 5 });
+    expect(r.entries).toHaveLength(5);
+    expect(r.weekTotal).toBe(30);
+  });
+
+  it("skips malformed lines", async () => {
+    const file = await write([
+      "not json",
+      "[1,2]",
+      "null",
+      JSON.stringify({ time: "yesterday", surface: "cli", id: "a", ok: true }),
+      JSON.stringify({ time: at(1), surface: "ui", id: "a", ok: true }),
+      JSON.stringify({ time: at(1), surface: "cli", id: "", ok: true }),
+      JSON.stringify({ time: at(1), surface: "cli", id: "a" }),
+      JSON.stringify({ time: at(1), surface: "mcp", id: "network.list", ok: true, effect: "nonsense" }),
+      '{"time":"' + at(1) + '","surface":"cli","id":"trunc',
+    ]);
+    const r = await readAudit(file, { now, limit: 20 });
+    expect(r.weekTotal).toBe(1);
+    expect(r.entries).toEqual([{ at: at(1), surface: "mcp", id: "network.list", effect: null, ok: true, code: null }]);
+    expect(r.mcpLastAt).toBe(at(1));
+  });
+
+  it(`reads only the newest ${AUDIT_MAX_LINES} lines`, async () => {
+    const lines = [
+      line({ time: at(1), surface: "mcp", id: "too.old" }),
+      ...Array.from({ length: AUDIT_MAX_LINES }, () => line({ time: at(0) })),
+    ];
+    const r = await readAudit(await write(lines), { now, limit: 200 });
+    expect(r.weekTotal).toBe(AUDIT_MAX_LINES);
+    expect(r.mcpLastAt).toBeNull();
+    expect(r.entries.some((e) => e.id === "too.old")).toBe(false);
+  });
+
+  it("answers an empty week for a missing file or no config dir", async () => {
+    for (const path of [join(dir, "missing.jsonl"), null]) {
+      const r = await readAudit(path, { now, limit: 20 });
+      expect(r).toEqual({ entries: [], week: weekDays(now).map((date) => ({ date, count: 0 })), weekTotal: 0, needsConfirm: 0, mcpLastAt: null });
+    }
+  });
+
+  it("reads what fileAudit wrote, through app.audit.list", async () => {
+    const file = join(dir, "audit.jsonl");
+    const log = fileAudit(file);
+    await log.append({ time: new Date(now - 60_000).toISOString(), surface: "mcp", id: "device.list", effect: "query", ok: true, params: {} });
+    const engine = createEngine({ backend: createDemoBackend(), host: { configDir: dir }, clock: () => now });
+    const res = await engine.execute("app.audit.list", {});
+    expect(res.ok && res.result).toMatchObject({ weekTotal: 1, mcpLastAt: new Date(now - 60_000).toISOString(), entries: [{ id: "device.list", surface: "mcp" }] });
   });
 });
