@@ -69,9 +69,9 @@ Row actions shown in the mockup:
 | Settings icon | none (navigation) | | | Opens App & account at Notifications (`#/account/notifications`) |
 | Assign profile | `device.profile.set` `{devices: [device], profile}` | write | no | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
 | Row menu: Rename | `device.rename` `{device, nickname}` | write | no | Dialog; "Renamed to X" toast with Undo; field errors stay in the dialog |
-| Row menu: Block, Unblock | `device.block` / `device.unblock` `{devices: [device]}` | write | Block asks first | "Blocked X" toast with Undo |
+| Row menu: Block, Unblock | `device.block` / `device.unblock` `{devices: [device]}` | disruptive (Block) / write | Block: confirm dialog | "Blocked X" toast with Undo |
 | Row menu: Device details | none (navigation) | | | Opens the device page |
-| Resume | `profile.resume` `{profile}` | write | no | "Resumed Leo" toast with Undo (`profile.pause`); the button goes; a "resumed" event appears on a later poll |
+| Resume | `profile.resume` `{profile}` | write | no | "Resumed Leo" toast with Undo (`profile.pause`, which asks first); the button goes; a "resumed" event appears on a later poll |
 | Unblock | `device.unblock` `{devices: [device]}` | write | no | "Unblocked X" toast with Undo (`device.block`); the button goes |
 | Updates, Diagnose | none (navigation) | | | [Updates & admins](updates-admins.md), [Troubleshooting](troubleshooting.md) |
 | Load older events | `events.list` `{cursor}` | query | no | Appends the next page |

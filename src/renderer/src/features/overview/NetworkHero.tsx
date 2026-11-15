@@ -177,7 +177,8 @@ function SpeedGauge({
 
 /**
  * "Pause a profile": a menu of the profiles not yet paused; picking one runs
- * `profile.pause` with a toast and Undo (`profile.resume`).
+ * `profile.pause` (disruptive: the confirm dialog first) with a toast and
+ * Undo (`profile.resume`).
  */
 function PauseProfileButton() {
   const gate = useGate(PROFILE_GATE);
@@ -191,6 +192,7 @@ function PauseProfileButton() {
     void write.run(
       { profile: p.id },
       {
+        confirm: { title: `Pause ${p.name}?`, confirmLabel: "Pause profile" },
         success: `Paused ${p.name}`,
         failure: `Couldn't pause ${p.name}`,
         undo: { id: "profile.resume", params: { profile: p.id }, success: `Resumed ${p.name}` },

@@ -6,8 +6,8 @@
  * `action` show it (Assign profile, Resume, Unblock) while the device or
  * profile still needs it, through the write kit (`useWrite`, gated by the
  * command's own gate). Rows about a device also get a `...` menu: Rename (a
- * small dialog, `device.rename`), Block or Unblock (`device.block`, asks
- * first) and Device details, each gated by its command.
+ * small dialog, `device.rename`), Block or Unblock (`device.block`,
+ * disruptive: the confirm dialog first) and Device details, each gated by its command.
  * `StreamSettingsButton` is the header's settings icon, opening App & account
  * at Notifications. docs/ux/pages/activity.md (Layout 3, Actions).
  */
@@ -138,7 +138,7 @@ function ResumeButton({ profile }: { profile: Profile }) {
           {
             success: `Resumed ${profile.name}`,
             failure: `Couldn't resume ${profile.name}`,
-            undo: { id: "profile.pause", params: { profile: profile.id }, success: `Paused ${profile.name}` },
+            undo: { id: "profile.pause", params: { profile: profile.id }, confirm: { title: `Pause ${profile.name}?`, confirmLabel: "Pause profile" }, success: `Paused ${profile.name}` },
           },
         )
       }

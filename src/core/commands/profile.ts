@@ -347,10 +347,17 @@ export const commands: AnyCommand[] = [
     label: "Pause profile",
     description: "Pauses internet on every device in the profile until resumed. eero has no timed pause.",
     icon: "pause",
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile") }),
+    confirmMessage: async (ctx, p) => {
+      const profile = await ctx.backend.profile.get(ctx.net, await ctx.resolve("profile", p.profile));
+      const n = profile.deviceIds.length;
+      return n === 0
+        ? `${profile.name} has no devices yet; any that join stay paused until resumed.`
+        : `${n === 1 ? `${profile.name}'s device loses` : `All ${n} of ${profile.name}'s devices lose`} internet until resumed.`;
+    },
     run: async (ctx, p): Promise<M.Profile> => setPaused(ctx, p.profile, true),
   }),
 
@@ -411,10 +418,15 @@ export const commands: AnyCommand[] = [
     label: "Pause unassigned devices",
     description: "Pauses internet on every device with no profile (eero's Unassigned group), until resumed. Includes TVs and smart home gear.",
     icon: "pause",
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({}),
+    confirmMessage: async (ctx) => {
+      const n = (await ctx.backend.device.list(ctx.net)).filter((d) => d.profileId === null).length;
+      const who = n === 1 ? "The 1 device with no profile loses" : `All ${n} devices with no profile lose`;
+      return `${who} internet until resumed, including TVs, printers and smart home gear.`;
+    },
     run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, true), { paused: true }),
   }),
 

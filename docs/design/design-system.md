@@ -265,7 +265,7 @@ Every write control uses the same pieces (M4.3):
   names the inverse write. Errors show an error toast with Retry (no second
   confirm) and the control keeps its old state; `form: true` sends
   `bad_params` to the fields instead (`fieldErrors(error)`). `askFirst`
-  covers writes the UI confirms on its own (block a device) and never sends
+  covers writes the UI confirms on its own (delete a schedule) and never sends
   `confirm`. Every confirm is a centred modal: `confirmIn: "dialog"`
   (default) uses the app's confirm dialog; `"nested"`, for a write inside
   another dialog (palette, sheet), holds the ask in the hook for

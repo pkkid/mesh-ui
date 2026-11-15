@@ -291,8 +291,8 @@ describe("settings.impact (demo)", () => {
   it("has a row for every disruptive and destructive write that exists or M5 adds", () => {
     const registered = allCommands().filter((c) => c.effect === "disruptive").map((c) => c.id);
     const planned = ["settings.dns.set", "settings.dhcp.set", "settings.ipv6.set", "settings.wan.set", "settings.connection_mode.set", "settings.nat_randomization.set", "settings.mlo.set", "settings.legacy_mode.set", "updates.install", "eero.port.action"];
-    // eero.restart and guest writes have their own impact copy (gateway-aware, guests only).
-    const own = new Set(["eero.restart", "guest.disable", "guest.rename", "guest.password.set", "wifi.hide5g.set"]);
+    // eero.restart, guest writes, pauses and blocks have their own impact copy (gateway-aware, guests only, the devices named).
+    const own = new Set(["eero.restart", "guest.disable", "guest.rename", "guest.password.set", "wifi.hide5g.set", "device.pause", "device.block", "profile.pause", "profile.unassigned.pause"]);
     for (const id of [...registered, ...planned].filter((id) => !own.has(id))) expect(IMPACT[id], id).toBeDefined();
   });
 

@@ -264,7 +264,7 @@ function EntityPreview({
             <span className="font-mono text-muted-foreground text-xs">
               {item.kind}.{item.action.toLowerCase()}
             </span>
-            <EffectTag effect="write" />
+            <EffectTag effect={item.actionEffect ?? "write"} />
             {item.actionBlocked && <span className="text-muted-foreground text-xs">{item.actionBlocked}</span>}
           </div>
         </div>

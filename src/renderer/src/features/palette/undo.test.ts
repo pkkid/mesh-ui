@@ -58,7 +58,9 @@ describe("palette Undo", () => {
     expect(inv("device.block")).toBe("device.unblock");
     expect(inv("profile.pause")).toBe("profile.resume");
     expect(inv("profile.unassigned.pause")).toBe("profile.unassigned.resume");
-    expect(inv("guest.enable")).toBeNull(); // guest.disable drops guests (disruptive), so no one-click Undo
+    // A disruptive opposite still undoes; performWrite asks first, as the guest page does.
+    expect(inv("guest.enable")).toBe("guest.disable");
+    expect(inv("guest.disable")).toBe("guest.enable");
     expect(inv("device.rename")).toBeNull();
     expect(inv("network.restart")).toBeNull(); // disruptive: no Undo
     expect(inv("device.list")).toBeNull();

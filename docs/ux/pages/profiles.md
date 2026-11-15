@@ -71,10 +71,10 @@ count: number of profiles, not counting Unassigned.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | + Add a profile | `profile.create {name, devices}` | write | No | Sheet: name, device picker (unassigned first, then others with their current profile shown); Save creates and opens the profile |
-| Pause all | `profile.pause {profile}` once per profile (Unassigned not included) | write | Yes, UI dialog ("Pause Alex, Jamie, Mia and Leo? 18 devices lose internet until you resume them.") | All cards Paused; toast with Undo |
+| Pause all | `profile.pause {profile}` once per profile (Unassigned not included) | disruptive | Yes, one dialog for all ("Pause Alex, Jamie, Mia and Leo? 18 devices lose internet until you resume them.") | All cards Paused; toast with Undo |
 | Cards / List | - (view state) | - | No | Layout |
 | Card (click outside buttons) | - | - | No | Profile detail |
-| Pause (card) | `profile.pause {profile}` | write | No | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
+| Pause (card) | `profile.pause {profile}` | disruptive | Yes, dialog ("Pause Mia? All 4 of Mia's devices lose internet until resumed.") | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
 | Resume (card) | `profile.resume {profile}` | write | No | Card Active (or Scheduled); during a scheduled pause, stays online until the next scheduled start |
 | `...` menu: Rename | `profile.rename {profile, name}` | write | No | Rename sheet (name only); toast with Undo |
 | `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | No | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
@@ -85,7 +85,7 @@ count: number of profiles, not counting Unassigned.
 | Tile click | - (view state: toggles selection) | - | No | Selected tiles get the selected surface; enables New profile from selection |
 | Tile double-click | - | - | No | Device detail |
 | New profile from selection | `profile.create {name, devices}` | write | No | Name sheet prefilled with the selection |
-| Pause unassigned | `profile.unassigned.pause {}` | write | Yes, UI inline ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
+| Pause unassigned | `profile.unassigned.pause {}` | disruptive | Yes, dialog ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
 
 Built in M4.5: Add a profile (sheet with name and a device picker:
 unassigned first, then others with "Moves from Alex"; Save opens the new

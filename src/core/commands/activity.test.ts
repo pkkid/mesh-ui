@@ -616,7 +616,7 @@ describe("row links and actions on the fake eero server", () => {
     const dev = (name: string) => devices.devices.find((d) => d.name === name)?.id;
     const leo = profiles.profiles.find((p) => p.name === "Leo")?.id;
     const garage = eeros.find((e) => e.location === "Garage")?.id;
-    await ok(engine.execute("device.block", { devices: [dev("Old Printer")] }));
+    await ok(engine.execute("device.block", { devices: [dev("Old Printer")], confirm: true }));
 
     const page = await ok(engine.execute<M.EventPage>("events.list", {}));
     const row = (hash: string) => page.events.find((e) => e.id === hash);

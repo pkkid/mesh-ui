@@ -118,7 +118,8 @@ runs every write. No page calls `window.mesh` directly.
 
 ```ts
 const devices = useQuery("device.list", { profile: null }, { poll: true });
-const pause = useWrite("profile.pause", {
+const pause = useWrite("profile.pause", {   // disruptive: the confirm dialog first
+  confirm: { title: "Pause Leo?", confirmLabel: "Pause profile" },
   success: "Paused Leo",
   undo: { id: "profile.resume", params: { profile: "Leo" } },
 });
@@ -254,7 +255,7 @@ turns into a confirm in place.
   show what is pending (the Advanced networking side panel does).
 - After confirming, the kit calls `execute(id, { ...params, confirm: true })`.
   The UI never adds `confirm` on its own without one of these steps. A
-  `write` the UI confirms itself (block a device) passes `askFirst` and never
+  `write` the UI confirms itself (delete a schedule) passes `askFirst` and never
   sends `confirm`.
 
 ## Command palette

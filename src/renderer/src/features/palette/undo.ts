@@ -5,9 +5,11 @@
  * and `.disable`) toasts with Undo, which runs that command with the same
  * targets. Nothing per command: the pairs come from the ids in the registry.
  *
- * Undo is offered only for a reversible write that changed something: a
- * bulk device result undoes only the devices it changed, and none when it
- * changed none. Disruptive and destructive commands never get Undo.
+ * Undo is offered only for a write that changed something: a bulk device
+ * result undoes only the devices it changed, and none when it changed none.
+ * A disruptive write that has an opposite (pause, block, disable) gets Undo
+ * too; when the opposite is itself disruptive, Undo asks first like any
+ * other confirm. Destructive commands never get Undo.
  *
  * Pure (no React, no `~`), so it runs in node tests (undo.test.ts).
  */
@@ -24,14 +26,16 @@ const OPPOSITE: Readonly<Record<string, string>> = {
   disable: "enable",
 };
 
-/** The registered `write` that undoes `info`, or null. */
+const undoable = (effect: CommandInfo["effect"]) => effect === "write" || effect === "disruptive";
+
+/** The registered write that undoes `info`, or null. */
 export function inverseOf(info: Pick<CommandInfo, "id" | "effect">, commands: ReadonlyArray<CommandInfo>): CommandInfo | null {
-  if (info.effect !== "write") return null;
+  if (!undoable(info.effect)) return null;
   const parts = info.id.split(".");
   const opposite = OPPOSITE[parts.at(-1) ?? ""];
   if (!opposite) return null;
   const id = [...parts.slice(0, -1), opposite].join(".");
-  return commands.find((c) => c.id === id && c.effect === "write") ?? null;
+  return commands.find((c) => c.id === id && undoable(c.effect)) ?? null;
 }
 
 const changedIds = (result: unknown): string[] | null => {

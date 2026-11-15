@@ -301,10 +301,13 @@ export function ProfilePauseButton({
 }) {
   const gate = useGate(PROFILE_GATE);
   const id = p.paused ? "profile.resume" : "profile.pause";
+  // Pausing is disruptive: the engine asks, with core's message naming how many devices go offline.
+  const confirm = { title: `Pause ${p.name}?`, confirmLabel: "Pause profile" };
   const write = useWrite(id, {
     success: `${p.paused ? "Resumed" : "Paused"} ${p.name}`,
     failure: `Couldn't ${p.paused ? "resume" : "pause"} ${p.name}`,
-    undo: { id: p.paused ? "profile.pause" : "profile.resume", params: { profile: p.id }, success: `${p.paused ? "Paused" : "Resumed"} ${p.name}` },
+    confirm: p.paused ? undefined : confirm,
+    undo: { id: p.paused ? "profile.pause" : "profile.resume", params: { profile: p.id }, confirm: p.paused ? confirm : undefined, success: `${p.paused ? "Paused" : "Resumed"} ${p.name}` },
   });
   return (
     <GatedButton gate={gate} size={size} variant={variant} className={className} disabled={write.running} onClick={() => void write.run({ profile: p.id })}>
@@ -321,7 +324,7 @@ function PauseAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
   const targets = profiles.filter((p) => !p.paused);
   const run = async () => {
     const copy = pauseAllMessage(targets);
-    if (!(await askInDialog({ id: "profile.pause", effect: "write", ...copy, confirmLabel: "Pause all" }))) return;
+    if (!(await askInDialog({ id: "profile.pause", effect: "disruptive", ...copy, confirmLabel: "Pause all" }))) return;
     setRunning(true);
     const done = await runEach("profile.pause", targets);
     setRunning(false);
@@ -344,12 +347,16 @@ function PauseAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
   );
 }
 
-/** Runs one write per profile in turn; an error toast names the ones that failed. Returns the ones that worked. */
+/**
+ * Runs one write per profile in turn; an error toast names the ones that
+ * failed. Returns the ones that worked. Pause all asked once for every
+ * profile, so each `profile.pause` (disruptive) goes with `confirm: true`.
+ */
 async function runEach(id: "profile.pause" | "profile.resume", list: ReadonlyArray<Profile>): Promise<Profile[]> {
   const done: Profile[] = [];
   const failed: { p: Profile; text: string }[] = [];
   for (const p of list) {
-    const res = await execute(id, { profile: p.id });
+    const res = await execute(id, id === "profile.pause" ? { profile: p.id, confirm: true } : { profile: p.id });
     if (res.ok) done.push(p);
     else failed.push({ p, text: errorText(id, res.error) });
   }

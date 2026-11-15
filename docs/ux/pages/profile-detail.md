@@ -91,7 +91,7 @@ Profiles stays active.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Rename (topbar) | `profile.rename {profile, name}` | write | No | Rename sheet (name, 32 characters, a taken name shows under the field); toast with Undo |
-| Pause profile | `profile.pause {profile}` | write | No | Status Paused; button becomes **Resume profile**; a manual segment appears on today's lane |
+| Pause profile | `profile.pause {profile}` | disruptive | Yes, dialog | Status Paused; button becomes **Resume profile**; a manual segment appears on today's lane |
 | Resume profile | `profile.resume {profile}` | write | No | Active; during a scheduled pause Mia stays online until the next scheduled start (hero line says so) |
 | + Add a scheduled pause | - | - | No | Opens the sheet empty (name "New schedule", 9:00 PM to 7:00 AM, School nights) |
 | Schedule row, pencil, lane segment | - | - | No | Opens the sheet for that schedule |

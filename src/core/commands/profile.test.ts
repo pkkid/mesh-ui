@@ -355,7 +355,7 @@ describe("profile writes (demo)", () => {
     const { engine } = demo();
     await list(engine);
     const mia = (await list(engine)).profiles.find((p) => p.name === "Mia");
-    const paused = await engine.execute<M.Profile>("profile.pause", { profile: "Mia" });
+    const paused = await engine.execute<M.Profile>("profile.pause", { profile: "Mia", confirm: true });
     expect(paused).toMatchObject({ ok: true, result: { paused: true, state: "paused", nextChange: null } });
     const after = await list(engine);
     expect(after.profiles.find((p) => p.name === "Mia")?.state).toBe("paused");
@@ -411,11 +411,23 @@ describe("profile writes (demo)", () => {
     expect(await engine.execute("profile.delete", { confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
+  it("refuses profile pauses without confirm, saying whose devices go offline, and pauses nothing", async () => {
+    const { engine } = demo();
+    const before = await list(engine);
+    const mia = before.profiles.find((p) => p.name === "Mia");
+    const r = await engine.execute("profile.pause", { profile: "Mia" });
+    expect(r).toEqual({ ok: false, error: { code: "needs_confirm", message: `All ${mia?.deviceIds.length} of Mia's devices lose internet until resumed.` } });
+    const u = await engine.execute("profile.unassigned.pause");
+    expect(u).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+    if (!u.ok) expect(u.error.message).toMatch(/devices with no profile lose internet until resumed, including TVs, printers and smart home gear\.$/);
+    expect(await list(engine)).toEqual(before);
+  });
+
   it("pauses and resumes the Unassigned devices", async () => {
     const { engine } = demo();
     const before = await list(engine);
     expect(before.unassigned.paused).toBe(false);
-    expect(await engine.execute("profile.unassigned.pause")).toEqual({ ok: true, result: { paused: true } });
+    expect(await engine.execute("profile.unassigned.pause", { confirm: true })).toEqual({ ok: true, result: { paused: true } });
     const after = await list(engine);
     expect(after.unassigned.paused).toBe(true);
     expect(after.today.lanes.find((l) => l.profileId === null)?.segments.map((x) => x.kind)).toEqual(["manual"]);
@@ -423,7 +435,7 @@ describe("profile writes (demo)", () => {
     expect(after.profiles.find((p) => p.name === "Alex")?.paused).toBe(false);
     expect(await engine.execute("profile.unassigned.resume")).toEqual({ ok: true, result: { paused: false } });
     expect((await list(engine)).unassigned.paused).toBe(false);
-    expect(await engine.execute("profile.unassigned.pause", { profile: "Alex" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("profile.unassigned.pause", { profile: "Alex", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
   it("profile.get returns today's pauses: a manual pause from now, schedules in the zone", async () => {
@@ -437,7 +449,7 @@ describe("profile writes (demo)", () => {
     });
     const mia = await engine.execute<M.ProfileDetail>("profile.get", { profile: "Mia" });
     expect(mia.ok && mia.result.today.segments.every((x) => x.kind === "scheduled")).toBe(true);
-    await engine.execute("profile.pause", { profile: "Mia" });
+    await engine.execute("profile.pause", { profile: "Mia", confirm: true });
     const paused = await engine.execute<M.ProfileDetail>("profile.get", { profile: "Mia" });
     const manual = paused.ok ? paused.result.today.segments.filter((x) => x.kind === "manual") : [];
     // A manual pause runs from now to the next scheduled start (Homework at 4 PM is the first after 2:41 PM, if enabled today).
@@ -445,16 +457,16 @@ describe("profile writes (demo)", () => {
     expect(manual[0]?.start).toBe(14 * 60 + 41);
   });
 
-  it("are writes, delete destructive, and invalidate profiles, devices and network", () => {
+  it("are writes, pauses disruptive, delete destructive, and invalidate profiles, devices and network", () => {
     const specs = profileCommands.filter((c) => c.effect !== "query");
     expect(Object.fromEntries(specs.map((c) => [c.id, c.effect]))).toEqual({
       "profile.create": "write",
       "profile.rename": "write",
-      "profile.pause": "write",
+      "profile.pause": "disruptive",
       "profile.resume": "write",
       "profile.devices.set": "write",
       "profile.delete": "destructive",
-      "profile.unassigned.pause": "write",
+      "profile.unassigned.pause": "disruptive",
       "profile.unassigned.resume": "write",
       "profile.schedule.add": "write",
       "profile.schedule.update": "write",
@@ -495,7 +507,7 @@ describe("profile writes (fake eero server)", () => {
     const renamed = await engine.execute<M.ProfileList>("profile.list");
     expect(renamed.ok && renamed.result.profiles.map((p) => p.name)).toContain("Alexis");
 
-    expect(await engine.execute("profile.pause", { profile: "Alexis" })).toMatchObject({ ok: true, result: { paused: true, state: "paused" } });
+    expect(await engine.execute("profile.pause", { profile: "Alexis", confirm: true })).toMatchObject({ ok: true, result: { paused: true, state: "paused" } });
     expect(fake.writes.at(-1)).toMatchObject({ method: "PUT", route: "/networks/100001/profiles/700", body: { paused: true } });
     const devices = await engine.execute<M.DeviceList>("device.list", { profile: "Alexis" });
     expect(devices.ok && devices.result.devices.every((d) => d.paused)).toBe(true);
@@ -542,7 +554,7 @@ describe("profile writes (fake eero server)", () => {
     const list = await engine.execute<M.ProfileList>("profile.list");
     expect(list.ok && list.result.profiles.map((p) => p.id)).not.toContain("790");
 
-    expect(await engine.execute("profile.unassigned.pause")).toEqual({ ok: true, result: { paused: true } });
+    expect(await engine.execute("profile.unassigned.pause", { confirm: true })).toEqual({ ok: true, result: { paused: true } });
     expect(fake.writes.at(-1)).toMatchObject({ method: "PUT", version: "2.2", route: "/networks/100001/profiles/790", encoding: "json", body: { paused: true } });
     const after = await engine.execute<M.ProfileList>("profile.list");
     expect(after.ok && after.result.unassigned.paused).toBe(true);
@@ -563,7 +575,7 @@ describe("profile writes (fake eero server)", () => {
     // eeroOS before 7.12.4: no default profile, unprofiled devices have `profile: null`.
     net.profiles = net.profiles.filter((p) => p.default !== true);
     for (const d of net.devices) if (d.profile?.url?.endsWith("/790")) d.profile = null;
-    const r = await engine.execute("profile.unassigned.pause");
+    const r = await engine.execute("profile.unassigned.pause", { confirm: true });
     expect(r.ok, JSON.stringify(r)).toBe(true);
     const puts = fake.writes.filter((w) => w.method === "PUT");
     expect(puts.map((w) => w.route)).toEqual(["/networks/100001/devices/0a1b2c000006", "/networks/100001/devices/0a1b2c000007", "/networks/100001/devices/0a1b2c000008"]);

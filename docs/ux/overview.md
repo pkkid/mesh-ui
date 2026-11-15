@@ -240,7 +240,7 @@ CLI) and an effects legend.
 
 The mockup's "Pause 5 and 6 GHz for 2.4 GHz setup" row is `wifi.hide5g.set`
 (disruptive) and "Pause unassigned devices" is `profile.unassigned.pause`
-(write), both in the [catalogue](../architecture/commands.md).
+(disruptive), both in the [catalogue](../architecture/commands.md).
 
 ## Keyboard shortcuts
 
@@ -363,11 +363,13 @@ type its name (Delete profile on 08: `Type "Mia" to confirm`). Account
 deletion uses a checkbox statement instead. The danger button stays disabled
 until the input matches.
 
-**Writes that still confirm in the UI** (engine does not require it, the UI
-asks because the reach is large): block a device, block several devices,
-pause the Unassigned profile (includes TV, printer and smart home gear),
-Pause all profiles. These use the confirm dialog and do not pass
-`confirm`.
+**Anything that takes a device offline is disruptive**, however briefly:
+pausing a device or a profile, Pause unassigned, Pause all, and blocking.
+They confirm like every other disruptive command: the engine refuses
+without `confirm`, the UI shows the dialog with core's message naming who
+goes offline, and the CLI and MCP must pass `confirm` too. Resume and
+Unblock bring devices back and stay plain writes. Undo after a resume (a
+pause) asks again.
 
 **Disruptive labels.** Rows for disruptive or destructive actions show a
 "Disruptive" or "Destructive" text label next to the button so the risk is

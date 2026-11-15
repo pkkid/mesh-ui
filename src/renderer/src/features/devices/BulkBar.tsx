@@ -43,7 +43,13 @@ const changed = (r: DeviceBulkResult, devices: ReadonlyArray<DeviceRef>, was: (d
 /** The bulk commands take at most this many devices. */
 export const BULK_MAX = 50;
 
-/** Pause or resume, with Undo running the other one on the devices that changed. */
+/** The pause confirm's title and button. `device.pause` is disruptive: core's needs_confirm message names the devices. */
+const pauseConfirm = (devices: ReadonlyArray<Pick<DeviceRef, "name">>) => ({
+  title: `Pause ${devices.length === 1 ? (devices[0]?.name ?? "1 device") : count(devices.length)}?`,
+  confirmLabel: devices.length > 1 ? `Pause ${count(devices.length)}` : "Pause device",
+});
+
+/** Pause (disruptive: asks in the confirm dialog) or resume, with Undo running the other one on the devices that changed. */
 export function pauseRequest(devices: ReadonlyArray<DeviceRef>, paused: boolean): WriteRequest<{ devices: string[] }, DeviceBulkResult> {
   const verb = paused ? "Paused" : "Resumed";
   return {
@@ -53,13 +59,29 @@ export function pauseRequest(devices: ReadonlyArray<DeviceRef>, paused: boolean)
     failure: `Couldn't ${paused ? "pause" : "resume"} ${who(devices)}`,
     undo: (r) => {
       const undo = changed(r, devices, (d) => d.paused === paused);
-      return undo.length ? { id: paused ? "device.resume" : "device.pause", params: { devices: undo } } : null;
+      if (!undo.length) return null;
+      return paused
+        ? { id: "device.resume", params: { devices: undo } }
+        : { id: "device.pause", params: { devices: undo }, confirm: pauseConfirm(devices.filter((d) => undo.includes(d.id))) };
     },
+    confirm: paused ? pauseConfirm(devices) : undefined,
+  };
+}
+
+/** The block confirm. `device.block` is disruptive, so the engine asks; this is the copy the dialog shows. */
+function blockConfirm(devices: ReadonlyArray<Pick<DeviceRef, "name">>, where: string) {
+  const many = devices.length > 1;
+  return {
+    title: `Block ${devices.length === 1 ? (devices[0]?.name ?? "1 device") : count(devices.length)}?`,
+    message: many
+      ? `They are disconnected from every eero and can't rejoin ${where} until you unblock them.`
+      : `It will be disconnected from every eero and can't rejoin ${where} until you unblock it from Devices > Blocked.`,
+    confirmLabel: many ? `Block ${count(devices.length)}` : "Block device",
   };
 }
 
 /**
- * Block (asks first, in the confirm dialog) or unblock, with Undo running the other one.
+ * Block (disruptive: asks in the confirm dialog) or unblock, with Undo running the other one.
  */
 export function blockRequest(
   devices: ReadonlyArray<DeviceRef>,
@@ -67,7 +89,6 @@ export function blockRequest(
   opts: { networkName?: string | null } = {},
 ): WriteRequest<{ devices: string[] }, DeviceBulkResult> {
   const where = opts.networkName ?? "this network";
-  const many = devices.length > 1;
   return {
     id: blocked ? "device.block" : "device.unblock",
     params: { devices: ids(devices) },
@@ -75,18 +96,12 @@ export function blockRequest(
     failure: `Couldn't ${blocked ? "block" : "unblock"} ${who(devices)}`,
     undo: (r) => {
       const undo = changed(r, devices, (d) => d.blocked === blocked);
-      return undo.length ? { id: blocked ? "device.unblock" : "device.block", params: { devices: undo } } : null;
+      if (!undo.length) return null;
+      return blocked
+        ? { id: "device.unblock", params: { devices: undo } }
+        : { id: "device.block", params: { devices: undo }, confirm: blockConfirm(devices.filter((d) => undo.includes(d.id)), where) };
     },
-    askFirst: blocked,
-    confirm: blocked
-      ? {
-          title: `Block ${who(devices)}?`,
-          message: many
-            ? `They are disconnected from every eero and can't rejoin ${where} until you unblock them.`
-            : `It will be disconnected from every eero and can't rejoin ${where} until you unblock it from Devices > Blocked.`,
-          confirmLabel: many ? `Block ${count(devices.length)}` : "Block device",
-        }
-      : undefined,
+    confirm: blocked ? blockConfirm(devices, where) : undefined,
   };
 }
 

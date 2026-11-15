@@ -177,21 +177,21 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
 }
 
 /**
- * Pause unassigned (asks inline first: it includes the TV, printer and smart
- * home gear) or Resume unassigned. Shared with the Unassigned page.
+ * Pause unassigned (disruptive: the confirm dialog names who goes offline,
+ * including the TV, printer and smart home gear) or Resume unassigned. Shared with the Unassigned page.
  */
 export function UnassignedPauseButton({ paused, devices, size = "xs" }: { paused: boolean; devices: ReadonlyArray<Device>; size?: "xs" | "lg" }) {
   const gate = useGate(PROFILE_GATE);
   const copy = unassignedPauseMessage(devices);
+  const confirm = { ...copy, confirmLabel: "Pause unassigned" };
   const pause = useWrite("profile.unassigned.pause", {
-    askFirst: true,
-    confirm: { ...copy, confirmLabel: "Pause unassigned" },
+    confirm,
     success: "Paused unassigned devices",
     undo: { id: "profile.unassigned.resume", success: "Resumed unassigned devices" },
   });
   const resume = useWrite("profile.unassigned.resume", {
     success: "Resumed unassigned devices",
-    undo: { id: "profile.unassigned.pause", success: "Paused unassigned devices" },
+    undo: { id: "profile.unassigned.pause", confirm, success: "Paused unassigned devices" },
   });
   const write = paused ? resume : pause;
   const label = paused ? "Resume unassigned" : "Pause unassigned";
