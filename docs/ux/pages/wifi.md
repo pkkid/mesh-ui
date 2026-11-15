@@ -33,6 +33,13 @@ Name, password, security and 2.4 GHz only now change through the write kit; ever
 - **Time zone sheet** (Nickname and location > **Edit**, `TimezoneSheet.tsx`): a select of IANA zones (the runtime's list, plus the current zone if missing), the local time in the chosen zone, and the `settings.impact` panel ("Nothing restarts; schedules follow the new time zone"). **Save** runs `settings.timezone.set` (a `write`, no confirm), then a toast "Time zone set to ..." with **Undo**, which sets the old zone back. If eero answers but keeps the old zone, the command fails with that reason (an error toast with Retry), so the toast never names a zone eero did not save. Edit dims with the gate's reason (settings permission) and while the network is offline.
 - The network nickname stays read only: no command sets it yet (M6). **Print a card** is still "Coming soon" (M6).
 
+## Built in M6.9 (nickname, Print a card, time zone)
+
+- **Nickname and location** has one pencil per field, inside the field like the copy icons above. Each dims with the gate's reason, and while the network is offline. The bottom row keeps the "follow this time zone" line; the separate Edit button is gone.
+- **Nickname sheet** (`NicknameSheet` in `WifiPage.tsx`): one text field with a live "n of 32 characters" count; empty clears it. **Save** runs `network.nickname.set` (a `write`, no confirm, gate `network`), then a toast "Nickname set to ..." (or "Nickname cleared") with **Undo**, which sets the old nickname back. The command reads the network back; if eero keeps the old nickname it fails with that reason (an error toast with Retry). `network.list` is refetched too, so the network switcher follows. The request is `PUT {net}/label?labelType=specialMarket` form `label`, which Eeronaut sends quoting eero's Android client. Clearing sends an empty `label`; no client clears it, so that is a MANUAL check.
+- **Print a card** (hero, beside Copy password and Save QR): reads `wifi.share`, the same read as **Show code** (it runs it first if the code is not shown yet), and prints the guest card layout (`GuestCard.tsx`) titled "Wi-Fi": the QR code, the network name and the password, black on white. No new command.
+- **Time zone on a live network is read only.** The eero backend has no time zone write, so `settings.timezone.set` answers "not available yet" there and sends nothing. The only request any client sends, `PUT {net}/settings` JSON `{timezone: {value}}`, answered 200 on a real network and kept the old zone (M5.R-fix4, M5 review). No client has tested a time zone write live (endpoints.md section 20). On the eero backend (`app.info` `backend: eero`, the fake server included) the time zone pencil dims with "Change the time zone in the eero app: eero keeps the old zone when Mesh UI sends it", and the line under the fields adds "Change it in the eero app." Demo still applies it through the M5 sheet. If a working request turns up, add `setTimezone` back to the eero backend and drop the gate.
+
 ## Layout
 
 Breadcrumb: `Settings / Wi-Fi`.
@@ -81,8 +88,8 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | Band security segment | stages `wifi.security.set` `{band24?, band5?}` | disruptive | inline confirm naming the WPA2 only devices that can not rejoin | |
 | 2.4 GHz only Turn on / Turn off | `wifi.hide5g.set` `{enabled}` | disruptive | inline confirm with the impact | Countdown to `hide5g.expiresAt` |
 | 2.4 GHz only devices | none (navigation) | | | Opens the fix on [Troubleshooting](troubleshooting.md) |
-| Nickname Save | `network.nickname.set` `{nickname}` | write | no | `saved` marker; sidebar switcher updates |
-| Time zone Edit, sheet Save | `settings.timezone.set` `{timezone}` | write | no | Toast with Undo (sets the old zone back) |
+| Nickname pencil, sheet Save | `network.nickname.set` `{nickname}` (empty clears) | write | no | Toast with Undo (sets the old nickname back); network switcher updates |
+| Time zone pencil, sheet Save | `settings.timezone.set` `{timezone}` | write | no | Toast with Undo (sets the old zone back). Demo only: dimmed on the eero backend (M6.9) |
 | Confirm bar Discard | none | | | Reverts staged edits |
 | Save and reconnect | `wifi.name.set`, `wifi.password.set`, `wifi.security.set` in that order, each with `confirm: true` | disruptive | the confirm bar plus impact panel is the confirm | Wireless clients drop and rejoin; hero updates |
 
@@ -104,6 +111,6 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 - "Password changed N days ago" needs a timestamp we have not seen in a response. If eero does not expose it, drop the metric (MANUAL check).
 - "Need setup in their app" is a heuristic in core: device types that usually cannot be rejoined from a phone (IoT, speakers, printers). Label it as an estimate.
 - `wifi.hide5g.set` is on this page (Bands, since M4.7) and may also be offered from [Troubleshooting](troubleshooting.md).
-- Timezone auto saves per the eero app. The Save button in that section is for the nickname only; consider moving it beside the nickname field so this is obvious.
+- Timezone auto saves per the eero app. Mesh UI edits the nickname and the time zone in separate sheets, each from its own pencil (M6.9).
 - The SSID goes through `PUT {net}/settings` form `name` (FF live-verified); some clients use `PUT {net}`. Real behaviour is a MANUAL check.
-- Commands added: `wifi.impact` q `{change, band24?, band5?}`, `wifi.password.generate` q, `settings.timezone.set` w.
+- Commands added: `wifi.impact` q `{change, band24?, band5?}`, `wifi.password.generate` q, `settings.timezone.set` w, `network.nickname.set` w (M6.9).

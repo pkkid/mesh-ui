@@ -14,7 +14,9 @@
  * (the Wi-Fi rename) goes to the route in ./wifi.ts, which owns it. The fake
  * keeps the PPPoE user name only; the password is in `fake.writes`.
  *
- * M5.3: `band_steering` and `timezone{value}` on `PUT {net}/settings`; JSON
+ * M5.3: `band_steering` and `timezone{value}` on `PUT {net}/settings`
+ * (the zone is validated and then kept as it was, answering 200, as a real
+ * network did in the M5 review; Mesh UI no longer sends it, M6.9); JSON
  * `PUT {net}/fast_transition`, `{net}/mlo_mode` (400 on a network without
  * it), `{net}/power_saving` (`enable`, `power_saving_schedule_enabled`),
  * `{net}/auto_setup_mode` (`{mode}`: DEFAULT, ZTS, LTS or OFF; DEFAULT is
@@ -128,7 +130,7 @@ function applySettings(net: FakeNetwork, body: Record<string, unknown>): Record<
   if ("timezone" in body) {
     const tz = obj(body.timezone)?.value;
     if (typeof tz !== "string" || !/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)*$/.test(tz)) bad("error.timezone.invalid");
-    if (!net.ignoreTimezone) n.timezone = { ...(obj(n.timezone) ?? {}), value: tz as string };
+    // A real network answered 200 and kept the old zone (M5.R-fix4); so does the fake.
   }
   net.network = n;
   return body;

@@ -2,8 +2,10 @@
  * Wi-Fi: the main network's name, password (revealed only on request), QR
  * block, security per band, bands and their clients, nickname and time zone.
  * Name, password, security and 2.4 GHz only change through the write kit
- * (M4.7); the time zone changes in TimezoneSheet (`settings.timezone.set`,
- * M5). The network nickname is read only: no command sets it yet (M6).
+ * (M4.7); the nickname changes in NicknameSheet (`network.nickname.set`,
+ * M6.9) and the time zone in TimezoneSheet (`settings.timezone.set`, M5).
+ * The live eero backend cannot change the time zone (M6.9: eero keeps the old
+ * zone), so on it the time zone Edit dims with that reason; demo applies it.
  * Layout, data and
  * states: docs/ux/pages/wifi.md and docs/mockups/12-wifi-settings.html.
  *
@@ -19,12 +21,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PageProps } from "~/app/routes";
 import { bridge, execute, useQuery } from "~/app/useCommand";
+import { fieldErrors, type Gate, useWrite } from "~/app/useWrite";
 import { Card, Section } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
+import { Sheet, SheetField } from "~/components/ui/sheet";
 import { TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative, networkClock } from "../../../../core/format";
+import { NICKNAME_MAX } from "../../../../core/commands/network";
 import type { WifiPassword } from "../../../../core/commands/wifi";
-import type { DeviceList, Network, NetworkHealth, WifiSettings, WifiShare } from "../../../../core/model";
+import type { AppInfo, DeviceList, Network, NetworkHealth, WifiSettings, WifiShare } from "../../../../core/model";
 
 import { WifiBands } from "./WifiBands";
 import { TimezoneSheet } from "./TimezoneSheet";
@@ -125,13 +131,26 @@ export function WifiPage(_props: PageProps) {
   );
 }
 
-/** Network nickname (read only until M6) and time zone, with the local time there; Edit opens TimezoneSheet. */
+/** Why the time zone cannot change on the live eero backend (M6.9; docs/ux/pages/wifi.md). */
+export const TIMEZONE_LIVE_REASON = "Change the time zone in the eero app: eero keeps the old zone when Mesh UI sends it";
+
+const OFFLINE: Gate = { allowed: false, reason: "The network is offline" };
+
+/** Network nickname (Edit opens NicknameSheet) and time zone, with the local time there (Edit opens TimezoneSheet). */
 function Nickname({ network, offline }: { network: Network | null; offline: boolean }) {
   const now = useNow(30_000);
-  const [editing, setEditing] = useState(false);
-  const gate = useGate("settings.timezone.set");
+  const [editing, setEditing] = useState<"nickname" | "timezone" | null>(null);
+  const nicknameGate = useGate("network.nickname.set");
+  const tzGate = useGate("settings.timezone.set");
+  const app = useQuery<AppInfo>("app.info");
+  const live = app.data?.backend === "eero";
   const tz = network?.timezone ?? null;
   const local = tz ? networkClock(tz).time(now) : null;
+  const edit = (what: "nickname" | "timezone", gate: Gate, label: string) => (
+    <GatedButton size="icon-xs" variant="ghost" aria-label={label} title={label} gate={offline ? OFFLINE : gate} disabled={!network} onClick={() => setEditing(what)}>
+      <Pencil />
+    </GatedButton>
+  );
   return (
     <Section title="Nickname and location" subtitle="Shown under the network name and in the network switcher">
       <Card padded className="flex flex-col gap-4">
@@ -141,26 +160,65 @@ function Nickname({ network, offline }: { network: Network | null; offline: bool
             label="Network nickname"
             value={network?.nickname ?? null}
             hint="Helps tell networks apart on accounts with more than one"
+            actions={edit("nickname", nicknameGate, "Edit nickname")}
           />
-          <ReadField icon={Clock} label="Time zone" value={tz} hint={local ? `Local time ${local}` : null} />
+          <ReadField
+            icon={Clock}
+            label="Time zone"
+            value={tz}
+            hint={local ? `Local time ${local}` : null}
+            actions={edit("timezone", live ? { allowed: false, reason: TIMEZONE_LIVE_REASON } : tzGate, "Edit time zone")}
+          />
         </div>
         <div className="flex items-center gap-3 text-[13px]">
           <CalendarClock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 text-muted-foreground">Profile schedules, power saving and updates follow this time zone.</span>
-          <GatedButton
-            size="sm"
-            variant="outline"
-            gate={offline ? { allowed: false, reason: "The network is offline" } : gate}
-            disabled={!network}
-            onClick={() => setEditing(true)}
-          >
-            <Pencil />
-            Edit
-          </GatedButton>
+          <span className="min-w-0 flex-1 text-muted-foreground">
+            Profile schedules, power saving and updates follow this time zone.{live && " Change it in the eero app."}
+          </span>
         </div>
       </Card>
-      <TimezoneSheet open={editing} onClose={() => setEditing(false)} current={tz} />
+      <NicknameSheet open={editing === "nickname"} onClose={() => setEditing(null)} current={network?.nickname ?? null} />
+      <TimezoneSheet open={editing === "timezone"} onClose={() => setEditing(null)} current={tz} />
     </Section>
+  );
+}
+
+const NICKNAME_ID = "network.nickname.set";
+
+/** The nickname sheet: one field, empty clears it. Save runs `network.nickname.set` (a `write`); the toast's Undo sets the old one back. */
+function NicknameSheet({ open, onClose, current }: { open: boolean; onClose: () => void; current: string | null }) {
+  const [value, setValue] = useState(current ?? "");
+  useEffect(() => {
+    if (open) setValue(current ?? "");
+  }, [open]);
+  const next = value.trim();
+  const save = useWrite<{ nickname: string }, { nickname: string | null }>(NICKNAME_ID, {
+    success: (r) => (r.nickname ? `Nickname set to ${r.nickname}` : "Nickname cleared"),
+    undo: { id: NICKNAME_ID, params: { nickname: current ?? "" }, success: current ? `Nickname set back to ${current}` : "Nickname cleared" },
+    form: true,
+  });
+  const errors = fieldErrors(save.error);
+  const tooLong = next.length > NICKNAME_MAX;
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      icon={<Tag />}
+      title="Network nickname"
+      subtitle="A label for this network in eero's apps and the network switcher, not the Wi-Fi name"
+      dirty={next !== (current ?? "") && !tooLong}
+      onSave={() => save.run({ nickname: next })}
+      error={errors._form}
+    >
+      <SheetField
+        label="Nickname"
+        htmlFor="nickname-sheet-value"
+        error={errors.nickname ?? (tooLong ? `Use ${NICKNAME_MAX} characters or fewer.` : undefined)}
+        helper={`${next.length} of ${NICKNAME_MAX} characters. Leave empty to clear it.`}
+      >
+        <Input id="nickname-sheet-value" value={value} placeholder="Add a nickname" onChange={(e) => setValue(e.target.value)} />
+      </SheetField>
+    </Sheet>
   );
 }
 

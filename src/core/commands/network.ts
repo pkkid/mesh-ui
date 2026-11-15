@@ -14,6 +14,11 @@
  *
  * `network.restart` (M4.8) restarts every eero; its confirm and result quote
  * RESTART_ESTIMATE, the outage estimates the eero commands share.
+ *
+ * `network.nickname.set` (M6.9) sets the label eero's apps show beside the
+ * network name, then reads the network back: eero has answered 200 to writes
+ * it ignored, so a nickname that did not stick is an `eero_error`, never a
+ * result that looks saved.
  */
 
 import { z } from "zod";
@@ -32,6 +37,9 @@ export const RESTART_ESTIMATE = {
   /** Restarting a leaf eero. */
   eero: "about 1 minute",
 } as const;
+
+/** Longest network nickname (eero's app limit, as device nicknames). */
+export const NICKNAME_MAX = 32;
 
 /** What a restart returns: the eeros that go down and how long for. */
 export type RestartResult = { networkId: M.Id; eeroIds: M.Id[]; estimate: string };
@@ -170,6 +178,31 @@ export const commands: AnyCommand[] = [
       await ctx.backend.network.restart(ctx.net);
       // An offline eero cannot take the restart, so it is not waited for.
       return { networkId: ctx.net, eeroIds: eeros.filter((e) => e.status !== "offline").map((e) => e.id), estimate: RESTART_ESTIMATE.network };
+    },
+  }),
+
+  defineCommand({
+    id: "network.nickname.set",
+    label: "Network nickname",
+    description: `Sets the network's nickname: the label eero's apps show to tell networks apart, not the Wi-Fi name. Up to ${NICKNAME_MAX} characters; an empty nickname clears it. Reads the network back and fails with eero_error if eero did not keep it. Applies without a restart.`,
+    icon: "tag",
+    params: z.object({
+      nickname: z.string().trim().max(NICKNAME_MAX, `Use ${NICKNAME_MAX} characters or fewer.`).describe(`The nickname, up to ${NICKNAME_MAX} characters; empty clears it.`),
+    }),
+    effect: "write",
+    gate: { area: "network" },
+    invalidates: ["account", "network"],
+    async run(ctx, p): Promise<{ networkId: M.Id; nickname: string | null }> {
+      const want = p.nickname === "" ? null : p.nickname;
+      const before = await ctx.backend.network.get(ctx.net);
+      if ((before.nickname ?? null) === want) return { networkId: before.id, nickname: want };
+      await ctx.backend.network.setNickname(ctx.net, want);
+      const got = (await ctx.backend.network.get(ctx.net)).nickname ?? null;
+      if (got !== want) {
+        const shown = (v: string | null) => (v === null ? "no nickname" : `"${v}"`);
+        throw new CommandError("eero_error", `eero accepted the nickname but still reports ${shown(got)}, not ${shown(want)}. Check again in a minute; if it has not changed, eero did not save it.`);
+      }
+      return { networkId: before.id, nickname: got };
     },
   }),
 

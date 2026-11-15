@@ -113,7 +113,7 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | PUT | `{net}/settings` | JSON `{ipv6_upstream: bool}` (FF `set_ipv6` also sends `ipv6_downstream`) | W | SX, FF, LD | IPv6 toggle. |
 | PUT | `{net}/settings` | JSON `{ffs: bool}` | W | LD | Amazon Frustration-Free Setup. Unverified: eero's own app shows no switch for it (M5 review), and a real network sends `ffs` and capability `ffs` both true. |
 | PUT | `{net}/settings` | form `name` | W | FF | Rename SSID (FF live-verified). |
-| PUT | `{net}/settings` | JSON `{timezone: {value: "America/New_York"}}` | W | LD | Schedules follow network timezone. |
+| PUT | `{net}/settings` | JSON `{timezone: {value: "America/New_York"}}` | W | LD, Eeronaut | Schedules follow network timezone. A real network answered 200 and kept the old zone (M5.R-fix4); not sent since M6.9 ([section 20](#20-real-captures-and-write-sources-for-m6-2026-11-14)). |
 | PUT | `{net}/settings` | JSON `{dns: {mode: "automatic"|"custom", caching: bool, custom: {ips: [..up to 4, v4 or v6]}}}` and/or `{ipv6: {name_servers: {mode, custom: [...]}}}` | W **D** | FF, LD | Custom DNS. **Confirmed mesh reboot (FF).** Read from `dns{mode, caching, parent{ips}, custom{ips}}`, `ipv6.name_servers`. |
 | PUT | `{net}/dns` | JSON `{caching: bool}` | W **D** | SX | SX's DNS caching toggle (alternate path). FF uses `settings` `{dns:{caching}}`. |
 | PUT | `{net}/settings` | JSON `{connection: {mode: "nat"|"bridged"|"ipPassthrough"}, nat_port_randomization: bool, dhcp: {mode: "automatic"|"custom", custom: {subnet_ip, subnet_mask, start_ip, end_ip}}}` | W **D** | FF, LD | Bridge mode / LAN subnet / DHCP range. Bridge or passthrough disables profiles, routing, many Plus features. Mesh restart. |
@@ -506,6 +506,18 @@ the real API the area has `get` only. The `consents` read shape is also
 unverified: Mesh UI maps `consents.marketing_emails` only when it is a
 bool, else Stay up to date shows no value. To turn a write on for live, a
 capture or a live-tested client must confirm it first.
+
+**M6.9 (2026-11-14).** Rechecked Eeronaut at 0561711
+(`app/backend/eeronaut/api/config.py`): the nickname is `PUT
+{net}/label?labelType=specialMarket` form `label`, read back from
+`nickname_label`; Eeronaut requires 1 to 64 characters, so it never clears
+it. Mesh UI sends it (up to 32 characters, trimmed) and an empty `label` to
+clear, verified by the same read-back (MANUAL check). The time zone is
+still only `PUT {net}/settings` `{timezone: {value}}` with a read-back, the
+request a real network ignored, so the eero backend no longer sends it:
+`settings.timezone.set` answers "not available yet" there and the Wi-Fi
+page dims it. The fake server answers that request 200 and keeps the zone,
+as the real network did.
 
 ---
 

@@ -11,8 +11,7 @@
  * `dhcp`, `ipv6_upstream`, `lease` + `pppoe` + `vlan` (string, "" for off),
  * `connection`, `nat_port_randomization`, `upnp`, `sqm`. Each answers with the
  * next `get` (a write drops every shared read). Core skips unchanged writes.
- * M5.3 writes: `band_steering` and `timezone{value}` through the same
- * `PUT {net}/settings`; `PUT {net}/fast_transition`, `{net}/mlo_mode`,
+ * M5.3 writes: `band_steering` through the same `PUT {net}/settings`; `PUT {net}/fast_transition`, `{net}/mlo_mode`,
  * `{net}/ac_compat` (form), `{net}/power_saving` (`enable`,
  * `power_saving_schedule_enabled`), `{net}/auto_setup_mode` (`{mode}`: `ZTS`
  * on, `DEFAULT` off, as eero's app sends), `{thread}/enable` (`{enabled}`,
@@ -20,8 +19,14 @@
  * nothing), `{thread}` (`enable_credential_syncing`); `POST
  * {net}/thread` regenerates the Thread credentials; power saving schedules
  * are `POST`, `PUT` and `DELETE` under `{net}/power_saving/schedules`.
+ *
+ * No `setTimezone` (M6.9), so `settings.timezone.set` sends nothing and
+ * answers "not available yet" like every unbuilt write: `PUT {net}/settings` `{timezone: {value}}` (the only request any
+ * client sends) answered 200 on a real network and kept the old zone
+ * (M5.R-fix4, M5 review), and no client that tested a time zone write live
+ * is known (endpoints.md section 20). Demo still applies it.
  * See docs/architecture/commands.md (settings) and docs/eero-api/endpoints.md
- * sections 4 and 17.
+ * sections 4, 17 and 20.
  */
 
 import { BackendError } from "../../errors";
@@ -104,7 +109,6 @@ export const settings: EeroArea<"settings"> = (ctx) => {
 
     // M5.3: wireless, mesh and Thread. Each has its own endpoint unless noted.
     setBandSteering: (id, enabled) => write(id, { band_steering: enabled }),
-    setTimezone: (id, timezone) => write(id, { timezone: { value: timezone } }),
     setFastTransition: (id, enabled) => own(id, "PUT", "fast_transition", { fast_transition: enabled }),
     setMlo: (id, mode) => own(id, "PUT", "mlo_mode", { mlo_mode: mode }),
     setLegacyMode: (id, enabled) => own(id, "PUT", "ac_compat", { enabled }, "form"),

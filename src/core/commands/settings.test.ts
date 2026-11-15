@@ -705,6 +705,16 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     }
   });
 
+  it("a time zone the backend answers for but does not keep is an eero_error, not a saved result", async () => {
+    const demo = createDemoBackend({ clock: () => NOW });
+    // As a real network did (M5.R-fix4): the write is accepted and the next read has the old zone.
+    const backend: Backend = { ...demo, settings: { ...demo.settings, setTimezone: (id) => demo.settings.get(id) } };
+    const engine = createEngine({ backend, clock: () => NOW });
+    const before = (await settingsOf(engine, MAPLE)).timezone;
+    const r = await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "Europe/Berlin" });
+    expect(r).toMatchObject({ ok: false, error: { code: "eero_error", message: `eero accepted the time zone but still reports ${before}, not Europe/Berlin. Check again in a minute; if it has not changed, eero did not save it.` } });
+  });
+
   it("bad_params for what the network lacks, bad values and empty changes", async () => {
     const engine = demoEngine();
     const bad = async (id: string, params: Record<string, unknown>) => expect(await code(engine.execute(id, { networkId: MAPLE, ...params })), `${id} ${JSON.stringify(params)}`).toBe("bad_params");
@@ -844,7 +854,6 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
   // The fake's Maple Street: steering, fast roaming, MLO multi, power saving on, Simple Setup on, Thread on.
   const CASES: [string, Record<string, unknown>, ReturnType<typeof req>, (s: M.NetworkSettings) => unknown, unknown][] = [
     ["settings.band_steering.set", { enabled: false }, req("PUT", "/settings", { band_steering: false }), (s) => s.bandSteering, false],
-    ["settings.timezone.set", { timezone: "Europe/Berlin" }, req("PUT", "/settings", { timezone: { value: "Europe/Berlin" } }), (s) => s.timezone, "Europe/Berlin"],
     ["settings.fast_transition.set", { enabled: false }, req("PUT", "/fast_transition", { fast_transition: false }), (s) => s.fastTransition, false],
     ["settings.mlo.set", { mode: "disabled" }, req("PUT", "/mlo_mode", { mlo_mode: "disabled" }), (s) => s.mlo, "disabled"],
     ["settings.legacy_mode.set", { enabled: true }, req("PUT", "/ac_compat", { enabled: "true" }, "form"), (s) => s.legacyMode, true],
@@ -965,14 +974,23 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     expect((await send(N, "POST", "/power_saving/schedules", { name: "Night", days: ["Monday"], start_time: "23:00", end_time: "06:00", enabled: true })).status).toBe(200);
   });
 
-  it("a time zone eero answers 200 for but does not keep is an eero_error, not a saved toast", async () => {
+  it("time zone: the eero backend sends nothing and answers not available yet (no request eero applies is known, M6.9)", async () => {
     const s = fakeEngine();
     fake = s.fake;
     const before = (await settingsOf(s.engine, N)).timezone;
-    s.fake.state.networks.get(N)!.ignoreTimezone = true;
     const r = await s.engine.execute("settings.timezone.set", { networkId: N, timezone: "Europe/Berlin" });
-    expect(sent(s.fake)).toEqual([req("PUT", "/settings", { timezone: { value: "Europe/Berlin" } })]);
-    expect(r).toMatchObject({ ok: false, error: { code: "eero_error", message: expect.stringContaining(`still reports ${before}, not Europe/Berlin`) } });
+    expect(r).toMatchObject({ ok: false, error: { code: "eero_error", message: "settings.setTimezone is not available in the eero backend yet." } });
+    expect(s.fake.writes).toEqual([]);
+    expect((await settingsOf(s.engine, N)).timezone).toBe(before);
+  });
+
+  it("the fake answers the old time zone request 200 and keeps the zone, as the real network did (M5.R-fix4)", async () => {
+    const f = createFakeEero({ now: () => NOW });
+    fake = f;
+    const token = f.signIn();
+    const res = await f.fetch(`${f.origin}${base}/settings`, { method: "PUT", headers: { "content-type": "application/json", cookie: `s=${token}` }, body: JSON.stringify({ timezone: { value: "Europe/Berlin" } }) });
+    expect(res.status).toBe(200);
+    expect((f.state.networks.get(N)!.network.timezone as { value?: string } | undefined)?.value).not.toBe("Europe/Berlin");
   });
 
   it("Thread credentials come from GET {net}/thread, uncached; reset is one POST {net}/thread after confirm", async () => {

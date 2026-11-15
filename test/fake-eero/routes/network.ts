@@ -3,7 +3,10 @@
  * fallback list, one network with its embedded eeros, speed test history,
  * starting a speed test (`POST {net}/speedtest`, 202; like eero, the result
  * lands about a minute later), permissions and restart (`POST {net}/reboot`,
- * empty JSON) and delete (`DELETE {net}`, owner only, M5.3). See
+ * empty JSON), delete (`DELETE {net}`, owner only, M5.3) and the network
+ * nickname (`PUT {net}/label?labelType=specialMarket`, form `label`, M6.9;
+ * written to `nickname_label` on the network and its account ref, an empty
+ * label clears it, over 32 characters is a 400). See
  * docs/eero-api/endpoints.md.
  *
  * `GET /account`, which network.list also reads, lives in ./account.ts.
@@ -106,6 +109,22 @@ export const routes: Route[] = [
         refs.data = refs.data.filter((r) => r.url !== net.network.url);
         refs.count = refs.data.length;
       }
+      return ok(null);
+    },
+  },
+  {
+    method: "PUT",
+    path: "/networks/:net/label",
+    handle: ({ req, params, network, state }) => {
+      const net = network(params.net ?? "");
+      if (req.query.get("labelType") !== "specialMarket") return fail(400, "error.label.type");
+      if (req.encoding !== "form" || typeof req.body.label !== "string") return fail(400, "error.form.errors");
+      const label = req.body.label.trim();
+      if (label.length > 32) return fail(400, "error.form.errors");
+      const value = label === "" ? null : label;
+      net.network.nickname_label = value;
+      const refs = state.account.networks;
+      if (refs && Array.isArray(refs.data)) for (const r of refs.data) if (r.url === net.network.url) r.nickname_label = value;
       return ok(null);
     },
   },

@@ -1,8 +1,11 @@
 /**
  * eero backend, network area: the account's networks, one network, its
  * health (derived from `GET {net}`, no extra calls) and the signed-in user's
- * permissions, and restarting every eero (`POST resources.reboot`). See
- * docs/architecture/commands.md (network).
+ * permissions, restarting every eero (`POST resources.reboot`) and the
+ * network nickname (M6.9: `PUT {net}/label?labelType=specialMarket`, form
+ * `label`, eero's Android client as Eeronaut quotes it; an empty label
+ * clears it). See docs/architecture/commands.md (network) and
+ * docs/eero-api/endpoints.md section 20.
  */
 
 import { BackendError } from "../../errors";
@@ -103,6 +106,11 @@ export const network: EeroArea<"network"> = (ctx) => {
       // resources.reboot when GET {net} has been read, else the usual path.
       const base = links.get(`net:${id}`, networkPath(id));
       await ctx.client.request({ method: "POST", path: links.get(`net:${id}.reboot`, `${base}/reboot`), encoding: "empty" });
+    },
+
+    async setNickname(id, nickname) {
+      const base = links.get(`net:${id}`, networkPath(id));
+      await ctx.client.request({ method: "PUT", path: `${base}/label`, query: { labelType: "specialMarket" }, body: { label: nickname ?? "" }, encoding: "form" });
     },
   };
 };
