@@ -39,7 +39,8 @@ export interface UpdaterBackend {
   on(event: "update-available" | "update-not-available" | "update-downloaded", listener: (info: { version: string }) => void): unknown;
   on(event: "download-progress", listener: (p: { percent: number }) => void): unknown;
   on(event: "error", listener: (err: Error) => void): unknown;
-  checkForUpdates(): Promise<unknown>;
+  /** With `autoDownload`, the result carries the background download, which rejects (after `error`) when it fails. */
+  checkForUpdates(): Promise<{ downloadPromise?: Promise<unknown> | null } | null>;
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void;
 }
 
@@ -165,7 +166,9 @@ export function createUpdater(deps: UpdaterDeps): Updater {
         if (!u) return;
         const { updateChannel } = await deps.settings();
         u.allowPrerelease = updateChannel === "beta";
-        await u.checkForUpdates();
+        const result = await u.checkForUpdates();
+        // The download goes on in the background; its failure already arrived as `error`.
+        result?.downloadPromise?.catch(() => {});
       } catch (err) {
         fail(err);
       }

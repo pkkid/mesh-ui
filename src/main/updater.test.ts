@@ -13,7 +13,7 @@ class FakeBackend implements UpdaterBackend {
   allowPrerelease = false;
   checks: { allowPrerelease: boolean }[] = [];
   installs: [boolean | undefined, boolean | undefined][] = [];
-  next: { found: string | null } | { error: Error } = { found: null };
+  next: { found: string | null; downloadError?: Error } | { error: Error } = { found: null };
   private listeners = new Map<string, Listener[]>();
 
   on(event: string, listener: (arg: never) => void) {
@@ -31,9 +31,20 @@ class FakeBackend implements UpdaterBackend {
       this.fire("error", next.error);
       throw next.error;
     }
-    if (next.found) this.fire("update-available", { version: next.found });
-    else this.fire("update-not-available", { version: "0.6.0" });
-    return {};
+    if (!next.found) {
+      this.fire("update-not-available", { version: "0.6.0" });
+      return null;
+    }
+    this.fire("update-available", { version: next.found });
+    const failure = next.downloadError;
+    // Like electron-updater: the download emits `error`, then its promise rejects.
+    const downloadPromise = failure
+      ? Promise.resolve().then(() => {
+          this.fire("error", failure);
+          throw failure;
+        })
+      : null;
+    return { downloadPromise };
   }
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean) {
     this.installs.push([isSilent, isForceRunAfter]);
@@ -234,6 +245,22 @@ describe("updater states", () => {
     // The next good check clears it.
     fake.next = { found: null };
     await expect(u.check()).resolves.toMatchObject({ state: "idle", error: null });
+  });
+
+  it("handles a failed background download as state error, with no unhandled rejection", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      fake.next = { found: "0.6.1", downloadError: new Error("sha512 checksum mismatch") };
+      const u = make();
+      await u.check();
+      await advance(0);
+      expect(await u.status()).toMatchObject({ state: "error", error: "sha512 checksum mismatch" });
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
   });
 
   it("reports a failed load of electron-updater as an error", async () => {
