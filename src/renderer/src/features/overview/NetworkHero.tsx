@@ -5,8 +5,8 @@
  * sheet (QR, Copy password); Pause a profile picks a profile and pauses it
  * with Undo;
  * Restart network confirms inline, then a progress toast until the eeros are
- * back) and the two speed gauges
- * ("Set your plan" opens the plan sheet).
+ * back) and the two speed gauges ("Set your internet plan" opens the plan
+ * sheet; "View history" opens Internet at Speed test history).
  * docs/ux/pages/overview.md (Layout 1, States).
  */
 import { Popover } from "@base-ui/react/popover";
@@ -23,6 +23,7 @@ import { Metric, PageHeader } from "~/components/ui/hero";
 import { WriteConfirm } from "~/components/ui/confirm";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
+import { TextLink } from "~/components/ui/text-link";
 import { seriesColors } from "~/lib/chartColors";
 import { formatDuration, formatRelative, mbpsParts, MISSING } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, Profile, ProfileList, SpeedHistory } from "../../../../core/model";
@@ -122,12 +123,14 @@ export function NetworkHero() {
                 loading={gaugesLoading || history.fading}
               />
             </div>
-            {!plan && internet.data && (
+            {internet.data && (
               <div className="text-center text-3xs text-muted-foreground">
-                <button type="button" className="hover:text-foreground hover:underline" onClick={openPlanSheet}>
-                  Set your plan
-                </button>{" "}
-                to scale the gauges
+                {!plan && (
+                  <>
+                    <TextLink onClick={openPlanSheet}>Set your internet plan</TextLink> to scale the gauges{" · "}
+                  </>
+                )}
+                <TextLink to={pathFor("internet", { section: "history" })}>View history</TextLink>
               </div>
             )}
           </div>

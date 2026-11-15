@@ -68,6 +68,8 @@ export type PageProps = { params: Readonly<Record<string, string>> };
 export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "overview", path: "/overview", title: "Overview", icon: LayoutDashboard, nav: "network", doc: "overview.md" },
   { id: "internet", path: "/internet", title: "Internet", icon: Globe, nav: "network", doc: "internet.md" },
+  // Deep links to an Internet section (#/internet/history): the same page, no sidebar entry.
+  { id: "internet", path: "/internet/:section", title: "Internet", icon: Globe, doc: "internet.md" },
   { id: "eeros", path: "/eeros", title: "eeros", icon: Router, nav: "network", count: "eeros", doc: "eeros.md" },
   { id: "eero", path: "/eeros/:eeroId", title: "eero", icon: Router, parent: "eeros", doc: "eero-detail.md" },
   { id: "devices", path: "/devices", title: "Devices", icon: MonitorSmartphone, nav: "network", count: "devices", doc: "devices.md" },

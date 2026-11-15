@@ -2,7 +2,7 @@
  * The plan sheet: the download and upload speed you pay for, and an
  * optional name. `internet.plan.set` stores it in Mesh UI's settings (no eero
  * call); gauges, meters and verdicts compare against it. Opened from the
- * Internet hero's plan line and the Overview hero's "Set your plan";
+ * Internet hero's plan line and the Overview hero's "Set your internet plan";
  * `openPlanSheet()` opens whichever `<PlanSheet />` the page renders.
  * docs/ux/pages/internet.md (Actions: Plan value).
  */

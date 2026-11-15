@@ -21,7 +21,11 @@ actions.
      profile**, **Restart network** (ghost).
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      on the plan max (1.2 Gbps) with the latest result in the middle ("942
-     Mbps", "918 Mbps") in the download and upload series colours.
+     Mbps", "918 Mbps") in the download and upload series colours. A
+     caption under them: **Set your internet plan** to scale the gauges
+     (only while no plan is set; opens the plan sheet) and **View history**
+     (opens `#/internet/history`, Internet scrolled to Speed test history),
+     joined by " · ". Both are `TextLink`s, so they read as links.
 2. **Data usage** section. Header: "Data usage", sub "Last 24 hours for all devices"
    (Week: "Last 7 days for all devices") on the heading's baseline, Day / Week toggle. Switching range
    crossfades the subtitle and body (150 ms out, swap, 150 ms in, opacity
@@ -120,7 +124,8 @@ actions.
 - **No permission.** Admins see everything here. If `network.restart` is not
   permitted, Restart network is disabled with "Owner only".
 - **Capability missing.** No plan speed set: gauge max falls back to the
-  best result in history, and a small "Set your plan" link goes to Internet.
+  best result in history, and the caption's "Set your internet plan" link
+  opens the plan sheet.
 - **Bridge mode.** Profiles section hidden (columns become eeros, busy
   heatmap, activity); "Pause a profile" hidden; Top devices hidden (no
   per-device usage); bridge note at the top.

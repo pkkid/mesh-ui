@@ -143,12 +143,25 @@ export function useNavigationShortcuts(): void {
   }, []);
 }
 
+/**
+ * Scrolls the content column so the element with this id sits at the top
+ * (for `#/page/:section` deep links). Only the column scrolls:
+ * `scrollIntoView` would also scroll the window and push the titlebar off.
+ */
+export function scrollToSection(id: string): void {
+  const el = document.getElementById(id);
+  const column = el?.closest<HTMLElement>("[data-page-scroll]");
+  if (!el || !column) return;
+  const top = el.getBoundingClientRect().top - column.getBoundingClientRect().top + column.scrollTop;
+  column.scrollTo({ top: Math.max(0, top - 22) });
+}
+
 /** The scrolling content column with the current page in it. */
 export function RouterOutlet() {
   const { route, params, path } = useLocation();
   const Page = PAGES[route.id];
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div data-page-scroll className="min-h-0 flex-1 overflow-y-auto">
       <div key={path} className="mx-auto flex max-w-[1320px] flex-col gap-7 px-7 pt-[22px] pb-12">
         {Page ? (
           <Suspense fallback={null}>

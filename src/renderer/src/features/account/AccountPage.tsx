@@ -10,6 +10,7 @@
  */
 import { useEffect } from "react";
 
+import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
 
@@ -31,7 +32,7 @@ export function AccountPage({ params }: PageProps) {
   const section = params.section;
   useEffect(() => {
     if (!section || !(ACCOUNT_SECTIONS as readonly string[]).includes(section)) return;
-    document.getElementById(sectionId(section as AccountSection))?.scrollIntoView({ block: "start" });
+    scrollToSection(sectionId(section as AccountSection));
   }, [section]);
 
   return (

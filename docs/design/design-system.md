@@ -252,6 +252,12 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 milestone), `SectionError` (what failed, eero's message, Retry; other
 sections keep working) and `useNow` (a ticking clock for relative times).
 
+`components/ui/text-link.tsx` is the inline link inside muted copy ("Set
+your internet plan", "Change", "View history"): `text-foreground` with an
+always-on underline (`decoration-foreground/40`, offset 2), so it reads as
+clickable without hover. With `to` it is an in-app `Link`; without, a
+button. Use it instead of a muted button that only underlines on hover.
+
 
 `useGate({ area, op, capability, bridgeOff })` and `GatedButton` gate write
 controls: from `network.permissions` and `network.get`, a closed gate
