@@ -200,7 +200,7 @@ function Today({ usage }: { usage: UsageSeries | undefined }) {
 }
 
 function PauseButton({ profile, className }: { profile: Profile; className?: string }) {
-  return <ProfilePauseButton profile={profile} size="sm" variant={profile.paused ? "default" : "outline"} className={cn("w-full", className)} />;
+  return <ProfilePauseButton profile={profile} variant={profile.paused ? "default" : "outline"} className={cn("w-full", className)} />;
 }
 
 function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder, onRename, onSchedule }: CardProps & { placeholder: boolean; onRename: () => void; onSchedule: () => void }) {
@@ -290,12 +290,13 @@ export const PROFILE_GATE = { area: "profiles", bridgeOff: true } as const;
 /** Pause or Resume one profile, with Undo. */
 export function ProfilePauseButton({
   profile: p,
-  size = "sm",
+  hero = false,
   variant = "outline",
   className,
 }: {
   profile: Profile;
-  size?: "sm" | "lg";
+  /** In a page header: the header sets the size, and the label says "profile". */
+  hero?: boolean;
   variant?: "default" | "outline";
   className?: string;
 }) {
@@ -307,9 +308,9 @@ export function ProfilePauseButton({
     undo: { id: p.paused ? "profile.pause" : "profile.resume", params: { profile: p.id }, success: `${p.paused ? "Paused" : "Resumed"} ${p.name}` },
   });
   return (
-    <GatedButton gate={gate} size={size} variant={variant} className={className} disabled={write.running} onClick={() => void write.run({ profile: p.id })}>
+    <GatedButton gate={gate} size={hero ? undefined : "sm"} variant={variant} className={className} disabled={write.running} onClick={() => void write.run({ profile: p.id })}>
       {p.paused ? <Play /> : <Pause />}
-      {size === "lg" ? (p.paused ? "Resume profile" : "Pause profile") : p.paused ? "Resume" : "Pause"}
+      {hero ? (p.paused ? "Resume profile" : "Pause profile") : p.paused ? "Resume" : "Pause"}
     </GatedButton>
   );
 }

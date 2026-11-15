@@ -32,7 +32,7 @@ export function ProfileHero({ profile: p, color, timezone, fading }: Props) {
   const total = week.data ? week.data.total.down + week.data.total.up : null;
   const possessive = name ? `${name}'s` : "the";
 
-  const action = p ? <ProfilePauseButton profile={p} size="lg" variant={p.paused ? "default" : "outline"} className="w-full" /> : null;
+  const action = p ? <ProfilePauseButton profile={p} hero variant={p.paused ? "default" : "outline"} className="w-full" /> : null;
   const hint = p?.paused
     ? `Resuming during a scheduled pause keeps ${name || "it"} online until the next scheduled pause.`
     : devices === 0

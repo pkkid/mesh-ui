@@ -5,7 +5,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
 
-import { Button } from "~/components/ui/button";
+import { Button, ButtonSizeContext } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 const BACKDROP_CLASS =
@@ -31,34 +31,37 @@ function DialogPopup({
   align = "center",
   ...props
 }: DialogPrimitive.Popup.Props & { showCloseButton?: boolean; align?: "center" | "top" }) {
+  // Reset the button size: a dialog opened from a page header keeps its own sizes.
   return (
-    <DialogPrimitive.Portal>
-      <DialogPrimitive.Backdrop forceRender className={BACKDROP_CLASS} data-slot="dialog-backdrop" />
-      <DialogPrimitive.Viewport
-        className={cn(
-          "fixed inset-0 z-50 grid justify-items-center p-4",
-          align === "center" ? "grid-rows-[1fr_auto_1fr]" : "grid-rows-[auto_1fr] pt-10",
-        )}
-        data-slot="dialog-viewport"
-      >
-        <DialogPrimitive.Popup
-          className={cn(POPUP_CLASS, align === "center" ? "row-start-2 max-h-full max-w-lg" : "row-start-1", className)}
-          data-slot="dialog-popup"
-          {...props}
-        >
-          {children}
-          {showCloseButton && (
-            <DialogPrimitive.Close
-              aria-label="Close"
-              className="absolute end-2 top-2"
-              render={<Button size="icon" variant="ghost" />}
-            >
-              <XIcon />
-            </DialogPrimitive.Close>
+    <ButtonSizeContext value={undefined}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop forceRender className={BACKDROP_CLASS} data-slot="dialog-backdrop" />
+        <DialogPrimitive.Viewport
+          className={cn(
+            "fixed inset-0 z-50 grid justify-items-center p-4",
+            align === "center" ? "grid-rows-[1fr_auto_1fr]" : "grid-rows-[auto_1fr] pt-10",
           )}
-        </DialogPrimitive.Popup>
-      </DialogPrimitive.Viewport>
-    </DialogPrimitive.Portal>
+          data-slot="dialog-viewport"
+        >
+          <DialogPrimitive.Popup
+            className={cn(POPUP_CLASS, align === "center" ? "row-start-2 max-h-full max-w-lg" : "row-start-1", className)}
+            data-slot="dialog-popup"
+            {...props}
+          >
+            {children}
+            {showCloseButton && (
+              <DialogPrimitive.Close
+                aria-label="Close"
+                className="absolute end-2 top-2"
+                render={<Button size="icon" variant="ghost" />}
+              >
+                <XIcon />
+              </DialogPrimitive.Close>
+            )}
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Viewport>
+      </DialogPrimitive.Portal>
+    </ButtonSizeContext>
   );
 }
 

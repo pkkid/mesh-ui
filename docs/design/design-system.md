@@ -172,6 +172,14 @@ Every page opens with the same header:
   test);
 - **actions in a row at the bottom**, primary first, disruptive last.
 
+Every button in a header is the `hero` size (28px, `h-7`, 13px text,
+14px icons), on every page: the actions row, the buttons in the right-hand
+column (Pause profile) and the QR block. The one exception is "Show code"
+over an empty QR frame, which is `xs` to fit inside the frame. `PageHeader` and `QrBlock` set it once through
+`ButtonSizeContext` in `components/ui/button.tsx`, so buttons inside them
+leave `size` off; a size given at the call site would break the match.
+Dialogs opened from a header reset it, so their buttons keep their own sizes.
+
 Guest network and Wi-Fi put a **QR block at the top right** of the header,
 with labelled buttons (Copy password, Save QR, Print a card) to its left
 (`components/ui/qr.tsx`, see Components).
