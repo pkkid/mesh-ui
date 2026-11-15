@@ -53,7 +53,7 @@ read these before planning the next milestone):
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/4), [review](reviews/M4.md)) |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/5), [review](reviews/M5.md)) |
-| M6 | App and account, CLI on PATH, auto-update and signed release builds | next |
+| M6 | App and account, CLI on PATH, auto-update and release builds | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/6), [review](reviews/M6.md)) |
 
 Why this order: M1 proves the riskiest parts first (command engine shared by
 three surfaces, the CLI running through headless Electron with the keychain,
@@ -1250,7 +1250,7 @@ credentials is a `MANUAL:` line.
 - scope: **Activity** (carried from M5, #178): the event stream header gets the settings icon, opening App & account at Notifications through M6.1's deep link; rows with a device link get an overflow menu (Rename `device.rename`, Block `device.block`, Device details) through the write kit with each command's gate. **Frustration-Free Setup** (#188): if M6.1 found no live-tested client for `integrations.ffs.set`, remove the command, its fake route and its docs (eero's own app shows no switch); otherwise keep it CLI-only with a `MANUAL:` line. The card stays read-only either way. **Speed test lock** (carried from M4, #162): the one-at-a-time state moves from the per-process `WeakMap` to a small file in the config dir, written atomically and expiring after the pending window, so the app and a CLI share it; with no config dir (demo, tests) keep the in-memory map.
 - done when: `pnpm check` passes; `internet.test.ts` runs two engines on one temp config dir, the second `speedtest.run` while the first is pending is refused with the message and allowed once the window expires; `integrations.test.ts` matches the ffs decision (`mesh-ui commands` has no `integrations.ffs.set`, or the kept command's tests pass); `pnpm ui:shot --route '#/activity'` shows the open row menu and the settings icon, light and dark; `MANUAL: rename a device from Activity and back | row menu, Rename | the eero app agrees | risk: none`.
 
-### M6.11 Carried manual checks and their answers ☐
+### M6.11 Carried manual checks and their answers ☐ (moved to a 0.6.x issue, see After M6)
 - issue: [#206](https://github.com/pkkid/mesh-ui/issues/206)
 - after: M6.1
 - blocked: the maintainer runs the "Carried to M6.1" list in docs/reviews/M5.md when convenient
@@ -1267,7 +1267,7 @@ credentials is a `MANUAL:` line.
 - scope: Bump `version` to 0.6.0 (no tag). README: install per OS (dmg; NSIS with the SmartScreen click-through; AppImage, deb and rpm), checking `SHA256SUMS.txt`, CLI on PATH per OS, MCP setup, `--demo`, and the "not made by eero or Amazon" line. Release checklist: a dry run, `v0.6.0`, then the first real update check at 0.6.1. Settle the M6 lines in `open-questions.md`. A final pass on the branch: `pnpm dist` on Linux, `pnpm dist:smoke`, `pnpm test:keychainless`, and the Coming soon grep.
 - done when: `pnpm check` passes; the PR shows `pnpm dist`, `dist:smoke` and `test:keychainless` output on Linux; `grep -rn ComingSoonButton src/renderer/src/features` is empty; `mesh-ui --demo run app.info` shows 0.6.0; README and the checklist describe the release path; no real data in any file.
 
-### M6.R Review ☐
+### M6.R Review ✅
 - issue: [#208](https://github.com/pkkid/mesh-ui/issues/208)
 - owner: maintainer
 - after: M6.1, M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10, M6.11, M6.12
@@ -1284,3 +1284,14 @@ GPG-signed checksums; Flatpak, AUR, and deb or rpm
 repositories; a generated open source licenses page; Amazon login;
 anything an M6 story leaves out for lack of a live-tested source (it says
 so in its docs). eero Plus features stay out of scope for good.
+
+Follow-ups from M6 (0.6.x issues, from the M6 review): the
+`endpoints.md` section 20 captures once the maintainer is signed in on
+the worker machine, then turn on the live account writes that have a
+source (M6 review question 4); a time zone request eero applies; one way
+for the UI to learn which writes the live backend lacks, replacing the
+`backend === "eero"` check in the Wi-Fi page; remove the unused
+`ComingSoonButton` export and the dev-only `ComingSoon` fallback; a
+`--password-store` passthrough in `ui:shot`; `release-notes.mjs` for patch
+releases; M6.11, the carried M5 manual checks and their answers (M6
+review question 3).
