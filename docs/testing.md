@@ -100,7 +100,8 @@ process-wide like this.
   reserved devices, the unread flag matches the unread rows).
 - Demo scenarios (`demo.scenario.set`, `src/core/demo/scenario.ts`):
   `default`, `signed_out`, `no_networks`, `network_offline`, `eero_offline`,
-  `empty_network`, plus `slow` (every read waits about 1.5 s) and `errors`
+  `empty_network`, `admin` (every network shared with you, none owned, so
+  `account.delete` is allowed), plus `slow` (every read waits about 1.5 s) and `errors`
   (every read fails with `eero_error`) for loading and error states. Sign-in
   and switching scenarios keep working in both. A CLI run is one process,
   so set the scenario and read in one script:

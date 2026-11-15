@@ -73,7 +73,8 @@ const PAGES: Record<string, Poll[]> = {
   troubleshooting: [["eero.list"], ["health.check"], ["wifi.get"], ["settings.get"]],
   // App & account: app.info and app.audit.list poll but never reach eero; auth.status, app.settings.get,
   // notifications.settings.get and the weekly events.summary are read on open (engine.md, Polling intervals).
-  "app & account": [["account.get"], ["app.info"], ["app.audit.list"]],
+  // The networks table shares the shell switcher's 60 s network.list.
+  "app & account": [["account.get"], ["app.info"], ["app.audit.list"], ["network.list", undefined, 60]],
 };
 
 const roomy = () => new RateLimiter({ perWindow: 10_000 });

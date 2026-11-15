@@ -132,7 +132,10 @@ const installKind = detectInstallKind({
 
 /** The window's host actions (updater, CLI install, demo relaunch). The CLI host gets none. */
 function windowActions(settings: SettingsStore): HostActions {
-  return createHostActions({ install: installKind, exePath: process.execPath, env: process.env, channel: async () => (await settings.get()).updateChannel });
+  return createHostActions({
+    install: installKind, exePath: process.execPath, env: process.env, channel: async () => (await settings.get()).updateChannel,
+    demoSwitch: { app, argv: process.argv, env: process.env },
+  });
 }
 
 /** The engine for any surface. Only live mode reads or writes the saved session. */
