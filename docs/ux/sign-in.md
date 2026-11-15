@@ -10,7 +10,7 @@ Mockup: [../mockups/18-sign-in.html](../mockups/18-sign-in.html)
 
 The mockup shows four frames of a 460 x 640 window side by side. In the app
 this is one small window (no sidebar, no topbar beyond a titlebar with the
-app icon at 18px, "Mesh UI" and window controls) that steps through the first two frames, then
+app icon at 18px, the "Mesh UI" wordmark and window controls) that steps through the first two frames, then
 grows into the main window. Shell rules are in [overview.md](overview.md).
 
 ## Layout

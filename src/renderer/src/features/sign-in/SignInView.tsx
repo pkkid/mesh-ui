@@ -22,6 +22,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { execute, useCommand, useQuery } from "~/app/useCommand";
 import { AppIcon } from "~/components/mesh/AppIcon";
+import { AppWordmark } from "~/components/mesh/AppWordmark";
 import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import { Segmented } from "~/components/ui/segmented";
@@ -157,7 +158,7 @@ function Frame({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col bg-background">
       <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-2 ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
         <AppIcon className="size-[18px]" />
-        <span className="font-medium text-[13px]">Mesh UI</span>
+        <AppWordmark className="text-[13px]" />
       </div>
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto">
         <div className="flex min-h-[min(640px,100%)] w-full max-w-[460px] flex-col px-[38px] pt-[34px] pb-[26px]">{children}</div>
