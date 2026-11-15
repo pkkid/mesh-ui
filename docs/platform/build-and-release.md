@@ -82,8 +82,8 @@ keychain item, the Windows AppUserModelID and the auto-update identity.
 
 | OS | Arch | Artifact | Auto-update | Notes |
 | --- | --- | --- | --- | --- |
-| macOS | universal (arm64 + x64) | `Mesh-UI-<v>-universal.dmg` | Yes | Unsigned for now (ad-hoc signature); for first install, see [macOS](#macos) |
-| macOS | universal | `Mesh-UI-<v>-universal-mac.zip` | Yes | Used by electron-updater; also a manual download |
+| macOS | universal (arm64 + x64) | `Mesh-UI-<v>-universal.dmg` | Check only; manual download while unsigned | Unsigned for now (ad-hoc signature); for first install, see [macOS](#macos) |
+| macOS | universal | `Mesh-UI-<v>-universal-mac.zip` | Check only; manual download while unsigned | Feeds electron-updater's check (and its download once Developer ID signed, see [Auto-update](#auto-update)); also a manual download |
 | Windows | x64 | `Mesh-UI-Setup-<v>-x64.exe` (NSIS) | Yes | Per-user install, no admin; adds CLI to `PATH` |
 | Windows | arm64 | `Mesh-UI-Setup-<v>-arm64.exe` (NSIS) | Yes | |
 | Windows | x64, arm64 | `Mesh-UI-<v>-<arch>-portable.zip` | No | Unzip and run; no CLI on `PATH` |
@@ -258,6 +258,9 @@ published releases.
   tag is `v<version>`.
 - Before 1.0, minor versions follow milestones (`0.2.0` ships M2) and patch
   versions are fixes.
+- The first release is `0.6.0` (M6); earlier milestones were never
+  released. M6 is the last milestone, so later releases are `0.6.x` fixes,
+  each from an issue and a PR into `main` (see [roadmap.md](../roadmap.md#after-m6)).
 - Pre-releases use `-beta.N` and are published as GitHub pre-releases. Users
   on the beta channel (App & account, stored in `settings.json`) get them.
 - The version shows in App & account and in `mesh-ui --version`, and is
@@ -421,20 +424,51 @@ launcher.
 ## Release checklist
 
 Maintainer only; agents never add secrets, push tags or publish. No
-secrets or environments are needed while macOS and Windows ship unsigned.
+secrets or environments are needed while macOS and Windows ship unsigned
+(signing comes later; see [Later: Developer ID and
+notarization](#later-developer-id-and-notarization)).
 
-1. Milestone review merged by the maintainer. (Signing secrets come later;
-   see [Later: Developer ID and
-   notarization](#later-developer-id-and-notarization).)
+### First release, v0.6.0
+
+1. **Milestone merged.** The maintainer runs the M6 manual checks and
+   merges `milestone/M6` into `main`. `package.json` already says `0.6.0`
+   (M6.12); no bump is needed.
 2. **Dry run:** Actions, Release, Run workflow on `main` with `dry_run`.
    Expect four green build jobs (mac, win, linux-x64, linux-arm64) and a
    skipped `publish`. Check the `ui-shot-*` PNGs, and that the `dist-mac`
    zip opens on Apple silicon after **Open Anyway** and `codesign -dv`
    shows `Signature=adhoc`.
-3. Bump `version` in `package.json`, commit, tag `v<version>`, push the tag.
-4. `release.yml` builds (unsigned for now; macOS ad-hoc signed) and
-   drafts the release with `SHA256SUMS.txt` and the review's notes. For a
-   patch release, edit the notes in the draft.
-5. Download one artifact per OS from the draft, install it, launch with
-   `--demo`, and check the update prompt from the previous version.
-6. Publish the draft.
+3. **Tag:** on the merged `main` commit, `git tag v0.6.0 && git push origin
+   v0.6.0`. `publish` fails if the tag and `version` differ.
+4. **Draft:** `release.yml` builds every OS (unsigned; macOS ad-hoc signed)
+   and drafts the release with `SHA256SUMS.txt` and the notes from
+   `docs/reviews/M6.md` section 4, plus the first-launch and checksum lines.
+5. **Try the draft:** download one artifact per OS, check it with
+   `sha256sum -c SHA256SUMS.txt --ignore-missing` (macOS `shasum -a 256 -c`,
+   Windows `Get-FileHash`), install it, and launch once with `--demo`.
+6. **Publish** the draft. Auto-update only sees published releases.
+
+### First real update, v0.6.1
+
+0.6.0 has no earlier release to update from, so the first update check
+runs at 0.6.1.
+
+1. Fix on a branch, PR into `main`, merged by the maintainer; the PR bumps
+   `version` to `0.6.1`.
+2. Steps 2 to 4 above with `v0.6.1`. Edit the notes in the draft: a patch
+   release has no new milestone review, so `release-notes.mjs` would repeat
+   the M6 section.
+3. Publish, then open the installed 0.6.0 and press **Check now** in About
+   (or wait 10 s after launch):
+   - Windows (NSIS) and Linux AppImage: "Restart to update", and the restart
+     lands on 0.6.1, still signed in.
+   - macOS (unsigned): "Version 0.6.1 is available" and **Download from
+     GitHub**, which opens the v0.6.1 release; nothing downloads.
+   - deb, rpm and the Windows portable zip: no check; install the new
+     package by hand.
+
+### Every later release
+
+Bump `version` in the PR, then the dry run, tag `v<version>`, try and
+publish the draft as above. A `-beta.N` tag drafts a pre-release that only
+**Beta updates** users get.

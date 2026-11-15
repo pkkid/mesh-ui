@@ -1,7 +1,7 @@
 {
   "name": "mesh-ui",
   "productName": "Mesh UI",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "description": "A desktop client for eero mesh networks",
   "private": true,
   "main": "out/main/index.js",
