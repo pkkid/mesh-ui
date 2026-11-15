@@ -6,6 +6,10 @@
  *   `basic_text` (a key hardcoded into Chromium) and `unknown` count as no
  *   keychain. Without one the session stays in memory; there is no
  *   plaintext fallback.
+ * - It uses the async `safeStorage` API (the sync calls are deprecated in
+ *   Electron 45). Files written by the sync API still decrypt with
+ *   `decryptStringAsync`; when it says `shouldReEncrypt` (a rotated or
+ *   stronger key) the session is written again.
  * - On load, plaintext files, v1 files that were not encrypted, files saved
  *   while a keychain existed but does not now, and data that fails to
  *   decrypt are deleted. Encrypted v1 files are read and rewritten as v2.
@@ -21,11 +25,11 @@ import type { SessionStorageKind } from "../core/model";
 
 /** The parts of Electron's `safeStorage` this store uses. */
 export interface SafeStorageLike {
-  isEncryptionAvailable(): boolean;
+  isAsyncEncryptionAvailable(): Promise<boolean>;
   /** Linux only in Electron. */
   getSelectedStorageBackend?(): string;
-  encryptString(plain: string): Buffer;
-  decryptString(encrypted: Buffer): string;
+  encryptStringAsync(plain: string): Promise<Buffer>;
+  decryptStringAsync(encrypted: Buffer): Promise<{ result: string; shouldReEncrypt: boolean }>;
 }
 
 export type SecretStoreOptions = {
@@ -40,19 +44,30 @@ type SessionFileV2 = { v: 2; token: string };
 /** Linux backends that do not protect the data. */
 const INSECURE_LINUX_BACKENDS = new Set(["basic_text", "unknown"]);
 
+/** True when the Linux backend is one that does not protect the data. */
+function insecureLinuxBackend(safeStorage: SafeStorageLike, platform: NodeJS.Platform): boolean {
+  return platform === "linux" && INSECURE_LINUX_BACKENDS.has(safeStorage.getSelectedStorageBackend?.() ?? "unknown");
+}
+
 /** "keychain" when a save would persist, else "memory". Valid after app ready. */
-export function storageKind(safeStorage: SafeStorageLike, platform: NodeJS.Platform): SessionStorageKind {
-  if (!safeStorage.isEncryptionAvailable()) return "memory";
-  if (platform === "linux") {
-    const backend = safeStorage.getSelectedStorageBackend?.() ?? "unknown";
-    if (INSECURE_LINUX_BACKENDS.has(backend)) return "memory";
+export async function storageKind(safeStorage: SafeStorageLike, platform: NodeJS.Platform): Promise<SessionStorageKind> {
+  let available: boolean;
+  try {
+    available = await safeStorage.isAsyncEncryptionAvailable();
+  } catch {
+    available = false;
   }
+  if (!available || insecureLinuxBackend(safeStorage, platform)) return "memory";
   return "keychain";
 }
 
-/** The keychain's user-facing name, or null when there is none. */
+/**
+ * The keychain's user-facing name, or null for a Linux backend that is no
+ * keychain. Sync, so it does not check availability: `app.info` shows it only
+ * when `auth.status` reports `keychain`, which `storageKind` decides.
+ */
 export function keychainName(safeStorage: SafeStorageLike, platform: NodeJS.Platform): string | null {
-  if (storageKind(safeStorage, platform) !== "keychain") return null;
+  if (insecureLinuxBackend(safeStorage, platform)) return null;
   if (platform === "darwin") return "macOS Keychain";
   if (platform === "win32") return "Windows DPAPI";
   const backend = safeStorage.getSelectedStorageBackend?.() ?? "";
@@ -65,17 +80,17 @@ export function createSecretStore({ file, safeStorage, platform }: SecretStoreOp
   const storage = () => storageKind(safeStorage, platform);
   const clear = () => fs.rmSync(file, { force: true });
 
-  const save = (token: string): SessionStorageKind => {
-    if (storage() !== "keychain") {
+  const save = async (token: string): Promise<SessionStorageKind> => {
+    if ((await storage()) !== "keychain") {
       clear();
       return "memory";
     }
-    const body: SessionFileV2 = { v: 2, token: safeStorage.encryptString(token).toString("base64") };
+    const body: SessionFileV2 = { v: 2, token: (await safeStorage.encryptStringAsync(token)).toString("base64") };
     writeFileAtomic(file, JSON.stringify(body));
     return "keychain";
   };
 
-  const load = (): string | null => {
+  const load = async (): Promise<string | null> => {
     let raw: string;
     try {
       raw = fs.readFileSync(file, "utf8");
@@ -90,13 +105,16 @@ export function createSecretStore({ file, safeStorage, platform }: SecretStoreOp
       return null;
     }
     const encrypted = parsed?.v === 2 || (parsed?.v === 1 && parsed.encrypted === true);
-    if (!encrypted || typeof parsed.token !== "string" || storage() !== "keychain") {
+    if (!encrypted || typeof parsed.token !== "string" || (await storage()) !== "keychain") {
       clear();
       return null;
     }
     let token: string;
+    let reEncrypt: boolean;
     try {
-      token = safeStorage.decryptString(Buffer.from(parsed.token, "base64"));
+      const out = await safeStorage.decryptStringAsync(Buffer.from(parsed.token, "base64"));
+      token = out.result;
+      reEncrypt = out.shouldReEncrypt;
     } catch {
       clear();
       return null;
@@ -105,22 +123,17 @@ export function createSecretStore({ file, safeStorage, platform }: SecretStoreOp
       clear();
       return null;
     }
-    if (parsed.v === 1) {
+    if (parsed.v === 1 || reEncrypt) {
       try {
-        save(token);
+        await save(token);
       } catch {
-        // The v1 file still holds the encrypted token; upgrade on the next save.
+        // The old file still holds the encrypted token; it is rewritten on the next load or save.
       }
     }
     return token;
   };
 
-  return {
-    load: async () => load(),
-    save: async (token) => save(token),
-    clear: async () => clear(),
-    storage: async () => storage(),
-  };
+  return { load, save, clear: async () => clear(), storage };
 }
 
 /**
