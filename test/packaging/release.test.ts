@@ -199,6 +199,8 @@ describe(".github/workflows/release.yml", () => {
       expect(smoke, id).toBeGreaterThan(dir);
       expect(shot, id).toBeGreaterThan(smoke);
       expect(steps, id).toMatch(/name: ui-shot-/);
+      // Every channel's update files (latest*.yml, or beta*.yml for a beta).
+      expect(steps, id).toMatch(/^ {12}dist\/\*\.yml$/m);
     }
   });
 

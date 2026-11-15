@@ -4,7 +4,8 @@
 # same packages and uploads them as workflow artifacts, with no release.
 # Builds always pass --publish never (the pnpm dist scripts); only the
 # publish job uploads, with gh. Signing secrets live only in the `release`
-# environment and only the mac job uses it.
+# environment and only the mac job uses it. Update files are every
+# channel's *.yml (latest, or beta for a -beta.N version).
 name: Release
 
 on:
@@ -87,7 +88,8 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/*.blockmap
-            dist/latest*.yml
+            dist/*.yml
+            !dist/builder-debug.yml
           if-no-files-found: error
 
   win:
@@ -125,7 +127,8 @@ jobs:
             dist/*.exe
             dist/*.zip
             dist/*.blockmap
-            dist/latest*.yml
+            dist/*.yml
+            !dist/builder-debug.yml
           if-no-files-found: error
 
   linux:
@@ -181,7 +184,8 @@ jobs:
             dist/*.deb
             dist/*.rpm
             dist/*.blockmap
-            dist/latest*.yml
+            dist/*.yml
+            !dist/builder-debug.yml
           if-no-files-found: error
 
   publish:

@@ -186,7 +186,7 @@ test well under it (property tests check with plain comparisons and one
   and window, `--demo`), and `pnpm ui:shot --route '#/overview'`, uploaded
   as the `ui-shot-<os>` artifact: the proof that the app starts and renders
   on macOS, Windows and Linux. Then `pnpm dist` builds the packages, uploaded
-  as `dist-<os>` (packages, `.blockmap` files and `latest*.yml`). Windows
+  as `dist-<os>` (packages, `.blockmap` files and the update files, `latest*.yml` or `beta*.yml`). Windows
   smokes the x64 dir build only (`pnpm dist:dir --x64`), the runner's arch.
   The Linux jobs install `rpm` and allow unprivileged user namespaces
   (Ubuntu 24.04 blocks them, and Chromium's sandbox needs them); arm64 uses
