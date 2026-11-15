@@ -43,6 +43,9 @@ Never hard-code a separator; use `path.join`.
 | Linux | `gnome_libsecret`, `kwallet`, `kwallet5`, `kwallet6` | Yes | Needs a Secret Service or KWallet on the session D-Bus |
 | Linux | `basic_text`, `unknown` | **No** | Session stays in memory; sign in each launch |
 
+- Availability comes from `safeStorage.isAsyncEncryptionAvailable()` (the
+  async API, see [security.md](../architecture/security.md#session-storage));
+  the Linux backend name still comes from `getSelectedStorageBackend()`.
 - Chromium picks the Linux backend from the desktop environment. Users can
   force one with `--password-store=gnome-libsecret` or `kwallet6`.
 - Test the no-keychain path with `--password-store=basic`; App & account must

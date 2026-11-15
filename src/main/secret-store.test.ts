@@ -24,19 +24,41 @@ const TOKEN = "s-token-0123456789abcdef-SECRET";
 
 type FakeBackend = "keychain" | "gnome_libsecret" | "kwallet6" | "basic_text" | "unknown" | "unavailable";
 
-/** A stand-in for Electron safeStorage. "Encryption" is reversible but never plaintext. */
+const xor = (buf: Uint8Array) => Buffer.from(buf.map((b) => b ^ 0x5a));
+
+/**
+ * What the deprecated sync `safeStorage.encryptString` wrote: sessions saved
+ * by builds before the async move look like this ("ENC1"). Kept only as test
+ * data; the store never calls a sync API.
+ */
+const syncEncrypt = (plain: string) => Buffer.concat([Buffer.from("ENC1"), xor(Buffer.from(plain, "utf8"))]);
+
+/**
+ * A stand-in for Electron's async safeStorage. "Encryption" is reversible but
+ * never plaintext. It writes "ENC2" and, like Electron, still decrypts what
+ * the sync API wrote; `rotate` makes it report `shouldReEncrypt` for those.
+ */
 function fakeSafeStorage(initial: FakeBackend) {
   let backend = initial;
-  const fake: SafeStorageLike & { use(b: FakeBackend): void } = {
+  const calls = { encrypt: 0 };
+  const fake: SafeStorageLike & { use(b: FakeBackend): void; rotate: boolean; failEncrypt: boolean; calls: typeof calls } = {
     use: (b) => {
       backend = b;
     },
-    isEncryptionAvailable: () => backend !== "unavailable",
+    rotate: false,
+    failEncrypt: false,
+    calls,
+    isAsyncEncryptionAvailable: async () => backend !== "unavailable",
     getSelectedStorageBackend: () => (backend === "keychain" || backend === "unavailable" ? "unknown" : backend),
-    encryptString: (plain) => Buffer.concat([Buffer.from("ENC1"), Buffer.from(plain, "utf8").map((b) => b ^ 0x5a)]),
-    decryptString: (buf) => {
-      if (buf.subarray(0, 4).toString() !== "ENC1") throw new Error("Error while decrypting the ciphertext provided to safeStorage.decryptString.");
-      return Buffer.from(buf.subarray(4).map((b) => b ^ 0x5a)).toString("utf8");
+    encryptStringAsync: async (plain) => {
+      calls.encrypt++;
+      if (backend === "unavailable" || fake.failEncrypt) throw new Error("Encryption is not available.");
+      return Buffer.concat([Buffer.from("ENC2"), xor(Buffer.from(plain, "utf8"))]);
+    },
+    decryptStringAsync: async (buf) => {
+      const tag = buf.subarray(0, 4).toString();
+      if (tag !== "ENC1" && tag !== "ENC2") throw new Error("Error while decrypting the ciphertext provided to safeStorage.decryptString.");
+      return { result: xor(buf.subarray(4)).toString("utf8"), shouldReEncrypt: tag === "ENC1" && fake.rotate };
     },
   };
   return fake;
@@ -67,7 +89,8 @@ const writeRaw = (body: unknown) => {
   fs.writeFileSync(file, typeof body === "string" ? body : JSON.stringify(body));
 };
 
-const encryptedB64 = (token: string) => fakeSafeStorage("keychain").encryptString(token).toString("base64");
+const encryptedB64 = (token: string) => Buffer.concat([Buffer.from("ENC2"), xor(Buffer.from(token, "utf8"))]).toString("base64");
+const syncB64 = (token: string) => syncEncrypt(token).toString("base64");
 
 describe("SecretStore with a keychain", () => {
   it.each(["keychain", "gnome_libsecret", "kwallet6"] as const)("%s: saves encrypted, owner-only, and loads it back", async (b) => {
@@ -102,6 +125,35 @@ describe("SecretStore with a keychain", () => {
     expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual({ v: 2, token: encryptedB64(TOKEN) });
   });
 
+  it("loads a session written by the sync API and leaves it when no re-encrypt is asked", async () => {
+    const { secrets } = store("gnome_libsecret");
+    writeRaw({ v: 2, token: syncB64(TOKEN) });
+    expect(await secrets.load()).toBe(TOKEN);
+    expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual({ v: 2, token: syncB64(TOKEN) });
+  });
+
+  it("rewrites a sync-API session with the async key when shouldReEncrypt is true", async () => {
+    const { secrets, safe } = store("keychain");
+    safe.rotate = true;
+    writeRaw({ v: 2, token: syncB64(TOKEN) });
+    expect(await secrets.load()).toBe(TOKEN);
+    const raw = fs.readFileSync(file, "utf8");
+    expect(raw).not.toContain(TOKEN);
+    expect(JSON.parse(raw)).toEqual({ v: 2, token: encryptedB64(TOKEN) });
+    if (process.platform !== "win32") expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    // Once rewritten, a second load asks for nothing more.
+    expect(await secrets.load()).toBe(TOKEN);
+  });
+
+  it("still returns the token when the re-encrypt write fails, keeping the old file", async () => {
+    const { secrets, safe } = store("keychain");
+    safe.rotate = true;
+    safe.failEncrypt = true;
+    writeRaw({ v: 2, token: syncB64(TOKEN) });
+    expect(await secrets.load()).toBe(TOKEN);
+    expect(JSON.parse(fs.readFileSync(file, "utf8"))).toEqual({ v: 2, token: syncB64(TOKEN) });
+  });
+
   it("returns null with no file", async () => {
     expect(await store("keychain").secrets.load()).toBeNull();
   });
@@ -118,10 +170,11 @@ describe("SecretStore with a keychain", () => {
 describe.each(["basic_text", "unknown", "unavailable"] as const)("SecretStore without a real keychain (%s)", (b) => {
   it("reports memory and writes nothing", async () => {
     const { secrets, safe } = store(b);
-    expect(storageKind(safe, "linux")).toBe("memory");
+    expect(await storageKind(safe, "linux")).toBe("memory");
     expect(await secrets.storage()).toBe("memory");
     expect(await secrets.save(TOKEN)).toBe("memory");
     expect(fs.existsSync(file)).toBe(false);
+    expect(safe.calls.encrypt).toBe(0);
   });
 
   it("deletes an existing session file on save and on load", async () => {
@@ -133,6 +186,29 @@ describe.each(["basic_text", "unknown", "unavailable"] as const)("SecretStore wi
     writeRaw({ v: 2, token: encryptedB64(TOKEN) });
     await secrets.save(TOKEN);
     expect(fs.existsSync(file)).toBe(false);
+  });
+});
+
+describe("SecretStore when async encryption is unavailable", () => {
+  it.each(["darwin", "win32", "linux"] as const)("%s: never encrypts or writes, and drops a sync-API file", async (platform) => {
+    const safe = fakeSafeStorage("unavailable");
+    const secrets = createSecretStore({ file, safeStorage: safe, platform });
+    expect(await secrets.storage()).toBe("memory");
+    expect(await secrets.save(TOKEN)).toBe("memory");
+    expect(fs.existsSync(file)).toBe(false);
+    writeRaw({ v: 2, token: syncB64(TOKEN) });
+    expect(await secrets.load()).toBeNull();
+    expect(fs.existsSync(file)).toBe(false);
+    expect(safe.calls.encrypt).toBe(0);
+  });
+
+  it("treats a rejected availability check as memory", async () => {
+    const safe = fakeSafeStorage("keychain");
+    safe.isAsyncEncryptionAvailable = () => Promise.reject(new Error("no keychain"));
+    const secrets = createSecretStore({ file, safeStorage: safe, platform: "darwin" });
+    expect(await secrets.save(TOKEN)).toBe("memory");
+    expect(fs.existsSync(file)).toBe(false);
+    expect(safe.calls.encrypt).toBe(0);
   });
 });
 

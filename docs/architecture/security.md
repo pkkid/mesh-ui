@@ -51,6 +51,15 @@ The host supplies a `SecretStore`; core never imports Electron.
   Keychain on macOS, DPAPI on Windows, libsecret (GNOME Keyring) or KWallet on
   Linux. The ciphertext is written to `session.json` as
   `{ "v": 2, "token": "<base64>" }`.
+- **Async API.** The store uses `isAsyncEncryptionAvailable`,
+  `encryptStringAsync` and `decryptStringAsync`; the sync calls are
+  deprecated in Electron 45 and are not used. Sessions saved by older builds
+  with the sync API still decrypt with `decryptStringAsync`, so an upgrade
+  keeps the user signed in. When it reports `shouldReEncrypt` (the key was
+  rotated or a stronger one is available) the session is written again with
+  the new key; if that write fails the old file is kept and the next load
+  tries again. An availability check that fails or rejects counts as no
+  keychain.
 - **Real keychain only.** On Linux, `safeStorage.getSelectedStorageBackend()`
   of `basic_text` (a key hardcoded into Chromium) or `unknown` counts as no
   keychain. With no keychain the session stays in memory for this launch and
