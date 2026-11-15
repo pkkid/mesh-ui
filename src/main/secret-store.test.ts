@@ -256,6 +256,7 @@ describe("sign-out", () => {
         start: async () => {},
         verify: async () => {},
         resend: async () => {},
+        amazonLogin: async () => {},
         logout: async () => {
           await secrets.clear();
           throw new BackendError("network_error", "Could not reach eero.");
@@ -347,6 +348,7 @@ async function bridgeSetup() {
       start: async () => {},
       verify: async () => {},
       resend: async () => {},
+      amazonLogin: async () => {},
       logout: async () => secrets.clear(),
     },
   });

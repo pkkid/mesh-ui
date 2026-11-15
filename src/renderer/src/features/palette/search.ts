@@ -84,7 +84,7 @@ export const PRESETS: ReadonlyArray<CommandPreset> = [
 ];
 
 /** Commands that need a person and a window, so the palette does not offer them. */
-const HIDDEN = new Set(["auth.login.start", "auth.login.verify", "auth.login.resend"]);
+const HIDDEN = new Set(["auth.login.start", "auth.login.verify", "auth.login.resend", "auth.login.amazon"]);
 
 export type AvailabilityContext = {
   signedIn: boolean;

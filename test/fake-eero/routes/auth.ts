@@ -5,7 +5,7 @@
  */
 
 import { fail, ok, type Route } from "../server";
-import { FAKE_CODE } from "../state";
+import { FAKE_AMAZON_ACCESS, FAKE_CODE } from "../state";
 
 const RESEND_COOLDOWN_MS = 60_000;
 
@@ -61,6 +61,20 @@ export const routes: Route[] = [
     handle: ({ req, state }) => {
       if (req.token) state.sessions.delete(req.token);
       return ok(null);
+    },
+  },
+  {
+    method: "POST",
+    path: "/login/amazon",
+    auth: "none",
+    handle: ({ req, state }) => {
+      const token = typeof req.body.auth_token === "string" ? req.body.auth_token.trim() : "";
+      const create = req.body.create_account;
+      if (create !== false && create !== "false") return fail(400, "error.params.invalid");
+      if (token !== FAKE_AMAZON_ACCESS) return fail(401, "error.login.unknown");
+      const session = state.nextToken("session");
+      state.sessions.set(session, { token: session, kind: "session", login: "amazon", resentAt: null });
+      return ok({ user_token: session });
     },
   },
 ];

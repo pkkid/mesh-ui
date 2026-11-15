@@ -53,6 +53,14 @@ export type HostActions = {
     /** Shows the eero request log in the file manager (its folder when there is no log yet). */
     showRequestLog(): Promise<{ path: string; exists: boolean }>;
   };
+  amazon?: {
+    /**
+     * Opens the private Amazon sign-in window, exchanges the authorization
+     * code, and resolves with an Amazon access token. Never returns the
+     * token to the renderer; the command passes it to the backend only.
+     */
+    signIn(): Promise<string>;
+  };
 };
 
 export const HOST_ONLY = "Only in the Mesh UI window.";

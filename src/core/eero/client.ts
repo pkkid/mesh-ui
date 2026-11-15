@@ -277,6 +277,69 @@ export class EeroClient {
     if (next) this.pendingToken = next;
   }
 
+  /**
+   * Signs in with an Amazon access token from the native OpenID+PKCE flow.
+   * Posts `login/amazon` with `create_account=false`, verifies `GET account`
+   * with the candidate session, and only then commits. A failure leaves any
+   * previous session untouched.
+   */
+  async amazonLogin(accessToken: string): Promise<void> {
+    const value = accessToken.trim();
+    if (!value || value.length > 8192) {
+      throw new BackendError("bad_params", "Amazon did not return a usable access token.");
+    }
+    await this.ensureLoaded();
+
+    const { data, cookieToken } = await this.exchange<RawLoginResponse | null>({
+      method: "POST",
+      path: "/2.2/login/amazon",
+      body: { auth_token: value, create_account: false },
+      encoding: "form",
+      auth: "none",
+    });
+    const candidate = cookieToken ?? data?.user_token ?? null;
+    if (!candidate || RETIRED_TOKEN.test(candidate)) {
+      throw new BackendError("eero_error", "eero did not start the Amazon sign-in. Try again.");
+    }
+
+    // Verify with the candidate without adopting it into this.token / secrets yet,
+    // so a failed identity check cannot wipe a previous session via endSession.
+    const started = Date.now();
+    const spec: RequestSpec = { method: "GET", path: "/2.2/account", auth: "none", share: false };
+    let res: Attempt;
+    try {
+      res = await this.limiter.serial(() => this.attempt(spec, candidate));
+    } catch (err) {
+      this.log(spec, null, null, started, "error", err);
+      throw err;
+    }
+    const eeroError = res.envelope?.meta?.error ?? null;
+    const metaCode = res.envelope?.meta?.code;
+    const status = isOk(res.status) && typeof metaCode === "number" && !isOk(metaCode) ? metaCode : res.status;
+    if (!isOk(status)) {
+      const err = mapError(status, eeroError, spec.method, redactPath(spec.path));
+      this.log(spec, status, eeroError, started, "error", err);
+      throw err.code === "not_signed_in" ? signInRefused(err) : err;
+    }
+    this.log(spec, status, eeroError, started, "ok");
+    const account = res.envelope?.data;
+    if (!hasAmazonAccountIdentity(account)) {
+      throw new BackendError("eero_error", "eero did not return a valid account identity for this Amazon sign-in.");
+    }
+
+    const session = res.cookieToken ?? candidate;
+    if (RETIRED_TOKEN.test(session)) {
+      throw new BackendError("eero_error", "eero gave a sign-in that Mesh UI cannot use. Try signing in again.");
+    }
+    this.token = session;
+    this.pendingToken = null;
+    this.login = amazonLoginLabel(account);
+    this.shared.clear();
+    this.loaded = Promise.resolve();
+    await this.secrets.save(session);
+    this.onSessionChange?.(true);
+  }
+
   /** Clears the local session first, then tells eero, best effort. */
   async logout(): Promise<void> {
     await this.ensureLoaded();
@@ -683,11 +746,38 @@ export function maskLogin(login: string): string {
   return `***${login.slice(-4)}`;
 }
 
+/** True when GET account after login/amazon shows a real identity (native guard). */
+export function hasAmazonAccountIdentity(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const o = data as Record<string, unknown>;
+  for (const key of ["user_id", "id", "url", "log_id"] as const) {
+    const v = o[key];
+    if (typeof v === "string" && v.length > 0) return true;
+  }
+  return o.email != null;
+}
+
+function amazonLoginLabel(account: unknown): string {
+  if (account && typeof account === "object") {
+    const email = (account as { email?: { value?: string } | string }).email;
+    const value = typeof email === "string" ? email : email?.value;
+    if (value?.trim()) return value.trim();
+  }
+  return "amazon";
+}
+
 /** Maps a failed eero answer to a BackendError. Messages never include bodies, headers or tokens. */
 export function mapError(status: number, eeroError: string | null, method: string, path: string): BackendError {
   const detail = { status, ...(eeroError ? { eeroError } : {}) };
   const e = eeroError ?? "";
   if (WRONG_CODE_ERRORS.test(e)) return new BackendError("eero_error", "That code is not right. Check it and try again.", detail);
+  if (e === "error.login.unknown") {
+    return new BackendError(
+      "eero_error",
+      "This Amazon account is not linked to an eero account. Sign in with email or phone instead.",
+      detail,
+    );
+  }
   if (DEAD_SESSION_ERRORS.has(e) || status === 401 || status === 419) {
     return new BackendError("not_signed_in", "Your eero session has ended. Sign in again.", detail);
   }

@@ -12,5 +12,6 @@ export const auth: EeroArea<"auth"> = ({ client }) => ({
   start: (login) => client.startLogin(login),
   verify: (code) => client.verifyLogin(code),
   resend: () => client.resendLogin(),
+  amazonLogin: (accessToken) => client.amazonLogin(accessToken),
   logout: () => client.logout(),
 });

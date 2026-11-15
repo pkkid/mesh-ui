@@ -255,6 +255,46 @@ describe("auth", () => {
     });
   });
 
+  it("signs in with Amazon after verifying the account identity", async () => {
+    const changes: boolean[] = [];
+    const { fake, client, secrets } = setup({ signedIn: false, client: { onSessionChange: (s) => changes.push(s) } });
+    const { FAKE_AMAZON_ACCESS } = await import("../../../test/fake-eero/state");
+    await client.amazonLogin(FAKE_AMAZON_ACCESS);
+    expect(fake.log[0]).toMatchObject({ method: "POST", path: "/2.2/login/amazon" });
+    expect(fake.log[0]?.body).toBe(`auth_token=${FAKE_AMAZON_ACCESS}&create_account=false`);
+    expect(fake.log[1]).toMatchObject({ method: "GET", path: "/2.2/account" });
+    expect(await client.status()).toMatchObject({ signedIn: true, pending: false, login: expect.stringContaining("***") });
+    expect(secrets.saves).toHaveLength(1);
+    expect(changes).toEqual([true]);
+  });
+
+  it("refuses an unlinked Amazon account without ending a previous session", async () => {
+    const { fake, client, secrets, token } = setup();
+    await expect(client.amazonLogin("not-linked")).rejects.toMatchObject({
+      code: "eero_error",
+      detail: { eeroError: "error.login.unknown" },
+      message: /not linked/,
+    });
+    expect(secrets.current()).toBe(token);
+    expect((await client.status()).signedIn).toBe(true);
+    expect(fake.log.at(-1)?.path).toBe("/2.2/login/amazon");
+  });
+
+  it("refuses a success-shaped Amazon login without account identity and keeps the previous session", async () => {
+    const { fake, client, secrets, token } = setup();
+    const { FAKE_AMAZON_ACCESS } = await import("../../../test/fake-eero/state");
+    fake.scenarios.add(
+      { method: "GET", path: "/account" },
+      { replace: { status: 200, data: {} } },
+    );
+    await expect(client.amazonLogin(FAKE_AMAZON_ACCESS)).rejects.toMatchObject({
+      code: "eero_error",
+      message: /valid account identity/,
+    });
+    expect(secrets.current()).toBe(token);
+    expect((await client.status()).signedIn).toBe(true);
+  });
+
   it("signs out locally first, even when eero's logout fails", async () => {
     const changes: boolean[] = [];
     const { fake, client, secrets, token } = setup({ client: { onSessionChange: (s) => changes.push(s) } });

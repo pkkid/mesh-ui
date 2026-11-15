@@ -44,11 +44,13 @@ import { IPC } from "../shared/types";
 import { isRefreshKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import type { NotifyHost } from "./notify";
 import { cliExitDelay, guardCliHost } from "./cli-host";
+import { isAmazonSignInContents } from "./amazon-native-signin";
 import { createHostActions } from "./host-actions";
 import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 import { previewUpdate } from "./updater";
+import { isAmazonAllowedNavigation } from "../core/eero/amazonNative";
 
 /** Matches --titlebar-height in the renderer's index.css. */
 const TITLEBAR_HEIGHT = 44;
@@ -152,7 +154,7 @@ const installKind = updatePreview?.install ?? detectInstallKind({
   },
 });
 
-/** The window's host actions (updater, CLI install, demo relaunch, request log). The CLI host gets none. */
+/** The window's host actions (updater, CLI install, demo relaunch, request log, Amazon sign-in). The CLI host gets none. */
 function windowActions(settings: SettingsStore, dir: string): HostActions {
   return createHostActions({
     install: installKind,
@@ -165,6 +167,11 @@ function windowActions(settings: SettingsStore, dir: string): HostActions {
     updatePreview: updatePreview?.status ?? null,
     demoSwitch: { app, argv: process.argv, env: process.env },
     requestLog: { path: requestLogPath(dir), shell },
+    appVersion,
+    platform: process.platform,
+    // Demo never opens Amazon; the command still goes through the host action.
+    ...(isDemo ? { amazonInstantToken: "demo" } : {}),
+    amazonParent: () => mainWindow,
   });
 }
 
@@ -311,13 +318,24 @@ function isAppUrl(url: string): boolean {
 
 // The renderer can reach the token-holding main process over IPC, so it must
 // only ever run our own code: no navigating away, no popups, no webviews.
+// Amazon sign-in is the one exception: an ephemeral BrowserWindow with no
+// preload may navigate Amazon hosts (see amazon-native-signin.ts).
 app.on("web-contents-created", (_e, contents) => {
   contents.on("will-navigate", (event, url) => {
+    if (isAmazonSignInContents(contents)) {
+      if (!isAmazonAllowedNavigation(url)) event.preventDefault();
+      return;
+    }
     if (!isAppUrl(url)) event.preventDefault();
   });
   contents.on("will-attach-webview", (event) => event.preventDefault());
   // Open external links in the user's browser, never inside the app.
+  // Amazon sign-in forces popups into the same window (set in amazon-native-signin).
   contents.setWindowOpenHandler(({ url }) => {
+    if (isAmazonSignInContents(contents)) {
+      if (isAmazonAllowedNavigation(url)) void contents.loadURL(url);
+      return { action: "deny" };
+    }
     if (url.startsWith("https://")) void shell.openExternal(url);
     return { action: "deny" };
   });

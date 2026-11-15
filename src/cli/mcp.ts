@@ -27,7 +27,13 @@ export type McpOptions = {
 };
 
 /** Commands that need a person and a window; agents use the session the user created. */
-export const NOT_EXPOSED: readonly string[] = ["auth.login.start", "auth.login.verify", "auth.login.resend", "app.cli.install"];
+export const NOT_EXPOSED: readonly string[] = [
+  "auth.login.start",
+  "auth.login.verify",
+  "auth.login.resend",
+  "auth.login.amazon",
+  "app.cli.install",
+];
 
 const EFFECT_TEXT: Record<Effect, string> = {
   query: "Read-only.",

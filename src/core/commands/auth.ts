@@ -10,7 +10,14 @@ import type { Backend } from "../backend";
 import { CommandError } from "../errors";
 import type { AuthStatus } from "../model";
 import { TTL, type Topic } from "../poll";
-import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
+import { type AnyCommand, type CommandContext, defineCommand, HOST_ONLY, type HostActions } from "../spec";
+
+/** The host action a command needs, or bad_params where the host has none (CLI, MCP). */
+function action<K extends keyof HostActions>(ctx: CommandContext, key: K): NonNullable<HostActions[K]> {
+  const a = ctx.host.actions?.[key];
+  if (!a) throw new CommandError("bad_params", HOST_ONLY);
+  return a as NonNullable<HostActions[K]>;
+}
 
 /** eero sends a new code about once a minute; the engine refuses sooner. */
 export const RESEND_INTERVAL_MS = 60_000;
@@ -125,6 +132,27 @@ export const commands: AnyCommand[] = [
       await ctx.backend.auth.resend();
       lastSent.set(ctx.backend, ctx.now());
       return status(ctx);
+    },
+  }),
+
+  defineCommand({
+    id: "auth.login.amazon",
+    label: "Sign in with Amazon",
+    description:
+      "Opens Amazon’s sign-in in a private window, then signs in to eero with the linked account. Only in the Mesh UI window. Does not create an eero account.",
+    icon: "shopping-bag",
+    params: z.object({}),
+    effect: "write",
+    gate: { area: null },
+    scope: "account",
+    run: async (ctx) => {
+      const accessToken = await action(ctx, "amazon").signIn();
+      await ctx.backend.auth.amazonLogin(accessToken);
+      lastSent.delete(ctx.backend);
+      ctx.invalidate(ALL_TOPICS);
+      const result = await status(ctx);
+      ctx.emit({ type: "session.changed", state: "signed_in", storage: result.storage });
+      return result;
     },
   }),
 

@@ -26,9 +26,10 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
   `at-sign` or phone icon. Phone input has a country code picker and stores
   E.164 (`+15550100142`).
 - Primary full-width **Send code →**.
-- Info note: "Amazon login is not supported in Mesh UI. If you sign in to the
-  eero app with Amazon, use an eero account that has admin access to your
-  network."
+- Divider "or", then full-width outline **Sign in with Amazon**
+  (`auth.login.amazon`). Opens a private Amazon window; on success the same
+  network-open path as verify runs. Cancel or an unlinked Amazon account shows
+  an error under the button (request-log link outside demo).
 - Footer rule with "Just looking? **Try demo mode**" and the app version
   (`v0.1.0`) on the right. In demo the line reads "Exploring sample
   networks. **Leave demo mode**". While the app relaunches it reads
@@ -91,6 +92,7 @@ real storage state (see States).
 | --- | --- | --- | --- | --- |
 | Email / Phone toggle | - (view state) | - | No | Switches field type |
 | Send code | `auth.login.start {login}` | write | No | Moves to step 2; starts the 60 s resend timer |
+| Sign in with Amazon | `auth.login.amazon` | write | No | Host-only: private Amazon window, then eero session; opens the dashboard like verify |
 | Try demo mode | `app.demo.set {enabled: true}` | write (app local) | No | Relaunches Mesh UI with `--demo` (same user data dir, settings kept in memory, the saved session untouched); demo networks appear |
 | Leave demo mode (in demo) | `app.demo.set {enabled: false}` | write (app local) | No | Relaunches without `--demo` (and without `MESH_UI_DEMO`); the real sign-in page or account returns |
 | Back | - | - | No | Back to step 1, pending login discarded |
@@ -169,9 +171,17 @@ real storage state (see States).
   in the footer.
 - Open question: whether the code is always 6 digits. The API accepts 4 to 10;
   render as many boxes as the first code length eero reports, default 6.
-- Amazon login is out of scope (see the note on Welcome). A user whose eero
-  account is Amazon-only needs another admin to invite an email account.
+- Amazon sign-in uses the eero Android OpenID + OAuth2 PKCE flow in a private
+  window (`auth.login.amazon`). It never creates an eero account
+  (`create_account=false`). CLI and MCP do not expose it (email/phone OTP
+  still works headless).
 - MANUAL: check the real error code and message for a wrong verification
   code, and whether a remaining-attempts count is returned | sign in with a
   wrong code once, then the right code | error row shows eero's message,
   sign-in then succeeds | risk: none.
+- MANUAL: Sign in with Amazon on a linked account | Welcome → Sign in with
+  Amazon → complete Amazon → dashboard opens | signed in; prior email session
+  replaced only after success | risk: none.
+- MANUAL: Sign in with Amazon on an Amazon account not linked to eero | same
+  steps with an unlinked Amazon login | clear not-linked message; previous
+  session kept if any | risk: none.

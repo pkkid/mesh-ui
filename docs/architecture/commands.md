@@ -202,6 +202,7 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 | `auth.login.start` | Send sign-in code | `{ login: string }` email or E.164 phone | w | `POST /2.2/login` | Keeps the unverified `user_token` in the session. Phone normalised to E.164 in core. |
 | `auth.login.verify` | Verify code | `{ code: string }` 4 to 10 digits | w | `POST /2.2/login/verify`, then `GET /2.2/account` | Adopts a rotated token from `Set-Cookie` or `data.user_token`. Saves via `SecretStore`. Wrong code keeps the pending token and returns `eero_error`. |
 | `auth.login.resend` | Resend code | `{}` | w | `POST /2.2/login/resend` | Engine refuses more than once per 60 s (`rate_limited`). |
+| `auth.login.amazon` | Sign in with Amazon | `{}` | w | host Amazon window → `POST /2.2/login/amazon` → `GET /2.2/account` | Window-only (`HOST_ONLY` on CLI/MCP; not an MCP tool). Private BrowserWindow runs OpenID+PKCE; host returns an Amazon access token to the command; eero commit only after account identity verifies. `create_account=false`. Failed attempts leave a previous session untouched. Not exposed to MCP. |
 | `auth.logout` | Sign out | `{}` | w | `POST /2.2/logout` | Best effort; local session and file are cleared even if eero is unreachable. |
 
 ### account (`commands/account.ts`, scope account)

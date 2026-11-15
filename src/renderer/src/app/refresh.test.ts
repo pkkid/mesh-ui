@@ -22,7 +22,7 @@ function setup() {
     return { id, n: count(id) };
   };
   const backend = composeBackend("demo", {
-    auth: { status: async () => ({ signedIn: true, pending: false, login: null, storage: "memory" }), start: async () => {}, verify: async () => {}, resend: async () => {}, logout: async () => {} },
+    auth: { status: async () => ({ signedIn: true, pending: false, login: null, storage: "memory" }), start: async () => {}, verify: async () => {}, resend: async () => {}, amazonLogin: async () => {}, logout: async () => {} },
   });
   const engine = createEngine({
     backend,

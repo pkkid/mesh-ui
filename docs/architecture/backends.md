@@ -25,7 +25,7 @@ singular to match the area files (`src/core/commands/<area>.ts` and
 
 ```ts
 export interface BackendAreas {
-  auth: AuthBackend;         // status, start, verify, resend, logout
+  auth: AuthBackend;         // status, start, verify, resend, amazonLogin, logout
   account: AccountBackend;   // get
   network: NetworkBackend;   // list, get, health, permissions; restart
   internet: InternetBackend; // get, speedTests; runSpeedTest
@@ -256,9 +256,10 @@ security, deleting a
   ends on its own. New profiles and schedules get `demo-profile-<n>` and
   `demo-schedule-<n>` ids, counted from 1 again on reset. M5 settings writes
   are not in the demo yet.
-- **Auth.** Any login is accepted; the code `000000` (or any 6 digits)
-  verifies, `111111` returns a wrong-code `eero_error` so the error state
-  can be tested.
+- **Auth.** Any login is accepted; any 6-digit code verifies except
+  `111111`, which returns a wrong-code `eero_error` so the error state can
+  be tested. `auth.login.amazon` signs in at once (no browser window in
+  demo; the host action returns a dummy token).
 - **Live rates.** `requestBurst` returns `nextBurstAt` about 3 s ahead;
   the following `list` gives rates from a seeded random walk around each
   device's typical rate, so charts move but tests stay deterministic with a

@@ -7,9 +7,10 @@
 
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { Shell } from "electron";
+import type { BrowserWindow, Shell } from "electron";
 import type { AppSettings, InstallKind, UpdateStatus } from "../core/model";
 import type { HostActions } from "../core/spec";
+import { createAmazonSignIn } from "./amazon-native-signin";
 import { createCliInstaller } from "./cli-install";
 import { createDemoSwitch, type DemoSwitchDeps } from "./demo-switch";
 import { createUpdater, loadElectronUpdater, macSignedForUpdates, type UpdaterDeps } from "./updater";
@@ -27,6 +28,16 @@ export type HostActionDeps = {
   demoSwitch: DemoSwitchDeps;
   /** The eero request log's path and Electron's `shell`, to show it in the file manager. */
   requestLog: { path: string; shell: Pick<Shell, "showItemInFolder" | "openPath"> };
+  /** Mesh UI version for the Amazon token-exchange User-Agent. */
+  appVersion: string;
+  platform: NodeJS.Platform;
+  /**
+   * Demo (and tests): resolve Amazon sign-in immediately with this token,
+   * without opening a browser window.
+   */
+  amazonInstantToken?: string;
+  /** Parent window for the Amazon sign-in modal. */
+  amazonParent?: () => BrowserWindow | null;
 };
 
 export function createHostActions(d: HostActionDeps): HostActions {
@@ -54,5 +65,11 @@ export function createHostActions(d: HostActionDeps): HostActions {
         return { path, exists };
       },
     },
+    amazon: createAmazonSignIn({
+      appVersion: d.appVersion,
+      platform: d.platform,
+      ...(d.amazonInstantToken !== undefined ? { instantToken: d.amazonInstantToken } : {}),
+      ...(d.amazonParent ? { parent: d.amazonParent } : {}),
+    }),
   };
 }

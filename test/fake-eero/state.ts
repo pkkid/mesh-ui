@@ -44,6 +44,9 @@ export function isOwnerRole(role: string | undefined): boolean {
 /** The one code the fake sign-in accepts. */
 export const FAKE_CODE = "123456";
 
+/** Amazon access token the fake `POST /login/amazon` accepts. */
+export const FAKE_AMAZON_ACCESS = "test-amazon-access";
+
 /** Where the fake serves the release notes manifest (`updates.manifest_resource`), relative to its origin. */
 export const FAKE_MANIFEST_PATH = "/2.2/fake/release_manifest";
 

@@ -201,5 +201,6 @@ The full rules are in `AGENTS.md`. Architecturally:
 No eero Plus or eero Secure features: no ad blocking, content filters, block
 apps, block and allow sites, security insights, VPN, DDNS, backup internet,
 radio analytics or usage beyond about 7 days. Usage ranges are Day and Week
-only. Amazon login, onboarding of new eeros and eero for Business are also
-out of scope. See `AGENTS.md`.
+only. Onboarding of new eeros and eero for Business are also out of scope.
+Amazon sign-in for an existing linked account is supported
+(`auth.login.amazon`). See `AGENTS.md`.

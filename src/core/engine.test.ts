@@ -39,6 +39,7 @@ function setup(opts: { signedIn?: boolean; specs?: AnyCommand[]; now?: () => num
       start: async () => {},
       verify: async () => {},
       resend: async () => {},
+      amazonLogin: async () => {},
       logout: async () => {},
     },
     network: {

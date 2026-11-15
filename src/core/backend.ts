@@ -56,6 +56,11 @@ export interface AuthBackend {
   /** The session becomes signed in. A wrong code keeps it pending. */
   verify(code: string): Promise<void>;
   resend(): Promise<void>;
+  /**
+   * Signs in with an Amazon access token from the native OpenID+PKCE window.
+   * Failed attempts must not overwrite a previous session.
+   */
+  amazonLogin(accessToken: string): Promise<void>;
   /** Clears the local session first, then tells eero, best effort. */
   logout(): Promise<void>;
 }

@@ -96,6 +96,7 @@ function makeEngine() {
       start: async () => {},
       verify: async () => {},
       resend: async () => {},
+      amazonLogin: async () => {},
       logout: async () => {},
     },
     network: {

@@ -1086,7 +1086,7 @@ Out (parked; see After M6): Windows Authenticode signing (before a wider
 release, decided 2026-11-13); macOS Developer ID signing and notarization
 (decided 2026-11-14); GPG-signed checksums (no project key yet); Flatpak, AUR, and
 deb or rpm repositories; a generated open source licenses page (About
-links to the repository instead); Amazon login; anything eero Plus; any
+links to the repository instead); anything eero Plus; any
 step that needs the maintainer's secrets or accounts (Apple Developer
 certificates, notarization credentials, adding secrets, pushing tags,
 publishing a release): those are `MANUAL:` lines and M6.R steps. Workers
@@ -1281,9 +1281,10 @@ into `main` reviewed by the maintainer, rather than milestone runs. Parked,
 not planned (pick one up only when the maintainer asks): Windows
 Authenticode signing; macOS Developer ID signing and notarization;
 GPG-signed checksums; Flatpak, AUR, and deb or rpm
-repositories; a generated open source licenses page; Amazon login;
-anything an M6 story leaves out for lack of a live-tested source (it says
-so in its docs). eero Plus features stay out of scope for good.
+repositories; a generated open source licenses page; anything an M6 story
+leaves out for lack of a live-tested source (it says so in its docs).
+Amazon-native login (`auth.login.amazon`) shipped after M6. eero Plus
+features stay out of scope for good.
 
 Follow-ups from M6 (0.6.x issues, from the M6 review): the
 `endpoints.md` section 20 captures once the maintainer is signed in on

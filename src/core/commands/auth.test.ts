@@ -134,10 +134,44 @@ describe("auth commands on demo", () => {
     expect(await engine.execute("auth.logout", { extra: 1 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
+  it("auth.login.amazon signs in through the host action and emits session.changed", async () => {
+    const { engine, events } = demo();
+    expect(await engine.execute("auth.login.amazon")).toEqual({
+      ok: false,
+      error: { code: "bad_params", message: "Only in the Mesh UI window." },
+    });
+    const withHost = createEngine({
+      backend: createDemoBackend({ scenario: "signed_out" }),
+      host: {
+        version: "0.0.0",
+        electron: null,
+        configDir: null,
+        keychainName: null,
+        install: "dev",
+        actions: { amazon: { signIn: async () => "demo-amazon-token" } },
+      },
+    });
+    const hostEvents: HostEvent[] = [];
+    withHost.onEvent((e) => hostEvents.push(e));
+    expect(await withHost.execute<AuthStatus>("auth.login.amazon")).toMatchObject({
+      ok: true,
+      result: { signedIn: true, pending: false, login: "am***@amazon.example", backend: "demo" },
+    });
+    expect(hostEvents).toContainEqual({ type: "session.changed", state: "signed_in", storage: "memory" });
+    expect(events).toEqual([]);
+  });
+
   it("no auth command needs confirm", () => {
     const { engine } = demo();
     const auth = engine.commands().filter((c) => c.id.startsWith("auth."));
-    expect(auth.map((c) => c.id).sort()).toEqual(["auth.login.resend", "auth.login.start", "auth.login.verify", "auth.logout", "auth.status"]);
+    expect(auth.map((c) => c.id).sort()).toEqual([
+      "auth.login.amazon",
+      "auth.login.resend",
+      "auth.login.start",
+      "auth.login.verify",
+      "auth.logout",
+      "auth.status",
+    ]);
     for (const c of auth) {
       expect(c.scope).toBe("account");
       expect(["query", "write"]).toContain(c.effect);
@@ -147,6 +181,31 @@ describe("auth commands on demo", () => {
 });
 
 describe("auth commands on the fake eero server", () => {
+  it("signs in with Amazon through a host action mock", async () => {
+    const { FAKE_AMAZON_ACCESS } = await import("../../../test/fake-eero/state");
+    const server = createFakeEero();
+    const secrets = memorySecrets();
+    const backend = createEeroBackend({ secrets: secrets.store, origin: server.origin, fetch: server.fetch });
+    const engine = createEngine({
+      backend,
+      host: {
+        version: "0.0.0",
+        electron: null,
+        configDir: null,
+        keychainName: null,
+        install: "dev",
+        actions: { amazon: { signIn: async () => FAKE_AMAZON_ACCESS } },
+      },
+    });
+    const events: HostEvent[] = [];
+    engine.onEvent((e) => events.push(e));
+    const res = await engine.execute<AuthStatus>("auth.login.amazon");
+    expect(res).toMatchObject({ ok: true, result: { signedIn: true, pending: false, backend: "eero" } });
+    expect(JSON.stringify(res)).not.toMatch(/s=|user_token|session|FAKE_AMAZON|test-amazon/);
+    expect(secrets.current()).toBeTruthy();
+    expect(events).toContainEqual({ type: "session.changed", state: "signed_in", storage: "keychain" });
+  });
+
   it("signs in end to end, saves the session and never returns the token", async () => {
     const { server, secrets, engine, events } = fake();
     expect(await engine.execute("auth.status")).toEqual({

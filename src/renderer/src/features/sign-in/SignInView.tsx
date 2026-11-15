@@ -11,7 +11,6 @@ import {
   AtSign,
   CircleAlert,
   FlaskConical,
-  Info,
   Lock,
   LockOpen,
   Mail,
@@ -85,6 +84,7 @@ export function SignInView({ expired, endedCode = null, onDone }: SignInViewProp
           kind={kind}
           onKind={setKind}
           onSent={(login) => setStep({ id: "code", login })}
+          onAmazon={openNetwork}
         />
       )}
       {step.id === "code" && (
@@ -275,19 +275,24 @@ function Welcome({
   kind,
   onKind,
   onSent,
+  onAmazon,
 }: {
   expired: boolean;
   endedCode: string | null;
   kind: LoginKind;
   onKind: (k: LoginKind) => void;
   onSent: (login: string) => void;
+  /** After Amazon sign-in succeeds: select a network and open the dashboard. */
+  onAmazon: () => Promise<void>;
 }) {
   const auth = useQuery<AuthStatus>("auth.status");
   const info = useQuery<AppInfo>("app.info");
   const start = useCommand<{ login: string }, AuthStatus>("auth.login.start");
+  const amazon = useCommand<Record<string, never>, AuthStatus>("auth.login.amazon");
   const [email, setEmail] = useState(lastLogin?.kind === "email" ? lastLogin.value : "");
   const [phone, setPhone] = useState(lastLogin?.kind === "phone" ? lastLogin.value : "");
   const [country, setCountry] = useState(lastLogin?.country ?? "+1");
+  const [amazonOpening, setAmazonOpening] = useState(false);
   // Relaunches Mesh UI with or without --demo (src/main/demo-switch.ts); the CLI and MCP hosts refuse it.
   const demoSwitch = useCommand<{ enabled: boolean }, { demo: boolean; restarting: boolean }>("app.demo.set");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -296,13 +301,27 @@ function Welcome({
 
   const value = kind === "email" ? email.trim() : phone.trim();
   const login = kind === "email" || value.startsWith("+") ? value : `${country}${value}`;
+  const busy = start.running || amazon.running || amazonOpening;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!value || start.running) return;
+    if (!value || busy) return;
     lastLogin = { kind, country, value };
     const res = await start.run({ login });
     if (res.ok) onSent(kind === "email" ? login : `${country} ${value}`.replace(/^(\+\d+) \+/, "+"));
+  };
+
+  const signInAmazon = async () => {
+    if (busy) return;
+    start.reset();
+    const res = await amazon.run({});
+    if (!res.ok) return;
+    setAmazonOpening(true);
+    try {
+      await onAmazon();
+    } finally {
+      setAmazonOpening(false);
+    }
   };
 
   const demo = auth.data?.backend === "demo";
@@ -382,26 +401,36 @@ function Welcome({
         </span>
       )}
 
-      <BigButton type="submit" className="mt-3.5" busy={start.running} disabled={!value}>
+      <BigButton type="submit" className="mt-3.5" busy={start.running} disabled={!value || busy}>
         Send code
         <ArrowRight />
       </BigButton>
       {start.error && <ErrorLine log>{errorText(start.error)}</ErrorLine>}
 
-      <div className="mt-4 flex gap-2.5 rounded-[10px] border bg-card px-3 py-2.5 text-muted-foreground text-xs leading-normal">
-        <Info className="mt-px size-3.5 shrink-0 text-info-foreground" />
-        <div>
-          Amazon login is not supported in Mesh UI. If you sign in to the eero app with Amazon, use an eero account that has admin access to
-          your network.
-        </div>
+      <div className="mt-4 flex items-center gap-3 text-2xs text-muted-foreground uppercase tracking-wide">
+        <span className="h-px flex-1 bg-border" />
+        or
+        <span className="h-px flex-1 bg-border" />
       </div>
+
+      <BigButton
+        type="button"
+        variant="outline"
+        className="mt-3.5"
+        busy={amazon.running || amazonOpening}
+        disabled={busy}
+        onClick={() => void signInAmazon()}
+      >
+        Sign in with Amazon
+      </BigButton>
+      {amazon.error && <ErrorLine log>{errorText(amazon.error)}</ErrorLine>}
 
       <div className="mt-auto pt-6">
         <div className="mb-2.5 flex items-center gap-1.5 text-2xs text-muted-foreground">
           {demo ? (
             <>
               <FlaskConical className="size-3 shrink-0" />
-              Demo mode: use any email, then any 6-digit code.
+              Demo mode: use any email, then any 6-digit code, or Sign in with Amazon.
             </>
           ) : storage === "keychain" ? (
             <>

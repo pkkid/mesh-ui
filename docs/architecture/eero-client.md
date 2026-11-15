@@ -146,14 +146,15 @@ Passwordless, two steps, driven by the `auth.*` commands.
 | Send code | `auth.login.start {login}` | `POST /2.2/login` (form `login`) | `login` is an email or E.164 phone. Returns a pending `user_token`, held in engine memory only |
 | Resend | `auth.login.resend` | `POST /2.2/login/resend` | Allowed once per 60 s. `error.too.many.resends` maps to `rate_limited` |
 | Verify | `auth.login.verify {code}` | `POST /2.2/login/verify` (form `code`, cookie `s=<pending>`) | On success the pending token becomes the session. Prefer a new value from `Set-Cookie s=` or `data.user_token` if present |
+| Amazon | `auth.login.amazon` | host window → `POST /2.2/login/amazon` (form `auth_token`, `create_account=false`) → `GET /2.2/account` | OpenID+PKCE in a private window (`src/core/eero/amazonNative.ts`). Candidate session commits only after account identity verifies. `error.login.unknown` means the Amazon account is not linked |
 | Refresh | (automatic) | `POST /2.2/login/refresh` | See below |
 | Sign out | `auth.logout` | `POST /2.2/logout` | Best effort; the local session is cleared first, whatever eero answers |
 
 - A wrong code (`error.code.invalid`, `error.verification.invalid`) keeps the
   pending token so the user can retry.
 - Tokens beginning `eero-web-` are a retired web credential and are rejected.
-- Amazon login is not supported (it needs Amazon's OAuth flow). The sign-in
-  screen says so.
+- Amazon sign-in never creates an eero account and never overwrites a previous
+  session until verification succeeds.
 
 ### Refresh and replay
 

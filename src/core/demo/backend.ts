@@ -556,6 +556,9 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       resend: async () => {
         if (!auth.pending) throw new BackendError("bad_params", "Start sign-in first: no code was sent.");
       },
+      amazonLogin: async (_accessToken) => {
+        auth = { signedIn: true, pending: false, login: "am***@amazon.example" };
+      },
       logout: async () => {
         auth = { signedIn: false, pending: false, login: null };
       },
