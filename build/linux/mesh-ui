@@ -1,0 +1,8 @@
+#!/bin/sh
+# Mesh UI command line launcher (docs/platform/build-and-release.md#cli-launcher).
+# The deb and rpm after-install script copies it to /usr/bin/mesh-ui. The
+# desktop entry starts the window from /opt directly; this launcher only runs
+# the headless CLI, and like scripts/mesh-ui-dev.mjs it never lets the app
+# reach a display server, even from a desktop terminal.
+unset DISPLAY WAYLAND_DISPLAY
+exec "/opt/Mesh UI/mesh-ui" --cli --ozone-platform=headless --disable-gpu "$@"

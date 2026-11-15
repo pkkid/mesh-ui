@@ -1,0 +1,21 @@
+#!/bin/sh
+# Mesh UI command line launcher (docs/platform/build-and-release.md#cli-launcher).
+# Shipped as "Mesh UI.app/Contents/Resources/bin/mesh-ui". It may be called
+# through a symlink (app.cli.install links /usr/local/bin/mesh-ui here), so
+# resolve the real path first, then run the app binary in headless --cli mode
+# with every argument unchanged.
+if command -v realpath >/dev/null 2>&1; then
+  self=$(realpath "$0")
+else
+  # macOS before 13 has no realpath: follow the links by hand.
+  self=$0
+  while [ -L "$self" ]; do
+    link=$(readlink "$self")
+    case $link in
+      /*) self=$link ;;
+      *) self=$(dirname "$self")/$link ;;
+    esac
+  done
+fi
+bin=$(cd "$(dirname "$self")" && pwd -P)
+exec "$bin/../../MacOS/Mesh UI" --cli "$@"

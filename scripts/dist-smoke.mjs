@@ -46,8 +46,11 @@ delete env.ELECTRON_RUN_AS_NODE;
 delete env.MESH_UI_FAKE;
 delete env.MESH_UI_FAKE_ORIGIN;
 
+// With no display (Linux CI, SSH, an agent), every step runs on headless ozone
+// and the window step renders offscreen with MESH_UI_HEADLESS=1, as ui-shot does.
 const headless = process.platform === "linux" && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY;
-const hostSwitches = [`--user-data-dir=${userData}`, ...(headless ? ["--ozone-platform=headless"] : [])];
+const hostSwitches = [`--user-data-dir=${userData}`, ...(headless ? ["--ozone-platform=headless", "--disable-gpu"] : [])];
+const windowEnv = { MESH_UI_DEMO: "1", ...(headless ? { MESH_UI_HEADLESS: "1" } : {}) };
 
 function log(msg) {
   process.stdout.write(`[dist-smoke] ${msg}\n`);
@@ -201,7 +204,8 @@ async function packagedSmoke() {
   if (!Array.isArray(list)) fail("commands did not print a JSON array");
   log(`cli --demo commands: ${list.length} commands`);
 
-  const app = launchWindow(bin, ["--demo", ...hostSwitches], { MESH_UI_DEMO: "1" });
+  const app = launchWindow(bin, ["--demo", ...hostSwitches], windowEnv);
+  if (headless) log("no display: window step runs offscreen (MESH_UI_HEADLESS=1, ozone headless)");
   try {
     const page = await pageTarget(await app.endpoint);
     const session = cdp(page.webSocketDebuggerUrl);

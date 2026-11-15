@@ -1,7 +1,9 @@
 # electron-builder config (docs/platform/build-and-release.md).
 # `pnpm dist` builds the installers for the current OS, `pnpm dist:dir` only
 # the unpacked app in dist/<os>-unpacked. Local builds are unsigned unless the
-# signing variables are set. Publishing is left to release.yml.
+# signing variables are set. Publishing is left to release.yml: every script
+# passes --publish never, and `publish` below only writes app-update.yml and
+# the latest*.yml update files.
 
 # Never change after the first release: it keys the macOS keychain item, the
 # Windows AppUserModelID and the auto-update identity.
@@ -20,6 +22,22 @@ files:
   - "!**/*.map"
 asar: true
 
+# build/icon.png (1024 px); electron-builder derives the icns, ico and the
+# Linux icon sizes from it.
+icon: build/icon.png
+
+# GitHub Releases of pkkid/mesh-ui (auto-update, docs/platform/build-and-release.md).
+# Writes resources/app-update.yml and the latest*.yml update files; a
+# -beta.N version writes beta*.yml instead. With the github provider
+# electron-builder ignores generateUpdatesFilesForAllChannels (the beta
+# channel goes through GitHub pre-releases); it is set so a generic host
+# would also get every channel's files.
+publish:
+  provider: github
+  owner: pkkid
+  repo: mesh-ui
+generateUpdatesFilesForAllChannels: true
+
 mac:
   category: public.app-category.utilities
   target:
@@ -27,34 +45,73 @@ mac:
       arch: universal
     - target: zip
       arch: universal
+  # The zip (for electron-updater); the dmg sets its own name below.
+  artifactName: Mesh-UI-${version}-${arch}-mac.${ext}
+  # Signing needs CSC_LINK and CSC_KEY_PASSWORD (or an identity in the
+  # keychain); without them the build is unsigned and still succeeds.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Notarizes with the App Store Connect API key from APPLE_API_KEY (path to
+  # the .p8), APPLE_API_KEY_ID and APPLE_API_ISSUER; skipped when unset.
+  notarize: true
+  extraResources:
+    - from: build/mac/mesh-ui
+      to: bin/mesh-ui
+
+dmg:
   artifactName: Mesh-UI-${version}-${arch}.${ext}
 
 win:
   target:
     - target: nsis
       arch: [x64, arm64]
-  artifactName: Mesh-UI-Setup-${version}-${arch}.${ext}
+    - target: zip
+      arch: [x64, arm64]
+  # The portable zip (unzip and run, PATH untouched); nsis names its own.
+  artifactName: Mesh-UI-${version}-${arch}-portable.${ext}
+  # The CLI: bin\mesh-ui.cmd runs resources\cli-relay.js in the app's Node mode.
+  extraFiles:
+    - from: build/win/mesh-ui.cmd
+      to: bin/mesh-ui.cmd
+  extraResources:
+    - from: build/win/cli-relay.js
+      to: cli-relay.js
 
 nsis:
+  artifactName: Mesh-UI-Setup-${version}-${arch}.${ext}
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  # Adds $INSTDIR\bin to the user PATH and removes it on uninstall.
+  include: build/win/installer.nsh
 
 linux:
   executableName: mesh-ui
   category: Network
   synopsis: Desktop client for eero mesh networks
+  # Every hicolor size, scaled from build/icon.png (desktops skip a lone 1024 px icon).
+  icon: build/icons
+  # The host's arch; release.yml builds x64 and arm64 on their own runners.
   target:
     - AppImage
     - deb
     - rpm
   artifactName: Mesh-UI-${version}-${arch}.${ext}
+  # The CLI launcher; the deb and rpm scripts copy it to /usr/bin/mesh-ui.
+  extraResources:
+    - from: build/linux/mesh-ui
+      to: bin/mesh-ui
 
 # electron-builder's default deb depends already include libsecret-1-0.
 deb:
   artifactName: mesh-ui_${version}_${arch}.${ext}
+  afterInstall: build/linux/after-install.sh
+  afterRemove: build/linux/after-remove.sh
 
 # The default rpm depends plus libsecret, so a keychain is usable.
 rpm:
   depends: [gtk3, libnotify, nss, libXScrnSaver, "(libXtst or libXtst6)", xdg-utils, at-spi2-core, "(libuuid or libuuid1)", libsecret]
   artifactName: mesh-ui-${version}.${arch}.${ext}
+  afterInstall: build/linux/after-install.sh
+  afterRemove: build/linux/after-remove.sh
