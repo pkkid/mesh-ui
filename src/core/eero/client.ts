@@ -290,13 +290,23 @@ export class EeroClient {
     }
     await this.ensureLoaded();
 
-    const { data, cookieToken } = await this.exchange<RawLoginResponse | null>({
-      method: "POST",
-      path: "/2.2/login/amazon",
-      body: { auth_token: value, create_account: false },
-      encoding: "form",
-      auth: "none",
-    });
+    let login: Exchange<RawLoginResponse | null>;
+    try {
+      login = await this.exchange<RawLoginResponse | null>({
+        method: "POST",
+        path: "/2.2/login/amazon",
+        body: { auth_token: value, create_account: false },
+        encoding: "form",
+        auth: "none",
+      });
+    } catch (err) {
+      // Only login/amazon means "not linked" by error.login.unknown; other sign-ins keep their own messages.
+      if (err instanceof BackendError && err.detail?.eeroError === "error.login.unknown") {
+        throw new BackendError("eero_error", AMAZON_NOT_LINKED, err.detail);
+      }
+      throw err;
+    }
+    const { data, cookieToken } = login;
     const candidate = cookieToken ?? data?.user_token ?? null;
     if (!candidate || RETIRED_TOKEN.test(candidate)) {
       throw new BackendError("eero_error", "eero did not start the Amazon sign-in. Try again.");
@@ -746,6 +756,8 @@ export function maskLogin(login: string): string {
   return `***${login.slice(-4)}`;
 }
 
+const AMAZON_NOT_LINKED = "This Amazon account is not linked to an eero account. Sign in with email or phone instead.";
+
 /** True when GET account after login/amazon shows a real identity (native guard). */
 export function hasAmazonAccountIdentity(data: unknown): boolean {
   if (!data || typeof data !== "object") return false;
@@ -771,13 +783,6 @@ export function mapError(status: number, eeroError: string | null, method: strin
   const detail = { status, ...(eeroError ? { eeroError } : {}) };
   const e = eeroError ?? "";
   if (WRONG_CODE_ERRORS.test(e)) return new BackendError("eero_error", "That code is not right. Check it and try again.", detail);
-  if (e === "error.login.unknown") {
-    return new BackendError(
-      "eero_error",
-      "This Amazon account is not linked to an eero account. Sign in with email or phone instead.",
-      detail,
-    );
-  }
   if (DEAD_SESSION_ERRORS.has(e) || status === 401 || status === 419) {
     return new BackendError("not_signed_in", "Your eero session has ended. Sign in again.", detail);
   }

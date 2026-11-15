@@ -57,7 +57,19 @@ function platformLabel(platform: NodeJS.Platform): string {
 function createAmazonSession(partition: string): Session {
   const ses = electronSession.fromPartition(partition, { cache: false });
   amazonSessions.add(ses);
+  // Like the main window: no camera, mic, location, notifications or
+  // clipboard reads from page scripts (typing and Ctrl+V paste still work),
+  // and no downloads.
+  ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+  ses.setPermissionCheckHandler(() => false);
+  ses.on("will-download", (event) => event.preventDefault());
   return ses;
+}
+
+/** Drops the attempt's cookies and storage once its window is gone. */
+function clearAmazonSession(ses: Session): void {
+  void ses.clearStorageData().catch(() => {});
+  void ses.clearCache().catch(() => {});
 }
 
 /**
@@ -65,9 +77,12 @@ function createAmazonSession(partition: string): Session {
  * with an Amazon access token. Rejects on cancel or protocol failure.
  */
 export function createAmazonSignIn(deps: AmazonSignInDeps): { signIn(): Promise<string> } {
+  // One sign-in window at a time; a second call while it is open is refused.
+  let open = false;
   return {
     async signIn() {
       if (deps.instantToken !== undefined) return deps.instantToken;
+      if (open) throw new BackendError("eero_error", "Amazon sign-in is already open. Finish or close that window first.");
 
       const attempt = createAmazonNativeAttempt({
         appVersion: deps.appVersion,
@@ -75,12 +90,14 @@ export function createAmazonSignIn(deps: AmazonSignInDeps): { signIn(): Promise<
       });
       const partition = `${AMAZON_PARTITION_PREFIX}${randomUUID()}`;
       const lifetime = new AbortController();
+      open = true;
 
       return new Promise<string>((resolve, reject) => {
         let settled = false;
         const finish = (fn: () => void) => {
           if (settled) return;
           settled = true;
+          open = false;
           lifetime.abort();
           fn();
         };
@@ -157,10 +174,13 @@ export function createAmazonSignIn(deps: AmazonSignInDeps): { signIn(): Promise<
         win.webContents.on("will-navigate", onNav);
         win.webContents.on("will-redirect", onNav);
         win.webContents.setWindowOpenHandler(({ url }) => {
-          if (isAmazonAllowedNavigation(url)) void win.webContents.loadURL(url);
+          // A pop-up to the return address is the sign-in result: loadURL would skip will-navigate and load it.
+          if (isAmazonReturnAddress(url)) onNav({ preventDefault: () => {} }, url);
+          else if (isAmazonAllowedNavigation(url)) void win.webContents.loadURL(url);
           return { action: "deny" };
         });
         win.on("closed", () => {
+          clearAmazonSession(ses);
           finish(() => reject(new BackendError("eero_error", "Amazon sign-in was cancelled.")));
         });
 

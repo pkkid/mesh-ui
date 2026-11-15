@@ -280,6 +280,17 @@ describe("auth", () => {
     expect(fake.log.at(-1)?.path).toBe("/2.2/login/amazon");
   });
 
+  it("keeps the Amazon not-linked message out of email and phone sign-in", async () => {
+    const { fake, client } = setup({ signedIn: false });
+    fake.scenarios.add(
+      { method: "POST", path: "/login" },
+      { replace: { status: 401, body: JSON.stringify({ meta: { code: 401, error: "error.login.unknown" }, data: null }) } },
+    );
+    const err = await client.startLogin("alex@example.com").catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: "eero_error", detail: { eeroError: "error.login.unknown" } });
+    expect((err as Error).message).not.toMatch(/Amazon/);
+  });
+
   it("refuses a success-shaped Amazon login without account identity and keeps the previous session", async () => {
     const { fake, client, secrets, token } = setup();
     const { FAKE_AMAZON_ACCESS } = await import("../../../test/fake-eero/state");

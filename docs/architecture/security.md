@@ -126,8 +126,10 @@ preload, and no IPC. It may navigate only HTTPS Amazon hosts on port 443
 `https://www.amazon.com/ap/maplanding` is intercepted and never loaded; the
 authorization code is exchanged in Node for an Amazon access token, which
 stays in main and is passed only into `EeroClient.amazonLogin`. Amazon
-browser cookies are never read. Demo mode resolves the host action without
-opening a window.
+browser cookies are never read. Like the main window, its session denies
+every permission request and check, and blocks downloads; its storage is
+cleared when the window closes. Only one sign-in window can be open at a
+time. Demo mode resolves the host action without opening a window.
 
 The renderer can write a file only through `window.mesh.saveFile`: text only,
 with a text extension, to a path the user picks in the native save dialog.
