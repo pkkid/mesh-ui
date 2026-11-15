@@ -278,7 +278,9 @@ Only the window has an updater; `app.info` `update` reports its state.
 - **Install kind:** `src/main/install-kind.ts` tells them apart at launch
   (`app.info` `install`): unpackaged is `dev`; packaged macOS is `mac`;
   Windows is `nsis` when the NSIS uninstaller sits beside the exe, else
-  `portable`; Linux is `appimage` when `APPIMAGE` is set, `deb` or `rpm`
+  `portable`; Linux is `appimage` when `APPIMAGE` is set and `APPDIR` (the
+  image's mount) holds the running exe, so a deb, rpm or unpacked build
+  started from another AppImage's terminal is not mistaken for one, `deb` or `rpm`
   from `resources/package-type` (written by electron-builder), else
   `portable` (an unpacked build).
 - **Who updates:** macOS (zip), Windows NSIS, Linux AppImage. Not the Windows
