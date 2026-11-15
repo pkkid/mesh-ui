@@ -12,7 +12,7 @@ pnpm install            # also downloads the Electron binary
 pnpm typecheck
 pnpm build              # electron-vite: out/main, out/preload, out/renderer
 pnpm test               # vitest, the whole suite
-pnpm dist               # electron-builder for the current OS (unsigned unless signing env is set)
+pnpm dist               # electron-builder for the current OS (unsigned; ad-hoc signed on a Mac)
 pnpm dist:dir           # unpacked app in dist/<os>-unpacked, fastest to test
 pnpm dist:smoke         # launch the dist:dir app with --demo and check CLI and window
 pnpm test:keychainless  # Linux: built app with --password-store=basic keeps the session in memory
@@ -24,9 +24,9 @@ electron-builder, which reads `electron-builder.yml`. `pnpm dist:smoke` and
 data dir and `XDG_CONFIG_HOME`, against the demo backend or the local fake
 eero server. With no display (Linux without `DISPLAY` or `WAYLAND_DISPLAY`)
 every step runs on headless ozone and the window step offscreen
-(`MESH_UI_HEADLESS=1`). Local builds are unsigned unless the signing
-variables below are set, and notarization is skipped without its variables;
-neither fails the build.
+(`MESH_UI_HEADLESS=1`). Builds are unsigned for now (see [Signing](#signing)):
+a build on a Mac gets an ad-hoc signature and is not notarized, and no
+signing variable is needed anywhere.
 
 `pnpm dist` on Linux builds the AppImage, deb and rpm for the host's arch
 (x64 or arm64); release.yml builds each arch on its own runner. To read a
@@ -37,9 +37,9 @@ package's install scripts: `dpkg-deb -e dist/mesh-ui_<v>_amd64.deb <dir>`
 
 | File | What it is |
 | --- | --- |
-| `electron-builder.yml` | Targets, artifact names, signing switches, publish config |
+| `electron-builder.yml` | Targets, artifact names, signing settings (ad-hoc on macOS for now), publish config |
 | `build/icon.png` | The app icon, 1024 px; electron-builder derives icns, ico and the Linux sizes |
-| `build/entitlements.mac.plist` | Hardened runtime entitlements (only `allow-jit`) |
+| `build/entitlements.mac.plist` | macOS entitlements (only `allow-jit`), for the hardened runtime once Developer ID signing is added |
 | `build/mac/mesh-ui` | macOS CLI launcher, `Contents/Resources/bin/mesh-ui` |
 | `build/win/mesh-ui.cmd`, `build/win/cli-relay.js` | Windows CLI launcher and relay, `bin\mesh-ui.cmd` and `resources\cli-relay.js` |
 | `build/win/installer.nsh` | NSIS: adds `<install dir>\bin` to the user `PATH`, removes it on uninstall |
@@ -82,7 +82,7 @@ keychain item, the Windows AppUserModelID and the auto-update identity.
 
 | OS | Arch | Artifact | Auto-update | Notes |
 | --- | --- | --- | --- | --- |
-| macOS | universal (arm64 + x64) | `Mesh-UI-<v>-universal.dmg` | Yes | Signed and notarized; for first install |
+| macOS | universal (arm64 + x64) | `Mesh-UI-<v>-universal.dmg` | Yes | Unsigned for now (ad-hoc signature); for first install, see [macOS](#macos) |
 | macOS | universal | `Mesh-UI-<v>-universal-mac.zip` | Yes | Used by electron-updater; also a manual download |
 | Windows | x64 | `Mesh-UI-Setup-<v>-x64.exe` (NSIS) | Yes | Per-user install, no admin; adds CLI to `PATH` |
 | Windows | arm64 | `Mesh-UI-Setup-<v>-arm64.exe` (NSIS) | Yes | |
@@ -99,9 +99,35 @@ channels, like deb and rpm.
 deb and rpm declare dependencies on `libsecret-1-0` / `libsecret` so a
 keychain is usable when a Secret Service is running.
 
-## Signing and notarization
+## Signing
 
 ### macOS
+
+- **Unsigned for now** (decided 2026-11-14: no Apple Developer Program
+  membership yet). Like Windows, macOS builds ship without a Developer ID
+  signature and are not notarized; `SHA256SUMS.txt` lets users check the
+  download. `electron-builder.yml` sets `identity: "-"`, so the app gets an
+  **ad-hoc signature**: Apple silicon refuses to run an arm64 binary with no
+  signature at all, and the universal build carries one. `hardenedRuntime`
+  is off (ad-hoc signing with the hardened runtime would need the
+  `disable-library-validation` entitlement) and `notarize: false`.
+  release.yml sets `CSC_IDENTITY_AUTO_DISCOVERY=false` on the mac job, so
+  electron-builder never searches the runner's keychain, and the job uses
+  no secret.
+- **First launch on macOS 15 and later.** Gatekeeper blocks an app that is
+  not notarized, and the old right-click, Open shortcut no longer bypasses
+  it. Users install the app, try to open it once (macOS says it cannot
+  verify the app), then open **System Settings > Privacy & Security** and
+  click **Open Anyway** next to the Mesh UI message, and confirm. Or, in
+  Terminal, clear the quarantine flag:
+  `xattr -d com.apple.quarantine "/Applications/Mesh UI.app"`. The release
+  notes say so, and so should the README's install steps. `codesign -dv "/Applications/Mesh UI.app"` shows
+  `Signature=adhoc`.
+
+### Later: Developer ID and notarization
+
+Not used yet; this is the plan for when the maintainer joins the Apple
+Developer Program.
 
 - **Developer ID Application** certificate, hardened runtime on.
 - Entitlements (`build/entitlements.mac.plist`): only what Electron needs,
@@ -111,15 +137,20 @@ keychain is usable when a Secret Service is running.
 - **Notarization** with `notarytool` through electron-builder's `notarize`
   option, using an App Store Connect API key. The ticket is stapled to the dmg
   and app.
-- Secrets: `APPLE_API_KEY` (the `.p8`, base64), `APPLE_API_KEY_ID`,
-  `APPLE_API_ISSUER`, `CSC_LINK` (Developer ID `.p12`, base64),
-  `CSC_KEY_PASSWORD`. electron-builder reads `APPLE_API_KEY` as a path to the
-  `.p8` file, so release.yml decodes the secret to a temp file and passes its
-  path.
-- `electron-builder.yml` sets `hardenedRuntime: true`, the entitlements and
-  `notarize: true`. Without `CSC_LINK` (and no Developer ID in the keychain)
-  the app is unsigned; without the three `APPLE_API_*` variables
-  notarization is skipped with a warning. Neither fails a local build.
+- Secrets, as environment secrets of a `release` GitHub environment used
+  only by the mac job: `APPLE_API_KEY` (the `.p8`, base64),
+  `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `CSC_LINK` (Developer ID `.p12`,
+  base64), `CSC_KEY_PASSWORD`. electron-builder reads `APPLE_API_KEY` as a
+  path to the `.p8` file, so release.yml would decode the secret to a temp
+  file in `$RUNNER_TEMP`, export its path, and remove it at the end of the
+  job. Set the secrets only on the `pnpm dist` step, so the smoke and the
+  screenshot never see them.
+- To switch on: in `electron-builder.yml` remove `identity: "-"` and set
+  `hardenedRuntime: true` and `notarize: true`; in release.yml add
+  `environment: release` to the mac job, drop `CSC_IDENTITY_AUTO_DISCOVERY`,
+  and add the decode step and the five secrets; update
+  `test/packaging/release.test.ts`, the release notes and the first-launch steps
+  in the README.
 
 ### Windows
 
@@ -142,8 +173,9 @@ keychain is usable when a Secret Service is running.
 - When a deb or rpm repository is added (with Flatpak and AUR), packages are
   signed there.
 
-Signing secrets are GitHub environment secrets on the `release` environment.
-Pull request workflows never see them.
+No release job uses a secret today. When signing is added, its secrets are
+GitHub environment secrets on a `release` environment, which pull request
+workflows never see.
 
 ## CI
 
@@ -170,7 +202,7 @@ test well under it (property tests check with plain comparisons and one
 
 | Job | Runner | Builds |
 | --- | --- | --- |
-| mac | `macos-latest` (arm64) | universal dmg + zip, signed and notarized when the secrets exist |
+| mac | `macos-latest` (arm64) | universal dmg + zip, ad-hoc signed, not notarized (see [macOS](#macos)) |
 | win | `windows-latest` | NSIS x64 + arm64, portable zips, unsigned for now (see [Windows](#windows)) |
 | linux-x64 | `ubuntu-latest` | AppImage, deb, rpm (x64) |
 | linux-arm64 | `ubuntu-24.04-arm` | AppImage, deb, rpm (arm64) |
@@ -195,25 +227,26 @@ test well under it (property tests check with plain comparisons and one
 - **Never publishes from a build.** Every build goes through the `pnpm dist`
   scripts, which pass `--publish never`, and no build job has a token that
   can write. Only `publish` has `contents: write`; every other job reads.
-- **Secrets:** the five signing secrets are environment secrets of the
-  `release` environment, and only the `mac` job uses that environment. They
-  are set only on the `pnpm dist` step, so the smoke and the screenshot run
-  on an unsigned dir build. `APPLE_API_KEY` (the `.p8`, base64) is decoded to
-  `$RUNNER_TEMP` and its path exported, since electron-builder reads it as a
-  path; the file is removed at the end of the job. Without the secrets the
-  macOS build is unsigned and not notarized, with a warning, and does not
-  fail.
+- **No secrets and no environment.** macOS and Windows ship unsigned for
+  now, so no job reads a secret or uses the `release` environment. The mac
+  job sets `CSC_IDENTITY_AUTO_DISCOVERY=false` and builds with the ad-hoc
+  identity and `notarize: false` from `electron-builder.yml`. The plan for
+  adding signing is under [Later: Developer ID and
+  notarization](#later-developer-id-and-notarization).
 - **publish** checks that the tag is `v` plus `package.json` `version`,
   runs `node scripts/checksums.mjs release` (`SHA256SUMS.txt`, `sha256sum`
   format, sorted) and `node scripts/release-notes.mjs` (section 4 "What
   changed for a user" of the highest-numbered `docs/reviews/M<n>.md`, plus
-  fixed lines on unsigned Windows builds and checksums), then runs `gh
+  fixed lines on first launch of the unsigned macOS and Windows builds and
+  on checksums), then runs `gh
   release create --draft --verify-tag`, with `--prerelease` when the tag has
   a `-` suffix (`v0.7.0-beta.1`).
 - Actions are pinned to major versions, as in `ci.yml`.
   `test/packaging/release.test.ts` runs both scripts and checks the
-  workflow's triggers, `--publish never`, the `release` environment, the
-  permissions and `--draft`. Check edits with `actionlint` (for example
+  workflow's triggers, `--publish never`, that no job uses a secret or an
+  environment, the unsigned mac build (`CSC_IDENTITY_AUTO_DISCOVERY=false`,
+  no notarization), the permissions and `--draft`. Check edits with
+  `actionlint` (for example
   `uvx --with shellcheck-py --from actionlint-py actionlint`).
 
 The maintainer reviews the draft and publishes it. Auto-update only sees
@@ -336,22 +369,21 @@ launcher.
 
 ## Release checklist
 
-Maintainer only; agents never add secrets, push tags or publish.
+Maintainer only; agents never add secrets, push tags or publish. No
+secrets or environments are needed while macOS and Windows ship unsigned.
 
-1. **Once:** create the `release` environment (Settings, Environments) with
-   the secrets `CSC_LINK` (Developer ID `.p12`, base64), `CSC_KEY_PASSWORD`,
-   `APPLE_API_KEY` (App Store Connect `.p8`, base64), `APPLE_API_KEY_ID` and
-   `APPLE_API_ISSUER`. If it limits deployment branches, allow `main` (dry
-   runs) and `v*` tags.
-2. Milestone review merged by the maintainer.
-3. **Dry run:** Actions, Release, Run workflow on `main` with `dry_run`.
+1. Milestone review merged by the maintainer. (Signing secrets come later;
+   see [Later: Developer ID and
+   notarization](#later-developer-id-and-notarization).)
+2. **Dry run:** Actions, Release, Run workflow on `main` with `dry_run`.
    Expect four green build jobs (mac, win, linux-x64, linux-arm64) and a
-   skipped `publish`. Check the `ui-shot-*` PNGs and that the macOS log shows
-   signing and notarization.
-4. Bump `version` in `package.json`, commit, tag `v<version>`, push the tag.
-5. `release.yml` builds, signs (macOS now, Windows once signing is added) and
+   skipped `publish`. Check the `ui-shot-*` PNGs, and that the `dist-mac`
+   zip opens on Apple silicon after **Open Anyway** and `codesign -dv`
+   shows `Signature=adhoc`.
+3. Bump `version` in `package.json`, commit, tag `v<version>`, push the tag.
+4. `release.yml` builds (unsigned for now; macOS ad-hoc signed) and
    drafts the release with `SHA256SUMS.txt` and the review's notes. For a
    patch release, edit the notes in the draft.
-6. Download one artifact per OS from the draft, install it, launch with
+5. Download one artifact per OS from the draft, install it, launch with
    `--demo`, and check the update prompt from the previous version.
-7. Publish the draft.
+6. Publish the draft.

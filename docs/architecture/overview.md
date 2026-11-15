@@ -185,7 +185,8 @@ The full rules are in `AGENTS.md`. Architecturally:
 
 - Build with electron-builder in a GitHub Actions matrix (macos, windows,
   ubuntu).
-- macOS: universal dmg and zip, signed and notarized.
+- macOS: universal dmg and zip, unsigned for now (ad-hoc signature), see
+  [build-and-release.md](../platform/build-and-release.md#signing).
 - Windows: NSIS installer (x64 and arm64) and a portable zip, unsigned for
   now (users click through SmartScreen); code signing (Azure Trusted Signing
   preferred) is added before a wider release.

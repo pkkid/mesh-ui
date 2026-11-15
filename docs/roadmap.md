@@ -992,9 +992,11 @@ no beta pre-releases; the first real auto-update is proven at 0.6.1. M6.R
 is the release gate.
 
 Decided by the maintainer (2026-11-14): version 0.6.0 with no betas;
-macOS signed and notarized from the first release (the maintainer adds
-the Developer ID certificate and an App Store Connect API key to a
-`release` GitHub environment); updates hosted on GitHub Releases of the
+macOS ships unsigned for now, like Windows (decided 2026-11-14: no Apple
+Developer Program membership yet, so no Developer ID signing or
+notarization and no Apple secrets in the `release` GitHub environment;
+the mac build gets an ad-hoc signature so it launches on Apple silicon);
+updates hosted on GitHub Releases of the
 public pkkid/mesh-ui repo. Defaults taken unless the maintainer objects:
 package.json `author` uses the maintainer's GitHub noreply address; M6.2
 draws a simple neutral app icon, approved at the review; writes with no
@@ -1074,15 +1076,15 @@ notifications with push switches, networks table and switch, the CLI and
 agents panel with the audit log, Application Theme, About with update
 status, sign out and delete); `app.settings.get` and `.set`; CLI install
 on PATH per OS; "Try demo mode" and leaving it; packaging per OS (macOS
-universal dmg and zip with hardened runtime, entitlements and
-notarization configured from env; Windows NSIS x64 and arm64 plus a
+universal dmg and zip, unsigned for now with an ad-hoc signature; Windows NSIS x64 and arm64 plus a
 portable zip, unsigned; Linux AppImage, deb and rpm, x64 and arm64; an
 app icon); `release.yml` (tag builds, draft releases, `SHA256SUMS.txt`,
 notes from the milestone review); auto-update with electron-updater, a
 beta channel switch and an off switch; async safeStorage; every Carried
 item above.
 Out (parked; see After M6): Windows Authenticode signing (before a wider
-release, decided 2026-11-13); GPG-signed checksums (no project key yet); Flatpak, AUR, and
+release, decided 2026-11-13); macOS Developer ID signing and notarization
+(decided 2026-11-14); GPG-signed checksums (no project key yet); Flatpak, AUR, and
 deb or rpm repositories; a generated open source licenses page (About
 links to the repository instead); Amazon login; anything eero Plus; any
 step that needs the maintainer's secrets or accounts (Apple Developer
@@ -1122,7 +1124,7 @@ Done when:
   builds.
 - `test/packaging/release.test.ts` checks the release scripts and that
   `release.yml` is tag-only (plus a dry-run dispatch), builds with
-  `--publish never`, keeps signing secrets in the `release` environment,
+  `--publish never`, uses no secrets (macOS and Windows unsigned for now),
   and creates a draft.
 - No sync safeStorage call remains, and a session saved by the sync API
   still loads (`src/main/secret-store.test.ts`).
@@ -1179,9 +1181,9 @@ credentials is a `MANUAL:` line.
 ### M6.2 Packaging, CLI launchers and app icon ✅ (#211)
 - issue: [#197](https://github.com/pkkid/mesh-ui/issues/197)
 - after: M5.R
-- docs: platform/build-and-release.md (Artifacts, Signing and notarization, CLI launcher), platform/cross-platform.md (CLI), architecture/cli.md (How the CLI runs, Install), testing.md
+- docs: platform/build-and-release.md (Artifacts, Signing, CLI launcher), platform/cross-platform.md (CLI), architecture/cli.md (How the CLI runs, Install), testing.md
 - files: package.json, electron-builder.yml, build/icon.png, build/entitlements.mac.plist, build/mac/mesh-ui, build/linux/mesh-ui, build/linux/after-install.sh, build/linux/after-remove.sh, build/win/mesh-ui.cmd, build/win/cli-relay.js, build/win/installer.nsh, scripts/dist-smoke.mjs, test/packaging/launchers.test.ts, docs/platform/build-and-release.md, docs/platform/cross-platform.md, docs/architecture/cli.md, docs/testing.md
-- scope: Packages that match the Artifacts table, with signing configured but only switched on by env. **App icon:** `build/icon.png`, 1024 px, a simple mark in the app's neutral style (the maintainer approves it at the review); electron-builder derives icns and ico. **macOS:** universal dmg and zip; `hardenedRuntime: true` and `build/entitlements.mac.plist` with only `com.apple.security.cs.allow-jit`; `notarize` reads the App Store Connect API key from env and is off when absent; `Contents/Resources/bin/mesh-ui` (`build/mac/mesh-ui`) resolves its own symlink with `realpath` and runs `MacOS/Mesh UI --cli`. **Windows:** NSIS x64 and arm64 plus a `zip` target for the portable build; `bin\mesh-ui.cmd` and `resources\cli-relay.js` ship as extra files (the relay spawns the app with `--cli` and piped stdio and passes the exit code; its target is injectable for tests); `build/win/installer.nsh` adds `$INSTDIR\bin` to the user PATH and removes it on uninstall. **Linux:** deb and rpm `afterInstall` and `afterRemove` scripts install and remove the `/usr/bin/mesh-ui` launcher (`build/linux/mesh-ui`) in place of electron-builder's default symlink; carried from M3 (#115), the launcher always removes `DISPLAY` and `WAYLAND_DISPLAY` and adds `--cli --ozone-platform=headless --disable-gpu` like `scripts/mesh-ui-dev.mjs` (fix the snippet in build-and-release.md to match). **Publish config:** `publish: github` (owner `pkkid`, repo `mesh-ui`) so `app-update.yml` is generated, with `generateUpdatesFilesForAllChannels` for the beta channel; scripts keep `--publish never`. **Carried from M1:** `author` with name and the maintainer's GitHub noreply email in package.json; drop `pnpm test:ui` from testing.md (`ui:shot` replaced it). **Carried from M3:** `scripts/dist-smoke.mjs` runs the window step with `MESH_UI_HEADLESS=1` and ozone headless when there is no display.
+- scope: Packages that match the Artifacts table, with signing configured but only switched on by env. **App icon:** `build/icon.png`, 1024 px, a simple mark in the app's neutral style (the maintainer approves it at the review); electron-builder derives icns and ico. **macOS:** universal dmg and zip; `hardenedRuntime: true` and `build/entitlements.mac.plist` with only `com.apple.security.cs.allow-jit`; `notarize` reads the App Store Connect API key from env and is off when absent (superseded 2026-11-14: macOS ships unsigned for now, with an ad-hoc signature and notarize off; see M6.4); `Contents/Resources/bin/mesh-ui` (`build/mac/mesh-ui`) resolves its own symlink with `realpath` and runs `MacOS/Mesh UI --cli`. **Windows:** NSIS x64 and arm64 plus a `zip` target for the portable build; `bin\mesh-ui.cmd` and `resources\cli-relay.js` ship as extra files (the relay spawns the app with `--cli` and piped stdio and passes the exit code; its target is injectable for tests); `build/win/installer.nsh` adds `$INSTDIR\bin` to the user PATH and removes it on uninstall. **Linux:** deb and rpm `afterInstall` and `afterRemove` scripts install and remove the `/usr/bin/mesh-ui` launcher (`build/linux/mesh-ui`) in place of electron-builder's default symlink; carried from M3 (#115), the launcher always removes `DISPLAY` and `WAYLAND_DISPLAY` and adds `--cli --ozone-platform=headless --disable-gpu` like `scripts/mesh-ui-dev.mjs` (fix the snippet in build-and-release.md to match). **Publish config:** `publish: github` (owner `pkkid`, repo `mesh-ui`) so `app-update.yml` is generated, with `generateUpdatesFilesForAllChannels` for the beta channel; scripts keep `--publish never`. **Carried from M1:** `author` with name and the maintainer's GitHub noreply email in package.json; drop `pnpm test:ui` from testing.md (`ui:shot` replaced it). **Carried from M3:** `scripts/dist-smoke.mjs` runs the window step with `MESH_UI_HEADLESS=1` and ozone headless when there is no display.
 - done when: `pnpm check` passes; `test/packaging/launchers.test.ts` covers the macOS script (through a symlink in a temp bundle layout with a stub binary: `--cli` first and every argument unchanged, paths with spaces included), the Linux launcher (pointed at a stub: no `DISPLAY` or `WAYLAND_DISPLAY`, ozone flags passed) and the Windows relay (plain node with a stub target: stdin, stdout, stderr and the exit code forwarded); `pnpm dist` on Linux builds AppImage, deb and rpm with the icon, and the PR shows the rpm `--scripts` and deb maintainer scripts writing and removing `/usr/bin/mesh-ui`; `pnpm dist:dir && pnpm dist:smoke` passes with `DISPLAY` and `WAYLAND_DISPLAY` unset; `pnpm test:keychainless` passes; with no signing env a local build is unsigned and does not fail; testing.md no longer mentions `test:ui`; `MANUAL: Windows install puts the CLI on PATH | install the NSIS build from the M6.R dry run, open a new terminal, run mesh-ui --demo run app.info, then uninstall | JSON with the version; after uninstall mesh-ui is gone from PATH | risk: none`; `MANUAL: deb or rpm CLI | install the package on a Linux machine, run mesh-ui --demo run app.info over SSH with no display | JSON, no window | risk: none`.
 
 ### M6.3 Async safeStorage ✅ (#209)
@@ -1197,8 +1199,8 @@ credentials is a `MANUAL:` line.
 - after: M6.2
 - docs: platform/build-and-release.md (CI, Versioning, Release checklist), testing.md (CI), architecture/security.md (Dependencies and build)
 - files: .github/workflows/release.yml, scripts/release-notes.mjs, scripts/checksums.mjs, test/packaging/release.test.ts, docs/platform/build-and-release.md, docs/testing.md
-- scope: `release.yml`, as in build-and-release.md CI. Triggers: tag `v*`, plus `workflow_dispatch` with a `dry_run` input that builds and uploads workflow artifacts but makes no release. Jobs: `mac` (macos-latest, universal, signed and notarized when the secrets exist), `win` (NSIS x64 and arm64 plus the portable zip, unsigned), `linux-x64` and `linux-arm64` (`ubuntu-24.04-arm`), and `publish`. Carried from M1: each OS job runs `pnpm dist:dir` then `pnpm dist:smoke`, and one `pnpm ui:shot --route '#/overview'` uploaded as a workflow artifact (the macOS and Windows proof). Signing secrets (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`) come only from the `release` environment; `contents: write` only on `publish`, every other job reads; actions pinned as in `ci.yml`; builds use `--publish never`. `publish` collects the artifacts and `latest*.yml` files, writes `SHA256SUMS.txt` (`scripts/checksums.mjs`), and creates a **draft** release with `gh` (a pre-release when the tag has a `-` suffix). `scripts/release-notes.mjs` builds the notes from section 4 "What changed for a user" of the latest `docs/reviews/M<n>.md`, plus a fixed note on unsigned Windows builds and checksums. Update the Release checklist: secrets, dry run, tag, review and publish the draft. No change to `ci.yml`. Workers never push tags or run the workflow.
-- done when: `pnpm check` passes; `test/packaging/release.test.ts` covers `checksums.mjs` on temp files (`sha256  name` lines, sorted), `release-notes.mjs docs/reviews/M5.md` (only section 4 plus the fixed lines), and a text check of `release.yml` (tag and dispatch triggers only, `--publish never` on every build, `environment: release` on signing jobs, `contents: write` only on `publish`, `--draft`); `ci.yml` is unchanged; `actionlint` is clean if available locally (else the PR says it was not run); `MANUAL: add the signing secrets | create the release environment with CSC_LINK, CSC_KEY_PASSWORD, APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER | the environment lists five secrets | risk: none`; `MANUAL: dry run after the milestone merges | run release.yml from main with dry_run | four green jobs, dist:smoke passes on macOS, Windows and Linux, the ui:shot PNGs look right, macOS notarized | risk: none`.
+- scope: `release.yml`, as in build-and-release.md CI. Triggers: tag `v*`, plus `workflow_dispatch` with a `dry_run` input that builds and uploads workflow artifacts but makes no release. Jobs: `mac` (macos-latest, universal, unsigned with an ad-hoc signature), `win` (NSIS x64 and arm64 plus the portable zip, unsigned), `linux-x64` and `linux-arm64` (`ubuntu-24.04-arm`), and `publish`. Carried from M1: each OS job runs `pnpm dist:dir` then `pnpm dist:smoke`, and one `pnpm ui:shot --route '#/overview'` uploaded as a workflow artifact (the macOS and Windows proof). No signing secrets: macOS and Windows ship unsigned for now (decided 2026-11-14), and the mac job builds with an ad-hoc signature and notarization off; `contents: write` only on `publish`, every other job reads; actions pinned as in `ci.yml`; builds use `--publish never`. `publish` collects the artifacts and `latest*.yml` files, writes `SHA256SUMS.txt` (`scripts/checksums.mjs`), and creates a **draft** release with `gh` (a pre-release when the tag has a `-` suffix). `scripts/release-notes.mjs` builds the notes from section 4 "What changed for a user" of the latest `docs/reviews/M<n>.md`, plus a fixed note on unsigned Windows builds and checksums. Update the Release checklist: dry run, tag, review and publish the draft. No change to `ci.yml`. Workers never push tags or run the workflow.
+- done when: `pnpm check` passes; `test/packaging/release.test.ts` covers `checksums.mjs` on temp files (`sha256  name` lines, sorted), `release-notes.mjs docs/reviews/M5.md` (only section 4 plus the fixed lines), and a text check of `release.yml` (tag and dispatch triggers only, `--publish never` on every build, no secrets in any job, `contents: write` only on `publish`, `--draft`); `ci.yml` is unchanged; `actionlint` is clean if available locally (else the PR says it was not run); `MANUAL: dry run after the milestone merges | run release.yml from main with dry_run | four green jobs, dist:smoke passes on macOS, Windows and Linux, the ui:shot PNGs look right, the mac zip or dmg opens on Apple silicon after Open Anyway | risk: none`.
 
 ### M6.5 Auto-update, beta channel and About ☐
 - issue: [#200](https://github.com/pkkid/mesh-ui/issues/200)
@@ -1262,14 +1264,14 @@ credentials is a `MANUAL:` line.
 - after: M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10
 - docs: platform/build-and-release.md (Versioning, Release checklist), README.md, open-questions.md
 - files: package.json, README.md, docs/platform/build-and-release.md, docs/open-questions.md
-- scope: Bump `version` to 0.6.0 (no tag). README: install per OS (dmg; NSIS with the SmartScreen click-through; AppImage, deb and rpm), checking `SHA256SUMS.txt`, CLI on PATH per OS, MCP setup, `--demo`, and the "not made by eero or Amazon" line. Release checklist: secrets, a dry run, `v0.6.0`, then the first real update check at 0.6.1. Settle the M6 lines in `open-questions.md`. A final pass on the branch: `pnpm dist` on Linux, `pnpm dist:smoke`, `pnpm test:keychainless`, and the Coming soon grep.
+- scope: Bump `version` to 0.6.0 (no tag). README: install per OS (dmg; NSIS with the SmartScreen click-through; AppImage, deb and rpm), checking `SHA256SUMS.txt`, CLI on PATH per OS, MCP setup, `--demo`, and the "not made by eero or Amazon" line. Release checklist: a dry run, `v0.6.0`, then the first real update check at 0.6.1. Settle the M6 lines in `open-questions.md`. A final pass on the branch: `pnpm dist` on Linux, `pnpm dist:smoke`, `pnpm test:keychainless`, and the Coming soon grep.
 - done when: `pnpm check` passes; the PR shows `pnpm dist`, `dist:smoke` and `test:keychainless` output on Linux; `grep -rn ComingSoonButton src/renderer/src/features` is empty; `mesh-ui --demo run app.info` shows 0.6.0; README and the checklist describe the release path; no real data in any file.
 
 ### M6.R Review ☐
 - issue: [#208](https://github.com/pkkid/mesh-ui/issues/208)
 - owner: maintainer
 - after: M6.1, M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10, M6.11, M6.12
-- scope: Release gate. Run the manual checks; merge the milestone PR; add the `release` environment secrets; run the `release.yml` dry run from main; push `v0.6.0`, review and publish the draft. All tagging and publishing is the maintainer's.
+- scope: Release gate. Run the manual checks; merge the milestone PR; run the `release.yml` dry run from main; push `v0.6.0`, review and publish the draft. All tagging and publishing is the maintainer's.
 
 ## After M6
 
@@ -1277,7 +1279,8 @@ There is no M7. M6 is the last planned milestone; once v0.6.0 ships, the
 app is maintained with fix releases (0.6.x), each from an issue and a PR
 into `main` reviewed by the maintainer, rather than milestone runs. Parked,
 not planned (pick one up only when the maintainer asks): Windows
-Authenticode signing; GPG-signed checksums; Flatpak, AUR, and deb or rpm
+Authenticode signing; macOS Developer ID signing and notarization;
+GPG-signed checksums; Flatpak, AUR, and deb or rpm
 repositories; a generated open source licenses page; Amazon login;
 anything an M6 story leaves out for lack of a live-tested source (it says
 so in its docs). eero Plus features stay out of scope for good.

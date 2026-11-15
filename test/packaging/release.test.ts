@@ -72,6 +72,9 @@ describe("scripts/release-notes.mjs", () => {
     expect(notes).toBe(`## What changed\n\n${body}\n`);
     // Nothing from the other sections.
     for (const heading of ["## 1.", "## 2.", "## 3.", "## 5.", "## 6.", "## Manual checks"]) expect(r.stdout).not.toContain(heading);
+    expect(fixed).toContain("macOS** builds are not signed or notarized yet");
+    expect(fixed).toContain("System\n  Settings > Privacy & Security** and click **Open Anyway**");
+    expect(fixed).toContain('`xattr -d com.apple.quarantine "/Applications/Mesh UI.app"`');
     expect(fixed).toContain("Windows** builds are not signed yet");
     expect(fixed).toContain("More info");
     expect(fixed).toContain("SHA256SUMS.txt");
@@ -155,20 +158,35 @@ describe(".github/workflows/release.yml", () => {
     expect(code).not.toMatch(/--publish (always|onTag|onTagOrDraft)/);
   });
 
-  it("keeps the signing secrets in the release environment of the mac job only", () => {
+  it("uses no secrets or environments: macOS and Windows ship unsigned for now", () => {
     const j = jobs();
-    expect(j.mac).toMatch(/^ {4}environment: release$/m);
-    for (const id of ["win", "linux", "publish"]) {
-      expect(j[id]).not.toMatch(/environment:/);
-      expect(j[id]).not.toMatch(/secrets\./);
+    for (const id of ["mac", "win", "linux", "publish"]) {
+      expect(j[id], id).not.toMatch(/environment:/);
+      expect(j[id], id).not.toMatch(/secrets\./);
     }
-    for (const s of ["CSC_LINK", "CSC_KEY_PASSWORD", "APPLE_API_KEY", "APPLE_API_KEY_ID", "APPLE_API_ISSUER"]) {
-      expect(j.mac).toContain(`secrets.${s} }}`);
+    // Comments may describe the later plan; code never names a signing secret.
+    const code = lines.join("\n");
+    expect(code).not.toMatch(/secrets\./);
+    for (const s of ["CSC_LINK", "CSC_KEY_PASSWORD", "APPLE_API_KEY", "APPLE_API_ISSUER", "APPLE_ID"]) {
+      expect(code).not.toContain(s);
     }
-    // electron-builder wants a path for APPLE_API_KEY: decoded to a temp file.
-    expect(j.mac).toMatch(/base64 --decode > "\$key"/);
-    expect(j.mac).toContain('echo "APPLE_API_KEY=$key" >> "$GITHUB_ENV"');
     expect(yml).not.toMatch(/pull_request/);
+  });
+
+  it("builds the mac app ad-hoc signed, with no keychain discovery and no notarization", () => {
+    const j = jobs();
+    // A job-level env, so dist:dir and dist both skip keychain discovery.
+    expect(j.mac).toMatch(/^ {4}env:\n {6}CSC_IDENTITY_AUTO_DISCOVERY: "false"$/m);
+    expect(j.mac).not.toMatch(/notar/i);
+
+    const builder = read("electron-builder.yml");
+    const mac = builder.slice(builder.indexOf("\nmac:\n"), builder.indexOf("\ndmg:\n"));
+    const macCode = mac.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+    expect(macCode).toMatch(/^ {2}identity: "-"$/m);
+    expect(macCode).toMatch(/^ {2}notarize: false$/m);
+    // Ad-hoc signing with the hardened runtime breaks library validation.
+    expect(macCode).toMatch(/^ {2}hardenedRuntime: false$/m);
+    expect(builder).not.toMatch(/^\s*notarize: true/m);
   });
 
   it("grants contents: write only to publish", () => {
