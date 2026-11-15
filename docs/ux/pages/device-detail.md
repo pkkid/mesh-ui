@@ -32,11 +32,6 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
        GHz"), Link rate ("2401 Mbps rx · 2161 Mbps tx"), SNR ("41 dB · 0.2%
        retries"), First seen.
    - Right:
-     - **Block confirm**: when Block is pressed, an inline confirm at the top
-       of this column (shown open in the mockup): "Block Alex's MacBook
-       Pro?", "It will be disconnected from every eero and can't rejoin Maple
-       Street until you unblock it from Devices > Blocked.", **Block device**
-       and **Cancel**.
      - **IP addresses** (card): IPv4 with a "Reserved" badge (lock icon) and
        an **Edit** link; IPv6 addresses (one per line); Link-local (muted).
      - **Port forwarding**, link "All →". Card with a header row (Port
@@ -79,7 +74,7 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
 | Sheet: type tile | - (form state) | - | No | Selects a type |
 | Sheet: Save | `device.rename {device, nickname}` and/or `device.type.set {device, type}` (only what changed) | write | No | Sheet closes, toast "Saved"; name and icon update everywhere |
 | Change profile | `device.profile.set {devices: [device], profile}` (`profile: null` for Unassigned) | write | No | Menu of profiles plus Unassigned; hero updates; toast with Undo |
-| Block | - | - | - | Reveals the inline confirm in the right column |
+| Block | - | - | - | Opens the confirm dialog: "Block Alex's MacBook Pro?", "It will be disconnected from every eero and can't rejoin Maple Street until you unblock it from Devices > Blocked.", **Cancel** and **Block device** |
 | Block device | `device.block {devices: [device]}` | write | Yes, UI inline | Status Blocked; hero actions become **Unblock**; toast |
 | Unblock | `device.unblock {devices: [device]}` | write | No | Device can rejoin |
 | Edit (IPv4 reserved) | - | - | No | Reservations & ports, this reservation open |
@@ -122,7 +117,7 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
 
 M4.4: Pause and Resume, Change profile (menu of profiles plus Unassigned,
 with a check on the current one) and Unblock run at once with an Undo toast.
-Block shows the inline confirm at the top of the right column and then
+Block asks in the confirm dialog and then
 blocks (toast with Undo). Appearance opens the sheet: nickname with "18 /
 32", the hostname and "reset to hostname" (empties the field, so saving
 clears the nickname and the device follows its own name), and the 32-type

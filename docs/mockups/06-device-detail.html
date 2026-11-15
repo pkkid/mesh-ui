@@ -9,7 +9,6 @@
   .livebox { padding: 14px 16px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--border); min-width: 300px; }
   .livebox .v { font-size: 30px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
   .livebox .v small { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0; margin-left: 3px; }
-  .confirm { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-2); background: var(--card-2); }
   .port { display: grid; grid-template-columns: 1fr 90px 72px 20px; gap: 10px; align-items: center; padding: 9px 0; font-size: 12.5px; }
   .port + .port { border-top: 1px solid var(--border); }
   .typegrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
@@ -101,14 +100,9 @@
 
     <!-- Right column -->
     <div class="col" style="gap:28px">
-      <section class="section">
-        <div class="confirm">
-          <div class="row-6 sm m danger"><i data-lucide="triangle-alert" style="width:15px;height:15px"></i>Block Alex's MacBook Pro?</div>
-          <div class="xs fg2 mt-4">It will be disconnected from every eero and can't rejoin Maple Street until you unblock it from Devices &gt; Blocked.</div>
-          <div class="row gap-8 mt-12"><button class="btn sm danger"><i data-lucide="ban"></i>Block device</button><button class="btn sm ghost">Cancel</button></div>
-        </div>
-      </section>
-
+      <!-- Block confirms in the centred confirm dialog (docs/ux/overview.md#confirmations):
+           "Block Alex's MacBook Pro?" It will be disconnected from every eero and can't rejoin
+           Maple Street until you unblock it from Devices > Blocked. [Cancel] [Block device] -->
       <section class="section">
         <div class="section-h"><h2>IP addresses</h2></div>
         <div class="card pad">

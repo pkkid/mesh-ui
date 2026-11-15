@@ -86,7 +86,7 @@ Side panel **During an update**: internet and Wi-Fi drop about 10 minutes, eeros
 
 ## Built in M5.6 (writes)
 
-- Install now runs `updates.install` with core's confirm inline (the impact summary: every eero restarts, devices online lose internet for about 10 minutes). After it a progress toast and an "Installing on every eero" panel (each eero Restarting or Back online, from `eero.list`) stay until eero reports the install done and every eero is back; the hero status reads `Installing`. Hidden for admins (the roles table) and when eero says it cannot update now.
+- Install now runs `updates.install` with core's confirm in the dialog (the impact summary: every eero restarts, devices online lose internet for about 10 minutes). After it a progress toast and an "Installing on every eero" panel (each eero Restarting or Back online, from `eero.list`) stay until eero reports the install done and every eero is back; the hero status reads `Installing`. Hidden for admins (the roles table) and when eero says it cannot update now.
 - Preferred update time is a select of 24 start hours (the window is eero's 3 hours) plus **Use quietest**; each change toasts with Undo. Admins see the select disabled.
 - Owner only: invite sheet, Resend, Cancel, Remove (type the name) and Transfer network. Gates come from each command's spec (`useGate(id)`): `network.admin_invites`, `network.standard_admins`, `network.ownership_transfer` plus the `ownership_transfer` capability, as the real permissions name them. eero (and the demo) answer 403 for an admin's invite, remove or transfer.
 - In demo the transfer applies at once (the recipient becomes owner, you an admin) so the change is visible; on eero and the fake server it is pending until the recipient accepts.

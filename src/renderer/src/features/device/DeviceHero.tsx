@@ -3,7 +3,7 @@
  * name with the GUEST tag, status line, Profile / Connected to / Signal, the
  * action row and the live Now box. Pause and Resume, Change profile and
  * Unblock run at once with an Undo toast; Block asks first through the
- * page's inline confirm (`onBlock`); Appearance opens the sheet (nickname
+ * page's confirm dialog (`onBlock`); Appearance opens the sheet (nickname
  * and type, saving only what changed). Controls dim by permission.
  * States: offline ("last seen 2h ago on Upstairs Hall"), paused (Resume
  * device), blocked (only Unblock and Appearance), guest (no Pause or Change

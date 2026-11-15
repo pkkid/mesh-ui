@@ -2,7 +2,7 @@
  * eero detail "Ethernet ports": a tile per port (status, a jack with link
  * lights, negotiated and supported speed, everything plugged in), the port
  * MACs, and the port actions eero lists (`eero.port.action`, disruptive: the
- * engine's confirm inline, then a toast with Undo running the opposite
+ * engine's confirm in the dialog, then a toast with Undo running the opposite
  * action, also confirmed). docs/ux/pages/eero-detail.md (Layout 3).
  * Data: `eero.ports.get {eero}`.
  */
@@ -14,7 +14,6 @@ import { useWrite, type WriteRequest } from "~/app/useWrite";
 import { linkSpeed } from "~/components/mesh/LinkChip";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { KvList } from "~/components/ui/kv-list";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { GatedButton, SectionError, useGate } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
@@ -87,19 +86,15 @@ export function EeroPorts({ eeroId, offline }: { eeroId: string; offline: boolea
               items={list.map((p) => ({ label: `${portName(p)} MAC`, value: p.mac, mono: true }))}
             />
           )}
-          {write.asking ? (
-            <WriteConfirm write={write}>{null}</WriteConfirm>
-          ) : (
-            actions.map(({ port, action, words }) => (
-              <div key={`${port.number}-${action}`} className="flex items-center gap-2">
-                <GatedButton size="xs" variant="outline" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
-                  <Power />
-                  {words.label(portName(port))}
-                </GatedButton>
-                <span className="text-2xs text-muted-foreground">{words.consequence(port.attached?.name ?? null)}</span>
-              </div>
-            ))
-          )}
+          {actions.map(({ port, action, words }) => (
+            <div key={`${port.number}-${action}`} className="flex items-center gap-2">
+              <GatedButton size="xs" variant="outline" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
+                <Power />
+                {words.label(portName(port))}
+              </GatedButton>
+              <span className="text-2xs text-muted-foreground">{words.consequence(port.attached?.name ?? null)}</span>
+            </div>
+          ))}
         </Card>
       )}
     </Section>

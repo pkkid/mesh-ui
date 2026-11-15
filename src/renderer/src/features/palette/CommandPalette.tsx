@@ -7,9 +7,9 @@
  * surface like the CLI: commands come from `window.mesh.commands()` and run
  * through `window.mesh.execute`; nothing here knows what a command does.
  * Pages, devices and profiles navigate. Queries run and show their result;
- * writes run through the write kit (`useWrite`): a toast for `write`, the
- * inline confirm for `disruptive`, the confirm dialog for `destructive`, all
- * built from the registry by `writeRequest` with no per-command code. A
+ * writes run through the write kit (`useWrite`): a toast for `write`, and
+ * for `disruptive` and `destructive` a confirm dialog nested over the
+ * palette, all built from the registry by `writeRequest` with no per-command code. A
  * write with an inverse in the registry toasts with Undo (`withUndo`), and
  * the preview shows "Running..." only once a confirm is answered.
  */
@@ -20,7 +20,7 @@ import { navigate, pathFor } from "~/app/router";
 import { ROUTES } from "~/app/routes";
 import { execute, useCommands, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
-import { ConfirmDialog, WriteConfirm } from "~/components/ui/confirm";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { cn } from "~/lib/utils";
 import type { AuthStatus, DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
@@ -196,12 +196,11 @@ function PaletteBody({ close }: { close: () => void }) {
 
   const runLabel = !item || item.kind === "command" ? "Run" : `Open ${item.label}`;
 
-  // Writes: one useWrite for whatever is selected. Its confirm shows inline
-  // in the preview (disruptive) or as a dialog over the palette (destructive).
+  // Writes: one useWrite for whatever is selected. Its confirm is a dialog
+  // nested over the palette, so focus and Esc stay with it.
   const action = item?.kind === "device" || item?.kind === "profile" ? entityWrite(item, registry ?? []) : null;
   const writeId = item?.kind === "command" ? item.info.id : (action?.id ?? "");
-  const write = useWrite(writeId);
-  const writeEffect = item?.kind === "command" ? item.info.effect : "write";
+  const write = useWrite(writeId, { confirmIn: "nested" });
   const busy = write.running || write.asking !== null;
 
   // A confirm belongs to the item it was asked for.
@@ -394,13 +393,6 @@ function PaletteBody({ close }: { close: () => void }) {
               onCopy={copyCli}
               onAction={() => void runAction()}
               actionRunning={write.running}
-              confirm={
-                write.asking && writeEffect !== "destructive" ? (
-                  <WriteConfirm write={write} className="w-full">
-                    {null}
-                  </WriteConfirm>
-                ) : null
-              }
             />
           ) : (
             <div className="grid flex-1 place-items-center bg-card px-6 text-center text-muted-foreground text-sm">
@@ -410,8 +402,7 @@ function PaletteBody({ close }: { close: () => void }) {
         </div>
       </div>
 
-      {/* Destructive commands confirm in a dialog nested in the palette, so focus and Esc stay with it. */}
-      <ConfirmDialog ask={writeEffect === "destructive" && !write.confirming ? write.asking : null} onAnswer={write.answer} />
+      <WriteConfirmDialog write={write} />
 
       <div className="flex h-[42px] shrink-0 items-center gap-4 border-t bg-muted/60 px-4 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">

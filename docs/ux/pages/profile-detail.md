@@ -68,7 +68,7 @@ Profiles stays active.
      nights, Weekdays, Weekends, Every day).
    - **Each day** preview: a 24 h bar with the paused span(s), "10h paused ·
      50h a week", and tick labels.
-   - Footer: **Delete schedule** (danger, left; reveals an inline confirm),
+   - Footer: **Delete schedule** (danger, left; opens the confirm dialog over the sheet),
      **Cancel**, **Save**.
 
 ## Data

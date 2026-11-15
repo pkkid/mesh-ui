@@ -1,9 +1,9 @@
 /**
  * eero detail "More actions": Blink LED (`eero.find`, counts down while
- * blinking), Restart (`eero.restart`, disruptive: the engine's confirm
- * inline, naming the gateway outage or the eeros downstream, then a progress
- * toast until they are back) and Remove (`eero.remove`, destructive: the
- * engine's confirm inline with type-the-name, then back to eeros). The
+ * blinking), Restart (`eero.restart`, disruptive: the engine's confirm in
+ * the confirm dialog, naming the gateway outage or the eeros downstream,
+ * then a progress toast until they are back) and Remove (`eero.remove`,
+ * destructive: the confirm dialog with type-the-name, then back to eeros). The
  * gateway is offered only when it is the only eero, as core refuses it
  * otherwise. docs/ux/pages/eero-detail.md (Layout 5, Actions, States).
  */
@@ -13,7 +13,6 @@ import { navigate, pathFor } from "~/app/router";
 import { useWrite } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Section } from "~/components/ui/card";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { IconTile } from "~/components/ui/hero";
 import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
 import { FindButton } from "~/features/eeros/EeroCards";
@@ -76,20 +75,13 @@ export function EeroActions({ eero, eeros, networkName, offline }: { eero: Eero 
               <div className="font-medium text-[13px]">Restart {name}</div>
               <div className="text-muted-foreground text-xs">{eero ? restartLine(eero, eeros, networkName) : "-"}</div>
             </div>
-            {!restart.asking && (
-              <div className="flex flex-col items-end gap-1">
-                <Badge variant="warning">Disruptive</Badge>
-                <GatedButton size="xs" variant="outline" gate={actionGate} disabled={!eero || restart.running} onClick={() => void runRestart()}>
-                  Restart
-                </GatedButton>
-              </div>
-            )}
-          </Row>
-          {restart.asking && (
-            <div className="px-4 pb-3">
-              <WriteConfirm write={restart}>{null}</WriteConfirm>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="warning">Disruptive</Badge>
+              <GatedButton size="xs" variant="outline" gate={actionGate} disabled={!eero || restart.running} onClick={() => void runRestart()}>
+                Restart
+              </GatedButton>
             </div>
-          )}
+          </Row>
         </RowList>
         <RowList>
           <Row>
@@ -100,17 +92,12 @@ export function EeroActions({ eero, eeros, networkName, offline }: { eero: Eero 
                 {eero && !removable ? "The gateway can't be removed while other eeros use it; replace it in the eero app" : "Owner only · resets this eero"}
               </div>
             </div>
-            {removable && !remove.asking && (
+            {removable && (
               <GatedButton size="xs" variant="outline" gate={removeGate} disabled={remove.running} onClick={() => void runRemove()}>
                 Remove
               </GatedButton>
             )}
           </Row>
-          {remove.asking && (
-            <div className="px-4 pb-3">
-              <WriteConfirm write={remove}>{null}</WriteConfirm>
-            </div>
-          )}
         </RowList>
       </div>
     </Section>

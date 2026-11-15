@@ -244,7 +244,7 @@ the D-Bus session bus, not the display.
 - Each page loads without console errors, shows its main sections, and
   handles its empty and error states (fixtures switched with
   `demo.scenario.set`, a command registered only by the demo backend).
-- Confirm flows: a disruptive action shows its inline confirm or dialog and
+- Confirm flows: a disruptive action shows its confirm dialog and
   does not call `execute` with `confirm: true` until confirmed.
 - Screenshots of every page in the default theme, light and dark, saved for
   the milestone review. Compare against the mockups by eye; no pixel diffing.

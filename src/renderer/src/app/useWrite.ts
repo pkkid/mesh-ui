@@ -7,8 +7,8 @@
  *
  * 1. Runs the command without `confirm`. For a `disruptive` or `destructive`
  *    command the engine refuses with `needs_confirm` and a message written
- *    for people; that message is shown in the confirm (inline note or
- *    dialog), so the copy lives in core. Only after the person confirms does
+ *    for people; that message is shown in the confirm dialog, so the copy
+ *    lives in core. Only after the person confirms does
  *    it run again with `confirm: true`. Writes the UI confirms on its own
  *    (block a device) pass `ask` and never send `confirm`.
  * 2. Shows a progress toast while a confirmed disruptive command runs.
@@ -18,10 +18,10 @@
  *    state (nothing is applied optimistically here). `bad_params` from a
  *    form lands under its fields instead (`fieldErrors`).
  *
- * `useWrite(id)` wraps it for a component and holds the inline confirm.
- * The palette and other surfaces without room for a note call
- * `performWrite` directly; their confirms open the dialog `ConfirmHost`
- * renders (components/ui/confirm.tsx).
+ * `useWrite(id)` wraps it for a component. Every confirm is a centred modal:
+ * the app-wide dialog `ConfirmHost` renders (components/ui/confirm.tsx), or,
+ * for a write inside another dialog (the palette, a sheet), a
+ * `WriteConfirmDialog` nested in it (`confirmIn: "nested"`).
  *
  * Imports are relative (no `~`) so this file runs in node tests.
  */
@@ -36,7 +36,7 @@ import { affectedBy, commandInfo, execute, invalidate } from "./useCommand";
 // ---------------------------------------------------------------------------
 // Confirm requests
 
-/** What a confirm (inline note or dialog) shows. */
+/** What a confirm dialog shows. */
 export type ConfirmAsk = {
   /** The command being confirmed. */
   id: string;
@@ -271,21 +271,27 @@ export type WriteState<P, R> = {
   run: (params?: P, options?: WriteOptions<P, R>) => Promise<WriteOutcome<R>>;
   running: boolean;
   error: ExecuteError | null;
-  /** The confirm waiting on the person when `confirmIn` is "inline"; render InlineWriteConfirm. */
+  /** The confirm waiting on the person, in either dialog. */
   asking: ConfirmAsk | null;
   /** The person confirmed `asking` and the command is running. */
   confirming: boolean;
+  /** Answers a `confirmIn: "nested"` confirm (WriteConfirmDialog). */
   answer: (ok: boolean) => void;
 };
 
+/** Where a useWrite confirm opens: the app-wide dialog, or one the caller nests in its own dialog. */
+export type ConfirmIn = "dialog" | "nested";
+
 /**
- * A write for one control. `confirmIn: "inline"` (default) holds the confirm
- * in the hook for an InlineWriteConfirm in place; "dialog" uses the app's
- * confirm dialog (row menus, bulk bars, the topbar).
+ * A write for one control. Its confirm opens in the app's confirm dialog
+ * (`confirmIn: "dialog"`, the default). A control inside another dialog
+ * (the palette, a sheet) passes `confirmIn: "nested"` and renders
+ * `<WriteConfirmDialog write={...} />` inside that dialog, so focus and Esc
+ * stay with it.
  */
 export function useWrite<P = Record<string, unknown>, R = unknown>(
   id: string,
-  defaults: WriteOptions<P, R> & { confirmIn?: "inline" | "dialog" } = {},
+  defaults: WriteOptions<P, R> & { confirmIn?: ConfirmIn } = {},
 ): WriteState<P, R> {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<ExecuteError | null>(null);
@@ -310,10 +316,19 @@ export function useWrite<P = Record<string, unknown>, R = unknown>(
 
   const run = useCallback(
     async (params?: P, options: WriteOptions<P, R> = {}) => {
-      const { confirmIn = "inline", ...rest } = defaultsRef.current;
+      const { confirmIn = "dialog", ...rest } = defaultsRef.current;
+      // Both keep `asking` set while the confirm waits, so a page can show what is pending.
       const ask: AskFn =
         confirmIn === "dialog"
-          ? askInDialog
+          ? async (a) => {
+              if (mounted.current) setAsking({ ...a, resolve: () => {} });
+              const ok = await askInDialog(a);
+              if (mounted.current) {
+                if (ok) setConfirming(true);
+                else setAsking(null);
+              }
+              return ok;
+            }
           : (a) => new Promise<boolean>((resolve) => (mounted.current ? setAsking({ ...a, resolve }) : resolve(false)));
       setRunning(true);
       setError(null);

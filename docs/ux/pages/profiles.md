@@ -93,7 +93,7 @@ profile), Pause all (dialog; one toast with Undo that resumes them all; off
 with "Every profile is paused" when there is nothing to pause), Pause and
 Resume per card with Undo, the `...` menu (Rename sheet, Add a scheduled pause, which opens the
 schedule sheet from [profile-detail.md](profile-detail.md), and Delete
-profile...), and Pause unassigned (inline confirm naming up to three
+profile...), and Pause unassigned (confirm dialog naming up to three
 devices, online first; the button becomes Resume unassigned). Unassigned
 devices has an **Open** link to the Unassigned page
 (`#/profiles/unassigned`, see [profile-detail.md](profile-detail.md)).

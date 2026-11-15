@@ -13,7 +13,6 @@ import { useState } from "react";
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
 import { performWrite, useWrite } from "~/app/useWrite";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, HeaderLink, SectionError, useGate, useNow } from "~/components/ui/page";
 import { profileRequest } from "~/features/devices/BulkBar";
@@ -197,18 +196,16 @@ export function UnassignedPauseButton({ paused, devices, size = "xs" }: { paused
   const write = paused ? resume : pause;
   const label = paused ? "Resume unassigned" : "Pause unassigned";
   return (
-    <WriteConfirm write={pause} className="max-w-sm">
-      <GatedButton
-        gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
-        size={size}
-        variant={paused ? "default" : "outline"}
-        className={size === "lg" ? "w-full" : undefined}
-        disabled={write.running}
-        onClick={() => void write.run()}
-      >
-        {paused ? <Play /> : <Pause />}
-        {label}
-      </GatedButton>
-    </WriteConfirm>
+    <GatedButton
+      gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
+      size={size}
+      variant={paused ? "default" : "outline"}
+      className={size === "lg" ? "w-full" : undefined}
+      disabled={write.running}
+      onClick={() => void write.run()}
+    >
+      {paused ? <Play /> : <Pause />}
+      {label}
+    </GatedButton>
   );
 }

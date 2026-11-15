@@ -2,8 +2,8 @@
  * The palette preview (docs/ux/pages/command-palette.md#layout): what the
  * selected result is, its params form, and the same call as a CLI line and
  * an MCP tool call, so every surface reads the same. After a command runs,
- * its result JSON shows under the MCP call. A disruptive command's inline
- * confirm takes the place of the run button.
+ * its result JSON shows under the MCP call. Confirms open in a dialog over
+ * the palette (CommandPalette).
  */
 import { AppWindow, Bot, Check, Copy, FileJson, Play, SquareTerminal, Terminal } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -38,8 +38,6 @@ type Props = {
   /** Runs the selected device or profile's row action (Pause, Resume). */
   onAction: () => void;
   actionRunning: boolean;
-  /** The inline confirm waiting on the person, shown instead of the footer buttons. */
-  confirm: ReactNode;
 };
 
 export function PalettePreview(props: Props) {
@@ -50,31 +48,27 @@ export function PalettePreview(props: Props) {
         {item.kind === "command" ? (
           <CommandPreview {...props} item={item} />
         ) : (
-          <EntityPreview item={item} onAction={props.onAction} running={props.actionRunning} confirm={props.confirm} />
+          <EntityPreview item={item} onAction={props.onAction} running={props.actionRunning} />
         )}
       </div>
-      {item.kind === "command" && props.confirm ? (
-        <div className="shrink-0 border-t px-5 py-3">{props.confirm}</div>
-      ) : (
-        <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3">
-          <span title={props.blocked ?? undefined} className="inline-flex">
-            <Button size="sm" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
-              <Play />
-              {props.runLabel}
-              <Keys keys={["↵"]} className="ms-1 opacity-70 [&_kbd]:border-current/35 [&_kbd]:bg-transparent [&_kbd]:text-current [&_kbd]:shadow-none" />
+      <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3">
+        <span title={props.blocked ?? undefined} className="inline-flex">
+          <Button size="sm" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
+            <Play />
+            {props.runLabel}
+            <Keys keys={["↵"]} className="ms-1 opacity-70 [&_kbd]:border-current/35 [&_kbd]:bg-transparent [&_kbd]:text-current [&_kbd]:shadow-none" />
+          </Button>
+        </span>
+        {item.kind === "command" && (
+          <span title="Coming soon" className="inline-flex">
+            <Button size="sm" variant="outline" disabled>
+              <FileJson />
+              Add to script.jsonl
             </Button>
           </span>
-          {item.kind === "command" && (
-            <span title="Coming soon" className="inline-flex">
-              <Button size="sm" variant="outline" disabled>
-                <FileJson />
-                Add to script.jsonl
-              </Button>
-            </span>
-          )}
-          {props.blocked && <span className="truncate text-muted-foreground text-xs">{props.blocked}</span>}
-        </div>
-      )}
+        )}
+        {props.blocked && <span className="truncate text-muted-foreground text-xs">{props.blocked}</span>}
+      </div>
     </div>
   );
 }
@@ -231,12 +225,10 @@ function EntityPreview({
   item,
   onAction,
   running,
-  confirm,
 }: {
   item: Exclude<Item, { kind: "command" }>;
   onAction: () => void;
   running: boolean;
-  confirm: ReactNode;
 }) {
   const what = item.kind === "page" ? "Page" : item.kind === "device" ? "Device" : "Profile";
   return (
@@ -245,10 +237,10 @@ function EntityPreview({
         <IconTile icon={itemIcon(item)} size="lg" />
         <div className="min-w-0 grow">
           <div className="flex items-center gap-2">
-            <span className="truncate font-semibold text-base">{item.label}</span>
-            {"state" in item && item.state && (
-              <Status tone={item.state === "Scheduled" ? "info" : item.state === "Offline" ? "muted" : "warning"}>{item.state}</Status>
-            )}
+          <span className="truncate font-semibold text-base">{item.label}</span>
+          {"state" in item && item.state && (
+            <Status tone={item.state === "Scheduled" ? "info" : item.state === "Offline" ? "muted" : "warning"}>{item.state}</Status>
+          )}
           </div>
           <div className="mt-1 truncate text-muted-foreground text-xs">
             {what}
@@ -263,20 +255,18 @@ function EntityPreview({
       {(item.kind === "device" || item.kind === "profile") && (
         <div>
           <Label>Actions</Label>
-          {confirm || (
-            <div className="flex items-center gap-2">
-              <span title={item.actionBlocked ?? undefined} className="inline-flex">
-                <Button size="sm" variant="outline" disabled={Boolean(item.actionBlocked) || running} onClick={onAction}>
-                  {item.action}
-                </Button>
-              </span>
-              <span className="font-mono text-muted-foreground text-xs">
-                {item.kind}.{item.action.toLowerCase()}
-              </span>
-              <EffectTag effect="write" />
-              {item.actionBlocked && <span className="text-muted-foreground text-xs">{item.actionBlocked}</span>}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <span title={item.actionBlocked ?? undefined} className="inline-flex">
+              <Button size="sm" variant="outline" disabled={Boolean(item.actionBlocked) || running} onClick={onAction}>
+                {item.action}
+              </Button>
+            </span>
+            <span className="font-mono text-muted-foreground text-xs">
+              {item.kind}.{item.action.toLowerCase()}
+            </span>
+            <EffectTag effect="write" />
+            {item.actionBlocked && <span className="text-muted-foreground text-xs">{item.actionBlocked}</span>}
+          </div>
         </div>
       )}
     </>

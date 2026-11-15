@@ -366,7 +366,7 @@ async function runEach(id: "profile.pause" | "profile.resume", list: ReadonlyArr
 
 /** Delete a profile: the type-the-name dialog, then a toast. `onDeleted` runs after it is gone. */
 export function useDeleteProfile(onDeleted?: () => void) {
-  const write = useWrite<{ profile: string }>("profile.delete", { confirmIn: "dialog" });
+  const write = useWrite<{ profile: string }>("profile.delete");
   return {
     running: write.running,
     run: async (p: Pick<Profile, "id" | "name">) => {

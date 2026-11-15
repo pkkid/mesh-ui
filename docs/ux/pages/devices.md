@@ -90,7 +90,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 | Row menu: Pause / Resume | `device.pause {devices: [id]}` / `device.resume` | write | No | As above |
 | Row menu: Rename... | `device.rename {device, nickname}` | write | No | Inline edit of the name cell |
 | Row menu: Change profile | `device.profile.set {devices: [id], profile}` | write | No | Submenu of profiles |
-| Row menu: Block / Unblock | `device.block` / `device.unblock` | write | Block: UI inline confirm | Moves between groups |
+| Row menu: Block / Unblock | `device.block` / `device.unblock` | write | Block: UI confirm dialog | Moves between groups |
 | Row menu: Copy IP, Copy MAC | - (clipboard) | - | No | Toast |
 | Row menu: Open details | - | - | No | Device detail |
 | New this week item | - | - | No | Device detail |

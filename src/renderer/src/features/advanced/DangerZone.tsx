@@ -1,6 +1,6 @@
 /**
  * The danger zone on Advanced networking (M5.3): Restart network (the same
- * `network.restart` hook as the eeros page, inline confirm and the restart
+ * `network.restart` hook as the eeros page, confirm dialog and the restart
  * watcher) and Delete network (`network.delete`, destructive, owner only):
  * the app's confirm dialog with core's message and type-the-name; core moves
  * the session to another network, and the page goes to Overview.
@@ -11,7 +11,6 @@ import { RotateCcw, Trash2 } from "lucide-react";
 import { navigate, pathFor } from "~/app/router";
 import { useWrite } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
 import { RESTART_ESTIMATE } from "../../../../core/commands/network";
@@ -24,7 +23,6 @@ export function DangerZone({ networkName }: { owner: boolean; networkName: strin
   const restart = useRestartNetwork();
   const name = networkName ?? "this network";
   const remove = useWrite<{ networkName: string }, { name: string }>("network.delete", {
-    confirmIn: "dialog",
     confirm: { title: `Delete ${name}?`, confirmLabel: "Delete network", typeToConfirm: networkName ?? undefined },
     success: (r) => `${r.name} deleted`,
     failure: `Couldn't delete ${name}`,
@@ -45,12 +43,10 @@ export function DangerZone({ networkName }: { owner: boolean; networkName: strin
         badge={<Badge variant="warning">Disruptive</Badge>}
         description={`Restarts every eero. Every device loses internet for ${RESTART_ESTIMATE.network}.`}
         control={
-          <WriteConfirm write={restart.write}>
-            <GatedButton size="sm" variant="outline" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
-              <RotateCcw />
-              Restart network
-            </GatedButton>
-          </WriteConfirm>
+          <GatedButton size="sm" variant="outline" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
+            <RotateCcw />
+            Restart network
+          </GatedButton>
         }
       />
       <Row

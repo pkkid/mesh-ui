@@ -2,9 +2,9 @@
  * Wi-Fi name, password and encryption. The password shows as dots until the
  * eye runs `wifi.password.get`; copy reads it on demand too. **Change** opens
  * the name and password sheet (Generate runs `wifi.password.generate`); Save
- * runs `wifi.name.set` then `wifi.password.set`, each after an inline
- * confirm carrying the engine's impact message. Security per band stages a
- * change on a segmented control; the impact and an inline confirm show
+ * runs `wifi.name.set` then `wifi.password.set`, each after a confirm
+ * dialog carrying the engine's impact message. Security per band stages a
+ * change on a segmented control; the impact and a confirm dialog show
  * before `wifi.security.set`. 6 GHz is always WPA3.
  * docs/ux/pages/wifi.md (Layout, left column 1 and 2).
  */
@@ -16,7 +16,7 @@ import { fieldErrors, useWrite } from "~/app/useWrite";
 import { bandLabel } from "~/components/ui/band-badge";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { WriteConfirm } from "~/components/ui/confirm";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
@@ -197,7 +197,7 @@ function passwordProblem(pw: string): string | undefined {
 /**
  * Name and password sheet. The password field starts empty (the current one
  * is never read to fill it); leaving it empty keeps the password. Save runs
- * the name, then the password, each after its inline confirm.
+ * the name, then the password, each after its confirm dialog.
  */
 function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; onClose: () => void; wifi: WifiSettings; onSaved?: () => void }) {
   const [name, setName] = useState(wifi.ssid);
@@ -213,6 +213,7 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
   }, [open]);
 
   const rename = useWrite<{ name: string }, WifiSettings>("wifi.name.set", {
+    confirmIn: "nested",
     success: (r) => `Wi-Fi renamed to ${r.ssid}`,
     progress: "Renaming Wi-Fi...",
     progressDetail: "Wireless devices drop and rejoin",
@@ -220,6 +221,7 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
     form: true,
   });
   const repass = useWrite<{ password: string }, WifiSettings>("wifi.password.set", {
+    confirmIn: "nested",
     success: "Wi-Fi password changed",
     progress: "Changing the Wi-Fi password...",
     progressDetail: "Wireless devices drop and rejoin",
@@ -297,11 +299,9 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
           </Button>
         </div>
       </SheetField>
-      <WriteConfirm write={rename}>
-        <WriteConfirm write={repass}>
-          <WifiImpact params={pwDirty ? { change: "password" } : nameDirty ? { change: "name" } : null} />
-        </WriteConfirm>
-      </WriteConfirm>
+      <WifiImpact params={pwDirty ? { change: "password" } : nameDirty ? { change: "name" } : null} />
+      <WriteConfirmDialog write={rename} />
+      <WriteConfirmDialog write={repass} />
     </Sheet>
   );
 }
@@ -399,20 +399,18 @@ export function WifiSecurity({ wifi, devices, offline }: { wifi: WifiSettings | 
         })}
         {changes.length > 0 && (
           <div className="flex flex-col gap-3 border-t px-[18px] py-3">
-            <WriteConfirm write={save}>
-              <WifiImpact params={{ change: "security", ...params }} />
-              <div className="mt-3 flex items-center justify-end gap-2">
-                <span className="me-auto text-muted-foreground text-xs">
-                  {formatCount(changes.length)} unsaved {changes.length === 1 ? "change" : "changes"}
-                </span>
-                <Button size="sm" variant="ghost" disabled={save.running} onClick={() => setStaged({})}>
-                  Discard
-                </Button>
-                <Button size="sm" disabled={save.running} onClick={() => void save.run(params)}>
-                  Save and restart
-                </Button>
-              </div>
-            </WriteConfirm>
+            <WifiImpact params={{ change: "security", ...params }} />
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <span className="me-auto text-muted-foreground text-xs">
+                {formatCount(changes.length)} unsaved {changes.length === 1 ? "change" : "changes"}
+              </span>
+              <Button size="sm" variant="ghost" disabled={save.running} onClick={() => setStaged({})}>
+                Discard
+              </Button>
+              <Button size="sm" disabled={save.running} onClick={() => void save.run(params)}>
+                Save and restart
+              </Button>
+            </div>
           </div>
         )}
         <div className="flex items-start gap-2 border-t px-[18px] py-3 text-muted-foreground text-xs">

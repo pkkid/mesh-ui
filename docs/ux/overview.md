@@ -251,7 +251,7 @@ the ones that run commands go through `execute` like any button.
 | --- | --- | --- |
 | `Ctrl+K` | Open command palette | Global |
 | `>` | Open palette in command-id mode | Global, outside inputs |
-| `Esc` | Close palette, sheet, popover or inline confirm | Global |
+| `Esc` | Close palette, sheet, popover or confirm dialog | Global |
 | `↑` `↓`, `↵`, `Tab` | Move, run, edit params | Palette |
 | `Ctrl+C` | Copy selected command as CLI | Palette (no text selected) |
 | `Ctrl+Shift+P` | Pause profile... (palette with `profile.pause`) | Global |
@@ -343,20 +343,20 @@ humane.
 | --- | --- | --- |
 | `query` | Nothing | No |
 | `write` | Nothing, except the few writes listed below | No |
-| `disruptive` | Inline confirm (or a dialog when there is no room) | Yes, after the user confirms |
-| `destructive` | Inline confirm with type-to-confirm or an explicit checkbox | Yes, after the user confirms |
+| `disruptive` | Confirm dialog | Yes, after the user confirms |
+| `destructive` | Confirm dialog with type-to-confirm or an explicit checkbox | Yes, after the user confirms |
 
-**Inline confirm.** The button reveals a note in place, under or beside the
-control (mockups: Restart network on 03, Remove eero on 04, Block on 06):
+**Confirm dialog.** Every confirm is the same centred modal, wherever the
+trigger is (a page button, a row menu, the bulk bar, the palette, a sheet):
 icon and title naming the target ("Block Alex's MacBook Pro?"), one or two
 sentences on who loses what and for how long ("Everyone loses internet for
 about 2 to 3 minutes, including every connected device and any calls in
-progress."), then a danger button that repeats the action ("Yes, restart
-network", "Remove from network", "Block device") and a ghost Cancel. Focus
-moves to Cancel; `Esc` cancels. The note stays until confirmed or cancelled.
-
-**Dialog.** Used when the trigger has no room for a note (palette, bulk bar,
-row menus, topbar). Same copy, same buttons, centred.
+progress."), then a ghost Cancel and a filled danger button that repeats
+the action ("Yes, restart network", "Remove from network", "Block device").
+Focus starts on Cancel (or the type-to-confirm field); `Esc`, the backdrop
+and Cancel all cancel. Controls never turn into a confirm in place: a note
+in place was easy to miss. Inside another dialog (the palette, a sheet) the
+confirm opens nested over it, so focus and `Esc` stay there.
 
 **Type to confirm.** Destructive actions on a named thing ask the user to
 type its name (Delete profile on 08: `Type "Mia" to confirm`). Account
@@ -366,7 +366,7 @@ until the input matches.
 **Writes that still confirm in the UI** (engine does not require it, the UI
 asks because the reach is large): block a device, block several devices,
 pause the Unassigned profile (includes TV, printer and smart home gear),
-Pause all profiles. These use a dialog or inline note and do not pass
+Pause all profiles. These use the confirm dialog and do not pass
 `confirm`.
 
 **Disruptive labels.** Rows for disruptive or destructive actions show a
@@ -379,7 +379,7 @@ duration where known, never "Are you sure?". No emdashes.
 **How the UI gets the copy.** The write kit runs the command first without
 `confirm`. A `disruptive` or `destructive` command answers `needs_confirm`
 with a message for people (the spec's `confirmMessage`), and that message is
-the consequence sentence in the note or dialog, so the copy lives in core
+the consequence sentence in the dialog, so the copy lives in core
 and reads the same in the CLI and MCP. Pages add the title, the button label
 and, for destructive actions on a named thing, the name to type.
 
@@ -395,7 +395,7 @@ Editors that need more than one field open as a sheet (mockups: Appearance on
 - **Body:** labelled fields, 16 px apart. Live helpers under fields
   (character count "18 / 32", "next day", a preview bar).
 - **Footer:** destructive action on the left if any ("Delete schedule", which
-  reveals an inline confirm), Cancel and primary Save on the right.
+  opens the confirm dialog over the sheet), Cancel and primary Save on the right.
 - Save is disabled until something changed and the form is valid. Validation
   is the command's zod schema: `bad_params` messages land under the field.
 - Save runs the command(s); the sheet closes on `ok` with a toast, stays open

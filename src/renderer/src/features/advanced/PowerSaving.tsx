@@ -18,7 +18,7 @@ import { useState } from "react";
 
 import { fieldErrors, NOT_AVAILABLE, useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
-import { InlineConfirm } from "~/components/ui/confirm";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import type { Gate } from "~/app/useWrite";
@@ -91,13 +91,18 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   const baseRemove = useGate("settings.power_schedule.remove");
   const removeGate = baseRemove.allowed && offline ? { allowed: false, reason: OFFLINE } : baseRemove;
   const [sheet, setSheet] = useState<SheetMode | null>(null);
-  const [deleting, setDeleting] = useState<Schedule | null>(null);
   const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("settings.power_schedule.remove");
   // No Undo here: adding a schedule back is refused on this hardware.
-  const del = async (s: Schedule) => {
-    const res = await remove.run({ schedule: s.id }, { success: `Deleted ${s.name}`, failure: `Couldn't delete ${s.name}` });
-    if (res?.ok) setDeleting(null);
-  };
+  const del = (s: Schedule) =>
+    remove.run(
+      { schedule: s.id },
+      {
+        askFirst: true,
+        confirm: { title: `Delete ${s.name}?`, message: "It cannot be added back on this hardware.", confirmLabel: "Delete schedule" },
+        success: `Deleted ${s.name}`,
+        failure: `Couldn't delete ${s.name}`,
+      },
+    );
 
   const flip = (w: typeof eco, key: keyof PowerParams, what: string) => (on: boolean) =>
     void w.write.run(
@@ -136,7 +141,7 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
                     </span>
                     <span className="ms-auto">
                       {incapable ? (
-                        <GatedButton size="icon-xs" variant="ghost-muted" gate={removeGate} aria-label={`Delete ${s.name}`} onClick={() => setDeleting(s)}>
+                        <GatedButton size="icon-xs" variant="ghost-muted" gate={removeGate} aria-label={`Delete ${s.name}`} disabled={remove.running} onClick={() => void del(s)}>
                           <Trash2 />
                         </GatedButton>
                       ) : (
@@ -148,11 +153,6 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
                   </li>
                 ))}
               </ul>
-            )}
-            {deleting && (
-              <InlineConfirm title={`Delete ${deleting.name}?`} confirmLabel="Delete schedule" onConfirm={() => void del(deleting)} onCancel={() => setDeleting(null)} running={remove.running}>
-                It cannot be added back on this hardware.
-              </InlineConfirm>
             )}
             <div className={cn(incapable && "opacity-50")}>
               <WeekTimeline
@@ -189,11 +189,10 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [days, setDays] = useState<ReadonlyArray<Day>>(initial.days);
-  const [deleting, setDeleting] = useState(false);
 
   const add = useWrite<Record<string, unknown>, Schedule>("settings.power_schedule.add", { form: true });
   const update = useWrite<Record<string, unknown>, Schedule>("settings.power_schedule.update", { form: true });
-  const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("settings.power_schedule.remove");
+  const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("settings.power_schedule.remove", { confirmIn: "nested" });
   const errors = fieldErrors((mode.kind === "add" ? add : update).error);
 
   const trimmed = name.trim();
@@ -214,7 +213,13 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
     const s = mode.schedule;
     const res = await remove.run(
       { schedule: s.id },
-      { success: `Deleted ${s.name}`, failure: `Couldn't delete ${s.name}`, undo: (r) => ({ id: "settings.power_schedule.add", params: plain(r.schedule), success: `Added ${r.schedule.name} back` }) },
+      {
+        askFirst: true,
+        confirm: { title: `Delete ${s.name}?`, message: `The eeros stop saving power at ${formatMinute(minutes(s.start))}. Undo adds it back.`, confirmLabel: "Delete schedule" },
+        success: `Deleted ${s.name}`,
+        failure: `Couldn't delete ${s.name}`,
+        undo: (r) => ({ id: "settings.power_schedule.add", params: plain(r.schedule), success: `Added ${r.schedule.name} back` }),
+      },
     );
     if (res?.ok) onClose();
   };
@@ -232,19 +237,15 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
       saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
       error={errors._form}
       footerStart={
-        mode.kind === "edit" && !deleting ? (
-          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" onClick={() => setDeleting(true)}>
+        mode.kind === "edit" ? (
+          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" disabled={remove.running} onClick={() => void del()}>
             <Trash2 />
             Delete schedule
           </Button>
         ) : null
       }
     >
-      {deleting && mode.kind === "edit" ? (
-        <InlineConfirm title={`Delete ${mode.schedule.name}?`} confirmLabel="Delete schedule" onConfirm={() => void del()} onCancel={() => setDeleting(false)} running={remove.running}>
-          The eeros stop saving power at {formatMinute(minutes(mode.schedule.start))}. Undo adds it back.
-        </InlineConfirm>
-      ) : null}
+      <WriteConfirmDialog write={remove} />
 
       <div className="flex items-center justify-between gap-4">
         <div>

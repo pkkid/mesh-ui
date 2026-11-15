@@ -59,13 +59,12 @@ export function pauseRequest(devices: ReadonlyArray<DeviceRef>, paused: boolean)
 }
 
 /**
- * Block (asks first, in the app dialog unless the caller shows its own
- * inline confirm) or unblock, with Undo running the other one.
+ * Block (asks first, in the confirm dialog) or unblock, with Undo running the other one.
  */
 export function blockRequest(
   devices: ReadonlyArray<DeviceRef>,
   blocked: boolean,
-  opts: { networkName?: string | null; askFirst?: boolean } = {},
+  opts: { networkName?: string | null } = {},
 ): WriteRequest<{ devices: string[] }, DeviceBulkResult> {
   const where = opts.networkName ?? "this network";
   const many = devices.length > 1;
@@ -78,7 +77,7 @@ export function blockRequest(
       const undo = changed(r, devices, (d) => d.blocked === blocked);
       return undo.length ? { id: blocked ? "device.unblock" : "device.block", params: { devices: undo } } : null;
     },
-    askFirst: blocked && (opts.askFirst ?? true),
+    askFirst: blocked,
     confirm: blocked
       ? {
           title: `Block ${who(devices)}?`,

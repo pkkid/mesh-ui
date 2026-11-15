@@ -71,7 +71,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
    - **Restart Office**, "Its devices and Garage (downstream) drop for about
      1 minute", a "Disruptive" label and **Restart**.
    - **Remove Office eero** (title in destructive colour), "Owner only ·
-     resets this eero". Inline confirm shown open in the mockup: "Remove
+     resets this eero", and **Remove**, which opens the confirm dialog: "Remove
      "Office" from Maple Street? Its devices move to other eeros if in range,
      and Garage loses its uplink and may go offline until it finds another
      path." with **Remove from network** and **Cancel**.
@@ -102,7 +102,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Day / Week | - (re-queries `usage.get`) | - | No | Chart switches range |
 | Upstream or downstream eero in Uplink | - | - | No | That eero's detail |
 | Device row, All devices → | - | - | No | Device detail; Devices filtered to this eero |
-| Disable port N / Enable port N, Restart PoE, PoE and data on or off (whichever the port lists) | `eero.port.action {eero, port, action}` | disruptive | Yes, inline, in place of the action buttons (the engine's message names everything plugged in: "Turns off port 3 on Living Room. Living Room TV and Hue Bridge lose their wired connection.") | Port tile shows Disabled and "Turned off"; toast "Port 3 disabled on Living Room" with Undo (opposite action, also confirmed) |
+| Disable port N / Enable port N, Restart PoE, PoE and data on or off (whichever the port lists) | `eero.port.action {eero, port, action}` | disruptive | Yes, in the confirm dialog (the engine's message names everything plugged in: "Turns off port 3 on Living Room. Living Room TV and Hue Bridge lose their wired connection.") | Port tile shows Disabled and "Turned off"; toast "Port 3 disabled on Living Room" with Undo (opposite action, also confirmed) |
 | Location input (Enter or blur), preset chip, + Custom | `eero.rename {eero, location}` | write | No | Name updates everywhere; toast with Undo |
 | Status light switch | `eero.led.set {eero, on}` | write | No | LED bar in hero follows |
 | Brightness slider (on release) | `eero.led.set {eero, brightness}` | write | No | Same |
@@ -111,8 +111,8 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Change (update window) | - | - | No | Updates & admins page |
 | Copy (IP addresses) | - (clipboard of the shown values) | - | No | Toast "IP addresses copied" |
 | Blink | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar pulses |
-| Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, inline (the engine's message: the gateway outage, or the eeros downstream that drop too) | Status Updating, progress toast "Restarting Office" with "Back in about 1 minute", refreshing every 5 s until the restarted eeros are back (see [eeros.md](eeros.md#built-so-far-m25-m48)) |
-| Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, inline, type the eero's name (the engine's message names the eeros that lose their uplink) | Toast "Office removed from Maple Street"; navigates to eeros |
+| Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, in the confirm dialog (the engine's message: the gateway outage, or the eeros downstream that drop too) | Status Updating, progress toast "Restarting Office" with "Back in about 1 minute", refreshing every 5 s until the restarted eeros are back (see [eeros.md](eeros.md#built-so-far-m25-m48)) |
+| Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, in the confirm dialog, type the eero's name (the engine's message names the eeros that lose their uplink) | Toast "Office removed from Maple Street"; navigates to eeros |
 
 ## States
 

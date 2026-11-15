@@ -72,7 +72,6 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
   const plan = deletePlan(networks);
   const typeToConfirm = account?.email?.value ?? account?.name ?? undefined;
   const remove = useWrite<{ acknowledge: true }, { deleted: true }>("account.delete", {
-    confirmIn: "dialog",
     confirm: { title: "Delete your eero account?", confirmLabel: "Delete account", ...(typeToConfirm ? { typeToConfirm } : {}) },
     failure: "Couldn't delete your account",
   });

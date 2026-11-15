@@ -21,7 +21,7 @@ import { copyText } from "~/lib/clipboard";
 import { IMPACT } from "../../../../core/commands/settings";
 import type { Network, NetworkSettings, ThreadCredentials } from "../../../../core/model";
 
-import { Asking, Fields, OFFLINE, Row, SubPanel, useSettingsWrite, WriteSwitch } from "./SettingsGroups";
+import { Fields, OFFLINE, Row, SubPanel, useSettingsWrite, WriteSwitch } from "./SettingsGroups";
 
 type Thread = NonNullable<NetworkSettings["thread"]>;
 
@@ -50,7 +50,6 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
   const [reading, setReading] = useState(false);
   const typeName = t?.name ?? network.data?.name ?? "Thread";
   const reset = useWrite<Record<string, never>>("settings.thread.reset", {
-    confirmIn: "dialog",
     confirm: { title: `Regenerate credentials for ${typeName}?`, confirmLabel: "Regenerate credentials", typeToConfirm: typeName },
     success: "New Thread credentials made. Pair each Thread accessory again.",
     failure: "Couldn't regenerate the Thread credentials",
@@ -99,7 +98,6 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
       description="Low-power mesh for Matter and smart home accessories"
       control={<WriteSwitch on={t?.enabled} label="Thread" gate={toggle.gate} busy={toggle.write.running} onToggle={turn} />}
     >
-      <Asking write={toggle.write} />
       {t && (
         <SubPanel className="flex flex-col gap-3.5">
           <Fields

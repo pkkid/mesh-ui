@@ -1,7 +1,7 @@
 /**
  * Wi-Fi "Bands": a card per band any eero offers, with its state, clients,
  * widths, channels and share of wireless clients, plus the 2.4 GHz only
- * switch (`wifi.hide5g.set`, inline confirm with its impact) with a countdown
+ * switch (`wifi.hide5g.set`, confirm dialog, with its impact) with a countdown
  * to eero's own expiry, and a link to Troubleshooting. A band no eero has is
  * not shown, so a single-band network shows one card. Offline: figures show "-".
  * docs/ux/pages/wifi.md (Layout, left column 3).
@@ -13,7 +13,6 @@ import { bandLabel } from "~/components/ui/band-badge";
 import { Card, Section } from "~/components/ui/card";
 import { KvList } from "~/components/ui/kv-list";
 import { useWrite } from "~/app/useWrite";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { GatedButton, HeaderLink, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { bandColor } from "~/lib/chartColors";
@@ -129,29 +128,27 @@ function Hide5g({ wifi, offline }: { wifi: WifiSettings; offline: boolean }) {
 
   return (
     <Card padded className="flex flex-col gap-3 text-[13px]">
-      <WriteConfirm write={write}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 font-medium">
-              2.4 GHz only
-              {active ? <Status tone="warning">On</Status> : <Status tone="muted">Off</Status>}
-            </div>
-            <div className="text-muted-foreground text-xs">
-              {active
-                ? "5 and 6 GHz are hidden so older devices can join. eero turns it off when the time runs out."
-                : "Hides 5 and 6 GHz for a while so a device that only speaks 2.4 GHz can join. eero turns it off on its own."}
-            </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 font-medium">
+            2.4 GHz only
+            {active ? <Status tone="warning">On</Status> : <Status tone="muted">Off</Status>}
           </div>
-          {left && (
-            <span title="Time left" aria-label={`${left} left`} className="font-mono font-semibold text-lg tabular-nums tracking-tighter">
-              {left}
-            </span>
-          )}
-          <GatedButton size="sm" variant="outline" gate={gate} disabled={offline || write.running} onClick={() => void write.run({ enabled: !active })}>
-            {active ? "Turn off" : "Turn on"}
-          </GatedButton>
+          <div className="text-muted-foreground text-xs">
+            {active
+              ? "5 and 6 GHz are hidden so older devices can join. eero turns it off when the time runs out."
+              : "Hides 5 and 6 GHz for a while so a device that only speaks 2.4 GHz can join. eero turns it off on its own."}
+          </div>
         </div>
-      </WriteConfirm>
+        {left && (
+          <span title="Time left" aria-label={`${left} left`} className="font-mono font-semibold text-lg tabular-nums tracking-tighter">
+            {left}
+          </span>
+        )}
+        <GatedButton size="sm" variant="outline" gate={gate} disabled={offline || write.running} onClick={() => void write.run({ enabled: !active })}>
+          {active ? "Turn off" : "Turn on"}
+        </GatedButton>
+      </div>
       {write.asking && !active && <WifiImpact params={{ change: "hide5g" }} />}
     </Card>
   );

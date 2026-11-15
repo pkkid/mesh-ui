@@ -4,7 +4,7 @@ A health check, guided diagnostics by symptom, coverage and upgrade reports, rad
 
 Mockup: [../../mockups/16-troubleshooting.html](../../mockups/16-troubleshooting.html)
 
-Shared patterns (hero, section cards, status, inline confirms) are described in [../overview.md](../overview.md).
+Shared patterns (hero, section cards, status, confirm dialogs) are described in [../overview.md](../overview.md).
 
 ## Layout
 
@@ -21,7 +21,7 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
    - **Connect devices that can't detect Wi-Fi 6**: switch, warning note (may reduce speeds, restarts the network for about 2 to 3 minutes), status and devices that may need it, **Turn on legacy mode**.
    - **Status light colors**: reference list of LED states and meanings (solid white, blinking white, blinking blue, solid blue, solid green, solid red, off).
    - **Restart a single eero**: one row per eero with **Restart**; the gateway row warns "takes network offline"; an eero with wireless children notes "Garage restarts too".
-   - **Restart network** (`Disruptive`): shown with its inline confirm open: "Restart all eeros? Maple Street will be offline for about 2 to 3 minutes. 31 devices will disconnect, including this computer if it is on Wi-Fi." **Cancel** and **Restart network**; "Last restart Nov 11, 3:01 AM (firmware update)".
+   - **Restart network** (`Disruptive`): **Restart network** opens the confirm dialog: "Restart network? Maple Street will be offline for about 2 to 3 minutes. 31 devices will disconnect, including this computer if it is on Wi-Fi." **Cancel** and **Yes, restart network**; "Last restart Nov 11, 3:01 AM (firmware update)".
    - **Get help**: Support center, Email support (external links), Call eero and ISP support numbers, **Support ID** with **Copy**, **Copy diagnostics report**.
 
 ## Data
@@ -53,11 +53,11 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 | Blink light | `eero.find` `{eero}` | write | no | LED cycles for 30 s |
 | Scan again | `coverage.scan` `{refresh: true}` | query | no | Subtitle and button say "Scanning...", the table fades, then table and advice update |
 | Test (coverage row) | `eero.placement.test` `{eero}` | write | no | Row says "Testing..." (up to a minute), then the rating as a status; advice in its tooltip. Not offered for the gateway |
-| Start 2.4 GHz mode | `wifi.hide5g.set` `{enabled: true}` | disruptive | inline confirm with device count | Timer starts |
-| Restore now | `wifi.hide5g.set` `{enabled: false}` | disruptive | short inline confirm ("Bring back 5 and 6 GHz now?") | 5 and 6 GHz come back |
-| Legacy mode switch, Turn on legacy mode | `settings.legacy_mode.set` `{enabled}` | disruptive | inline confirm (outage from `settings.impact`, about 2 to 3 min) | Built so far: the card shows the state from `settings.get` and links to Advanced networking, where the switch lives (M5.3) |
-| Restart (single eero) | `eero.restart` `{eero}` | disruptive | inline confirm; gateway confirm says the whole network goes offline | Row shows "Restarting" until the eero is back |
-| Restart network | `network.restart` | disruptive | inline confirm (shown open in the mockup) | Network offline; page waits and refetches |
+| Start 2.4 GHz mode | `wifi.hide5g.set` `{enabled: true}` | disruptive | confirm dialog with device count | Timer starts |
+| Restore now | `wifi.hide5g.set` `{enabled: false}` | disruptive | short confirm dialog ("Bring back 5 and 6 GHz now?") | 5 and 6 GHz come back |
+| Legacy mode switch, Turn on legacy mode | `settings.legacy_mode.set` `{enabled}` | disruptive | confirm dialog (outage from `settings.impact`, about 2 to 3 min) | Built so far: the card shows the state from `settings.get` and links to Advanced networking, where the switch lives (M5.3) |
+| Restart (single eero) | `eero.restart` `{eero}` | disruptive | confirm dialog; gateway confirm says the whole network goes offline | Row shows "Restarting" until the eero is back |
+| Restart network | `network.restart` | disruptive | confirm dialog | Network offline; page waits and refetches |
 | Support center, Email support | none | | | Opens eero support pages externally |
 | Support ID Copy | none | | | Copies the ID |
 | Copy diagnostics report | `support.report` | query | no | Report text on the clipboard |

@@ -94,7 +94,7 @@ function UnlinkAmazon() {
   const gate = useGate("integrations.amazon.unlink");
   const network = useQuery<Network>("network.get");
   const name = network.data?.name ?? null;
-  const write = useWrite<Record<string, never>, IntegrationsData>("integrations.amazon.unlink", { confirmIn: "dialog" });
+  const write = useWrite<Record<string, never>, IntegrationsData>("integrations.amazon.unlink");
   return (
     <GatedButton
       size="xs"

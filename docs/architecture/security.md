@@ -31,7 +31,7 @@ explains them and adds detail.
 | Agent overreach | An AI agent connected over MCP runs `network.restart` or `eero.remove` on its own | `disruptive` and `destructive` tools carry `destructiveHint`, need `confirm: true`, and MCP clients ask the user; `--read-only` MCP mode; audit log in App & account |
 | Credential sent to the wrong host | A crafted `url` in an API response points elsewhere | Client refuses any origin but `https://api-user.e2ro.com` with a known version prefix; no redirects. The only exception is the fake server origin, injected by tests and by dev builds (`pnpm dev:fake`); release builds have no way to change it |
 | Tampered update | A fake release replaces the app | Releases are built only in GitHub Actions and published as GitHub Releases of `pkkid/mesh-ui`; electron-updater downloads over HTTPS from there and checks each download against the sha512 in `latest*.yml`, and `SHA256SUMS.txt` lets users check a manual download. macOS and Windows builds are unsigned for now (macOS carries only an ad-hoc signature), so nothing yet proves who built a release; Developer ID signing with notarization, and Authenticode, are the later plan (see [build-and-release.md](../platform/build-and-release.md#signing)). Linux packages are checked by checksum |
-| Accidental damage | User clicks Restart network meaning Restart eero | Inline confirm or dialog for every disruptive and destructive action, naming what will happen |
+| Accidental damage | User clicks Restart network meaning Restart eero | Confirm dialog for every disruptive and destructive action, naming what will happen |
 | Agents touching the real network during development | A test or script calls eero with the maintainer's session | Sandbox rules in [testing.md](../testing.md): demo backend, fake server, throwaway user data dirs |
 
 ### Out of scope
@@ -125,7 +125,7 @@ The path stays in main; the renderer gets back only the file name.
 params include `"confirm": true`. The engine enforces it, so it holds on every
 surface:
 
-- **UI** shows an inline confirm or a dialog that names the effect ("All 4
+- **UI** shows a confirm dialog that names the effect ("All 4
   eeros restart. Internet is down for about 2 to 3 minutes.") and then sends
   `confirm: true`. Destructive dialogs need a typed or checked acknowledgement.
 - **CLI** needs `--confirm`. Script lines must each carry `"confirm": true`.

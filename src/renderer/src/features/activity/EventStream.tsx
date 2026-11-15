@@ -125,7 +125,7 @@ function RowAction({ e, ctx }: { e: NetworkEvent; ctx: ActionContext }) {
 
 function ResumeButton({ profile }: { profile: Profile }) {
   const gate = useGate("profile.resume");
-  const write = useWrite("profile.resume", { confirmIn: "dialog" });
+  const write = useWrite("profile.resume");
   if (!gate.allowed) return null;
   return (
     <Button
@@ -151,7 +151,7 @@ function ResumeButton({ profile }: { profile: Profile }) {
 
 function UnblockButton({ device }: { device: Device }) {
   const gate = useGate("device.unblock");
-  const write = useWrite<{ devices: string[] }, DeviceBulkResult>("device.unblock", { confirmIn: "dialog" });
+  const write = useWrite<{ devices: string[] }, DeviceBulkResult>("device.unblock");
   if (!gate.allowed) return null;
   const req = blockRequest([device], false);
   return (
@@ -163,7 +163,7 @@ function UnblockButton({ device }: { device: Device }) {
 
 function AssignButton({ device, profiles }: { device: Device; profiles: ReadonlyArray<ProfileOption> }) {
   const gate = useGate("device.profile.set");
-  const write = useWrite<{ devices: string[]; profile: string | null }, DeviceBulkResult>("device.profile.set", { confirmIn: "dialog" });
+  const write = useWrite<{ devices: string[]; profile: string | null }, DeviceBulkResult>("device.profile.set");
   if (!gate.allowed) return null;
   return (
     <ProfileMenu

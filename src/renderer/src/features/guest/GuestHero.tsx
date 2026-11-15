@@ -1,7 +1,7 @@
 /**
  * Guest network hero: ticket tile, the guest network name, its status and
  * how many guests are on, the power button (`guest.enable`, or
- * `guest.disable` behind an inline confirm), and the QR block with Copy
+ * `guest.disable` behind the confirm dialog), and the QR block with Copy
  * password, Save QR, Print a card and Send to a guest.
  * docs/ux/pages/guest.md (Layout 1).
  *
@@ -16,7 +16,6 @@ import { useEffect } from "react";
 import { useCommand } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { PageHeader } from "~/components/ui/hero";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { QrBlock, QrCode } from "~/components/ui/qr";
@@ -73,7 +72,7 @@ export function GuestHero({ guest, networkName, unavailable, offline = false, fa
   );
 }
 
-/** Turn on (a plain write with Undo) or off (disruptive: inline confirm with the guests it drops, then a progress toast). */
+/** Turn on (a plain write with Undo) or off (disruptive: the confirm dialog with the guests it drops, then a progress toast). */
 function PowerButton({ on }: { on: boolean }) {
   const gate = useGate({ area: "settings" });
   const disable = useWrite("guest.disable", {
@@ -89,12 +88,10 @@ function PowerButton({ on }: { on: boolean }) {
   });
   const write = on ? disable : enable;
   return (
-    <WriteConfirm write={disable.asking ? disable : enable} className="max-w-md">
-      <GatedButton gate={gate} size="sm" variant={on ? "destructive" : "default"} disabled={write.running} onClick={() => void write.run()}>
-        <Power />
-        {on ? "Turn off guest network" : "Turn on guest network"}
-      </GatedButton>
-    </WriteConfirm>
+    <GatedButton gate={gate} size="sm" variant={on ? "destructive" : "default"} disabled={write.running} onClick={() => void write.run()}>
+      <Power />
+      {on ? "Turn off guest network" : "Turn on guest network"}
+    </GatedButton>
   );
 }
 
