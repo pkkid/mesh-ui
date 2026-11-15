@@ -52,3 +52,23 @@ export function guardCliHost(deps: CliGuardDeps): void {
   deps.process.on("uncaughtException", crash);
   deps.process.on("unhandledRejection", crash);
 }
+
+/**
+ * How long a Windows CLI run stays up after `ready` before it may exit.
+ *
+ * Exiting Electron within a few milliseconds of `ready` races Chromium's own
+ * startup work (the network service, disk caches and GPU host that touching
+ * `session.defaultSession` sets going). On Windows that race faults in the
+ * main process with 0xC0000005 in about a third of `--cli --version` runs,
+ * after the output is written, so the real exit code is lost. A stock
+ * Electron 45 app that touches the session and exits at once crashed 5 of
+ * 12 times on windows-latest; the same app waiting 300 ms first, 0 of 12.
+ * macOS and Linux do not crash and exit at once.
+ */
+export const WIN_EXIT_SETTLE_MS = 500;
+
+/** Milliseconds to wait before exiting: what is left of the settle time on Windows, else 0. */
+export function cliExitDelay(platform: NodeJS.Platform, readyAt: number | null, now: number): number {
+  if (platform !== "win32" || readyAt === null) return 0;
+  return Math.max(0, readyAt + WIN_EXIT_SETTLE_MS - now);
+}

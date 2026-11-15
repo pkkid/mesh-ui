@@ -220,6 +220,11 @@ test well under it (property tests check with plain comparisons and one
   on macOS, Windows and Linux. Then `pnpm dist` builds the packages, uploaded
   as `dist-<os>` (packages, `.blockmap` files and the update files, `latest*.yml` or `beta*.yml`). Windows
   smokes the x64 dir build only (`pnpm dist:dir --x64`), the runner's arch.
+  Its ui:shot passes `--route overview` (Git bash would rewrite
+  `'#/overview'` as a Windows path), and its `pnpm dist` step points
+  `pnpm_config_cache_dir` at a short path: under the default pnpm dlx cache
+  electron-builder's NSIS includes pass MAX_PATH and makensis cannot open
+  them.
   The Linux jobs install `rpm` and allow unprivileged user namespaces
   (Ubuntu 24.04 blocks them, and Chromium's sandbox needs them); arm64 uses
   a system `fpm` (`USE_SYSTEM_FPM=true`) because electron-builder's bundled

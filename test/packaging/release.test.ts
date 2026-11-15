@@ -212,7 +212,8 @@ describe(".github/workflows/release.yml", () => {
       const steps = j[id] ?? "";
       const dir = steps.search(/run: pnpm dist:dir/);
       const smoke = steps.indexOf("run: pnpm dist:smoke");
-      const shot = steps.search(/run: pnpm ui:shot --route '#\/overview'/);
+      // Windows passes 'overview' (Git bash rewrites '#/overview'); ui-shot adds the '#/'.
+      const shot = steps.search(/run: pnpm ui:shot --route ('#\/overview'|overview) /);
       expect(dir, id).toBeGreaterThan(-1);
       expect(smoke, id).toBeGreaterThan(dir);
       expect(shot, id).toBeGreaterThan(smoke);
@@ -220,6 +221,10 @@ describe(".github/workflows/release.yml", () => {
       // Every channel's update files (latest*.yml, or beta*.yml for a beta).
       expect(steps, id).toMatch(/^ {12}dist\/\*\.yml$/m);
     }
+  });
+
+  it("builds the Windows installers with a short pnpm cache path (makensis MAX_PATH)", () => {
+    expect(jobs().win).toMatch(/run: pnpm dist\n\s+env:\n\s+pnpm_config_cache_dir: \$\{\{ runner\.temp \}\}\\pc/);
   });
 
   it("pins actions like ci.yml", () => {

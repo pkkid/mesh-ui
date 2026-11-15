@@ -94,15 +94,22 @@ jobs:
       # x64 only, so dist:smoke finds the runner's own arch in dist/.
       - run: pnpm dist:dir --x64
       - run: pnpm dist:smoke
-      - run: pnpm ui:shot --route '#/overview' --out ui-shot-win.png
+      # No slash in the route: Git bash would rewrite '#/overview' as a Windows
+      # path. ui-shot turns 'overview' into '#/overview'.
+      - run: pnpm ui:shot --route overview --out ui-shot-win.png
       - uses: actions/upload-artifact@v7
         with:
           name: ui-shot-win
           path: ui-shot-win.png
           if-no-files-found: error
       # Unsigned for now (build-and-release.md#windows): NSIS x64 and arm64
-      # plus the portable zips.
+      # plus the portable zips. makensis cannot open includes past MAX_PATH
+      # (260), and electron-builder's templates under the default pnpm dlx
+      # cache (AppData\Local\pnpm-cache\dlx\...) reach 261, so the cache
+      # moves to a short path for this step.
       - run: pnpm dist
+        env:
+          pnpm_config_cache_dir: ${{ runner.temp }}\pc
       - uses: actions/upload-artifact@v7
         with:
           name: dist-win

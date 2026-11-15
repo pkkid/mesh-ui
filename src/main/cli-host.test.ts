@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { CLI_CRASH_EXIT, crashLine, guardCliHost } from "./cli-host";
+import { CLI_CRASH_EXIT, cliExitDelay, crashLine, guardCliHost, WIN_EXIT_SETTLE_MS } from "./cli-host";
 
 /** A guarded fake process: an EventEmitter, a stubbed dialog, captured stderr and exit. */
 function guarded() {
@@ -90,5 +90,23 @@ describe("dev launcher (scripts/mesh-ui-dev.mjs)", () => {
   it("adds no Linux switches on other platforms", async () => {
     const plan = (await launchPlan())({ main: "m", args: [], env: {}, platform: "darwin", tmp: "/t" });
     expect(plan.argv).not.toContain("--ozone-platform=headless");
+  });
+});
+
+describe("cliExitDelay", () => {
+  it("waits out the settle time after ready on Windows", () => {
+    expect(cliExitDelay("win32", 1_000, 1_000)).toBe(WIN_EXIT_SETTLE_MS);
+    expect(cliExitDelay("win32", 1_000, 1_200)).toBe(WIN_EXIT_SETTLE_MS - 200);
+  });
+
+  it("does not wait once the settle time has passed", () => {
+    expect(cliExitDelay("win32", 1_000, 1_000 + WIN_EXIT_SETTLE_MS)).toBe(0);
+    expect(cliExitDelay("win32", 1_000, 60_000)).toBe(0);
+  });
+
+  it("never waits on macOS or Linux, or before ready", () => {
+    expect(cliExitDelay("darwin", 1_000, 1_000)).toBe(0);
+    expect(cliExitDelay("linux", 1_000, 1_000)).toBe(0);
+    expect(cliExitDelay("win32", null, 1_000)).toBe(0);
   });
 });

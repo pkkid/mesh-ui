@@ -273,9 +273,18 @@ mesh-ui login
   - `runCli(argv, io, host)` parses the global flags, picks the subcommand
     and the backend mode (`demo`, `fake` or `live`), and returns an exit
     code. It never exits the process.
-  - `cliMain(argv, host?)` runs the CLI as a whole process: it calls
-    `runCli`, exits 130 on Ctrl C, and waits for stdout and stderr to drain
-    before `process.exit`, so piped output is never cut short.
+  - `cliMain(argv, host?, exit?)` runs the CLI as a whole process: it
+    calls `runCli`, exits 130 on Ctrl C, and waits for stdout and stderr to
+    drain before calling `exit`, so piped output is never cut short. `exit`
+    defaults to `process.exit` for plain Node. The Electron host passes its
+    own, also used by its crash guard: on Windows it stays up until 500 ms
+    after `ready` (`cliExitDelay` in `src/main/cli-host.ts`), then calls
+    `app.exit`. Exiting Electron a few milliseconds after `ready` races
+    Chromium's own startup (network service, disk caches, GPU host) and on
+    Windows crashes with 0xC0000005 in about a third of quick runs such as
+    `--version`, after the output is written, losing the exit code.
+    Commands that run longer than that do not wait; macOS and Linux never
+    wait.
   - `CliHost` is what differs per runtime: version, `dev` (allows `--fake`),
     `isTTY`, env, `createEngine({ mode, surface, userDataDir })`, stdin and
     a terminal prompt. The engine is built once per run and shared by the

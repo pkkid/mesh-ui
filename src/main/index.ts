@@ -42,7 +42,7 @@ import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
 import { isRefreshKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import type { NotifyHost } from "./notify";
-import { guardCliHost } from "./cli-host";
+import { cliExitDelay, guardCliHost } from "./cli-host";
 import { createHostActions } from "./host-actions";
 import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
@@ -61,8 +61,25 @@ const OVERLAY_HEIGHT = TITLEBAR_HEIGHT - 1;
 const argv = process.argv;
 const cliIndex = argv.indexOf("--cli");
 const isCli = cliIndex !== -1;
+/** When the app became ready in a CLI run (cliExitDelay). */
+let cliReadyAt: number | null = null;
+/**
+ * Ends a CLI run. On Windows it first lets Chromium's startup settle after
+ * `ready` (cliExitDelay in src/main/cli-host.ts), or the exit can crash with
+ * 0xC0000005 and lose the exit code. After ready it uses app.exit, which
+ * shuts Chromium down in order.
+ */
+const cliExit = (code: number): void => {
+  if (!app.isReady()) {
+    process.exit(code);
+    return;
+  }
+  const delay = cliExitDelay(process.platform, cliReadyAt, Date.now());
+  if (delay > 0) setTimeout(() => app.exit(code), delay);
+  else app.exit(code);
+};
 // The CLI is always headless: errors go to stderr, never a native dialog.
-if (isCli) guardCliHost({ dialog, process, stderr: (text) => process.stderr.write(text), exit: (code) => process.exit(code) });
+if (isCli) guardCliHost({ dialog, process, stderr: (text) => process.stderr.write(text), exit: cliExit });
 const isDemo = process.env.MESH_UI_DEMO === "1" || (!isCli && argv.includes("--demo"));
 const isFake = import.meta.env.DEV && !isCli && process.env.MESH_UI_FAKE === "1";
 const isHeadless = !isCli && process.env.MESH_UI_HEADLESS === "1";
@@ -359,8 +376,9 @@ function lockDownSession(): void {
 if (isCli) {
   app.dock?.hide();
   void app.whenReady().then(() => {
+    cliReadyAt = Date.now();
     lockDownSession();
-    return cliMain(argv.slice(cliIndex + 1), electronCliHost());
+    return cliMain(argv.slice(cliIndex + 1), electronCliHost(), cliExit);
   });
 } else {
   if (isHeadless) app.dock?.hide();

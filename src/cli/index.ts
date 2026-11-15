@@ -243,14 +243,19 @@ export function nodeHost(opts: NodeHostOptions = {}): CliHost {
   };
 }
 
+/** Ends the process with a code. Plain Node uses process.exit; the Electron host passes its own. */
+export type CliExit = (code: number) => void;
+
 /**
  * Runs the CLI as a whole process: exit code from runCli, 130 on Ctrl C.
- * Waits for stdout to drain so piped output is never cut short.
+ * Waits for stdout to drain so piped output is never cut short, then calls
+ * `exit` (process.exit by default). The Electron host passes its own, which
+ * waits for Chromium's startup to settle on Windows (src/main/cli-host.ts).
  */
-export async function cliMain(argv: string[], host?: CliHost): Promise<never> {
-  process.on("SIGINT", () => process.exit(EXIT.interrupted));
+export async function cliMain(argv: string[], host?: CliHost, exit: CliExit = (code) => process.exit(code)): Promise<void> {
+  process.on("SIGINT", () => exit(EXIT.interrupted));
   const code = await runCli(argv, defaultIo, host);
   const drain = (stream: NodeJS.WriteStream) => new Promise<void>((resolve) => stream.write("", () => resolve()));
   await Promise.all([drain(process.stdout), drain(process.stderr)]);
-  process.exit(code);
+  exit(code);
 }
