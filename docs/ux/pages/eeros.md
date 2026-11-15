@@ -50,8 +50,8 @@ Sidebar count: number of eeros.
    - List view: one row per eero with the header fields and per-band client
      counts.
 3. Two columns:
-   - **Data usage by eero**. Sub "Last 24 hours of download and upload"
-     ("Last 7 days of ..." on Week). Day / Week toggle. Legend with each eero's total in its series colour, then a
+   - **Data usage by eero**. Sub "Last 24 hours" ("Last 7 days" on
+     Week). Day / Week toggle. Legend with each eero's total in its series colour, then a
      stacked area chart with a Total row in the tooltip.
    - Right column, stacked:
      - **Clients by band**. Donut with the client total in the middle ("31
