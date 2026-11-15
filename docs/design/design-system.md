@@ -150,9 +150,9 @@ numbers.
 
 Sidebar on the left (`bg-sidebar`, 1px right border): app mark, network
 picker card, nav groups **Network** and **Settings**, user at the bottom.
-Main pane: a 44px top bar (breadcrumbs, page actions, Refresh, search,
-notifications, theme toggle, window controls) over a scrolling content
-column. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
+Main pane: a 44px top bar (breadcrumbs, page actions, search,
+notifications, Refresh, theme toggle, window controls) over a scrolling content
+column. Its icon controls (bell, Refresh, theme) are neutral 30px ghost
 buttons with a `title` tooltip naming any shortcut ("Refresh (Ctrl+R)");
 a running Refresh only spins its icon (rotation, no other animation). The top strip of each pane is the
 window titlebar (`drag-region`); controls in it need `no-drag`, and it

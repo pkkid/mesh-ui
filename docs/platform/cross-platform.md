@@ -60,7 +60,7 @@ Never hard-code a separator; use `path.join`.
 | --- | --- | --- | --- |
 | Frame | `titleBarStyle: "hiddenInset"` | `titleBarStyle: "hidden"` + `titleBarOverlay` | Same as Windows |
 | Native controls | Traffic lights at `{ x: 16, y: 15 }` | Overlay min, max, close at the right | Overlay at the right |
-| CSS inset | `--titlebar-inset-left: 78px` | `--titlebar-inset-right: 140px` | `--titlebar-inset-right: 140px` |
+| CSS inset | `--titlebar-inset-left: 78px` | `--titlebar-inset-right` measured from the overlay (140px fallback) | Same as Windows |
 | Overlay colours | n/a | Follow theme via `setTitleBarOverlay` | Same |
 | Close last window | App keeps running (dock) | App quits | App quits |
 
