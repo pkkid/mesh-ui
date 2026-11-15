@@ -10,7 +10,7 @@
  * `speedtest.run` and `watchSpeedTest` keeps a progress toast until the
  * result lands, then shows it.
  */
-import { Gauge as GaugeIcon, LoaderCircle, Stethoscope } from "lucide-react";
+import { Flame, Gauge as GaugeIcon, LoaderCircle, Stethoscope } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 
 import { Link, pathFor } from "~/app/router";
@@ -24,7 +24,7 @@ import { Status } from "~/components/ui/status";
 import { toast } from "~/components/ui/toast";
 import { seriesColors } from "~/lib/chartColors";
 import type { SpeedTestRun } from "../../../../core/commands/internet";
-import { formatDuration, formatMbps, formatRelative, mbpsParts, networkClock } from "../../../../core/format";
+import { formatDuration, formatMbps, formatPlanShare, formatRelative, mbpsParts, networkClock } from "../../../../core/format";
 import type { Id, Internet, Network, SpeedHistory } from "../../../../core/model";
 import { TextLink } from "~/components/ui/text-link";
 import { openPlanSheet } from "./PlanSheet";
@@ -221,8 +221,8 @@ export function InternetHero() {
       aside={
         <div className={down ? "opacity-60" : undefined}>
           <div className="flex items-center gap-7">
-            <SpeedGauge label="Download" value={latest?.downMbps ?? null} max={plan?.down ?? fallbackMax} color={seriesColors.download} loading={gaugesLoading} />
-            <SpeedGauge label="Upload" value={latest?.upMbps ?? null} max={plan?.up ?? fallbackMax} color={seriesColors.upload} loading={gaugesLoading} />
+            <SpeedGauge label="Download" value={latest?.downMbps ?? null} plan={plan?.down ?? null} fallbackMax={fallbackMax} size={164} color={seriesColors.download} loading={gaugesLoading} />
+            <SpeedGauge label="Upload" value={latest?.upMbps ?? null} plan={plan?.up ?? null} fallbackMax={fallbackMax} size={164} color={seriesColors.upload} loading={gaugesLoading} />
           </div>
           {i && (
             <div className="text-center text-3xs text-muted-foreground">
@@ -237,19 +237,61 @@ export function InternetHero() {
   );
 }
 
-function SpeedGauge({ label, value, max, color, loading }: { label: string; value: number | null; max: number; color: string; loading: boolean }) {
+/** With a plan the arc runs this far past it, so a result that beats the plan shows it. */
+const PLAN_HEADROOM = 1.25;
+
+/**
+ * A speed test gauge (Overview and Internet heroes). With a plan it runs to
+ * 125% of it, marks the plan on the arc and says "94% of plan" or, with a
+ * solid flame in the over-plan colour, "9% over plan". Without one it scales
+ * to `fallbackMax` (the best result) with no mark or line.
+ */
+export function SpeedGauge({
+  label,
+  value,
+  plan,
+  fallbackMax,
+  color,
+  loading,
+  size,
+}: {
+  label: string;
+  value: number | null;
+  plan: number | null;
+  fallbackMax: number;
+  color: string;
+  loading: boolean;
+  size: number;
+}) {
   const parts = mbpsParts(value);
+  const share = formatPlanShare(value, plan);
+  const max = plan && plan > 0 ? plan * PLAN_HEADROOM : fallbackMax;
   return (
     <Gauge
       label={label}
       value={value}
       max={max}
+      mark={plan}
       color={color}
       text={parts.value}
       unit="Mbps"
-      size={164}
+      note={
+        share && (
+          <span className="inline-flex items-center gap-1">
+            {share.over && <Flame aria-hidden className="size-2.75 fill-current" style={{ color: seriesColors.overPlan }} />}
+            {share.text}
+          </span>
+        )
+      }
+      size={size}
       loading={loading}
-      ariaLabel={value === null ? `${label}: no speed test yet` : `${label}: ${parts.value} Mbps of ${max} Mbps`}
+      ariaLabel={
+        value === null
+          ? `${label}: no speed test yet`
+          : share
+            ? `${label}: ${parts.value} Mbps, ${share.text}`
+            : `${label}: ${parts.value} Mbps of ${max} Mbps`
+      }
     />
   );
 }

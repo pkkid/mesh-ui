@@ -20,8 +20,11 @@ actions.
    - Action row: **Run speed test** (primary), **Share Wi-Fi**, **Pause a
      profile**, **Restart network** (ghost).
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
-     on the plan max (1.2 Gbps) with the latest result in the middle ("942
-     Mbps", "918 Mbps") in the download and upload series colours. A
+     with the latest result in the middle ("942 Mbps", "918 Mbps") in the
+     download and upload series colours. With a plan the arc runs to 125% of
+     it, a short foreground mark crosses the arc at the plan, and a muted
+     line under "Mbps" reads "78% of plan", or "9% over plan" after a solid
+     flame in the over-plan colour (orange) when the result beats it. A
      caption under them says where the figures come from: "Last speed test
      Nov 14, 9:12 PM · **View history**" (network time; "No speed test yet"
      before the first; View history opens `#/internet/history`, Internet
@@ -141,9 +144,10 @@ actions.
   `{net}/data_usage/eeros` and should be verified in the fake server.
 - "Busiest hour" and "so far today" are computed in core from the same
   series, in the network time zone.
-- Gauge max is the plan speed the user set on Internet (stored in
-  `settings.json`, see [internet.md](internet.md)); eero does not know the
-  plan.
+- Gauge max is 125% of the plan speed the user set on Internet (stored in
+  `settings.json`, see [internet.md](internet.md)), so a result above the
+  plan still moves the arc; eero does not know the plan. Without a plan it
+  is the best result in history, with no mark or "% of plan" line.
 - "Pause a profile" is a small menu of profiles rather than the palette:
   one click picks and pauses, and the Undo toast is the same as on Profiles.
 - Live rates are not shown here, so this page never triggers

@@ -19,6 +19,8 @@ export const seriesColors = {
   band5: hue("blue"),
   band6: hue("purple"),
   wired: hue("aqua"),
+  /** The flame beside a speed test result that beats the plan (speed gauges). */
+  overPlan: hue("orange"),
   /** Power saving schedule blocks (Advanced networking, Eco efficiency). */
   powerSaving: hue("green"),
   /** Neutral or "other": a mix of the text colour with the background. */
