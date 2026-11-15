@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -18,6 +18,7 @@ import {
   SPEEDTEST_RESULT_MS,
   type SpeedTestRun,
   speedRating,
+  reclaimLock,
   speedTestLockPath,
 } from "./internet";
 
@@ -626,6 +627,19 @@ describe("speedtest.run lock shared through the config dir", () => {
     expect(await code(app.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
     expect(readdirSync(join(dir, "locks"))).toEqual(["speedtest-100001.json"]);
     await fake.close();
+  });
+
+  it("reclaiming a lock another process took since it was read as expired leaves that lock in place", () => {
+    const dir = tempDir();
+    const path = speedTestLockPath(dir, "100001");
+    mkdirSync(join(dir, "locks"));
+    // Process B read an expired lock, then process A reclaimed it and took a fresh one.
+    writeFileSync(path, JSON.stringify({ since: NOW, after: null }));
+    expect(reclaimLock(path, NOW + 1_000)).toEqual({ since: NOW, after: Number.NEGATIVE_INFINITY });
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ since: NOW, after: null });
+    // A lock that really expired is moved out of the way.
+    expect(reclaimLock(path, NOW + SPEEDTEST_GIVE_UP_MS)).toBeNull();
+    expect(readdirSync(join(dir, "locks"))).toEqual([]);
   });
 
   it("with no config dir each engine keeps its own in-memory lock", async () => {

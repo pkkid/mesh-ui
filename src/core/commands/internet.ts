@@ -124,19 +124,46 @@ const removeFile = (path: string) => {
 };
 
 /**
+ * Moves an expired or unreadable lock at `path` out of the way. The file is
+ * renamed aside first (atomic), so if another process took the lock since
+ * it was read, the fresh lock is the one moved: it is linked back and
+ * returned as the holder. Null when the path is free to take.
+ */
+export function reclaimLock(path: string, now: number): Run | null {
+  const { fs, crypto } = node();
+  const aside = `${path}.${crypto.randomUUID()}.stale`;
+  try {
+    fs.renameSync(path, aside);
+  } catch {
+    return null; // Already gone.
+  }
+  try {
+    const moved = live(readRun(aside), now);
+    if (!moved) return null;
+    try {
+      fs.linkSync(aside, path);
+      return moved;
+    } catch {
+      // A third process took it meanwhile: that one holds it now.
+      return live(readRun(path), now) ?? moved;
+    }
+  } finally {
+    removeFile(aside);
+  }
+}
+
+/**
  * Locks shared by every process on one config dir (the app and a CLI), one
  * small JSON file per network. The file is written to a temp name and then
  * hard-linked into place, which fails when the lock exists: taking the lock
  * is atomic and a reader never sees half a file. An expired or unreadable
- * lock is removed and taken. Where hard links are not supported the file is
- * renamed into place instead (atomic, but check-then-set).
+ * lock is reclaimed (`reclaimLock`) and taken.
  */
 function fileLocks(configDir: string): RunLocks {
   return {
     get: (net, now) => live(readRun(speedTestLockPath(configDir, net)), now),
     acquire(net, run, now) {
       const { fs, path: paths, crypto } = node();
-      const { linkSync, renameSync } = fs;
       const path = speedTestLockPath(configDir, net);
       fs.mkdirSync(paths.dirname(path), { recursive: true });
       const tmp = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
@@ -144,18 +171,12 @@ function fileLocks(configDir: string): RunLocks {
       try {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            linkSync(tmp, path);
+            fs.linkSync(tmp, path);
             return null;
           } catch (e) {
-            if ((e as NodeJS.ErrnoException).code !== "EEXIST") {
-              const held = live(readRun(path), now);
-              if (held) return held;
-              renameSync(tmp, path);
-              return null;
-            }
-            const held = live(readRun(path), now);
+            if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+            const held = live(readRun(path), now) ?? reclaimLock(path, now);
             if (held) return held;
-            removeFile(path);
           }
         }
         return readRun(path) ?? run;
