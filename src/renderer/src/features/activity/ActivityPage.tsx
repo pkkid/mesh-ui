@@ -30,7 +30,7 @@ import type { Device, DeviceList, Eero, EventCategory, EventPage, EventSummary, 
 import { ActivityChart, CATEGORY_ORDER } from "./ActivityChart";
 import { ActivityHero } from "./ActivityHero";
 import { EMPTY_FILTERS, type EventFilterState, EventFilters } from "./EventFilters";
-import { EventStream } from "./EventStream";
+import { EventStream, StreamSettingsButton } from "./EventStream";
 
 type Bucket = "day" | "hour";
 type Mode = "grouped" | "raw";
@@ -238,6 +238,7 @@ export function ActivityPage(_props: PageProps) {
               ]}
             />
             <MarkAllReadButton networkId={notifications.networkId} page={notifications.data} />
+            <StreamSettingsButton />
           </>
         }
       >
@@ -251,6 +252,7 @@ export function ActivityPage(_props: PageProps) {
           emptyText={filtered ? "No events match these filters." : "No events in the last 7 days."}
           error={streamError}
           footer={footer}
+          networkName={network.data?.name ?? null}
         />
       </Section>
     </>

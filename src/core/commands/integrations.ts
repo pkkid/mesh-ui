@@ -2,8 +2,9 @@
  * Smart home integrations: `integrations.get`, each partner feature with
  * `available` and `enabled` (eero leaving a feature out, or a 403 or 404, is
  * "unavailable", not an error), and the writes behind the Integrations card:
- * the eero Built-in and Frustration-Free Setup switches, Zigbee discovery on
- * a Smart Home Hub and unlinking Amazon (destructive). A write on an
+ * the eero Built-in switch, Zigbee discovery on a Smart Home Hub and
+ * unlinking Amazon (destructive). Frustration-Free Setup is read only: no
+ * client has live-tested its write and eero's own app shows no switch (M6.10). A write on an
  * unavailable integration fails with `bad_params` and eero's reason, before
  * anything is sent. Gates use the `{net}/permissions` keys eero sends for
  * these features (`network.proxied_nodes`, `network.smart_home_hub`,
@@ -67,20 +68,6 @@ export const commands: AnyCommand[] = [
     run: async (ctx, p): Promise<M.Integrations> => {
       await available(ctx, "builtin");
       return ctx.backend.integrations.setBuiltin(ctx.net, p.enabled);
-    },
-  }),
-  defineCommand({
-    id: "integrations.ffs.set",
-    label: "Frustration-Free Setup",
-    description: "Turns Amazon Frustration-Free Setup on or off: new Amazon devices get the Wi-Fi credentials from your Amazon account without typing them.",
-    icon: "package-check",
-    params: enabledParams,
-    effect: "write",
-    gate: { area: "network" },
-    invalidates: ["integrations"],
-    run: async (ctx, p): Promise<M.Integrations> => {
-      await available(ctx, "ffs");
-      return ctx.backend.integrations.setFfs(ctx.net, p.enabled);
     },
   }),
   defineCommand({
