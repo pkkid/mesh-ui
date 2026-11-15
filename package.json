@@ -6,6 +6,11 @@
   "private": true,
   "main": "out/main/index.js",
   "license": "MIT",
+  "author": {
+    "name": "Michael Shepanski",
+    "email": "435619+pkkid@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/pkkid/mesh-ui",
   "scripts": {
     "postinstall": "node node_modules/electron/install.js",
     "dev": "electron-vite dev",

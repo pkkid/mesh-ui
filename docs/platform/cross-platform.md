@@ -114,7 +114,7 @@ The user can turn them off in App & account (`app.settings.set`).
 | Launcher | `/usr/local/bin/mesh-ui` symlink, installed from App & account | `mesh-ui.cmd` in `<install dir>\bin`, added to user `PATH` by NSIS | `/usr/bin/mesh-ui` (deb, rpm); `~/.local/bin/mesh-ui` from App & account (AppImage) |
 | How it starts | App binary with `--cli` | Node-mode relay spawns the app with `--cli` (console output) | App binary with `--cli` |
 | Dock or taskbar icon | Hidden (`app.dock.hide()`) | None (no window) | None |
-| No display | n/a | n/a | Launcher adds `--ozone-platform=headless` |
+| No display | n/a | n/a | Launcher always drops `DISPLAY` and `WAYLAND_DISPLAY` and adds `--ozone-platform=headless --disable-gpu` |
 
 Full detail in [build-and-release.md](build-and-release.md#cli-launcher).
 

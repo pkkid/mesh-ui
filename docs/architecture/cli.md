@@ -26,8 +26,9 @@ sees the flag before `app.whenReady()` and:
   data) and exiting 1 (`src/main/cli-host.ts`).
 
 **The CLI is always headless.** The CLI and MCP surfaces never show UI. On
-Linux the dev launcher (`scripts/mesh-ui-dev.mjs`) also removes `DISPLAY`
-and `WAYLAND_DISPLAY` from the child and adds `--ozone-platform=headless
+Linux the dev launcher (`scripts/mesh-ui-dev.mjs`) and the packaged
+`/usr/bin/mesh-ui` launcher (`build/linux/mesh-ui`) also remove `DISPLAY`
+and `WAYLAND_DISPLAY` from the child and add `--ozone-platform=headless
 --disable-gpu`, so it cannot reach the display server at all, even for an
 error during module load (before the handlers above exist), which Electron
 would otherwise show as a native "A JavaScript error occurred in the main
@@ -58,9 +59,8 @@ Limits that follow from this:
   for example over plain SSH), the session cannot be saved, so every CLI run
   starts signed out. `mesh-ui login` still works for one process, which makes
   `mesh-ui mcp` usable but `mesh-ui run` one-shot. `--demo` always works.
-- Headless Linux without a display server runs with `--ozone-platform=headless`
-  (the packaged launcher sets it when neither `DISPLAY` nor `WAYLAND_DISPLAY`
-  is set; the dev launcher always does).
+- Linux CLI runs always use `--ozone-platform=headless`, with or without a
+  display server (both the packaged and the dev launcher set it, #115).
 
 ## Install
 
@@ -71,7 +71,7 @@ The installer puts a `mesh-ui` launcher on `PATH`. Details per OS are in
 | --- | --- |
 | macOS | Symlink `/usr/local/bin/mesh-ui` to a script inside the app bundle, offered from App & account ("Install command line tool", needs an admin prompt) |
 | Windows | NSIS installer adds `<install dir>\bin` (holding `mesh-ui.cmd`) to the user `PATH` |
-| Linux deb / rpm | Package installs `/usr/bin/mesh-ui` |
+| Linux deb / rpm | The package's after-install script writes the `/usr/bin/mesh-ui` launcher; after-remove deletes it |
 | Linux AppImage | "Install CLI" button in App & account writes `~/.local/bin/mesh-ui` pointing at the AppImage path |
 
 The App & account button runs `app.cli.install`, which reports where the

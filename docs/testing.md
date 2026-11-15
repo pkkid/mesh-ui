@@ -18,8 +18,9 @@ GitHub Actions only does light cross-platform checks and release builds
   30 seconds on a laptop. Tests share nothing, need no network beyond
   `127.0.0.1`, and start the fake eero server in-process.
 - `pnpm test:watch` reruns affected tests on save; use it while building.
-- `pnpm test:ui` runs the Playwright Electron checks locally (a few minutes).
-  Run it before opening a PR that changes the UI, and attach its screenshots.
+- `pnpm ui:shot` takes invisible demo-mode screenshots of the built app (see
+  [Screenshots with ui-shot](#screenshots-with-ui-shot)). Run it before
+  opening a PR that changes the UI, and attach its screenshots.
 - `pnpm check` is the pre-PR gate: `typecheck`, `test`, `build`. Every PR is
   expected to pass it locally first; CI is a backstop, not the main signal.
 - Slow tests are a bug. A test that needs real waiting (rate limits,
@@ -315,8 +316,12 @@ Kept deliberately light. GitHub Actions is used for two things only:
 2. **Release builds** when a version tag is pushed, because signed macOS and
    Windows artifacts need those runners.
 
-UI tests, screenshots, the keychain-less run (`pnpm test:keychainless`) and
-packaging smoke tests (`pnpm dist:dir`, then `pnpm dist:smoke`) run locally. CI has no eero credentials and needs none. Details in
+UI screenshots, the keychain-less run (`pnpm test:keychainless`) and
+packaging smoke tests (`pnpm dist:dir`, then `pnpm dist:smoke`) run locally.
+`pnpm dist:smoke` works with no display: on Linux without `DISPLAY` or
+`WAYLAND_DISPLAY` it runs every step on headless ozone and the window step
+offscreen (`MESH_UI_HEADLESS=1`). The CLI launchers themselves are tested in
+`test/packaging/launchers.test.ts` against stub apps. CI has no eero credentials and needs none. Details in
 [build-and-release.md](platform/build-and-release.md#ci).
 
 ## Manual checks on the real network
@@ -352,5 +357,5 @@ MANUAL: Device pause persists | Pause "Leo's Switch" in Devices, reopen the app 
 - `pnpm check` (typecheck, test, build) passes locally.
 - New commands have tests, including `bad_params` and `needs_confirm`.
 - New client behaviour has a fake-server test.
-- UI changes ran `pnpm test:ui` locally and have demo-mode screenshots in the PR.
+- UI changes have `pnpm ui:shot` demo-mode screenshots in the PR.
 - Anything that needs the real network is a `MANUAL:` line, not a done-when.

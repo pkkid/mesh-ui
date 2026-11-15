@@ -22,8 +22,39 @@ pnpm test:keychainless  # Linux: built app with --password-store=basic keeps the
 electron-builder, which reads `electron-builder.yml`. `pnpm dist:smoke` and
 `pnpm test:keychainless` run `scripts/dist-smoke.mjs` with a throwaway user
 data dir and `XDG_CONFIG_HOME`, against the demo backend or the local fake
-eero server. Local builds are unsigned unless the signing variables below are
-set; that is fine for testing.
+eero server. With no display (Linux without `DISPLAY` or `WAYLAND_DISPLAY`)
+every step runs on headless ozone and the window step offscreen
+(`MESH_UI_HEADLESS=1`). Local builds are unsigned unless the signing
+variables below are set, and notarization is skipped without its variables;
+neither fails the build.
+
+`pnpm dist` on Linux builds the AppImage, deb and rpm for the host's arch
+(x64 or arm64); release.yml builds each arch on its own runner. To read a
+package's install scripts: `dpkg-deb -e dist/mesh-ui_<v>_amd64.deb <dir>`
+(`postinst`, `postrm`) and `rpm -qp --scripts dist/mesh-ui-<v>.x86_64.rpm`.
+
+### Packaging files
+
+| File | What it is |
+| --- | --- |
+| `electron-builder.yml` | Targets, artifact names, signing switches, publish config |
+| `build/icon.png` | The app icon, 1024 px; electron-builder derives icns, ico and the Linux sizes |
+| `build/entitlements.mac.plist` | Hardened runtime entitlements (only `allow-jit`) |
+| `build/mac/mesh-ui` | macOS CLI launcher, `Contents/Resources/bin/mesh-ui` |
+| `build/win/mesh-ui.cmd`, `build/win/cli-relay.js` | Windows CLI launcher and relay, `bin\mesh-ui.cmd` and `resources\cli-relay.js` |
+| `build/win/installer.nsh` | NSIS: adds `<install dir>\bin` to the user `PATH`, removes it on uninstall |
+| `build/linux/mesh-ui` | Linux CLI launcher, `resources/bin/mesh-ui`, copied to `/usr/bin/mesh-ui` |
+| `build/linux/after-install.sh`, `after-remove.sh` | deb and rpm scripts: electron-builder's defaults, but writing and removing the `/usr/bin/mesh-ui` launcher in place of a symlink |
+
+`publish` in `electron-builder.yml` names GitHub (`pkkid/mesh-ui`) so the
+build writes `resources/app-update.yml` and the `latest*.yml` files (a
+`-beta.N` version writes `beta*.yml`). For the GitHub provider
+electron-builder ignores `generateUpdatesFilesForAllChannels`: the beta
+channel reaches users through GitHub pre-releases (electron-updater's
+`allowPrerelease`), so a stable release writes only `latest*.yml`. The flag
+is set anyway so a generic update host would get every channel's files.
+Every script still passes `--publish never`; only release.yml
+uploads, to a draft.
 
 electron-builder is not a devDependency. The scripts run it as
 `pnpm dlx electron-builder@26.18.0`, pinned to an exact version. As a
@@ -82,7 +113,13 @@ keychain is usable when a Secret Service is running.
   and app.
 - Secrets: `APPLE_API_KEY` (the `.p8`, base64), `APPLE_API_KEY_ID`,
   `APPLE_API_ISSUER`, `CSC_LINK` (Developer ID `.p12`, base64),
-  `CSC_KEY_PASSWORD`.
+  `CSC_KEY_PASSWORD`. electron-builder reads `APPLE_API_KEY` as a path to the
+  `.p8` file, so release.yml decodes the secret to a temp file and passes its
+  path.
+- `electron-builder.yml` sets `hardenedRuntime: true`, the entitlements and
+  `notarize: true`. Without `CSC_LINK` (and no Developer ID in the keychain)
+  the app is unsigned; without the three `APPLE_API_*` variables
+  notarization is skipped with a warning. Neither fails a local build.
 
 ### Windows
 
@@ -190,11 +227,14 @@ launcher.
 
   ```sh
   #!/bin/sh
-  exec "$(dirname "$0")/../../MacOS/Mesh UI" --cli "$@"
+  self=$(realpath "$0")
+  bin=$(cd "$(dirname "$self")" && pwd -P)
+  exec "$bin/../../MacOS/Mesh UI" --cli "$@"
   ```
 
-  (resolved through the symlink with `realpath` so it works from
-  `/usr/local/bin`).
+  It resolves its own symlink with `realpath` so it works from
+  `/usr/local/bin` (on macOS before 13, which has no `realpath`, it follows
+  the links with `readlink`). Source: `build/mac/mesh-ui`.
 - App & account offers **Install command line tool** (`app.cli.install`),
   which creates `/usr/local/bin/mesh-ui` pointing at that script, asking for
   an admin password through the system prompt. If the app moves, the button
@@ -212,29 +252,34 @@ launcher.
   setlocal
   set ELECTRON_RUN_AS_NODE=1
   "%~dp0..\Mesh UI.exe" "%~dp0..\resources\cli-relay.js" %*
+  exit /b %ERRORLEVEL%
   ```
 
-  The relay spawns `Mesh UI.exe --cli` with piped stdio, so output reaches the
-  console and exit codes pass through.
+  The relay (`build/win/cli-relay.js`) spawns `Mesh UI.exe --cli` (its own
+  binary, without `ELECTRON_RUN_AS_NODE`) with piped stdio, so output
+  reaches the console and exit codes pass through.
 - The installer adds `<install dir>\bin` to the **user** `PATH` and removes it
-  on uninstall.
+  on uninstall (`build/win/installer.nsh`). An update keeps it. A user `PATH`
+  too long for NSIS strings is left alone, with a line in the install log.
 - The portable zip includes the same `bin\` folder but does not touch `PATH`.
 
 ### Linux
 
-- deb and rpm install the app to `/opt/Mesh UI/` and a launcher script at
-  `/usr/bin/mesh-ui`:
+- deb and rpm install the app to `/opt/Mesh UI/`. Their after-install
+  script copies the launcher (`build/linux/mesh-ui`, shipped as
+  `resources/bin/mesh-ui`) to `/usr/bin/mesh-ui`, in place of
+  electron-builder's default symlink; after-remove deletes it on removal
+  but not on upgrade:
 
   ```sh
   #!/bin/sh
-  if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
-    set -- --ozone-platform=headless "$@"
-  fi
-  exec "/opt/Mesh UI/mesh-ui" --cli "$@"
+  unset DISPLAY WAYLAND_DISPLAY
+  exec "/opt/Mesh UI/mesh-ui" --cli --ozone-platform=headless --disable-gpu "$@"
   ```
 
-  The desktop entry still launches the window; only the launcher adds
-  `--cli`.
+  Like the dev launcher (#115), it never lets the CLI reach a display
+  server, even from a desktop terminal. The desktop entry still launches
+  the window from `/opt`; only the launcher adds `--cli`.
 - AppImage: App & account shows **Install CLI** (`app.cli.install`), which
   writes `~/.local/bin/mesh-ui` calling the AppImage path (`$APPIMAGE`) with
   `--cli`, and warns if `~/.local/bin` is not on `PATH`. If the AppImage moves
