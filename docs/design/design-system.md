@@ -148,7 +148,7 @@ numbers.
 
 ### Shell
 
-Sidebar on the left (`bg-sidebar`, 1px right border): app mark, network
+Sidebar on the left (`bg-sidebar`, 1px right border): app icon, network
 picker card, nav groups **Network** and **Settings**, user at the bottom.
 Main pane: a 44px top bar (breadcrumbs, page actions, search,
 Refresh, notifications, theme toggle, window controls) over a scrolling content
@@ -392,6 +392,36 @@ Disruptive and destructive actions reveal a confirm before running:
   for how long. Destructive dialogs need a checkbox or typed name.
 - Danger buttons are red text on a neutral button until the confirm step,
   where the confirming button is filled.
+
+## App icon
+
+One mark everywhere: the mesh triangle (three nodes, a hub, and the links
+between them) in the [Gruvbox Plus](https://github.com/SylEleuth/gruvbox-plus-icon-pack)
+app-icon style. `build/icon.svg` is the only source; `pnpm icons` renders
+`build/icon.png`, the Linux sizes in `build/icons/` and the website copies
+from it, and the UI draws it with `AppIcon` (`components/mesh/AppIcon.tsx`)
+in the sidebar, the sign-in titlebar and Welcome step, and the About panel.
+Never draw the app mark with a lucide glyph.
+
+The app icon follows the pack's measured conventions on a 256 canvas:
+
+- **Box:** the pack's shared rounded-square path (6..250 across, 12..240
+  down), filled with a top-to-bottom `#504945` to `#3c3836` gradient.
+- **Symbol:** cream `#ebdbb2`, about 164px wide (the pack's median is 166),
+  centred so symbol plus shadow sit on (128, 128).
+- **Depth:** the symbol repeated 5px lower in `#282828` at 30% as its shadow,
+  a 4px top lip in `#fbf1c7` at 60%, and the pack's rim gradient over the box
+  (light top edge, darker bottom). No filters or blurs.
+
+Tray icons for a future status bar live in `build/tray/`, in the pack's
+panel style: flat filled paths in `currentColor` with the KDE
+`ColorScheme-*` classes, at 16, 22 and 24px (`mesh-ui-symbolic.svg` is the
+16px monochrome app icon). States: `mesh-ui-tray` (normal),
+`-offline` (the symbol at 30%), and `-warning` and `-error`, which add the
+pack's standard badge, a 4px dot (radius 2 on the 22px canvas) in the
+bottom-right corner with a 1px gap cut from the symbol, in
+`ColorScheme-NeutralText` or `ColorScheme-NegativeText`. They use no masks,
+because Qt's SVG renderer does not support them.
 
 ## Accessibility
 

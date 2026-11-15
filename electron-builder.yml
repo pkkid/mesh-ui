@@ -22,8 +22,8 @@ files:
   - "!**/*.map"
 asar: true
 
-# build/icon.png (1024 px); electron-builder derives the icns, ico and the
-# Linux icon sizes from it.
+# build/icon.png (1024 px, rendered from build/icon.svg by `pnpm icons`);
+# electron-builder derives the icns, ico and the Linux icon sizes from it.
 icon: build/icon.png
 
 # GitHub Releases of pkkid/mesh-ui (auto-update, docs/platform/build-and-release.md).
