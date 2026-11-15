@@ -89,7 +89,6 @@ export function TopBar() {
 
       <div className="no-drag ms-auto flex items-center gap-1">
         <div ref={refs.actions} className="flex items-center gap-1 empty:hidden" />
-        <RefreshButton isMac={isMac} />
         <button
           type="button"
           onClick={() => openPalette()}
@@ -103,6 +102,7 @@ export function TopBar() {
           </kbd>
         </button>
         <Bell className={iconButton} />
+        <RefreshButton isMac={isMac} />
         <button type="button" onClick={toggleAppearance} title={themeLabel} aria-label={themeLabel} className={iconButton}>
           {appearance === "dark" ? <Sun /> : <Moon />}
         </button>
@@ -131,7 +131,7 @@ function RefreshButton({ isMac }: { isMac: boolean }) {
       aria-busy={refreshing}
       title={title}
       aria-label="Refresh"
-      className={cn(iconButton, "ms-1 disabled:cursor-default disabled:hover:bg-transparent")}
+      className={cn(iconButton, "disabled:cursor-default disabled:hover:bg-transparent")}
     >
       <RefreshCw className={cn(refreshing && "animate-spin")} />
     </button>

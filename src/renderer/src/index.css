@@ -77,7 +77,9 @@
   /* Matches TITLEBAR_HEIGHT in src/main/index.ts. */
   --titlebar-height: 44px;
   --sidebar-width: 15rem;
-  /* Space reserved for native window controls; set per platform in main.tsx. */
+  /* Space reserved for native window controls. The per-platform values below
+     are fallbacks; on Windows and Linux lib/titlebarInset.ts measures the
+     real overlay and overrides the right inset. */
   --titlebar-inset-left: 0px;
   --titlebar-inset-right: 0px;
   --scrollbar-thumb: rgb(0 0 0 / 14%);

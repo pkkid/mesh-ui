@@ -310,6 +310,11 @@ behind `useWrite(id, { confirmIn: "dialog" })` and `performWrite`.
 - `main.tsx` sets `data-platform` on `<html>`. CSS reserves
   `--titlebar-inset-left: 78px` on macOS (traffic lights) and
   `--titlebar-inset-right: 140px` on Windows and Linux (overlay controls).
+  On Windows and Linux `lib/titlebarInset.ts` then measures the real overlay
+  (`navigator.windowControlsOverlay.getTitlebarAreaRect()`, updated on
+  `geometrychange` and resize) and sets the right inset to its width, so a
+  desktop showing only minimise and close leaves no gap; 140px stays as the
+  fallback when the overlay API is missing.
 - `themes.ts` sends the chrome colours to main so the Windows and Linux
   titlebar overlay matches the theme.
 - Shortcuts use `Cmd` on macOS and `Ctrl` elsewhere; labels follow the
