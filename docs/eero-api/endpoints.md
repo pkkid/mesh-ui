@@ -494,8 +494,18 @@ read-only capture proves its shape. Checked on 2026-11-14 against Eeronaut
 | Network transfer | no transfer request; notes that an `owner` invite role "transfers the network" but sends only `admin` | `POST {net}/invites` `{invite_role: "owner"}`, unverified; no `{net}/transfer` | **none** |
 
 So M6.7 has no source for any account write and keeps them out of the
-eero backend (they answer "not available yet"; demo applies them), unless a
-source turns up; M6.9 may build the nickname from Eeronaut.
+live eero backend (they answer "not available yet"; demo applies them);
+M6.9 may build the nickname from Eeronaut.
+
+**M6.7 (account writes).** No source turned up. `src/core/eero/backend/account.ts`
+builds the section 2 requests (FF and LD shapes: name, email, phone and
+consents as forms, the verifies as form `code`, push settings as JSON with
+both keys, `DELETE /2.2/account`) only when the backend talks to the local
+fake eero server, where `account.test.ts` checks each exact request. With
+the real API the area has `get` only. The `consents` read shape is also
+unverified: Mesh UI maps `consents.marketing_emails` only when it is a
+bool, else Stay up to date shows no value. To turn a write on for live, a
+capture or a live-tested client must confirm it first.
 
 ---
 

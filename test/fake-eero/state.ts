@@ -180,6 +180,7 @@ function seedAccount(nets: FakeNetwork[]): RawAccount {
     role: "none",
     premium_status: "inactive",
     push_settings: { networkOffline: true, nodeOffline: true },
+    consents: { marketing_emails: false },
     auth: { type: "email" },
     can_transfer: true,
     networks: {
