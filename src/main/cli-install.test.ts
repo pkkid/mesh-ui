@@ -14,7 +14,8 @@ afterEach(() => rmSync(home, { recursive: true, force: true }));
 
 const posix = process.platform !== "win32";
 
-describe("AppImage", () => {
+// AppImages exist only on Linux, and the launcher paths are POSIX paths.
+describe.runIf(posix)("AppImage", () => {
   const appImage = "/opt/apps/Mesh UI's \"build\"/Mesh-UI-0.1.0-x86_64.AppImage";
   /** The AppImage runtime mounts the image at APPDIR and runs the exe from inside it. */
   const mount = { APPDIR: "/tmp/.mount_MeshUIab12", exePath: "/tmp/.mount_MeshUIab12/mesh-ui" };
@@ -37,7 +38,7 @@ describe("AppImage", () => {
     expect(await cli.install()).toMatchObject({ installed: true, onPath: true, pathLine: null });
   });
 
-  it.runIf(posix)("the script runs the AppImage headless with every argument unchanged", () => {
+  it("the script runs the AppImage headless with every argument unchanged", () => {
     // A stand-in AppImage that prints its argv and display vars.
     const fake = path.join(home, "dir with 'quote\" and $HOME", "fake.AppImage");
     mkdirSync(path.dirname(fake), { recursive: true });
