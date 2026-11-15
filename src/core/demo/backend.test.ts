@@ -1111,3 +1111,53 @@ describe("writes (M5)", () => {
     expect((await b.network.list()).map((n) => n.id)).toContain(LAKE);
   });
 });
+
+describe("account and network nickname writes", () => {
+  it("each account write shows in the next read", async () => {
+    const b = demo();
+    await b.account.setName("Sam Lee");
+    expect((await b.account.get()).name).toBe("Sam Lee");
+    await b.account.setEmail("sam@example.com");
+    expect((await b.account.get()).email).toEqual({ value: "sam@example.com", verified: false });
+    await b.account.verifyEmail("123456");
+    expect((await b.account.get()).email).toEqual({ value: "sam@example.com", verified: true });
+    await b.account.setPhone("+15550100199");
+    expect((await b.account.get()).phone).toEqual({ value: "+15550100199", verified: false });
+    await expect(b.account.verifyPhone("111111")).rejects.toMatchObject({ code: "eero_error" });
+    await b.account.verifyPhone("123456");
+    expect((await b.account.get()).phone?.verified).toBe(true);
+    await expect(b.account.verifyPhone("123456")).rejects.toMatchObject({ code: "eero_error" });
+    await b.account.setConsents(true);
+    expect((await b.account.get()).marketingEmails).toBe(true);
+    await b.account.setPush({ networkOffline: false, nodeOffline: true });
+    expect((await b.account.get()).push).toEqual({ networkOffline: false, nodeOffline: true });
+  });
+
+  it("the nickname shows in the network list and clears with null", async () => {
+    const b = demo();
+    await b.network.setNickname(MAPLE, "Home");
+    expect((await b.network.list()).find((n) => n.id === MAPLE)?.nickname).toBe("Home");
+    await b.network.setNickname(MAPLE, null);
+    expect((await b.network.list()).find((n) => n.id === MAPLE)?.nickname).toBeNull();
+    await expect(b.network.setNickname("nope", "x")).rejects.toBeInstanceOf(BackendError);
+  });
+
+  it("delete signs out, and every scenario brings the account back as it was", async () => {
+    const b = demo();
+    const before = await b.account.get();
+    await b.account.setName("Sam Lee");
+    await b.network.setNickname(MAPLE, "Home");
+    await b.account.remove();
+    await expect(b.account.get()).rejects.toMatchObject({ code: "not_signed_in" });
+    b.setScenario("default");
+    expect(await b.account.get()).toEqual(before);
+    expect((await b.network.list()).find((n) => n.id === MAPLE)?.nickname).toBeNull();
+    for (const name of SCENARIO_NAMES) {
+      await b.account.setConsents(true);
+      b.setScenario(name);
+      const account = await b.account.get().catch(() => null);
+      if (account) expect(account.marketingEmails, name).toBe(false);
+      b.setScenario("default");
+    }
+  });
+});

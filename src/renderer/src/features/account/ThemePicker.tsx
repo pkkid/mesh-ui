@@ -1,15 +1,12 @@
 /**
- * Placeholder for App & account until its page is built (M6). The prototype
- * settings view is retired; only Appearance stays, so themes can still be
- * picked: a card per theme with preview orbs, and Light / Dark / System.
- * Theme choice is renderer view state in localStorage, not a command.
+ * App & account, Application Theme (docs/ux/pages/app-account.md): a card
+ * per theme with preview orbs, and Light / Dark / System. Theme choice is
+ * renderer view state in localStorage, not a command.
  */
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 
-import { routeById, type PageProps } from "~/app/routes";
 import { Card, Section } from "~/components/ui/card";
 import { Segmented } from "~/components/ui/segmented";
-import { ComingSoon } from "~/features/shell/ComingSoon";
 import { type AppearanceMode, setThemeSettings, themes, useResolvedAppearance, useThemeSettings } from "~/lib/themes";
 import { getSeriesForAppearance, getThemeColorsForAppearance } from "~/lib/themePalettes";
 import { cn } from "~/lib/utils";
@@ -20,21 +17,14 @@ const MODES = [
   { value: "system", label: "System", icon: Monitor },
 ] as const;
 
-export function AccountPlaceholder({ params }: PageProps) {
-  return (
-    <ComingSoon route={routeById("account")} params={params}>
-      <AppearanceSettings />
-    </ComingSoon>
-  );
-}
-
-export function AppearanceSettings() {
+export function ThemePicker({ id }: { id?: string }) {
   const settings = useThemeSettings();
   const appearance = useResolvedAppearance();
 
   return (
     <Section
-      title="Appearance"
+      id={id}
+      title="Application Theme"
       subtitle="Stored on this computer only"
       tools={
         <Segmented<AppearanceMode>

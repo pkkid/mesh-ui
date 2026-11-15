@@ -9,7 +9,7 @@
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ErrorCode, ExecuteResult } from "./errors";
-import type { Effect } from "./model";
+import type { AuditList, Effect } from "./model";
 import type { Surface } from "./spec";
 
 /** The file keeps the newest this many lines. */
@@ -117,4 +117,24 @@ export function memoryAudit(): AuditLog & { entries: AuditEntry[] } {
       entries.push(entry);
     },
   };
+}
+
+/** The 7 local days ending today, oldest first, as YYYY-MM-DD. */
+export function weekDays(nowMs: number): string[] {
+  const days: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(nowMs);
+    d.setDate(d.getDate() - i);
+    days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  return days;
+}
+
+/**
+ * Reads `audit.jsonl` into the App & account summary (`app.audit.list`).
+ * Stub until M6.6: answers an empty week, so the command and its callers
+ * are in place. `path` is null when the host has no config dir.
+ */
+export async function readAudit(_path: string | null, opts: { now: number; limit: number }): Promise<AuditList> {
+  return { entries: [], week: weekDays(opts.now).map((date) => ({ date, count: 0 })), weekTotal: 0, needsConfirm: 0, mcpLastAt: null };
 }

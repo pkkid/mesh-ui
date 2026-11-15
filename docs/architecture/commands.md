@@ -193,15 +193,21 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `account.get` | Account | `{}` | q | `GET /2.2/account` | `Account` model. Email and phone as returned (eero masks some). |
-| `account.name.set` | Edit name | `{ name: string(1..64) }` | w | `PUT /2.2/account/name` form `name` | |
-| `account.email.set` | Change email | `{ email: string }` | w | `PUT /2.2/account/email` form `email` | Pending until verified. |
-| `account.email.verify` | Verify email | `{ code: string }` | w | `POST /2.2/account/email/verify` form `code` | |
-| `account.phone.set` | Change mobile | `{ phone: string }` | w | `PUT /2.2/account/phone` form `phone` | E.164. |
-| `account.phone.verify` | Verify mobile | `{ code: string }` | w | `POST /2.2/account/phone/verify` form `code` | |
-| `account.consents.set` | Email preferences | `{ marketingEmails: boolean }` | w | `PUT /2.2/account/consents` form `marketing_emails` | |
-| `account.push.set` | Phone push alerts | `{ networkOffline?: boolean, nodeOffline?: boolean }` | w | `PUT /2.2/account/push_settings` JSON | eero wants every key; the command merges with the cached values. |
-| `account.delete` | Delete account and data | `{ acknowledge: true }` | x | `DELETE /2.2/account` | Signs out afterwards. `acknowledge` mirrors the mockup checkbox; `confirm` is still required. |
+| `account.get` | Account | `{}` | q | `GET /2.2/account` | `Account` model. Email and phone as returned (eero masks some). Polled every 5 min (TTL 4.5 min). |
+| `account.name.set` | Edit name | `{ name: string(1..64) }` | w | `PUT /2.2/account/name` form `name` | Returns the `Account` read again. |
+| `account.email.set` | Change email | `{ email: string }` | w | `PUT /2.2/account/email` form `email` | Pending until verified: the new address reads `verified: false`. Returns the `Account`. |
+| `account.email.verify` | Verify email | `{ code: string }` 6 digits | w | `POST /2.2/account/email/verify` form `code` | `eero_error` when no change waits for a code or the code is wrong. Returns the `Account`. |
+| `account.phone.set` | Change mobile | `{ phone: string }` E.164 | w | `PUT /2.2/account/phone` form `phone` | E.164 (`+15550100142`), else `bad_params`. Returns the `Account`. |
+| `account.phone.verify` | Verify mobile | `{ code: string }` 6 digits | w | `POST /2.2/account/phone/verify` form `code` | As email verify. |
+| `account.consents.set` | Email preferences | `{ marketingEmails: boolean }` | w | `PUT /2.2/account/consents` form `marketing_emails` | Returns the `Account`. |
+| `account.push.set` | Phone push alerts | `{ networkOffline?: boolean, nodeOffline?: boolean }` (at least one) | w | `PUT /2.2/account/push_settings` JSON | eero wants every key; the command merges with the account's current values (`bad_params` when eero sent none and a key is missing). |
+| `account.delete` | Delete account and data | `{ acknowledge: true }` | x | `DELETE /2.2/account` | Signs out afterwards (`session.changed`). `acknowledge` mirrors the mockup checkbox; `confirm` is still required. Refused with `bad_params` before any confirm while the account owns a network ("Transfer or delete them before deleting the account."). Returns `{ deleted: true }`. Never run on the real network. |
+
+Every account write has gate `{ area: null }`, invalidates `account` and is
+built in demo (M6.1). The eero backend answers "not available yet" for all
+of them: no live-tested client sends any of these requests
+([endpoints.md section 20](../eero-api/endpoints.md#20-real-captures-and-write-sources-for-m6-2026-11-14)),
+so each stays out of the eero backend until one is found (M6.7).
 
 ### network (`commands/network.ts`)
 
@@ -212,7 +218,7 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 | `network.get` | Network | `{}` | q | `GET {net}` | `Network` model: name, nickname, status, counts, capabilities, timezone. `counts.profiles` is the number of profiles `profile.list` lists (eero's default profile left out). |
 | `network.health` | Network health | `{}` | q | `GET {net}` (`health`, `eeros.data`, `updates`); `GET {net}/eeros` and `GET {net}/devices` only when an issue needs them | `NetworkHealth`: internet, mesh, per-eero status, weak links, banner messages, and `issues` built in core: `network_offline` (alone, every known device), else `eero_offline` per offline eero (devices last on it) then `weak_link` per weak wireless eero that is not offline (its upstream and the devices connected through it). A healthy network stays one call. |
 | `network.permissions` | Permissions | `{}` | q | `GET {net}/permissions` | `Permissions` model. UI disables controls the role cannot use. |
-| `network.nickname.set` | Network nickname | `{ nickname: string(0..32) }` | w | `PUT {net}/label?labelType=specialMarket` form `label` | Only LD uses this path; needs a MANUAL check. |
+| `network.nickname.set` | Network nickname | `{ nickname: string(0..32) }` | w | `PUT {net}/label?labelType=specialMarket` form `label` | Eeronaut sends it (quoting eero's Android client) and reads `nickname_label` back ([endpoints.md section 20](../eero-api/endpoints.md#20-real-captures-and-write-sources-for-m6-2026-11-14)). Backend method `network.setNickname` exists from M6.1 (demo applied); the command comes in M6.9. |
 | `network.restart` | Restart network | `{}` | d | `POST {net}/reboot` empty-JSON (`resources.reboot` when known) | Every eero restarts, about 2 to 3 minutes offline (see [Restart estimates](#restart-estimates)). Confirm: "Restarts every eero on Maple Street. Every device loses internet for about 2 to 3 minutes." Returns `{ eeroIds, estimate }`, the reachable (not offline) eeros that restart. Invalidates network, eeros. |
 | `network.delete` **(added)** | Delete network | `{ networkName: string }` | x | `DELETE {net}` | Built (M5.3). Owner only: gate `network`, op `delete`, and core refuses a network whose role is admin (a real network often reports no role, so eero has the last word). `networkName` must equal the current name exactly (type-to-confirm, like `network.transfer`). Afterwards the session selects another network, or none. Invalidates every network topic and `account`. Advanced networking danger zone. |
 
@@ -517,11 +523,19 @@ and eero alerts first and sends at most 5 per poll.
 
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
-| `app.info` | About | `{}` | q | none | `AppInfo`: version, Electron, OS, arch, backend, `fakeServer` (true only against the local fake eero server), session storage, update status, config dir. |
+| `app.info` | About | `{}` | q | none | `AppInfo`: version, Electron, OS, arch, backend, `fakeServer` (true only against the local fake eero server), session storage, `install` kind, `update` (`UpdateStatus`; `unsupported` where the host has no updater, the CLI and MCP), `cli` (`CliStatus`, null outside the window), config dir. Polled every 60 s. |
 | `app.settings.get` | App settings | `{}` | q | none | `AppSettings` from `settings.json`. |
-| `app.settings.set` | App settings | `Partial<AppSettings>` | w | none | User-Agent override, plan speed, desktop notifications, open on launch. |
-| `app.cli.install` | Install command line tool | `{}` | w | none | macOS symlink into `/usr/local/bin`, AppImage `~/.local/bin`. On Windows, deb and rpm it reports where the installer put it. |
-| `app.audit.list` **(added)** | Recent CLI and agent commands | `{ limit?: 1..200 }` | q | none | Reads `audit.jsonl` in the config dir for the App & account "This week" list. Entry format, redaction and cap are in [security.md](security.md#audit-log); never results. |
+| `app.settings.set` | Change app settings | `{ userAgent?, openOnLaunch?, autoUpdate?, updateChannel? }` (at least one) | w | none | User-Agent override (applies on the next launch), network to open on launch, automatic update checks, `latest` or `beta`. Plan speed and desktop alerts have their own commands (`internet.plan.set`, `notifications.settings.set`). Returns `AppSettings`. |
+| `app.cli.install` | Install command line tool | `{}` | w | none | macOS symlink into `/usr/local/bin`, AppImage `~/.local/bin`. On Windows, deb and rpm it reports where the installer put it. Window only. Returns `CliStatus`. |
+| `app.audit.list` **(added)** | Recent CLI and agent commands | `{ limit?: 1..200 }` (default 20) | q | none | `AuditList` from `audit.jsonl` in the config dir for the App & account "This week" list: newest entries, a count per local day, refused with `needs_confirm`, `mcpLastAt`. Entry format, redaction and cap are in [security.md](security.md#audit-log); never results. Polled every 60 s. Reading lands in M6.6 (`readAudit`); until then an empty week. |
+| `app.update.check` **(added)** | Check for updates | `{}` | w | none | Checks now; returns `UpdateStatus`. Window only. |
+| `app.update.install` **(added)** | Restart to update | `{}` | w | none | Restarts Mesh UI (only the app, never the network) to install a downloaded update; `bad_params` unless the state is `ready`. Never runs on its own. Window only. Returns `{ restarting: true, version }`. |
+| `app.demo.set` **(added)** | Demo mode | `{ enabled: boolean }` | w | none | "Try demo mode" and leaving it: relaunches Mesh UI with or without the demo backend. Already in that mode: `{ demo, restarting: false }`, no relaunch. Window only. |
+
+"Window only": these need the window's host actions (`HostInfo.actions`
+in `spec.ts`, given by `src/main/host-actions.ts`). The CLI and MCP hosts
+have none, so there they answer `bad_params` "Only in the Mesh UI window."
+Every app write has gate `{ area: null }`.
 
 ### integrations (`commands/integrations.ts`) (added)
 

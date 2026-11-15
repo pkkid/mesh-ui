@@ -739,8 +739,32 @@ type AppInfo = {
   backend: "eero" | "demo";
   sessionStorage: "keychain" | "memory";
   keychainName: string | null;    // "GNOME Keyring", "macOS Keychain", "Windows DPAPI"
-  update: { available: boolean; version: string | null; channel: "auto" | "package_manager" } | null;
+  install: InstallKind;
+  update: UpdateStatus;           // `unsupported` where the host has no updater (CLI, MCP)
+  cli: CliStatus | null;          // null outside the window
   configDir: string;
+};
+
+/** src/main/install-kind.ts: unpackaged is dev; packaged darwin is mac; Windows is nsis when the
+ *  NSIS uninstaller sits beside the exe, else portable; Linux is appimage when APPIMAGE is set,
+ *  deb or rpm from `resources/package-type`, else portable (an unpacked build). */
+type InstallKind = "dev" | "mac" | "nsis" | "portable" | "appimage" | "deb" | "rpm";
+
+type UpdateStatus = {
+  state: "off" | "idle" | "checking" | "downloading" | "ready" | "error" | "unsupported";
+  version: string | null;         // found or downloaded
+  channel: "latest" | "beta";
+  checkedAt: Iso | null;
+  progress: number | null;        // 0..1 while downloading
+  error: string | null;
+};
+
+type CliStatus = {
+  installed: boolean;             // a launcher exists at `path`
+  path: string | null;
+  onPath: boolean;
+  canInstall: boolean;            // app.cli.install can do it (macOS, AppImage)
+  reinstall: boolean;             // installed, but the app moved or was replaced
 };
 
 type AppSettings = {
@@ -750,9 +774,20 @@ type AppSettings = {
   /** Desktop alert choices: `enabled`, `offline`, `devices`, `other` (missing = on). Set by notifications.settings.set. */
   desktopNotifications: Record<string, boolean>;
   openOnLaunch: Id | null;
+  autoUpdate: boolean;            // default true
+  updateChannel: "latest" | "beta"; // default "latest"
 };
 
-type AuditEntry = { at: Iso; surface: "cli" | "mcp"; id: string; effect: Effect; ok: boolean; code: string | null };
+type AuditEntry = { at: Iso; surface: "cli" | "mcp"; id: string; effect: Effect | null; ok: boolean; code: string | null };
+
+/** app.audit.list */
+type AuditList = {
+  entries: AuditEntry[];          // newest first, at most `limit`
+  week: { date: string; count: number }[]; // the last 7 local days, oldest first, YYYY-MM-DD
+  weekTotal: number;
+  needsConfirm: number;           // this week, refused with needs_confirm
+  mcpLastAt: Iso | null;          // newest MCP command; null: MCP never used
+};
 ```
 
 ## Keeping fixtures in step

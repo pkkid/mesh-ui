@@ -71,6 +71,9 @@ const PAGES: Record<string, Poll[]> = {
   ],
   "reservations & ports": [["reservation.list"], ["forward.list"], ["pinhole.list"], ["device.list", undefined, 60], ["eero.list"], ["settings.get"]],
   troubleshooting: [["eero.list"], ["health.check"], ["wifi.get"], ["settings.get"]],
+  // App & account: app.info and app.audit.list poll but never reach eero; auth.status, app.settings.get,
+  // notifications.settings.get and the weekly events.summary are read on open (engine.md, Polling intervals).
+  "app & account": [["account.get"], ["app.info"], ["app.audit.list"]],
 };
 
 const roomy = () => new RateLimiter({ perWindow: 10_000 });

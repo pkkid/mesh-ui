@@ -226,7 +226,12 @@ calls but never polls in the background.
 | Speed test history | `speedtest.history` | on open and after `speedtest.run` (one re-read about 60 s later) |
 | Updates | `updates.get` | on open and after a write; 15 min on the Updates page |
 | Settings, integrations, guest, Wi-Fi | `settings.get`, `integrations.get`, `guest.get`, `wifi.get` | 60 s (M5.R-fix9: Simple Setup, power saving, Thread and the rest change in the eero app too) |
-| Admins, permissions, account, networks | `admin.list`, `network.permissions`, `account.get` | on open and after a write (roles and owners rarely change); `network.list` 60 s from the network switcher, served from its 10 min cache |
+| Admins, permissions, networks | `admin.list`, `network.permissions` | on open and after a write (roles and owners rarely change); `network.list` 60 s from the network switcher, served from its 10 min cache |
+| Account | `account.get` | 5 min (TTL 4.5 min): name, verification and push choices change in the eero app too |
+| App info, CLI and agent log | `app.info`, `app.audit.list` | 60 s on App & account and the sidebar's update chip; no eero calls (update state, and CLI runs from another process) |
+| Session | `auth.status` | not polled: it follows `session.changed` events |
+| App settings | `app.settings.get` | not polled: only written through commands, which answer with the new settings |
+| Weekly device joins | `events.summary` (week) | on open: a week's count moves slowly and pages through history (kept 2 min on purpose) |
 | Notification settings, impact, Thread credentials | `notifications.settings.get`, `settings.impact`, `wifi.impact`, `settings.thread.credentials` | on open (dialogs and confirms; credentials never cached) |
 | Firmware history, coverage, upgrade report, release notes | | on open only |
 | Health check | `health.check` | on open and on "Run again" (a fresh read) |
@@ -248,6 +253,7 @@ minute usage polls and the 10 minute account read line up):
 | Wi-Fi | 21 / 31 |
 | Guest | 17 / 40 |
 | Advanced networking | 14 / 24 |
+| App & account (M6.1) | 7 / 18 |
 
 The test fails if a typical minute goes over 40 or any minute over 70, under
 the client's 80 a minute limiter and eero's limit of about 100. One poll of
@@ -293,7 +299,7 @@ unsubscribe. Main forwards `engine.onEvent` to it (`src/main/ipc.ts`).
 type HostEvent =
   | { type: "session.changed"; state: "signed_out" | "signed_in"; storage: "keychain" | "memory" }
   | { type: "network.selected"; networkId: string }
-  | { type: "update.ready"; version: string };
+  | { type: "update.changed"; status: UpdateStatus };
 ```
 
 - `session.changed` fires when the engine clears a dead session, when the
@@ -301,7 +307,8 @@ type HostEvent =
   engine notices on its next request.
 - `network.selected` fires after `network.select`, so every open view
   switches together.
-- `update.ready` comes from electron-updater, not the engine.
+- `update.changed` comes from the window host's updater (M6.5), not the
+  engine, whenever the update state changes (found, downloading, ready).
 - No eero data and never the token travel on this channel.
 - Desktop notifications: the renderer's `notifications.list` poll finds new
   entries and asks main to show them with Electron `Notification`, filtered

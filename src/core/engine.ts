@@ -73,6 +73,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   planMbps: {},
   desktopNotifications: {},
   openOnLaunch: null,
+  autoUpdate: true,
+  updateChannel: "latest",
 };
 
 export function memorySettings(initial: Partial<AppSettings> = {}): SettingsStore {
@@ -213,7 +215,7 @@ export function createEngine(opts: EngineOptions): Engine {
   const now = opts.clock ?? Date.now;
   const settings = opts.settings ?? memorySettings();
   const surface = opts.surface ?? "ui";
-  const host: HostInfo = { version: "0.0.0", electron: null, configDir: null, keychainName: null, ...opts.host };
+  const host: HostInfo = { version: "0.0.0", electron: null, configDir: null, keychainName: null, install: "dev", ...opts.host };
   const registry = createRegistry(opts.commands, { backend: backend.kind });
   const cache = createCache(now);
   // Demo and fake runs change nothing real, and may run with the real config dir, so only live ones are audited.

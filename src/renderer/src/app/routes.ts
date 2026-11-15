@@ -82,6 +82,8 @@ export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "updates", path: "/settings/updates", title: "Updates & admins", icon: Download, nav: "settings", doc: "updates-admins.md" },
   { id: "troubleshooting", path: "/troubleshooting", title: "Troubleshooting", icon: Stethoscope, nav: "settings", doc: "troubleshooting.md" },
   { id: "account", path: "/account", title: "App & account", icon: Settings, nav: "settings", doc: "app-account.md" },
+  // Deep links to an App & account section (#/account/notifications): the same page, no sidebar entry.
+  { id: "account", path: "/account/:section", title: "App & account", icon: Settings, doc: "app-account.md" },
   ...(import.meta.env.DEV ? [{ id: "dev-charts", path: "/dev/charts", title: "Chart kit", icon: LayoutDashboard, doc: "../../design/design-system.md" } satisfies RouteDef] : []),
 ];
 
@@ -95,7 +97,7 @@ export const page = (load: () => Promise<Record<string, unknown>>, name: string)
 //   overview: page(() => import("~/features/overview/OverviewView"), "OverviewView"),
 export const PAGES: Partial<Record<RouteId, Page>> = {
   overview: page(() => import("~/features/overview/OverviewView"), "OverviewView"),
-  account: page(() => import("~/features/settings/SettingsView"), "AccountPlaceholder"),
+  account: page(() => import("~/features/account/AccountPage"), "AccountPage"),
   devices: page(() => import("~/features/devices/DevicesPage"), "DevicesPage"),
   internet: page(() => import("~/features/internet/InternetPage"), "InternetPage"),
   eeros: page(() => import("~/features/eeros/EerosPage"), "EerosPage"),
