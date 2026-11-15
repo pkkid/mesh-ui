@@ -166,15 +166,55 @@ Pushes to branches do not trigger CI; concurrency cancels superseded runs.
 test well under it (property tests check with plain comparisons and one
 `expect` per case, not one per sample).
 
-### `release.yml` (tag `v*`)
+### `release.yml` (tag `v*`, or a manual dry run)
 
 | Job | Runner | Builds |
 | --- | --- | --- |
-| mac | `macos-latest` (arm64) | universal dmg + zip, signed, notarized |
+| mac | `macos-latest` (arm64) | universal dmg + zip, signed and notarized when the secrets exist |
 | win | `windows-latest` | NSIS x64 + arm64, portable zips, unsigned for now (see [Windows](#windows)) |
 | linux-x64 | `ubuntu-latest` | AppImage, deb, rpm (x64) |
 | linux-arm64 | `ubuntu-24.04-arm` | AppImage, deb, rpm (arm64) |
 | publish | `ubuntu-latest` | Collects artifacts, writes `SHA256SUMS.txt`, creates a **draft** GitHub Release with notes from the milestone review |
+
+- **Triggers:** a pushed `v*` tag, or **Run workflow** (`workflow_dispatch`)
+  with `dry_run` (on by default). A dry run builds everything and uploads
+  the packages and screenshots as workflow artifacts, but never makes a
+  release. `publish` runs only for a `v*` tag ref: a tag push, or a manual
+  run on a tag with `dry_run` off (to redo a failed release). A manual run
+  on a branch can never publish.
+- **Each OS job** runs `pnpm dist:dir`, `pnpm dist:smoke` (the packaged CLI
+  and window, `--demo`), and `pnpm ui:shot --route '#/overview'`, uploaded
+  as the `ui-shot-<os>` artifact: the proof that the app starts and renders
+  on macOS, Windows and Linux. Then `pnpm dist` builds the packages, uploaded
+  as `dist-<os>` (packages, `.blockmap` files and the update files, `latest*.yml` or `beta*.yml`). Windows
+  smokes the x64 dir build only (`pnpm dist:dir --x64`), the runner's arch.
+  The Linux jobs install `rpm` and allow unprivileged user namespaces
+  (Ubuntu 24.04 blocks them, and Chromium's sandbox needs them); arm64 uses
+  a system `fpm` (`USE_SYSTEM_FPM=true`) because electron-builder's bundled
+  one is x86_64 only.
+- **Never publishes from a build.** Every build goes through the `pnpm dist`
+  scripts, which pass `--publish never`, and no build job has a token that
+  can write. Only `publish` has `contents: write`; every other job reads.
+- **Secrets:** the five signing secrets are environment secrets of the
+  `release` environment, and only the `mac` job uses that environment. They
+  are set only on the `pnpm dist` step, so the smoke and the screenshot run
+  on an unsigned dir build. `APPLE_API_KEY` (the `.p8`, base64) is decoded to
+  `$RUNNER_TEMP` and its path exported, since electron-builder reads it as a
+  path; the file is removed at the end of the job. Without the secrets the
+  macOS build is unsigned and not notarized, with a warning, and does not
+  fail.
+- **publish** checks that the tag is `v` plus `package.json` `version`,
+  runs `node scripts/checksums.mjs release` (`SHA256SUMS.txt`, `sha256sum`
+  format, sorted) and `node scripts/release-notes.mjs` (section 4 "What
+  changed for a user" of the highest-numbered `docs/reviews/M<n>.md`, plus
+  fixed lines on unsigned Windows builds and checksums), then runs `gh
+  release create --draft --verify-tag`, with `--prerelease` when the tag has
+  a `-` suffix (`v0.7.0-beta.1`).
+- Actions are pinned to major versions, as in `ci.yml`.
+  `test/packaging/release.test.ts` runs both scripts and checks the
+  workflow's triggers, `--publish never`, the `release` environment, the
+  permissions and `--draft`. Check edits with `actionlint` (for example
+  `uvx --with shellcheck-py --from actionlint-py actionlint`).
 
 The maintainer reviews the draft and publishes it. Auto-update only sees
 published releases.
@@ -190,7 +230,10 @@ published releases.
 - The version shows in App & account and in `mesh-ui --version`, and is
   returned by `app.info`.
 - Release notes come from the milestone review (`docs/reviews/M<n>.md`):
-  user-facing changes only.
+  user-facing changes only (its section 4, through
+  `scripts/release-notes.mjs`).
+- The tag must match `package.json`: release.yml's `publish` job fails on
+  `v0.6.0` if the version is not `0.6.0`.
 
 ## Auto-update
 
@@ -293,10 +336,22 @@ launcher.
 
 ## Release checklist
 
-1. Milestone review merged by the maintainer.
-2. Bump `version` in `package.json`, commit, tag `v<version>`, push the tag.
-3. `release.yml` builds, signs (macOS now, Windows once signing is added) and drafts the release.
-4. Maintainer only: download one artifact per OS from the draft, install it,
-   launch with `--demo`, and check the update prompt from the previous
-   version.
-5. Publish the draft.
+Maintainer only; agents never add secrets, push tags or publish.
+
+1. **Once:** create the `release` environment (Settings, Environments) with
+   the secrets `CSC_LINK` (Developer ID `.p12`, base64), `CSC_KEY_PASSWORD`,
+   `APPLE_API_KEY` (App Store Connect `.p8`, base64), `APPLE_API_KEY_ID` and
+   `APPLE_API_ISSUER`. If it limits deployment branches, allow `main` (dry
+   runs) and `v*` tags.
+2. Milestone review merged by the maintainer.
+3. **Dry run:** Actions, Release, Run workflow on `main` with `dry_run`.
+   Expect four green build jobs (mac, win, linux-x64, linux-arm64) and a
+   skipped `publish`. Check the `ui-shot-*` PNGs and that the macOS log shows
+   signing and notarization.
+4. Bump `version` in `package.json`, commit, tag `v<version>`, push the tag.
+5. `release.yml` builds, signs (macOS now, Windows once signing is added) and
+   drafts the release with `SHA256SUMS.txt` and the review's notes. For a
+   patch release, edit the notes in the draft.
+6. Download one artifact per OS from the draft, install it, launch with
+   `--demo`, and check the update prompt from the previous version.
+7. Publish the draft.

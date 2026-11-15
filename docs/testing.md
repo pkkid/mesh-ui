@@ -313,8 +313,13 @@ Kept deliberately light. GitHub Actions is used for two things only:
    and on demand (`workflow_dispatch`): one job per OS (macOS, Windows,
    Linux) that installs, runs `pnpm typecheck` and `pnpm test`, and builds. Its job is catching OS-specific breakage
    (paths, keychains, line endings), not being the main test signal.
-2. **Release builds** when a version tag is pushed, because signed macOS and
-   Windows artifacts need those runners.
+2. **Release builds** (`release.yml`) when a version tag is pushed, or on a
+   manual dry run, because signed macOS and Windows artifacts need those
+   runners. Each OS job also runs `pnpm dist:smoke` and one `pnpm ui:shot`
+   of the overview, the only macOS and Windows proof that the packaged app
+   starts and renders. Agents never run it; the workflow and its scripts
+   are checked locally by `test/packaging/release.test.ts` and
+   `actionlint`.
 
 UI screenshots, the keychain-less run (`pnpm test:keychainless`) and
 packaging smoke tests (`pnpm dist:dir`, then `pnpm dist:smoke`) run locally.

@@ -1192,7 +1192,7 @@ credentials is a `MANUAL:` line.
 - scope: Carried from M1. Move the Electron `SecretStore` to `isAsyncEncryptionAvailable`, `encryptStringAsync` and `decryptStringAsync`. Keep reading sessions saved by the sync API (Electron documents that they decrypt with the async call); when `shouldReEncrypt` is true, write the session again. Keep every existing rule: no plaintext fallback, Linux `basic_text` counts as memory, unreadable files are deleted. Update both docs.
 - done when: `pnpm check` passes; `grep -rn 'encryptString(\|decryptString(\|isEncryptionAvailable(' src/main` finds nothing; `secret-store.test.ts` covers a file written by the sync stand-in still loading, `shouldReEncrypt` rewriting it, `basic_text` staying memory, and async unavailability never writing; `pnpm test:keychainless` passes; `MANUAL: still signed in after the upgrade | run a build from this branch against your config dir (pnpm start) after using the previous build | the app opens signed in, no sign-in screen | risk: none`.
 
-### M6.4 Release workflow ☐
+### M6.4 Release workflow ✅ (#213)
 - issue: [#199](https://github.com/pkkid/mesh-ui/issues/199)
 - after: M6.2
 - docs: platform/build-and-release.md (CI, Versioning, Release checklist), testing.md (CI), architecture/security.md (Dependencies and build)
