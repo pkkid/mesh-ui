@@ -1259,7 +1259,7 @@ credentials is a `MANUAL:` line.
 - scope: Put the carried list in the PR body as `MANUAL:` lines, each with its risk: IPv6 firewall rule add and remove (settles the pinhole url form); Activity name links when a real joined or blocked event appears; placement test on a non-gateway room; client steering off and on; PoE restart; disable a spare port, then Undo; Wi-Fi rename, DNS change, PPPoE, update install, eero remove (each disruptive); Unassigned scheduled pause at a quiet time; M4's pause one device, block one device, speed test, guest off and on, and guest name and password. Network transfer is not listed: it is never run. Apply the answers to `endpoints.md` sections 18 and 19, the fixtures and the fake. A failed check becomes a fix task for the lead; this story changes no command code.
 - done when: `pnpm check` passes; each carried line is ticked with its answer or deferred with a reason; sections 18 and 19 agree with the answers; fixtures and the fake match them; the PR lists any fix tasks raised.
 
-### M6.12 Release candidate ☐
+### M6.12 Release candidate ✅ (#223)
 - issue: [#207](https://github.com/pkkid/mesh-ui/issues/207)
 - after: M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10
 - docs: platform/build-and-release.md (Versioning, Release checklist), README.md, open-questions.md
