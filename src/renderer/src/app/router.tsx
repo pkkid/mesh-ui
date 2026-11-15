@@ -40,9 +40,21 @@ export function matchPath(path: string): Location | null {
   return null;
 }
 
-/** Builds a path for a route, filling `:name` segments from params. */
+const paramNames = (path: string) => [...path.matchAll(/:(\w+)/g)].map((m) => m[1] as string);
+
+/**
+ * Builds a path for a route, filling `:name` segments from params. A page
+ * with a section deep link has two routes under one id (`/internet` and
+ * `/internet/:section`); the one whose segments match the params wins.
+ */
 export function pathFor(id: RouteDef["id"], params: Record<string, string> = {}): string {
-  return routeById(id).path.replace(/:(\w+)/g, (_, name: string) => encodeURIComponent(params[name] ?? ""));
+  const given = Object.keys(params);
+  const route =
+    ROUTES.find((r) => {
+      const names = paramNames(r.path);
+      return r.id === id && names.length === given.length && names.every((n) => n in params);
+    }) ?? routeById(id);
+  return route.path.replace(/:(\w+)/g, (_, name: string) => encodeURIComponent(params[name] ?? ""));
 }
 
 function readLastPath(): string | null {
