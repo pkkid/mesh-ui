@@ -235,7 +235,8 @@ export function isDeveloperIdSigned(codesignOutput: string): boolean {
  * bundle; any failure counts as unsigned (check only, download by hand).
  */
 export function macSignedForUpdates(exePath: string, run: typeof execFile = execFile): Promise<boolean> {
-  const bundle = path.resolve(exePath, "../../..");
+  // macOS only, so POSIX paths: .../Mesh UI.app/Contents/MacOS/Mesh UI -> .../Mesh UI.app
+  const bundle = path.posix.dirname(path.posix.dirname(path.posix.dirname(exePath)));
   return new Promise((resolve) => {
     // codesign writes its details to stderr.
     run("/usr/bin/codesign", ["-dv", "--verbose=2", bundle], (err, stdout, stderr) => resolve(!err && isDeveloperIdSigned(`${stdout}\n${stderr}`)));
