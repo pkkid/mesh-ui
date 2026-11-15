@@ -318,8 +318,9 @@ Only the window has an updater; `app.info` `update` reports its state.
   (`progress` 0..1, events in whole percents), `ready`, `error` (one short
   line such as "Could not reach GitHub."), `unsupported`. Errors never
   throw to a surface or show a dialog.
-- **Verification:** electron-updater checks the code signature on macOS and
-  the sha512 from `latest*.yml` everywhere. Windows adds the signature check
+- **Verification:** electron-updater checks the sha512 from `latest*.yml`
+  everywhere, and Squirrel.Mac checks the code signature on a Developer ID
+  signed macOS build (unsigned macOS builds download by hand, above). Windows adds the signature check
   (`publisherName`) once builds are signed; until then it relies on the
   sha512 and the HTTPS GitHub download.
 - **Channel:** `latest` by default. **Beta updates** sets `updateChannel:
