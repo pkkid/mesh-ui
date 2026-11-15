@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatDuration, formatMbps, formatPercent, formatRelative, MISSING, networkClock, toCsv } from "./format";
+import { formatBytes, formatDuration, formatMbps, formatPercent, formatPlanShare, formatRelative, MISSING, networkClock, toCsv } from "./format";
 
 describe("formatters", () => {
   it("show '-' for a missing value, never 0 or blank", () => {
@@ -9,6 +9,16 @@ describe("formatters", () => {
       expect(f(Number.NaN)).toBe(MISSING);
     }
     expect(formatRelative(null, 0)).toBe(MISSING);
+  });
+
+  it("word a speed against the plan", () => {
+    expect(formatPlanShare(942, 1000)).toEqual({ text: "94% of plan", over: false });
+    expect(formatPlanShare(1086, 1000)).toEqual({ text: "9% over plan", over: true });
+    expect(formatPlanShare(1004, 1000)).toEqual({ text: "100% of plan", over: false });
+    expect(formatPlanShare(1006, 1000)).toEqual({ text: "1% over plan", over: true });
+    expect(formatPlanShare(null, 1000)).toBeNull();
+    expect(formatPlanShare(500, null)).toBeNull();
+    expect(formatPlanShare(500, 0)).toBeNull();
   });
 
   it("format rates in Mbps", () => {

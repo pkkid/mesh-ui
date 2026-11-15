@@ -17,7 +17,6 @@ import { useState } from "react";
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
-import { Gauge } from "~/components/charts/Gauge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
@@ -25,11 +24,11 @@ import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { TextLink } from "~/components/ui/text-link";
 import { seriesColors } from "~/lib/chartColors";
-import { formatDuration, formatRelative, mbpsParts, MISSING, networkClock } from "../../../../core/format";
+import { formatDuration, formatRelative, MISSING, networkClock } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, Profile, ProfileList, SpeedHistory } from "../../../../core/model";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
 import { ShareWifiButton } from "~/features/wifi/ShareSheet";
-import { RunSpeedTestButton, useRunningSpeedTest } from "~/features/internet/InternetHero";
+import { RunSpeedTestButton, SpeedGauge, useRunningSpeedTest } from "~/features/internet/InternetHero";
 import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 
@@ -109,14 +108,18 @@ export function NetworkHero() {
               <SpeedGauge
                 label="Download"
                 value={latest?.downMbps ?? null}
-                max={plan?.down ?? fallbackMax}
+                plan={plan?.down ?? null}
+                fallbackMax={fallbackMax}
+                size={168}
                 color={seriesColors.download}
                 loading={gaugesLoading || history.fading}
               />
               <SpeedGauge
                 label="Upload"
                 value={latest?.upMbps ?? null}
-                max={plan?.up ?? fallbackMax}
+                plan={plan?.up ?? null}
+                fallbackMax={fallbackMax}
+                size={168}
                 color={seriesColors.upload}
                 loading={gaugesLoading || history.fading}
               />
@@ -154,34 +157,6 @@ export function NetworkHero() {
   );
 }
 
-function SpeedGauge({
-  label,
-  value,
-  max,
-  color,
-  loading,
-}: {
-  label: string;
-  value: number | null;
-  max: number;
-  color: string;
-  loading: boolean;
-}) {
-  const parts = mbpsParts(value);
-  return (
-    <Gauge
-      label={label}
-      value={value}
-      max={max}
-      color={color}
-      text={parts.value}
-      unit="Mbps"
-      size={168}
-      loading={loading}
-      ariaLabel={value === null ? `${label}: no speed test yet` : `${label}: ${parts.value} Mbps of ${max} Mbps`}
-    />
-  );
-}
 
 /**
  * "Pause a profile": a menu of the profiles not yet paused; picking one runs
