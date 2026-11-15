@@ -101,8 +101,8 @@ export function TopBar() {
             {isMac ? "⌘K" : "Ctrl K"}
           </kbd>
         </button>
-        <Bell className={iconButton} />
         <RefreshButton isMac={isMac} />
+        <Bell className={iconButton} />
         <button type="button" onClick={toggleAppearance} title={themeLabel} aria-label={themeLabel} className={iconButton}>
           {appearance === "dark" ? <Sun /> : <Moon />}
         </button>
