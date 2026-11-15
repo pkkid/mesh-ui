@@ -20,6 +20,7 @@
  */
 
 import { z } from "zod";
+import { POLL } from "../poll";
 import { CommandError } from "../errors";
 import type { DhcpInput, DnsInput, PowerSavingInput, ThreadInput, WanInput } from "../backend";
 import type * as M from "../model";
@@ -412,14 +413,17 @@ async function powerSaving(ctx: CommandContext): Promise<M.NetworkSettings> {
   return s;
 }
 
-export const ECO_NOT_CAPABLE = "This network's eero hardware does not support Eco efficiency (eero reports power_saving not capable).";
+/** Why every power saving change except a schedule delete is refused on hardware without it (M5.R-fix9). */
+export const ECO_NOT_CAPABLE = "Your eero hardware does not support power saving.";
 
 /**
- * Turning Eco efficiency on or off needs the `power_saving` capability. A
- * real network whose gateway lacks it reports capable false and answers
- * `enable` with 403 (M5.R-fix4), so say why before eero does. The schedule
- * switch and the schedules still answer there, so only `enabled` is refused;
- * an absent capability is left to eero.
+ * Power saving changes need the `power_saving` capability. A real network
+ * whose gateway lacks it reports capable false and answers `enable` with 403
+ * (M5.R-fix4); the eero app hides the whole Eco section there, and the
+ * schedules do nothing. So Eco efficiency, the schedule switch, schedule adds
+ * and edits are refused with the reason before eero is called (M5.R-fix9).
+ * Deleting a schedule stays allowed, so old ones can be cleaned up. An absent
+ * capability is left to eero.
  */
 async function needEco(ctx: CommandContext): Promise<void> {
   const n = await ctx.backend.network.get(ctx.net);
@@ -453,6 +457,7 @@ export const commands: AnyCommand[] = [
     params: z.object({}),
     effect: "query",
     topic: "settings",
+    poll: POLL.settings,
     run: async (ctx): Promise<M.NetworkSettings> => withoutSecrets(await ctx.backend.settings.get(ctx.net)),
   }),
   defineCommand({
@@ -686,7 +691,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "settings.power_saving.set",
     label: "Change power saving",
-    description: "Eco efficiency (`enabled`) and the power saving schedule (`scheduleEnabled`). Omitted fields keep their value. Applies without a restart; Wi-Fi blips for a few seconds when a schedule starts.",
+    description: "Eco efficiency (`enabled`) and the power saving schedule (`scheduleEnabled`). Omitted fields keep their value. Applies without a restart; Wi-Fi blips for a few seconds when a schedule starts. Refused on eero hardware without power saving.",
     icon: "leaf",
     params: z
       .object({
@@ -698,7 +703,7 @@ export const commands: AnyCommand[] = [
     gate: { area: "settings" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.NetworkSettings> => {
-      if (p.enabled !== undefined) await needEco(ctx);
+      await needEco(ctx);
       const s = await ctx.backend.settings.get(ctx.net);
       const ps = s.powerSaving;
       if (p.enabled !== undefined) reported(ps.enabled, "Power saving");
@@ -714,13 +719,14 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "settings.power_schedule.add",
     label: "Add power saving schedule",
-    description: "Adds a power saving schedule: radios drop to 1x1 from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight.",
+    description: "Adds a power saving schedule: radios drop to 1x1 from start to end on the chosen days, in the network time zone. An end before the start wraps past midnight. Refused on eero hardware without power saving.",
     icon: "calendar-plus",
     params: z.object({ ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without running it.") }),
     effect: "write",
     gate: { area: "settings" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.Schedule> => {
+      await needEco(ctx);
       const s = await powerSaving(ctx);
       const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
       checkPowerSchedule(s.powerSaving.schedules, input, null);
@@ -730,7 +736,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "settings.power_schedule.update",
     label: "Edit power saving schedule",
-    description: "Changes a power saving schedule by id or name. Fields left out keep their value; enabled: false keeps it without running it.",
+    description: "Changes a power saving schedule by id or name. Fields left out keep their value; enabled: false keeps it without running it. Refused on eero hardware without power saving.",
     icon: "calendar-clock",
     params: z.object({
       schedule: ref("schedule"),
@@ -744,6 +750,7 @@ export const commands: AnyCommand[] = [
     gate: { area: "settings" },
     invalidates: ["settings"],
     run: async (ctx, p): Promise<M.Schedule> => {
+      await needEco(ctx);
       const list = (await powerSaving(ctx)).powerSaving.schedules;
       const s = findPowerSchedule(list, p.schedule);
       const input: M.ScheduleInput = { name: p.name ?? s.name, days: p.days ?? s.days, start: p.start ?? s.start, end: p.end ?? s.end, enabled: p.enabled ?? s.enabled };
@@ -754,7 +761,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "settings.power_schedule.remove",
     label: "Delete power saving schedule",
-    description: "Removes a power saving schedule by id or name. The result holds the removed schedule, so it can be added back.",
+    description: "Removes a power saving schedule by id or name. The result holds the removed schedule, so it can be added back. Allowed on eero hardware without power saving, to clean up old schedules.",
     icon: "calendar-x",
     params: z.object({ schedule: ref("schedule") }),
     effect: "write",

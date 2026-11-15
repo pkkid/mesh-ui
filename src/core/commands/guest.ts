@@ -95,7 +95,7 @@ export const commands: AnyCommand[] = [
     params: z.object({}),
     effect: "query",
     topic: "guest",
-    poll: POLL.devices,
+    poll: POLL.settings,
     run: (ctx): Promise<M.GuestNetwork> => ctx.backend.guest.get(ctx.net),
   }),
 

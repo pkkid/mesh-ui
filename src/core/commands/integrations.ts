@@ -11,6 +11,7 @@
  */
 
 import { z } from "zod";
+import { POLL } from "../poll";
 import { CommandError } from "../errors";
 import type * as M from "../model";
 import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
@@ -50,6 +51,7 @@ export const commands: AnyCommand[] = [
     params: z.object({}),
     effect: "query",
     topic: "integrations",
+    poll: POLL.settings,
     run: (ctx): Promise<M.Integrations> => ctx.backend.integrations.get(ctx.net),
   }),
   defineCommand({

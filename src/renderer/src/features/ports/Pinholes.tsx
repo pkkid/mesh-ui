@@ -22,7 +22,7 @@ import { PinholeSheet, removePinhole } from "./RuleSheet";
 export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lookup: Lookup }) {
   const rows = query.data?.pinholes;
   const [adding, setAdding] = useState(false);
-  const settings = useQuery<NetworkSettings>("settings.get");
+  const settings = useQuery<NetworkSettings>("settings.get", undefined, { poll: true });
   const ipv6Off = settings.data?.ipv6.enabled === false;
   const addGate = useGate("pinhole.add");
   const removeGate = useGate("pinhole.remove");
