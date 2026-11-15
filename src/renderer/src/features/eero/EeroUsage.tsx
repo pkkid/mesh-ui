@@ -35,7 +35,7 @@ export function EeroUsage({ eeroId, name, timezone }: { eeroId: string; name: st
   return (
     <Section
       title="Data usage"
-      subtitle={day ? `Last 24 hours, all clients on ${name}` : `Last 7 days, all clients on ${name}`}
+      subtitle={day ? `Last 24 hours for all clients on ${name}` : `Last 7 days for all clients on ${name}`}
       tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
     >
       {usage.error && !s ? (
