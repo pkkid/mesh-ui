@@ -23,12 +23,13 @@ const fresh = (): Backend => createDemoBackend({ clock: () => NOW });
 
 type Case = { id: string; params: Record<string, unknown>; effect: M.Effect };
 
-/** One disruptive, one destructive and one write command. */
+/** Two disruptive (a restart, and a pause that takes a device offline), one destructive and one write command. */
 const CASES: Case[] = [
   { id: "network.restart", params: {}, effect: "disruptive" },
+  { id: "device.pause", params: { devices: "Alex's MacBook Pro" }, effect: "disruptive" },
   { id: "profile.delete", params: { profile: "Leo" }, effect: "destructive" },
 ];
-const WRITE: Case = { id: "device.pause", params: { devices: "Alex's MacBook Pro" }, effect: "write" };
+const WRITE: Case = { id: "profile.rename", params: { profile: "Leo", name: "Leonard" }, effect: "write" };
 
 /** A new engine each time, so no query cache hides a change. */
 const reference = (backend: Backend) => createEngine({ backend, surface: "cli", clock: () => NOW });
@@ -147,12 +148,32 @@ describe(`${WRITE.id} (write) needs no confirm on either surface`, () => {
     expect(await snapshot(backend)).not.toEqual(before);
 
     const info = reference(fresh()).commands().find((x) => x.id === WRITE.id);
-    if (!info) throw new Error("no device.pause");
+    if (!info) throw new Error(`no ${WRITE.id}`);
     const schema = toTool(info).inputSchema;
     expect(schema.properties).not.toHaveProperty("confirm");
     expect(schema.required ?? []).not.toContain("confirm");
 
     const [a, b] = [fresh(), fresh()];
     expect((await mcp(b, WRITE, false)).structuredContent).toEqual((await cli(a, WRITE, false)).out.result);
+  });
+});
+
+describe("a write that takes devices offline only sometimes (device.profile.set)", () => {
+  it("lists an optional confirm in its MCP tool and says when it is needed", () => {
+    const info = reference(fresh()).commands().find((x) => x.id === "device.profile.set");
+    if (!info) throw new Error("no device.profile.set");
+    expect(info.effect).toBe("write");
+    expect(info.confirmsWhenOffline).toBe(true);
+    const tool = toTool(info);
+    expect(tool.inputSchema.properties).toHaveProperty("confirm");
+    expect(tool.inputSchema.required ?? []).not.toContain("confirm");
+    expect(tool.description).toContain("needs_confirm");
+  });
+
+  it("answers needs_confirm on the CLI when it would take a device offline, and runs with --confirm", async () => {
+    const move: Case = { id: "device.profile.set", params: { devices: "Alex's MacBook Pro", profile: "Leo" }, effect: "write" };
+    const asked = await cli(fresh(), move, false);
+    expect(asked.out).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+    expect((await cli(fresh(), move, true)).out).toMatchObject({ ok: true });
   });
 });

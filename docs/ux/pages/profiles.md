@@ -71,21 +71,21 @@ count: number of profiles, not counting Unassigned.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | + Add a profile | `profile.create {name, devices}` | write | No | Sheet: name, device picker (unassigned first, then others with their current profile shown); Save creates and opens the profile |
-| Pause all | `profile.pause {profile}` once per profile (Unassigned not included) | write | Yes, UI dialog ("Pause Alex, Jamie, Mia and Leo? 18 devices lose internet until you resume them.") | All cards Paused; toast with Undo |
+| Pause all | `profile.pause {profile}` once per profile (Unassigned not included) | disruptive | Yes, one dialog for all ("Pause Alex, Jamie, Mia and Leo? 18 devices lose internet until you resume them.") | All cards Paused; toast with Undo |
 | Cards / List | - (view state) | - | No | Layout |
 | Card (click outside buttons) | - | - | No | Profile detail |
-| Pause (card) | `profile.pause {profile}` | write | No | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
+| Pause (card) | `profile.pause {profile}` | disruptive | Yes, dialog ("Pause Mia? All 4 of Mia's devices lose internet until resumed.") | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
 | Resume (card) | `profile.resume {profile}` | write | No | Card Active (or Scheduled); during a scheduled pause, stays online until the next scheduled start |
 | `...` menu: Rename | `profile.rename {profile, name}` | write | No | Rename sheet (name only); toast with Undo |
-| `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | No | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
+| `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | Only when the window covers now | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
 | `...` menu: Delete profile... | `profile.delete {profile, confirm: true}` | destructive | Yes, type-to-confirm dialog | Devices move to Unassigned |
 | Lane segment | - | - | No | Tooltip "Bedtime · 9:00 PM to 7:00 AM"; click opens the profile |
 | Profiles / Profiles + Unassigned, Day / Week | - (re-queries `usage.get`) | - | No | Chart and list update |
-| Avatar on an unassigned tile | `device.profile.set {devices: [device], profile}` | write | No | Tile leaves the grid; toast "Moved Living Room TV to Alex" with Undo |
+| Avatar on an unassigned tile | `device.profile.set {devices: [device], profile}` | write | Only when the target profile is paused or in a scheduled pause now | Tile leaves the grid; toast "Moved Living Room TV to Alex" with Undo |
 | Tile click | - (view state: toggles selection) | - | No | Selected tiles get the selected surface; enables New profile from selection |
 | Tile double-click | - | - | No | Device detail |
 | New profile from selection | `profile.create {name, devices}` | write | No | Name sheet prefilled with the selection |
-| Pause unassigned | `profile.unassigned.pause {}` | write | Yes, UI inline ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
+| Pause unassigned | `profile.unassigned.pause {}` | disruptive | Yes, dialog ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
 
 Built in M4.5: Add a profile (sheet with name and a device picker:
 unassigned first, then others with "Moves from Alex"; Save opens the new
@@ -93,7 +93,7 @@ profile), Pause all (dialog; one toast with Undo that resumes them all; off
 with "Every profile is paused" when there is nothing to pause), Pause and
 Resume per card with Undo, the `...` menu (Rename sheet, Add a scheduled pause, which opens the
 schedule sheet from [profile-detail.md](profile-detail.md), and Delete
-profile...), and Pause unassigned (inline confirm naming up to three
+profile...), and Pause unassigned (confirm dialog naming up to three
 devices, online first; the button becomes Resume unassigned). Unassigned
 devices has an **Open** link to the Unassigned page
 (`#/profiles/unassigned`, see [profile-detail.md](profile-detail.md)).

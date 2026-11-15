@@ -12,6 +12,7 @@
 import { z } from "zod";
 import type * as M from "../model";
 import { CommandError } from "../errors";
+import { formatHhmm, nameList } from "../format";
 import { POLL, type Topic } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 
@@ -171,6 +172,94 @@ async function unassignedProfile(ctx: CommandContext): Promise<M.Profile> {
     deviceIds: unassigned.map((d) => d.id),
     devicesOnline: unassigned.filter((d) => d.connected).length,
   };
+}
+
+/** Ids of the devices in no profile (Unassigned), as profile.list counts them. */
+export async function unassignedIds(ctx: CommandContext): Promise<M.Id[]> {
+  const [profiles, devices] = await Promise.all([ctx.backend.profile.list(ctx.net), ctx.backend.device.list(ctx.net)]);
+  return unassignedOf(profiles, devices).map((d) => d.id);
+}
+
+/** The enabled schedule pausing right now in `tz`, or null. */
+export function scheduleNow(schedules: ReadonlyArray<M.Schedule>, now: number, tz: string | null): M.Schedule | null {
+  if (!tz) return null;
+  const today = wallMs(now, tz);
+  const minute = Math.floor((today % 86_400_000) / MIN_MS);
+  const on = pausesToday({ paused: false, schedules: [...schedules] }, now, tz).find((x) => x.start <= minute && minute < x.end);
+  return on ? (schedules.find((s) => s.id === on.scheduleId) ?? null) : null;
+}
+
+/** Why a profile keeps its devices offline right now: "Mia is paused" (until resumed) or its scheduled pause. */
+export type OfflineReason = { reason: string; until: string };
+
+/**
+ * Whether devices in a profile (or Unassigned) are offline right now: a
+ * manual pause, or an enabled schedule whose window covers now in the
+ * network time zone. null when they are online. Used by the writes that
+ * move devices or change schedules to ask before taking devices offline.
+ */
+export async function offlineIn(ctx: CommandContext, id: M.Id): Promise<OfflineReason | null> {
+  // Unassigned's pause comes from its devices and its schedules from eero's default profile (unassignedProfile).
+  const p = await (id === UNASSIGNED ? unassignedProfile(ctx) : ctx.backend.profile.get(ctx.net, id)).catch(() => null);
+  if (!p) return null;
+  const name = p.name;
+  if (p.paused) return { reason: `${name} is paused`, until: "until it is resumed" };
+  const s = scheduleNow(p.schedules, ctx.now(), await timezone(ctx));
+  return s ? { reason: `${name}'s ${s.name} pause is on now`, until: `until ${formatHhmm(s.end)}` } : null;
+}
+
+/** The online devices in a profile (or Unassigned) that a pause starting now would take offline. */
+async function onlineIn(ctx: CommandContext, id: M.Id): Promise<M.Device[]> {
+  const devices = await ctx.backend.device.list(ctx.net);
+  const ids = new Set(id === UNASSIGNED ? await unassignedIds(ctx) : (await ctx.backend.profile.get(ctx.net, id)).deviceIds);
+  return devices.filter((d) => ids.has(d.id) && !d.paused && !d.blocked);
+}
+
+const lose = (devices: ReadonlyArray<Pick<M.Device, "name">>) => `${nameList(devices.map((d) => d.name))} ${devices.length === 1 ? "loses" : "lose"} internet`;
+
+/**
+ * A schedule add or edit that pauses devices straight away: the new window
+ * covers now and nothing already keeps them offline. null otherwise.
+ */
+async function scheduleConfirm(ctx: CommandContext, id: M.Id, input: M.ScheduleInput, replacing: M.Schedule | null): Promise<string | null> {
+  const profile = await ctx.backend.profile.get(ctx.net, id);
+  // bad_params (an end equal to the start, a taken name) before anything asks.
+  checkSchedule(profile, input, replacing);
+  if (!input.enabled) return null;
+  const others = profile.schedules.filter((s) => s.id !== replacing?.id);
+  const tz = await timezone(ctx);
+  const now = ctx.now();
+  if (profile.paused || scheduleNow(others, now, tz)) return null;
+  // The edited schedule already pausing now: nothing new goes offline.
+  if (replacing && scheduleNow([replacing], now, tz)) return null;
+  if (!scheduleNow([{ ...input, id: "new" }], now, tz)) return null;
+  const online = await onlineIn(ctx, id);
+  if (online.length === 0) return null;
+  return `${input.name} covers right now, so ${lose(online)} until ${formatHhmm(input.end)}.`;
+}
+
+/**
+ * A time zone change that starts a scheduled pause straight away: a
+ * schedule not pausing now in `from` but pausing now in `to`. Names the
+ * profiles and the online devices that go offline; null when none do.
+ */
+export async function timezoneConfirm(ctx: CommandContext, from: string | null, to: string): Promise<string | null> {
+  const now = ctx.now();
+  const [profiles, devices, unassigned] = await Promise.all([ctx.backend.profile.list(ctx.net), ctx.backend.device.list(ctx.net), unassignedProfile(ctx).catch(() => null)]);
+  const hits: { name: string; schedule: M.Schedule; online: M.Device[] }[] = [];
+  for (const lane of unassigned ? [...profiles, unassigned] : profiles) {
+    if (lane.paused || scheduleNow(lane.schedules, now, from)) continue;
+    const schedule = scheduleNow(lane.schedules, now, to);
+    if (!schedule) continue;
+    const ids = new Set(lane.deviceIds);
+    const online = devices.filter((d) => ids.has(d.id) && !d.paused && !d.blocked);
+    if (online.length) hits.push({ name: lane.name, schedule, online });
+  }
+  const [first] = hits;
+  if (!first) return null;
+  const pauses = hits.map((h) => `${h.name}'s ${h.schedule.name} pause`);
+  const until = hits.length === 1 ? `until ${formatHhmm(first.schedule.end)}` : "until those pauses end";
+  return `In ${to}, ${nameList(pauses)} ${hits.length === 1 ? "is" : "are"} on now, so ${lose(hits.flatMap((h) => h.online))} ${until}.`;
 }
 
 const withNext = (p: M.Profile, now: number, tz: string | null): M.Profile => ({ ...p, state: stateOf(p), nextChange: nextChange(p, now, tz) });
@@ -347,10 +436,17 @@ export const commands: AnyCommand[] = [
     label: "Pause profile",
     description: "Pauses internet on every device in the profile until resumed. eero has no timed pause.",
     icon: "pause",
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile") }),
+    confirmMessage: async (ctx, p) => {
+      const profile = await ctx.backend.profile.get(ctx.net, await ctx.resolve("profile", p.profile));
+      const n = profile.deviceIds.length;
+      return n === 0
+        ? `${profile.name} has no devices yet; any that join stay paused until resumed.`
+        : `${n === 1 ? `${profile.name}'s device loses` : `All ${n} of ${profile.name}'s devices lose`} internet until resumed.`;
+    },
     run: async (ctx, p): Promise<M.Profile> => setPaused(ctx, p.profile, true),
   }),
 
@@ -375,6 +471,23 @@ export const commands: AnyCommand[] = [
     gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), devices: z.array(ref("device")).max(200) }),
+    // Devices joining a paused profile, or leaving to a paused Unassigned, go offline.
+    async confirmWhen(ctx, p) {
+      const id = await ctx.resolve("profile", p.profile);
+      const listed = new Set(await resolveDevices(ctx, p.devices));
+      const [profile, devices, into] = await Promise.all([ctx.backend.profile.get(ctx.net, id), ctx.backend.device.list(ctx.net), offlineIn(ctx, id)]);
+      const current = new Set(profile.deviceIds);
+      const online = (d: M.Device) => !d.paused && !d.blocked;
+      const joining = into ? devices.filter((d) => listed.has(d.id) && !current.has(d.id) && online(d)) : [];
+      // Devices that leave were online only if this profile is not keeping them offline.
+      const out = into ? null : await offlineIn(ctx, UNASSIGNED);
+      const leaving = out ? devices.filter((d) => current.has(d.id) && !listed.has(d.id) && online(d)) : [];
+      const parts = [
+        into && joining.length ? `${into.reason}, so ${lose(joining)} ${into.until}` : null,
+        out && leaving.length ? `${out.reason}, so ${lose(leaving)} ${out.until}` : null,
+      ].filter(Boolean);
+      return parts.length ? `${parts.join(". ")}.` : null;
+    },
     run: async (ctx, p): Promise<M.Profile> => {
       const id = await ctx.resolve("profile", p.profile);
       const deviceIds = await resolveDevices(ctx, p.devices);
@@ -411,10 +524,15 @@ export const commands: AnyCommand[] = [
     label: "Pause unassigned devices",
     description: "Pauses internet on every device with no profile (eero's Unassigned group), until resumed. Includes TVs and smart home gear.",
     icon: "pause",
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "profiles", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({}),
+    confirmMessage: async (ctx) => {
+      const n = (await ctx.backend.device.list(ctx.net)).filter((d) => d.profileId === null).length;
+      const who = n === 1 ? "The 1 device with no profile loses" : `All ${n} devices with no profile lose`;
+      return `${who} internet until resumed, including TVs, printers and smart home gear.`;
+    },
     run: async (ctx): Promise<{ paused: boolean }> => (await ctx.backend.profile.setUnassignedPaused(ctx.net, true), { paused: true }),
   }),
 
@@ -439,6 +557,9 @@ export const commands: AnyCommand[] = [
     gate: { area: "profiles", op: "create", bridgeOff: true },
     invalidates: WRITES,
     params: z.object({ profile: ref("profile"), ...scheduleFields, enabled: z.boolean().optional().describe("Default true. Off keeps the schedule without pausing.") }),
+    // A schedule whose window covers now pauses its devices straight away.
+    confirmWhen: async (ctx, p) =>
+      scheduleConfirm(ctx, await profileOrUnassigned(ctx, p.profile), { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true }, null),
     run: async (ctx, p): Promise<M.Schedule> => {
       const id = await profileOrUnassigned(ctx, p.profile);
       const input: M.ScheduleInput = { name: p.name, days: p.days, start: p.start, end: p.end, enabled: p.enabled ?? true };
@@ -464,6 +585,13 @@ export const commands: AnyCommand[] = [
       end: scheduleFields.end.optional(),
       enabled: z.boolean().optional(),
     }),
+    // An edit that moves the window over now (or turns it on during it) pauses its devices straight away.
+    async confirmWhen(ctx, p) {
+      const id = await profileOrUnassigned(ctx, p.profile);
+      const s = findSchedule(await ctx.backend.profile.get(ctx.net, id), p.schedule);
+      const input: M.ScheduleInput = { name: p.name ?? s.name, days: p.days ?? s.days, start: p.start ?? s.start, end: p.end ?? s.end, enabled: p.enabled ?? s.enabled };
+      return scheduleConfirm(ctx, id, input, s);
+    },
     run: async (ctx, p): Promise<M.Schedule> => {
       const id = await profileOrUnassigned(ctx, p.profile);
       const profile = await ctx.backend.profile.get(ctx.net, id);

@@ -64,7 +64,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
   const cancelGate = useGate("admin.invite.cancel");
   const removeGate = useGate("admin.remove");
   const cancel = useWrite<{ invite: string }>("admin.invite.cancel");
-  const remove = useWrite<{ admin: string }>("admin.remove", { confirmIn: "dialog" });
+  const remove = useWrite<{ admin: string }>("admin.remove");
   const create = useWrite<{ nickname?: string }, InviteCreated>("admin.invite.create");
   // The invite sheet: open with a nickname to fill in, or with a fresh invite to share.
   const [sheet, setSheet] = useState<{ created: InviteCreated | null; nickname: string } | null>(null);

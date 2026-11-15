@@ -616,7 +616,7 @@ describe("row links and actions on the fake eero server", () => {
     const dev = (name: string) => devices.devices.find((d) => d.name === name)?.id;
     const leo = profiles.profiles.find((p) => p.name === "Leo")?.id;
     const garage = eeros.find((e) => e.location === "Garage")?.id;
-    await ok(engine.execute("device.block", { devices: [dev("Old Printer")] }));
+    await ok(engine.execute("device.block", { devices: [dev("Old Printer")], confirm: true }));
 
     const page = await ok(engine.execute<M.EventPage>("events.list", {}));
     const row = (hash: string) => page.events.find((e) => e.id === hash);
@@ -627,7 +627,9 @@ describe("row links and actions on the fake eero server", () => {
     expect(row("fake-ev-1")?.action).toBeUndefined();
     expect(row("fake-ev-3")).toMatchObject({ refs: { deviceId: dev("Alex's Phone") } });
 
-    await ok(engine.execute("device.profile.set", { devices: [dev("Living Room TV")], profile: leo }));
+    // Leo is paused, so moving the TV into Leo takes it offline: the move asks first.
+    expect(await engine.execute("device.profile.set", { devices: [dev("Living Room TV")], profile: leo })).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+    await ok(engine.execute("device.profile.set", { devices: [dev("Living Room TV")], profile: leo, confirm: true }));
     await ok(engine.execute("device.unblock", { devices: [dev("Old Printer")] }));
     await ok(engine.execute("profile.resume", { profile: leo }));
     const after = await ok(engine.execute<M.DeviceList>("device.list", {}));

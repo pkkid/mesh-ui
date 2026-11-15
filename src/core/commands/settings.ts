@@ -26,6 +26,7 @@ import type { DhcpInput, DnsInput, PowerSavingInput, ThreadInput, WanInput } fro
 import type * as M from "../model";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { RESTART_ESTIMATE } from "./network";
+import { timezoneConfirm } from "./profile";
 
 /** Drops anything secret-looking a backend might add to Thread, so the result is safe to cache, log and show. */
 function withoutSecrets(s: M.NetworkSettings): M.NetworkSettings {
@@ -80,7 +81,7 @@ export const IMPACT: Readonly<Record<string, ImpactRule>> = {
   "settings.upnp.set": quiet("Nothing restarts"),
   "settings.sqm.set": quiet("Nothing restarts"),
   "settings.band_steering.set": quiet("Nothing restarts; some devices may roam to another band"),
-  "settings.fast_transition.set": quiet("Nothing restarts"),
+  "settings.fast_transition.set": quiet("Nothing restarts; a few older devices may not connect while fast roaming is on"),
   "settings.power_saving.set": quiet("Nothing restarts"),
   "settings.timezone.set": quiet("Nothing restarts; schedules follow the new time zone"),
   "settings.simple_setup.set": quiet("Nothing restarts"),
@@ -647,12 +648,18 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "settings.fast_transition.set",
     label: "Turn fast roaming on or off",
-    description: "Fast roaming (802.11r) lets phones and laptops hand over between eeros faster. A few older devices may not connect with it on. Applies without a restart.",
+    description: "Fast roaming (802.11r) lets phones and laptops hand over between eeros faster. A few older devices may not connect with it on, so it confirms. Applies without a restart.",
     icon: "fast-forward",
     params: toggle("fast roaming"),
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "settings" },
     invalidates: ["settings"],
+    confirmMessage: async (ctx, p) => {
+      if (reported((await ctx.backend.settings.get(ctx.net)).fastTransition, "Fast roaming") === p.enabled) return "Nothing changes.";
+      return p.enabled
+        ? "Fast roaming turns on. A few older devices may not connect while it is on."
+        : "Fast roaming turns off. Nothing restarts and no device disconnects.";
+    },
     run: (ctx, p) => liveToggle(ctx, (s) => s.fastTransition, "Fast roaming", p.enabled, () => ctx.backend.settings.setFastTransition(ctx.net, p.enabled)),
   }),
   defineCommand({
@@ -782,6 +789,11 @@ export const commands: AnyCommand[] = [
     effect: "write",
     gate: { area: "settings" },
     invalidates: ["settings", "network", "profiles"],
+    // Schedules follow the zone: one that is on now in the new zone pauses its devices straight away.
+    async confirmWhen(ctx, p) {
+      const s = await ctx.backend.settings.get(ctx.net);
+      return s.timezone === p.timezone ? null : timezoneConfirm(ctx, s.timezone, p.timezone);
+    },
     run: async (ctx, p): Promise<M.NetworkSettings> => {
       const s = await ctx.backend.settings.get(ctx.net);
       if (s.timezone === p.timezone) return withoutSecrets(s);
@@ -821,9 +833,16 @@ export const commands: AnyCommand[] = [
         credentialSync: z.boolean().optional().describe("Share Thread credentials with iOS and Android keychains."),
       })
       .refine((p) => p.enabled !== undefined || p.credentialSync !== undefined, { message: "Give enabled, credentialSync or both." }),
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "settings" },
     invalidates: ["settings"],
+    confirmMessage: async (ctx, p) => {
+      const t = withThread(await ctx.backend.settings.get(ctx.net));
+      if (p.enabled === false && t.enabled) return `Thread turns off. ${(await impactOf(ctx, "settings.thread.set")).summary}`;
+      if (p.enabled === true && !t.enabled) return "The Thread border router turns on. Nothing goes offline.";
+      if (p.credentialSync !== undefined && p.credentialSync !== t.credentialSync) return `Sharing Thread credentials turns ${p.credentialSync ? "on" : "off"}. Nothing goes offline.`;
+      return "Nothing changes.";
+    },
     run: async (ctx, p): Promise<M.NetworkSettings> => {
       const s = await ctx.backend.settings.get(ctx.net);
       const t = withThread(s);

@@ -4,7 +4,7 @@
  * progress toast until the result lands; Share Wi-Fi opens the Share Wi-Fi
  * sheet (QR, Copy password); Pause a profile picks a profile and pauses it
  * with Undo;
- * Restart network confirms inline, then a progress toast until the eeros are
+ * Restart network confirms in the dialog, then a progress toast until the eeros are
  * back) and the two speed gauges
  * ("Set your plan" opens the plan sheet).
  * docs/ux/pages/overview.md (Layout 1, States).
@@ -20,7 +20,6 @@ import { Gauge } from "~/components/charts/Gauge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
@@ -96,12 +95,10 @@ export function NetworkHero() {
             <RunSpeedTestButton />
             <ShareWifiButton />
             {!bridged && <PauseProfileButton />}
-            <WriteConfirm write={restart.write} className="basis-full">
-              <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
-                <RotateCcw />
-                Restart network
-              </GatedButton>
-            </WriteConfirm>
+            <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
+              <RotateCcw />
+              Restart network
+            </GatedButton>
           </>
         }
         aside={
@@ -180,7 +177,8 @@ function SpeedGauge({
 
 /**
  * "Pause a profile": a menu of the profiles not yet paused; picking one runs
- * `profile.pause` with a toast and Undo (`profile.resume`).
+ * `profile.pause` (disruptive: the confirm dialog first) with a toast and
+ * Undo (`profile.resume`).
  */
 function PauseProfileButton() {
   const gate = useGate(PROFILE_GATE);
@@ -194,6 +192,7 @@ function PauseProfileButton() {
     void write.run(
       { profile: p.id },
       {
+        confirm: { title: `Pause ${p.name}?`, confirmLabel: "Pause profile" },
         success: `Paused ${p.name}`,
         failure: `Couldn't pause ${p.name}`,
         undo: { id: "profile.resume", params: { profile: p.id }, success: `Resumed ${p.name}` },

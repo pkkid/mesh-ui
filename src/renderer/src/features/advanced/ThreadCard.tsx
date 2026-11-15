@@ -18,10 +18,9 @@ import { GatedButton } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { toast } from "~/components/ui/toast";
 import { copyText } from "~/lib/clipboard";
-import { IMPACT } from "../../../../core/commands/settings";
 import type { Network, NetworkSettings, ThreadCredentials } from "../../../../core/model";
 
-import { Asking, Fields, OFFLINE, Row, SubPanel, useSettingsWrite, WriteSwitch } from "./SettingsGroups";
+import { Fields, OFFLINE, Row, SubPanel, useSettingsWrite, WriteSwitch } from "./SettingsGroups";
 
 type Thread = NonNullable<NetworkSettings["thread"]>;
 
@@ -50,7 +49,6 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
   const [reading, setReading] = useState(false);
   const typeName = t?.name ?? network.data?.name ?? "Thread";
   const reset = useWrite<Record<string, never>>("settings.thread.reset", {
-    confirmIn: "dialog",
     confirm: { title: `Regenerate credentials for ${typeName}?`, confirmLabel: "Regenerate credentials", typeToConfirm: typeName },
     success: "New Thread credentials made. Pair each Thread accessory again.",
     failure: "Couldn't regenerate the Thread credentials",
@@ -83,9 +81,14 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
   const turn = (enabled: boolean) =>
     void toggle.write.run(
       { enabled },
+      // settings.thread.set is disruptive: the engine asks both ways, with core's message.
       enabled
-        ? { success: "Thread turned on", undo: { id: "settings.thread.set", params: { enabled: false }, success: "Thread turned off" } }
-        : { askFirst: true, confirm: { title: "Turn off Thread?", message: `${IMPACT["settings.thread.set"]?.what ?? "Thread accessories lose their border router"}.`, confirmLabel: "Turn off Thread" }, success: "Thread turned off" },
+        ? {
+            confirm: { title: "Turn on Thread?", confirmLabel: "Turn on Thread" },
+            success: "Thread turned on",
+            undo: { id: "settings.thread.set", params: { enabled: false }, confirm: { title: "Turn off Thread?", confirmLabel: "Turn off Thread" }, success: "Thread turned off" },
+          }
+        : { confirm: { title: "Turn off Thread?", confirmLabel: "Turn off Thread" }, success: "Thread turned off" },
     );
   const regenerate = async () => {
     const r = await reset.run({});
@@ -99,7 +102,6 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
       description="Low-power mesh for Matter and smart home accessories"
       control={<WriteSwitch on={t?.enabled} label="Thread" gate={toggle.gate} busy={toggle.write.running} onToggle={turn} />}
     >
-      <Asking write={toggle.write} />
       {t && (
         <SubPanel className="flex flex-col gap-3.5">
           <Fields

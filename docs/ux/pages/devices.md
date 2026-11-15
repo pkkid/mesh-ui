@@ -82,15 +82,15 @@ Wi-Fi**. Sidebar count: all known devices (38).
 | Group by, Columns, expand or collapse a group | - (view state) | - | No | Layout only |
 | Row click, device name | - | - | No | Device detail (Prev and Next follow this table's order) |
 | Checkbox, `Shift+click`, `Ctrl+A`, header checkbox | - (view state) | - | No | Selection; bulk bar appears |
-| Pause (bulk) | `device.pause {devices}` | write | No | Selected rows show Paused; toast "Paused 3 devices" with Undo (`device.resume`) |
+| Pause (bulk) | `device.pause {devices}` | disruptive | Yes, dialog ("Pause 3 devices?" with the names) | Selected rows show Paused; toast "Paused 3 devices" with Undo (`device.resume`) |
 | Resume (bulk) | `device.resume {devices}` | write | No | Rows return to Online; toast with Undo |
-| Assign profile ▾ (bulk) | `device.profile.set {devices, profile}` (`profile: null` for Unassigned) | write | No | Profile column updates; toast with Undo |
-| Block N (bulk) | `device.block {devices}` | write | Yes, UI dialog ("Block 3 devices? They are disconnected from every eero and can't rejoin Maple Street until you unblock them.") | Rows move to the Blocked group; toast with Undo (`device.unblock`) |
+| Assign profile ▾ (bulk) | `device.profile.set {devices, profile}` (`profile: null` for Unassigned) | write | Only when the target profile is paused or in a scheduled pause now | Profile column updates; toast with Undo |
+| Block N (bulk) | `device.block {devices}` | disruptive | Yes, dialog ("Block 3 devices? They are disconnected from every eero and can't rejoin Maple Street until you unblock them.") | Rows move to the Blocked group; toast with Undo (`device.unblock`) |
 | Clear | - | - | No | Selection cleared |
-| Row menu: Pause / Resume | `device.pause {devices: [id]}` / `device.resume` | write | No | As above |
+| Row menu: Pause / Resume | `device.pause {devices: [id]}` / `device.resume` | disruptive / write | Pause: dialog | As above |
 | Row menu: Rename... | `device.rename {device, nickname}` | write | No | Inline edit of the name cell |
-| Row menu: Change profile | `device.profile.set {devices: [id], profile}` | write | No | Submenu of profiles |
-| Row menu: Block / Unblock | `device.block` / `device.unblock` | write | Block: UI inline confirm | Moves between groups |
+| Row menu: Change profile | `device.profile.set {devices: [id], profile}` | write | Only when the target profile is paused or in a scheduled pause now | Submenu of profiles |
+| Row menu: Block / Unblock | `device.block` / `device.unblock` | disruptive / write | Block: dialog | Moves between groups |
 | Row menu: Copy IP, Copy MAC | - (clipboard) | - | No | Toast |
 | Row menu: Open details | - | - | No | Device detail |
 | New this week item | - | - | No | Device detail |

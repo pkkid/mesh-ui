@@ -58,8 +58,8 @@ Sidebar count: number of eeros.
        clients") and a list: 5 GHz 14, 2.4 GHz 9, 6 GHz 4, Wired 4, each
        with its band colour square.
      - **Network actions**. One row: Restart network, "Restarts every eero
-       at once", a "Disruptive" label. Its inline confirm is shown open in
-       the mockup: "Everyone loses internet for about 2 to 3 minutes,
+       at once", a "Disruptive" label and **Restart**, which opens the confirm
+       dialog: "Everyone loses internet for about 2 to 3 minutes,
        including every connected device and any calls in progress." with
        **Yes, restart network** and **Cancel**.
 
@@ -93,7 +93,7 @@ Sidebar count: number of eeros.
 | Card chevron, card title | - | - | No | eero detail |
 | Day / Week (usage by eero) | - (re-queries `usage.get`) | - | No | Chart switches range |
 | Legend item | - (view state) | - | No | Hides or shows that eero's series |
-| Restart network | `network.restart {confirm: true}` | disruptive | Yes, inline (the engine's `needs_confirm` message) | Progress toast "Restarting Maple Street" with "Back in about 2 to 3 minutes"; eeros show Updating; the eero and network queries refresh every 5 s until every restarted eero is back, then "Maple Street is back" |
+| Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog (the engine's `needs_confirm` message) | Progress toast "Restarting Maple Street" with "Back in about 2 to 3 minutes"; eeros show Updating; the eero and network queries refresh every 5 s until every restarted eero is back, then "Maple Street is back" |
 
 ## States
 

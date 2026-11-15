@@ -13,7 +13,6 @@ import { execute, invalidate, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Card } from "~/components/ui/card";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { PageHeader } from "~/components/ui/hero";
 import { Meter } from "~/components/ui/meter";
 import { GatedButton, useGate } from "~/components/ui/page";
@@ -155,18 +154,16 @@ export function SoftwareCard({
       }
       actions={
         pending && !installing && canInstall && u?.canUpdateNow ? (
-          <WriteConfirm write={install} className="max-w-md">
-            <div className="flex flex-wrap items-center gap-2">
-              <GatedButton gate={gate} disabled={install.running} onClick={() => void runInstall()}>
-                <Download />
-                Install now
-              </GatedButton>
-              <Badge variant="warning">
-                <RotateCcw />
-                Disruptive · all eeros restart
-              </Badge>
-            </div>
-          </WriteConfirm>
+          <div className="flex flex-wrap items-center gap-2">
+            <GatedButton gate={gate} disabled={install.running} onClick={() => void runInstall()}>
+              <Download />
+              Install now
+            </GatedButton>
+            <Badge variant="warning">
+              <RotateCcw />
+              Disruptive · all eeros restart
+            </Badge>
+          </div>
         ) : undefined
       }
       aside={

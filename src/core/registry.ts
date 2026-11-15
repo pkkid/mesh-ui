@@ -7,7 +7,7 @@
 import { z } from "zod";
 import * as areas from "./commands";
 import type { BackendKind, Effect } from "./model";
-import { type AnyCommand, COMMAND_ID, confirmParam, needsConfirm, networkIdParam, type ResolvedGate, resolveGate, type Scope } from "./spec";
+import { type AnyCommand, COMMAND_ID, confirmParam, confirmWhenParam, needsConfirm, networkIdParam, type ResolvedGate, resolveGate, type Scope } from "./spec";
 
 export type JsonSchema = Record<string, unknown>;
 
@@ -23,6 +23,8 @@ export type CommandInfo = {
   poll: number | null;
   /** Writes: what they need to run (permission, bridge mode, capability); null for queries. */
   gate: ResolvedGate | null;
+  /** A `write` that asks for confirm only when a run would take devices offline (spec `confirmWhen`). */
+  confirmsWhenOffline: boolean;
   /** JSON Schema of the params, including networkId and confirm. */
   params: JsonSchema;
 };
@@ -53,7 +55,9 @@ function register(spec: AnyCommand): RegisteredCommand {
   const scope: Scope = spec.scope ?? "network";
   const extra: Record<string, z.ZodType> = {};
   if (scope === "network") extra.networkId = networkIdParam;
+  if (spec.confirmWhen && spec.effect !== "write") throw new Error(`Command ${spec.id}: confirmWhen is for writes; ${spec.effect} commands always confirm`);
   if (needsConfirm(spec.effect)) extra.confirm = confirmParam;
+  else if (spec.confirmWhen) extra.confirm = confirmWhenParam;
   for (const key of Object.keys(extra)) {
     if (key in spec.params.shape) throw new Error(`Command ${spec.id} must not declare "${key}"; the registry adds it`);
   }
@@ -68,6 +72,7 @@ function register(spec: AnyCommand): RegisteredCommand {
     sensitive: spec.sensitive === true,
     poll: spec.poll ?? null,
     gate: spec.gate ? resolveGate(spec.gate) : null,
+    confirmsWhenOffline: spec.confirmWhen !== undefined,
     params: z.toJSONSchema(schema, { io: "input", unrepresentable: "any" }) as JsonSchema,
   };
   return { spec, scope, schema, info };

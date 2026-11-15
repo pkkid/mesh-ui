@@ -917,7 +917,12 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         }),
       setProfile: (id, deviceId, profileId) =>
         changeDevice(id, deviceId, (d, data) => {
-          if (profileId !== null) profileIn(data, profileId);
+          const into = profileId !== null ? profileIn(data, profileId) : null;
+          if (d.profileId === profileId) return;
+          // As in setDevices: a paused profile pauses a device that joins it and releases one that leaves.
+          const from = data.profiles.find((p) => p.id === d.profileId);
+          if (into?.paused) d.paused = true;
+          else if (from?.paused) d.paused = false;
           d.profileId = profileId;
         }),
       setBlocked: (id, deviceId, blocked) =>

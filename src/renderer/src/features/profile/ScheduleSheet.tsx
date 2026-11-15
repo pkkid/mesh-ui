@@ -12,7 +12,7 @@ import { useState } from "react";
 
 import { fieldErrors, useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
-import { InlineConfirm } from "~/components/ui/confirm";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { formatMinute, MINUTES_PER_DAY } from "~/components/ui/timeline";
@@ -71,11 +71,12 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [days, setDays] = useState<ReadonlyArray<Day>>(initial.days);
-  const [deleting, setDeleting] = useState(false);
 
-  const add = useWrite<Record<string, unknown>, Schedule>("profile.schedule.add", { form: true });
-  const update = useWrite<Record<string, unknown>, Schedule>("profile.schedule.update", { form: true });
-  const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("profile.schedule.remove");
+  // Core asks (over the sheet) when the schedule covers right now and would pause online devices straight away.
+  const startsNow = { title: "Pause devices now?", confirmLabel: "Save and pause now" };
+  const add = useWrite<Record<string, unknown>, Schedule>("profile.schedule.add", { form: true, confirmIn: "nested", confirm: startsNow });
+  const update = useWrite<Record<string, unknown>, Schedule>("profile.schedule.update", { form: true, confirmIn: "nested", confirm: startsNow });
+  const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("profile.schedule.remove", { confirmIn: "nested" });
   const active = mode.kind === "add" ? add : update;
   const errors = fieldErrors(active.error);
 
@@ -113,6 +114,8 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
     const res = await remove.run(
       { profile: p.id, schedule: s.id },
       {
+        askFirst: true,
+        confirm: { title: `Delete ${s.name}?`, message: `${p.name}'s devices stop pausing at ${startAt}. Undo adds it back.`, confirmLabel: "Delete schedule" },
         success: `Deleted ${s.name}`,
         failure: `Couldn't delete ${s.name}`,
         undo: (r) => ({ id: "profile.schedule.add", params: back(r.schedule), success: `Added ${r.schedule.name} back` }),
@@ -137,25 +140,17 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
       saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
       error={errors._form}
       footerStart={
-        mode.kind === "edit" && !deleting ? (
-          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" onClick={() => setDeleting(true)}>
+        mode.kind === "edit" ? (
+          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" disabled={remove.running} onClick={() => void del()}>
             <Trash2 />
             Delete schedule
           </Button>
         ) : null
       }
     >
-      {deleting && mode.kind === "edit" ? (
-        <InlineConfirm
-          title={`Delete ${mode.schedule.name}?`}
-          confirmLabel="Delete schedule"
-          onConfirm={() => void del()}
-          onCancel={() => setDeleting(false)}
-          running={remove.running}
-        >
-          {p.name}'s devices stop pausing at {startAt}. Undo adds it back.
-        </InlineConfirm>
-      ) : null}
+      <WriteConfirmDialog write={add} />
+      <WriteConfirmDialog write={update} />
+      <WriteConfirmDialog write={remove} />
 
       <div className="flex items-center justify-between gap-4">
         <div>

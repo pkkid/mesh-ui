@@ -10,7 +10,7 @@ import { useState } from "react";
 import { formatBytes, formatMbps } from "../../../../core/format";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { ConfirmDialog, InlineConfirm } from "~/components/ui/confirm";
+import { ConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton } from "~/components/ui/page";
 import { Sheet, SheetField } from "~/components/ui/sheet";
@@ -355,11 +355,7 @@ function WriteKit() {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <div className="text-muted-foreground text-xs">Inline confirm (disruptive), reading the needs_confirm message</div>
-            <InlineConfirm title="Restart Office?" confirmLabel="Restart" onConfirm={() => {}} onCancel={() => {}}>
-              Devices on it reconnect in about a minute.
-            </InlineConfirm>
-            <div className="pt-2 text-muted-foreground text-xs">Gated controls: allowed, no permission, bridge mode, capability</div>
+            <div className="text-muted-foreground text-xs">Gated controls: allowed, no permission, bridge mode, capability</div>
             <div className="flex flex-wrap gap-2">
               <GatedButton size="xs" variant="outline" gate={{ allowed: true, reason: null }}>
                 Rename

@@ -1,6 +1,6 @@
 /**
  * "Network actions": Restart network, disruptive, with the engine's confirm
- * inline. Also home to the restart watcher every restart control shares
+ * in the app's confirm dialog. Also home to the restart watcher every restart control shares
  * (eeros page, Overview hero, eero detail): a progress toast that stays
  * until the eeros that restarted are back. docs/ux/pages/eeros.md (Layout 3,
  * Actions).
@@ -10,7 +10,6 @@ import { RotateCcw } from "lucide-react";
 import { execute, invalidate, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Section } from "~/components/ui/card";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { IconTile } from "~/components/ui/hero";
 import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
 import { toast } from "~/components/ui/toast";
@@ -68,7 +67,7 @@ export function watchRestart(result: RestartResult, what: string): void {
   setTimeout(() => void tick(), FIRST_LOOK_MS);
 }
 
-/** Restart network with an inline confirm, then the watcher. Used by the eeros page and the Overview hero. */
+/** Restart network with the confirm dialog, then the watcher. Used by the eeros page and the Overview hero. */
 export function useRestartNetwork() {
   const network = useQuery<Network>("network.get");
   const write = useWrite<Record<string, never>, RestartResult>("network.restart", {
@@ -96,17 +95,10 @@ export function NetworkActions() {
             <div className="font-medium text-[13.5px]">Restart network</div>
             <div className="text-muted-foreground text-xs">Restarts every eero at once. {restartNetworkLine(impact.data)}</div>
           </div>
-          {!restart.write.asking && (
-            <GatedButton gate={restart.gate} size="xs" variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>
-              Restart
-            </GatedButton>
-          )}
+          <GatedButton gate={restart.gate} size="xs" variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>
+            Restart
+          </GatedButton>
         </Row>
-        {restart.write.asking && (
-          <div className="px-4 pb-3">
-            <WriteConfirm write={restart.write}>{null}</WriteConfirm>
-          </div>
-        )}
       </RowList>
     </Section>
   );

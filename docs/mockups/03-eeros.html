@@ -133,10 +133,10 @@
       <section class="section">
         <div class="section-h"><h2>Network actions</h2></div>
         <div class="rows">
-          <div class="r" style="flex-direction:column;align-items:stretch;gap:10px">
-            <div class="row-12"><div class="ico"><i data-lucide="rotate-ccw"></i></div><div class="grow"><div class="t">Restart network</div><div class="d">Restarts every eero at once</div></div><span class="pill bad nodot">Disruptive</span></div>
-            <div class="note bad"><i data-lucide="alert-octagon"></i><div class="body">Everyone loses internet for about 2 to 3 minutes, including every connected device and any calls in progress. <div class="row gap-8 mt-8"><button class="btn sm danger">Yes, restart network</button><button class="btn sm ghost">Cancel</button></div></div></div>
-          </div>
+          <div class="r"><div class="ico"><i data-lucide="rotate-ccw"></i></div><div class="grow"><div class="t">Restart network</div><div class="d">Restarts every eero at once</div></div><span class="pill bad nodot">Disruptive</span><button class="btn sm">Restart</button></div>
+          <!-- Restart confirms in the centred confirm dialog (docs/ux/overview.md#confirmations):
+               "Restart network?" Everyone loses internet for about 2 to 3 minutes, including every
+               connected device and any calls in progress. [Cancel] [Yes, restart network] -->
         </div>
       </section>
     </div>

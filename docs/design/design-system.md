@@ -273,29 +273,29 @@ Every write control uses the same pieces (M4.3):
   names the inverse write. Errors show an error toast with Retry (no second
   confirm) and the control keeps its old state; `form: true` sends
   `bad_params` to the fields instead (`fieldErrors(error)`). `askFirst`
-  covers writes the UI confirms on its own (block a device) and never sends
-  `confirm`. `confirmIn: "inline"` (default) holds the confirm in the hook
-  for `WriteConfirm`; `"dialog"` uses the app's confirm dialog.
+  covers writes the UI confirms on its own (delete a schedule) and never sends
+  `confirm`. Every confirm is a centred modal: `confirmIn: "dialog"`
+  (default) uses the app's confirm dialog; `"nested"`, for a write inside
+  another dialog (palette, sheet), holds the ask in the hook for
+  `WriteConfirmDialog`, rendered inside that dialog.
   `performWrite(request)` is the same flow without React, for the palette.
 - **Toasts** (`ui/toast.tsx`): `toast.success`, `toast.progress`,
   `toast.error`, `toast.update`; glass cards bottom right, at most 3,
   `aria-live`. Success closes after 4 s; progress and error stay.
-- **Confirm** (`ui/confirm.tsx`): `InlineConfirm` and `WriteConfirm` for the
-  note in place, `ConfirmDialog` (type-to-confirm when given a name) and
-  `ConfirmHost`, mounted once by the shell.
+- **Confirm** (`ui/confirm.tsx`): `ConfirmDialog` (type-to-confirm when
+  given a name), `ConfirmHost`, mounted once by the shell, and
+  `WriteConfirmDialog` for a nested write.
 - **Sheet** (`ui/sheet.tsx`): `Sheet` and `SheetField`, as in
   [overview.md](../ux/overview.md#sheets).
 
 ```tsx
 const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });
-const restart = useWrite("eero.reboot", { confirmIn: "inline" });
+const restart = useWrite("eero.restart"); // confirms in the app's dialog
 
-<WriteConfirm write={restart}>
-  <GatedButton gate={useGate({ area: "eeros" })}
-    onClick={() => restart.run({ eero: id }, { success: `Restarted ${name}`, progress: `Restarting ${name}` })}>
-    Restart
-  </GatedButton>
-</WriteConfirm>
+<GatedButton gate={useGate("eero.restart")}
+  onClick={() => restart.run({ eero: id }, { success: `Restarted ${name}`, progress: `Restarting ${name}` })}>
+  Restart
+</GatedButton>
 ```
 
 The dev gallery's Write kit section shows each piece.
@@ -391,13 +391,13 @@ Other chart kinds in the mockups, same rules for colour and labels:
 
 ## Confirmation
 
-Disruptive and destructive actions reveal a confirm before running:
+Disruptive and destructive actions confirm in a centred modal before running,
+the same everywhere (never a note in place of the button):
 
-- **Inline confirm** for single-target actions: the button area becomes a
-  note with one sentence naming the effect ("Turn off guest network? 4 guests
-  are disconnected right away."), a filled danger button and Cancel.
-- **Dialog** for network-wide and destructive actions, naming what happens and
-  for how long. Destructive dialogs need a checkbox or typed name.
+- A title naming the target and one or two sentences on the effect and how
+  long it lasts ("Turn off guest network? 4 guests are disconnected right
+  away."), then Cancel and a filled danger button that repeats the action.
+- Destructive dialogs need a checkbox or typed name.
 - Danger buttons are red text on a neutral button until the confirm step,
   where the confirming button is filled.
 

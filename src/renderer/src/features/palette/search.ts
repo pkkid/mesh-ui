@@ -46,6 +46,8 @@ export type DeviceItem = {
   action: "Pause" | "Resume";
   /** Why the row action cannot run ("Coming soon", "Off in bridge mode"), or null. Set by `withActions`. */
   actionBlocked?: string | null;
+  /** The row action command's effect (Pause is disruptive). Set by `withActions`. */
+  actionEffect?: Effect;
 };
 
 export type ProfileItem = {
@@ -58,6 +60,8 @@ export type ProfileItem = {
   action: "Pause" | "Resume";
   /** Why the row action cannot run, or null. Set by `withActions`. */
   actionBlocked?: string | null;
+  /** The row action command's effect (Pause is disruptive). Set by `withActions`. */
+  actionEffect?: Effect;
 };
 
 export type Item = CommandItem | PageItem | DeviceItem | ProfileItem;
@@ -559,7 +563,8 @@ export function entityWrite(item: DeviceItem | ProfileItem, commands: ReadonlyAr
     success: `${item.action === "Pause" ? "Paused" : "Resumed"} ${item.label}`,
     failure: `Couldn't ${item.action.toLowerCase()} ${item.label}`,
     confirm: { title: `${item.action} ${item.label}?`, confirmLabel: item.action },
-    undo: inverse ? { id: inverse.id, params } : undefined,
+    // Undo of a Resume is a pause, which is disruptive and asks again.
+    undo: inverse ? { id: inverse.id, params, confirm: item.action === "Resume" ? { title: `Pause ${item.label}?`, confirmLabel: "Pause" } : undefined } : undefined,
   };
 }
 
@@ -572,7 +577,7 @@ export function withActions<T extends DeviceItem | ProfileItem>(
   return items.map((item) => {
     const info = commands.find((c) => c.id === entityActionId(item));
     const blocked = info ? availability(info, ctx) : "Coming soon";
-    return { ...item, actionBlocked: blocked === false ? "Coming soon" : blocked };
+    return { ...item, actionBlocked: blocked === false ? "Coming soon" : blocked, actionEffect: info?.effect ?? "write" };
   });
 }
 

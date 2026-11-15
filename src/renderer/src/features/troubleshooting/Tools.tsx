@@ -3,11 +3,11 @@
  * - Tools: Run speed test (the shared runner from the Internet hero) and
  *   Find an eero (an eero select and `eero.find`, counting down while it
  *   blinks).
- * - Fixes: Connect 2.4 GHz only devices (`wifi.hide5g.set`, inline confirm,
+ * - Fixes: Connect 2.4 GHz only devices (`wifi.hide5g.set`, confirm dialog,
  *   countdown to eero's expiry), Legacy mode (state from `settings.get`; the
  *   switch lives on Advanced networking), Status light colours (static
  *   reference), Restart a single eero (`eero.restart`) and Restart network
- *   (`network.restart`), both with the engine's confirm inline and the
+ *   (`network.restart`), both with the engine's confirm in the dialog and the
  *   shared restart watcher.
  * docs/ux/pages/troubleshooting.md (Tools, Fixes).
  */
@@ -18,7 +18,6 @@ import { useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Card, Section } from "~/components/ui/card";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { GatedButton, HeaderLink, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { restartLine } from "~/features/eero/helpers";
@@ -117,27 +116,25 @@ function TwoFourOnly({ offline }: { offline: boolean }) {
   const left = active && expiresAt ? countdown(expiresAt, now) : null;
   return (
     <FixCard title="Connect 2.4 GHz only devices" badge={disruptive}>
-      <WriteConfirm write={write}>
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1 text-muted-foreground text-xs">
-            {active ? "5 and 6 GHz are paused so older devices can join." : "eero brings 5 and 6 GHz back on its own when the window ends."}
-          </div>
-          {left && <span className="font-mono font-semibold text-lg tabular-nums tracking-tighter">{left}</span>}
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1 text-muted-foreground text-xs">
+          {active ? "5 and 6 GHz are paused so older devices can join." : "eero brings 5 and 6 GHz back on its own when the window ends."}
         </div>
-        <div className="flex items-center gap-2">
-          {active ? <Status tone="warning">5 and 6 GHz paused</Status> : <Status tone="muted">Off</Status>}
-          <span className="ms-auto" />
-          <GatedButton
-            gate={offline ? { allowed: false, reason: "The network is offline" } : gate}
-            size="xs"
-            variant="outline"
-            disabled={!wifi.data || write.running}
-            onClick={() => void write.run({ enabled: !active })}
-          >
-            {active ? "Restore now" : "Start"}
-          </GatedButton>
-        </div>
-      </WriteConfirm>
+        {left && <span className="font-mono font-semibold text-lg tabular-nums tracking-tighter">{left}</span>}
+      </div>
+      <div className="flex items-center gap-2">
+        {active ? <Status tone="warning">5 and 6 GHz paused</Status> : <Status tone="muted">Off</Status>}
+        <span className="ms-auto" />
+        <GatedButton
+          gate={offline ? { allowed: false, reason: "The network is offline" } : gate}
+          size="xs"
+          variant="outline"
+          disabled={!wifi.data || write.running}
+          onClick={() => void write.run({ enabled: !active })}
+        >
+          {active ? "Restore now" : "Start"}
+        </GatedButton>
+      </div>
     </FixCard>
   );
 }
@@ -195,7 +192,6 @@ function RestartRow({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; n
     const r = await write.run({ eero: eero.id });
     if (r?.ok) watchRestart(r.result, eero.isGateway ? networkName : eero.location);
   };
-  if (write.asking) return <WriteConfirm write={write}>{null}</WriteConfirm>;
   return (
     <div className="flex items-center gap-3 py-1.5">
       <div className="min-w-0 flex-1">
@@ -215,14 +211,12 @@ function RestartNetwork() {
   const restart = useRestartNetwork();
   return (
     <FixCard title="Restart network" badge={disruptive}>
-      <WriteConfirm write={restart.write}>
-        <p className="text-muted-foreground text-xs">Every eero restarts at once. Everyone loses internet for about 2 to 3 minutes.</p>
-        <div>
-          <GatedButton gate={restart.gate} size="xs" variant="outline" className="text-destructive-foreground" disabled={restart.write.running} onClick={() => void restart.run()}>
-            Restart network
-          </GatedButton>
-        </div>
-      </WriteConfirm>
+      <p className="text-muted-foreground text-xs">Every eero restarts at once. Everyone loses internet for about 2 to 3 minutes.</p>
+      <div>
+        <GatedButton gate={restart.gate} size="xs" variant="outline" className="text-destructive-foreground" disabled={restart.write.running} onClick={() => void restart.run()}>
+          Restart network
+        </GatedButton>
+      </div>
     </FixCard>
   );
 }

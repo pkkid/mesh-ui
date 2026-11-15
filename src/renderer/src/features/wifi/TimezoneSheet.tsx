@@ -2,14 +2,16 @@
  * The time zone sheet behind Wi-Fi > Nickname and location > Edit: one select
  * of IANA zones (this runtime's list, plus the current zone if it is
  * missing), the local time there, and core's `settings.impact` for the
- * change. Save runs `settings.timezone.set` through the write kit (a `write`,
- * so no confirm); the toast's Undo sets the old zone back.
+ * change. Save runs `settings.timezone.set` through the write kit. It is a
+ * `write`, but core asks (a confirm dialog over the sheet) when the new zone
+ * starts a scheduled pause right now; the toast's Undo sets the old zone back.
  * docs/ux/pages/wifi.md (Nickname and location).
  */
 import { Clock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { fieldErrors, useWrite } from "~/app/useWrite";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { useNow } from "~/components/ui/page";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { ImpactPanel } from "~/features/advanced/ImpactPanel";
@@ -40,6 +42,8 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
     success: (r) => `Time zone set to ${r.timezone ?? tz}`,
     undo: current ? { id: ID, params: { timezone: current }, success: `Time zone set back to ${current}` } : undefined,
     form: true,
+    confirmIn: "nested",
+    confirm: { title: "Change the time zone?", confirmLabel: "Change time zone" },
   });
   const errors = fieldErrors(save.error);
 
@@ -65,6 +69,7 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
         </select>
       </SheetField>
       <ImpactPanel ids={[ID]} />
+      <WriteConfirmDialog write={save} />
     </Sheet>
   );
 }

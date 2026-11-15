@@ -177,11 +177,10 @@
         <div class="r"><div class="ico"><i data-lucide="rotate-ccw"></i></div><div class="grow"><div class="t">Restart Office</div><div class="d">Its devices and Garage (downstream) drop for about 1 minute</div></div><div class="col gap-4" style="align-items:flex-end"><span class="pill warn nodot">Disruptive</span><button class="btn sm">Restart</button></div></div>
       </div>
       <div class="rows">
-        <div class="r" style="flex-direction:column;align-items:stretch;gap:12px">
-          <div class="row-12"><div class="ico"><i data-lucide="trash-2"></i></div><div class="grow"><div class="t danger">Remove Office eero</div><div class="d">Owner only · resets this eero</div></div></div>
-          <div class="note bad"><i data-lucide="alert-octagon"></i><div class="body">Remove "Office" from Maple Street? Its devices move to other eeros if in range, and Garage loses its uplink and may go offline until it finds another path.
-            <div class="row gap-8 mt-8"><button class="btn sm danger">Remove from network</button><button class="btn sm ghost">Cancel</button></div></div></div>
-        </div>
+        <div class="r"><div class="ico"><i data-lucide="trash-2"></i></div><div class="grow"><div class="t danger">Remove Office eero</div><div class="d">Owner only · resets this eero</div></div><button class="btn sm">Remove</button></div>
+        <!-- Remove confirms in the centred confirm dialog with type-the-name (docs/ux/overview.md#confirmations):
+             "Remove Office from Maple Street?" Its devices move to other eeros if in range, and Garage loses
+             its uplink and may go offline until it finds another path. [Cancel] [Remove from network] -->
       </div>
     </div>
   </section>

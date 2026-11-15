@@ -142,7 +142,7 @@ network in `settings.json` (use `run network.select` for that).
 ID                  EFFECT       LABEL
 auth.status         query        Session status
 device.list         query        List devices
-device.pause        write        Pause device
+device.pause        disruptive   Pause device
 eero.restart        disruptive   Restart eero
 eero.remove         destructive  Remove eero
 ...
@@ -214,7 +214,7 @@ Errors in table format go to stderr as one line: `error needs_confirm: ...`.
 
 ```jsonl
 {"id": "device.list", "params": {"connected": true}}
-{"id": "profile.pause", "params": {"profile": "Leo"}}
+{"id": "profile.pause", "params": {"profile": "Leo", "confirm": true}}
 {"id": "eero.restart", "params": {"eero": "Garage", "confirm": true}}
 ```
 
@@ -242,8 +242,8 @@ mesh-ui run device.list --params '{"connected": true}'
 # Same, as JSON for jq
 mesh-ui run device.list --params '{"connected": true}' --format json | jq '.result[].name'
 
-# Pause a profile until it is resumed
-mesh-ui run profile.pause --params '{"profile": "Leo"}'
+# Pause a profile until it is resumed (disruptive: its devices go offline, needs --confirm)
+mesh-ui run profile.pause --params '{"profile": "Leo"}' --confirm
 
 # Restart one eero (disruptive, needs --confirm)
 mesh-ui run eero.restart --params '{"eero": "Garage"}' --confirm

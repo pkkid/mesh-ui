@@ -11,8 +11,8 @@
  * and the side panel shows the pending change. Gates come from each
  * command's spec (`useGate(id)`), plus offline. In bridge mode the NAT-only
  * rows (NAT port mode, DNS, caching, UPnP, SQM) are hidden.
- * Wireless (M5.3): multi-link operation (segmented, inline confirm), client
- * steering, fast roaming, legacy device mode (inline confirm) and the Thread
+ * Wireless (M5.3): multi-link operation (segmented, confirm dialog), client
+ * steering, fast roaming, legacy device mode (confirm dialog) and the Thread
  * card (ThreadCard.tsx); Simple Setup is a live switch with Undo. The danger
  * zone lives in DangerZone.tsx. Layout: docs/ux/pages/advanced-networking.md,
  * mockup 13.
@@ -21,10 +21,10 @@ import { Cable, Network, Pencil, RotateCcw, Server } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
-import { fieldErrors, type Gate, useWrite, type WriteOptions, type WriteState } from "~/app/useWrite";
+import { type ConfirmIn, fieldErrors, type Gate, useWrite, type WriteOptions, type WriteState } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Card, Section } from "~/components/ui/card";
-import { WriteConfirm } from "~/components/ui/confirm";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { useQuery } from "~/app/useCommand";
 import { GatedButton, useGate } from "~/components/ui/page";
@@ -133,7 +133,7 @@ type SettingsWrite<P> = { gate: Gate; write: WriteState<P, NetworkSettings> };
  * core's IMPACT table. While its confirm waits, the side panel shows its
  * impact as the pending change.
  */
-export function useSettingsWrite<P>(id: string, what: string, offline: boolean, opts: WriteOptions<P, NetworkSettings> & { confirmIn?: "inline" | "dialog" } = {}): SettingsWrite<P> {
+export function useSettingsWrite<P>(id: string, what: string, offline: boolean, opts: WriteOptions<P, NetworkSettings> & { confirmIn?: ConfirmIn } = {}): SettingsWrite<P> {
   const base = useGate(id);
   const gate = base.allowed && offline ? { allowed: false, reason: OFFLINE } : base;
   const rule = IMPACT[id];
@@ -143,12 +143,6 @@ export function useSettingsWrite<P>(id: string, what: string, offline: boolean, 
   });
   usePendingImpact(`${id}|${what}`, id, what, write.asking !== null);
   return { gate, write };
-}
-
-/** A write's inline confirm, shown under its row while it waits. */
-export function Asking<P>({ write }: { write: WriteState<P, NetworkSettings> }) {
-  if (!write.asking) return null;
-  return <WriteConfirm write={write}>{null}</WriteConfirm>;
 }
 
 /** A switch that runs a write. null shows an empty, dashed track that cannot be used. */
@@ -176,7 +170,7 @@ export function WriteSwitch({ on, label, gate, busy = false, onToggle }: { on: b
   );
 }
 
-/** A row whose switch runs one `{enabled}` write. Live ones offer Undo; restarting ones confirm inline. */
+/** A row whose switch runs one `{enabled}` write. Live ones offer Undo; restarting ones confirm in the dialog. */
 export function ToggleRow({
   id,
   value,
@@ -199,18 +193,20 @@ export function ToggleRow({
 }) {
   const restarts = IMPACT[id]?.restarts === true;
   const { gate, write } = useSettingsWrite<{ enabled: boolean }>(id, what, offline);
+  // Copy for a live toggle core still confirms (fast roaming); restarting ones keep useSettingsWrite's "Apply and restart".
+  const ask = (on: boolean) => (restarts ? {} : { confirm: { title: `Turn ${what.toLowerCase()} ${on ? "on" : "off"}?`, confirmLabel: `Turn ${on ? "on" : "off"}` } });
   const toggle = (enabled: boolean) =>
     void write.run(
       { enabled },
       {
+        ...ask(enabled),
         success: `${what} turned ${enabled ? "on" : "off"}`,
-        undo: restarts ? undefined : { id, params: { enabled: !enabled }, success: `${what} turned ${enabled ? "off" : "on"}` },
+        undo: restarts ? undefined : { id, params: { enabled: !enabled }, ...ask(!enabled), success: `${what} turned ${enabled ? "off" : "on"}` },
       },
     );
   return (
     <Row title={title} badge={badge} description={description} control={<WriteSwitch on={value} label={title} gate={gate} busy={write.running} onToggle={toggle} />}>
       {children}
-      <Asking write={write} />
     </Row>
   );
 }
@@ -327,7 +323,7 @@ function WanSheet({ open, onClose, settings, isp, offline }: { open: boolean; on
     setVlan(w.vlan === null ? "" : String(w.vlan));
   }, [open]);
 
-  const { write } = useSettingsWrite<WanParams>("settings.wan.set", "ISP settings", offline, { form: true, success: "ISP settings saved" });
+  const { write } = useSettingsWrite<WanParams>("settings.wan.set", "ISP settings", offline, { form: true, confirmIn: "nested", success: "ISP settings saved" });
   const errors = fieldErrors(write.error);
   const staticProblem = mode === "static" ? wanStaticProblem({ ip, mask, router }) : null;
   const vlanNumber = Number(vlan);
@@ -387,9 +383,8 @@ function WanSheet({ open, onClose, settings, isp, offline }: { open: boolean; on
           <Input id="wan-vlan" inputMode="numeric" value={vlan} disabled={!vlanOn} onChange={(e) => setVlan(e.target.value.replace(/\D/g, ""))} className="w-28 font-mono" aria-invalid={vlanProblem ? true : undefined} />
         </div>
       </SheetField>
-      <WriteConfirm write={write}>
-        <ImpactPanel ids={dirty ? ["settings.wan.set"] : []} />
-      </WriteConfirm>
+      <ImpactPanel ids={dirty ? ["settings.wan.set"] : []} />
+      <WriteConfirmDialog write={write} />
     </Sheet>
   );
 }
@@ -426,7 +421,6 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
   const dhcp = useSettingsWrite<DhcpParams>("settings.dhcp.set", "the DHCP change", offline, { success: "DHCP set to automatic" });
   const toNat = useSettingsWrite<{ mode: "nat" }>("settings.connection_mode.set", "router mode", offline, { success: "eero is the router again" });
   const toBridge = useSettingsWrite<{ mode: "bridged" }>("settings.connection_mode.set", "bridge mode", offline, {
-    confirmIn: "dialog",
     success: "Bridge mode on",
     confirm: { title: "Turn on bridge mode?", confirmLabel: "Bridge and restart" },
   });
@@ -497,8 +491,6 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
             <span className="text-2xs text-muted-foreground">Bridge turns off eero's DHCP and NAT and disables profiles, port forwards and reservations. Hairpin NAT is always on.</span>
           </SubPanel>
         )}
-        <Asking write={dhcp.write} />
-        <Asking write={toNat.write} />
       </Row>
       {!bridged && (
         <Row
@@ -522,7 +514,6 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
             )
           }
         >
-          <Asking write={natWrite.write} />
         </Row>
       )}
       <Row
@@ -587,7 +578,6 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
                 </span>
               </SubPanel>
             )}
-            <Asking write={dnsAuto.write} />
           </Row>
           <Row
             title="Local DNS caching"
@@ -595,7 +585,6 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
             description="eeros remember lookups for faster browsing"
             control={<WriteSwitch on={s?.dns.caching} label="Local DNS caching" gate={caching.gate} busy={caching.write.running} onToggle={(on) => void caching.write.run({ caching: on }, { success: `DNS caching turned ${on ? "on" : "off"}` })} />}
           >
-            <Asking write={caching.write} />
           </Row>
           <ToggleRow id="settings.upnp.set" value={s?.upnp} title="UPnP" what="UPnP" description="Lets consoles and apps open ports on their own" offline={offline} />
           <ToggleRow
@@ -625,7 +614,7 @@ function DhcpSheet({ open, onClose, settings, offline }: { open: boolean; onClos
   useEffect(() => {
     if (open) setRange(current);
   }, [open]);
-  const { write } = useSettingsWrite<DhcpParams>("settings.dhcp.set", "the DHCP range", offline, { form: true, success: "DHCP range saved" });
+  const { write } = useSettingsWrite<DhcpParams>("settings.dhcp.set", "the DHCP range", offline, { form: true, confirmIn: "nested", success: "DHCP range saved" });
   const problem = dhcpProblem(range);
   const errors = fieldErrors(write.error);
   const dirty = d.mode !== "custom" || (Object.keys(range) as (keyof typeof range)[]).some((k) => range[k] !== current[k]);
@@ -653,9 +642,8 @@ function DhcpSheet({ open, onClose, settings, offline }: { open: boolean; onClos
         {field("endIp", "Ending IP")}
       </div>
       <span className="text-muted-foreground text-xs">{gateway ? `The gateway eero takes ${gateway}. Use a private range: 10.x, 172.16 to 172.31, or 192.168.` : "Use a private range: 10.x, 172.16 to 172.31, or 192.168."}</span>
-      <WriteConfirm write={write}>
-        <ImpactPanel ids={dirty ? ["settings.dhcp.set"] : []} />
-      </WriteConfirm>
+      <ImpactPanel ids={dirty ? ["settings.dhcp.set"] : []} />
+      <WriteConfirmDialog write={write} />
     </Sheet>
   );
 }
@@ -671,7 +659,7 @@ function DnsSheet({ open, onClose, settings, offline }: { open: boolean; onClose
     setTwo(dns.servers[1] ?? "");
     setV6(dns.ipv6Servers[0] ?? "");
   }, [open]);
-  const { write } = useSettingsWrite<DnsParams>("settings.dns.set", "custom DNS", offline, { form: true, success: "Custom DNS saved" });
+  const { write } = useSettingsWrite<DnsParams>("settings.dns.set", "custom DNS", offline, { form: true, confirmIn: "nested", success: "Custom DNS saved" });
   const errors = fieldErrors(write.error);
   const bad = (v: string, v6Only = false) => (v === "" ? undefined : (v6Only ? isIpv6(v) : isIpv4(v) || isIpv6(v)) ? undefined : v6Only ? "Not an IPv6 address." : "Not an IPv4 or IPv6 address.");
   const servers = [one, two].filter((x) => x !== "");
@@ -697,9 +685,8 @@ function DnsSheet({ open, onClose, settings, offline }: { open: boolean; onClose
       </div>
       <AddressField id="dns-v6" label="IPv6 nameserver (optional)" value={v6} onChange={setV6} error={problems[2] ?? errors.ipv6Servers} placeholder="e.g. 2606:4700:4700::1111" />
       <span className="text-muted-foreground text-xs">{dns.ispServers.length > 0 ? `Your ISP's servers are ${dns.ispServers.join(" and ")}.` : "Choose ISP default to go back to your ISP's servers."}</span>
-      <WriteConfirm write={write}>
-        <ImpactPanel ids={dirty ? ["settings.dns.set"] : []} />
-      </WriteConfirm>
+      <ImpactPanel ids={dirty ? ["settings.dns.set"] : []} />
+      <WriteConfirmDialog write={write} />
     </Sheet>
   );
 }
@@ -742,7 +729,6 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
             </span>
           }
         >
-          <Asking write={mlo.write} />
         </Row>
       )}
       <ToggleRow id="settings.band_steering.set" value={s?.bandSteering} title="Client steering" what="Client steering" description="Nudges devices to the best eero and band" offline={offline} />

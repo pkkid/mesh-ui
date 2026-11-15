@@ -10,10 +10,11 @@ import { z } from "zod";
 import type { Backend } from "../backend";
 import { BackendError, CommandError } from "../errors";
 import { DEVICE_TYPE_IDS } from "../eero/map/device";
-import { toCsv } from "../format";
+import { nameList, toCsv } from "../format";
 import type * as M from "../model";
 import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, POLL, RATES_STALE_SEC } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
+import { offlineIn, unassignedIds, UNASSIGNED } from "./profile";
 import { usageWindow } from "./usage";
 
 const DAY_MS = 86_400_000;
@@ -277,6 +278,15 @@ const devicesParam = z
   .union([ref("device"), z.array(ref("device")).min(1).max(50)])
   .describe("A device id or exact name (case-insensitive), or a list of them (1 to 50).");
 
+/** The devices a pause or block names in its needs_confirm message, by display name. */
+async function deviceNames(ctx: CommandContext, refs: string | string[]): Promise<string[]> {
+  const ids = [...new Set(await Promise.all((Array.isArray(refs) ? refs : [refs]).map((r) => ctx.resolve("device", r))))];
+  const devices = await ctx.backend.device.list(ctx.net);
+  return ids.map((id) => devices.find((d) => d.id === id)?.name ?? id);
+}
+
+const networkLabel = async (ctx: CommandContext) => (await ctx.backend.network.get(ctx.net).catch(() => null))?.name ?? "the network";
+
 /** What a device write changes: the device, the sidebar counts, profile membership. */
 const DEVICE_WRITE_TOPICS = ["devices", "network", "profiles"] as const;
 
@@ -387,12 +397,16 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "device.pause",
     label: "Pause device",
-    description: "Pauses internet for one or more devices. They stay connected to Wi-Fi. Undo with device.resume.",
+    description: "Pauses internet for one or more devices. They stay connected to Wi-Fi but go offline until resumed. Undo with device.resume.",
     icon: "pause",
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "devices", bridgeOff: true },
     invalidates: [...DEVICE_WRITE_TOPICS],
     params: z.object({ devices: devicesParam }),
+    async confirmMessage(ctx, p) {
+      const names = await deviceNames(ctx, p.devices);
+      return `${nameList(names)} ${names.length === 1 ? "loses" : "lose"} internet until resumed. ${names.length === 1 ? "It stays" : "They stay"} connected to Wi-Fi.`;
+    },
     run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setPaused(ctx.net, id, true)),
   }),
 
@@ -452,6 +466,19 @@ export const commands: AnyCommand[] = [
     gate: { area: "devices", bridgeOff: true },
     invalidates: [...DEVICE_WRITE_TOPICS, "usage"],
     params: z.object({ devices: devicesParam, profile: profileParam }),
+    // Moving a device into a paused profile (or a scheduled pause on now) takes it offline.
+    async confirmWhen(ctx, p) {
+      const target = p.profile === null ? UNASSIGNED : await ctx.resolve("profile", p.profile);
+      const why = await offlineIn(ctx, target);
+      if (!why) return null;
+      const ids = [...new Set(await Promise.all((Array.isArray(p.devices) ? p.devices : [p.devices]).map((r) => ctx.resolve("device", r))))];
+      const devices = await ctx.backend.device.list(ctx.net);
+      const already = target === UNASSIGNED ? new Set(await unassignedIds(ctx)) : new Set(devices.filter((d) => d.profileId === target).map((d) => d.id));
+      const moving = devices.filter((d) => ids.includes(d.id) && !already.has(d.id) && !d.paused && !d.blocked);
+      if (moving.length === 0) return null;
+      const names = moving.map((d) => d.name);
+      return `${why.reason}, so ${nameList(names)} ${names.length === 1 ? "loses" : "lose"} internet ${why.until}.`;
+    },
     run: async (ctx, p) => {
       const profile = p.profile === null ? null : await ctx.resolve("profile", p.profile);
       return eachDevice(ctx, p.devices, (id) => ctx.backend.device.setProfile(ctx.net, id, profile));
@@ -463,10 +490,14 @@ export const commands: AnyCommand[] = [
     label: "Block device",
     description: "Blocks one or more devices: they are disconnected from every eero and cannot rejoin until unblocked. Undo with device.unblock.",
     icon: "ban",
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "devices", bridgeOff: true, capability: "device_blacklist" },
     invalidates: [...DEVICE_WRITE_TOPICS],
     params: z.object({ devices: devicesParam }),
+    async confirmMessage(ctx, p) {
+      const [names, network] = await Promise.all([deviceNames(ctx, p.devices), networkLabel(ctx)]);
+      return `${nameList(names)} ${names.length === 1 ? "is" : "are"} disconnected from every eero and can't rejoin ${network} until unblocked.`;
+    },
     run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setBlocked(ctx.net, id, true)),
   }),
 

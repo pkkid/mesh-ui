@@ -489,8 +489,8 @@ export type CommandState<P, R> = {
 };
 
 /**
- * Runs a command on demand. Confirmation is the caller's job: show the inline
- * confirm or dialog first, then pass `confirm: true` for disruptive and
+ * Runs a command on demand. Confirmation is the caller's job: show the
+ * confirm dialog first, then pass `confirm: true` for disruptive and
  * destructive commands. A `needs_confirm` error comes back like any other.
  */
 export function useCommand<P = Record<string, unknown>, R = unknown>(id: string): CommandState<P, R> {

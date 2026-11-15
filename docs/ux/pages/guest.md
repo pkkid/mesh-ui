@@ -4,9 +4,9 @@ Turn the guest network on or off, share it, change its name and password, and se
 
 Mockup: [../../mockups/11-guest.html](../../mockups/11-guest.html)
 
-Shared patterns (hero, section cards, QR block, inline confirms, tables) are described in [../overview.md](../overview.md).
+Shared patterns (hero, section cards, QR block, confirm dialogs, tables) are described in [../overview.md](../overview.md).
 
-**Built in M3 (read-only), writes in M4.** Hero with status, guests online, the power button (on, or off behind an inline confirm) and the QR block (Copy password, Save QR, Print a card, Send to a guest), Guest usage, Isolation & security, Name & password with its edit sheet, and Guest devices.
+**Built in M3 (read-only), writes in M4.** Hero with status, guests online, the power button (on, or off behind the confirm dialog) and the QR block (Copy password, Save QR, Print a card, Send to a guest), Guest usage, Isolation & security, Name & password with its edit sheet, and Guest devices.
 
 ## Layout
 
@@ -34,7 +34,7 @@ Shared patterns (hero, section cards, QR block, inline confirms, tables) are des
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Turn off guest network | `guest.disable` | disruptive | inline confirm with the engine's message, then `confirm: true` | Progress toast, then "Guest network off" with Undo; status turns "Off", button becomes **Turn on guest network** |
+| Turn off guest network | `guest.disable` | disruptive | confirm dialog with the engine's message, then `confirm: true` | Progress toast, then "Guest network off" with Undo; status turns "Off", button becomes **Turn on guest network** |
 | Turn on guest network | `guest.enable` | write | no | Status "On", toast "Guest network on" with Undo (Undo turns it off, which asks first) |
 | Copy password | `guest.share` | query | no | Password on clipboard, toast "Copied" |
 | Save QR | `guest.share` | query | no | Save dialog for a PNG of the QR |

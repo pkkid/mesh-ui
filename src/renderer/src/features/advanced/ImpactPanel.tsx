@@ -2,8 +2,8 @@
  * What a settings change does before it is confirmed, from `settings.impact`:
  * whether every eero restarts and for how long, how many online devices lose
  * internet, and core's summary sentence (the same text as the confirm). Shown
- * inside each Advanced networking sheet and, for the change waiting on an
- * inline confirm, in the page's side panel ("Pending change"). Every figure
+ * inside each Advanced networking sheet and, for the change waiting on its
+ * confirm dialog, in the page's side panel ("Pending change"). Every figure
  * and sentence comes from core. docs/ux/pages/advanced-networking.md (Side
  * panel and confirm bar).
  */

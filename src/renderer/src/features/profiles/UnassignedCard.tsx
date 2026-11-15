@@ -13,7 +13,6 @@ import { useState } from "react";
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
 import { performWrite, useWrite } from "~/app/useWrite";
-import { WriteConfirm } from "~/components/ui/confirm";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, HeaderLink, SectionError, useGate, useNow } from "~/components/ui/page";
 import { profileRequest } from "~/features/devices/BulkBar";
@@ -178,37 +177,36 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
 }
 
 /**
- * Pause unassigned (asks inline first: it includes the TV, printer and smart
- * home gear) or Resume unassigned. Shared with the Unassigned page.
+ * Pause unassigned (disruptive: the confirm dialog names who goes offline,
+ * including the TV, printer and smart home gear) or Resume unassigned.
+ * Shared with the Unassigned page.
  */
 export function UnassignedPauseButton({ paused, devices, hero = false }: { paused: boolean; devices: ReadonlyArray<Device>; hero?: boolean }) {
   const gate = useGate(PROFILE_GATE);
   const copy = unassignedPauseMessage(devices);
+  const confirm = { ...copy, confirmLabel: "Pause unassigned" };
   const pause = useWrite("profile.unassigned.pause", {
-    askFirst: true,
-    confirm: { ...copy, confirmLabel: "Pause unassigned" },
+    confirm,
     success: "Paused unassigned devices",
     undo: { id: "profile.unassigned.resume", success: "Resumed unassigned devices" },
   });
   const resume = useWrite("profile.unassigned.resume", {
     success: "Resumed unassigned devices",
-    undo: { id: "profile.unassigned.pause", success: "Paused unassigned devices" },
+    undo: { id: "profile.unassigned.pause", confirm, success: "Paused unassigned devices" },
   });
   const write = paused ? resume : pause;
   const label = paused ? "Resume unassigned" : "Pause unassigned";
   return (
-    <WriteConfirm write={pause} className="max-w-sm">
-      <GatedButton
-        gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
-        size={hero ? undefined : "xs"}
-        variant={paused ? "default" : "outline"}
-        className={hero ? "w-full" : undefined}
-        disabled={write.running}
-        onClick={() => void write.run()}
-      >
-        {paused ? <Play /> : <Pause />}
-        {label}
-      </GatedButton>
-    </WriteConfirm>
+    <GatedButton
+      gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
+      size={hero ? undefined : "xs"}
+      variant={paused ? "default" : "outline"}
+      className={hero ? "w-full" : undefined}
+      disabled={write.running}
+      onClick={() => void write.run()}
+    >
+      {paused ? <Play /> : <Pause />}
+      {label}
+    </GatedButton>
   );
 }

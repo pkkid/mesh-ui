@@ -37,7 +37,7 @@ src/renderer/src/
   components/
     ui/                 primitives ported from T3 Code (button, input, badge, dialog, ...)
     charts/             AreaChart, Sparkline, Gauge, Heatmap, ShareBar, axis helpers
-    confirm/            ConfirmInline and ConfirmDialog
+    ui/confirm.tsx      ConfirmDialog, ConfirmHost and WriteConfirmDialog
     palette/            command palette
   features/
     shell/              Sidebar, TopBar, NetworkPicker, NotificationsPopover
@@ -118,7 +118,8 @@ runs every write. No page calls `window.mesh` directly.
 
 ```ts
 const devices = useQuery("device.list", { profile: null }, { poll: true });
-const pause = useWrite("profile.pause", {
+const pause = useWrite("profile.pause", {   // disruptive: the confirm dialog first
+  confirm: { title: "Pause Leo?", confirmLabel: "Pause profile" },
   success: "Paused Leo",
   undo: { id: "profile.resume", params: { profile: "Leo" } },
 });
@@ -150,8 +151,8 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
   successful write it invalidates the queries `affectedBy(id)` names: the
   command's own area, `network.get` and related areas (a device write also
   refetches `profile.*` and `eero.*`), mirroring the "re-read after write"
-  habit of mature eero clients. Surfaces with no room for an inline note
-  (the palette, bulk bars) call `performWrite` directly.
+  habit of mature eero clients. Bulk bars and other one-off callers call
+  `performWrite` directly; their confirms open the same dialog.
 - **Gates.** Each write declares its gate in its core spec (`gate`,
   [commands.md](commands.md#the-spec)), listed in `window.mesh.commands()`.
   `useGate("device.pause")` and `GatedButton` (`components/ui/page.tsx`)
@@ -236,22 +237,25 @@ Every page follows the same top-to-bottom shape (details per page in
 `disruptive` and `destructive` commands never run on the first click.
 `useWrite` drives it: it runs the command without `confirm`, shows the
 engine's `needs_confirm` message (so the copy lives in core) in the confirm,
-and runs again with `confirm: true` only after the person confirms. The
-pieces are in `components/ui/confirm.tsx`: `WriteConfirm` and
-`InlineConfirm` for the inline note, and `ConfirmHost`, the app-wide dialog
-behind `useWrite(id, { confirmIn: "dialog" })` and `performWrite`.
+and runs again with `confirm: true` only after the person confirms. Every
+confirm is the centred modal from `components/ui/confirm.tsx`; no control
+turns into a confirm in place.
 
-- **Inline confirm** for single-target disruptive actions (restart one eero,
-  change guest password): the button turns into a short sentence plus
-  `Cancel` and a coloured confirm button in place ("Restart Office? Devices on
-  it reconnect in about a minute. Restart").
-- **Dialog** for network-wide or destructive actions (restart network, DNS or
-  DHCP changes, remove eero, delete profile, transfer network, delete
-  account). The dialog names the effect and outage, and destructive ones need
-  a checkbox or typed name before the button enables.
+- **`ConfirmHost`**, mounted once by `App.tsx`, shows `ConfirmDialog` for
+  every `useWrite` (default `confirmIn: "dialog"`) and `performWrite`
+  confirm: restart one eero, restart network, DNS or DHCP changes, remove
+  eero, delete profile, transfer network, delete account. The dialog names
+  the effect and outage, and destructive ones need a typed name (or a
+  checkbox) before the button enables.
+- **`WriteConfirmDialog`** nests the same dialog inside another dialog for a
+  write that runs from it (the palette, a sheet's Save or Delete schedule):
+  `useWrite(id, { confirmIn: "nested" })` holds the ask in the hook, and the
+  nested dialog keeps focus and `Esc` with its parent.
+- While a confirm waits, `write.asking` is set either way, so a page can
+  show what is pending (the Advanced networking side panel does).
 - After confirming, the kit calls `execute(id, { ...params, confirm: true })`.
   The UI never adds `confirm` on its own without one of these steps. A
-  `write` the UI confirms itself (block a device) passes `askFirst` and never
+  `write` the UI confirms itself (delete a schedule) passes `askFirst` and never
   sends `confirm`.
 
 ## Command palette

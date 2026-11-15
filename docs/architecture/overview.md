@@ -80,9 +80,10 @@ moves into `src/core` and is replaced by the single `execute` channel.
 
 ## How a command flows
 
-1. A surface calls `execute("device.pause", { devices: ["Leo's Switch"] })`.
+1. A surface calls `execute("device.pause", { devices: ["Leo's Switch"], confirm: true })`
+   (pausing is disruptive, so it needs `confirm`).
    - UI: `window.mesh.execute(id, params)` over one IPC channel.
-   - CLI: `mesh-ui run device.pause --params '{...}'`.
+   - CLI: `mesh-ui run device.pause --params '{...}' --confirm`.
    - MCP: tool `device_pause` with the same arguments.
 2. The engine looks up the spec, validates params with zod, resolves names to
    ids, checks `confirm` for `disruptive` and `destructive` commands, and runs

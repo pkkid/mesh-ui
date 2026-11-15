@@ -69,7 +69,17 @@ function IntegrationSwitch({ id, on }: { id: "builtin"; on: boolean | null | und
       on={on}
       label={title}
       gate={busy}
-      onChange={(enabled) => void write.run({ enabled }, { success: `${title} ${enabled ? "on" : "off"}`, undo: { id: command, params: { enabled: !enabled } } })}
+      onChange={(enabled) =>
+        void write.run(
+          { enabled },
+          {
+            // Disruptive: turning it off drops devices connected through an Echo. Core's message says so.
+            confirm: { title: `Turn ${enabled ? "on" : "off"} ${title}?`, confirmLabel: `Turn ${enabled ? "on" : "off"}` },
+            success: `${title} ${enabled ? "on" : "off"}`,
+            undo: { id: command, params: { enabled: !enabled }, confirm: { title: `Turn ${enabled ? "off" : "on"} ${title}?`, confirmLabel: `Turn ${enabled ? "off" : "on"}` } },
+          },
+        )
+      }
     />
   );
 }
@@ -94,7 +104,7 @@ function UnlinkAmazon() {
   const gate = useGate("integrations.amazon.unlink");
   const network = useQuery<Network>("network.get");
   const name = network.data?.name ?? null;
-  const write = useWrite<Record<string, never>, IntegrationsData>("integrations.amazon.unlink", { confirmIn: "dialog" });
+  const write = useWrite<Record<string, never>, IntegrationsData>("integrations.amazon.unlink");
   return (
     <GatedButton
       size="xs"
