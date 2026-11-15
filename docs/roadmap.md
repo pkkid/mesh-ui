@@ -62,6 +62,9 @@ pages. M2 and M3 fill in the read side, which is safe to try on a real
 network: first the network and its devices, then people, activity and the
 settings pages. M4 and M5 add writes, the least risky first. M6 is release
 work that only makes sense once the app is useful.
+M6 is the last planned milestone: after v0.6.0, work is fix releases
+(0.6.x) from issues, and the items under "After M6" stay parked unless
+the maintainer asks for a new milestone.
 
 ## M1: Foundation, Overview and Devices
 
@@ -1078,8 +1081,8 @@ app icon); `release.yml` (tag builds, draft releases, `SHA256SUMS.txt`,
 notes from the milestone review); auto-update with electron-updater, a
 beta channel switch and an off switch; async safeStorage; every Carried
 item above.
-Out: Windows Authenticode signing (before a wider release, decided
-2026-11-13); GPG-signed checksums (no project key yet); Flatpak, AUR, and
+Out (parked; see After M6): Windows Authenticode signing (before a wider
+release, decided 2026-11-13); GPG-signed checksums (no project key yet); Flatpak, AUR, and
 deb or rpm repositories; a generated open source licenses page (About
 links to the repository instead); Amazon login; anything eero Plus; any
 step that needs the maintainer's secrets or accounts (Apple Developer
@@ -1267,3 +1270,14 @@ credentials is a `MANUAL:` line.
 - owner: maintainer
 - after: M6.1, M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10, M6.11, M6.12
 - scope: Release gate. Run the manual checks; merge the milestone PR; add the `release` environment secrets; run the `release.yml` dry run from main; push `v0.6.0`, review and publish the draft. All tagging and publishing is the maintainer's.
+
+## After M6
+
+There is no M7. M6 is the last planned milestone; once v0.6.0 ships, the
+app is maintained with fix releases (0.6.x), each from an issue and a PR
+into `main` reviewed by the maintainer, rather than milestone runs. Parked,
+not planned (pick one up only when the maintainer asks): Windows
+Authenticode signing; GPG-signed checksums; Flatpak, AUR, and deb or rpm
+repositories; a generated open source licenses page; Amazon login;
+anything an M6 story leaves out for lack of a live-tested source (it says
+so in its docs). eero Plus features stay out of scope for good.
