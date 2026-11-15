@@ -10,7 +10,7 @@ import { Card, Empty, Section } from "~/components/ui/card";
 import { HeaderLink, SectionError } from "~/components/ui/page";
 import { seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
-import { formatBytes, formatCount } from "../../../../core/format";
+import { formatBytes } from "../../../../core/format";
 import type { DeviceList, UsageBreakdown } from "../../../../core/model";
 
 const TOP = 5;
@@ -21,12 +21,11 @@ export function TopDevices() {
 
   const rows = (breakdown.data?.rows ?? []).filter((r) => r.down + r.up > 0).slice(0, TOP);
   const byId = new Map((devices.data?.devices ?? []).map((d) => [d.id, d]));
-  const online = devices.data?.summary.online;
 
   return (
     <Section
       title="Top devices"
-      subtitle={`Data used, 24h · ${formatCount(online)} online now`}
+      subtitle="Last 24 hours"
       tools={<HeaderLink to={pathFor("devices")} arrow>All devices</HeaderLink>}
     >
       {breakdown.error && !breakdown.data ? (

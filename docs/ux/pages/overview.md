@@ -44,7 +44,7 @@ actions.
      colour sits right of lines 2 and 3 (never beside the name), the same
      width in every row, up to 110 px; it narrows before the text does and
      hides below 40 px.
-   - **Top devices**. Sub "Data used, 24h · 31 online now", link "All devices
+   - **Top devices**. Sub "Last 24 hours", link "All devices
      →". Table of the top 5: rank, device icon and name with a thin bar scaled
      to the top device, Down and Up (Up muted).
 4. Three columns:
@@ -72,7 +72,7 @@ actions.
 | eero rows | `eero.list` | 60 s |
 | eero sparklines | `usage.get {scope: "eero", range: "day"}` (same call as the share bar) | 5 min |
 | Top devices | `usage.breakdown {range: "day", by: "device"}`, first 5 | 5 min |
-| "31 online now" | `device.list` summary (`online`) | 30 s |
+| Top devices names and icons | `device.list` | 30 s |
 | Profiles rows | `profile.list` (with today's usage and current pause or schedule state) | 60 s |
 | Busy heatmap | `usage.get {scope: "network", range: "week", cadence: "hourly"}`; core normalises to 0..1 | 5 min |
 | Recent activity | `events.list {limit: 3}` | 60 s |
