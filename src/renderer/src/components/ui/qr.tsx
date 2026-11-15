@@ -18,7 +18,7 @@ import { encode } from "uqr";
 
 import { copyText } from "../../lib/clipboard";
 import { cn } from "../../lib/utils";
-import { Button } from "./button";
+import { Button, ButtonSizeContext, HERO_BUTTON_SIZE } from "./button";
 
 /** Quiet zone around the code, in modules (the spec asks for 4; 2 reads fine on screen). */
 const SCREEN_QUIET = 2;
@@ -148,21 +148,23 @@ export function QrBlock({ value, caption, copyLabel, copyText: copySource, fileN
   return (
     <div data-slot="qr-block" className={cn("flex items-start gap-4", className)}>
       {copyLabel || fileName || actions ? (
-        <div className="flex flex-col gap-1.5 [&>button]:justify-start">
-          {copyLabel ? (
-            <Button size="sm" variant="outline" disabled={!value} onClick={() => void copy()}>
-              {copied === "done" ? <Check /> : <Copy />}
-              {copied === "done" ? "Copied" : copied === "failed" ? "Couldn't copy" : copyLabel}
-            </Button>
-          ) : null}
-          {fileName ? (
-            <Button size="sm" variant="outline" disabled={!modules} onClick={save}>
-              <ImageDown />
-              Save QR
-            </Button>
-          ) : null}
-          {actions}
-        </div>
+        <ButtonSizeContext value={HERO_BUTTON_SIZE}>
+          <div className="flex flex-col gap-1.5 [&>button]:justify-start">
+            {copyLabel ? (
+              <Button variant="outline" disabled={!value} onClick={() => void copy()}>
+                {copied === "done" ? <Check /> : <Copy />}
+                {copied === "done" ? "Copied" : copied === "failed" ? "Couldn't copy" : copyLabel}
+              </Button>
+            ) : null}
+            {fileName ? (
+              <Button variant="outline" disabled={!modules} onClick={save}>
+                <ImageDown />
+                Save QR
+              </Button>
+            ) : null}
+            {actions}
+          </div>
+        </ButtonSizeContext>
       ) : null}
       <div className="flex flex-col items-center gap-1.5">
         <QrCode value={value} {...code} />

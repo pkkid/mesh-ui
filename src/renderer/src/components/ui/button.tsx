@@ -2,6 +2,7 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
+import { createContext, use } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -13,6 +14,7 @@ const buttonVariants = cva(
       size: {
         default: "h-8 px-[calc(--spacing(3)-1px)]",
         sm: "h-7 gap-1.5 px-[calc(--spacing(2.5)-1px)]",
+        hero: "h-7 gap-1.5 px-[calc(--spacing(2.5)-1px)] text-[13px] [&_svg:not([class*='size-'])]:size-3.5",
         xs: "h-6 gap-1 px-[calc(--spacing(2)-1px)] text-xs [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 px-[calc(--spacing(3.5)-1px)]",
         icon: "size-8",
@@ -44,7 +46,18 @@ interface ButtonProps extends useRender.ComponentProps<"button"> {
   size?: ButtonSize;
 }
 
-function Button({ className, variant, size, render, ...props }: ButtonProps) {
+/**
+ * The size a Button takes when it is not given one. A region that owns its
+ * button size (the page header actions, the QR block) provides it once, so
+ * call sites inside it leave `size` off. Dialogs reset it to the default.
+ */
+const ButtonSizeContext = createContext<ButtonSize | undefined>(undefined);
+
+/** Every button in a page header (hero) and its QR block: see docs/design/design-system.md. */
+const HERO_BUTTON_SIZE: ButtonSize = "hero";
+
+function Button({ className, variant, size: sizeProp, render, ...props }: ButtonProps) {
+  const size = sizeProp ?? use(ButtonSizeContext);
   const defaultProps = {
     className: cn(buttonVariants({ className, size, variant })),
     "data-slot": "button",
@@ -57,4 +70,4 @@ function Button({ className, variant, size, render, ...props }: ButtonProps) {
   });
 }
 
-export { Button, buttonVariants, type ButtonProps };
+export { Button, ButtonSizeContext, buttonVariants, HERO_BUTTON_SIZE, type ButtonProps };
