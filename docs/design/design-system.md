@@ -403,6 +403,10 @@ from it, and the UI draws it with `AppIcon` (`components/mesh/AppIcon.tsx`)
 in the sidebar, the sign-in titlebar and Welcome step, and the About panel.
 Never draw the app mark with a lucide glyph.
 
+Beside the icon, the name is the wordmark `AppWordmark`
+(`components/mesh/AppWordmark.tsx`), modelled on T3 Code's sidebar brand:
+"Mesh" bold in the text colour, "UI" medium in `text-muted-foreground`.
+
 The app icon follows the pack's measured conventions on a 256 canvas:
 
 - **Box:** the pack's shared rounded-square path (6..250 across, 12..240
