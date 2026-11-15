@@ -252,6 +252,26 @@ building a new chart; port from them rather than inventing a style.
   visible window). Never start a visible window (`pnpm dev`, `pnpm dev:demo`,
   `pnpm dev:fake`, or Electron with a display) on the maintainer's machine
   unless asked. Usage: `docs/testing.md#screenshots-with-ui-shot`.
+- **Show visual changes inline in chat.** When a change alters what the UI
+  looks like, the final reply to the maintainer must show screenshots inline
+  in the T3 Code chat. Pushing them to an `assets/` branch or a PR body does
+  not count; that is for the PR, and the chat needs its own copy.
+  1. Take them with `pnpm ui:shot` (demo data) and crop each to the area
+     that changed, with a little context (`magick in.png -crop WxH+X+Y
+     +repage out.png`). Show the core one to three changes, not every one.
+  2. Save the final PNGs under the session scratchpad directory (the absolute
+     path from the system prompt), not in the worktree, `/tmp` or a git
+     branch. If a delegated child took them, copy them into your own
+     scratchpad before replying, since its worktree may be removed.
+  3. In the reply text itself, write one Markdown image per shot on its own
+     line, with the full absolute path and no `file://`:
+     `![Devices page, dark](/abs/scratchpad/devices-dark.png)`.
+     Never a GitHub or `raw.githubusercontent.com` URL, a relative path, a
+     plain link (`[name](path)`), or an image inside a code block, table or
+     tool output; those do not render as images in the chat.
+  4. Check the file exists (`ls -l <path>`) before replying.
+
+  Skip this only for changes with no visible effect.
 - See "Testing" for the sandbox rule and "Milestone runs" for how work is
   planned and reviewed.
 - Keep changes small and the model simple. Prefer one clear file over layers of
