@@ -5,11 +5,12 @@
  * Reservations & ports in bridge mode) are hidden, not greyed out.
  */
 import { Popover } from "@base-ui/react/popover";
-import { LogOut, Wifi } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 import { Link, useLocation } from "~/app/router";
 import { ROUTES, type RouteDef } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
+import { AppIcon } from "~/components/mesh/AppIcon";
 import { Avatar } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -34,9 +35,7 @@ export function Sidebar() {
   return (
     <aside className="flex w-(--sidebar-width) shrink-0 flex-col border-sidebar-border border-e bg-sidebar text-sidebar-foreground">
       <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-[9px] ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
-        <div className="grid size-[22px] place-items-center rounded-[7px] bg-primary text-primary-foreground">
-          <Wifi className="size-[13px]" strokeWidth={2.5} />
-        </div>
+        <AppIcon className="size-[22px]" />
         <span className="font-semibold text-sm tracking-tight">Mesh UI</span>
         {auth.data?.backend === "demo" && <Badge className="border text-2xs">Demo</Badge>}
       </div>

@@ -27,7 +27,8 @@
     "test:keychainless": "pnpm build && node scripts/dist-smoke.mjs --keychainless",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "mesh-ui": "node scripts/mesh-ui-dev.mjs",
-    "ui:shot": "node scripts/ui-shot.mjs"
+    "ui:shot": "node scripts/ui-shot.mjs",
+    "icons": "node scripts/render-icons.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",

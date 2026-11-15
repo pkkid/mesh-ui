@@ -198,7 +198,7 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
 
 From the mockups (`01-overview.html` and every page):
 
-- **Sidebar** (`bg-sidebar`, 15rem): app mark at the top in the titlebar
+- **Sidebar** (`bg-sidebar`, 15rem): app icon (`AppIcon`) at the top in the titlebar
   strip; the **network picker** (status dot, name, "Online · 1.2 Gbps fiber",
   chevrons) which calls `network.list` and `network.select`; two nav groups,
   **Network** (Overview, Internet, eeros, Devices, Profiles, Activity, Guest

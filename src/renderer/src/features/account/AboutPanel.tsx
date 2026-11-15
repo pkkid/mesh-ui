@@ -8,10 +8,11 @@
  * the update controls and point at the release page. An unsigned macOS
  * build only checks: a newer version is `available` with a download link.
  */
-import { CodeXml, Download, FileText, LifeBuoy, Network as NetworkIcon, RefreshCw, RotateCw, ScrollText } from "lucide-react";
+import { CodeXml, Download, FileText, LifeBuoy, RefreshCw, RotateCw, ScrollText } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useCommand, useQuery } from "~/app/useCommand";
+import { AppIcon } from "~/components/mesh/AppIcon";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { KvList } from "~/components/ui/kv-list";
@@ -83,9 +84,7 @@ export function AboutPanel({ id }: { id?: string }) {
   return (
     <Card padded id={id} className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <div aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
-          <NetworkIcon className="size-5" />
-        </div>
+        <AppIcon className="size-10" />
         <div className="min-w-0">
           <div className="font-medium text-sm">Mesh UI</div>
           <div className={cn("text-muted-foreground text-xs tabular-nums transition-opacity", info.fading && "opacity-40")}>Version {app?.version ?? "-"}</div>

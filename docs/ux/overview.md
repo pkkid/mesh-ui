@@ -63,7 +63,8 @@ Every action below is a command run through `engine.execute(id, params)` (see
 
 Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.js`):
 
-1. **Header.** App mark (wifi glyph in a rounded square) and the name "Mesh UI".
+1. **Header.** The app icon (`AppIcon`, 22px, the same `build/icon.svg` the
+   launchers use) and the name "Mesh UI".
 2. **Network switcher row.** Status dot, network name ("Maple Street"), a
    status line, "status · ISP" ("Online · Ziply Fiber"), and a chevrons
    icon. Opens the [network switcher](#network-switcher).
