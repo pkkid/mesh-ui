@@ -36,7 +36,7 @@ export function detectInstallKind(i: InstallKindInput): InstallKind {
   // Linux. The AppImage runtime sets APPIMAGE to the image's path.
   if (i.env.APPIMAGE) return "appimage";
   // electron-builder writes `resources/package-type` for deb and rpm.
-  const type = i.readText(path.join(i.resourcesPath, "package-type"))?.trim();
+  const type = i.readText(path.posix.join(i.resourcesPath, "package-type"))?.trim();
   if (type === "deb" || type === "rpm") return type;
   // An unpacked build (`pnpm dist:dir`) or archive: it cannot update itself, like the portable zip.
   return "portable";
