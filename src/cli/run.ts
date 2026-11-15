@@ -150,7 +150,7 @@ export async function runHelp(_argv: string[], io: CliIo, ctx: CliContext): Prom
   const confirm = command.effect === "disruptive" || command.effect === "destructive" ? " --confirm" : "";
   const lines = [`${command.id}  ${command.label}`];
   if (command.description) lines.push(command.description);
-  lines.push(`Effect: ${command.effect}`, "", "Params (JSON Schema):", prettyJson(command.params).trimEnd(), "");
+  lines.push(`Effect: ${command.effect}${command.confirmsWhenOffline ? " (needs --confirm when it would take devices offline)" : ""}`, "", "Params (JSON Schema):", prettyJson(command.params).trimEnd(), "");
   lines.push("Example:", `  mesh-ui run ${command.id}${quoted}${confirm}`, "");
   io.stdout(lines.join("\n"));
   return EXIT.ok;

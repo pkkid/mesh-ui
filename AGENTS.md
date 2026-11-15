@@ -75,6 +75,10 @@ backends   eero (live cloud API) · demo (fixtures)
   `needs_confirm` unless params include `"confirm": true`. The UI shows a
   confirm dialog first and then passes `confirm: true`; the CLI needs
   `--confirm`; MCP agents must pass it explicitly.
+- **Writes that take devices offline only sometimes** (moving a device into
+  a paused profile, a schedule that starts now) stay `write` and declare
+  `confirmWhen`: they fail with `needs_confirm` only when that run would take
+  a device offline. See `docs/architecture/commands.md#confirmation`.
 - **Surfaces** all call `execute` and nothing else:
 
   | Surface | How it reaches `engine.execute` |

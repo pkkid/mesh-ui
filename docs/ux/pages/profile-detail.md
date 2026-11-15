@@ -95,14 +95,14 @@ Profiles stays active.
 | Resume profile | `profile.resume {profile}` | write | No | Active; during a scheduled pause Mia stays online until the next scheduled start (hero line says so) |
 | + Add a scheduled pause | - | - | No | Opens the sheet empty (name "New schedule", 9:00 PM to 7:00 AM, School nights) |
 | Schedule row, pencil, lane segment | - | - | No | Opens the sheet for that schedule |
-| Schedule row switch | `profile.schedule.update {profile, schedule, enabled}` | write | No | Row and lanes update; toast with Undo |
+| Schedule row switch | `profile.schedule.update {profile, schedule, enabled}` | write | Only when turning it on during its window would pause online devices now | Row and lanes update; toast with Undo |
 | Sheet: Schedule on, name, times, days, presets | - (form state) | - | No | Preview bar and hours update live |
-| Sheet: Save (new) | `profile.schedule.add {profile, name, start, end, days, enabled}` | write | No | Sheet closes; row and lanes added |
-| Sheet: Save (existing) | `profile.schedule.update {profile, schedule, ...}` | write | No | Sheet closes; row and lanes update |
+| Sheet: Save (new) | `profile.schedule.add {profile, name, start, end, days, enabled}` | write | Only when the window covers now ("Pause devices now?", over the sheet) | Sheet closes; row and lanes added |
+| Sheet: Save (existing) | `profile.schedule.update {profile, schedule, ...}` | write | Only when the new window covers now | Sheet closes; row and lanes update |
 | Sheet: Delete schedule | `profile.schedule.remove {profile, schedule}` | write | Yes, UI inline ("Delete Bedtime? Mia's devices stop pausing at 9:00 PM.") | Sheet closes; toast with Undo (re-adds it) |
 | Day / Week (usage) | - (re-queries `usage.get`) | - | No | Chart and figure switch |
-| + Add a device | `profile.devices.set {profile, devices}` | write | No | Picker of devices (unassigned first; moving one from another profile says "Moves from Alex"); table updates |
-| Remove (x) on a device | `profile.devices.set {profile, devices}` (without that device) | write | No | Device goes to Unassigned; toast with Undo |
+| + Add a device | `profile.devices.set {profile, devices}` | write | Only when the profile is paused or in a scheduled pause now | Picker of devices (unassigned first; moving one from another profile says "Moves from Alex"); table updates |
+| Remove (x) on a device | `profile.devices.set {profile, devices}` (without that device) | write | Only when Unassigned is paused | Device goes to Unassigned; toast with Undo |
 | Device row | - | - | No | Device detail |
 | All → (activity), event row | - | - | No | Activity filtered to Mia; the event's target |
 | Delete profile | `profile.delete {profile, confirm: true}` | destructive | Yes, type the name | Toast "Deleted Mia"; navigates to Profiles |

@@ -327,6 +327,11 @@ export function createEngine(opts: EngineOptions): Engine {
       const message = spec.confirmMessage ? await spec.confirmMessage(ctx, rest) : fallback;
       throw new CommandError("needs_confirm", message);
     }
+    if (spec.confirmWhen && confirm !== true) {
+      // A write that takes devices offline only sometimes: ask only when this run would.
+      const message = await spec.confirmWhen(ctx, rest);
+      if (message) throw new CommandError("needs_confirm", message);
+    }
 
     if (spec.effect === "query") {
       const ttl = typeof spec.ttl === "function" ? spec.ttl(rest) : (spec.ttl ?? (spec.topic ? TTL[spec.topic] : 0));

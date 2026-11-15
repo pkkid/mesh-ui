@@ -62,9 +62,14 @@ export const commands: AnyCommand[] = [
       "Turns eero Built-in on or off for the whole network: compatible Echo devices extend the mesh. Devices connected through an Echo move to an eero when it is turned off. Not available in bridge mode.",
     icon: "radio-tower",
     params: enabledParams,
-    effect: "write",
+    effect: "disruptive",
     gate: { area: "network.proxied_nodes", bridgeOff: true },
     invalidates: ["integrations", "devices"],
+    confirmMessage: async (ctx, p) =>
+      // An unavailable integration is refused with eero's reason before anything asks.
+      (await available(ctx, "builtin"), p.enabled)
+        ? "eero Built-in turns on: compatible Echo devices start extending the mesh. Nothing goes offline."
+        : "eero Built-in turns off. Devices connected through an Echo drop and reconnect to an eero in range; any out of range stay offline.",
     run: async (ctx, p): Promise<M.Integrations> => {
       await available(ctx, "builtin");
       return ctx.backend.integrations.setBuiltin(ctx.net, p.enabled);

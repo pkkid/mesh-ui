@@ -202,3 +202,15 @@ export function toCsv<T>(rows: readonly T[], columns: readonly CsvColumn<T>[]): 
   for (const row of rows) lines.push(columns.map((c) => csvCell(c.value(row))).join(","));
   return `${lines.join("\r\n")}\r\n`;
 }
+
+/** Names for a confirm message: "Leo's iPad", "Leo's iPad and Mia's Switch", "Leo's iPad, Mia's Switch and 3 more". */
+export function nameList(names: ReadonlyArray<string>): string {
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
+}
+
+/** "21:00" as "9:00 PM", the way confirm messages say a time. */
+export function formatHhmm(hhmm: string): string {
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}

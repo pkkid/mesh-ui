@@ -199,6 +199,13 @@ export interface CommandSpec<P extends z.ZodObject = z.ZodObject, R = unknown> {
   backend?: BackendKind;
   /** needs_confirm message. Default is built from the label and effect. */
   confirmMessage?(ctx: CommandContext, params: z.output<P>): string | Promise<string>;
+  /**
+   * A `write` that takes devices offline only in some cases (moving a device
+   * into a paused profile): the needs_confirm message when this run would,
+   * or null when nothing goes offline. Checked before `run` unless params
+   * have `confirm: true`; the registry adds an optional `confirm` param.
+   */
+  confirmWhen?(ctx: CommandContext, params: z.output<P>): Promise<string | null>;
   run(ctx: CommandContext, params: z.output<P>): Promise<R>;
 }
 
@@ -220,6 +227,12 @@ export const networkIdParam = ref("network").optional();
 
 /** Added by the registry to every disruptive and destructive command. Only true passes. */
 export const confirmParam = z.boolean().optional().describe("Must be true to run this command.");
+
+/** Added by the registry to writes with `confirmWhen`. Only needed when the run would take devices offline. */
+export const confirmWhenParam = z
+  .boolean()
+  .optional()
+  .describe("Must be true when this run would take devices offline (the command answers needs_confirm saying which).");
 
 export const needsConfirm = (effect: Effect): boolean => effect === "disruptive" || effect === "destructive";
 

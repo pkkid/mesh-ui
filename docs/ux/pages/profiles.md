@@ -77,11 +77,11 @@ count: number of profiles, not counting Unassigned.
 | Pause (card) | `profile.pause {profile}` | disruptive | Yes, dialog ("Pause Mia? All 4 of Mia's devices lose internet until resumed.") | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
 | Resume (card) | `profile.resume {profile}` | write | No | Card Active (or Scheduled); during a scheduled pause, stays online until the next scheduled start |
 | `...` menu: Rename | `profile.rename {profile, name}` | write | No | Rename sheet (name only); toast with Undo |
-| `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | No | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
+| `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | Only when the window covers now | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
 | `...` menu: Delete profile... | `profile.delete {profile, confirm: true}` | destructive | Yes, type-to-confirm dialog | Devices move to Unassigned |
 | Lane segment | - | - | No | Tooltip "Bedtime · 9:00 PM to 7:00 AM"; click opens the profile |
 | Profiles / Profiles + Unassigned, Day / Week | - (re-queries `usage.get`) | - | No | Chart and list update |
-| Avatar on an unassigned tile | `device.profile.set {devices: [device], profile}` | write | No | Tile leaves the grid; toast "Moved Living Room TV to Alex" with Undo |
+| Avatar on an unassigned tile | `device.profile.set {devices: [device], profile}` | write | Only when the target profile is paused or in a scheduled pause now | Tile leaves the grid; toast "Moved Living Room TV to Alex" with Undo |
 | Tile click | - (view state: toggles selection) | - | No | Selected tiles get the selected surface; enables New profile from selection |
 | Tile double-click | - | - | No | Device detail |
 | New profile from selection | `profile.create {name, devices}` | write | No | Name sheet prefilled with the selection |

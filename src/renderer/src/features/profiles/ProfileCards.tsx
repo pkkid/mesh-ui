@@ -20,6 +20,7 @@ import { askInDialog, errorText, fieldErrors, useWrite } from "~/app/useWrite";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { Button } from "~/components/ui/button";
 import { Card, Empty, Section } from "~/components/ui/card";
+import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton, SectionError, useGate } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
@@ -469,7 +470,12 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
 
   const create = useWrite<{ name: string; devices: string[] }, Profile>("profile.create", { form: true });
   const rename = useWrite<{ profile: string; name: string }, Profile>("profile.rename", { form: true });
-  const setDevices = useWrite<{ profile: string; devices: string[] }, Profile>("profile.devices.set", { form: true });
+  // Core asks (over the sheet) when a device joins a paused profile or leaves to a paused Unassigned.
+  const setDevices = useWrite<{ profile: string; devices: string[] }, Profile>("profile.devices.set", {
+    form: true,
+    confirmIn: "nested",
+    confirm: { title: "Take devices offline?", confirmLabel: "Save" },
+  });
   const active = mode.kind === "create" ? create : mode.kind === "rename" ? rename : setDevices;
   const errors = fieldErrors(active.error);
 
@@ -552,6 +558,7 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
           </div>
         </SheetField>
       )}
+      <WriteConfirmDialog write={setDevices} />
     </Sheet>
   );
 }

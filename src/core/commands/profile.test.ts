@@ -411,6 +411,23 @@ describe("profile writes (demo)", () => {
     expect(await engine.execute("profile.delete", { confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
+  it("profile.devices.set asks when a device joins a paused profile, and not otherwise", async () => {
+    const { engine } = demo();
+    const before = await list(engine);
+    const leo = before.profiles.find((p) => p.name === "Leo");
+    const jamie = before.profiles.find((p) => p.name === "Jamie");
+    const devices = (await engine.execute<M.DeviceList>("device.list", {}));
+    if (!devices.ok || !leo || !jamie) throw new Error("demo fixtures");
+    const outsider = devices.result.devices.find((d) => !d.paused && !d.blocked && !leo.deviceIds.includes(d.id));
+    if (!outsider) throw new Error("no online device outside Leo");
+    const asked = await engine.execute("profile.devices.set", { profile: "Leo", devices: [...leo.deviceIds, outsider.id] });
+    expect(asked).toEqual({ ok: false, error: { code: "needs_confirm", message: `Leo is paused, so ${outsider.name} loses internet until it is resumed.` } });
+    expect(await list(engine)).toEqual(before);
+    // The same devices again changes nothing, and Jamie is not paused: neither asks.
+    expect((await engine.execute("profile.devices.set", { profile: "Leo", devices: leo.deviceIds })).ok).toBe(true);
+    expect((await engine.execute("profile.devices.set", { profile: "Jamie", devices: [...jamie.deviceIds, outsider.id] })).ok).toBe(true);
+  });
+
   it("refuses profile pauses without confirm, saying whose devices go offline, and pauses nothing", async () => {
     const { engine } = demo();
     const before = await list(engine);
@@ -588,6 +605,26 @@ describe("scheduled pauses (demo)", () => {
     if (!r.ok) throw new Error(r.error.message);
     return r.result;
   };
+
+  it("asks only when a new or edited schedule covers right now and pauses online devices", async () => {
+    const { engine } = demo();
+    // Thursday 2:41 PM in Los Angeles.
+    const now = { profile: "Alex", name: "Now", days: ["THU"], start: "13:00", end: "16:00" };
+    const asked = await engine.execute("profile.schedule.add", now);
+    expect(asked).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^Now covers right now, so .+ lose internet until 4:00 PM\.$/) } });
+    expect(ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "Alex" })).schedules).toEqual([]);
+    // Later today, or turned off: nothing goes offline now, so no question.
+    ok(await engine.execute("profile.schedule.add", { ...now, name: "Later", start: "20:00", end: "21:00" }));
+    ok(await engine.execute("profile.schedule.add", { ...now, name: "Off", enabled: false }));
+    // Leo is already paused: a schedule over now takes nothing new offline.
+    ok(await engine.execute("profile.schedule.add", { ...now, profile: "Leo" }));
+    // Moving Mia's Homework (4 to 6 PM) to start at 2 PM covers now.
+    const moved = await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Homework", start: "14:00" });
+    expect(moved).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^Homework covers right now, so .+ until 6:00 PM\.$/) } });
+    ok(await engine.execute("profile.schedule.update", { profile: "Mia", schedule: "Homework", start: "14:00", confirm: true }));
+    // A bad schedule is bad_params before any question.
+    expect(await engine.execute("profile.schedule.add", { ...now, end: "13:00" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
   const issue = (r: unknown) => (r as { error?: { code?: string; detail?: { issues?: { path: string }[] } } }).error;
 
   it("adds a schedule that wraps past midnight; it shows in the next read, today's lanes and the next change", async () => {
@@ -818,8 +855,12 @@ describe("Unassigned scheduled pauses (demo)", () => {
     const list = ok(await engine.execute<M.ProfileList>("profile.list"));
     expect(empty.deviceIds.sort()).toEqual([...list.unassigned.deviceIds].sort());
 
-    // Thursday 2:41 PM in Los Angeles; 13:00 to 16:00 on Thursdays covers now.
-    const added = ok(await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Unassigned", name: "TV off", days: ["THU", "MON"], start: "13:00", end: "16:00" }));
+    // Thursday 2:41 PM in Los Angeles; 13:00 to 16:00 on Thursdays covers now, so it pauses Unassigned straight away and asks.
+    const tvOff = { profile: "Unassigned", name: "TV off", days: ["THU", "MON"], start: "13:00", end: "16:00" };
+    const asked = await engine.execute("profile.schedule.add", tvOff);
+    expect(asked).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^TV off covers right now, so .+ lose internet until 4:00 PM\.$/) } });
+    expect(ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "unassigned" })).schedules).toEqual([]);
+    const added = ok(await engine.execute<M.Schedule>("profile.schedule.add", { ...tvOff, confirm: true }));
     expect(added).toMatchObject({ name: "TV off", days: ["MON", "THU"], start: "13:00", end: "16:00", enabled: true });
     const read = ok(await engine.execute<M.ProfileDetail>("profile.get", { profile: "unassigned" }));
     expect(read.schedules).toEqual([added]);

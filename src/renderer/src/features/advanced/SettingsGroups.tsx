@@ -193,12 +193,15 @@ export function ToggleRow({
 }) {
   const restarts = IMPACT[id]?.restarts === true;
   const { gate, write } = useSettingsWrite<{ enabled: boolean }>(id, what, offline);
+  // Copy for a live toggle core still confirms (fast roaming); restarting ones keep useSettingsWrite's "Apply and restart".
+  const ask = (on: boolean) => (restarts ? {} : { confirm: { title: `Turn ${what.toLowerCase()} ${on ? "on" : "off"}?`, confirmLabel: `Turn ${on ? "on" : "off"}` } });
   const toggle = (enabled: boolean) =>
     void write.run(
       { enabled },
       {
+        ...ask(enabled),
         success: `${what} turned ${enabled ? "on" : "off"}`,
-        undo: restarts ? undefined : { id, params: { enabled: !enabled }, success: `${what} turned ${enabled ? "off" : "on"}` },
+        undo: restarts ? undefined : { id, params: { enabled: !enabled }, ...ask(!enabled), success: `${what} turned ${enabled ? "off" : "on"}` },
       },
     );
   return (

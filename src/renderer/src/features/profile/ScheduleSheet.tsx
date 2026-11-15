@@ -72,8 +72,10 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
   const [end, setEnd] = useState(initial.end);
   const [days, setDays] = useState<ReadonlyArray<Day>>(initial.days);
 
-  const add = useWrite<Record<string, unknown>, Schedule>("profile.schedule.add", { form: true });
-  const update = useWrite<Record<string, unknown>, Schedule>("profile.schedule.update", { form: true });
+  // Core asks (over the sheet) when the schedule covers right now and would pause online devices straight away.
+  const startsNow = { title: "Pause devices now?", confirmLabel: "Save and pause now" };
+  const add = useWrite<Record<string, unknown>, Schedule>("profile.schedule.add", { form: true, confirmIn: "nested", confirm: startsNow });
+  const update = useWrite<Record<string, unknown>, Schedule>("profile.schedule.update", { form: true, confirmIn: "nested", confirm: startsNow });
   const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("profile.schedule.remove", { confirmIn: "nested" });
   const active = mode.kind === "add" ? add : update;
   const errors = fieldErrors(active.error);
@@ -146,6 +148,8 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
         ) : null
       }
     >
+      <WriteConfirmDialog write={add} />
+      <WriteConfirmDialog write={update} />
       <WriteConfirmDialog write={remove} />
 
       <div className="flex items-center justify-between gap-4">

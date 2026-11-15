@@ -432,6 +432,23 @@ describe("device writes (demo)", () => {
     }
   });
 
+  it("asks before moving devices into a paused profile, and only then", async () => {
+    const { engine } = demo();
+    const before = await list(engine);
+    // Leo is paused in the demo: moving Alex's MacBook Pro in takes it offline.
+    const asked = await engine.execute("device.profile.set", { devices: "Alex's MacBook Pro", profile: "Leo" });
+    expect(asked).toEqual({ ok: false, error: { code: "needs_confirm", message: "Leo is paused, so Alex's MacBook Pro loses internet until it is resumed." } });
+    expect(await list(engine)).toEqual(before);
+    // Jamie is not paused: no question.
+    expect((await engine.execute("device.profile.set", { devices: "Alex's MacBook Pro", profile: "Jamie" })).ok).toBe(true);
+    // A device already in Leo stays as it is: no question.
+    const leo = (await ok<M.ProfileList>(engine, "profile.list", {})).profiles.find((p) => p.name === "Leo");
+    expect((await engine.execute("device.profile.set", { devices: leo?.deviceIds.slice(0, 1), profile: "Leo" })).ok).toBe(true);
+    // With confirm it moves, and the device is paused with Leo.
+    await ok(engine, "device.profile.set", { devices: "Alex's MacBook Pro", profile: "Leo", confirm: true });
+    expect((await ok<M.Device>(engine, "device.get", { device: "Alex's MacBook Pro" })).paused).toBe(true);
+  });
+
   it("refuses pause and block without confirm, naming who goes offline, and changes nothing", async () => {
     const { engine } = demo();
     const before = await list(engine);

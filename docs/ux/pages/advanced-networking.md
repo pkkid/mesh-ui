@@ -12,7 +12,7 @@ Every control on the page is now live. Each runs through useWrite with its comma
 
 - **Network services:** eero Simple Setup is a switch with Undo. **Eco efficiency** and **Power saving schedule** switches run `settings.power_saving.set` with Undo. When eero reports the `power_saving` capability false (a gateway without it), the whole Eco efficiency section dims with the hardware reason, as the eero app hides it there (M5.R-fix9): the Eco efficiency row reads "Your eero hardware does not support power saving", both switches, **Add schedule** and the pencils are off with that reason as their tooltip, the schedule row reads "Schedules do nothing on this hardware. You can still delete them." and the week strip is faded. Existing schedules stay listed read-only, each with a **Delete** (trash) button that asks inline and runs `settings.power_schedule.remove` with no Undo (adding back is refused there). Core refuses the other power saving writes on that hardware too.
 - **Power saving schedules:** **Add schedule** and each schedule's pencil open the schedule sheet (Schedule on, name, start and end with "next day" when it wraps past midnight, Repeats on, an Each day bar in the power saving colour). Save runs `settings.power_schedule.add` or `.update` (Undo removes or restores); **Delete schedule** asks inline and runs `.remove` with an Undo that adds it back. Clicking a timeline segment does not open the sheet yet (M5.11 owns the timeline).
-- **Wireless:** Multi-link operation is a segmented Off / Single link / Multi-link (shown only when eero reports it) that confirms in the dialog with core's `settings.impact` summary and shows the pending change; Client steering and Fast roaming are switches with Undo; Legacy device mode (Restarts eeros) confirms in the dialog.
+- **Wireless:** Multi-link operation is a segmented Off / Single link / Multi-link (shown only when eero reports it) that confirms in the dialog with core's `settings.impact` summary and shows the pending change; Client steering is a switch with Undo; Fast roaming (some older devices may not connect with it on) and Legacy device mode (Restarts eeros) confirm in the dialog.
 - **Thread** (`ThreadCard.tsx`): the switch asks before turning Thread off ("Thread accessories lose their border router while Thread is off"). **Reveal** reads `settings.thread.credentials` on each click and shows the key until **Hide**; nothing is cached. **Copy dataset** copies eero's dataset, or, when eero sends none (a real network sends none), the network name, channel, PAN IDs, network key and PSKc as lines. **Share credentials with phone keychain** is a switch with Undo. **Regenerate credentials** opens the confirm dialog with type-the-name (the Thread network name).
 - **Danger zone** (`DangerZone.tsx`): **Restart network** confirms in the dialog and starts the restart watcher, as on the eeros page. **Delete network** opens the confirm dialog with core's message and type-the-name (the network name); after it, core selects another network and the page goes to Overview. Admins see it disabled with "Owner only"; a network that reports no role (common on real networks) leaves the check to eero.
 - **Time zone** (`settings.timezone.set`) has no row here; it is a command for the CLI, MCP and palette until the Wi-Fi page gets its row.
@@ -131,13 +131,14 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 | Edit or remove a schedule | `settings.power_schedule.update` / `.remove` | write | no | |
 | Multi-link operation | `settings.mlo.set` `{mode}` | disruptive | confirm bar | outage from `settings.impact` |
 | Client steering | `settings.band_steering.set` `{enabled}` | write | no | |
-| Thread switch | `settings.thread.set` `{enabled}` | write | no | |
-| Share credentials with phone keychain | `settings.thread.set` `{credentialSync}` | write | no | |
+| Fast roaming | `settings.fast_transition.set` `{enabled}` | disruptive | yes, dialog | Undo asks again |
+| Thread switch | `settings.thread.set` `{enabled}` | disruptive | yes, dialog (off: core says which accessories lose their border router) | |
+| Share credentials with phone keychain | `settings.thread.set` `{credentialSync}` | disruptive | yes, dialog ("Nothing goes offline") | |
 | Reveal network key, Copy dataset | `settings.thread.credentials` | query | no | Shows or copies the secret |
 | Regenerate credentials | `settings.thread.reset` | destructive | dialog: every Thread device must be re-paired | |
 | WPA3 row | none (navigation) | | | [Wi-Fi](wifi.md) |
 | Unlink Amazon | `integrations.amazon.unlink` | destructive | dialog | Amazon linked features turn off |
-| eero Built-in switch | `integrations.builtin.set` `{enabled}` | write | no | |
+| eero Built-in switch | `integrations.builtin.set` `{enabled}` | disruptive | yes, dialog (off drops devices connected through an Echo) | |
 | Discover Zigbee devices | `integrations.zigbee.discover` | write | no | Note: pairing finishes in the Alexa app |
 | Frustration-Free Setup | none (read only, from `integrations.get`). No write command: no client has live-tested one and eero's own app shows no switch (M6.10) | - | no | |
 | Restart network | `network.restart` | disruptive | confirm dialog with outage length | |

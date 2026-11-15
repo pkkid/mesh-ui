@@ -118,6 +118,8 @@ export function profileRequest(
     params: { devices: ids(devices), profile: profile?.id ?? null },
     success: (r) => movedText(target, devices, r),
     failure: `Couldn't move ${who(devices)} to ${target}`,
+    // Core asks only when the move takes devices offline (the target is paused, or a scheduled pause is on).
+    confirm: { title: `Move ${who(devices)} to ${target}?`, confirmLabel: `Move to ${target}` },
     undo: (r) => {
       const undo = changed(r, devices, (d) => d.profileId === (profile?.id ?? null));
       return before.size === 1 && undo.length ? { id: "device.profile.set", params: { devices: undo, profile: prev ?? null } } : null;

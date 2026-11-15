@@ -292,7 +292,7 @@ describe("settings.impact (demo)", () => {
     const registered = allCommands().filter((c) => c.effect === "disruptive").map((c) => c.id);
     const planned = ["settings.dns.set", "settings.dhcp.set", "settings.ipv6.set", "settings.wan.set", "settings.connection_mode.set", "settings.nat_randomization.set", "settings.mlo.set", "settings.legacy_mode.set", "updates.install", "eero.port.action"];
     // eero.restart, guest writes, pauses and blocks have their own impact copy (gateway-aware, guests only, the devices named).
-    const own = new Set(["eero.restart", "guest.disable", "guest.rename", "guest.password.set", "wifi.hide5g.set", "device.pause", "device.block", "profile.pause", "profile.unassigned.pause"]);
+    const own = new Set(["eero.restart", "guest.disable", "guest.rename", "guest.password.set", "wifi.hide5g.set", "device.pause", "device.block", "profile.pause", "profile.unassigned.pause", "integrations.builtin.set"]);
     for (const id of [...registered, ...planned].filter((id) => !own.has(id))) expect(IMPACT[id], id).toBeDefined();
   });
 
@@ -668,8 +668,10 @@ const M53: [string, Record<string, unknown>, (s: M.NetworkSettings) => unknown, 
   ["settings.simple_setup.set", { enabled: false }, (s) => s.simpleSetup, false],
   ["settings.thread.set", { enabled: false, credentialSync: false }, (s) => [s.thread?.enabled, s.thread?.credentialSync], [false, false]],
 ];
-const M53_DISRUPTIVE = ["settings.mlo.set", "settings.legacy_mode.set"];
-const m53conf = (id: string) => (M53_DISRUPTIVE.includes(id) ? { confirm: true } : {});
+const M53_DISRUPTIVE = ["settings.mlo.set", "settings.legacy_mode.set", "settings.fast_transition.set", "settings.thread.set"];
+/** The time zone write confirms only when a scheduled pause would start; Berlin starts Mia's Bedtime in the demo. */
+const M53_CONFIRMS_WHEN = ["settings.timezone.set"];
+const m53conf = (id: string) => (M53_DISRUPTIVE.includes(id) || M53_CONFIRMS_WHEN.includes(id) ? { confirm: true } : {});
 const THREAD_KEY = "00112233445566778899aabbccddeeff";
 
 describe("wireless, mesh and Thread settings writes (demo)", () => {
@@ -681,14 +683,30 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     expect(pick(await settingsOf(engine, MAPLE))).toEqual(want);
   });
 
-  it("MLO and legacy mode need confirm with the settings.impact summary; the live toggles do not", async () => {
+  it("MLO, legacy mode, fast roaming and Thread need confirm; the live toggles do not", async () => {
     const engine = demoEngine();
     const impact = await ok(engine.execute<M.SettingsImpact>("settings.impact", { networkId: MAPLE, changes: [{ id: "settings.mlo.set" }] }));
     expect(await engine.execute("settings.mlo.set", { networkId: MAPLE, mode: "single" })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: impact.summary } });
     const legacy = await engine.execute("settings.legacy_mode.set", { networkId: MAPLE, enabled: true });
     expect(legacy).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^Legacy device mode turns on\. Every eero restarts .*about 2 to 3 minutes\.$/) } });
     expect(await engine.execute("settings.mlo.set", { networkId: MAPLE, mode: "multi" })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Nothing changes, so nothing restarts." } });
-    for (const [id, params] of M53.filter(([id]) => !M53_DISRUPTIVE.includes(id))) expect((await engine.execute(id, { networkId: MAPLE, ...params })).ok, id).toBe(true);
+    expect(await engine.execute("settings.fast_transition.set", { networkId: MAPLE, enabled: true })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Nothing changes." } });
+    expect(await engine.execute("settings.fast_transition.set", { networkId: MAPLE, enabled: false })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Fast roaming turns off. Nothing restarts and no device disconnects." } });
+    const thread = await engine.execute("settings.thread.set", { networkId: MAPLE, enabled: false });
+    expect(thread).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^Thread turns off\. /) } });
+    const live = M53.filter(([id]) => !M53_DISRUPTIVE.includes(id) && !M53_CONFIRMS_WHEN.includes(id));
+    for (const [id, params] of live) expect((await engine.execute(id, { networkId: MAPLE, ...params })).ok, id).toBe(true);
+  });
+
+  it("a time zone change asks only when it starts a scheduled pause now, naming who goes offline", async () => {
+    const engine = demoEngine();
+    const before = (await settingsOf(engine, MAPLE)).timezone;
+    // 14:41 in Los Angeles is 23:41 in Berlin, inside Mia's Bedtime (9:00 PM to 7:00 AM).
+    const berlin = await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "Europe/Berlin" });
+    expect(berlin).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^In Europe\/Berlin, Mia's Bedtime pause is on now, so .+ lose internet until 7:00 AM\.$/) } });
+    expect((await settingsOf(engine, MAPLE)).timezone).toBe(before);
+    // 15:41 in Denver starts nothing, so it runs without confirm.
+    expect((await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "America/Denver" })).ok).toBe(true);
   });
 
   it("a change that changes nothing returns the settings as they are", async () => {
@@ -698,7 +716,7 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
       ["settings.band_steering.set", { enabled: true }],
       ["settings.power_saving.set", { enabled: true }],
       ["settings.timezone.set", { timezone: before.timezone }],
-      ["settings.thread.set", { enabled: true }],
+      ["settings.thread.set", { enabled: true, confirm: true }],
       ["settings.mlo.set", { mode: "multi", confirm: true }],
     ] as const) {
       expect(await ok(engine.execute<M.NetworkSettings>(id, { networkId: MAPLE, ...params }))).toEqual(before);
@@ -711,7 +729,7 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     const backend: Backend = { ...demo, settings: { ...demo.settings, setTimezone: (id) => demo.settings.get(id) } };
     const engine = createEngine({ backend, clock: () => NOW });
     const before = (await settingsOf(engine, MAPLE)).timezone;
-    const r = await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "Europe/Berlin" });
+    const r = await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "Europe/Berlin", confirm: true });
     expect(r).toMatchObject({ ok: false, error: { code: "eero_error", message: `eero accepted the time zone but still reports ${before}, not Europe/Berlin. Check again in a minute; if it has not changed, eero did not save it.` } });
   });
 
@@ -727,7 +745,7 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     // Mom's House reports no MLO or Thread, and power_saving not capable (only schedule deletes still work there).
     expect(await code(engine.execute("settings.mlo.set", { networkId: MOM, mode: "single", confirm: true }))).toBe("bad_params");
     expect(await code(engine.execute("settings.power_saving.set", { networkId: MOM, enabled: true }))).toBe("bad_params");
-    expect(await code(engine.execute("settings.thread.set", { networkId: MOM, enabled: true }))).toBe("bad_params");
+    expect(await code(engine.execute("settings.thread.set", { networkId: MOM, enabled: true, confirm: true }))).toBe("bad_params");
     expect(await code(engine.execute("settings.thread.credentials", { networkId: MOM }))).toBe("bad_params");
     expect(await code(engine.execute("settings.thread.reset", { networkId: MOM, confirm: true }))).toBe("bad_params");
   });
@@ -806,13 +824,13 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     const g = (op?: string) => (op ? { area: "settings", op } : { area: "settings" });
     expect(rows).toEqual({
       "settings.band_steering.set": ["write", g(), ["settings"]],
-      "settings.fast_transition.set": ["write", g(), ["settings"]],
+      "settings.fast_transition.set": ["disruptive", g(), ["settings"]],
       "settings.mlo.set": ["disruptive", g(), ["settings", "network", "wifi"]],
       "settings.legacy_mode.set": ["disruptive", g(), ["settings", "network", "wifi"]],
       "settings.power_saving.set": ["write", g(), ["settings"]],
       "settings.timezone.set": ["write", g(), ["settings", "network", "profiles"]],
       "settings.simple_setup.set": ["write", g(), ["settings"]],
-      "settings.thread.set": ["write", g(), ["settings"]],
+      "settings.thread.set": ["disruptive", g(), ["settings"]],
       "settings.power_schedule.add": ["write", g(), ["settings"]],
       "settings.power_schedule.update": ["write", g(), ["settings"]],
       "settings.power_schedule.remove": ["write", g("delete"), ["settings"]],
@@ -895,11 +913,11 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
   it("Thread off goes to {thread}/enable; thread_enable on {thread} is ignored by eero, as the M5 review saw", async () => {
     const s = fakeEngine();
     fake = s.fake;
-    await ok(s.engine.execute("settings.thread.set", { networkId: N, enabled: false, credentialSync: false }));
+    await ok(s.engine.execute("settings.thread.set", { networkId: N, enabled: false, credentialSync: false, confirm: true }));
     expect(sent(s.fake)).toEqual([req("PUT", "/thread/enable", { enabled: false }), req("PUT", "/thread", { enable_credential_syncing: false })]);
     expect((await settingsOf(s.engine, N)).thread).toMatchObject({ enabled: false, credentialSync: false });
     expect(s.fake.state.networks.get(N)?.network.thread).toBe(false);
-    await ok(s.engine.execute("settings.thread.set", { networkId: N, enabled: true }));
+    await ok(s.engine.execute("settings.thread.set", { networkId: N, enabled: true, confirm: true }));
     expect((await settingsOf(s.engine, N)).thread?.enabled).toBe(true);
   });
 
@@ -911,7 +929,7 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     expect(s.fake.state.networks.get(N)?.thread?.enabled).toBe(true);
     const stuck: typeof s.backend = { ...s.backend, settings: { ...s.backend.settings, setThread: (id) => s.backend.settings.get(id), setSimpleSetup: (id) => s.backend.settings.get(id) } };
     const engine = createEngine({ backend: stuck, clock: () => NOW });
-    expect(await engine.execute("settings.thread.set", { networkId: N, enabled: false })).toMatchObject({
+    expect(await engine.execute("settings.thread.set", { networkId: N, enabled: false, confirm: true })).toMatchObject({
       ok: false,
       error: { code: "eero_error", message: "eero accepted the change but did not apply it. Thread is still on." },
     });
@@ -978,7 +996,7 @@ describe("wireless, mesh and Thread settings writes (fake eero server)", () => {
     const s = fakeEngine();
     fake = s.fake;
     const before = (await settingsOf(s.engine, N)).timezone;
-    const r = await s.engine.execute("settings.timezone.set", { networkId: N, timezone: "Europe/Berlin" });
+    const r = await s.engine.execute("settings.timezone.set", { networkId: N, timezone: "Europe/Berlin", confirm: true });
     expect(r).toMatchObject({ ok: false, error: { code: "eero_error", message: "settings.setTimezone is not available in the eero backend yet." } });
     expect(s.fake.writes).toEqual([]);
     expect((await settingsOf(s.engine, N)).timezone).toBe(before);

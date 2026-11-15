@@ -10,10 +10,11 @@ import { z } from "zod";
 import type { Backend } from "../backend";
 import { BackendError, CommandError } from "../errors";
 import { DEVICE_TYPE_IDS } from "../eero/map/device";
-import { toCsv } from "../format";
+import { nameList, toCsv } from "../format";
 import type * as M from "../model";
 import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, POLL, RATES_STALE_SEC } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
+import { offlineIn, unassignedIds, UNASSIGNED } from "./profile";
 import { usageWindow } from "./usage";
 
 const DAY_MS = 86_400_000;
@@ -277,13 +278,6 @@ const devicesParam = z
   .union([ref("device"), z.array(ref("device")).min(1).max(50)])
   .describe("A device id or exact name (case-insensitive), or a list of them (1 to 50).");
 
-/** "Leo's iPad", "Leo's iPad and Mia's Switch", "Leo's iPad, Mia's Switch and 3 more". */
-function whoList(names: ReadonlyArray<string>): string {
-  if (names.length <= 2) return names.join(" and ");
-  const shown = names.slice(0, 2);
-  return `${shown.join(", ")} and ${names.length - 2} more`;
-}
-
 /** The devices a pause or block names in its needs_confirm message, by display name. */
 async function deviceNames(ctx: CommandContext, refs: string | string[]): Promise<string[]> {
   const ids = [...new Set(await Promise.all((Array.isArray(refs) ? refs : [refs]).map((r) => ctx.resolve("device", r))))];
@@ -411,7 +405,7 @@ export const commands: AnyCommand[] = [
     params: z.object({ devices: devicesParam }),
     async confirmMessage(ctx, p) {
       const names = await deviceNames(ctx, p.devices);
-      return `${whoList(names)} ${names.length === 1 ? "loses" : "lose"} internet until resumed. ${names.length === 1 ? "It stays" : "They stay"} connected to Wi-Fi.`;
+      return `${nameList(names)} ${names.length === 1 ? "loses" : "lose"} internet until resumed. ${names.length === 1 ? "It stays" : "They stay"} connected to Wi-Fi.`;
     },
     run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setPaused(ctx.net, id, true)),
   }),
@@ -472,6 +466,19 @@ export const commands: AnyCommand[] = [
     gate: { area: "devices", bridgeOff: true },
     invalidates: [...DEVICE_WRITE_TOPICS, "usage"],
     params: z.object({ devices: devicesParam, profile: profileParam }),
+    // Moving a device into a paused profile (or a scheduled pause on now) takes it offline.
+    async confirmWhen(ctx, p) {
+      const target = p.profile === null ? UNASSIGNED : await ctx.resolve("profile", p.profile);
+      const why = await offlineIn(ctx, target);
+      if (!why) return null;
+      const ids = [...new Set(await Promise.all((Array.isArray(p.devices) ? p.devices : [p.devices]).map((r) => ctx.resolve("device", r))))];
+      const devices = await ctx.backend.device.list(ctx.net);
+      const already = target === UNASSIGNED ? new Set(await unassignedIds(ctx)) : new Set(devices.filter((d) => d.profileId === target).map((d) => d.id));
+      const moving = devices.filter((d) => ids.includes(d.id) && !already.has(d.id) && !d.paused && !d.blocked);
+      if (moving.length === 0) return null;
+      const names = moving.map((d) => d.name);
+      return `${why.reason}, so ${nameList(names)} ${names.length === 1 ? "loses" : "lose"} internet ${why.until}.`;
+    },
     run: async (ctx, p) => {
       const profile = p.profile === null ? null : await ctx.resolve("profile", p.profile);
       return eachDevice(ctx, p.devices, (id) => ctx.backend.device.setProfile(ctx.net, id, profile));
@@ -489,7 +496,7 @@ export const commands: AnyCommand[] = [
     params: z.object({ devices: devicesParam }),
     async confirmMessage(ctx, p) {
       const [names, network] = await Promise.all([deviceNames(ctx, p.devices), networkLabel(ctx)]);
-      return `${whoList(names)} ${names.length === 1 ? "is" : "are"} disconnected from every eero and can't rejoin ${network} until unblocked.`;
+      return `${nameList(names)} ${names.length === 1 ? "is" : "are"} disconnected from every eero and can't rejoin ${network} until unblocked.`;
     },
     run: (ctx, p) => eachDevice(ctx, p.devices, (id) => ctx.backend.device.setBlocked(ctx.net, id, true)),
   }),

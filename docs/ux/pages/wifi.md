@@ -89,7 +89,7 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | 2.4 GHz only Turn on / Turn off | `wifi.hide5g.set` `{enabled}` | disruptive | confirm dialog with the impact | Countdown to `hide5g.expiresAt` |
 | 2.4 GHz only devices | none (navigation) | | | Opens the fix on [Troubleshooting](troubleshooting.md) |
 | Nickname pencil, sheet Save | `network.nickname.set` `{nickname}` (empty clears) | write | no | Toast with Undo (sets the old nickname back); network switcher updates |
-| Time zone pencil, sheet Save | `settings.timezone.set` `{timezone}` | write | no | Toast with Undo (sets the old zone back). Demo only: dimmed on the eero backend (M6.9) |
+| Time zone pencil, sheet Save | `settings.timezone.set` `{timezone}` | write | only when the new zone starts a scheduled pause now (dialog over the sheet) | Toast with Undo (sets the old zone back). Demo only: dimmed on the eero backend (M6.9) |
 | Confirm bar Discard | none | | | Reverts staged edits |
 | Save and reconnect | `wifi.name.set`, `wifi.password.set`, `wifi.security.set` in that order, each with `confirm: true` | disruptive | the confirm bar plus impact panel is the confirm | Wireless clients drop and rejoin; hero updates |
 

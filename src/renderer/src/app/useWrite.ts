@@ -111,8 +111,8 @@ export type WriteRequest<P = Record<string, unknown>, R = unknown> = {
 
 export type WriteDeps = {
   execute: (id: string, params?: unknown) => Promise<ExecuteResult>;
-  /** The command's effect and label from the registry. */
-  info: (id: string) => Promise<{ effect: Effect; label: string } | undefined>;
+  /** The command's effect and label from the registry (and whether a write may ask, `confirmsWhenOffline`). */
+  info: (id: string) => Promise<{ effect: Effect; label: string; confirmsWhenOffline?: boolean } | undefined>;
   ask: AskFn;
   invalidate: (prefixes: ReadonlyArray<string> | undefined) => void;
 };
@@ -165,7 +165,9 @@ export async function performWrite<P, R>(
     if (req.progress) progressId = toast.progress(req.progress, { detail: req.progressDetail });
   };
 
-  const withConfirm = confirmed && needsConfirm(effect);
+  // A write that takes devices offline only sometimes takes `confirm` too, so Retry after a confirm does not ask again.
+  const takesConfirm = needsConfirm(effect) || info?.confirmsWhenOffline === true;
+  const withConfirm = confirmed && takesConfirm;
   if (withConfirm) startProgress();
   let res = (await deps.execute(req.id, withConfirm ? { ...base, confirm: true } : base)) as ExecuteResult<R>;
   if (!res.ok && res.error.code === "needs_confirm" && !withConfirm) {

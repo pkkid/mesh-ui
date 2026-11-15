@@ -53,7 +53,10 @@ preview uses too.
 - **Input schema**: the JSON Schema generated from the command's zod params.
   `disruptive` and `destructive` tools add a required `confirm: boolean`
   property described as "Set true only after the user has approved this
-  action."
+  action." Writes with `confirmWhen` (they take devices offline only in some
+  cases, such as moving a device into a paused profile) add an optional
+  `confirm`, and their description says it is needed when the call answers
+  `needs_confirm`.
 - **Annotations** derived from `effect`:
 
 | Effect | `readOnlyHint` | `idempotentHint` | `destructiveHint` | `openWorldHint` |

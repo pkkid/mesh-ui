@@ -67,7 +67,7 @@ Row actions shown in the mockup:
 | Grouped / Raw | none (passed as `grouped`) | | | Regroups the stream |
 | Mark all read | `notifications.mark_read` | write | no | Unread marker and bell dot clear; "Marked all read" toast, no Undo |
 | Settings icon | none (navigation) | | | Opens App & account at Notifications (`#/account/notifications`) |
-| Assign profile | `device.profile.set` `{devices: [device], profile}` | write | no | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
+| Assign profile | `device.profile.set` `{devices: [device], profile}` | write | only when the profile is paused or in a scheduled pause now | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
 | Row menu: Rename | `device.rename` `{device, nickname}` | write | no | Dialog; "Renamed to X" toast with Undo; field errors stay in the dialog |
 | Row menu: Block, Unblock | `device.block` / `device.unblock` `{devices: [device]}` | disruptive (Block) / write | Block: confirm dialog | "Blocked X" toast with Undo |
 | Row menu: Device details | none (navigation) | | | Opens the device page |

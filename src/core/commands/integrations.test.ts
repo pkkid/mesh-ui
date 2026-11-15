@@ -59,15 +59,15 @@ const VALID: Record<(typeof WRITES)[number], Record<string, unknown>> = {
 describe("integrations writes (demo)", () => {
   it("eero Built-in switches off and on, and the next read shows it", async () => {
     const engine = demoEngine();
-    expect((await ok(engine.execute<M.Integrations>("integrations.builtin.set", { networkId: MAPLE, enabled: false }))).builtin.enabled).toBe(false);
+    expect((await ok(engine.execute<M.Integrations>("integrations.builtin.set", { networkId: MAPLE, enabled: false, confirm: true }))).builtin.enabled).toBe(false);
     expect((await get(engine)).builtin).toMatchObject({ available: true, enabled: false });
-    await ok(engine.execute("integrations.builtin.set", { networkId: MAPLE, enabled: true }));
+    await ok(engine.execute("integrations.builtin.set", { networkId: MAPLE, enabled: true, confirm: true }));
     expect((await get(engine)).builtin.enabled).toBe(true);
   });
 
   it("refuses an unavailable integration with eero's reason, before anything changes", async () => {
     const engine = demoEngine();
-    const bridged = await engine.execute("integrations.builtin.set", { networkId: MOM, enabled: true });
+    const bridged = await engine.execute("integrations.builtin.set", { networkId: MOM, enabled: true, confirm: true });
     expect(bridged).toMatchObject({ ok: false, error: { code: "bad_params", message: "eero Built-in is not available on this network: Not available in bridge mode." } });
     const hub = await engine.execute("integrations.zigbee.discover", { networkId: LAKE });
     expect(hub).toMatchObject({ ok: false, error: { code: "bad_params", message: "Smart Home Hub is not available on this network: Needs an eero with a Zigbee radio." } });
@@ -99,13 +99,13 @@ describe("integrations writes (demo)", () => {
       expect(await code(demoEngine().execute(id, { ...VALID[id], networkId: "Nowhere" })), id).toBe("bad_params");
       expect(await code(demoEngine("signed_out").execute(id, VALID[id])), id).toBe("not_signed_in");
     }
-    expect(await code(demoEngine().execute("integrations.builtin.set", {}))).toBe("bad_params");
-    expect(await code(demoEngine().execute("integrations.builtin.set", { enabled: "yes" }))).toBe("bad_params");
+    expect(await code(demoEngine().execute("integrations.builtin.set", { confirm: true }))).toBe("bad_params");
+    expect(await code(demoEngine().execute("integrations.builtin.set", { enabled: "yes", confirm: true }))).toBe("bad_params");
   });
 
   it("declares effect, gate and the topics each write invalidates", () => {
     const spec = (id: string) => integrationCommands.find((c) => c.id === id);
-    expect(spec("integrations.builtin.set")).toMatchObject({ effect: "write", gate: { area: "network.proxied_nodes", bridgeOff: true }, invalidates: ["integrations", "devices"] });
+    expect(spec("integrations.builtin.set")).toMatchObject({ effect: "disruptive", gate: { area: "network.proxied_nodes", bridgeOff: true }, invalidates: ["integrations", "devices"] });
     expect(spec("integrations.zigbee.discover")).toMatchObject({ effect: "write", gate: { area: "network.smart_home_hub" }, invalidates: ["integrations"] });
     expect(spec("integrations.amazon.unlink")).toMatchObject({ effect: "destructive", gate: { area: "amazon.account", op: "delete" }, invalidates: ["integrations", "network"] });
   });
@@ -173,7 +173,7 @@ describe("integrations writes (fake eero server)", () => {
 
   it("eero Built-in sends PUT {net}/proxied_nodes JSON {enabled} and the next read shows it", async () => {
     const s = start();
-    const after = await ok(s.engine.execute<M.Integrations>("integrations.builtin.set", { networkId: "100001", enabled: false }));
+    const after = await ok(s.engine.execute<M.Integrations>("integrations.builtin.set", { networkId: "100001", enabled: false, confirm: true }));
     expect(s.fake.writes.at(-1)).toMatchObject({ method: "PUT", version: "2.2", route: "/networks/100001/proxied_nodes", encoding: "json", body: { enabled: false } });
     expect(after.builtin).toMatchObject({ available: true, enabled: false });
     expect(s.fake.state.networks.get("100001")?.network.proxied_nodes?.enabled).toBe(false);
@@ -211,7 +211,7 @@ describe("integrations writes (fake eero server)", () => {
   it("an eero refusal maps to eero_error", async () => {
     const s = start();
     s.fake.scenarios.fail(403, "error.network.forbidden", { method: "PUT", path: "/networks/100001/proxied_nodes" });
-    expect(await code(s.engine.execute("integrations.builtin.set", { networkId: "100001", enabled: false }))).toBe("eero_error");
+    expect(await code(s.engine.execute("integrations.builtin.set", { networkId: "100001", enabled: false, confirm: true }))).toBe("eero_error");
   });
 });
 
