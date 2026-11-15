@@ -24,7 +24,7 @@ function Card({ className, padded = false, ...props }: React.ComponentProps<"div
 
 type SectionProps = Omit<React.ComponentProps<"section">, "title"> & {
   title: React.ReactNode;
-  /** Muted line beside the title ("Per hour, last 24 hours"). */
+  /** Muted line beside the title ("Last 24 hours, all devices"). */
   subtitle?: React.ReactNode;
   /** Controls on the right of the heading: segmented toggle, small buttons, "See all" links. */
   tools?: React.ReactNode;

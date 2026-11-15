@@ -22,8 +22,8 @@ actions.
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      on the plan max (1.2 Gbps) with the latest result in the middle ("942
      Mbps", "918 Mbps") in the download and upload series colours.
-2. **Data usage** section. Header: "Data usage", sub "Per hour, last 24 hours,
-   all devices" on the heading's baseline, Day / Week toggle. Switching range
+2. **Data usage** section. Header: "Data usage", sub "Last 24 hours, all devices"
+   (Week: "Last 7 days, all devices") on the heading's baseline, Day / Week toggle. Switching range
    crossfades the subtitle and body (150 ms out, swap, 150 ms in, opacity
    only, none with reduced motion); background polls never crossfade. Body is
    a side column plus main chart:
