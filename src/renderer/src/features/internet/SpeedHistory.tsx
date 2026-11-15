@@ -25,7 +25,7 @@ const RANGES = [
 
 type Range = (typeof RANGES)[number]["value"];
 
-export function SpeedHistory() {
+export function SpeedHistory({ id }: { id?: string }) {
   const [range, setRange] = useState<Range>("week");
   // The week shares its cache entry with the hero (default params).
   const history = useQuery<History>("speedtest.history", range === "week" ? undefined : { range }, { poll: true });
@@ -43,7 +43,7 @@ export function SpeedHistory() {
   const fade = history.fading ? "opacity-40" : undefined;
 
   return (
-    <Section title="Speed test history" subtitle={subtitle} tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}>
+    <Section id={id} title="Speed test history" subtitle={subtitle} tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}>
       {history.error && !history.data ? (
         <SectionError what="speed tests" error={history.error} onRetry={() => void history.refetch()} />
       ) : (

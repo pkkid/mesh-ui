@@ -26,6 +26,7 @@ import { seriesColors } from "~/lib/chartColors";
 import type { SpeedTestRun } from "../../../../core/commands/internet";
 import { formatDuration, formatMbps, formatRelative, mbpsParts, networkClock } from "../../../../core/format";
 import type { Id, Internet, Network, SpeedHistory } from "../../../../core/model";
+import { TextLink } from "~/components/ui/text-link";
 import { openPlanSheet } from "./PlanSheet";
 
 // ---------------------------------------------------------------------------
@@ -227,9 +228,7 @@ export function InternetHero() {
             <div className="text-center text-3xs text-muted-foreground">
               {plan ? `Plan ${plan.label ? `${plan.label}, ` : ""}${formatMbps(plan.down)} down, ${formatMbps(plan.up)} up` : "No plan set: gauges scale to your best result"}
               {" · "}
-              <button type="button" className="hover:text-foreground hover:underline" onClick={openPlanSheet}>
-                {plan ? "Edit plan" : "Set plan"}
-              </button>
+              <TextLink onClick={openPlanSheet}>{plan ? "Edit plan" : "Set plan"}</TextLink>
             </div>
           )}
         </div>

@@ -4,6 +4,9 @@
  * states: docs/ux/pages/internet.md and docs/mockups/02-internet.html. Every
  * figure comes from a query command; the page only arranges and words it.
  */
+import { useEffect } from "react";
+
+import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { useNow } from "~/components/ui/page";
@@ -18,8 +21,16 @@ import { InternetUsage } from "./InternetUsage";
 import { PlanSheet } from "./PlanSheet";
 import { SpeedHistory } from "./SpeedHistory";
 
-export function InternetPage(_props: PageProps) {
+/** Sections `#/internet/<section>` scrolls to, with their DOM ids. */
+const SECTION_IDS: Readonly<Record<string, string>> = { history: "internet-history" };
+
+export function InternetPage({ params }: PageProps) {
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
+  const section = params.section;
+  useEffect(() => {
+    const id = section ? SECTION_IDS[section] : undefined;
+    if (id) scrollToSection(id);
+  }, [section]);
   return (
     <>
       <TopBarSubtitle>
@@ -27,7 +38,7 @@ export function InternetPage(_props: PageProps) {
       </TopBarSubtitle>
       <InternetHero />
       <Connection />
-      <SpeedHistory />
+      <SpeedHistory id={SECTION_IDS.history} />
       <EarlierTests />
       <InternetUsage />
       <PlanSheet />

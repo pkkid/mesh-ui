@@ -20,6 +20,7 @@ import { cn } from "~/lib/utils";
 import { formatMbps, formatRelative } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth } from "../../../../core/model";
 
+import { TextLink } from "~/components/ui/text-link";
 import { openPlanSheet } from "./PlanSheet";
 
 const WAN_LABEL: Record<NonNullable<Internet["wanType"]>, string> = { dhcp: "DHCP", static: "Static", pppoe: "PPPoE" };
@@ -117,16 +118,16 @@ export function Connection() {
         <span className="inline-flex items-center gap-1.5">
           {formatMbps(i.planMbps.down)} / {formatMbps(i.planMbps.up)}
           <Badge>set by you</Badge>
-          <button type="button" className="text-muted-foreground text-xs hover:text-foreground hover:underline" onClick={openPlanSheet}>
+          <TextLink className="text-xs" onClick={openPlanSheet}>
             Change
-          </button>
+          </TextLink>
         </span>
       ) : i ? (
         <span className="inline-flex items-center gap-1.5">
           <span className="text-muted-foreground">Not set</span>
-          <button type="button" className="text-muted-foreground text-xs hover:text-foreground hover:underline" onClick={openPlanSheet}>
-            Set your plan
-          </button>
+          <TextLink className="text-xs" onClick={openPlanSheet}>
+            Set your internet plan
+          </TextLink>
         </span>
       ) : null,
     },
