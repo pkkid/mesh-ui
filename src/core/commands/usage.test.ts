@@ -5,6 +5,7 @@ import { createDemoBackend } from "../demo";
 import { dayStart, hourStart } from "../demo/backend";
 import { createEeroBackend } from "../eero/backend";
 import { createEngine } from "../engine";
+import { BackendError } from "../errors";
 import type * as M from "../model";
 import { finishSeries, hourlyAverages, quietHours, USAGE_MAX_DAYS, usageWindow, windowAverage } from "./usage";
 
@@ -96,6 +97,41 @@ describe("usageWindow and the 7-day limit", () => {
 });
 
 describe("usage.get on the demo backend", () => {
+  it("reports today so far in the week like the day, though the daily series has no today bucket", async () => {
+    const { engine, backend } = demoEngine();
+    const raw = await backend.usage.series("4821907", { scope: "network", id: null, range: "week", from: iso(dayStart(NOW - 6 * DAY, TZ)), to: iso(NOW), cadence: "daily", timezone: TZ });
+    expect(raw.points.some((p) => Date.parse(p.at) >= dayStart(NOW, TZ))).toBe(false);
+    const day = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "day" }));
+    const heat = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "week", cadence: "hourly" }));
+    for (const scope of [{}, { scope: "device", id: "Living Room TV" }, { scope: "profile", id: "Mia" }, { scope: "guest" }]) {
+      const week = await ok(engine.execute<M.UsageSeries>("usage.get", { ...scope, range: "week" }));
+      expect(week.points.at(-1)?.at).toBe(iso(dayStart(NOW, TZ)));
+      expect(week.todaySoFar).not.toBeNull();
+    }
+    const week = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "week" }));
+    expect(week.todaySoFar).toBeGreaterThan(0);
+    expect(week.todaySoFar).toBe(day.todaySoFar);
+    expect(week.total).toEqual(heat.total);
+  });
+
+  it("leaves today so far unknown, not zero, when today's hours cannot be fetched", async () => {
+    const demo = createDemoBackend({ clock: () => NOW });
+    const backend: Backend = composeBackend("demo", {
+      ...demo,
+      usage: {
+        ...demo.usage,
+        series: async (net, q) => {
+          if (q.cadence === "hourly") throw new BackendError("network_error", "offline");
+          return demo.usage.series(net, q);
+        },
+      },
+    });
+    const engine = createEngine({ backend, clock: () => NOW });
+    const week = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "week" }));
+    expect(week.points).toHaveLength(6);
+    expect(week.todaySoFar).toBeNull();
+  });
+
   it("returns 24 hourly points for the network day with totals, busiest and today so far", async () => {
     const { engine, backend } = demoEngine();
     const s = await ok(engine.execute<M.UsageSeries>("usage.get", { scope: "network", range: "day" }));
@@ -349,6 +385,8 @@ describe("usage on the fake eero server", () => {
     expect(usageRequests(fake).map((e) => e.path)).toEqual([
       `/2.2/networks/${FAKE_NET}/data_usage/eeros/500002`,
       `/2.2/networks/${FAKE_NET}/data_usage/devices/0a1b2c000001`,
+      // The week's daily chart has no today bucket, so today's hours follow.
+      `/2.2/networks/${FAKE_NET}/data_usage/devices/0a1b2c000001`,
       `/2.2/networks/${FAKE_NET}/data_usage/profiles/702`,
     ]);
     const network = await ok(engine.execute<M.UsageSeries>("usage.get", {}));
@@ -364,6 +402,20 @@ describe("usage on the fake eero server", () => {
     expect(FAKE_NOW - Date.parse(q.get("start") ?? "")).toBeLessThanOrEqual(7 * DAY);
     expect(q.get("cadence")).toBe("daily");
     expect(s.points).toHaveLength(7);
+  });
+
+  it("adds today to the week from today's hours, since eero's daily chart has no today bucket", async () => {
+    const { fake, engine } = fakeEngine();
+    const week = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "week" }));
+    const [daily, hourly] = usageRequests(fake).map((r) => new URLSearchParams(r.query));
+    expect(daily?.get("cadence")).toBe("daily");
+    expect(hourly?.get("cadence")).toBe("hourly");
+    const midnight = dayStart(FAKE_NOW, "America/New_York");
+    expect(hourly?.get("start")).toBe(iso(midnight));
+    expect(week.points.at(-1)?.at).toBe(iso(midnight));
+    const day = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "day" }));
+    expect(week.todaySoFar).toBeGreaterThan(0);
+    expect(week.todaySoFar).toBe(day.todaySoFar);
   });
 
   it("maps the breakdown by device, profile and eero with names, ids and Unassigned", async () => {

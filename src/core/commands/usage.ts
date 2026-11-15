@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import { dayStart, hourStart, tzOffset } from "../demo/backend";
+import type { UsageQuery } from "../backend";
 import { BackendError, CommandError } from "../errors";
 import { type CsvColumn, toCsv } from "../format";
 import type * as M from "../model";
@@ -51,8 +52,39 @@ export function finishSeries(s: M.UsageSeries, w: UsageWindow, tz: string): M.Us
   const total = points.reduce((t, p) => ({ down: t.down + p.down, up: t.up + p.up }), { down: 0, up: 0 });
   const busiest = points.reduce<M.UsagePoint | null>((best, p) => (bytesOf(p) > (best ? bytesOf(best) : 0) ? p : best), null);
   const today = dayStart(w.to, tz);
-  const todaySoFar = points.length ? points.filter((p) => Date.parse(p.at) >= today).reduce((n, p) => n + bytesOf(p), 0) : null;
+  // No bucket for today means today is unknown, not zero.
+  const todays = points.filter((p) => Date.parse(p.at) >= today);
+  const todaySoFar = todays.length ? todays.reduce((n, p) => n + bytesOf(p), 0) : null;
   return { scope: s.scope, id: s.id, range: s.range, cadence: w.cadence, points, total, busiest: busiest ? { ...busiest } : null, todaySoFar };
+}
+
+/**
+ * One series from the backend. eero's daily series has no bucket for the
+ * current day, so when a daily series stops before today, today's hours are
+ * fetched (one extra query) and summed into a partial point at local
+ * midnight. If that query fails the series is left without today, and
+ * finishSeries reports today so far as unknown (null).
+ */
+async function fetchSeries(ctx: CommandContext, q: UsageQuery): Promise<M.UsageSeries> {
+  const s = await ctx.backend.usage.series(ctx.net, q);
+  if (q.cadence !== "daily") return s;
+  const to = Date.parse(q.to);
+  const today = dayStart(to, q.timezone);
+  if (today < Date.parse(q.from) || s.points.some((p) => Date.parse(p.at) >= today)) return s;
+  let hours: M.UsageSeries;
+  try {
+    hours = await ctx.backend.usage.series(ctx.net, { ...q, from: new Date(today).toISOString(), cadence: "hourly" });
+  } catch (err) {
+    if (err instanceof BackendError) return s;
+    throw err;
+  }
+  const part = hours.points
+    .filter((p) => {
+      const at = Date.parse(p.at);
+      return at >= today && at <= to;
+    })
+    .reduce((t, p) => ({ down: t.down + p.down, up: t.up + p.up }), { down: 0, up: 0 });
+  return { ...s, points: [...s.points, { at: new Date(today).toISOString(), ...part }] };
 }
 
 /** The network's IANA zone, which every bucket is aligned to. */
@@ -84,9 +116,7 @@ const usageGet = defineCommand({
     const tz = await networkZone(ctx);
     const w = usageWindow(p.range, p.cadence, ctx.now(), tz);
     const query = (scope: M.UsageScope, id: M.Id | null) =>
-      ctx.backend.usage
-        .series(ctx.net, { scope, id, range: p.range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: w.cadence, timezone: tz })
-        .then((s) => finishSeries(s, w, tz));
+      fetchSeries(ctx, { scope, id, range: p.range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: w.cadence, timezone: tz }).then((s) => finishSeries(s, w, tz));
 
     if (p.scope === "network") return query("network", null);
     if (p.scope === "guest") return guestSeries(ctx, w, tz, p.range);
@@ -123,7 +153,7 @@ async function guestSeries(ctx: CommandContext, w: UsageWindow, tz: string, rang
   for (const g of guests) {
     let s: M.UsageSeries;
     try {
-      s = await ctx.backend.usage.series(ctx.net, { scope: "device", id: g.id, range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: w.cadence, timezone: tz });
+      s = await fetchSeries(ctx, { scope: "device", id: g.id, range, from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), cadence: w.cadence, timezone: tz });
     } catch (err) {
       if (err instanceof BackendError && err.code === "eero_error" && err.detail?.status === 404) continue;
       throw err;

@@ -248,15 +248,16 @@ describe("usage", () => {
     expect(top?.name).toBe("Living Room TV");
   });
 
-  it("gives daily buckets at local midnight for a week", async () => {
+  it("gives daily buckets at local midnight for a week, with none for today like eero", async () => {
     const b = demo();
     const s = await series(b, MAPLE, "network", null, week);
-    expect(s.points).toHaveLength(7);
+    expect(s.points).toHaveLength(6);
     for (const p of s.points) expect(new Date(p.at).toLocaleTimeString("en-US", { timeZone: TZ, hour12: false })).toBe("00:00:00");
+    expect(Date.parse(s.points.at(-1)?.at ?? "")).toBeLessThan(dayStart(NOW, TZ));
     const hourly = await series(b, MAPLE, "network", null, { ...week, cadence: "hourly" });
-    expect(hourly.total).toEqual(s.total);
-    const today = s.points.at(-1);
-    expect(s.todaySoFar).toBe((today?.down ?? 0) + (today?.up ?? 0));
+    const before = hourly.points.filter((p) => Date.parse(p.at) < dayStart(NOW, TZ));
+    expect(s.total.down).toBe(before.reduce((n, p) => n + p.down, 0));
+    expect(s.total.up).toBe(before.reduce((n, p) => n + p.up, 0));
   });
 
   it("keeps guest usage to guest devices and offline networks quiet", async () => {

@@ -133,7 +133,8 @@ actions.
 - `usage.get {scope: "eero"}` without an `id` returns all eeros; this needs
   `{net}/data_usage/eeros` and should be verified in the fake server.
 - "Busiest hour" and "so far today" are computed in core from the same
-  series, in the network time zone.
+  series, in the network time zone. In Week, today's partial day comes from
+  today's hours, since eero's daily series stops at yesterday.
 - Gauge max is the plan speed the user set on Internet (stored in
   `settings.json`, see [internet.md](internet.md)); eero does not know the
   plan.

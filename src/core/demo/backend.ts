@@ -684,6 +684,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         const start = q.cadence === "hourly" ? hourStart(from, tz) : dayStart(from, tz);
         for (let b = start; b < to && b <= t; ) {
           const end = q.cadence === "hourly" ? b + HOUR : nextDay(b, tz);
+          // Like eero, a daily series has no bucket for the day in progress.
+          if (q.cadence === "daily" && end > t) break;
           points.push({ at: new Date(b).toISOString(), ...sumHours(devices, data, b, end, t, tz) });
           b = end;
         }
