@@ -96,7 +96,7 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 - Desktop notifications are raised by the main process from the same `notifications.list` poll that feeds the bell; one poll, both surfaces.
 - Mesh UI does not offer **Switch to Amazon login** (it is permanent and needs Amazon sign in), so the Account section has no login row.
 - The command log (`app.audit.list`) reads the audit log the engine writes on every CLI and MCP call, `audit.jsonl` in the config dir. Format, redaction and the 1,000 line cap are in [security.md](../../architecture/security.md#audit-log); it never holds the token or secret params. Window initiated commands are not logged.
-- "MCP connected" means an MCP client called `mesh-ui mcp` recently; there is no persistent connection to detect. Base it on the log (open question on wording).
+- The section header reads "MCP used <age>" (or "MCP not used yet"), from the latest MCP call in the audit log; there is no persistent connection to detect, so it never says "connected" (decided in M6.6).
 - Support ID is the account `log_id`. Network ID is the id in the network URL.
 - Theme and panel state are renderer preferences in local storage, not commands; settings the CLI also needs live in `settings.json`.
 - Commands added: `app.audit.list` q.

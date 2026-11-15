@@ -17,10 +17,12 @@ gathers them ([testing.md](testing.md#manual-checks)).
 - 2026-11-13: The app id is `io.github.pkkid.meshui` (final). ([build-and-release.md](platform/build-and-release.md#identity))
 - 2026-11-13: Windows builds ship unsigned for now (users click through SmartScreen); signing, Azure Trusted Signing preferred, is added before a wider release. ([build-and-release.md](platform/build-and-release.md#windows))
 - 2026-11-13: **Remind me** on Updates is dropped; eero's own update notification toggles on App & account cover it. ([updates-admins.md](ux/pages/updates-admins.md#notes))
+- 2026-11-14: macOS builds ship unsigned for now (ad-hoc signature, not notarized; no Apple secrets). Users open the app once with **Open Anyway** in System Settings > Privacy & Security, and update by hand from the release page, since an unsigned Mac copy only checks for updates. Developer ID signing and notarization are parked under After M6. ([build-and-release.md](platform/build-and-release.md#macos))
+- 2026-11-14: App & account says "MCP used <age>" (or "MCP not used yet") from the audit log, never "MCP connected": there is no live connection to detect. ([app-account.md](ux/pages/app-account.md#notes))
+- 2026-11-14: The weekly report row is not built in M6: no `report_settings` capture exists, so there is no known key. eero's own `network.dataUsageReport` alert key still shows as "Data usage report". The row can return once a capture names the setting. ([app-account.md](ux/pages/app-account.md#notes))
 
 ## Product decisions for the maintainer
 
-- Wording and basis of "MCP connected" on App & account (there is no live connection to detect; base it on the audit log). ([app-account.md](ux/pages/app-account.md#notes))
 - Show the command's source file path in the palette preview only in dev builds? ([command-palette.md](ux/pages/command-palette.md#notes))
 - Topbar light/dark toggle alongside themes in App & account: proposal is to keep both, the toggle only flips the variant. ([ux/overview.md](ux/overview.md#open-questions))
 - Wi-Fi page: move the Save button beside the nickname field, since the time zone saves on change. ([wifi.md](ux/pages/wifi.md#notes))
@@ -32,7 +34,7 @@ gathers them ([testing.md](testing.md#manual-checks)).
 - Per-row unread state for notifications, derived from `notifications_history` and `has_unread`: needs a real response shape. ([activity.md](ux/pages/activity.md#notes))
 - Does `notifications.list` come from an eero inbox endpoint, or must core build it from `events.list`? ([ux/overview.md](ux/overview.md#open-questions))
 - "Ports & temperature" event type and "run from Mesh UI" attribution depend on fields not seen yet. ([activity.md](ux/pages/activity.md#notes))
-- Which setting backs the weekly report toggle: `{net}/data_usage/report_settings` or a notifications key? ([app-account.md](ux/pages/app-account.md#notes))
+- Account writes (name, email, mobile, Stay up to date, push switches) and the network nickname label type: need the read-only captures of endpoints.md section 20 before the live client sends them. ([app-account.md](ux/pages/app-account.md#notes), [endpoints.md](eero-api/endpoints.md))
 - Guest network behaviour in bridge mode. ([guest.md](ux/pages/guest.md))
 - Whether `device.list` reports guest membership (`is_guest`) on firmware without a guest network. ([devices.md](ux/pages/devices.md#notes))
 - Whether eero exposes per-device retries outside the mobile app's User-Agent. ([device-detail.md](ux/pages/device-detail.md#notes))
