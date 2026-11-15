@@ -93,7 +93,7 @@ export function DataUsage() {
       title="Data usage"
       subtitle={
         <span className={crossfade}>
-          {day ? "Per hour, last 24 hours, all devices" : "Per day, last 7 days, all devices"}
+          {day ? "Last 24 hours, all devices" : "Last 7 days, all devices"}
         </span>
       }
       tools={<Segmented aria-label="Range" value={picked} onValueChange={pick} options={RANGES} />}

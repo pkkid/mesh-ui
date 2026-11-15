@@ -48,7 +48,7 @@ export function EeroUsage({ eeros, timezone }: { eeros: ReadonlyArray<Eero> | un
   return (
     <Section
       title="Data usage by eero"
-      subtitle={day ? "Download and upload per hour, stacked" : "Download and upload per day, stacked"}
+      subtitle={day ? "Last 24 hours, download and upload, stacked" : "Last 7 days, download and upload, stacked"}
       tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
     >
       {usage.error && !usage.data ? (

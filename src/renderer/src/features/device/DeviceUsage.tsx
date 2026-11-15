@@ -59,7 +59,7 @@ export function DeviceUsage({ view, id }: { view: DeviceView; id: string }) {
   return (
     <Section
       title="Data usage"
-      subtitle={day ? "Per hour, last 24 hours" : "Per day, last 7 days"}
+      subtitle={day ? "Last 24 hours" : "Last 7 days"}
       tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
     >
       {usage.error && !s ? (

@@ -23,7 +23,7 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
      device is active".
 2. Two columns.
    - Left:
-     - **Data usage**, sub "Per hour, last 24 hours", Day / Week toggle. Hero
+     - **Data usage**, sub "Last 24 hours" ("Last 7 days" on Week), Day / Week toggle. Hero
        figure "86 GB" with "busiest hour 11 AM · 9.4 GB · #2 on the network",
        legend with Download 64 GB and Upload 22 GB, and an area chart.
      - **Device information** (card): Manufacturer, Model, Hostname (mono),
