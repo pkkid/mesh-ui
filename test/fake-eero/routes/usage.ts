@@ -3,7 +3,8 @@
  * the breakdown and the per-eero list. Bytes are generated per device and
  * hour from a hash of its MAC, so every view sums the same device-hours and
  * agrees. Like a free eero account, nothing older than 7 days (or later than
- * now) comes back. Shapes: docs/eero-api/data-model.md (Charts). The
+ * now) comes back, and a daily chart has no bucket for the day in progress
+ * (seen on a real network, issue #236). Shapes: docs/eero-api/data-model.md (Charts). The
  * breakdown follows a real capture (2026-11-13, key paths and types only):
  * `{start, end, upload, download, eeros, devices, unprofiled, profiles}`,
  * profile rows `{profile_id: number, profile_name, upload, download}` with
@@ -80,6 +81,8 @@ function chart(ctx: RouteContext, net: FakeNetwork, devices: RawDevice[]) {
   const up: { time: string; value: number }[] = [];
   for (let b = w.start; b < w.end; b += w.step) {
     if (b + w.step <= now - HISTORY_MS) continue;
+    // Like eero, a daily chart has no bucket for the day in progress.
+    if (w.step === DAY && b + DAY > now) break;
     const s = sum(devices, b, Math.min(b + w.step, w.end), now);
     const time = new Date(b).toISOString();
     down.push({ time, value: s.down });
