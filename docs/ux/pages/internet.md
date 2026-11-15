@@ -18,7 +18,8 @@ Topbar: title "Internet", subtitle freshness, no page actions.
      9:41 AM".
    - Muted line: "Last test 2 hours ago hit 78% of your 1.2 Gbps plan".
    - Actions: **Run speed test** (primary), **Troubleshoot** (ghost).
-   - Right: Download and Upload gauges, as on Overview.
+   - Right: Download and Upload gauges, as on Overview (plan mark, "% of
+     plan" or flame and "% over plan" line).
 2. **Connection** section. Sub: "Gateway: Living Room (eero Max 7), WAN port
    10 GbE". Tools: **Copy details**, **ISP settings →**. Two cards:
    - **Internet provider** (globe icon, "From geo IP lookup", status "ISP

@@ -57,6 +57,17 @@ export function formatPercent(pct: Num, digits = 0): string {
   return `${pct.toFixed(digits)}%`;
 }
 
+/**
+ * A speed against the plan, as the gauges word it: "94% of plan", or "9% over
+ * plan" once it rounds above 100%. `over` says which. Null without a value
+ * or a plan.
+ */
+export function formatPlanShare(value: Num, plan: Num): { text: string; over: boolean } | null {
+  if (!isNum(value) || !isNum(plan) || plan <= 0) return null;
+  const pct = Math.round((value / plan) * 100);
+  return pct > 100 ? { text: `${pct - 100}% over plan`, over: true } : { text: `${pct}% of plan`, over: false };
+}
+
 /** A plain count with separators: "1,284", "-". */
 export function formatCount(n: Num): string {
   return isNum(n) ? Math.round(n).toLocaleString("en-US") : MISSING;

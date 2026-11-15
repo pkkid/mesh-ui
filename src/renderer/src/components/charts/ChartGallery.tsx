@@ -217,6 +217,19 @@ export function ChartGallery() {
                 ariaLabel="Upload speed 38 Mbps of 50"
                 loading={loading}
               />
+              <Gauge
+                size={150}
+                value={1086}
+                max={1250}
+                mark={1000}
+                color={seriesColors.download}
+                label="Over plan"
+                text="1,086"
+                unit="Mbps"
+                note="9% over plan"
+                ariaLabel="Download speed 1,086 Mbps, 9% over a 1,000 Mbps plan"
+                loading={loading}
+              />
               <Gauge size={150} value={null} max={500} color={seriesColors.download} label="Not run" unit="Mbps" ariaLabel="No speed test yet" />
             </div>
           </Block>

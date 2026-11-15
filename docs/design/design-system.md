@@ -91,6 +91,7 @@ series palette so they read on both light and dark.
 | Each eero, each profile | Assigned in order from blue, purple, aqua, orange, yellow, green, stable per id | | |
 | Neutral or "other" | Mix of `--foreground` with the background | | |
 | Power saving schedules | `seriesColors.powerSaving` (`--s-green`) | `#b8bb26` | `#79740e` |
+| Speed over plan (the flame on a speed gauge; its text stays muted) | `seriesColors.overPlan` (`--s-orange`) | `#fe8019` | `#af3a03` |
 | Activity event types | `eventCategoryColors`: devices blue, paused / blocked orange, schedules red, eero status yellow, speed tests aqua, firmware gray, admin purple, ports & temperature green, other neutral | | |
 
 Download and upload never appear in the same chart as bands, so sharing blue
@@ -360,7 +361,7 @@ Other chart kinds in the mockups, same rules for colour and labels:
 | Kind | Use |
 | --- | --- |
 | Sparkline | Tiny line, no labels, in tables and eero rows |
-| Gauge | Speed test result (download, upload) in Internet and Overview |
+| Gauge | Speed test result (download, upload) in Internet and Overview. With a plan: runs to 125% of it, a 2px foreground `mark` at the plan, and a `note` under the unit ("94% of plan", or a solid `Flame` in `overPlan` plus "9% over plan"); `SpeedGauge` in `InternetHero.tsx` is the shared one, `formatPlanShare` words it |
 | Heatmap | "When the network is busy", day by hour, one series colour at varying opacity |
 | Share bar | `h-2` bar of segments with `gap-0.5`, rounded outer ends, tooltip "label · value · percent", legend of `size-2` squares |
 | Topology | eero pucks joined by lines; wired solid, wireless dashed; weak links in the warning colour |

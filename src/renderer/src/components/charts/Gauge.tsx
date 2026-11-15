@@ -1,6 +1,8 @@
 /**
  * A 240 degree arc for a speed test result: a muted track, the value arc in
- * the series colour, quiet ticks, and the figure in the middle.
+ * the series colour, quiet ticks, and the figure in the middle. `mark` draws
+ * a short foreground line across the arc at that value (the plan speed) and
+ * `note` adds a line under the unit ("94% of plan").
  */
 import type { ReactNode } from "react";
 
@@ -19,6 +21,8 @@ export function Gauge({
   label,
   text,
   unit,
+  mark,
+  note,
   ariaLabel,
   size = 180,
   thickness = 12,
@@ -34,6 +38,10 @@ export function Gauge({
   /** The formatted figure; defaults to the value. */
   text?: ReactNode;
   unit?: ReactNode;
+  /** A value on the scale to mark across the arc (the plan); none when null or past max. */
+  mark?: number | null;
+  /** A small line under the unit. */
+  note?: ReactNode;
   ariaLabel: string;
   size?: number;
   thickness?: number;
@@ -53,6 +61,9 @@ export function Gauge({
     const [x2, y2] = at(to);
     return `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2.toFixed(2)},${y2.toFixed(2)}`;
   };
+
+  const markDeg = mark != null && max > 0 && mark > 0 && mark <= max ? START + (SWEEP * mark) / max : null;
+  const markLine = markDeg === null ? null : [...at(markDeg, r + thickness / 2 + 3), ...at(markDeg, r - thickness / 2 - 3)];
 
   const ticks = Array.from({ length: TICKS + 1 }, (_, k) => {
     const deg = START + (SWEEP * k) / TICKS;
@@ -102,6 +113,18 @@ export function Gauge({
             />
           ))}
         </g>
+        {markLine && (
+          <line
+            x1={markLine[0]}
+            y1={markLine[1]}
+            x2={markLine[2]}
+            y2={markLine[3]}
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            className="text-foreground"
+          />
+        )}
       </svg>
       <div className={cn("absolute inset-x-0 text-center", fadeClass(loading))} style={{ top: size * 0.3 }}>
         {label === undefined ? null : (
@@ -114,6 +137,7 @@ export function Gauge({
           {value === null ? "-" : (text ?? value)}
         </div>
         {unit === undefined ? null : <div className="text-xs text-muted-foreground">{unit}</div>}
+        {note ? <div className="mt-px text-3xs text-muted-foreground tabular-nums">{note}</div> : null}
       </div>
     </div>
   );
