@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { createFakeEero, type FakeEero } from "../../../test/fake-eero/server";
 import type { AuthState, Backend, SecretStore } from "../backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../demo";
@@ -7,7 +10,17 @@ import { mapInternet, mapSpeedTests } from "../eero/map/network";
 import { createEngine, memorySettings } from "../engine";
 import type * as M from "../model";
 import type { SettingsStore } from "../spec";
-import { commands as internetCommands, internetText, internetVerdict, SPEEDTEST_GIVE_UP_MS, SPEEDTEST_RESULT_MS, type SpeedTestRun, speedRating } from "./internet";
+import {
+  commands as internetCommands,
+  internetText,
+  internetVerdict,
+  SPEEDTEST_GIVE_UP_MS,
+  SPEEDTEST_RESULT_MS,
+  type SpeedTestRun,
+  speedRating,
+  reclaimLock,
+  speedTestLockPath,
+} from "./internet";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const HOUR = 3_600_000;
@@ -537,5 +550,114 @@ describe("speedtest.run and internet.plan.set (fake eero server)", () => {
     await ok(engine.execute("internet.plan.set", { networkId: "100001", clear: true }));
     expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: "100001" }))).planMbps).toBeNull();
     expect(fake.writes).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The one-at-a-time lock shared through the config dir (M6.10, #162)
+
+describe("speedtest.run lock shared through the config dir", () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  });
+  const tempDir = () => {
+    const d = mkdtempSync(join(tmpdir(), "mesh-ui-M6.10-speedlock-"));
+    dirs.push(d);
+    return d;
+  };
+  /** Two engines (the app and a CLI) on one fake eero and one config dir, sharing a clock. */
+  const twoEngines = (configDir: string | null) => {
+    const clock = { t: NOW };
+    const fake = createFakeEero({ now: () => clock.t });
+    const token = fake.signIn();
+    const engine = (surface: "ui" | "cli") => {
+      const eero = createEeroBackend({ secrets: secretsWith(token), origin: fake.origin, fetch: fake.fetch });
+      const backend: Backend = { ...eero, auth: { ...eero.auth, status: async () => signedIn } };
+      return createEngine({ backend, surface, clock: () => clock.t, settings: memorySettings(), host: { configDir } });
+    };
+    return { clock, fake, app: engine("ui"), cli: engine("cli") };
+  };
+  const MESSAGE = "A speed test is already running on this network. Its result shows in about a minute.";
+
+  it("a second engine is refused while the first test is pending, and allowed once the window expires", async () => {
+    const dir = tempDir();
+    const { clock, fake, app, cli } = twoEngines(dir);
+    await ok(app.execute("speedtest.run", { networkId: "100001" }));
+    expect(existsSync(speedTestLockPath(dir, "100001"))).toBe(true);
+    const refused = await cli.execute("speedtest.run", { networkId: "100001" });
+    expect(refused).toMatchObject({ ok: false, error: { code: "rate_limited", message: MESSAGE } });
+    // The other engine sees the running test in its history too.
+    expect((await ok(cli.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }))).running?.startedAt).toBe(new Date(NOW).toISOString());
+    expect(fake.writes).toHaveLength(1);
+    // Another network is not locked.
+    await ok(cli.execute("speedtest.run", { networkId: "100002" }));
+    // No history read sees the result here, so only the 3-minute window frees the lock.
+    clock.t = NOW + SPEEDTEST_GIVE_UP_MS - 1_000;
+    expect(await code(cli.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    clock.t = NOW + SPEEDTEST_GIVE_UP_MS;
+    await ok(cli.execute("speedtest.run", { networkId: "100001" }));
+    expect(fake.writes.filter((w) => w.path === "/2.2/networks/100001/speedtest")).toHaveLength(2);
+    // Now the app is the one refused.
+    expect(await code(app.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    await fake.close();
+  });
+
+  it("the result read by either engine frees the lock for both", async () => {
+    const dir = tempDir();
+    const { clock, fake, app, cli } = twoEngines(dir);
+    const run = await ok(app.execute<SpeedTestRun>("speedtest.run", { networkId: "100001" }));
+    clock.t += 65_000;
+    const h = await ok(cli.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001" }));
+    expect(h.tests[0]?.at).toBe(run.resultAt);
+    expect(h.running).toBeNull();
+    expect(existsSync(speedTestLockPath(dir, "100001"))).toBe(false);
+    await ok(app.execute("speedtest.run", { networkId: "100001" }));
+    await fake.close();
+  });
+
+  it("an eero refusal frees the lock, an unreadable lock file counts as free, and no temp files are left", async () => {
+    const dir = tempDir();
+    const { fake, app, cli } = twoEngines(dir);
+    fake.scenarios.fail(400, "error.speedtest.busy", { method: "POST", path: "/networks/100001/speedtest" });
+    expect(await code(app.execute("speedtest.run", { networkId: "100001" }))).toBe("eero_error");
+    expect(existsSync(speedTestLockPath(dir, "100001"))).toBe(false);
+    writeFileSync(speedTestLockPath(dir, "100001"), "{not json");
+    await ok(cli.execute("speedtest.run", { networkId: "100001" }));
+    expect(await code(app.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    expect(readdirSync(join(dir, "locks"))).toEqual(["speedtest-100001.json"]);
+    await fake.close();
+  });
+
+  it("reclaiming a lock another process took since it was read as expired leaves that lock in place", () => {
+    const dir = tempDir();
+    const path = speedTestLockPath(dir, "100001");
+    mkdirSync(join(dir, "locks"));
+    // Process B read an expired lock, then process A reclaimed it and took a fresh one.
+    writeFileSync(path, JSON.stringify({ since: NOW, after: null }));
+    expect(reclaimLock(path, NOW + 1_000)).toEqual({ since: NOW, after: Number.NEGATIVE_INFINITY });
+    expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({ since: NOW, after: null });
+    // A lock that really expired is moved out of the way.
+    expect(reclaimLock(path, NOW + SPEEDTEST_GIVE_UP_MS)).toBeNull();
+    expect(readdirSync(join(dir, "locks"))).toEqual([]);
+  });
+
+  it("with no config dir each engine keeps its own in-memory lock", async () => {
+    const { fake, app, cli } = twoEngines(null);
+    await ok(app.execute("speedtest.run", { networkId: "100001" }));
+    expect(await code(app.execute("speedtest.run", { networkId: "100001" }))).toBe("rate_limited");
+    await ok(cli.execute("speedtest.run", { networkId: "100001" }));
+    await fake.close();
+  });
+
+  it("demo keeps the in-memory lock even with a config dir, and writes nothing there", async () => {
+    const dir = tempDir();
+    const backend = createDemoBackend({ clock: () => NOW });
+    const engine = createEngine({ backend, clock: () => NOW, settings: memorySettings(), host: { configDir: dir } });
+    await ok(engine.execute("speedtest.run", { networkId: MAPLE }));
+    expect(await code(engine.execute("speedtest.run", { networkId: MAPLE }))).toBe("rate_limited");
+    const other = createEngine({ backend: createDemoBackend({ clock: () => NOW }), clock: () => NOW, settings: memorySettings(), host: { configDir: dir } });
+    await ok(other.execute("speedtest.run", { networkId: MAPLE }));
+    expect(readdirSync(dir)).toEqual([]);
   });
 });

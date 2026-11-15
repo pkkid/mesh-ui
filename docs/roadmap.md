@@ -1240,7 +1240,7 @@ credentials is a `MANUAL:` line.
 - scope: Carried from M5. **Network nickname:** `network.nickname.set` (`PUT {net}/label?labelType=specialMarket`, form `label`, read back from `nickname_label`), built only if M6.1 found a live-tested client that sends it; otherwise the field stays read-only with the reason in wifi.md and the item moves out with that reason. **Print a card:** reuse the guest card print with `wifi.share`; no new command. **Time zone (#191):** find the request eero applies, from Eeronaut or eero's own client as quoted there; change `settings.timezone.set` to send it, keep the error when eero still keeps the old zone, and record the source in endpoints.md.
 - done when: `pnpm check` passes; `network.test.ts` (if built) has the exact label request, `bad_params` over 32 characters, and the nickname in the next `network.get` and `network.list`; `settings.test.ts` has the new time zone request and the "eero kept the old zone" error; `pnpm ui:shot --route '#/settings/wifi'` shows the nickname edit (or the read-only reason) and the print card, light and dark; `MANUAL: nickname set and clear | Wi-Fi > Nickname and location, set a nickname, then clear it | the eero app shows it, then none | risk: none`; `MANUAL: time zone | change the zone and back | the eero app follows within a minute | risk: none`.
 
-### M6.10 Activity menu, Frustration-Free Setup, shared speed test lock ☐
+### M6.10 Activity menu, Frustration-Free Setup, shared speed test lock ✅ (#220)
 - issue: [#205](https://github.com/pkkid/mesh-ui/issues/205)
 - after: M6.1
 - docs: ux/pages/activity.md, ux/pages/advanced-networking.md (Integrations), architecture/commands.md (integrations, internet)

@@ -139,7 +139,7 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 | Unlink Amazon | `integrations.amazon.unlink` | destructive | dialog | Amazon linked features turn off |
 | eero Built-in switch | `integrations.builtin.set` `{enabled}` | write | no | |
 | Discover Zigbee devices | `integrations.zigbee.discover` | write | no | Note: pairing finishes in the Alexa app |
-| Frustration-Free Setup | none in the UI (read only); `integrations.ffs.set` `{enabled}` on the CLI and MCP | write | no | |
+| Frustration-Free Setup | none (read only, from `integrations.get`). No write command: no client has live-tested one and eero's own app shows no switch (M6.10) | - | no | |
 | Restart network | `network.restart` | disruptive | inline confirm with outage length | |
 | Delete network | `network.delete` `{networkName}` | destructive | dialog: type the network name | Signed out of that network; switcher picks another |
 | Discard | none | | | Clears staged changes |
@@ -164,4 +164,4 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 - Static IP and PPPoE values are secrets in transit only; never log them. PPPoE credentials may go through `POST {eero}/pppoe` first (returns an encrypted blob).
 - Thread credentials are secrets: `settings.get` masks them and only `settings.thread.credentials` returns them.
 - Smart Home Hub appears among eero Business features in our notes; confirm it is free before building it (open question). Amazon linking itself (Connect to Amazon) needs Amazon sign-in in a browser and is out of scope; an unlinked network just shows "Link in the eero app".
-- Commands added: `settings.simple_setup.set` w, `settings.nat_randomization.set` d, `settings.power_schedule.add|update|remove` w, `settings.thread.credentials` q, `settings.impact` q, `integrations.get` q, `integrations.amazon.unlink` x, `integrations.builtin.set` w, `integrations.zigbee.discover` w, `integrations.ffs.set` w, `network.delete` x. `settings.connection_mode.set` is NAT, bridged or IP passthrough; legacy 802.11ac mode is `settings.legacy_mode.set` (see [Troubleshooting](troubleshooting.md)).
+- Commands added: `settings.simple_setup.set` w, `settings.nat_randomization.set` d, `settings.power_schedule.add|update|remove` w, `settings.thread.credentials` q, `settings.impact` q, `integrations.get` q, `integrations.amazon.unlink` x, `integrations.builtin.set` w, `integrations.zigbee.discover` w, `network.delete` x. `settings.connection_mode.set` is NAT, bridged or IP passthrough; legacy 802.11ac mode is `settings.legacy_mode.set` (see [Troubleshooting](troubleshooting.md)).

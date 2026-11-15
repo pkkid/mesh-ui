@@ -2,7 +2,8 @@
  * Smart home integrations from `integrations.get`: each with its state, or
  * "Unavailable" (dimmed, read only, with eero's reason) when eero does not
  * report it here. Frustration-Free Setup is shown read only: eero reports it,
- * but eero's own app has no switch for it (M5 review), so neither do we. The
+ * but eero's own app has no switch for it (M5 review) and no client has
+ * live-tested the write, so there is no command for it (M6.10). The
  * eero Built-in switch, Discover Zigbee devices and Unlink Amazon (destructive: the type-the-name
  * dialog) run through the write kit, gated by their command specs.
  * docs/ux/pages/advanced-networking.md (Integrations), mockup 13.

@@ -111,7 +111,7 @@ Most toggles are written through one endpoint, `PUT {net}/settings` (`resources.
 | PUT | `{net}/settings` | JSON `{wpa3: bool}` | W | SX, FF, LD | Read `wpa3`. Older devices may drop. |
 | PUT | `{net}/settings` | JSON `{sqm: bool}` | W | SX, FF, LD | "Optimize for conferencing and gaming" (Smart Queue Management). FF sends it as query `?sqm=true`; SX/LD as JSON. |
 | PUT | `{net}/settings` | JSON `{ipv6_upstream: bool}` (FF `set_ipv6` also sends `ipv6_downstream`) | W | SX, FF, LD | IPv6 toggle. |
-| PUT | `{net}/settings` | JSON `{ffs: bool}` | W | LD | Amazon Frustration-Free Setup. Unverified: eero's own app shows no switch for it (M5 review), and a real network sends `ffs` and capability `ffs` both true. |
+| PUT | `{net}/settings` | JSON `{ffs: bool}` | W | LD | Amazon Frustration-Free Setup. **Not used**: no live-tested client sends it (section 20) and eero's own app shows no switch, so Mesh UI has no write for it and shows the state read only (M6.10). |
 | PUT | `{net}/settings` | form `name` | W | FF | Rename SSID (FF live-verified). |
 | PUT | `{net}/settings` | JSON `{timezone: {value: "America/New_York"}}` | W | LD, Eeronaut | Schedules follow network timezone. A real network answered 200 and kept the old zone (M5.R-fix4); not sent since M6.9 ([section 20](#20-real-captures-and-write-sources-for-m6-2026-11-14)). |
 | PUT | `{net}/settings` | JSON `{dns: {mode: "automatic"|"custom", caching: bool, custom: {ips: [..up to 4, v4 or v6]}}}` and/or `{ipv6: {name_servers: {mode, custom: [...]}}}` | W **D** | FF, LD | Custom DNS. **Confirmed mesh reboot (FF).** Read from `dns{mode, caching, parent{ips}, custom{ips}}`, `ipv6.name_servers`. |

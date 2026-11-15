@@ -2,8 +2,9 @@
  * Internet connection and speed test commands. Plan speed comes from app
  * settings (set by the user with `internet.plan.set`, eero does not know it)
  * and speed test ratings are computed here against it, so every surface
- * agrees. `speedtest.run` starts a test (one at a time per network); its
- * result shows in the history about a minute later.
+ * agrees. `speedtest.run` starts a test (one at a time per network, shared
+ * with other processes on the same config dir); its result shows in the
+ * history about a minute later.
  * See docs/architecture/commands.md (internet, speed tests and usage) and
  * docs/ux/pages/internet.md.
  */
@@ -43,15 +44,23 @@ const CLOCK_SKEW_MS = 10_000;
 /** What `speedtest.run` returns (and `speedtest.history` while it runs). */
 export type SpeedTestRun = M.SpeedTestRun;
 
-/**
- * Tests started and not yet seen in the history: backend to network to the
- * start time (engine clock) and the newest result read before it, which
- * cannot be this test's.
- */
-const running = new WeakMap<Backend, Map<M.Id, { since: number; after: number }>>();
+/** A test started and not yet seen in the history: its start (engine clock) and the newest result read before it, which cannot be this test's. */
+type Run = { since: number; after: number };
 
-/** The newest result each history read saw, per backend and network. */
-const newestSeen = new WeakMap<Backend, Map<M.Id, number>>();
+/**
+ * The one-at-a-time state per network. A lock older than SPEEDTEST_GIVE_UP_MS
+ * has expired and counts as free.
+ */
+interface RunLocks {
+  /** The running test on `net`, or null (none, or it expired). */
+  get(net: M.Id, now: number): Run | null;
+  /** Takes the lock, or returns the run that holds it. */
+  acquire(net: M.Id, run: Run, now: number): Run | null;
+  /** Frees the lock if `since` still holds it. */
+  release(net: M.Id, since: number): void;
+}
+
+const live = (run: Run | null | undefined, now: number): Run | null => (run && now - run.since < SPEEDTEST_GIVE_UP_MS ? run : null);
 
 const perBackend = <V>(map: WeakMap<Backend, Map<M.Id, V>>, backend: Backend): Map<M.Id, V> => {
   let m = map.get(backend);
@@ -59,23 +68,141 @@ const perBackend = <V>(map: WeakMap<Backend, Map<M.Id, V>>, backend: Backend): M
   return m;
 };
 
+/** In-memory locks, one map per backend: demo, tests, and engines with no config dir. */
+const memory = new WeakMap<Backend, Map<M.Id, Run>>();
+
+function memoryLocks(backend: Backend): RunLocks {
+  const tests = perBackend(memory, backend);
+  return {
+    get: (net, now) => live(tests.get(net), now),
+    acquire(net, run, now) {
+      const held = live(tests.get(net), now);
+      if (held) return held;
+      tests.set(net, run);
+      return null;
+    },
+    release(net, since) {
+      if (tests.get(net)?.since === since) tests.delete(net);
+    },
+  };
+}
+
+/**
+ * Node's fs, path and crypto, loaded only when a file lock is used: the
+ * renderer bundles this file (through diagnostics.ts) for its helpers, and
+ * static `node:` imports would be externalized there.
+ */
+const node = () => ({
+  fs: process.getBuiltinModule("node:fs"),
+  path: process.getBuiltinModule("node:path"),
+  crypto: process.getBuiltinModule("node:crypto"),
+});
+
+/** Where the lock file for `net` lives under a config dir. */
+export const speedTestLockPath = (configDir: string, net: M.Id): string =>
+  node().path.join(configDir, "locks", `speedtest-${encodeURIComponent(net)}.json`);
+
+function readRun(path: string): Run | null {
+  const { readFileSync } = node().fs;
+  try {
+    // `after` is null in the file when no result was seen (JSON has no -Infinity).
+    const raw = JSON.parse(readFileSync(path, "utf8")) as { since?: unknown; after?: unknown };
+    if (typeof raw.since !== "number") return null;
+    if (raw.after === null) return { since: raw.since, after: Number.NEGATIVE_INFINITY };
+    return typeof raw.after === "number" ? { since: raw.since, after: raw.after } : null;
+  } catch {
+    return null;
+  }
+}
+
+const removeFile = (path: string) => {
+  try {
+    node().fs.unlinkSync(path);
+  } catch {
+    // Already gone.
+  }
+};
+
+/**
+ * Moves an expired or unreadable lock at `path` out of the way. The file is
+ * renamed aside first (atomic), so if another process took the lock since
+ * it was read, the fresh lock is the one moved: it is linked back and
+ * returned as the holder. Null when the path is free to take.
+ */
+export function reclaimLock(path: string, now: number): Run | null {
+  const { fs, crypto } = node();
+  const aside = `${path}.${crypto.randomUUID()}.stale`;
+  try {
+    fs.renameSync(path, aside);
+  } catch {
+    return null; // Already gone.
+  }
+  try {
+    const moved = live(readRun(aside), now);
+    if (!moved) return null;
+    try {
+      fs.linkSync(aside, path);
+      return moved;
+    } catch {
+      // A third process took it meanwhile: that one holds it now.
+      return live(readRun(path), now) ?? moved;
+    }
+  } finally {
+    removeFile(aside);
+  }
+}
+
+/**
+ * Locks shared by every process on one config dir (the app and a CLI), one
+ * small JSON file per network. The file is written to a temp name and then
+ * hard-linked into place, which fails when the lock exists: taking the lock
+ * is atomic and a reader never sees half a file. An expired or unreadable
+ * lock is reclaimed (`reclaimLock`) and taken.
+ */
+function fileLocks(configDir: string): RunLocks {
+  return {
+    get: (net, now) => live(readRun(speedTestLockPath(configDir, net)), now),
+    acquire(net, run, now) {
+      const { fs, path: paths, crypto } = node();
+      const path = speedTestLockPath(configDir, net);
+      fs.mkdirSync(paths.dirname(path), { recursive: true });
+      const tmp = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify({ since: run.since, after: Number.isFinite(run.after) ? run.after : null }));
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            fs.linkSync(tmp, path);
+            return null;
+          } catch (e) {
+            if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+            const held = live(readRun(path), now) ?? reclaimLock(path, now);
+            if (held) return held;
+          }
+        }
+        return readRun(path) ?? run;
+      } finally {
+        removeFile(tmp);
+      }
+    },
+    release(net, since) {
+      const path = speedTestLockPath(configDir, net);
+      if (readRun(path)?.since === since) removeFile(path);
+    },
+  };
+}
+
+/** The eero backend (live, or the fake) shares the lock through the config dir; demo keeps it in memory. */
+const locksFor = (ctx: CommandContext): RunLocks =>
+  ctx.backend.kind === "eero" && ctx.host.configDir ? fileLocks(ctx.host.configDir) : memoryLocks(ctx.backend);
+
+/** The newest result each history read saw, per backend and network. */
+const newestSeen = new WeakMap<Backend, Map<M.Id, number>>();
+
 const runOf = (net: M.Id, since: number): SpeedTestRun => ({
   networkId: net,
   startedAt: new Date(since).toISOString(),
   resultAt: new Date(since + SPEEDTEST_RESULT_MS).toISOString(),
 });
-
-/** When the running test on `net` started, or null (none, or it gave up). */
-function runningSince(ctx: CommandContext, net: M.Id): number | null {
-  const tests = running.get(ctx.backend);
-  const test = tests?.get(net);
-  if (test === undefined) return null;
-  if (ctx.now() - test.since >= SPEEDTEST_GIVE_UP_MS) {
-    tests?.delete(net);
-    return null;
-  }
-  return test.since;
-}
 
 /**
  * Called by every history read: once the running test's result is in, the
@@ -83,18 +210,18 @@ function runningSince(ctx: CommandContext, net: M.Id): number | null {
  * read expires after a few seconds, so the result shows soon after it lands.
  */
 function checkRunning(ctx: CommandContext, net: M.Id, tests: M.SpeedTest[]): SpeedTestRun | null {
-  const since = runningSince(ctx, net);
-  const after = running.get(ctx.backend)?.get(net)?.after ?? Number.NEGATIVE_INFINITY;
+  const locks = locksFor(ctx);
+  const run = locks.get(net, ctx.now());
   const newest = tests[0] ? Date.parse(tests[0].at) : null;
   if (newest !== null) perBackend(newestSeen, ctx.backend).set(net, newest);
-  if (since === null) return null;
-  if (tests.some((t) => Date.parse(t.at) >= since - CLOCK_SKEW_MS && Date.parse(t.at) > after)) {
-    running.get(ctx.backend)?.delete(net);
+  if (run === null) return null;
+  if (tests.some((t) => Date.parse(t.at) >= run.since - CLOCK_SKEW_MS && Date.parse(t.at) > run.after)) {
+    locks.release(net, run.since);
     ctx.invalidate(["network"]);
     return null;
   }
   ctx.invalidate(["speedtest"], ctx.now() + PENDING_RECHECK_MS);
-  return runOf(net, since);
+  return runOf(net, run.since);
 }
 
 const PLAN_MAX_MBPS = 100_000;
@@ -261,14 +388,20 @@ export const commands: AnyCommand[] = [
     invalidates: ["speedtest", "network"],
     async run(ctx): Promise<SpeedTestRun> {
       const net = ctx.net;
-      const since = runningSince(ctx, net);
-      if (since !== null) {
-        const retryAfterSec = Math.max(1, Math.ceil((since + SPEEDTEST_GIVE_UP_MS - ctx.now()) / 1000));
+      const now = ctx.now();
+      const locks = locksFor(ctx);
+      const held = locks.acquire(net, { since: now, after: newestSeen.get(ctx.backend)?.get(net) ?? Number.NEGATIVE_INFINITY }, now);
+      if (held) {
+        const retryAfterSec = Math.max(1, Math.ceil((held.since + SPEEDTEST_GIVE_UP_MS - now) / 1000));
         throw new CommandError("rate_limited", "A speed test is already running on this network. Its result shows in about a minute.", { retryAfterSec });
       }
-      await ctx.backend.internet.runSpeedTest(net);
-      const now = ctx.now();
-      perBackend(running, ctx.backend).set(net, { since: now, after: newestSeen.get(ctx.backend)?.get(net) ?? Number.NEGATIVE_INFINITY });
+      try {
+        await ctx.backend.internet.runSpeedTest(net);
+      } catch (e) {
+        // eero refused it: no test runs, so another may start.
+        locks.release(net, now);
+        throw e;
+      }
       // Reads made before the result is due expire when it is.
       ctx.invalidate(["speedtest", "network"], now + SPEEDTEST_RESULT_MS);
       return runOf(net, now);
