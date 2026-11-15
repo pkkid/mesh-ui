@@ -121,6 +121,8 @@ Full detail in [build-and-release.md](build-and-release.md#cli-launcher).
 ## Line endings and shells
 
 - `.gitattributes` keeps `* text=auto eol=lf`; scripts and fixtures use LF.
+  The exception is Windows batch files (`*.cmd`, `*.bat`), checked out with
+  CRLF so `cmd.exe` runs them reliably. Images are marked binary.
 - Docs give CLI examples for POSIX shells. On Windows PowerShell, JSON params
   need single quotes around the whole value or `--params @file.json`; the
   CLI help says so.
