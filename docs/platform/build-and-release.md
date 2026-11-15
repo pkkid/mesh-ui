@@ -407,9 +407,14 @@ launcher.
   server, even from a desktop terminal. The desktop entry still launches
   the window from `/opt`; only the launcher adds `--cli`.
 - AppImage: App & account shows **Install CLI** (`app.cli.install`), which
-  writes `~/.local/bin/mesh-ui` calling the AppImage path (`$APPIMAGE`) with
-  `--cli`, and warns if `~/.local/bin` is not on `PATH`. If the AppImage moves
-  or is replaced by an update, the button shows "Reinstall".
+  writes `~/.local/bin/mesh-ui` (mode 755) calling the AppImage path
+  (`$APPIMAGE`) with `--cli --ozone-platform=headless --disable-gpu` and no
+  `DISPLAY` or `WAYLAND_DISPLAY`, like the deb launcher, and shows the
+  `export PATH=...` line when `~/.local/bin` is not on `PATH`. If the
+  AppImage moves, the button shows "Reinstall". Install is offered only when
+  `APPDIR` (the image's mount) holds the running executable: a program
+  started from another AppImage, such as a terminal or editor, inherits that
+  one's `APPIMAGE`.
 
 ## Release checklist
 

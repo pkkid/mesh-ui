@@ -91,7 +91,7 @@ describe("demo.scenario.set", () => {
 });
 
 const READY: UpdateStatus = { state: "ready", version: "9.9.10", channel: "latest", checkedAt: "2026-11-14T12:00:00.000Z", progress: null, error: null };
-const CLI: CliStatus = { installed: true, path: "/usr/local/bin/mesh-ui", onPath: true, canInstall: true, reinstall: false };
+const CLI: CliStatus = { installed: true, path: "/usr/local/bin/mesh-ui", onPath: true, canInstall: true, reinstall: false, pathLine: null };
 
 /** Host actions that record what was asked of them. */
 function fakeActions(update: UpdateStatus = READY) {

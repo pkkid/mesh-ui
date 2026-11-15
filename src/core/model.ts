@@ -854,6 +854,11 @@ export type CliStatus = {
   canInstall: boolean;
   /** Installed, but pointing at an app that moved or was replaced. */
   reinstall: boolean;
+  /**
+   * A line to paste into a terminal that puts the launcher's folder on PATH,
+   * when it is not on PATH yet (on macOS the bundle's `bin`, no admin needed).
+   */
+  pathLine: string | null;
 };
 
 export type AppInfo = {
