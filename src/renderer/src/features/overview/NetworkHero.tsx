@@ -5,8 +5,9 @@
  * sheet (QR, Copy password); Pause a profile picks a profile and pauses it
  * with Undo;
  * Restart network confirms in the dialog, then a progress toast until the eeros are
- * back) and the two speed gauges ("Set your internet plan" opens the plan
- * sheet; "View history" opens Internet at Speed test history).
+ * back) and the two speed gauges, captioned with when the last test ran,
+ * "View history" (Internet at Speed test history) and, without a plan, "Set
+ * your internet plan" (the plan sheet).
  * docs/ux/pages/overview.md (Layout 1, States).
  */
 import { Popover } from "@base-ui/react/popover";
@@ -24,7 +25,7 @@ import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { TextLink } from "~/components/ui/text-link";
 import { seriesColors } from "~/lib/chartColors";
-import { formatDuration, formatRelative, mbpsParts, MISSING } from "../../../../core/format";
+import { formatDuration, formatRelative, mbpsParts, MISSING, networkClock } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, Profile, ProfileList, SpeedHistory } from "../../../../core/model";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
 import { ShareWifiButton } from "~/features/wifi/ShareSheet";
@@ -121,13 +122,17 @@ export function NetworkHero() {
               />
             </div>
             {internet.data && (
-              <div className="text-center text-3xs text-muted-foreground">
+              <div className="flex flex-col items-center gap-0.5 text-3xs text-muted-foreground">
+                <div>
+                  {latest ? <>Last speed test {networkClock(tz).dateTime(latest.at)}</> : "No speed test yet"}
+                  {" · "}
+                  <TextLink to={pathFor("internet", { section: "history" })}>View history</TextLink>
+                </div>
                 {!plan && (
-                  <>
-                    <TextLink onClick={openPlanSheet}>Set your internet plan</TextLink> to scale the gauges{" · "}
-                  </>
+                  <div>
+                    <TextLink onClick={openPlanSheet}>Set your internet plan</TextLink> to scale the gauges
+                  </div>
                 )}
-                <TextLink to={pathFor("internet", { section: "history" })}>View history</TextLink>
               </div>
             )}
           </div>
