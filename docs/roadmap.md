@@ -53,7 +53,7 @@ read these before planning the next milestone):
 | M3 | See people and settings: Profiles, Activity, Guest, Wi-Fi, Troubleshooting health, offline alerts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/3), [review](reviews/M3.md)) |
 | M4 | Everyday control: pause, rename, block, profiles and schedules, guest and Wi-Fi, restarts | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/4), [review](reviews/M4.md)) |
 | M5 | Advanced settings: networking, reservations and ports, updates and admins, troubleshooting tools | ✅ ([milestone](https://github.com/pkkid/mesh-ui/milestone/5), [review](reviews/M5.md)) |
-| M6 | App and account, CLI on PATH, auto-update and signed release builds | later |
+| M6 | App and account, CLI on PATH, auto-update and signed release builds | next |
 
 Why this order: M1 proves the riskiest parts first (command engine shared by
 three surfaces, the CLI running through headless Electron with the keychain,
@@ -979,28 +979,51 @@ restarts the network says so in its risk field.
 
 ## M6: App, account and release
 
+Issue: [#195](https://github.com/pkkid/mesh-ui/issues/195) (parent of every M6 story)
+
 Goal: Mesh UI is installable and updatable on every OS by people other
-than the maintainer.
-Rough scope: App & account page (account edits, notifications, networks,
-CLI and agents panel with the audit log, Application Theme, About, sign out
-and delete), CLI install on PATH per OS, signed and notarized macOS builds,
-release workflow and draft releases, auto-update and beta channel, Linux
-AppImage, deb and rpm, Windows installer (unsigned for now), first public
-release.
+than the maintainer, and its App & account page works end to end.
+Release: 0.6.0, the first public release (minor versions follow
+milestones, per build-and-release.md Versioning). Straight to v0.6.0 with
+no beta pre-releases; the first real auto-update is proven at 0.6.1. M6.R
+is the release gate.
+
+Decided by the maintainer (2026-11-14): version 0.6.0 with no betas;
+macOS signed and notarized from the first release (the maintainer adds
+the Developer ID certificate and an App Store Connect API key to a
+`release` GitHub environment); updates hosted on GitHub Releases of the
+public pkkid/mesh-ui repo. Defaults taken unless the maintainer objects:
+package.json `author` uses the maintainer's GitHub noreply address; M6.2
+draws a simple neutral app icon, approved at the review; writes with no
+live-tested source or capture are left out with the reason in the docs;
+one read-only call may print the `{net}/admins` role enum value; Windows
+ships unsigned (decided 2026-11-13) and Linux ships x64 and arm64; the
+agents panel says "MCP used <age>" from the audit log, or "MCP not used
+yet".
+
 Carried from M1: "Try demo mode" switches a running app to demo; "delete
 my account" (`account.delete`); move to the async safeStorage API (the sync
-call is deprecated in Electron 45); an `author` with email in package.json
-for deb and rpm; prove `pnpm dist:dir` and `pnpm ui:shot` on macOS and
-Windows; add the `pnpm test:ui` script or drop it from testing.md.
+call is deprecated in Electron 45; `encryptStringAsync`,
+`decryptStringAsync` and `isAsyncEncryptionAvailable` exist, and old sync
+data still decrypts); an `author` with email in package.json for deb and
+rpm; prove `pnpm dist:dir` and `pnpm ui:shot` on macOS and Windows; add
+the `pnpm test:ui` script or drop it from testing.md. Owners: M6.8 (demo
+mode), M6.1, M6.7 and M6.8 (account delete: spec and demo, then the eero
+request, then the panel), M6.3 (async safeStorage), M6.2 (author;
+`test:ui` dropped because `ui:shot` replaced it), M6.4 (macOS and Windows
+proof: `release.yml` runs `dist:smoke` and one `ui:shot` per OS, first
+proven by the maintainer's dry run at M6.R).
 Carried from M3: the packaged Linux launcher strips `DISPLAY` and
 `WAYLAND_DISPLAY` for `--cli`, like the dev launcher (#115); the
 `dist:smoke` window step fails with no display (set `MESH_UI_HEADLESS`);
-sidebar and sign-in avatars use an inline `hue("orange")` (from M1.7), move
-it to `chartColors.ts` or make avatars neutral.
+sidebar and sign-in avatars use an inline `hue("orange")` (from M1.7),
+move it to `chartColors.ts` or make avatars neutral. Owners: M6.2
+(launcher, `dist:smoke`), M6.1 (one shared neutral `Avatar`).
 Carried from M4: the speed test one-at-a-time lock is per process, so the
 app and a CLI in another process can each start one (share it, or accept
 eero's own refusal, #162); the CLI and agents panel reads the audit log
-(`audit.jsonl`, live CLI and MCP only, #149).
+(`audit.jsonl`, live CLI and MCP only, #149). Owners: M6.10 (lock shared
+through the config dir), M6.6 (panel).
 Carried from M5: the Activity overflow menu and settings icon from the
 mockup (#178; M5 review question 3); Wi-Fi network nickname edit and the
 Wi-Fi "Print a card" are still Coming soon (no command yet); the time zone
@@ -1010,21 +1033,237 @@ unverified and the UI shows Frustration-Free Setup read-only (#188); the
 real `{net}/admins` role value is unverified (the fake admins list uses
 `owner`); network transfer's request shape is unproven and must never be
 tried on the real network. Manual checks not run at the M5 review, to run
-when convenient in M6.1 (the "Carried to M6.1" list in
-`docs/reviews/M5.md`): IPv6 firewall rule, Activity name links, placement
-test, client steering, PoE restart, port disable, Wi-Fi rename, DNS
-change, PPPoE, update install, eero remove, Unassigned scheduled pause, and
-M4's pause one device, block one device, speed test, guest off and on, and
-guest name and password; apply their answers to `endpoints.md` sections 18
-and 19 and the fixtures.
-Lessons from M5 for planning M6: the maintainer's manual checks found 13
-real-network bugs that every sandbox test passed (#187 to #192, #194).
-Before a story builds a write, its request must come from a client that
-tested it live (Eeronaut has, for most) or a read-only capture, never only
-from our docs or the fake; each story captures the real read shapes it maps
-(counts and types) before building on them. Every on-screen read gets a
-`poll` (or a reason in the poll table in the architecture docs), and the
-per-page request budget tests cover new pages. The header Refresh (#193)
-and `execute(..., { fresh: true })` are the way to force a reread; do not
-add page-local refresh paths. Gate on eero capabilities as well as role
-(power saving was a hardware limit that looked like a role error).
+when convenient (the "Carried to M6.1" list in `docs/reviews/M5.md`): IPv6
+firewall rule, Activity name links, placement test, client steering, PoE
+restart, port disable, Wi-Fi rename, DNS change, PPPoE, update install,
+eero remove, Unassigned scheduled pause, and M4's pause one device, block
+one device, speed test, guest off and on, and guest name and password;
+apply their answers to `endpoints.md` sections 18 and 19 and the
+fixtures. Owners: M6.10 (Activity menu and settings icon,
+`integrations.ffs.set`), M6.9 (nickname, Print a card, time zone), M6.1
+(admins role capture and fake; it also records which live-tested client,
+if any, sends the transfer request; transfer stays unrun and is not a
+manual check because it cannot be undone), M6.11 (the carried manual
+checks and their answers; the review called this list "M6.1", but M6.1
+stays the contracts story so wave 2 does not wait on the maintainer).
+Learned in M5: the maintainer's manual checks found 13 real-network bugs
+that every sandbox test passed (#187 to #192, #194); a write proven only
+against our own fake is unproven. Before a story builds a write, its
+request must come from a client that tested it live (Eeronaut, or FF's
+live-verified calls) or from a read-only capture; our docs, LD alone and
+the fake are not enough, and with no such source the write is left out
+and the doc says why. Each story captures the real read shapes it maps
+(key paths, types, counts) before building on them; M6.1 checks
+permission and role shapes against every gate the fixtures assume. Every
+on-screen read gets a `poll`, or a reason in the poll table in
+`docs/architecture/engine.md`, and the per-page request budget test
+covers every new page. Forcing a reread goes through the header Refresh
+(#193) and `execute(..., { fresh: true })`; no page-local refresh paths.
+Gate on eero capabilities as well as role (power saving was a hardware
+limit that looked like a role error). Workers check `git merge-base
+--is-ancestor origin/milestone/M6 HEAD` right before merging, never use a
+bare `git stash`, and a Done when that says no "Coming soon" remains is
+checked by grep.
+
+In: the App & account page, every section in
+`docs/ux/pages/app-account.md` (hero and account writes, Stay up to date,
+notifications with push switches, networks table and switch, the CLI and
+agents panel with the audit log, Application Theme, About with update
+status, sign out and delete); `app.settings.get` and `.set`; CLI install
+on PATH per OS; "Try demo mode" and leaving it; packaging per OS (macOS
+universal dmg and zip with hardened runtime, entitlements and
+notarization configured from env; Windows NSIS x64 and arm64 plus a
+portable zip, unsigned; Linux AppImage, deb and rpm, x64 and arm64; an
+app icon); `release.yml` (tag builds, draft releases, `SHA256SUMS.txt`,
+notes from the milestone review); auto-update with electron-updater, a
+beta channel switch and an off switch; async safeStorage; every Carried
+item above.
+Out: Windows Authenticode signing (before a wider release, decided
+2026-11-13); GPG-signed checksums (no project key yet); Flatpak, AUR, and
+deb or rpm repositories; a generated open source licenses page (About
+links to the repository instead); Amazon login; anything eero Plus; any
+step that needs the maintainer's secrets or accounts (Apple Developer
+certificates, notarization credentials, adding secrets, pushing tags,
+publishing a release): those are `MANUAL:` lines and M6.R steps. Workers
+never push tags or publish.
+
+Done when:
+- `pnpm check` passes locally in under a minute and the CI smoke is green
+  on macOS, Windows and Linux. `ci.yml` is unchanged; `release.yml` is the
+  only new workflow.
+- `#/account` shows every section of `docs/ux/pages/app-account.md` in
+  demo and `--fake`. No page uses `ComingSoonButton` (grep).
+  `pnpm ui:shot --route '#/account'` light and dark, plus the states named
+  in each story.
+- The request budget test covers the account page, and every read on it
+  has a poll or a reason in engine.md.
+- Every new command has demo tests through `engine.execute`, with
+  `bad_params`, and `needs_confirm` for `account.delete` (`account.test.ts`,
+  `app.test.ts`). Every account write has a fake-server test of the exact
+  request, and its `endpoints.md` row names the live-tested client or
+  capture it came from.
+- No write runs on the real network. `account.delete` and network
+  transfer are never run anywhere but demo and the fake.
+- `mesh-ui --demo run app.info` reports version, install kind, update
+  state and CLI state; `app.audit.list` summarises CLI and MCP runs from a
+  temp audit file (`audit.test.ts`).
+- On Linux, `pnpm dist` builds AppImage, deb and rpm, and the deb and rpm
+  install the `/usr/bin/mesh-ui` launcher (`test/packaging/launchers.test.ts`
+  plus the package script listing in the PR); `pnpm dist:dir && pnpm
+  dist:smoke` passes with no display; `pnpm test:keychainless` passes.
+- `app.cli.install` works for every install kind in temp dirs
+  (`src/main/cli-install.test.ts`).
+- The updater (`src/main/updater.test.ts`) checks 10 s after launch and
+  every 6 h, has a beta channel switch and an off switch, never restarts
+  on its own, and does nothing for deb, rpm, the portable zip and dev
+  builds.
+- `test/packaging/release.test.ts` checks the release scripts and that
+  `release.yml` is tag-only (plus a dry-run dispatch), builds with
+  `--publish never`, keeps signing secrets in the `release` environment,
+  and creates a draft.
+- No sync safeStorage call remains, and a session saved by the sync API
+  still loads (`src/main/secret-store.test.ts`).
+- Every Carried from M1, M3, M4 and M5 item is closed or moved with a
+  reason.
+
+Parallelism: 3 waves plus R (3, 8, 1, R); critical path M6.1 > M6.7 >
+M6.12 > M6.R, with M6.2 > M6.4 beside it. Hotspots owned by M6.1 (later
+stories take small additive edits only and say so): `src/core/model.ts`,
+`src/core/backend.ts`, `src/core/eero/raw.ts`, `src/core/spec.ts`,
+`src/core/poll.ts`, `src/core/engine.ts`, `src/core/demo/backend.ts`,
+`src/core/demo/backend.test.ts`, `src/core/demo/scenario.ts`,
+`src/core/commands/app.ts`, `src/core/commands/app.test.ts`,
+`src/main/index.ts`, `src/main/host-actions.ts`,
+`src/main/install-kind.ts`,
+`src/renderer/src/features/account/AccountPage.tsx` and
+`src/renderer/src/features/shell/Sidebar.tsx`. Handed on in order:
+`src/core/commands/account.ts` and its test (M6.1, then M6.7);
+`src/core/audit.ts` (M6.1, then M6.6);
+`src/renderer/src/features/sign-in/SignInView.tsx` (M6.1, then M6.8).
+Single owners: `electron-builder.yml` and `build/` (M6.2),
+`.github/workflows/release.yml` (M6.4). Each App & account section file
+has one owner: ThemePicker M6.1, About M6.5, CliAgents M6.6, Hero and
+Notifications M6.7, Networks and SignOutDelete M6.8. Shared-additive
+files (small edits by anyone, named in the PR, docs only in the story's
+own section or rows): `docs/architecture/data-model.md`,
+`docs/architecture/commands.md`, `docs/architecture/engine.md` (poll
+table rows), `docs/eero-api/endpoints.md` (own rows; sections 18 and 19
+belong to M6.11), `docs/platform/build-and-release.md`,
+`docs/platform/cross-platform.md`, `docs/testing.md`,
+`docs/ux/pages/app-account.md`, `src/shared/types.ts`,
+`src/cli/format.ts`, `src/core/demo/fixtures.ts`,
+`test/fake-eero/state.ts`, and the request budget test (account page
+rows). Registration files (one-line edits by anyone):
+`src/core/commands/index.ts`, `src/core/eero/backend/index.ts`,
+`test/fake-eero/routes/index.ts`, `src/renderer/src/app/routes.ts`,
+`package.json`, `pnpm-lock.yaml`.
+Safety for every story: writes run only in demo and against the fake
+server; the real network gets read-only captures of the objects a write
+changes (key paths and types; enum values only where approved);
+`account.delete`, network transfer and email or phone changes never run
+from an agent; workers never sign, notarize, publish, add secrets or push
+tags; anything that needs a Mac, a Windows machine or the maintainer's
+credentials is a `MANUAL:` line.
+
+### M6.1 Core contracts, captures, fixtures and page skeleton ☐
+- issue: #196
+- after: M5.R
+- docs: architecture/commands.md (account, app), architecture/data-model.md, architecture/engine.md (Polling), architecture/security.md (Audit log), eero-api/endpoints.md, ux/pages/app-account.md, platform/build-and-release.md (Auto-update, CLI launcher)
+- files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/spec.ts, src/core/poll.ts, src/core/engine.ts, src/core/audit.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, src/core/eero/backend/account.ts, src/core/eero/backend/network.ts, src/core/eero/backend/index.ts, src/core/commands/account.ts, src/core/commands/account.test.ts, src/core/commands/app.ts, src/core/commands/app.test.ts, test/fake-eero/state.ts, test/fake-eero/routes/admins.ts, src/main/index.ts, src/main/host-actions.ts, src/main/install-kind.ts, src/main/install-kind.test.ts, src/main/updater.ts, src/main/cli-install.ts, src/main/demo-switch.ts, src/renderer/src/features/account/AccountPage.tsx, src/renderer/src/features/account/AccountHero.tsx, src/renderer/src/features/account/AccountNotifications.tsx, src/renderer/src/features/account/NetworksTable.tsx, src/renderer/src/features/account/CliAgents.tsx, src/renderer/src/features/account/ThemePicker.tsx, src/renderer/src/features/account/AboutPanel.tsx, src/renderer/src/features/account/SignOutDelete.tsx, src/renderer/src/features/settings/SettingsView.tsx, src/renderer/src/components/ui/avatar.tsx, src/renderer/src/features/shell/Sidebar.tsx, src/renderer/src/features/shell/UpdateChip.tsx, src/renderer/src/features/sign-in/SignInView.tsx, src/renderer/src/app/routes.ts, plus the request budget test file
+- scope: Everything wave 2 shares. **Model:** `AppInfo` gains `install` (`dev | mac | nsis | portable | appimage | deb | rpm`), `update` as an `UpdateStatus` (`state`: `off | idle | checking | downloading | ready | error | unsupported`; `version`, `channel` `latest | beta`, `checkedAt`, `progress`, `error`) and `cli` (`CliStatus`: `installed`, `path`, `onPath`, `canInstall`, `reinstall`); `AppSettings` gains `autoUpdate` (default true) and `updateChannel` (default `latest`) in `DEFAULT_SETTINGS`; new `AuditList` (newest entries, the week's count per local day, the number refused with `needs_confirm`, `mcpLastAt`); `HostEvent` gains `update.changed`. **Host actions:** `HostInfo` in `spec.ts` gains optional `actions.update`, `actions.cli` and `actions.relaunch`, provided by the Electron host through `src/main/host-actions.ts` (wired in `index.ts`) with stub modules for wave 2 (`updater.ts` reports `unsupported`, `cli-install.ts` reports state only, `demo-switch.ts` answers "not available yet"); the CLI host provides none, so those commands answer `bad_params` ("Only in the Mesh UI window"). **Install kind:** `src/main/install-kind.ts` (`APPIMAGE` env, `resources/package-type` for deb or rpm, an NSIS uninstaller beside the exe for nsis else portable, packaged darwin for mac, unpackaged for dev), with its own test. **Commands** in `app.ts`: `app.settings.get` and `.set`, `app.cli.install`, `app.audit.list` (through a `readAudit` stub in `audit.ts`), `app.update.check` (w), `app.update.install` (w; restarts Mesh UI only, never on its own), `app.demo.set` `{enabled}` (w). Every `account.*` spec from commands.md (name, email and verify, phone and verify, consents, push, `delete` as x with `acknowledge: true`, signing out after); the demo backend applies all of them and the eero backend answers "not available yet" until M6.7. A network nickname backend method for M6.9, demo applied. **Polls:** `account.get` 300 s; `app.info` and `app.audit.list` 60 s; reasons in engine.md for `auth.status` (follows `session.changed`), `app.settings.get` (only written through commands) and the weekly `events.summary`; add the account page to the request budget test. **Read-only captures** (key paths, types and counts only, in a new `endpoints.md` section 20): `GET /2.2/account` (`consents`, `push_settings` keys, `email` and `phone` `verified`, `auth.type`, `can_transfer`, network count); the mapped `network.list` roles (counts of owner, admin and null); the `{net}/admins` role enum value (approved), aligning `test/fake-eero/routes/admins.ts` and the fixtures; `{net}` `nickname_label` (type) and `timezone` (type); `GET {net}/data_usage/report_settings` (status and key paths). **Write sources:** for each M6 write (account name, email, phone, consents, push, delete, network label, time zone, `ffs`, network transfer) record in section 20 which live-tested client sends it (Eeronaut, FF live-verified) or "none". **Page skeleton:** `AccountPage.tsx` lays out the main column and side panel with one stub component per section in its own file and stable section ids for deep links (Activity's settings icon opens Notifications; pick the link form and document it in app-account.md); ThemePicker takes over the existing appearance settings and `SettingsView.tsx` goes; register `account` in `routes.ts`. **Avatars** (carried from M3): one neutral `components/ui/avatar.tsx` replaces the inline `hue("orange")` in `Sidebar.tsx` and `SignInView.tsx`. `Sidebar.tsx` mounts the `UpdateChip` stub in its footer.
+- done when: `pnpm check` passes; the PR lists every capture (paths, types, counts, the one admins role value) and each write's source, and no other values; `account.test.ts` and `app.test.ts` run every new command through `engine.execute` in demo with `bad_params`, and `needs_confirm` and `acknowledge` for `account.delete`; `app.test.ts` shows `app.update.install`, `app.demo.set` and `app.cli.install` answering `bad_params` without host actions (CLI, MCP); `install-kind.test.ts` covers each kind; `demo/backend.test.ts` shows each account write in the next read and reset per scenario; the request budget test passes with the account page; `pnpm ui:shot --route '#/account'` shows the skeleton with the working theme picker, light and dark; no `hue(` remains in `Sidebar.tsx` or `SignInView.tsx`; no real names, MACs or IPs anywhere.
+
+### M6.2 Packaging, CLI launchers and app icon ☐
+- issue: #197
+- after: M5.R
+- docs: platform/build-and-release.md (Artifacts, Signing and notarization, CLI launcher), platform/cross-platform.md (CLI), architecture/cli.md (How the CLI runs, Install), testing.md
+- files: package.json, electron-builder.yml, build/icon.png, build/entitlements.mac.plist, build/mac/mesh-ui, build/linux/mesh-ui, build/linux/after-install.sh, build/linux/after-remove.sh, build/win/mesh-ui.cmd, build/win/cli-relay.js, build/win/installer.nsh, scripts/dist-smoke.mjs, test/packaging/launchers.test.ts, docs/platform/build-and-release.md, docs/platform/cross-platform.md, docs/architecture/cli.md, docs/testing.md
+- scope: Packages that match the Artifacts table, with signing configured but only switched on by env. **App icon:** `build/icon.png`, 1024 px, a simple mark in the app's neutral style (the maintainer approves it at the review); electron-builder derives icns and ico. **macOS:** universal dmg and zip; `hardenedRuntime: true` and `build/entitlements.mac.plist` with only `com.apple.security.cs.allow-jit`; `notarize` reads the App Store Connect API key from env and is off when absent; `Contents/Resources/bin/mesh-ui` (`build/mac/mesh-ui`) resolves its own symlink with `realpath` and runs `MacOS/Mesh UI --cli`. **Windows:** NSIS x64 and arm64 plus a `zip` target for the portable build; `bin\mesh-ui.cmd` and `resources\cli-relay.js` ship as extra files (the relay spawns the app with `--cli` and piped stdio and passes the exit code; its target is injectable for tests); `build/win/installer.nsh` adds `$INSTDIR\bin` to the user PATH and removes it on uninstall. **Linux:** deb and rpm `afterInstall` and `afterRemove` scripts install and remove the `/usr/bin/mesh-ui` launcher (`build/linux/mesh-ui`) in place of electron-builder's default symlink; carried from M3 (#115), the launcher always removes `DISPLAY` and `WAYLAND_DISPLAY` and adds `--cli --ozone-platform=headless --disable-gpu` like `scripts/mesh-ui-dev.mjs` (fix the snippet in build-and-release.md to match). **Publish config:** `publish: github` (owner `pkkid`, repo `mesh-ui`) so `app-update.yml` is generated, with `generateUpdatesFilesForAllChannels` for the beta channel; scripts keep `--publish never`. **Carried from M1:** `author` with name and the maintainer's GitHub noreply email in package.json; drop `pnpm test:ui` from testing.md (`ui:shot` replaced it). **Carried from M3:** `scripts/dist-smoke.mjs` runs the window step with `MESH_UI_HEADLESS=1` and ozone headless when there is no display.
+- done when: `pnpm check` passes; `test/packaging/launchers.test.ts` covers the macOS script (through a symlink in a temp bundle layout with a stub binary: `--cli` first and every argument unchanged, paths with spaces included), the Linux launcher (pointed at a stub: no `DISPLAY` or `WAYLAND_DISPLAY`, ozone flags passed) and the Windows relay (plain node with a stub target: stdin, stdout, stderr and the exit code forwarded); `pnpm dist` on Linux builds AppImage, deb and rpm with the icon, and the PR shows the rpm `--scripts` and deb maintainer scripts writing and removing `/usr/bin/mesh-ui`; `pnpm dist:dir && pnpm dist:smoke` passes with `DISPLAY` and `WAYLAND_DISPLAY` unset; `pnpm test:keychainless` passes; with no signing env a local build is unsigned and does not fail; testing.md no longer mentions `test:ui`; `MANUAL: Windows install puts the CLI on PATH | install the NSIS build from the M6.R dry run, open a new terminal, run mesh-ui --demo run app.info, then uninstall | JSON with the version; after uninstall mesh-ui is gone from PATH | risk: none`; `MANUAL: deb or rpm CLI | install the package on a Linux machine, run mesh-ui --demo run app.info over SSH with no display | JSON, no window | risk: none`.
+
+### M6.3 Async safeStorage ☐
+- issue: #198
+- after: M5.R
+- docs: architecture/security.md (Session storage), platform/cross-platform.md (Secret storage)
+- files: src/main/secret-store.ts, src/main/secret-store.test.ts, docs/architecture/security.md, docs/platform/cross-platform.md
+- scope: Carried from M1. Move the Electron `SecretStore` to `isAsyncEncryptionAvailable`, `encryptStringAsync` and `decryptStringAsync`. Keep reading sessions saved by the sync API (Electron documents that they decrypt with the async call); when `shouldReEncrypt` is true, write the session again. Keep every existing rule: no plaintext fallback, Linux `basic_text` counts as memory, unreadable files are deleted. Update both docs.
+- done when: `pnpm check` passes; `grep -rn 'encryptString(\|decryptString(\|isEncryptionAvailable(' src/main` finds nothing; `secret-store.test.ts` covers a file written by the sync stand-in still loading, `shouldReEncrypt` rewriting it, `basic_text` staying memory, and async unavailability never writing; `pnpm test:keychainless` passes; `MANUAL: still signed in after the upgrade | run a build from this branch against your config dir (pnpm start) after using the previous build | the app opens signed in, no sign-in screen | risk: none`.
+
+### M6.4 Release workflow ☐
+- issue: #199
+- after: M6.2
+- docs: platform/build-and-release.md (CI, Versioning, Release checklist), testing.md (CI), architecture/security.md (Dependencies and build)
+- files: .github/workflows/release.yml, scripts/release-notes.mjs, scripts/checksums.mjs, test/packaging/release.test.ts, docs/platform/build-and-release.md, docs/testing.md
+- scope: `release.yml`, as in build-and-release.md CI. Triggers: tag `v*`, plus `workflow_dispatch` with a `dry_run` input that builds and uploads workflow artifacts but makes no release. Jobs: `mac` (macos-latest, universal, signed and notarized when the secrets exist), `win` (NSIS x64 and arm64 plus the portable zip, unsigned), `linux-x64` and `linux-arm64` (`ubuntu-24.04-arm`), and `publish`. Carried from M1: each OS job runs `pnpm dist:dir` then `pnpm dist:smoke`, and one `pnpm ui:shot --route '#/overview'` uploaded as a workflow artifact (the macOS and Windows proof). Signing secrets (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`) come only from the `release` environment; `contents: write` only on `publish`, every other job reads; actions pinned as in `ci.yml`; builds use `--publish never`. `publish` collects the artifacts and `latest*.yml` files, writes `SHA256SUMS.txt` (`scripts/checksums.mjs`), and creates a **draft** release with `gh` (a pre-release when the tag has a `-` suffix). `scripts/release-notes.mjs` builds the notes from section 4 "What changed for a user" of the latest `docs/reviews/M<n>.md`, plus a fixed note on unsigned Windows builds and checksums. Update the Release checklist: secrets, dry run, tag, review and publish the draft. No change to `ci.yml`. Workers never push tags or run the workflow.
+- done when: `pnpm check` passes; `test/packaging/release.test.ts` covers `checksums.mjs` on temp files (`sha256  name` lines, sorted), `release-notes.mjs docs/reviews/M5.md` (only section 4 plus the fixed lines), and a text check of `release.yml` (tag and dispatch triggers only, `--publish never` on every build, `environment: release` on signing jobs, `contents: write` only on `publish`, `--draft`); `ci.yml` is unchanged; `actionlint` is clean if available locally (else the PR says it was not run); `MANUAL: add the signing secrets | create the release environment with CSC_LINK, CSC_KEY_PASSWORD, APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER | the environment lists five secrets | risk: none`; `MANUAL: dry run after the milestone merges | run release.yml from main with dry_run | four green jobs, dist:smoke passes on macOS, Windows and Linux, the ui:shot PNGs look right, macOS notarized | risk: none`.
+
+### M6.5 Auto-update, beta channel and About ☐
+- issue: #200
+- after: M6.1, M6.2
+- docs: platform/build-and-release.md (Auto-update), ux/pages/app-account.md (About)
+- files: package.json, pnpm-lock.yaml, src/main/updater.ts, src/main/updater.test.ts, src/renderer/src/features/account/AboutPanel.tsx, src/renderer/src/features/shell/UpdateChip.tsx, docs/platform/build-and-release.md, docs/ux/pages/app-account.md
+- scope: electron-updater with the GitHub provider, behind a small updater interface in `src/main/updater.ts` so it can be tested with a fake. First check 10 s after launch, then every 6 h with jitter; download in the background; on `ready` emit `update.changed` and show "Restart to update"; never restart on its own (only `app.update.install` calls `quitAndInstall`). `updateChannel: beta` turns on pre-releases; `autoUpdate: false` stops scheduled checks while a manual Check now still runs. Runs only for install kinds mac, nsis and appimage; deb, rpm and portable report `unsupported` and About links to the release page ("Installed with a package manager. Update with apt or dnf.", or the portable equivalent); dev builds never check. Errors become state `error` with a short message, never a throw or a dialog. **About panel:** logo, version and update status; Check now and Restart to update; Automatic updates and Beta updates switches (`app.settings.set`); Electron and platform, Network ID (`network.get`), Support ID (`account.get`); links that open externally; the independence line. **UpdateChip** shows "Restart to update" in the sidebar footer only when the state is `ready`. A headless-only env (`MESH_UI_UPDATE_STATE`, ignored when packaged) lets `ui:shot` show each state.
+- done when: `pnpm check` passes; `updater.test.ts` with a fake updater and fake timers covers checks at 10 s and every 6 h, no checks with `autoUpdate: false`, in dev, or for deb, rpm and portable, the beta channel set on the updater, `ready` emitting `update.changed` without installing until `app.update.install`, and an error reported, not thrown; `mesh-ui --demo run app.info` shows `update`; `pnpm ui:shot --route '#/account'` shows About as up to date, downloading, ready and as a package-manager install, plus the sidebar chip, light and dark; `MANUAL: first real update | after v0.6.1 is published, open v0.6.0 on macOS (zip install), Windows (NSIS) and Linux (AppImage), wait or press Check now | "Restart to update" appears and the restart lands on 0.6.1 still signed in | risk: none`.
+
+### M6.6 CLI on PATH and the agents panel ☐
+- issue: #201
+- after: M6.1, M6.2
+- docs: architecture/cli.md (Install), platform/build-and-release.md (CLI launcher), architecture/security.md (Audit log), ux/pages/app-account.md (Command line and agents)
+- files: src/main/cli-install.ts, src/main/cli-install.test.ts, src/core/audit.ts, src/core/audit.test.ts, src/renderer/src/features/account/CliAgents.tsx, docs/architecture/cli.md, docs/architecture/security.md, docs/ux/pages/app-account.md
+- scope: `app.cli.install` through the host, by install kind. macOS: symlink `/usr/local/bin/mesh-ui` to the bundle's `bin/mesh-ui` through the system admin prompt (`osascript ... with administrator privileges`, paths passed as arguments, never spliced into a shell string), and show the PATH line to copy for people who decline. AppImage: write `~/.local/bin/mesh-ui` calling `$APPIMAGE --cli`, and warn when `~/.local/bin` is not on PATH. deb, rpm and nsis report the launcher the installer put there; portable reports its `bin` folder; "Reinstall" shows when the target moved. **Audit summary** (carried from M4, #149): `readAudit` in `audit.ts` reads `audit.jsonl` for `app.audit.list`, returning the week by local day, the count refused with `needs_confirm`, the newest entries and `mcpLastAt`, skipping malformed lines and never reading results. **CliAgents panel:** Command line and MCP code blocks with copy, or **Install CLI** when `cli.canInstall` and not installed; "This week" count with a sparkline per day and the latest commands (id, `needs confirm` in warning colour, age); header status "MCP used <age>" or "MCP not used yet"; the empty state; the footer line about the token and `--confirm`.
+- done when: `pnpm check` passes; `cli-install.test.ts` in a temp HOME with injected kind, PATH and privileged runner covers AppImage writing an executable script and warning off PATH, macOS calling the runner with the right argv (paths with spaces and quotes too), Reinstall when the target changed, and deb, rpm, nsis and portable only reporting; `audit.test.ts` covers the summary, needs-confirm count, `mcpLastAt`, malformed lines and the 1,000 line cap; `pnpm ui:shot --route '#/account'` shows the panel with entries, empty, and with Install CLI, light and dark; `MANUAL: macOS install command line tool | App & account, Install CLI, accept the admin prompt, open a new terminal, mesh-ui run app.info | JSON with the version | risk: none`; `MANUAL: agents list | run two mesh-ui commands in a terminal, then open App & account | both listed with age, the count went up by two | risk: none`.
+
+### M6.7 Account details, writes and notifications ☐
+- issue: #202
+- after: M6.1
+- docs: ux/pages/app-account.md (Hero, Account, Notifications), architecture/commands.md (account), eero-api/endpoints.md (section 2)
+- files: src/core/commands/account.ts, src/core/commands/account.test.ts, src/core/eero/backend/account.ts, test/fake-eero/routes/account.ts, src/renderer/src/features/account/AccountHero.tsx, src/renderer/src/features/account/AccountNotifications.tsx, src/renderer/src/features/account/CodeDialog.tsx, src/renderer/src/features/notifications/NotificationSettings.tsx, docs/ux/pages/app-account.md
+- scope: The eero side of every `account.*` write, from the source M6.1 recorded: `PUT /2.2/account/name`, `/email`, `/phone` and `/consents` (form); `POST .../email/verify` and `.../phone/verify` (form `code`); `PUT /2.2/account/push_settings` (JSON, every key, merged with the cached values); `DELETE /2.2/account`, then sign out locally. Any write with no live-tested source and no capture is left out and the doc says so. Each write invalidates `account`; verification codes never reach logs or the audit log. Fake routes answer like eero: the email stays pending until verified, and a wrong code returns eero's error. **Hero:** the shared Avatar, the name with `Signed in`, email and mobile with Verified or Unverified; Edit name, Change email (address, then code, in `CodeDialog`), Verify or Change mobile. **Account section:** the Stay up to date switch. **Notifications section:** M5.9's switch rows (extracted from `NotificationSettings.tsx` if needed), the Desktop notifications header switch, the account push switches (network offline, eero offline, `account.push.set`), the "3 this week" detail from `events.summary`, and the weekly report row only if M6.1 found its key, otherwise left out with the reason in the doc. Writes go through `useWrite` with M4's toasts, and Undo where a reversible write changed something.
+- done when: `pnpm check` passes; `account.test.ts` covers, in demo and against the fake server, the exact request of each write, `bad_params` for name length, email format, non E.164 phone and code digits, push merging both keys, a wrong code keeping the change pending, `account.delete` needing `confirm` and `acknowledge` and signing out afterwards, and the CLI table and audit log never showing a code; `pnpm ui:shot --route '#/account'` shows the hero, the edit name dialog, the email code step and the notifications section, light and dark; `MANUAL: edit name and back | Edit name, save, check the eero app, restore | the eero app shows each name | risk: none`; `MANUAL: Stay up to date off and on | toggle in Mesh UI | the eero app agrees | risk: none`; `MANUAL: eero offline push alert off and on | toggle in Mesh UI | the eero app agrees | risk: none`; `MANUAL: change email, only with a second address you control | Change email, enter the code, then change it back | both changes verify and sign-in still works | risk: sign-in email changes until restored`; no `MANUAL:` line for `account.delete` (never run on a real account).
+
+### M6.8 Networks, sign out and delete, demo mode ☐
+- issue: #203
+- after: M6.1
+- docs: ux/pages/app-account.md (Networks, Sign out and delete), ux/sign-in.md, architecture/commands.md (app: `app.demo.set`)
+- files: src/renderer/src/features/account/NetworksTable.tsx, src/renderer/src/features/account/SignOutDelete.tsx, src/main/demo-switch.ts, src/main/demo-switch.test.ts, src/renderer/src/features/sign-in/SignInView.tsx, docs/ux/sign-in.md, docs/ux/pages/app-account.md
+- scope: **Networks table** from `network.list`: name, nickname, "current" or "shared by", role, eeros, and status (`Online`, `Offline 2d`); a row click runs `network.select`. **Sign out:** the text says where the session is kept (keychain name or memory only, from `auth.status` and `app.info`); **Sign out** runs `auth.logout`. **Delete account and data:** destructive badge, the checkbox, then the type-to-confirm dialog sending `confirm: true` and `acknowledge: true`; disabled with the reason while the account owns a network (a null role counts as owned, per the M6.1 capture). **Try demo mode** (carried from M1): `app.demo.set` relaunches the app with `--demo` (`demo-switch.ts`, `app.relaunch` plus `app.exit`, settings in memory, the real user data dir untouched); the sign-in page's "Try demo mode" runs it instead of showing the hint; in demo, the sign out panel offers **Leave demo mode**, which relaunches without `--demo`.
+- done when: `pnpm check` passes; `demo-switch.test.ts` with a stubbed `app` shows entering adds `--demo` once, leaving removes it, and neither changes the user data dir or settings file; `pnpm ui:shot --route '#/account'` shows the networks table with a shared network, the sign out text for keychain and memory, delete disabled for an owner and the delete dialog in the `admin` scenario, light and dark; `pnpm ui:shot` of the signed-out sign-in page with Try demo mode; `MANUAL: Try demo mode and back | packaged app with a fresh profile, click Try demo mode, then Leave demo mode | demo networks appear, then the sign-in page; your real settings unchanged | risk: none`.
+
+### M6.9 Wi-Fi leftovers: nickname, Print a card, time zone ☐
+- issue: #204
+- after: M6.1
+- docs: ux/pages/wifi.md, architecture/commands.md (network, settings), eero-api/endpoints.md
+- files: src/core/commands/network.ts, src/core/commands/network.test.ts, src/core/eero/backend/network.ts, src/core/eero/map/network.ts, test/fake-eero/routes/network.ts, src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/eero/backend/settings.ts, test/fake-eero/routes/settings.ts, src/renderer/src/features/wifi/WifiHero.tsx, src/renderer/src/features/wifi/WifiPage.tsx, src/renderer/src/features/wifi/TimezoneSheet.tsx, src/renderer/src/features/guest/GuestCard.tsx, docs/ux/pages/wifi.md
+- scope: Carried from M5. **Network nickname:** `network.nickname.set` (`PUT {net}/label?labelType=specialMarket`, form `label`, read back from `nickname_label`), built only if M6.1 found a live-tested client that sends it; otherwise the field stays read-only with the reason in wifi.md and the item moves out with that reason. **Print a card:** reuse the guest card print with `wifi.share`; no new command. **Time zone (#191):** find the request eero applies, from Eeronaut or eero's own client as quoted there; change `settings.timezone.set` to send it, keep the error when eero still keeps the old zone, and record the source in endpoints.md.
+- done when: `pnpm check` passes; `network.test.ts` (if built) has the exact label request, `bad_params` over 32 characters, and the nickname in the next `network.get` and `network.list`; `settings.test.ts` has the new time zone request and the "eero kept the old zone" error; `pnpm ui:shot --route '#/settings/wifi'` shows the nickname edit (or the read-only reason) and the print card, light and dark; `MANUAL: nickname set and clear | Wi-Fi > Nickname and location, set a nickname, then clear it | the eero app shows it, then none | risk: none`; `MANUAL: time zone | change the zone and back | the eero app follows within a minute | risk: none`.
+
+### M6.10 Activity menu, Frustration-Free Setup, shared speed test lock ☐
+- issue: #205
+- after: M6.1
+- docs: ux/pages/activity.md, ux/pages/advanced-networking.md (Integrations), architecture/commands.md (integrations, internet)
+- files: src/renderer/src/features/activity/EventStream.tsx, docs/ux/pages/activity.md, src/core/commands/integrations.ts, src/core/commands/integrations.test.ts, src/core/eero/backend/integrations.ts, test/fake-eero/routes/integrations.ts, src/renderer/src/features/advanced/Integrations.tsx, docs/ux/pages/advanced-networking.md, src/core/commands/internet.ts, src/core/commands/internet.test.ts
+- scope: **Activity** (carried from M5, #178): the event stream header gets the settings icon, opening App & account at Notifications through M6.1's deep link; rows with a device link get an overflow menu (Rename `device.rename`, Block `device.block`, Device details) through the write kit with each command's gate. **Frustration-Free Setup** (#188): if M6.1 found no live-tested client for `integrations.ffs.set`, remove the command, its fake route and its docs (eero's own app shows no switch); otherwise keep it CLI-only with a `MANUAL:` line. The card stays read-only either way. **Speed test lock** (carried from M4, #162): the one-at-a-time state moves from the per-process `WeakMap` to a small file in the config dir, written atomically and expiring after the pending window, so the app and a CLI share it; with no config dir (demo, tests) keep the in-memory map.
+- done when: `pnpm check` passes; `internet.test.ts` runs two engines on one temp config dir, the second `speedtest.run` while the first is pending is refused with the message and allowed once the window expires; `integrations.test.ts` matches the ffs decision (`mesh-ui commands` has no `integrations.ffs.set`, or the kept command's tests pass); `pnpm ui:shot --route '#/activity'` shows the open row menu and the settings icon, light and dark; `MANUAL: rename a device from Activity and back | row menu, Rename | the eero app agrees | risk: none`.
+
+### M6.11 Carried manual checks and their answers ☐
+- issue: #206
+- after: M6.1
+- blocked: the maintainer runs the "Carried to M6.1" list in docs/reviews/M5.md when convenient
+- docs: reviews/M5.md (Carried to M6.1), reviews/M4.md, eero-api/endpoints.md (sections 18 and 19)
+- files: docs/eero-api/endpoints.md, src/core/demo/fixtures.ts, test/fake-eero/state.ts
+- scope: Put the carried list in the PR body as `MANUAL:` lines, each with its risk: IPv6 firewall rule add and remove (settles the pinhole url form); Activity name links when a real joined or blocked event appears; placement test on a non-gateway room; client steering off and on; PoE restart; disable a spare port, then Undo; Wi-Fi rename, DNS change, PPPoE, update install, eero remove (each disruptive); Unassigned scheduled pause at a quiet time; M4's pause one device, block one device, speed test, guest off and on, and guest name and password. Network transfer is not listed: it is never run. Apply the answers to `endpoints.md` sections 18 and 19, the fixtures and the fake. A failed check becomes a fix task for the lead; this story changes no command code.
+- done when: `pnpm check` passes; each carried line is ticked with its answer or deferred with a reason; sections 18 and 19 agree with the answers; fixtures and the fake match them; the PR lists any fix tasks raised.
+
+### M6.12 Release candidate ☐
+- issue: #207
+- after: M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10
+- docs: platform/build-and-release.md (Versioning, Release checklist), README.md, open-questions.md
+- files: package.json, README.md, docs/platform/build-and-release.md, docs/open-questions.md
+- scope: Bump `version` to 0.6.0 (no tag). README: install per OS (dmg; NSIS with the SmartScreen click-through; AppImage, deb and rpm), checking `SHA256SUMS.txt`, CLI on PATH per OS, MCP setup, `--demo`, and the "not made by eero or Amazon" line. Release checklist: secrets, a dry run, `v0.6.0`, then the first real update check at 0.6.1. Settle the M6 lines in `open-questions.md`. A final pass on the branch: `pnpm dist` on Linux, `pnpm dist:smoke`, `pnpm test:keychainless`, and the Coming soon grep.
+- done when: `pnpm check` passes; the PR shows `pnpm dist`, `dist:smoke` and `test:keychainless` output on Linux; `grep -rn ComingSoonButton src/renderer/src/features` is empty; `mesh-ui --demo run app.info` shows 0.6.0; README and the checklist describe the release path; no real data in any file.
+
+### M6.R Review ☐
+- issue: #208
+- owner: maintainer
+- after: M6.1, M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10, M6.11, M6.12
+- scope: Release gate. Run the manual checks; merge the milestone PR; add the `release` environment secrets; run the `release.yml` dry run from main; push `v0.6.0`, review and publish the draft. All tagging and publishing is the maintainer's.
