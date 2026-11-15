@@ -69,7 +69,8 @@ export function Gauge({
       role="img"
       aria-label={ariaLabel}
     >
-      <svg width={size} height={size} className="overflow-visible" aria-hidden>
+      {/* The SVG is taller than the box and hangs over what sits below (the plan and history links), so it ignores the pointer. */}
+      <svg width={size} height={size} className="pointer-events-none overflow-visible" aria-hidden>
         <path
           d={arc(START, START + SWEEP)}
           fill="none"
