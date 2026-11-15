@@ -27,7 +27,8 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      downstream eero (the gateway, usually) they are listed under the row,
      each with its link chip, instead of drawn inline.
 2. Two columns:
-   - **Data usage**. Sub "All clients on Office, per hour". Day / Week toggle.
+   - **Data usage**. Sub "Last 24 hours for all clients on Office"
+     ("Last 7 days for ..." on Week). Day / Week toggle.
      Legend with totals (Download 101 GB, Upload 17 GB) and an area chart.
    - **Radios**. Sub "Auto channel selection on". One small card per band:
      band badge, "Ch 36", "160 MHz · tx 23 dBm", client count, and

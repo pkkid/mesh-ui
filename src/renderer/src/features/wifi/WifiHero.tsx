@@ -82,7 +82,6 @@ export function WifiHero({
           actions={
             <>
               <Button
-                size="sm"
                 variant="outline"
                 disabled={!wifi || share.loading}
                 title="Prints the network name, password and QR code"

@@ -148,7 +148,7 @@ numbers.
 
 ### Shell
 
-Sidebar on the left (`bg-sidebar`, 1px right border): app mark, network
+Sidebar on the left (`bg-sidebar`, 1px right border): app icon, network
 picker card, nav groups **Network** and **Settings**, user at the bottom.
 Main pane: a 44px top bar (breadcrumbs, page actions, search,
 Refresh, notifications, theme toggle, window controls) over a scrolling content
@@ -171,6 +171,14 @@ Every page opens with the same header:
 - optional key facts as label-over-value pairs (ISP, Public IP, Last speed
   test);
 - **actions in a row at the bottom**, primary first, disruptive last.
+
+Every button in a header is the `hero` size (28px, `h-7`, 13px text,
+14px icons), on every page: the actions row, the buttons in the right-hand
+column (Pause profile) and the QR block. The one exception is "Show code"
+over an empty QR frame, which is `xs` to fit inside the frame. `PageHeader` and `QrBlock` set it once through
+`ButtonSizeContext` in `components/ui/button.tsx`, so buttons inside them
+leave `size` off; a size given at the call site would break the match.
+Dialogs opened from a header reset it, so their buttons keep their own sizes.
 
 Guest network and Wi-Fi put a **QR block at the top right** of the header,
 with labelled buttons (Copy password, Save QR, Print a card) to its left
@@ -392,6 +400,40 @@ the same everywhere (never a note in place of the button):
 - Destructive dialogs need a checkbox or typed name.
 - Danger buttons are red text on a neutral button until the confirm step,
   where the confirming button is filled.
+
+## App icon
+
+One mark everywhere: the mesh triangle (three nodes, a hub, and the links
+between them) in the [Gruvbox Plus](https://github.com/SylEleuth/gruvbox-plus-icon-pack)
+app-icon style. `build/icon.svg` is the only source; `pnpm icons` renders
+`build/icon.png`, the Linux sizes in `build/icons/` and the website copies
+from it, and the UI draws it with `AppIcon` (`components/mesh/AppIcon.tsx`)
+in the sidebar, the sign-in titlebar and Welcome step, and the About panel.
+Never draw the app mark with a lucide glyph.
+
+Beside the icon, the name is the wordmark `AppWordmark`
+(`components/mesh/AppWordmark.tsx`), modelled on T3 Code's sidebar brand:
+"Mesh" bold in the text colour, "UI" medium in `text-muted-foreground`.
+
+The app icon follows the pack's measured conventions on a 256 canvas:
+
+- **Box:** the pack's shared rounded-square path (6..250 across, 12..240
+  down), filled with a top-to-bottom `#504945` to `#3c3836` gradient.
+- **Symbol:** cream `#ebdbb2`, about 164px wide (the pack's median is 166),
+  centred so symbol plus shadow sit on (128, 128).
+- **Depth:** the symbol repeated 5px lower in `#282828` at 30% as its shadow,
+  a 4px top lip in `#fbf1c7` at 60%, and the pack's rim gradient over the box
+  (light top edge, darker bottom). No filters or blurs.
+
+Tray icons for a future status bar live in `build/tray/`, in the pack's
+panel style: flat filled paths in `currentColor` with the KDE
+`ColorScheme-*` classes, at 16, 22 and 24px (`mesh-ui-symbolic.svg` is the
+16px monochrome app icon). States: `mesh-ui-tray` (normal),
+`-offline` (the symbol at 30%), and `-warning` and `-error`, which add the
+pack's standard badge, a 4px dot (radius 2 on the 22px canvas) in the
+bottom-right corner with a 1px gap cut from the symbol, in
+`ColorScheme-NeutralText` or `ColorScheme-NegativeText`. They use no masks,
+because Qt's SVG renderer does not support them.
 
 ## Accessibility
 

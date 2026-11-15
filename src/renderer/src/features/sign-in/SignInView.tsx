@@ -17,11 +17,12 @@ import {
   Mail,
   Phone,
   Smartphone,
-  Wifi,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { execute, useCommand, useQuery } from "~/app/useCommand";
+import { AppIcon } from "~/components/mesh/AppIcon";
+import { AppWordmark } from "~/components/mesh/AppWordmark";
 import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import { Segmented } from "~/components/ui/segmented";
@@ -156,10 +157,8 @@ function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full flex-col bg-background">
       <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-2 ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
-        <div className="grid size-[18px] place-items-center rounded-[6px] bg-primary text-primary-foreground">
-          <Wifi className="size-[11px]" strokeWidth={2.5} />
-        </div>
-        <span className="font-medium text-[13px]">Mesh UI</span>
+        <AppIcon className="size-[18px]" />
+        <AppWordmark className="text-[13px]" />
       </div>
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto">
         <div className="flex min-h-[min(640px,100%)] w-full max-w-[460px] flex-col px-[38px] pt-[34px] pb-[26px]">{children}</div>
@@ -311,9 +310,7 @@ function Welcome({
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col" noValidate>
-      <div className="grid size-16 place-items-center rounded-[19px] border bg-muted text-foreground">
-        <Wifi className="size-8" />
-      </div>
+      <AppIcon className="size-16" />
       <Title className="mt-[22px]">Sign in to your eero account</Title>
       <Lead>Manage your eero networks from the desktop. We'll send you a one-time code, no password needed.</Lead>
       {expired && (

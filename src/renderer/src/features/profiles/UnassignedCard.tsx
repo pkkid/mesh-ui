@@ -178,9 +178,10 @@ export function UnassignedCard({ profiles, devices, usage, colorOf, timezone }: 
 
 /**
  * Pause unassigned (disruptive: the confirm dialog names who goes offline,
- * including the TV, printer and smart home gear) or Resume unassigned. Shared with the Unassigned page.
+ * including the TV, printer and smart home gear) or Resume unassigned.
+ * Shared with the Unassigned page.
  */
-export function UnassignedPauseButton({ paused, devices, size = "xs" }: { paused: boolean; devices: ReadonlyArray<Device>; size?: "xs" | "lg" }) {
+export function UnassignedPauseButton({ paused, devices, hero = false }: { paused: boolean; devices: ReadonlyArray<Device>; hero?: boolean }) {
   const gate = useGate(PROFILE_GATE);
   const copy = unassignedPauseMessage(devices);
   const confirm = { ...copy, confirmLabel: "Pause unassigned" };
@@ -198,9 +199,9 @@ export function UnassignedPauseButton({ paused, devices, size = "xs" }: { paused
   return (
     <GatedButton
       gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
-      size={size}
+      size={hero ? undefined : "xs"}
       variant={paused ? "default" : "outline"}
-      className={size === "lg" ? "w-full" : undefined}
+      className={hero ? "w-full" : undefined}
       disabled={write.running}
       onClick={() => void write.run()}
     >

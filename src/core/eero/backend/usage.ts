@@ -47,7 +47,8 @@ export const usage: EeroArea<"usage"> = ({ client }) => ({
       q.by === "eero"
         ? client.request<unknown>({ method: "GET", path: networkPath(net, "data_usage/eeros"), query: { ...window, cadence: "daily" } })
         : client.request<unknown>({ method: "GET", path: networkPath(net, "data_usage/breakdown"), query: window }),
-      client.request<RawUsage>({ method: "GET", path: networkPath(net, "data_usage"), query: { ...window, cadence: "daily" } }),
+      // Hourly, not daily: eero's daily chart has no bucket for the day in progress (#236).
+      client.request<RawUsage>({ method: "GET", path: networkPath(net, "data_usage"), query: { ...window, cadence: "hourly" } }),
     ]);
     const key = q.by === "device" ? "devices" : q.by === "profile" ? "profiles" : "eeros";
     const rows = asList<RawUsageRow>(rowsData, key).map((r) => mapBreakdownRow(r, q.by));

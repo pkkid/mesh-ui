@@ -38,7 +38,10 @@ package's install scripts: `dpkg-deb -e dist/mesh-ui_<v>_amd64.deb <dir>`
 | File | What it is |
 | --- | --- |
 | `electron-builder.yml` | Targets, artifact names, signing settings (ad-hoc on macOS for now), publish config |
-| `build/icon.png` | The app icon, 1024 px; electron-builder derives icns, ico and the Linux sizes |
+| `build/icon.svg` | The app icon's source; `pnpm icons` (needs ImageMagick) renders `build/icon.png`, `build/icons/` and the website icons from it, and the UI shows it with `AppIcon` |
+| `build/icon.png` | The app icon, 1024 px, rendered from `build/icon.svg`; electron-builder derives icns and ico |
+| `build/icons/<n>x<n>.png` | The Linux hicolor sizes, 16 to 1024 px, rendered from `build/icon.svg` |
+| `build/tray/*.svg` | Tray icons for a future status bar (not packaged yet); see the design system's App icon section |
 | `build/entitlements.mac.plist` | macOS entitlements (only `allow-jit`), for the hardened runtime once Developer ID signing is added |
 | `build/mac/mesh-ui` | macOS CLI launcher, `Contents/Resources/bin/mesh-ui` |
 | `build/win/mesh-ui.cmd`, `build/win/cli-relay.js` | Windows CLI launcher and relay, `bin\mesh-ui.cmd` and `resources\cli-relay.js` |

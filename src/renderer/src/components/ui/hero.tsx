@@ -8,6 +8,8 @@ import type * as React from "react";
 
 import { cn } from "~/lib/utils";
 
+import { ButtonSizeContext, HERO_BUTTON_SIZE } from "./button";
+
 type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   title: React.ReactNode;
   /** A lucide icon for a neutral 64px tile, or any node (an avatar). */
@@ -16,7 +18,7 @@ type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   status?: React.ReactNode;
   /** Key facts, usually <Metric>s. */
   facts?: React.ReactNode;
-  /** Buttons, primary first, disruptive last. */
+  /** Buttons, primary first, disruptive last. Leave `size` off: the header sets it. */
   actions?: React.ReactNode;
   /** Right-hand column: hero figures, gauges, QR block. */
   aside?: React.ReactNode;
@@ -30,22 +32,28 @@ function isIcon(icon: unknown): icon is LucideIcon {
 function PageHeader({ title, icon, status, facts, actions, aside, className, ...props }: PageHeaderProps) {
   const Icon = isIcon(icon) ? icon : null;
   return (
-    <div data-slot="page-header" className={cn("rounded-(--hero-radius) border bg-card", className)} {...props}>
-      <div className="flex items-center gap-7 px-6 py-[22px]">
-        <div className="flex min-w-0 flex-1 items-start gap-4">
-          {Icon ? <IconTile icon={Icon} size="xl" /> : (icon as React.ReactNode)}
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <div>
-              <h2 className="truncate font-semibold text-[28px] leading-tight tracking-tight">{title}</h2>
-              {status && <div className="mt-2 flex flex-wrap items-center gap-3 text-muted-foreground text-xs">{status}</div>}
+    <ButtonSizeContext value={HERO_BUTTON_SIZE}>
+      <div data-slot="page-header" className={cn("rounded-(--hero-radius) border bg-card", className)} {...props}>
+        <div className="flex items-center gap-7 px-6 py-[22px]">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            {Icon ? <IconTile icon={Icon} size="xl" /> : (icon as React.ReactNode)}
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              <div>
+                <h2 className="truncate font-semibold text-[28px] leading-tight tracking-tight">{title}</h2>
+                {status && <div className="mt-2 flex flex-wrap items-center gap-3 text-muted-foreground text-xs">{status}</div>}
+              </div>
+              {facts && <div className="flex flex-wrap gap-x-[22px] gap-y-2">{facts}</div>}
+              {actions && (
+                <div data-slot="hero-actions" className="flex flex-wrap items-center gap-2">
+                  {actions}
+                </div>
+              )}
             </div>
-            {facts && <div className="flex flex-wrap gap-x-[22px] gap-y-2">{facts}</div>}
-            {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
           </div>
+          {aside && <div className="flex shrink-0 items-center gap-7">{aside}</div>}
         </div>
-        {aside && <div className="flex shrink-0 items-center gap-7">{aside}</div>}
       </div>
-    </div>
+    </ButtonSizeContext>
   );
 }
 

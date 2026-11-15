@@ -88,7 +88,7 @@ function PowerButton({ on }: { on: boolean }) {
   });
   const write = on ? disable : enable;
   return (
-    <GatedButton gate={gate} size="sm" variant={on ? "destructive" : "default"} disabled={write.running} onClick={() => void write.run()}>
+    <GatedButton gate={gate} variant={on ? "destructive" : "default"} disabled={write.running} onClick={() => void write.run()}>
       <Power />
       {on ? "Turn off guest network" : "Turn on guest network"}
     </GatedButton>
@@ -126,7 +126,6 @@ function ShareBlock({ guest, version }: { guest: GuestNetwork; version: number }
       actions={
         <>
           <Button
-            size="sm"
             variant="outline"
             disabled={!share.result}
             onClick={async () => {
@@ -138,7 +137,6 @@ function ShareBlock({ guest, version }: { guest: GuestNetwork; version: number }
             Print a card
           </Button>
           <Button
-            size="sm"
             variant="outline"
             disabled={!share.result}
             title="Copies a short invite with the name and password"

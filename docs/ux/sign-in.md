@@ -10,14 +10,14 @@ Mockup: [../mockups/18-sign-in.html](../mockups/18-sign-in.html)
 
 The mockup shows four frames of a 460 x 640 window side by side. In the app
 this is one small window (no sidebar, no topbar beyond a titlebar with the
-app mark, "Mesh UI" and window controls) that steps through the first two frames, then
+app icon at 18px, the "Mesh UI" wordmark and window controls) that steps through the first two frames, then
 grows into the main window. Shell rules are in [overview.md](overview.md).
 
 ## Layout
 
 ### 1. Welcome
 
-- App mark in a rounded square, title "Sign in to your eero account", lead
+- The app icon (`AppIcon`, 64px), title "Sign in to your eero account", lead
   text: "Manage Maple Street and your other eero networks from the desktop.
   We'll send you a one-time code, no password needed." (On first launch
   there is no network name yet; use "your eero networks".)

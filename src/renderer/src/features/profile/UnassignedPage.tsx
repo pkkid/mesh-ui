@@ -85,7 +85,7 @@ export function UnassignedPage(_props: PageProps) {
         aside={
           summary && list ? (
             <div className="flex max-w-60 flex-col items-stretch gap-2">
-              <UnassignedPauseButton paused={paused} devices={list} size="lg" />
+              <UnassignedPauseButton paused={paused} devices={list} hero />
               <p className="text-2xs text-muted-foreground">
                 {paused ? "Resuming brings every unassigned device back online." : "Includes the TV, printer and smart home gear."}
               </p>
