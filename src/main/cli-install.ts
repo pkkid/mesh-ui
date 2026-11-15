@@ -24,6 +24,7 @@ import path from "node:path";
 import { CommandError } from "../core/errors";
 import type { CliStatus, InstallKind } from "../core/model";
 import type { HostActions } from "../core/spec";
+import { ownAppImage } from "./install-kind";
 
 export type CliFs = {
   /** Whether `file` exists, a dangling symlink included. */
@@ -174,23 +175,10 @@ export function createCliInstaller(d: CliInstallDeps): NonNullable<HostActions["
   const run = d.runPrivileged ?? execRunner;
   const win = isWin(d);
 
-  /**
-   * The AppImage this process runs from. APPIMAGE alone is not enough: a
-   * program started from another AppImage (a terminal, an editor) inherits
-   * its APPIMAGE, so the image's mount (APPDIR) must hold this executable.
-   */
-  const ownAppImage = (): string | null => {
-    const image = d.env.APPIMAGE;
-    const dir = d.env.APPDIR;
-    if (!image || !dir) return null;
-    const rel = path.posix.relative(path.posix.resolve(dir), path.posix.resolve(d.exePath));
-    return rel && !rel.startsWith("..") && !path.posix.isAbsolute(rel) ? image : null;
-  };
-
   /** What the launcher should point at (macOS link target, AppImage path), or null. */
   const target = (): string | null => {
     if (d.install === "mac") return macBundleLauncher(d.exePath);
-    if (d.install === "appimage") return ownAppImage();
+    if (d.install === "appimage") return ownAppImage(d.env, d.exePath);
     return null;
   };
 

@@ -23,6 +23,20 @@ export type InstallKindInput = {
   list(dir: string): string[];
 };
 
+/**
+ * The AppImage this process runs from, or null. APPIMAGE alone is not
+ * enough: a program started from another AppImage (a terminal, an editor)
+ * inherits its APPIMAGE and APPDIR, so the image's mount (APPDIR) must hold
+ * this executable. AppImage is Linux only, so paths are POSIX.
+ */
+export function ownAppImage(env: Readonly<Record<string, string | undefined>>, exePath: string): string | null {
+  const image = env.APPIMAGE;
+  const dir = env.APPDIR;
+  if (!image || !dir) return null;
+  const rel = path.posix.relative(path.posix.resolve(dir), path.posix.resolve(exePath));
+  return rel !== "" && rel !== ".." && !rel.startsWith("../") && !path.posix.isAbsolute(rel) ? image : null;
+}
+
 /** electron-builder's NSIS uninstaller sits beside the exe: `Uninstall Mesh UI.exe`. */
 const NSIS_UNINSTALLER = /^uninstall .+\.exe$/i;
 
@@ -33,8 +47,8 @@ export function detectInstallKind(i: InstallKindInput): InstallKind {
     const dir = (i.exePath.includes("\\") ? path.win32 : path).dirname(i.exePath);
     return i.list(dir).some((f) => NSIS_UNINSTALLER.test(f)) ? "nsis" : "portable";
   }
-  // Linux. The AppImage runtime sets APPIMAGE to the image's path.
-  if (i.env.APPIMAGE) return "appimage";
+  // Linux. The AppImage runtime sets APPIMAGE and mounts the image at APPDIR, which holds the exe.
+  if (ownAppImage(i.env, i.exePath)) return "appimage";
   // electron-builder writes `resources/package-type` for deb and rpm.
   const type = i.readText(path.posix.join(i.resourcesPath, "package-type"))?.trim();
   if (type === "deb" || type === "rpm") return type;
