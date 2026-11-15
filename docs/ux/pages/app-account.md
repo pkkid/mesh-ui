@@ -37,7 +37,7 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 | Name, email, phone, verification, consents, push settings, Support ID | `account.get` | on load, every 5 min, after writes |
 | Network alert toggles | `notifications.settings.get` | on load |
 | Network offline, eero offline toggles | `account.get` (push settings) | on load |
-| "3 this week" detail | `events.summary` `{type: ["device_joined"], range: "week"}` | on load |
+| "12 device events this week" detail | `events.summary` `{type: ["devices"], range: "week"}` | on load |
 | Desktop notifications switch | `app.settings.get` | on load |
 | Networks table | `network.list` | on load, every 5 min |
 | CLI install state, MCP state, command log and counts | `app.info`, `app.audit.list` | on load, every 60 s |
@@ -80,7 +80,10 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 ## Notes
 
 - Push settings (`networkOffline`, `nodeOffline`) live on the account; other toggles are a per network map on `{net}/notifications` that must be sent whole with one key changed. Core hides that detail behind `notifications.settings.set`.
-- The weekly report toggle maps to `{net}/data_usage/report_settings` or a notifications key; confirm which (open question).
+- The weekly report row is not built (M6.7): `{net}/data_usage/report_settings` was never captured (endpoints.md section 20), so there is no known key. When eero sends its own `network.dataUsageReport` notifications key, it shows like any other alert key, as "Data usage report". The Simple Setup row is an integrations setting, not an alert, and stays on Advanced networking.
+- Account writes (name, email, mobile, Stay up to date, push switches) work in demo and against the fake eero server. Against the real eero API they answer "not available yet" (no live-tested request, endpoints.md section 20) and the toast says so.
+- Notifications section rows: New device joins, then the two account push switches, then every other alert key eero sends for the network, in the bell sheet's order, each with Undo. The New device joins detail is this week's device events from `events.summary` `{type: ["devices"], range: "week"}` ("12 device events this week"): the summary has no narrower join category, so it counts every device event, and says so.
+- The hero's code dialog (`CodeDialog.tsx`) takes the new address or number, then the 6 digit code; a wrong code shows under the field and keeps the change pending. An unverified address or number opens it at the code step (the button reads Verify email or Verify mobile; Add mobile when there is none). Edit name has Undo; email and mobile changes do not (they need a code).
 - Desktop notifications are raised by the main process from the same `notifications.list` poll that feeds the bell; one poll, both surfaces.
 - Mesh UI does not offer **Switch to Amazon login** (it is permanent and needs Amazon sign in), so the Account section has no login row.
 - The command log (`app.audit.list`) reads the audit log the engine writes on every CLI and MCP call, `audit.jsonl` in the config dir. Format, redaction and the 1,000 line cap are in [security.md](../../architecture/security.md#audit-log); it never holds the token or secret params. Window initiated commands are not logged.

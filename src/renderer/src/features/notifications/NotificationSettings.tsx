@@ -18,7 +18,7 @@ import type { DesktopKey } from "../../../../core/commands/notifications";
 import type { NotificationSettings as Settings } from "../../../../core/model";
 
 /** Labels for the eero keys seen so far; any other key shows as sent. */
-const EERO_LABELS: Record<string, { label: string; detail?: string }> = {
+export const EERO_LABELS: Record<string, { label: string; detail?: string }> = {
   "device.new": { label: "New device joins", detail: "A device connects for the first time" },
   "device.restrict.new.private": { label: "New device with a private address", detail: "A device that hides its hardware address joins" },
   "network.updated": { label: "eeroOS updated", detail: "An update finished installing" },
@@ -78,7 +78,7 @@ function SettingsForm({ networkId, networkName, saved, onClose }: { networkId: s
   const desktopChanges = changed(saved.desktop, draft.desktop);
   const dirty = Object.keys(eeroChanges).length + Object.keys(desktopChanges).length > 0;
   const desktopOn = draft.desktop.enabled !== false;
-  const keys = Object.keys(saved.eero).sort((a, b) => order(a) - order(b));
+  const keys = Object.keys(saved.eero).sort((a, b) => alertOrder(a) - alertOrder(b));
 
   const save = () => {
     const pick = (keys: string[], from: Record<string, boolean>) => Object.fromEntries(keys.map((k) => [k, from[k] ?? true]));
@@ -118,16 +118,16 @@ function SettingsForm({ networkId, networkName, saved, onClose }: { networkId: s
         <Group title="eero alerts" hint="Sent by eero for this network">
           {keys.length ? (
             keys.map((k) => (
-              <Row key={k} label={EERO_LABELS[k]?.label ?? k} detail={EERO_LABELS[k]?.detail} on={draft.eero[k] === true} onChange={(on) => set("eero", k, on)} />
+              <SwitchRow key={k} label={EERO_LABELS[k]?.label ?? k} detail={EERO_LABELS[k]?.detail} on={draft.eero[k] === true} onChange={(on) => set("eero", k, on)} />
             ))
           ) : (
             <p className="py-2 text-muted-foreground text-xs">eero sent no alert switches for this network.</p>
           )}
         </Group>
         <Group title="Desktop alerts" hint="On this computer, for every network">
-          <Row label="Show desktop alerts" on={desktopOn} onChange={(on) => set("desktop", "enabled", on)} />
+          <SwitchRow label="Show desktop alerts" on={desktopOn} onChange={(on) => set("desktop", "enabled", on)} />
           {DESKTOP_ROWS.map((r) => (
-            <Row key={r.key} label={r.label} detail={r.detail} on={draft.desktop[r.key] !== false} disabled={!desktopOn} onChange={(on) => set("desktop", r.key, on)} />
+            <SwitchRow key={r.key} label={r.label} detail={r.detail} on={draft.desktop[r.key] !== false} disabled={!desktopOn} onChange={(on) => set("desktop", r.key, on)} />
           ))}
         </Group>
       </div>
@@ -137,7 +137,7 @@ function SettingsForm({ networkId, networkName, saved, onClose }: { networkId: s
 
 /** Keys in a stable order: the labelled ones as listed, then the rest by name. */
 const LABEL_ORDER = Object.keys(EERO_LABELS);
-const order = (k: string) => {
+export const alertOrder = (k: string) => {
   const i = LABEL_ORDER.indexOf(k);
   return i === -1 ? LABEL_ORDER.length : i;
 };
@@ -154,9 +154,34 @@ function Group({ title, hint, children }: { title: string; hint: string; childre
   );
 }
 
-function Row({ label, detail, on, disabled, onChange }: { label: string; detail?: string; on: boolean; disabled?: boolean; onChange: (on: boolean) => void }) {
+/**
+ * One alert row: optional icon, label, muted detail, and a switch. `on` null
+ * (eero sent no value) shows a dashed track that cannot be used. Shared with
+ * App & account's Notifications section.
+ */
+export function SwitchRow({
+  icon,
+  label,
+  detail,
+  on,
+  disabled,
+  title,
+  onChange,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  detail?: React.ReactNode;
+  on: boolean | null | undefined;
+  disabled?: boolean;
+  /** Tooltip on the switch, e.g. why it is off. */
+  title?: string;
+  onChange: (on: boolean) => void;
+}) {
+  const known = on === true || on === false;
+  const off = disabled || !known;
   return (
     <div className={cn("flex items-center gap-3 py-1.5", disabled && "opacity-60")}>
+      {icon && <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground [&_svg]:size-3.5">{icon}</span>}
       <div className="min-w-0 flex-1">
         <div className="text-foreground/90 text-xs">{label}</div>
         {detail && <div className="text-2xs text-muted-foreground">{detail}</div>}
@@ -164,11 +189,17 @@ function Row({ label, detail, on, disabled, onChange }: { label: string; detail?
       <button
         type="button"
         role="switch"
-        aria-checked={on}
+        aria-checked={on === true}
         aria-label={label}
-        disabled={disabled}
+        disabled={off}
+        title={!known ? "eero does not report this setting" : title}
         onClick={() => onChange(!on)}
-        className={cn("relative h-5 w-9 shrink-0 rounded-full border", disabled ? "cursor-not-allowed" : "cursor-pointer", on ? "bg-foreground/70" : "bg-muted")}
+        className={cn(
+          "relative h-5 w-9 shrink-0 rounded-full border",
+          off ? "cursor-not-allowed" : "cursor-pointer",
+          on ? "bg-foreground/70" : "bg-muted",
+          !known && "border-dashed",
+        )}
       >
         <i className={cn("absolute top-0.5 size-3.5 rounded-full bg-background shadow-sm", on ? "right-0.5" : "left-0.5")} />
       </button>

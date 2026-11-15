@@ -1,8 +1,10 @@
 /**
  * account: the signed-in eero account and its writes (name, email, mobile,
  * email preferences, push alerts, delete). Each write answers with the
- * account read again. The eero backend answers "not available yet" for the
- * writes until a live-tested source is found (docs/eero-api/endpoints.md#20).
+ * account read again. Against the real eero API the writes answer "not
+ * available yet" until a live-tested source is found; demo and the fake eero
+ * server apply them (docs/eero-api/endpoints.md#20). Verification codes are
+ * params named `code`, which the audit log redacts and no result echoes.
  * See docs/architecture/commands.md#account.
  */
 
@@ -141,6 +143,8 @@ export const commands: AnyCommand[] = [
       nodeOffline: z.boolean().optional().describe("Alert when an eero goes offline."),
     }),
     ...write,
+    // The push choices also show in notifications.settings.get.
+    invalidates: ["account", "notification_settings"],
     run: async (ctx, p): Promise<Account> => {
       if (p.networkOffline === undefined && p.nodeOffline === undefined) throw new CommandError("bad_params", "Give networkOffline, nodeOffline or both.");
       // eero wants every key, so the ones not given come from the account.

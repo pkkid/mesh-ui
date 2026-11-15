@@ -191,6 +191,13 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 
 ### account (`commands/account.ts`, scope account)
 
+Every account write is applied by demo and by the fake eero server (the
+exact requests below are tested there). Against the real eero API they
+answer `eero_error` "not available yet": no live-tested client sends them
+and nothing was captured ([endpoints.md section 20](../eero-api/endpoints.md#20-real-captures-and-write-sources-for-m6-2026-11-14)).
+Codes are params named `code`, removed from the audit log; no result
+echoes them. `account.push.set` also invalidates `notification_settings`.
+
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `account.get` | Account | `{}` | q | `GET /2.2/account` | `Account` model. Email and phone as returned (eero masks some). Polled every 5 min (TTL 4.5 min). |

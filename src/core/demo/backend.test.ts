@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BackendError, partialArea, type UsageQuery, WRITE_METHODS } from "../backend";
 import { createEeroBackend } from "../eero/backend";
 import { DEVICE_TYPE_IDS, deviceCategory } from "../eero/map/device";
+import { RateLimiter } from "../eero/ratelimit";
 import { createEngine } from "../engine";
 import type * as M from "../model";
 import { createDemoBackend, type DemoBackend, dayStart, EVENT_PAGE_SIZE, FLAKY_DEVICE, isDemoBackend, RESTART_MS } from "./backend";
@@ -907,7 +908,9 @@ describe("write contracts (M4)", () => {
     const secrets = { load: async () => "t", save: async () => "memory" as const, clear: async () => {}, storage: async () => "memory" as const };
     let calls = 0;
     // 400, not 500: a built write may read first (guest.rename), and reads retry a 500 with backoff.
-    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", fetch: (async () => (calls++, new Response("{}", { status: 400 }))) as typeof fetch });
+    // A roomy limiter: built writes now pass the default 80 a minute between them (M6.7).
+    const limiter = new RateLimiter({ perWindow: 10_000 });
+    const eero = createEeroBackend({ secrets, origin: "http://127.0.0.1", limiter, fetch: (async () => (calls++, new Response("{}", { status: 400 }))) as typeof fetch });
     for (const [area, methods] of Object.entries(WRITE_METHODS)) {
       for (const m of methods) {
         const fn = (eero as unknown as Record<string, Record<string, (...a: unknown[]) => Promise<unknown>>>)[area]?.[m];

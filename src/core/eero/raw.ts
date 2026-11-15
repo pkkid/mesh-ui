@@ -42,6 +42,8 @@ export type RawAccount = {
   role?: string;
   premium_status?: string;
   push_settings?: { networkOffline?: boolean; nodeOffline?: boolean };
+  /** Shape unverified (no capture, endpoints.md section 20): FF and LD write `marketing_emails` as a form bool. */
+  consents?: { marketing_emails?: boolean };
   auth?: { type?: "email" | "phone" | "amazon" | string };
   can_transfer?: boolean;
 };
