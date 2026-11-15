@@ -201,7 +201,7 @@ Every network-scoped command also accepts `networkId?`. Commands marked
 | `account.phone.verify` | Verify mobile | `{ code: string }` 6 digits | w | `POST /2.2/account/phone/verify` form `code` | As email verify. |
 | `account.consents.set` | Email preferences | `{ marketingEmails: boolean }` | w | `PUT /2.2/account/consents` form `marketing_emails` | Returns the `Account`. |
 | `account.push.set` | Phone push alerts | `{ networkOffline?: boolean, nodeOffline?: boolean }` (at least one) | w | `PUT /2.2/account/push_settings` JSON | eero wants every key; the command merges with the account's current values (`bad_params` when eero sent none and a key is missing). |
-| `account.delete` | Delete account and data | `{ acknowledge: true }` | x | `DELETE /2.2/account` | Signs out afterwards (`session.changed`). `acknowledge` mirrors the mockup checkbox; `confirm` is still required. Refused with `bad_params` before any confirm while the account owns a network ("Transfer or delete them before deleting the account."). Returns `{ deleted: true }`. Never run on the real network. |
+| `account.delete` | Delete account and data | `{ acknowledge: true }` | x | `DELETE /2.2/account` | Signs out afterwards (`session.changed`). `acknowledge` mirrors the mockup checkbox; `confirm` is still required. Refused with `bad_params` before any confirm while the account owns a network, or has one whose role eero did not send ("Transfer or delete them before deleting the account."). Returns `{ deleted: true }`. Never run on the real network. |
 
 Every account write has gate `{ area: null }`, invalidates `account` and is
 built in demo (M6.1). The eero backend answers "not available yet" for all

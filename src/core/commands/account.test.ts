@@ -173,6 +173,16 @@ describe("account.delete on demo", () => {
     expect(await e.execute("account.get")).toMatchObject({ ok: true });
   });
 
+  it("refuses a network whose role is unknown, since it may be owned", async () => {
+    const backend = createDemoBackend({ scenario: "no_networks" });
+    const unknown = { id: "1", name: "Elm Road", nickname: null, role: null, status: "online", eeroCount: 1, devicesOnline: 0, isp: null, updateAvailable: false, lastSeen: null, selected: false } as const;
+    backend.network.list = async () => [unknown];
+    const res = await createEngine({ backend }).execute("account.delete", { acknowledge: true, confirm: true });
+    expect(res).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    if (!res.ok) expect(res.error.message).toMatch(/may own a network \(Elm Road\)/);
+    expect(await backend.account.get()).toMatchObject({ networkCount: 0 });
+  });
+
   it("deletes, signs out and announces it", async () => {
     const e = createEngine({ backend: createDemoBackend({ scenario: "no_networks" }) });
     const events: HostEvent[] = [];

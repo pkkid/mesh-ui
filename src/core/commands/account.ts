@@ -21,12 +21,17 @@ const code = z.string().trim().regex(/^\d{6}$/, "The code is 6 digits.").describ
 /** Reads the account again, past the cache, for a write's result. */
 const reread = (ctx: CommandContext): Promise<Account> => ctx.backend.account.get();
 
-/** Why the account cannot be deleted yet, or null. eero needs owned networks transferred or deleted first. */
+/**
+ * Why the account cannot be deleted yet, or null. eero needs owned networks
+ * transferred or deleted first. A network whose role eero did not send
+ * (null) may be owned, so it refuses too: the delete cannot be undone.
+ */
 async function deleteRefusal(ctx: CommandContext): Promise<string | null> {
-  const owned = (await ctx.backend.network.list()).filter((n) => n.role === "owner");
+  const owned = (await ctx.backend.network.list()).filter((n) => n.role !== "admin");
   if (owned.length === 0) return null;
   const names = owned.map((n) => n.nickname ?? n.name).join(", ");
-  return `You own ${owned.length === 1 ? "a network" : `${owned.length} networks`} (${names}). Transfer or delete ${owned.length === 1 ? "it" : "them"} before deleting the account.`;
+  const unknown = owned.some((n) => n.role === null) ? " or may own" : "";
+  return `You own${unknown} ${owned.length === 1 ? "a network" : `${owned.length} networks`} (${names}). Transfer or delete ${owned.length === 1 ? "it" : "them"} before deleting the account.`;
 }
 
 /** Shared by every account write. */
