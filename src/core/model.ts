@@ -826,7 +826,8 @@ export type InstallKind = "dev" | "mac" | "nsis" | "portable" | "appimage" | "de
 
 export type UpdateChannel = "latest" | "beta";
 
-export type UpdateState = "off" | "idle" | "checking" | "downloading" | "ready" | "error" | "unsupported";
+/** `available`: a newer version exists but this copy cannot install it itself (an unsigned macOS build); download it by hand. */
+export type UpdateState = "off" | "idle" | "checking" | "available" | "downloading" | "ready" | "error" | "unsupported";
 
 /** The auto-updater's state (docs/platform/build-and-release.md#auto-update). */
 export type UpdateStatus = {

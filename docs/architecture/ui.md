@@ -88,8 +88,9 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   `networkId` is optional. The palette and confirm dialogs read it.
 - `on` carries host events that are not command results, on the
   `mesh:event` channel: `session.changed` (signed out or expired elsewhere,
-  for example by the CLI), `network.selected`, `update.ready` (an app
-  update is downloaded). No eero data travels on it.
+  for example by the CLI), `network.selected`, `update.changed` (the app
+  updater changed state, for example an update is downloaded). No eero
+  data travels on it.
 - `saveFile` (`mesh:save-file`, renderer helper `lib/saveFile.ts`) saves a
   text export, such as Internet's Export CSV, to a file the user picks in the
   native save dialog. It is not a command: the text comes from a command
