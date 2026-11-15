@@ -1250,7 +1250,7 @@ credentials is a `MANUAL:` line.
 - scope: **Activity** (carried from M5, #178): the event stream header gets the settings icon, opening App & account at Notifications through M6.1's deep link; rows with a device link get an overflow menu (Rename `device.rename`, Block `device.block`, Device details) through the write kit with each command's gate. **Frustration-Free Setup** (#188): if M6.1 found no live-tested client for `integrations.ffs.set`, remove the command, its fake route and its docs (eero's own app shows no switch); otherwise keep it CLI-only with a `MANUAL:` line. The card stays read-only either way. **Speed test lock** (carried from M4, #162): the one-at-a-time state moves from the per-process `WeakMap` to a small file in the config dir, written atomically and expiring after the pending window, so the app and a CLI share it; with no config dir (demo, tests) keep the in-memory map.
 - done when: `pnpm check` passes; `internet.test.ts` runs two engines on one temp config dir, the second `speedtest.run` while the first is pending is refused with the message and allowed once the window expires; `integrations.test.ts` matches the ffs decision (`mesh-ui commands` has no `integrations.ffs.set`, or the kept command's tests pass); `pnpm ui:shot --route '#/activity'` shows the open row menu and the settings icon, light and dark; `MANUAL: rename a device from Activity and back | row menu, Rename | the eero app agrees | risk: none`.
 
-### M6.11 Carried manual checks and their answers ☐ (moved to a 0.6.x issue, see After M6)
+### M6.11 Carried manual checks and their answers ✗ (dropped by the maintainer at the M6 review)
 - issue: [#206](https://github.com/pkkid/mesh-ui/issues/206)
 - after: M6.1
 - blocked: the maintainer runs the "Carried to M6.1" list in docs/reviews/M5.md when convenient
@@ -1293,5 +1293,4 @@ for the UI to learn which writes the live backend lacks, replacing the
 `backend === "eero"` check in the Wi-Fi page; remove the unused
 `ComingSoonButton` export and the dev-only `ComingSoon` fallback; a
 `--password-store` passthrough in `ui:shot`; `release-notes.mjs` for patch
-releases; M6.11, the carried M5 manual checks and their answers (M6
-review question 3).
+releases.
