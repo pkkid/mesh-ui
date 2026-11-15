@@ -67,7 +67,7 @@ function InstallCli({ cli }: { cli: CliStatus }) {
   const run = async () => {
     const res = await install.run({});
     if (!res.ok) toast.error("Couldn't install the command line tool", { detail: res.error.message });
-    else if (res.result.installed) toast.success(res.result.onPath ? "mesh-ui is on PATH" : "Installed mesh-ui");
+    else if (res.result.installed && !res.result.reinstall) toast.success(res.result.onPath ? "mesh-ui is on PATH" : "Installed mesh-ui");
   };
   return (
     <div className="flex flex-col gap-3">
@@ -83,7 +83,7 @@ function InstallCli({ cli }: { cli: CliStatus }) {
           {cli.reinstall ? "Reinstall" : "Install CLI"}
         </Button>
       </div>
-      {cli.pathLine && !cli.installed && (
+      {cli.pathLine && (!cli.installed || cli.reinstall) && (
         <Labelled label="Or add it to PATH yourself">
           <CodeLine text={cli.pathLine} label="the PATH line" prompt={false} />
         </Labelled>

@@ -226,7 +226,7 @@ export function createCliInstaller(d: CliInstallDeps): NonNullable<HostActions["
       onPath,
       canInstall: d.install === "mac" || (d.install === "appimage" && want !== null),
       reinstall,
-      pathLine: onPath || manual === null ? null : pathLine(manual, win),
+      pathLine: (onPath && !reinstall) || manual === null ? null : pathLine(manual, win),
     };
   };
 

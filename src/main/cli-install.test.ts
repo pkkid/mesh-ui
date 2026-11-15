@@ -162,8 +162,11 @@ describe("macOS", () => {
 
   it("asks for Reinstall when the link points at an app that moved", async () => {
     const { cli, runner } = mac({ linkTo: "/Users/me/Downloads/Mesh UI.app/Contents/Resources/bin/mesh-ui" });
-    expect(await cli.status()).toMatchObject({ installed: true, reinstall: true });
-    expect(await cli.install()).toMatchObject({ installed: true, reinstall: false });
+    const stale = await cli.status();
+    expect(stale).toMatchObject({ installed: true, reinstall: true });
+    // The old link may dangle, so the bundle's PATH line stays on offer until Reinstall.
+    expect(stale.pathLine).toContain("/Contents/Resources/bin:$PATH");
+    expect(await cli.install()).toMatchObject({ installed: true, reinstall: false, pathLine: null });
     expect(runner).toHaveBeenCalledTimes(1);
   });
 
