@@ -153,6 +153,19 @@ export const commands: AnyCommand[] = [
   }),
 
   defineCommand({
+    id: "app.log.show",
+    label: "Show eero request log",
+    description:
+      "Opens the folder holding eero-requests.jsonl, the log of every eero request (redacted path, HTTP status, eero error code, outcome; never a token, name, MAC or IP), to attach to a bug report. Only in the Mesh UI window.",
+    icon: "scroll-text",
+    params: z.object({}),
+    effect: "write",
+    gate: { area: null },
+    scope: "app",
+    run: (ctx): Promise<{ path: string; exists: boolean }> => action(ctx, "logs").showRequestLog(),
+  }),
+
+  defineCommand({
     id: "app.demo.set",
     label: "Demo mode",
     description: "Restarts Mesh UI in demo mode (invented networks, nothing real changes) or back to your eero account. Only in the Mesh UI window.",

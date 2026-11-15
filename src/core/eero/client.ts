@@ -414,12 +414,14 @@ export class EeroClient {
         return { data: (res.envelope?.data ?? null) as T, cookieToken: res.cookieToken };
       }
 
-      const err = mapError(status, eeroError, spec.method, redactPath(spec.path));
-      this.log(spec, status, eeroError, started, "error", err);
-      if (err.code === "not_signed_in") {
-        if (auth === "session") await this.endSession();
+      let err = mapError(status, eeroError, spec.method, redactPath(spec.path));
+      // There is no session yet during sign-in, so "your session has ended" would mislead.
+      if (auth !== "session" && err.code === "not_signed_in") {
+        err = signInRefused(err);
         if (auth === "pending") this.pendingToken = null;
       }
+      this.log(spec, status, eeroError, started, "error", err);
+      if (err.code === "not_signed_in") await this.endSession();
       throw err;
     }
   }
@@ -657,6 +659,13 @@ async function readCapped(response: Response, max: number): Promise<string> {
     chunks.push(value);
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+const SIGN_IN_REFUSED = "eero did not accept this sign-in. Start again to get a new code.";
+
+/** A 401 or 419 while signing in: eero ended the pending sign-in (expired, used, or refused). */
+function signInRefused(err: BackendError): BackendError {
+  return new BackendError("eero_error", SIGN_IN_REFUSED, err.detail);
 }
 
 function publicRefused(): BackendError {

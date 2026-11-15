@@ -2,13 +2,13 @@
  * App & account side panel, About (docs/ux/pages/app-account.md, Side panel 1):
  * logo, version and update status, Check now and Restart to update, the
  * Automatic updates and Beta updates switches, Electron and platform,
- * Network ID, Support ID, links that open in the browser, and the
- * independence line. The updater lives in main (src/main/updater.ts);
+ * Network ID, Support ID, links that open in the browser, Show eero
+ * request log (`app.log.show`), and the independence line. The updater lives in main (src/main/updater.ts);
  * install kinds that cannot update themselves (deb, rpm, portable, dev) hide
  * the update controls and point at the release page. An unsigned macOS
  * build only checks: a newer version is `available` with a download link.
  */
-import { CodeXml, Download, LifeBuoy, Network as NetworkIcon, RefreshCw, RotateCw, ScrollText } from "lucide-react";
+import { CodeXml, Download, FileText, LifeBuoy, Network as NetworkIcon, RefreshCw, RotateCw, ScrollText } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useCommand, useQuery } from "~/app/useCommand";
@@ -71,13 +71,14 @@ export function AboutPanel({ id }: { id?: string }) {
   const check = useCommand<Record<string, never>, UpdateStatus>("app.update.check");
   const install = useCommand("app.update.install");
   const setSettings = useCommand<Partial<AppSettings>, AppSettings>("app.settings.set");
+  const showLog = useCommand("app.log.show");
 
   const app = info.data;
   const update = app?.update;
   const updates = update !== undefined && update.state !== "unsupported";
   const busy = update?.state === "checking" || update?.state === "downloading";
   const line = app && update ? updateStatusLine(update, app.install, Date.now()) : null;
-  const error = check.error ?? install.error ?? setSettings.error;
+  const error = check.error ?? install.error ?? setSettings.error ?? showLog.error;
 
   return (
     <Card padded id={id} className="flex flex-col gap-4">
@@ -155,6 +156,12 @@ export function AboutPanel({ id }: { id?: string }) {
         <ExternalLink href={RELEASES_URL} icon={<ScrollText />}>Release notes</ExternalLink>
         <ExternalLink href={EERO_SUPPORT_URL} icon={<LifeBuoy />}>eero support articles</ExternalLink>
         <ExternalLink href={SOURCE_URL} icon={<CodeXml />}>Source and issues</ExternalLink>
+        {app && app.backend !== "demo" && (
+          <button type="button" className={LINK_CLASS} disabled={showLog.running} onClick={() => void showLog.run({})}>
+            <FileText />
+            Show eero request log
+          </button>
+        )}
       </div>
 
       <p className="text-2xs text-muted-foreground">Mesh UI is an independent app and is not made by eero or Amazon.</p>
@@ -162,15 +169,13 @@ export function AboutPanel({ id }: { id?: string }) {
   );
 }
 
+const LINK_CLASS =
+  "flex w-fit items-center gap-1.5 rounded-sm text-foreground/80 text-xs outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 [&_svg]:size-3.5 [&_svg]:text-muted-foreground";
+
 /** A link that main opens in the browser (`setWindowOpenHandler`), never in the app. */
 function ExternalLink({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="flex w-fit items-center gap-1.5 rounded-sm text-foreground/80 text-xs outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5 [&_svg]:text-muted-foreground"
-    >
+    <a href={href} target="_blank" rel="noreferrer" className={LINK_CLASS}>
       {icon}
       {children}
     </a>

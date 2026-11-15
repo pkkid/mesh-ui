@@ -26,6 +26,7 @@ the folder is lowercase on every OS.
 | Session | `session.json` | `session.json` | `session.json` |
 | Settings (shared with the CLI) | `settings.json` | `settings.json` | `settings.json` |
 | Audit log | `audit.jsonl` | `audit.jsonl` | `audit.jsonl` |
+| eero request log | `eero-requests.jsonl` (+ `.1`) | `eero-requests.jsonl` (+ `.1`) | `eero-requests.jsonl` (+ `.1`) |
 | Logs | `logs/main.log` | `logs\main.log` | `logs/main.log` |
 | CLI Chromium data | `cli/` | `cli\` | `cli/` |
 

@@ -49,6 +49,10 @@ export type HostActions = {
     /** Restarts Mesh UI in or out of demo mode. */
     demo(enabled: boolean): Promise<void>;
   };
+  logs?: {
+    /** Shows the eero request log in the file manager (its folder when there is no log yet). */
+    showRequestLog(): Promise<{ path: string; exists: boolean }>;
+  };
 };
 
 export const HOST_ONLY = "Only in the Mesh UI window.";

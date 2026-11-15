@@ -172,6 +172,28 @@ dir (`src/core/audit.ts`, written by `engine.execute`), one JSON line each:
   ones, and never returns params, so nothing from the file but those fields
   reaches the window.
 
+## eero request log
+
+Every eero request from the app or the CLI (live or fake server, never demo)
+is appended to `eero-requests.jsonl` in the config dir
+(`src/core/eero/requestLog.ts`, fed by the eero client's `onLog`), one JSON
+line each, so a user can attach it to a bug report:
+
+```json
+{"time":"2026-11-15T12:00:00.000Z","surface":"ui","method":"POST","path":"/2.2/login/verify","status":401,"eeroError":"error.session.invalid","ms":120,"outcome":"error","code":"eero_error","message":"eero did not accept this sign-in. Start again to get a new code."}
+```
+
+- Fields: `time`, `surface`, `method`, `path` (ids and MAC-like segments
+  replaced by `:id`, no query string), HTTP `status` (null when eero was not
+  reached), eero's `meta.error`, `ms`, `outcome` (`ok`, `retry`, `refresh`,
+  `error`), and on failure Mesh UI's error `code` and `message`.
+- Never in it: the token, cookies, headers, request or response bodies, the
+  login, verification codes, names, MACs or IPs.
+- Mode 600. Past 1 MB the file moves to `eero-requests.1.jsonl` (replacing
+  the older one) and a new one starts, so it stays under about 2 MB.
+- **Show request log** (under a sign-in error, and in App & account, About)
+  runs `app.log.show`, which shows the file in the system file manager.
+
 ## Logging
 
 - Main and CLI logs go to stderr and, for the app, `logs/main.log` in the

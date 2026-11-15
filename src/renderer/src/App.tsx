@@ -13,6 +13,7 @@ import { followHostEvents, onSessionEnded, useQuery } from "~/app/useCommand";
 import { ConfirmHost } from "~/components/ui/confirm";
 import { Toaster } from "~/components/ui/toast";
 import { CommandPalette } from "~/features/palette/CommandPalette";
+import { errorCode } from "~/features/sign-in/errorCode";
 import { SignInView } from "~/features/sign-in/SignInView";
 import { Sidebar } from "~/features/shell/Sidebar";
 import { TopBar, TopBarProvider } from "~/features/shell/TopBar";
@@ -21,12 +22,16 @@ import type { AuthStatus } from "../../core/model";
 export function App() {
   const auth = useQuery<AuthStatus>("auth.status");
   /** Set when the session ends in this run; `expired` is false for the user's own sign-out. */
-  const [sessionEnded, setSessionEnded] = useState<{ expired: boolean } | null>(null);
+  const [sessionEnded, setSessionEnded] = useState<{ expired: boolean; code: string | null } | null>(null);
   /** Set while the sign-in steps are up; `expired` when the session ended in this run. */
   const [signIn, setSignIn] = useState<{ expired: boolean } | null>(null);
 
   useEffect(() => {
-    const offSession = onSessionEnded((expired) => setSessionEnded((s) => s ?? { expired }));
+    // The host's signed_out event can land before the failed command's answer, so a later code fills in.
+    const offSession = onSessionEnded((expired, error) => {
+      const code = error ? errorCode(error) : null;
+      setSessionEnded((s) => (s ? (s.code || !code ? s : { ...s, code }) : { expired, code }));
+    });
     const offHost = followHostEvents();
     return () => {
       offSession();
@@ -48,6 +53,7 @@ export function App() {
     return (
       <SignInView
         expired={signIn?.expired ?? sessionEnded?.expired ?? false}
+        endedCode={sessionEnded?.code ?? null}
         onDone={() => {
           // Wait for a fresh auth.status, so a stale "signed out" cannot reopen sign-in.
           void auth.refetch().then(() => {

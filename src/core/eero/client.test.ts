@@ -220,6 +220,21 @@ describe("auth", () => {
     expect(fake.log.at(-1)?.token).toBe(pendingToken);
   });
 
+  it("words a 401 during sign-in as a refused sign-in, not an ended session", async () => {
+    const changes: boolean[] = [];
+    const { fake, client, logs } = setup({ signedIn: false, client: { onSessionChange: (s) => changes.push(s) } });
+    await client.startLogin("alex@example.com");
+    fake.scenarios.fail(401, "error.session.invalid", { path: "/login/verify" });
+    await expect(client.verifyLogin("123456")).rejects.toMatchObject({
+      code: "eero_error",
+      message: "eero did not accept this sign-in. Start again to get a new code.",
+      detail: { status: 401, eeroError: "error.session.invalid" },
+    });
+    expect((await client.status()).pending).toBe(false);
+    expect(changes).toEqual([]);
+    expect(logs.at(-1)).toMatchObject({ path: "/2.2/login/verify", status: 401, eeroError: "error.session.invalid", outcome: "error", code: "eero_error" });
+  });
+
   it("rejects an empty login, and verify without a pending sign-in", async () => {
     const { client } = setup({ signedIn: false });
     await expect(client.startLogin("  ")).rejects.toMatchObject({ code: "bad_params" });

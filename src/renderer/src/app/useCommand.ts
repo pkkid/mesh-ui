@@ -59,7 +59,7 @@ export function bridge(): MeshBridge {
 /** Whether the real engine is behind `window.mesh` (false while the stub answers). */
 export const engineConnected = (): boolean => bridge() !== STUB_BRIDGE;
 
-const sessionListeners = new Set<(expired: boolean) => void>();
+const sessionListeners = new Set<(expired: boolean, error?: ExecuteError) => void>();
 
 /**
  * Set from the moment the user runs `auth.logout` here until the next sign-in,
@@ -68,14 +68,15 @@ const sessionListeners = new Set<(expired: boolean) => void>();
  */
 let signedOutByUser = false;
 
-const endSession = () => sessionListeners.forEach((l) => l(!signedOutByUser));
+const endSession = (error?: ExecuteError) => sessionListeners.forEach((l) => l(!signedOutByUser, error));
 
 /**
  * Called whenever the session ends: a command reports `not_signed_in` or the
  * host says it signed out. `expired` is false when the user's own sign-out in
- * this window caused it. Returns an unsubscribe.
+ * this window caused it; `error` is the `not_signed_in` answer, when one did.
+ * Returns an unsubscribe.
  */
-export function onSessionEnded(listener: (expired: boolean) => void): () => void {
+export function onSessionEnded(listener: (expired: boolean, error?: ExecuteError) => void): () => void {
   sessionListeners.add(listener);
   return () => sessionListeners.delete(listener);
 }
@@ -91,7 +92,7 @@ export async function execute<R = unknown>(id: string, params?: unknown, options
   }
   if (id === "auth.logout" && !res.ok) signedOutByUser = false;
   if (id === "auth.login.verify" && res.ok) signedOutByUser = false;
-  if (!res.ok && res.error.code === "not_signed_in") endSession();
+  if (!res.ok && res.error.code === "not_signed_in") endSession(res.error);
   return res;
 }
 

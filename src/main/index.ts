@@ -36,6 +36,7 @@ import { version as appVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
 import { createEeroBackend } from "../core/eero/backend";
+import { fileRequestLog, requestLogPath } from "../core/eero/requestLog";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
 import type { HostActions, SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
@@ -151,8 +152,8 @@ const installKind = updatePreview?.install ?? detectInstallKind({
   },
 });
 
-/** The window's host actions (updater, CLI install, demo relaunch). The CLI host gets none. */
-function windowActions(settings: SettingsStore): HostActions {
+/** The window's host actions (updater, CLI install, demo relaunch, request log). The CLI host gets none. */
+function windowActions(settings: SettingsStore, dir: string): HostActions {
   return createHostActions({
     install: installKind,
     exePath: process.execPath,
@@ -163,6 +164,7 @@ function windowActions(settings: SettingsStore): HostActions {
     },
     updatePreview: updatePreview?.status ?? null,
     demoSwitch: { app, argv: process.argv, env: process.env },
+    requestLog: { path: requestLogPath(dir), shell },
   });
 }
 
@@ -174,7 +176,9 @@ async function buildEngine(m: EngineMode, surface: Surface, dir: string, setting
   } else {
     const secrets = m.mode === "fake" ? m.secrets : createSecretStore({ file: configPaths(dir).session, safeStorage, platform: process.platform });
     const userAgent = (await settings.get()).userAgent;
-    backend = createEeroBackend({ secrets, userAgent, ...(m.mode === "fake" ? { origin: m.origin } : {}) });
+    // Every eero request is logged (redacted) for bug reports; see src/core/eero/requestLog.ts.
+    const onLog = fileRequestLog(requestLogPath(dir), surface);
+    backend = createEeroBackend({ secrets, userAgent, onLog, ...(m.mode === "fake" ? { origin: m.origin } : {}) });
   }
   return createEngine({
     backend,
@@ -186,7 +190,7 @@ async function buildEngine(m: EngineMode, surface: Surface, dir: string, setting
       configDir: dir,
       keychainName: m.mode === "live" ? keychainName(safeStorage, process.platform) : null,
       install: installKind,
-      ...(surface === "ui" ? { actions: windowActions(settings) } : {}),
+      ...(surface === "ui" ? { actions: windowActions(settings, dir) } : {}),
     },
   });
 }

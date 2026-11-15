@@ -175,12 +175,12 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
       </div>
       {sandboxHint && <p className="mt-2 text-muted-foreground text-xs">{sandboxHint}</p>}
       {error && (
-        <ErrorLine>
+        <ErrorLine log={!wrong}>
           {wrong ? (
             "That code didn't work. Check it and try again, or resend a new code."
           ) : error.code === "eero_error" ? (
             <>
-              {error.message}{" "}
+              {errorText(error)}{" "}
               <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="font-medium underline-offset-2 hover:underline">
                 eero support
               </a>

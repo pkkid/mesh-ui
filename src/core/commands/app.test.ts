@@ -100,6 +100,7 @@ function fakeActions(update: UpdateStatus = READY) {
     update: { status: async () => update, check: async () => (calls.push("check"), update), install: async () => void calls.push("install") },
     cli: { status: async () => CLI, install: async () => (calls.push("cli"), CLI) },
     relaunch: { demo: async (enabled) => void calls.push(`demo:${enabled}`) },
+    logs: { showRequestLog: async () => (calls.push("log"), { path: "/cfg/eero-requests.jsonl", exists: true }) },
   };
   return { actions, calls };
 }
@@ -109,6 +110,7 @@ const HOST_ONLY_IDS: [string, unknown][] = [
   ["app.update.check", {}],
   ["app.update.install", {}],
   ["app.demo.set", { enabled: true }],
+  ["app.log.show", {}],
 ];
 
 describe("app.info with host actions", () => {
@@ -184,6 +186,14 @@ describe("host-only app commands", () => {
     expect(await engine.execute("app.update.check")).toEqual({ ok: true, result: READY });
     expect(calls).toEqual(["cli", "check"]);
     expect(await engine.execute("app.cli.install", { force: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("app.log.show asks the window to show the eero request log", async () => {
+    const { actions, calls } = fakeActions();
+    const engine = createEngine({ backend: createDemoBackend(), host: { ...host, actions } });
+    expect(await engine.execute("app.log.show")).toEqual({ ok: true, result: { path: "/cfg/eero-requests.jsonl", exists: true } });
+    expect(calls).toEqual(["log"]);
+    expect(await engine.execute("app.log.show", { extra: 1 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
 
   it("app.update.install restarts only when an update is ready", async () => {

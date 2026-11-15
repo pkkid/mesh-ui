@@ -30,6 +30,7 @@ import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
 import type { Account, AppInfo, AuthStatus, NetworkSummary } from "../../../../core/model";
 import { CodeStep } from "./CodeStep";
+import { withErrorCode } from "./errorCode";
 
 export type LoginKind = "email" | "phone";
 
@@ -44,11 +45,13 @@ type Step =
 type SignInViewProps = {
   /** The session ended while the app was open (not a first launch). */
   expired: boolean;
+  /** eero's error code and HTTP status for the expiry, when known (see errorCode.ts). */
+  endedCode?: string | null;
   /** Signed in and loaded: show the main window. */
   onDone: () => void;
 };
 
-export function SignInView({ expired, onDone }: SignInViewProps) {
+export function SignInView({ expired, endedCode = null, onDone }: SignInViewProps) {
   const [step, setStep] = useState<Step>({ id: "welcome" });
   const [kind, setKind] = useState<LoginKind>(lastLogin?.kind ?? "email");
 
@@ -77,6 +80,7 @@ export function SignInView({ expired, onDone }: SignInViewProps) {
       {step.id === "welcome" && (
         <Welcome
           expired={expired}
+          endedCode={endedCode}
           kind={kind}
           onKind={setKind}
           onSent={(login) => setStep({ id: "code", login })}
@@ -125,7 +129,7 @@ function NoNetworks({ error, onRetry }: { error: ExecuteError | null; onRetry: (
       {error ? (
         <>
           <Title className="mt-[22px]">Couldn't load your networks</Title>
-          <ErrorLine>{errorText(error)}</ErrorLine>
+          <ErrorLine log>{errorText(error)}</ErrorLine>
         </>
       ) : (
         <>
@@ -203,20 +207,43 @@ export function FootNote({ icon, children, className }: { icon?: ReactNode; chil
   );
 }
 
-/** A red line under a control. */
-export function ErrorLine({ children }: { children: ReactNode }) {
+/** A red line under a control; `log` adds the link to the eero request log under it. */
+export function ErrorLine({ children, log = false }: { children: ReactNode; log?: boolean }) {
   return (
     <div role="alert" className="mt-2 flex items-start gap-1.5 text-destructive-foreground text-xs">
       <CircleAlert className="mt-px size-3.5 shrink-0" />
-      <span>{children}</span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span>{children}</span>
+        {log && <RequestLogLink />}
+      </span>
     </div>
+  );
+}
+
+/**
+ * "Show request log": opens the folder with eero-requests.jsonl, for a bug
+ * report (`app.log.show`). Hidden in demo mode, which never calls eero.
+ */
+function RequestLogLink() {
+  const auth = useQuery<AuthStatus>("auth.status");
+  const show = useCommand("app.log.show");
+  if (!auth.data || auth.data.backend === "demo") return null;
+  return (
+    <button
+      type="button"
+      disabled={show.running}
+      onClick={() => void show.run({})}
+      className="w-fit rounded-sm text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+    >
+      Show request log
+    </button>
   );
 }
 
 /** Words for an error from a sign-in command. */
 export function errorText(error: ExecuteError): string {
   if (error.code === "network_error") return "Can't reach eero. Check your internet connection.";
-  return error.message;
+  return withErrorCode(error.message, error);
 }
 
 // ---------------------------------------------------------------------------
@@ -245,11 +272,13 @@ const fieldClass =
 
 function Welcome({
   expired,
+  endedCode,
   kind,
   onKind,
   onSent,
 }: {
   expired: boolean;
+  endedCode: string | null;
   kind: LoginKind;
   onKind: (k: LoginKind) => void;
   onSent: (login: string) => void;
@@ -290,7 +319,7 @@ function Welcome({
       {expired && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs">
           <CircleAlert className="size-3.5 shrink-0 text-warning-foreground" />
-          Your session ended. Sign in again.
+          {endedCode ? `Your session ended. Sign in again. (${endedCode})` : "Your session ended. Sign in again."}
         </div>
       )}
 
@@ -360,7 +389,7 @@ function Welcome({
         Send code
         <ArrowRight />
       </BigButton>
-      {start.error && <ErrorLine>{errorText(start.error)}</ErrorLine>}
+      {start.error && <ErrorLine log>{errorText(start.error)}</ErrorLine>}
 
       <div className="mt-4 flex gap-2.5 rounded-[10px] border bg-card px-3 py-2.5 text-muted-foreground text-xs leading-normal">
         <Info className="mt-px size-3.5 shrink-0 text-info-foreground" />

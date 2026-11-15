@@ -114,6 +114,20 @@ real storage state (see States).
   disabled, message "Too many codes requested. Try again in a few minutes."
 - **Locked or unknown account.** Message from eero in the error row, with a
   link to eero support (opens in the system browser).
+- **Sign-in refused.** A 401 or 419 on `/2.2/login`, `/verify` or `/resend`
+  (other than a wrong code) means eero ended the pending sign-in: expired,
+  already used, or refused. The engine answers `eero_error` "eero did not
+  accept this sign-in. Start again to get a new code." and drops the
+  pending sign-in; it is never worded as an ended session.
+- **Error codes.** Every sign-in error row (and the "Your session ended"
+  notice) ends with eero's error code and HTTP status in brackets when the
+  answer had them, e.g. "(error.session.invalid, HTTP 401)", so a user's
+  screenshot says what eero answered. Codes the message already names are
+  not repeated. Formatting lives in `features/sign-in/errorCode.ts`.
+- **Request log.** Sign-in error rows (except a wrong code) have a muted
+  **Show request log** link (`app.log.show`, not in demo mode) that shows
+  `eero-requests.jsonl` in the file manager to attach to a bug report
+  ([security.md](../architecture/security.md#eero-request-log)).
 - **Empty: no networks.** Instead of the dashboard, a screen with the account
   header shows "This account has no eero networks
   yet. Set one up in the eero mobile app, then come back." with Sign out and

@@ -537,6 +537,7 @@ and eero alerts first and sends at most 5 per poll.
 | `app.audit.list` **(added)** | Recent CLI and agent commands | `{ limit?: 1..200 }` (default 20) | q | none | `AuditList` from `audit.jsonl` in the config dir for the App & account "This week" list: newest entries, a count per local day, refused with `needs_confirm`, `mcpLastAt`. Entry format, redaction and cap are in [security.md](security.md#audit-log); never results. Polled every 60 s. Reading lands in M6.6 (`readAudit`); until then an empty week. |
 | `app.update.check` **(added)** | Check for updates | `{}` | w | none | Checks now; returns `UpdateStatus`. Window only. |
 | `app.update.install` **(added)** | Restart to update | `{}` | w | none | Restarts Mesh UI (only the app, never the network) to install a downloaded update; `bad_params` unless the state is `ready`. Never runs on its own. Window only. Returns `{ restarting: true, version }`. |
+| `app.log.show` **(added)** | Show eero request log | `{}` | w | none | Shows `eero-requests.jsonl` in the system file manager (its folder when there is no log yet), for a bug report. Contents in [security.md](security.md#eero-request-log). Window only. Returns `{ path, exists }`. |
 | `app.demo.set` **(added)** | Demo mode | `{ enabled: boolean }` | w | none | "Try demo mode" and leaving it: relaunches Mesh UI with or without the demo backend. Already in that mode: `{ demo, restarting: false }`, no relaunch. Window only. |
 
 "Window only": these need the window's host actions (`HostInfo.actions`
