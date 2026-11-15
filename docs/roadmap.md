@@ -1166,7 +1166,7 @@ tags; anything that needs a Mac, a Windows machine or the maintainer's
 credentials is a `MANUAL:` line.
 
 ### M6.1 Core contracts, captures, fixtures and page skeleton ☐
-- issue: #196
+- issue: [#196](https://github.com/pkkid/mesh-ui/issues/196)
 - after: M5.R
 - docs: architecture/commands.md (account, app), architecture/data-model.md, architecture/engine.md (Polling), architecture/security.md (Audit log), eero-api/endpoints.md, ux/pages/app-account.md, platform/build-and-release.md (Auto-update, CLI launcher)
 - files: src/core/model.ts, src/core/backend.ts, src/core/eero/raw.ts, src/core/spec.ts, src/core/poll.ts, src/core/engine.ts, src/core/audit.ts, src/core/demo/fixtures.ts, src/core/demo/backend.ts, src/core/demo/backend.test.ts, src/core/demo/scenario.ts, src/core/eero/backend/account.ts, src/core/eero/backend/network.ts, src/core/eero/backend/index.ts, src/core/commands/account.ts, src/core/commands/account.test.ts, src/core/commands/app.ts, src/core/commands/app.test.ts, test/fake-eero/state.ts, test/fake-eero/routes/admins.ts, src/main/index.ts, src/main/host-actions.ts, src/main/install-kind.ts, src/main/install-kind.test.ts, src/main/updater.ts, src/main/cli-install.ts, src/main/demo-switch.ts, src/renderer/src/features/account/AccountPage.tsx, src/renderer/src/features/account/AccountHero.tsx, src/renderer/src/features/account/AccountNotifications.tsx, src/renderer/src/features/account/NetworksTable.tsx, src/renderer/src/features/account/CliAgents.tsx, src/renderer/src/features/account/ThemePicker.tsx, src/renderer/src/features/account/AboutPanel.tsx, src/renderer/src/features/account/SignOutDelete.tsx, src/renderer/src/features/settings/SettingsView.tsx, src/renderer/src/components/ui/avatar.tsx, src/renderer/src/features/shell/Sidebar.tsx, src/renderer/src/features/shell/UpdateChip.tsx, src/renderer/src/features/sign-in/SignInView.tsx, src/renderer/src/app/routes.ts, plus the request budget test file
@@ -1174,7 +1174,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; the PR lists every capture (paths, types, counts, the one admins role value) and each write's source, and no other values; `account.test.ts` and `app.test.ts` run every new command through `engine.execute` in demo with `bad_params`, and `needs_confirm` and `acknowledge` for `account.delete`; `app.test.ts` shows `app.update.install`, `app.demo.set` and `app.cli.install` answering `bad_params` without host actions (CLI, MCP); `install-kind.test.ts` covers each kind; `demo/backend.test.ts` shows each account write in the next read and reset per scenario; the request budget test passes with the account page; `pnpm ui:shot --route '#/account'` shows the skeleton with the working theme picker, light and dark; no `hue(` remains in `Sidebar.tsx` or `SignInView.tsx`; no real names, MACs or IPs anywhere.
 
 ### M6.2 Packaging, CLI launchers and app icon ☐
-- issue: #197
+- issue: [#197](https://github.com/pkkid/mesh-ui/issues/197)
 - after: M5.R
 - docs: platform/build-and-release.md (Artifacts, Signing and notarization, CLI launcher), platform/cross-platform.md (CLI), architecture/cli.md (How the CLI runs, Install), testing.md
 - files: package.json, electron-builder.yml, build/icon.png, build/entitlements.mac.plist, build/mac/mesh-ui, build/linux/mesh-ui, build/linux/after-install.sh, build/linux/after-remove.sh, build/win/mesh-ui.cmd, build/win/cli-relay.js, build/win/installer.nsh, scripts/dist-smoke.mjs, test/packaging/launchers.test.ts, docs/platform/build-and-release.md, docs/platform/cross-platform.md, docs/architecture/cli.md, docs/testing.md
@@ -1182,7 +1182,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `test/packaging/launchers.test.ts` covers the macOS script (through a symlink in a temp bundle layout with a stub binary: `--cli` first and every argument unchanged, paths with spaces included), the Linux launcher (pointed at a stub: no `DISPLAY` or `WAYLAND_DISPLAY`, ozone flags passed) and the Windows relay (plain node with a stub target: stdin, stdout, stderr and the exit code forwarded); `pnpm dist` on Linux builds AppImage, deb and rpm with the icon, and the PR shows the rpm `--scripts` and deb maintainer scripts writing and removing `/usr/bin/mesh-ui`; `pnpm dist:dir && pnpm dist:smoke` passes with `DISPLAY` and `WAYLAND_DISPLAY` unset; `pnpm test:keychainless` passes; with no signing env a local build is unsigned and does not fail; testing.md no longer mentions `test:ui`; `MANUAL: Windows install puts the CLI on PATH | install the NSIS build from the M6.R dry run, open a new terminal, run mesh-ui --demo run app.info, then uninstall | JSON with the version; after uninstall mesh-ui is gone from PATH | risk: none`; `MANUAL: deb or rpm CLI | install the package on a Linux machine, run mesh-ui --demo run app.info over SSH with no display | JSON, no window | risk: none`.
 
 ### M6.3 Async safeStorage ☐
-- issue: #198
+- issue: [#198](https://github.com/pkkid/mesh-ui/issues/198)
 - after: M5.R
 - docs: architecture/security.md (Session storage), platform/cross-platform.md (Secret storage)
 - files: src/main/secret-store.ts, src/main/secret-store.test.ts, docs/architecture/security.md, docs/platform/cross-platform.md
@@ -1190,7 +1190,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `grep -rn 'encryptString(\|decryptString(\|isEncryptionAvailable(' src/main` finds nothing; `secret-store.test.ts` covers a file written by the sync stand-in still loading, `shouldReEncrypt` rewriting it, `basic_text` staying memory, and async unavailability never writing; `pnpm test:keychainless` passes; `MANUAL: still signed in after the upgrade | run a build from this branch against your config dir (pnpm start) after using the previous build | the app opens signed in, no sign-in screen | risk: none`.
 
 ### M6.4 Release workflow ☐
-- issue: #199
+- issue: [#199](https://github.com/pkkid/mesh-ui/issues/199)
 - after: M6.2
 - docs: platform/build-and-release.md (CI, Versioning, Release checklist), testing.md (CI), architecture/security.md (Dependencies and build)
 - files: .github/workflows/release.yml, scripts/release-notes.mjs, scripts/checksums.mjs, test/packaging/release.test.ts, docs/platform/build-and-release.md, docs/testing.md
@@ -1198,7 +1198,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `test/packaging/release.test.ts` covers `checksums.mjs` on temp files (`sha256  name` lines, sorted), `release-notes.mjs docs/reviews/M5.md` (only section 4 plus the fixed lines), and a text check of `release.yml` (tag and dispatch triggers only, `--publish never` on every build, `environment: release` on signing jobs, `contents: write` only on `publish`, `--draft`); `ci.yml` is unchanged; `actionlint` is clean if available locally (else the PR says it was not run); `MANUAL: add the signing secrets | create the release environment with CSC_LINK, CSC_KEY_PASSWORD, APPLE_API_KEY, APPLE_API_KEY_ID, APPLE_API_ISSUER | the environment lists five secrets | risk: none`; `MANUAL: dry run after the milestone merges | run release.yml from main with dry_run | four green jobs, dist:smoke passes on macOS, Windows and Linux, the ui:shot PNGs look right, macOS notarized | risk: none`.
 
 ### M6.5 Auto-update, beta channel and About ☐
-- issue: #200
+- issue: [#200](https://github.com/pkkid/mesh-ui/issues/200)
 - after: M6.1, M6.2
 - docs: platform/build-and-release.md (Auto-update), ux/pages/app-account.md (About)
 - files: package.json, pnpm-lock.yaml, src/main/updater.ts, src/main/updater.test.ts, src/renderer/src/features/account/AboutPanel.tsx, src/renderer/src/features/shell/UpdateChip.tsx, docs/platform/build-and-release.md, docs/ux/pages/app-account.md
@@ -1206,7 +1206,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `updater.test.ts` with a fake updater and fake timers covers checks at 10 s and every 6 h, no checks with `autoUpdate: false`, in dev, or for deb, rpm and portable, the beta channel set on the updater, `ready` emitting `update.changed` without installing until `app.update.install`, and an error reported, not thrown; `mesh-ui --demo run app.info` shows `update`; `pnpm ui:shot --route '#/account'` shows About as up to date, downloading, ready and as a package-manager install, plus the sidebar chip, light and dark; `MANUAL: first real update | after v0.6.1 is published, open v0.6.0 on macOS (zip install), Windows (NSIS) and Linux (AppImage), wait or press Check now | "Restart to update" appears and the restart lands on 0.6.1 still signed in | risk: none`.
 
 ### M6.6 CLI on PATH and the agents panel ☐
-- issue: #201
+- issue: [#201](https://github.com/pkkid/mesh-ui/issues/201)
 - after: M6.1, M6.2
 - docs: architecture/cli.md (Install), platform/build-and-release.md (CLI launcher), architecture/security.md (Audit log), ux/pages/app-account.md (Command line and agents)
 - files: src/main/cli-install.ts, src/main/cli-install.test.ts, src/core/audit.ts, src/core/audit.test.ts, src/renderer/src/features/account/CliAgents.tsx, docs/architecture/cli.md, docs/architecture/security.md, docs/ux/pages/app-account.md
@@ -1214,7 +1214,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `cli-install.test.ts` in a temp HOME with injected kind, PATH and privileged runner covers AppImage writing an executable script and warning off PATH, macOS calling the runner with the right argv (paths with spaces and quotes too), Reinstall when the target changed, and deb, rpm, nsis and portable only reporting; `audit.test.ts` covers the summary, needs-confirm count, `mcpLastAt`, malformed lines and the 1,000 line cap; `pnpm ui:shot --route '#/account'` shows the panel with entries, empty, and with Install CLI, light and dark; `MANUAL: macOS install command line tool | App & account, Install CLI, accept the admin prompt, open a new terminal, mesh-ui run app.info | JSON with the version | risk: none`; `MANUAL: agents list | run two mesh-ui commands in a terminal, then open App & account | both listed with age, the count went up by two | risk: none`.
 
 ### M6.7 Account details, writes and notifications ☐
-- issue: #202
+- issue: [#202](https://github.com/pkkid/mesh-ui/issues/202)
 - after: M6.1
 - docs: ux/pages/app-account.md (Hero, Account, Notifications), architecture/commands.md (account), eero-api/endpoints.md (section 2)
 - files: src/core/commands/account.ts, src/core/commands/account.test.ts, src/core/eero/backend/account.ts, test/fake-eero/routes/account.ts, src/renderer/src/features/account/AccountHero.tsx, src/renderer/src/features/account/AccountNotifications.tsx, src/renderer/src/features/account/CodeDialog.tsx, src/renderer/src/features/notifications/NotificationSettings.tsx, docs/ux/pages/app-account.md
@@ -1222,7 +1222,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `account.test.ts` covers, in demo and against the fake server, the exact request of each write, `bad_params` for name length, email format, non E.164 phone and code digits, push merging both keys, a wrong code keeping the change pending, `account.delete` needing `confirm` and `acknowledge` and signing out afterwards, and the CLI table and audit log never showing a code; `pnpm ui:shot --route '#/account'` shows the hero, the edit name dialog, the email code step and the notifications section, light and dark; `MANUAL: edit name and back | Edit name, save, check the eero app, restore | the eero app shows each name | risk: none`; `MANUAL: Stay up to date off and on | toggle in Mesh UI | the eero app agrees | risk: none`; `MANUAL: eero offline push alert off and on | toggle in Mesh UI | the eero app agrees | risk: none`; `MANUAL: change email, only with a second address you control | Change email, enter the code, then change it back | both changes verify and sign-in still works | risk: sign-in email changes until restored`; no `MANUAL:` line for `account.delete` (never run on a real account).
 
 ### M6.8 Networks, sign out and delete, demo mode ☐
-- issue: #203
+- issue: [#203](https://github.com/pkkid/mesh-ui/issues/203)
 - after: M6.1
 - docs: ux/pages/app-account.md (Networks, Sign out and delete), ux/sign-in.md, architecture/commands.md (app: `app.demo.set`)
 - files: src/renderer/src/features/account/NetworksTable.tsx, src/renderer/src/features/account/SignOutDelete.tsx, src/main/demo-switch.ts, src/main/demo-switch.test.ts, src/renderer/src/features/sign-in/SignInView.tsx, docs/ux/sign-in.md, docs/ux/pages/app-account.md
@@ -1230,7 +1230,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `demo-switch.test.ts` with a stubbed `app` shows entering adds `--demo` once, leaving removes it, and neither changes the user data dir or settings file; `pnpm ui:shot --route '#/account'` shows the networks table with a shared network, the sign out text for keychain and memory, delete disabled for an owner and the delete dialog in the `admin` scenario, light and dark; `pnpm ui:shot` of the signed-out sign-in page with Try demo mode; `MANUAL: Try demo mode and back | packaged app with a fresh profile, click Try demo mode, then Leave demo mode | demo networks appear, then the sign-in page; your real settings unchanged | risk: none`.
 
 ### M6.9 Wi-Fi leftovers: nickname, Print a card, time zone ☐
-- issue: #204
+- issue: [#204](https://github.com/pkkid/mesh-ui/issues/204)
 - after: M6.1
 - docs: ux/pages/wifi.md, architecture/commands.md (network, settings), eero-api/endpoints.md
 - files: src/core/commands/network.ts, src/core/commands/network.test.ts, src/core/eero/backend/network.ts, src/core/eero/map/network.ts, test/fake-eero/routes/network.ts, src/core/commands/settings.ts, src/core/commands/settings.test.ts, src/core/eero/backend/settings.ts, test/fake-eero/routes/settings.ts, src/renderer/src/features/wifi/WifiHero.tsx, src/renderer/src/features/wifi/WifiPage.tsx, src/renderer/src/features/wifi/TimezoneSheet.tsx, src/renderer/src/features/guest/GuestCard.tsx, docs/ux/pages/wifi.md
@@ -1238,7 +1238,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `network.test.ts` (if built) has the exact label request, `bad_params` over 32 characters, and the nickname in the next `network.get` and `network.list`; `settings.test.ts` has the new time zone request and the "eero kept the old zone" error; `pnpm ui:shot --route '#/settings/wifi'` shows the nickname edit (or the read-only reason) and the print card, light and dark; `MANUAL: nickname set and clear | Wi-Fi > Nickname and location, set a nickname, then clear it | the eero app shows it, then none | risk: none`; `MANUAL: time zone | change the zone and back | the eero app follows within a minute | risk: none`.
 
 ### M6.10 Activity menu, Frustration-Free Setup, shared speed test lock ☐
-- issue: #205
+- issue: [#205](https://github.com/pkkid/mesh-ui/issues/205)
 - after: M6.1
 - docs: ux/pages/activity.md, ux/pages/advanced-networking.md (Integrations), architecture/commands.md (integrations, internet)
 - files: src/renderer/src/features/activity/EventStream.tsx, docs/ux/pages/activity.md, src/core/commands/integrations.ts, src/core/commands/integrations.test.ts, src/core/eero/backend/integrations.ts, test/fake-eero/routes/integrations.ts, src/renderer/src/features/advanced/Integrations.tsx, docs/ux/pages/advanced-networking.md, src/core/commands/internet.ts, src/core/commands/internet.test.ts
@@ -1246,7 +1246,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; `internet.test.ts` runs two engines on one temp config dir, the second `speedtest.run` while the first is pending is refused with the message and allowed once the window expires; `integrations.test.ts` matches the ffs decision (`mesh-ui commands` has no `integrations.ffs.set`, or the kept command's tests pass); `pnpm ui:shot --route '#/activity'` shows the open row menu and the settings icon, light and dark; `MANUAL: rename a device from Activity and back | row menu, Rename | the eero app agrees | risk: none`.
 
 ### M6.11 Carried manual checks and their answers ☐
-- issue: #206
+- issue: [#206](https://github.com/pkkid/mesh-ui/issues/206)
 - after: M6.1
 - blocked: the maintainer runs the "Carried to M6.1" list in docs/reviews/M5.md when convenient
 - docs: reviews/M5.md (Carried to M6.1), reviews/M4.md, eero-api/endpoints.md (sections 18 and 19)
@@ -1255,7 +1255,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; each carried line is ticked with its answer or deferred with a reason; sections 18 and 19 agree with the answers; fixtures and the fake match them; the PR lists any fix tasks raised.
 
 ### M6.12 Release candidate ☐
-- issue: #207
+- issue: [#207](https://github.com/pkkid/mesh-ui/issues/207)
 - after: M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10
 - docs: platform/build-and-release.md (Versioning, Release checklist), README.md, open-questions.md
 - files: package.json, README.md, docs/platform/build-and-release.md, docs/open-questions.md
@@ -1263,7 +1263,7 @@ credentials is a `MANUAL:` line.
 - done when: `pnpm check` passes; the PR shows `pnpm dist`, `dist:smoke` and `test:keychainless` output on Linux; `grep -rn ComingSoonButton src/renderer/src/features` is empty; `mesh-ui --demo run app.info` shows 0.6.0; README and the checklist describe the release path; no real data in any file.
 
 ### M6.R Review ☐
-- issue: #208
+- issue: [#208](https://github.com/pkkid/mesh-ui/issues/208)
 - owner: maintainer
 - after: M6.1, M6.2, M6.3, M6.4, M6.5, M6.6, M6.7, M6.8, M6.9, M6.10, M6.11, M6.12
 - scope: Release gate. Run the manual checks; merge the milestone PR; add the `release` environment secrets; run the `release.yml` dry run from main; push `v0.6.0`, review and publish the draft. All tagging and publishing is the maintainer's.
