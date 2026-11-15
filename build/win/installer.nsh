@@ -82,6 +82,13 @@
     StrCpy $R8 0
     !insertmacro MeshPathScan
     StrCmp $R7 1 done
+    ; The new value (PATH, ";" and the dir) must fit as well, or StrCpy cuts it.
+    StrLen $R5 $R1
+    StrLen $R6 $R0
+    IntOp $R5 $R5 + $R6
+    IntOp $R5 $R5 + 1
+    IntOp $R6 ${NSIS_MAX_STRLEN} - 1
+    IntCmp $R5 $R6 too_long 0 too_long
     StrCmp $R1 "" 0 +3
       StrCpy $R1 $R0
       Goto write
