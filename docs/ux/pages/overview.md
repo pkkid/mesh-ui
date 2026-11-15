@@ -22,10 +22,12 @@ actions.
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      on the plan max (1.2 Gbps) with the latest result in the middle ("942
      Mbps", "918 Mbps") in the download and upload series colours. A
-     caption under them: **Set your internet plan** to scale the gauges
-     (only while no plan is set; opens the plan sheet) and **View history**
-     (opens `#/internet/history`, Internet scrolled to Speed test history),
-     joined by " · ". Both are `TextLink`s, so they read as links.
+     caption under them says where the figures come from: "Last speed test
+     Nov 14, 9:12 PM · **View history**" (network time; "No speed test yet"
+     before the first; View history opens `#/internet/history`, Internet
+     scrolled to Speed test history). While no plan is set, a second line
+     reads "**Set your internet plan** to scale the gauges" (opens the plan
+     sheet). The links are `TextLink`s, so they read as links.
 2. **Data usage** section. Header: "Data usage", sub "Last 24 hours for all devices"
    (Week: "Last 7 days for all devices") on the heading's baseline, Day / Week toggle. Switching range
    crossfades the subtitle and body (150 ms out, swap, 150 ms in, opacity
