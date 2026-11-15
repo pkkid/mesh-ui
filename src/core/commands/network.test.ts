@@ -417,3 +417,63 @@ describe("network.delete (M5.3)", () => {
     expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).map((n) => n.id)).toEqual(["100002"]);
   });
 });
+
+describe("network.nickname.set (M6.9)", () => {
+  it("is a network-gated write; the nickname shows in the next network.get and network.list, and empty clears it (demo)", async () => {
+    const { engine } = demoEngine();
+    expect(engine.commands().find((c) => c.id === "network.nickname.set")).toMatchObject({ effect: "write", scope: "network", gate: { area: "network" } });
+    // Cached first: the reads after prove the write invalidates network and account.
+    await ok(engine.execute("network.get", { networkId: MAPLE }));
+    await ok(engine.execute("network.list"));
+    expect(await ok(engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "  Home base  " }))).toEqual({ networkId: MAPLE, nickname: "Home base" });
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: MAPLE }))).nickname).toBe("Home base");
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).find((n) => n.id === MAPLE)?.nickname).toBe("Home base");
+    expect(await ok(engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "" }))).toEqual({ networkId: MAPLE, nickname: null });
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: MAPLE }))).nickname).toBeNull();
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).find((n) => n.id === MAPLE)?.nickname).toBeNull();
+  });
+
+  it("bad_params over 32 characters, for a missing or non-string nickname, and for extra keys", async () => {
+    const { engine } = demoEngine();
+    expect(await engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "x".repeat(33) })).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("32 characters or fewer") } });
+    expect(await code(engine.execute("network.nickname.set", { networkId: MAPLE }))).toBe("bad_params");
+    expect(await code(engine.execute("network.nickname.set", { networkId: MAPLE, nickname: 5 }))).toBe("bad_params");
+    expect(await code(engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "ok", bogus: 1 }))).toBe("bad_params");
+    expect(await ok(engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "x".repeat(32) }))).toMatchObject({ nickname: "x".repeat(32) });
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: MAPLE }))).nickname).toBe("x".repeat(32));
+  });
+
+  it("a nickname the backend answers for but does not keep is an eero_error, not a saved result", async () => {
+    const demo = createDemoBackend({ clock: () => NOW });
+    const backend: Backend = { ...demo, network: { ...demo.network, setNickname: async () => {} } };
+    const engine = createEngine({ backend, clock: () => NOW });
+    expect(await engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "Home base" })).toMatchObject({
+      ok: false,
+      error: { code: "eero_error", message: 'eero accepted the nickname but still reports no nickname, not "Home base". Check again in a minute; if it has not changed, eero did not save it.' },
+    });
+  });
+
+  it("sends PUT {net}/label?labelType=specialMarket form label once, reads nickname_label back, and an empty label clears it (fake eero server)", async () => {
+    const { engine, fake } = fakeEngine();
+    try {
+      await ok(engine.execute("network.list"));
+      await ok(engine.execute("network.nickname.set", { networkId: "100001", nickname: "Home base" }));
+      expect(fake.writes).toEqual([
+        expect.objectContaining({ method: "PUT", version: "2.2", path: "/2.2/networks/100001/label", encoding: "form", rawBody: "label=Home+base", body: { label: "Home base" }, status: 200 }),
+      ]);
+      expect(fake.log.filter((e) => e.method === "PUT").map((e) => [e.path, e.query])).toEqual([["/2.2/networks/100001/label", "?labelType=specialMarket"]]);
+      expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).nickname).toBe("Home base");
+      expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).find((n) => n.id === "100001")?.nickname).toBe("Home base");
+      // Unchanged: nothing is sent.
+      await ok(engine.execute("network.nickname.set", { networkId: "100001", nickname: "Home base" }));
+      expect(fake.writes).toHaveLength(1);
+      await ok(engine.execute("network.nickname.set", { networkId: "100001", nickname: "" }));
+      expect(fake.writes.at(-1)).toMatchObject({ method: "PUT", path: "/2.2/networks/100001/label", rawBody: "label=", status: 200 });
+      expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).nickname).toBeNull();
+      expect(await code(engine.execute("network.nickname.set", { networkId: "100001", nickname: "x".repeat(33) }))).toBe("bad_params");
+      expect(fake.writes).toHaveLength(2);
+    } finally {
+      await fake.close();
+    }
+  });
+});

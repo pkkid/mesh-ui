@@ -94,8 +94,6 @@ export type FakeNetwork = {
   wpa3PerBand: RawWpa3PerBand;
   /** `GET {net}/fast_transition`. */
   fastTransition: RawFastTransition;
-  /** Tests only: a time zone write answers 200 and keeps the old zone, as a real network did (M5.R-fix4). */
-  ignoreTimezone?: boolean;
   /** `GET {net}/power_saving/schedules` answers `{schedules}`. */
   powerSavingSchedules: RawPowerSavingSchedule[];
   /** `GET {net}/thread`, secrets included; null: the route answers 404. */

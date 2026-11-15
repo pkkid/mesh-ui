@@ -1,5 +1,7 @@
 /**
- * Print a card and Send to a guest (docs/ux/pages/guest.md, Actions).
+ * Print a card and Send to a guest (docs/ux/pages/guest.md, Actions). The
+ * Wi-Fi page prints the same card for the main network with its own title
+ * (docs/ux/pages/wifi.md, M6.9).
  *
  * The card is print-only: while a print is pending it is portalled to the
  * end of `<body>`, hidden on screen, and the print stylesheet hides
@@ -30,8 +32,8 @@ export function inviteText(share: Pick<WifiShare, "ssid" | "password">): string 
     : `Join our guest Wi-Fi.\nNetwork: ${share.ssid}\nNo password needed.`;
 }
 
-/** `print(share)` renders the card and opens the print dialog; render `card` anywhere. */
-export function useGuestCardPrint(): { print: (share: WifiShare) => void; card: ReactNode } {
+/** `print(share)` renders the card and opens the print dialog; render `card` anywhere. `title` heads the card. */
+export function useGuestCardPrint(title = "Guest Wi-Fi"): { print: (share: WifiShare) => void; card: ReactNode } {
   const [share, setShare] = useState<WifiShare | null>(null);
 
   useEffect(() => {
@@ -47,17 +49,17 @@ export function useGuestCardPrint(): { print: (share: WifiShare) => void; card: 
   }, [share]);
 
   const print = useCallback((next: WifiShare) => setShare(next), []);
-  return { print, card: share ? createPortal(<GuestCard share={share} />, document.body) : null };
+  return { print, card: share ? createPortal(<GuestCard share={share} title={title} />, document.body) : null };
 }
 
-export function GuestCard({ share }: { share: WifiShare }) {
+export function GuestCard({ share, title = "Guest Wi-Fi" }: { share: WifiShare; title?: string }) {
   return (
     <div id={PRINT_CARD_ID} data-slot="guest-print-card">
       <style>{PRINT_CSS}</style>
       <div className="mx-auto flex w-[22rem] flex-col items-center gap-5 rounded-2xl border-2 border-black bg-white p-8 text-center text-black">
         <div className="flex items-center gap-2 font-semibold text-base uppercase tracking-widest">
           <Ticket className="size-5" />
-          Guest Wi-Fi
+          {title}
         </div>
         <QrCode value={share.qr} ariaLabel={`QR code to join ${share.ssid}`} size={200} className="rounded-none border-0" />
         <div className="text-sm">Scan with your phone camera to join.</div>
