@@ -104,7 +104,7 @@ M5 writes (contracts from M5.1; each wave 2 story builds its eero side):
   `PowerSavingInput`, `ThreadInput`. The backend only sends; which writes
   restart the mesh is core's `settings.impact`.
 - `network.remove` (delete network); `admins.transfer`.
-- `integrations`: `setBuiltin`, `setFfs`, `discoverZigbee`, `unlinkAmazon`.
+- `integrations`: `setBuiltin`, `discoverZigbee`, `unlinkAmazon`.
 - `routing`: reservation, forward and pinhole add, update (not pinholes)
   and remove, on `ReservationInput`, `ForwardInput`, `PinholeInput`. Core
   resolves devices to MACs and addresses and validates ranges first.

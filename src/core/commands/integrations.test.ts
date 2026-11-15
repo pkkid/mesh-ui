@@ -229,7 +229,7 @@ describe("Frustration-Free Setup is read only (M6.10)", () => {
     try {
       const token = fake.signIn();
       const eero = createEeroBackend({ secrets: secrets(token), origin: fake.origin, fetch: fake.fetch });
-      await expect(eero.integrations.setFfs("100001", false)).rejects.toThrow("integrations.setFfs is not available in the eero backend yet.");
+      expect(Object.keys(eero.integrations).sort()).toEqual(["discoverZigbee", "get", "setBuiltin", "unlinkAmazon"]);
       expect(fake.writes).toHaveLength(0);
       // A raw `PUT {net}/settings` {ffs} is refused by the other settings routes and changes nothing.
       const res = await fake.fetch(`${fake.origin}/2.2/networks/100001/settings`, { method: "PUT", headers: { "content-type": "application/json", cookie: `s=${token}` }, body: JSON.stringify({ ffs: false }) });

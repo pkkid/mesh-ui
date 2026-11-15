@@ -6,8 +6,8 @@
  * Writes (docs/eero-api/endpoints.md): eero Built-in `PUT {net}/proxied_nodes`
  * JSON `{enabled}`; Zigbee discovery `POST /2.3/networks/{id}/shh/start_zigbee_discovery` (2.3
  * only); Amazon unlink `POST /2.2/amazon/networks/{id}/account_unlink`. Each
- * returns the next read. Frustration-Free Setup has no write here (no
- * live-tested source, M6.10), so `setFfs` answers "not available yet". See docs/architecture/commands.md (integrations).
+ * returns the next read. Frustration-Free Setup is read only (no
+ * live-tested write source, M6.10). See docs/architecture/commands.md (integrations).
  */
 
 import { mapIntegrations } from "../map/settings";

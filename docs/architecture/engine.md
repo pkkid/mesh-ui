@@ -354,7 +354,11 @@ The limiter lives in the eero client; the full rules are in
   bucket and stop at the first `rate_limited`, returning per-device results;
 - local limits on top: `auth.login.resend` once per 60 s,
   `device.rates.refresh` once per 60 s per network, `speedtest.run` refused
-  while a test is running.
+  while a test is running. The speed test lock is shared across processes
+  for the eero backend (live or fake): it is a file under
+  `<configDir>/locks`, so the app and a CLI or MCP process cannot both
+  start a test on one network. Demo, and an engine with no config dir, keep
+  it in memory per process.
 
 The app and a CLI or MCP process have separate buckets. A long CLI script
 should pace itself; the limiter still keeps each process under the budget.
