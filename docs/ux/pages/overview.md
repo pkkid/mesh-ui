@@ -48,10 +48,15 @@ actions.
      →". Table of the top 5: rank, device icon and name with a thin bar scaled
      to the top device, Down and Up (Up muted).
 4. Three columns:
-   - **Profiles**, link "Manage". One row per profile: avatar initial in the
-     profile colour, name, a detail line ("6 devices · 96 GB today", "Bedtime
-     9:00 PM to 7:00 AM", "Paused 25 min ago"), status (Active, Scheduled,
-     Paused).
+   - **Top profiles**. Sub "Last 24 hours", link "All profiles →". The top 3
+     profiles by data used in the last 24 hours (pure ranking: a paused
+     profile with little usage drops out; pausing is one click away on
+     Profiles and in the hero's "Pause a profile" menu). One row per profile:
+     avatar initial in the profile colour, name, a detail line ending in the
+     same 24-hour total the rows are ranked by ("6 devices · 96 GB", "Bedtime
+     9:00 PM to 7:00 AM · 1.2 GB", "3 devices paused · 40 MB"), status
+     (Active, Scheduled, Paused). With no profiles it keeps the "No profiles
+     yet" note with Add a profile.
    - **When the network is busy**, sub "This week". A 7 x 24 heatmap (Mon to
      Sun by hour) in one series colour, intensity by share of the week's peak
      hour; hour labels every 6 hours; cell tooltip "Mon 20:00 · 78%".
@@ -73,7 +78,8 @@ actions.
 | eero sparklines | `usage.get {scope: "eero", range: "day"}` (same call as the share bar) | 5 min |
 | Top devices | `usage.breakdown {range: "day", by: "device"}`, first 5 | 5 min |
 | Top devices names and icons | `device.list` | 30 s |
-| Profiles rows | `profile.list` (with today's usage and current pause or schedule state) | 60 s |
+| Top profiles rows | `profile.list` (pause or schedule state) | 60 s |
+| Top profiles ranking and totals | `usage.get {scope: "profile", range: "day"}`, sorted by `total.down + total.up`, first 3 | 5 min |
 | Busy heatmap | `usage.get {scope: "network", range: "week", cadence: "hourly"}`; core normalises to 0..1 | 5 min |
 | Recent activity | `events.list {limit: 3}` | 60 s |
 
@@ -90,7 +96,7 @@ actions.
 | eero row | - | - | No | eero detail |
 | All devices → | - | - | No | Devices, sorted by data today |
 | Top device row | - | - | No | Device detail |
-| Manage (Profiles) | - | - | No | Profiles page |
+| All profiles → | - | - | No | Profiles page |
 | Profile row | - | - | No | Profile detail |
 | Heatmap cell | - | - | No | Tooltip only |
 | All (Recent activity) | - | - | No | Activity page |

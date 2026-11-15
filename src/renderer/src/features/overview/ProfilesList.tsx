@@ -1,6 +1,7 @@
 /**
- * Overview "Profiles": one row per profile with its initial in the profile's
- * series colour, today's usage or schedule, and state.
+ * Overview "Top profiles": the three profiles that used the most data in the
+ * last 24 hours (`usage.get {scope: "profile", range: "day"}`), each with its
+ * initial in the profile's series colour, that same 24-hour total, and state.
  * docs/ux/pages/overview.md (Layout 4).
  */
 import { Plus } from "lucide-react";
@@ -17,6 +18,8 @@ import { cn } from "~/lib/utils";
 import { formatBytes } from "../../../../core/format";
 import type { Hhmm, Profile, ProfileList, UsageSeries } from "../../../../core/model";
 
+const TOP = 3;
+
 const STATE: Record<Profile["state"], { tone: StatusTone; label: string }> = {
   active: { tone: "success", label: "Active" },
   scheduled: { tone: "info", label: "Scheduled" },
@@ -31,13 +34,15 @@ function clock(hhmm: Hhmm): string {
 
 const devices = (n: number) => `${n} ${n === 1 ? "device" : "devices"}`;
 
-function detail(p: Profile, today: number | null | undefined): string {
-  if (p.state === "paused") return `${devices(p.deviceIds.length)} paused`;
+/** The state part of the detail line, then the 24-hour total the rows are ranked by. */
+function detail(p: Profile, used: number | undefined): string {
+  let what = devices(p.deviceIds.length);
+  if (p.state === "paused") what = `${what} paused`;
   if (p.state === "scheduled") {
     const s = p.schedules.find((x) => x.id === p.nextChange?.scheduleId) ?? p.schedules.find((x) => x.enabled);
-    if (s) return `${s.name} ${clock(s.start)} to ${clock(s.end)}`;
+    if (s) what = `${s.name} ${clock(s.start)} to ${clock(s.end)}`;
   }
-  return `${devices(p.deviceIds.length)} · ${formatBytes(today)} today`;
+  return `${what} · ${formatBytes(used)}`;
 }
 
 export function ProfilesList() {
@@ -46,16 +51,28 @@ export function ProfilesList() {
 
   const list = profiles.data?.profiles ?? [];
   const colors = entityColors(list.map((p) => p.id));
-  const today = new Map((usage.data ?? []).map((s) => [s.id, s.todaySoFar]));
+  const used = new Map((usage.data ?? []).map((s) => [s.id, s.total.down + s.total.up]));
+  // Rank by the same 24-hour total each row shows. Profiles without usage sort last.
+  const top = [...list].sort((a, b) => (used.get(b.id) ?? -1) - (used.get(a.id) ?? -1)).slice(0, TOP);
+  // Wait for usage too, so the order does not jump; if usage fails, show list order with "-".
+  const loading = !usage.data && !usage.error;
   const [adding, setAdding] = useState(false);
   const createGate = useGate({ ...PROFILE_GATE, op: "create" });
 
   return (
-    <Section title="Profiles" tools={<HeaderLink to={pathFor("profiles")}>Manage</HeaderLink>}>
+    <Section
+      title="Top profiles"
+      subtitle="Last 24 hours"
+      tools={
+        <HeaderLink to={pathFor("profiles")} arrow>
+          All profiles
+        </HeaderLink>
+      }
+    >
       {profiles.error && !profiles.data ? (
         <SectionError what="profiles" error={profiles.error} onRetry={() => void profiles.refetch()} />
       ) : !profiles.data ? (
-        <PlaceholderRows count={4} />
+        <PlaceholderRows count={TOP} />
       ) : list.length === 0 ? (
         <Card>
           <Empty className="flex flex-col items-center gap-3">
@@ -67,9 +84,11 @@ export function ProfilesList() {
             <ProfileSheet mode={adding ? { kind: "create" } : null} onClose={() => setAdding(false)} />
           </Empty>
         </Card>
+      ) : loading ? (
+        <PlaceholderRows count={TOP} />
       ) : (
-        <RowList className={cn("transition-opacity", profiles.fading && "opacity-40")}>
-          {list.map((p) => {
+        <RowList className={cn("transition-opacity", (profiles.fading || usage.fading) && "opacity-40")}>
+          {top.map((p) => {
             const state = STATE[p.state];
             return (
               <Row key={p.id} to={pathFor("profile", { profileId: p.id })}>
@@ -82,7 +101,7 @@ export function ProfilesList() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-[13.5px]">{p.name}</div>
-                  <div className="text-muted-foreground text-xs">{detail(p, today.get(p.id))}</div>
+                  <div className="text-muted-foreground text-xs">{detail(p, used.get(p.id))}</div>
                 </div>
                 <Status tone={state.tone}>{state.label}</Status>
               </Row>
