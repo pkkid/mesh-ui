@@ -19,7 +19,7 @@ Breadcrumb `Settings / App & account`, subtitle "This computer and your eero acc
 
 Side panel:
 
-1. **About**: app logo, `Mesh UI`, "Version 0.1.0 · up to date"; Electron version and platform, Network ID, Support ID; links Release notes, Open source licenses, eero support articles, Source and issues; line "Mesh UI is an independent app and is not made by eero or Amazon."
+1. **About**: app logo, `Mesh UI`, "Version 0.6.0"; the update status (status dot and line: "Up to date · checked 20 min ago", "Not checked yet", "Automatic updates off", "Checking for updates", "Version 0.6.1 is available" (an unsigned macOS build, which cannot install updates itself: a note saying so and a **Download from GitHub** link to that release), "Downloading 0.6.1 · 42%" with a progress bar, "Version 0.6.1 is ready", or the error line); **Check now** and, when ready, **Restart to update**; **Automatic updates** and **Beta updates** switches; Electron version and platform, Network ID, Support ID (both copyable); links Release notes, eero support articles, Source and issues (open in the browser; no licenses page yet, the repository has them); line "Mesh UI is an independent app and is not made by eero or Amazon." deb, rpm, portable and dev installs hide the update buttons and switches and show why ("Installed with a package manager. Update with apt or dnf."); deb, rpm and portable add a **Release page** link.
 2. **Sign out and delete**: text saying where the session is stored ("saved in GNOME Keyring and refreshes on its own") and **Sign out**. Then **Delete account and data** (`Destructive` badge): what it does and what must happen first (transfer or delete owned networks; lose admin access to shared ones), a checkbox "I want to permanently close my account and delete my data", **Delete account** (solid danger, disabled until checked). Delete opens the app's confirm dialog with core's message; type the account email (or name, when there is no email) to enable it. In demo mode the text says so and the panel adds **Leave demo mode**.
 
 **Deep links.** Each section has a stable id; `#/account/<section>` opens
@@ -42,7 +42,8 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 | Networks table | `network.list` | on load, every 60 s (shares the sidebar switcher's poll, no extra request) |
 | CLI install state, MCP state, command log and counts | `app.info`, `app.audit.list` | on load, every 60 s |
 | Themes | renderer local storage (not a command) | |
-| Version, update status, Electron, platform | `app.info` | on load |
+| Version, update status, Electron, platform | `app.info` | on load, every 60 s, and on `update.changed` |
+| Automatic updates, Beta updates switches | `app.settings.get` | on load, after writes |
 | Network ID | `network.get` | on load |
 | Session storage description (keychain name or memory only) | `auth.status`, `app.info` (`keychainName`) | on load |
 | Owned and shared networks for Delete account | `network.list` | with the table |
@@ -62,6 +63,11 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 | Copy CLI or MCP line | none | | | Copies the text |
 | Install CLI (shown when the launcher is missing) | `app.cli.install` | write (app local) | OS admin prompt where needed | `mesh-ui` on PATH |
 | Theme orb | none (view state) | | | Applies the theme; stored in local storage |
+| Check now | `app.update.check` | write (app local) | no | Checks GitHub Releases now, even with automatic updates off |
+| Download from GitHub (unsigned macOS, state `available`) | none | | | Opens the release page in the browser |
+| Restart to update (About, sidebar chip opens About) | `app.update.install` | write (app local) | no | Mesh UI restarts into the new version; only on this click |
+| Automatic updates switch | `app.settings.set` `{autoUpdate}` | write (app local) | no | Scheduled checks stop or resume |
+| Beta updates switch | `app.settings.set` `{updateChannel}` | write (app local) | no | `beta` also takes GitHub pre-releases |
 | About links | none | | | Open externally |
 | Sign out | `auth.logout` | write | no | Session removed from the keychain; app returns to sign in |
 | Delete account | `account.delete` `{acknowledge: true}` | destructive | checkbox, then dialog with type the email; sends `confirm: true` | Account closed; app returns to sign in |

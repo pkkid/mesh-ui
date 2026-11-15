@@ -270,7 +270,10 @@ published releases.
 
 ## Auto-update
 
-electron-updater with the GitHub provider.
+electron-updater with the GitHub provider (`resources/app-update.yml`),
+behind the small `UpdaterBackend` interface in `src/main/updater.ts` so the
+schedule and states are tested with a fake (`src/main/updater.test.ts`).
+Only the window has an updater; `app.info` `update` reports its state.
 
 - **Install kind:** `src/main/install-kind.ts` tells them apart at launch
   (`app.info` `install`): unpackaged is `dev`; packaged macOS is `mac`;
@@ -279,23 +282,63 @@ electron-updater with the GitHub provider.
   from `resources/package-type` (written by electron-builder), else
   `portable` (an unpacked build).
 - **Who updates:** macOS (zip), Windows NSIS, Linux AppImage. Not the Windows
-  portable zip, deb or rpm; those builds hide the update controls and App &
-  account links to the release page instead ("Installed with a package
-  manager. Update with apt or dnf.").
-- **When:** check 10 s after launch and every 6 hours while running. Download
-  in the background. When ready, show "Restart to update" in App & account and
-  the sidebar footer; never restart on its own.
+  portable zip, deb, rpm or dev builds: they report `unsupported`, never
+  load electron-updater, and About hides the update controls and links to
+  the release page instead ("Installed with a package manager. Update with
+  apt or dnf.", "Portable copy. Download new versions from the release
+  page.", "Development build. Updates are off.").
+- **When:** check 10 s after launch, then every 6 hours with up to 15
+  minutes of jitter, while **Automatic updates** is on. Check now
+  (`app.update.check`) runs whatever the switch says. One check at a time;
+  no checks once an update is downloaded.
+- **Unsigned macOS builds check only.** On macOS electron-updater downloads
+  the zip itself, but `quitAndInstall` hands it to Electron's native
+  Squirrel.Mac, which accepts a new build only if it satisfies the running
+  app's designated requirement. An ad-hoc signed build's requirement is its
+  own cdhash, so every new build fails that check (electron-updater 6.8.11,
+  `MacUpdater.js`); a download would end in "Restart to update" that errors,
+  again after every launch. So on macOS the updater first runs `codesign -dv`
+  on the app bundle (`macSignedForUpdates`). Without a Developer ID
+  `Authority` (or if codesign fails) it sets `autoDownload: false`: checks
+  still run on the same schedule, a newer version is state `available`, and
+  About says the copy cannot update itself and links to the GitHub release
+  (`releases/tag/v<version>`) to download by hand; the sidebar chip reads
+  "Update available". Nothing downloads, so nothing fails or repeats. A
+  Developer ID signed build downloads and installs like the others, with no
+  code change.
+- **Download and install:** downloads in the background
+  (`autoDownload`). On `ready` the window gets `update.changed` and shows
+  "Restart to update" in About and the sidebar footer. Nothing installs on
+  its own: install on quit is off (`autoInstallOnAppQuit: false`), and only
+  `app.update.install` calls `quitAndInstall(true, true)` (silent installer,
+  then relaunch).
+- **States** (`UpdateStatus.state`): `idle` (up to date, or not checked
+  yet), `off` (idle with automatic updates off), `checking`, `available`
+  (found, but this copy cannot install it: unsigned macOS), `downloading`
+  (`progress` 0..1, events in whole percents), `ready`, `error` (one short
+  line such as "Could not reach GitHub."), `unsupported`. Errors never
+  throw to a surface or show a dialog.
 - **Verification:** electron-updater checks the code signature on macOS and
   the sha512 from `latest*.yml` everywhere. Windows adds the signature check
   (`publisherName`) once builds are signed; until then it relies on the
   sha512 and the HTTPS GitHub download.
-- **Channel:** `latest` by default, `beta` when the user opts in.
-- **Off switch:** App & account can turn automatic checks off
-  (`app.settings.set`). `app.info` reports the current version, update state
-  and channel.
+- **Channel:** `latest` by default. **Beta updates** sets `updateChannel:
+  beta`, and the updater sets electron-updater's `allowPrerelease` before
+  each check. With the GitHub provider a beta is a GitHub pre-release
+  carrying `beta*.yml` (see Versioning); `allowPrerelease` with no explicit
+  `channel` takes the newest release in the feed, beta or stable. Turning
+  beta off again keeps the installed beta until a newer stable release
+  (no downgrade).
+- **Off switch:** **Automatic updates** (`app.settings.set`
+  `{autoUpdate}`) stops the scheduled checks; the switch is read at each
+  tick, so turning it back on resumes at the next one.
 - **CLI:** the CLI never checks for or installs updates. It runs whatever app
   version is installed.
-- **Dev builds** (`pnpm dev`) never check.
+- **Screenshots:** `MESH_UI_UPDATE_STATE` (`idle`, `off`, `checking`,
+  `available`, `downloading`, `ready`, `error`, or `deb`, `rpm`, `portable` for an
+  install kind that cannot update) gives a fixed state in unpackaged
+  headless runs, so `MESH_UI_UPDATE_STATE=ready pnpm ui:shot --route
+  '#/account/about'` shows it. Packaged builds and windowed runs ignore it.
 
 ## CLI launcher
 

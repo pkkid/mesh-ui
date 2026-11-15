@@ -47,6 +47,7 @@ import { createHostActions } from "./host-actions";
 import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
+import { previewUpdate } from "./updater";
 
 /** Matches --titlebar-height in the renderer's index.css. */
 const TITLEBAR_HEIGHT = 44;
@@ -107,8 +108,11 @@ async function fakeOrigin(): Promise<string | undefined> {
 
 type EngineMode = { mode: "demo" } | { mode: "live" } | { mode: "fake"; origin: string; secrets: SecretStore };
 
+/** `MESH_UI_UPDATE_STATE` in unpackaged headless runs: a fixed update state for ui:shot (src/main/updater.ts). */
+const updatePreview = isHeadless ? previewUpdate(process.env, app.isPackaged) : null;
+
 /** How this copy was installed (src/main/install-kind.ts). Read once. */
-const installKind = detectInstallKind({
+const installKind = updatePreview?.install ?? detectInstallKind({
   packaged: app.isPackaged,
   platform: process.platform,
   env: process.env,
@@ -133,7 +137,14 @@ const installKind = detectInstallKind({
 /** The window's host actions (updater, CLI install, demo relaunch). The CLI host gets none. */
 function windowActions(settings: SettingsStore): HostActions {
   return createHostActions({
-    install: installKind, exePath: process.execPath, env: process.env, channel: async () => (await settings.get()).updateChannel,
+    install: installKind,
+    exePath: process.execPath,
+    env: process.env,
+    settings: () => settings.get(),
+    onUpdate: (status) => {
+      for (const win of BrowserWindow.getAllWindows()) win.webContents.send(IPC.event, { type: "update.changed", status });
+    },
+    updatePreview: updatePreview?.status ?? null,
     demoSwitch: { app, argv: process.argv, env: process.env },
   });
 }

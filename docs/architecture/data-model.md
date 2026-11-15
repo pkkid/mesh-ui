@@ -751,7 +751,7 @@ type AppInfo = {
 type InstallKind = "dev" | "mac" | "nsis" | "portable" | "appimage" | "deb" | "rpm";
 
 type UpdateStatus = {
-  state: "off" | "idle" | "checking" | "downloading" | "ready" | "error" | "unsupported";
+  state: "off" | "idle" | "checking" | "available" | "downloading" | "ready" | "error" | "unsupported";
   version: string | null;         // found or downloaded
   channel: "latest" | "beta";
   checkedAt: Iso | null;
