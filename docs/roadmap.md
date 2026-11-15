@@ -1003,13 +1003,28 @@ eero's own refusal, #162); the CLI and agents panel reads the audit log
 (`audit.jsonl`, live CLI and MCP only, #149).
 Carried from M5: the Activity overflow menu and settings icon from the
 mockup (#178; M5 review question 3); Wi-Fi network nickname edit and the
-Wi-Fi "Print a card" are still Coming soon (no command yet); manual checks
-not run at the M5 review (the "Carried to M6.1" list in
-`docs/reviews/M5.md`: IPv6 firewall rule, Activity name links, placement
-test, client steering, PoE restart, port disable, Wi-Fi rename, DNS change,
-PPPoE, update install, eero remove, Unassigned scheduled pause) and, if not
-run then, the M4 list (question 1); the time zone write may not stick
-(#191 reports it instead of faking success), with their answers applied to `endpoints.md` sections 18
-and 19 and the fixtures; the real `{net}/admins` role value is unverified
-(the fake admins list uses `owner`); network transfer's request shape is
-unproven and must never be tried on the real network.
+Wi-Fi "Print a card" are still Coming soon (no command yet); the time zone
+write is accepted by eero but not applied (#191 reports it instead of
+faking success; find the real request); `integrations.ffs.set` is
+unverified and the UI shows Frustration-Free Setup read-only (#188); the
+real `{net}/admins` role value is unverified (the fake admins list uses
+`owner`); network transfer's request shape is unproven and must never be
+tried on the real network. Manual checks not run at the M5 review, to run
+when convenient in M6.1 (the "Carried to M6.1" list in
+`docs/reviews/M5.md`): IPv6 firewall rule, Activity name links, placement
+test, client steering, PoE restart, port disable, Wi-Fi rename, DNS
+change, PPPoE, update install, eero remove, Unassigned scheduled pause, and
+M4's pause one device, block one device, speed test, guest off and on, and
+guest name and password; apply their answers to `endpoints.md` sections 18
+and 19 and the fixtures.
+Lessons from M5 for planning M6: the maintainer's manual checks found 13
+real-network bugs that every sandbox test passed (#187 to #192, #194).
+Before a story builds a write, its request must come from a client that
+tested it live (Eeronaut has, for most) or a read-only capture, never only
+from our docs or the fake; each story captures the real read shapes it maps
+(counts and types) before building on them. Every on-screen read gets a
+`poll` (or a reason in the poll table in the architecture docs), and the
+per-page request budget tests cover new pages. The header Refresh (#193)
+and `execute(..., { fresh: true })` are the way to force a reread; do not
+add page-local refresh paths. Gate on eero capabilities as well as role
+(power saving was a hardware limit that looked like a role error).
