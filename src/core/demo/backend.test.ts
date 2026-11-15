@@ -1073,7 +1073,8 @@ describe("writes (M5)", () => {
     const run = await b.diagnostics.run(MAPLE, { symptom: "internet_slow", deviceId: null });
     expect(run.status).toBe("completed");
     expect(await b.diagnostics.latest(MAPLE)).toEqual(run);
-    expect((await b.integrations.setFfs(MAPLE, false)).ffs.enabled).toBe(false);
+    // Frustration-Free Setup is read only.
+    expect((await b.integrations.get(MAPLE)).ffs).toMatchObject({ available: true, enabled: true });
     expect((await b.integrations.setBuiltin(MAPLE, false)).builtin.enabled).toBe(false);
     expect((await b.integrations.unlinkAmazon(MAPLE)).amazon.enabled).toBe(false);
     await b.integrations.discoverZigbee(MAPLE);
@@ -1099,7 +1100,7 @@ describe("writes (M5)", () => {
     await b.routing.addPinhole(MAPLE, { deviceId: (await b.device.list(MAPLE))[0]!.id, protocol: "tcp", port: "22" });
     await b.updates.setPreferredHour(MAPLE, 5);
     await b.admins.createInvite(MAPLE, { nickname: null, email: null });
-    await b.integrations.setFfs(MAPLE, false);
+    await b.integrations.setBuiltin(MAPLE, false);
     await b.notifications.setSettings(MAPLE, { "device.new": false });
     await b.eero.remove(MAPLE, before.eeros.find((e) => !e.isGateway)!.id);
     await b.network.remove(LAKE);

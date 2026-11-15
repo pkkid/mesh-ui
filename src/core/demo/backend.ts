@@ -1258,11 +1258,6 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         integrationIn(data, "builtin").enabled = enabled;
         return clone(data.integrations);
       },
-      setFfs: async (id, enabled) => {
-        const data = net(id);
-        integrationIn(data, "ffs").enabled = enabled;
-        return clone(data.integrations);
-      },
       discoverZigbee: async (id) => {
         integrationIn(net(id), "smart_home_hub");
       },

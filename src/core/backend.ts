@@ -360,7 +360,6 @@ export interface AdminsBackend {
 export interface IntegrationsBackend {
   get(net: M.Id): Promise<M.Integrations>;
   setBuiltin(net: M.Id, enabled: boolean): Promise<M.Integrations>;
-  setFfs(net: M.Id, enabled: boolean): Promise<M.Integrations>;
   /** Starts Zigbee discovery on the Smart Home Hub; pairing finishes in the Alexa app. */
   discoverZigbee(net: M.Id): Promise<void>;
   unlinkAmazon(net: M.Id): Promise<M.Integrations>;
@@ -448,7 +447,7 @@ export const WRITE_METHODS = {
   ],
   diagnostics: ["run", "coverageScan", "upgradeReport"],
   admins: ["createInvite", "cancelInvite", "remove", "transfer"],
-  integrations: ["setBuiltin", "setFfs", "discoverZigbee", "unlinkAmazon"],
+  integrations: ["setBuiltin", "discoverZigbee", "unlinkAmazon"],
   notifications: ["markRead", "setSettings"],
 } as const satisfies { [K in AreaName]?: readonly (keyof BackendAreas[K])[] };
 
