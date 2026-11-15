@@ -8,7 +8,7 @@
 import type { InstallKind, UpdateChannel } from "../core/model";
 import type { HostActions } from "../core/spec";
 import { createCliInstaller } from "./cli-install";
-import { createDemoSwitch } from "./demo-switch";
+import { createDemoSwitch, type DemoSwitchDeps } from "./demo-switch";
 import { createUpdater } from "./updater";
 
 export type HostActionDeps = {
@@ -16,12 +16,14 @@ export type HostActionDeps = {
   exePath: string;
   env: Readonly<Record<string, string | undefined>>;
   channel(): Promise<UpdateChannel>;
+  /** Electron's `app`, `process.argv` and `process.env` for the demo relaunch. */
+  demoSwitch: DemoSwitchDeps;
 };
 
 export function createHostActions(d: HostActionDeps): HostActions {
   return {
     update: createUpdater({ install: d.install, channel: d.channel }),
     cli: createCliInstaller({ install: d.install, exePath: d.exePath, env: d.env }),
-    relaunch: createDemoSwitch(),
+    relaunch: createDemoSwitch(d.demoSwitch),
   };
 }

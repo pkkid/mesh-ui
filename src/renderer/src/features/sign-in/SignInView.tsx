@@ -260,7 +260,8 @@ function Welcome({
   const [email, setEmail] = useState(lastLogin?.kind === "email" ? lastLogin.value : "");
   const [phone, setPhone] = useState(lastLogin?.kind === "phone" ? lastLogin.value : "");
   const [country, setCountry] = useState(lastLogin?.country ?? "+1");
-  const [demoHint, setDemoHint] = useState(false);
+  // Relaunches Mesh UI with or without --demo (src/main/demo-switch.ts); the CLI and MCP hosts refuse it.
+  const demoSwitch = useCommand<{ enabled: boolean }, { demo: boolean; restarting: boolean }>("app.demo.set");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => inputRef.current?.focus(), [kind]);
@@ -389,15 +390,22 @@ function Welcome({
           ) : null}
         </div>
         <FootNote icon={<FlaskConical />} className="mt-0">
-          {demoHint ? (
+          {demoSwitch.result?.restarting ? (
+            <span>Restarting Mesh UI...</span>
+          ) : demoSwitch.error ? (
             <span>
               Start Mesh UI with <span className="font-mono">--demo</span> to explore sample networks.
             </span>
           ) : (
             <span>
-              Just looking?{" "}
-              <button type="button" className="cursor-pointer font-medium text-info-foreground hover:underline" onClick={() => setDemoHint(true)}>
-                Try demo mode
+              {demo ? "Exploring sample networks. " : "Just looking? "}
+              <button
+                type="button"
+                disabled={demoSwitch.running}
+                className="cursor-pointer font-medium text-info-foreground hover:underline disabled:opacity-60"
+                onClick={() => void demoSwitch.run({ enabled: !demo })}
+              >
+                {demo ? "Leave demo mode" : "Try demo mode"}
               </button>
             </span>
           )}

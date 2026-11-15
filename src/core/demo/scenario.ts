@@ -16,6 +16,7 @@ export const SCENARIOS = {
   empty_network: "Maple Street has its eeros but no devices and no profiles yet.",
   slow: "The default fixtures, but every read takes a moment (about 1.5 s), to show loading states.",
   errors: "The default fixtures, but every read fails with eero_error, to show error states. Sign-in still works.",
+  admin: "Every network is shared with you as an admin and none is owned, so the account can be deleted.",
 } as const;
 
 export type ScenarioName = keyof typeof SCENARIOS;
@@ -85,6 +86,18 @@ export function applyScenario(fx: DemoFixtures, name: ScenarioName, now: number)
 
     case "errors":
       return { signedIn: true, reads: "errors" };
+
+    case "admin": {
+      const shared = fx.networks.find((n) => n.network.role === "admin")?.permissions;
+      for (const n of fx.networks) {
+        n.network.role = "admin";
+        if (shared) n.permissions = structuredClone(shared);
+        for (const a of n.admins) if (a.isYou) a.role = "admin";
+        if (!n.admins.some((a) => a.role === "owner")) n.admins.unshift({ id: `demo-owner-${n.network.id}`, name: "Rose Kim", role: "owner", isYou: false });
+      }
+      fx.account.canTransfer = false;
+      return { signedIn: true, reads: "normal" };
+    }
 
     case "empty_network":
       if (maple) {

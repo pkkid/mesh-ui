@@ -30,7 +30,10 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
   eero app with Amazon, use an eero account that has admin access to your
   network."
 - Footer rule with "Just looking? **Try demo mode**" and the app version
-  (`v0.1.0`) on the right.
+  (`v0.1.0`) on the right. In demo the line reads "Exploring sample
+  networks. **Leave demo mode**". While the app relaunches it reads
+  "Restarting Mesh UI...". If the host cannot relaunch, it falls back to
+  "Start Mesh UI with `--demo` to explore sample networks."
 
 ### 2. Verification code
 
@@ -88,7 +91,8 @@ real storage state (see States).
 | --- | --- | --- | --- | --- |
 | Email / Phone toggle | - (view state) | - | No | Switches field type |
 | Send code | `auth.login.start {login}` | write | No | Moves to step 2; starts the 60 s resend timer |
-| Try demo mode | - (host restarts the engine with the demo backend) | - | No | Signs in to the demo networks; sidebar shows the Demo badge |
+| Try demo mode | `app.demo.set {enabled: true}` | write (app local) | No | Relaunches Mesh UI with `--demo` (same user data dir, settings kept in memory, the saved session untouched); demo networks appear |
+| Leave demo mode (in demo) | `app.demo.set {enabled: false}` | write (app local) | No | Relaunches without `--demo` (and without `MESH_UI_DEMO`); the real sign-in page or account returns |
 | Back | - | - | No | Back to step 1, pending login discarded |
 | Verify (or sixth digit) | `auth.login.verify {code}` | write | No | `ok`: selects the last used or first network and opens the dashboard (step 3). Error: wrong-code state |
 | Resend code | `auth.login.resend` | write | No | Clears the boxes, restarts the 60 s timer, toast "New code sent" |

@@ -13,14 +13,14 @@ Breadcrumb `Settings / App & account`, subtitle "This computer and your eero acc
 1. **Hero.** Avatar with initials at the top left. Title is the account name (`Alex Kim`) with `Signed in`. Under it the email with `Verified` and the mobile number with `Unverified`. Action row: **Edit name**, **Change email**, **Verify mobile** (the third button reads **Change mobile** once the number is verified).
 2. **Account** ("Email preferences"): **Stay up to date** switch (product news by email).
 3. **Notifications** ("Maple Street alerts · shown in the bell and as desktop notifications"). Header switch **Desktop notifications**. One row per alert with an icon, label, optional detail and a switch: New device joins, Network goes offline (account push setting), An eero goes offline (account push setting), Update scheduled 12 hours before, Update scheduled 15 minutes before, Update installed, Admin permission changes, Weekly activity and data usage report, New eero discovered or auto added (Simple Setup).
-4. **Networks on this account.** Table: Network (icon, name, nickname, "current" or "shared by ..."), Role (`Owner` or `Admin`), eeros count, Status (`Online`, `Offline 2d`).
+4. **Networks on this account.** Table: Network (neutral icon, the nickname or else the name, then a muted line with the Wi-Fi name when a nickname is shown, ISP, "Shared with you" for an admin role and "current" for the selected network), Role (`Owner` or `Admin`), eeros count, Status (`Online`, `Offline 2d`). eero sends no owner name for a shared network, so the mockup's "shared by ..." reads "Shared with you". A row click switches to that network.
 5. **Command line and agents** ("Everything in this window is also a command"). Header status `MCP connected`. Left: **Command line** code block (`mesh-ui run device.list`) and **MCP server** code block (`claude mcp add mesh-ui -- mesh-ui mcp`), each with a copy icon. Right: "This week · 38 commands from the CLI and agents", a sparkline per day, and the latest commands (id and target, `needs confirm` in warning colour when one was refused, age). Footer line: agents never see the session token; restarting or irreversible commands only run with `--confirm`.
 6. **Application Theme** ("Pick a light and a dark look · stored on this computer only"). One card per theme (Classic, Rose, Grove, Ocean, Ember, Iris, Gruvbox Hard), each with a light and a dark preview orb; the active light and dark picks are marked with a sun or moon.
 
 Side panel:
 
 1. **About**: app logo, `Mesh UI`, "Version 0.1.0 · up to date"; Electron version and platform, Network ID, Support ID; links Release notes, Open source licenses, eero support articles, Source and issues; line "Mesh UI is an independent app and is not made by eero or Amazon."
-2. **Sign out and delete**: text saying where the session is stored ("saved in GNOME Keyring and refreshes on its own") and **Sign out**. Then **Delete account and data** (`Destructive` badge): what it does and what must happen first (transfer or delete owned networks; lose admin access to shared ones), a checkbox "I want to permanently close my account and delete my data", **Delete account** (solid danger, disabled until checked).
+2. **Sign out and delete**: text saying where the session is stored ("saved in GNOME Keyring and refreshes on its own") and **Sign out**. Then **Delete account and data** (`Destructive` badge): what it does and what must happen first (transfer or delete owned networks; lose admin access to shared ones), a checkbox "I want to permanently close my account and delete my data", **Delete account** (solid danger, disabled until checked). Delete opens the app's confirm dialog with core's message; type the account email (or name, when there is no email) to enable it. In demo mode the text says so and the panel adds **Leave demo mode**.
 
 **Deep links.** Each section has a stable id; `#/account/<section>` opens
 the page scrolled to it (a second `account` route, `/account/:section`, so
@@ -39,12 +39,13 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 | Network offline, eero offline toggles | `account.get` (push settings) | on load |
 | "12 device events this week" detail | `events.summary` `{type: ["devices"], range: "week"}` | on load |
 | Desktop notifications switch | `app.settings.get` | on load |
-| Networks table | `network.list` | on load, every 5 min |
+| Networks table | `network.list` | on load, every 60 s (shares the sidebar switcher's poll, no extra request) |
 | CLI install state, MCP state, command log and counts | `app.info`, `app.audit.list` | on load, every 60 s |
 | Themes | renderer local storage (not a command) | |
 | Version, update status, Electron, platform | `app.info` | on load |
 | Network ID | `network.get` | on load |
-| Session storage description (keychain name or memory only) | `auth.status` | on load |
+| Session storage description (keychain name or memory only) | `auth.status`, `app.info` (`keychainName`) | on load |
+| Owned and shared networks for Delete account | `network.list` | with the table |
 
 ## Actions
 
@@ -63,7 +64,8 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 | Theme orb | none (view state) | | | Applies the theme; stored in local storage |
 | About links | none | | | Open externally |
 | Sign out | `auth.logout` | write | no | Session removed from the keychain; app returns to sign in |
-| Delete account | `account.delete` | destructive | checkbox, then dialog; sends `confirm: true` | Account closed; app returns to sign in |
+| Delete account | `account.delete` `{acknowledge: true}` | destructive | checkbox, then dialog with type the email; sends `confirm: true` | Account closed; app returns to sign in |
+| Leave demo mode (demo only) | `app.demo.set` `{enabled: false}` | write (app local) | no | Relaunches Mesh UI without `--demo` |
 
 ## States
 
@@ -73,7 +75,8 @@ the sidebar keeps App & account selected). Sections: `profile` (hero),
 - **CLI not installed:** the code blocks show **Install CLI** instead of copy (AppImage and macOS); on deb, rpm and Windows installs the launcher is already on PATH.
 - **MCP not connected:** header status reads "MCP not used yet" in muted text.
 - **No commands this week:** "No commands from the CLI or agents this week."
-- **Owns networks:** Delete account stays disabled with the reason until owned networks are transferred or deleted.
+- **Owns networks:** Delete account and its checkbox stay disabled with the reason ("You own 2 networks. Transfer or delete them first.") until owned networks are transferred or deleted. A network with no known role counts as owned, as core's refusal does. The `admin` demo scenario owns none, to show the enabled path.
+- **Demo mode:** the sign out text reads "You are in demo mode: invented networks, and nothing you change reaches eero." with **Leave demo mode** beside **Sign out**.
 - **Error:** inline note per section with **Retry**; verification code errors show under the field.
 - **Offline (computer):** account data shows from the last fetch with a muted "Offline" note; writes are disabled.
 
