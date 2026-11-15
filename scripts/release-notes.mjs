@@ -6,8 +6,9 @@
  *
  * Prints section 4, "What changed for a user", of the given milestone review
  * (default: the highest-numbered docs/reviews/M<n>.md), followed by fixed
- * lines on the unsigned Windows builds and SHA256SUMS.txt. The maintainer
- * edits the draft before publishing if needed (a patch release, say).
+ * lines on the unsigned macOS and Windows builds and SHA256SUMS.txt. The
+ * maintainer edits the draft before publishing if needed (a patch release,
+ * say).
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -18,6 +19,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const FIXED = `## Downloads
 
+- **macOS** builds are not signed or notarized yet. On first launch macOS
+  says it cannot verify Mesh UI: try to open it once, then open **System
+  Settings > Privacy & Security** and click **Open Anyway**. Or run
+  \`xattr -d com.apple.quarantine "/Applications/Mesh UI.app"\`.
 - **Windows** builds are not signed yet. On first run SmartScreen says
   "Windows protected your PC"; click **More info**, then **Run anyway**.
 - **Checksums:** \`SHA256SUMS.txt\` lists the SHA-256 of every file in this

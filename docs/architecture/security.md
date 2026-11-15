@@ -30,7 +30,7 @@ explains them and adds detail.
 | Remote content in the window | A link or redirect loads a web page that can reach IPC | No off-app navigation, popups, webviews or permissions; external links open in the browser |
 | Agent overreach | An AI agent connected over MCP runs `network.restart` or `eero.remove` on its own | `disruptive` and `destructive` tools carry `destructiveHint`, need `confirm: true`, and MCP clients ask the user; `--read-only` MCP mode; audit log in App & account |
 | Credential sent to the wrong host | A crafted `url` in an API response points elsewhere | Client refuses any origin but `https://api-user.e2ro.com` with a known version prefix; no redirects. The only exception is the fake server origin, injected by tests and by dev builds (`pnpm dev:fake`); release builds have no way to change it |
-| Tampered update | A fake release replaces the app | Signed and notarized macOS builds, with electron-updater verifying the signature; sha512 update metadata and published checksums everywhere. Windows builds are unsigned for now (signature checks start when signing is added before a wider release); Linux packages are checked by checksum (see [build-and-release.md](../platform/build-and-release.md)) |
+| Tampered update | A fake release replaces the app | Releases are built only in GitHub Actions and published as GitHub Releases of `pkkid/mesh-ui`; electron-updater downloads over HTTPS from there and checks each download against the sha512 in `latest*.yml`, and `SHA256SUMS.txt` lets users check a manual download. macOS and Windows builds are unsigned for now (macOS carries only an ad-hoc signature), so nothing yet proves who built a release; Developer ID signing with notarization, and Authenticode, are the later plan (see [build-and-release.md](../platform/build-and-release.md#signing)). Linux packages are checked by checksum |
 | Accidental damage | User clicks Restart network meaning Restart eero | Inline confirm or dialog for every disruptive and destructive action, naming what will happen |
 | Agents touching the real network during development | A test or script calls eero with the maintainer's session | Sandbox rules in [testing.md](../testing.md): demo backend, fake server, throwaway user data dirs |
 
@@ -180,8 +180,10 @@ dir (`src/core/audit.ts`, written by `engine.execute`), one JSON line each:
 ## Dependencies and build
 
 - pnpm lockfile committed; CI installs with `--frozen-lockfile`.
-- Releases are built only in GitHub Actions from a tag, signed there with
-  secrets that never reach pull request builds from forks.
+- Releases are built only in GitHub Actions from a tag (or a manual dry
+  run), as draft releases the maintainer publishes. They are unsigned for
+  now and use no secrets; when signing is added, its secrets live in a
+  `release` environment that pull request builds from forks never reach.
 - Electron is kept on a supported major; security releases ship as patch
   releases.
 
