@@ -5,7 +5,7 @@ import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
 import { mapAccount } from "../eero/backend/account";
 import { createEngine } from "../engine";
-import type { Account } from "../model";
+import type { Account, HostEvent } from "../model";
 
 const secretsWith = (token: string | null): SecretStore => {
   let t = token;
@@ -89,5 +89,128 @@ describe("account.get on the fake eero server", () => {
       networkCount: 0,
     });
     expect(mapAccount({ auth: { type: "google" }, networks: { data: [{}, {}] }, name: "  " })).toMatchObject({ authType: null, networkCount: 2, name: null });
+  });
+});
+
+describe("account writes on demo", () => {
+  const engine = () => createEngine({ backend: createDemoBackend() });
+
+  it("account.get polls every 5 minutes with a cache under that", () => {
+    const spec = engine()
+      .commands()
+      .find((c) => c.id === "account.get");
+    expect(spec?.poll).toBe(300);
+  });
+
+  it("account.name.set renames and answers with the account", async () => {
+    const e = engine();
+    expect(await e.execute<Account>("account.name.set", { name: "  Sam Lee " })).toMatchObject({ ok: true, result: { name: "Sam Lee" } });
+    expect(await e.execute("account.get")).toMatchObject({ ok: true, result: { name: "Sam Lee" } });
+    for (const params of [{}, { name: "" }, { name: "   " }, { name: "x".repeat(65) }, { name: 1 }]) {
+      expect(await e.execute("account.name.set", params), JSON.stringify(params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    }
+  });
+
+  it("account.email.set leaves the new address unverified until account.email.verify", async () => {
+    const e = engine();
+    expect(await e.execute("account.email.set", { email: "sam@example.com" })).toMatchObject({ ok: true, result: { email: { value: "sam@example.com", verified: false } } });
+    expect(await e.execute("account.email.verify", { code: "111111" })).toMatchObject({ ok: false, error: { code: "eero_error" } });
+    expect(await e.execute("account.email.verify", { code: "123456" })).toMatchObject({ ok: true, result: { email: { value: "sam@example.com", verified: true } } });
+    // Nothing waits for a code any more.
+    expect(await e.execute("account.email.verify", { code: "123456" })).toMatchObject({ ok: false, error: { code: "eero_error" } });
+    for (const params of [{}, { email: "not-an-email" }]) expect(await e.execute("account.email.set", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    for (const params of [{}, { code: "12345" }, { code: "abcdef" }]) expect(await e.execute("account.email.verify", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("account.phone.verify verifies the demo's unverified number, and account.phone.set takes E.164 only", async () => {
+    const e = engine();
+    expect(await e.execute("account.get")).toMatchObject({ ok: true, result: { phone: { verified: false } } });
+    expect(await e.execute("account.phone.verify", { code: "654321" })).toMatchObject({ ok: true, result: { phone: { verified: true } } });
+    expect(await e.execute("account.phone.set", { phone: "+15550100199" })).toMatchObject({ ok: true, result: { phone: { value: "+15550100199", verified: false } } });
+    for (const phone of ["5550100199", "+0555", "+1 555 010 0199", ""]) expect(await e.execute("account.phone.set", { phone })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await e.execute("account.phone.verify", {})).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("account.consents.set switches product news emails", async () => {
+    const e = engine();
+    expect(await e.execute("account.consents.set", { marketingEmails: true })).toMatchObject({ ok: true, result: { marketingEmails: true } });
+    expect(await e.execute("account.consents.set", {})).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await e.execute("account.consents.set", { marketingEmails: "true" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("account.push.set merges the key not given with the account's", async () => {
+    const e = engine();
+    expect(await e.execute("account.push.set", { nodeOffline: false })).toMatchObject({ ok: true, result: { push: { networkOffline: true, nodeOffline: false } } });
+    expect(await e.execute("account.push.set", { networkOffline: false })).toMatchObject({ ok: true, result: { push: { networkOffline: false, nodeOffline: false } } });
+    for (const params of [{}, { nodeOffline: 1 }, { other: true }]) expect(await e.execute("account.push.set", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("every write needs a session", async () => {
+    const e = createEngine({ backend: createDemoBackend({ scenario: "signed_out" }) });
+    expect(await e.execute("account.name.set", { name: "Sam" })).toMatchObject({ ok: false, error: { code: "not_signed_in" } });
+    expect(await e.execute("account.delete", { acknowledge: true, confirm: true })).toMatchObject({ ok: false, error: { code: "not_signed_in" } });
+  });
+});
+
+describe("account.delete on demo", () => {
+  it("needs acknowledge: true, then confirm", async () => {
+    const e = createEngine({ backend: createDemoBackend({ scenario: "no_networks" }) });
+    for (const params of [{}, { acknowledge: false }, { acknowledge: "true" }, { confirm: true }]) {
+      expect(await e.execute("account.delete", params), JSON.stringify(params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    }
+    const res = await e.execute("account.delete", { acknowledge: true });
+    expect(res).toMatchObject({ ok: false, error: { code: "needs_confirm" } });
+    if (!res.ok) expect(res.error.message).toMatch(/cannot be undone/);
+  });
+
+  it("refuses while the account owns networks, before any confirm", async () => {
+    const e = createEngine({ backend: createDemoBackend() });
+    for (const params of [{ acknowledge: true }, { acknowledge: true, confirm: true }]) {
+      const res = await e.execute("account.delete", params);
+      expect(res).toMatchObject({ ok: false, error: { code: "bad_params" } });
+      if (!res.ok) expect(res.error.message).toMatch(/Transfer or delete/);
+    }
+    expect(await e.execute("account.get")).toMatchObject({ ok: true });
+  });
+
+  it("refuses a network whose role is unknown, since it may be owned", async () => {
+    const backend = createDemoBackend({ scenario: "no_networks" });
+    const unknown = { id: "1", name: "Elm Road", nickname: null, role: null, status: "online", eeroCount: 1, devicesOnline: 0, isp: null, updateAvailable: false, lastSeen: null, selected: false } as const;
+    backend.network.list = async () => [unknown];
+    const res = await createEngine({ backend }).execute("account.delete", { acknowledge: true, confirm: true });
+    expect(res).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    if (!res.ok) expect(res.error.message).toMatch(/may own a network \(Elm Road\)/);
+    expect(await backend.account.get()).toMatchObject({ networkCount: 0 });
+  });
+
+  it("deletes, signs out and announces it", async () => {
+    const e = createEngine({ backend: createDemoBackend({ scenario: "no_networks" }) });
+    const events: HostEvent[] = [];
+    e.onEvent((ev) => events.push(ev));
+    expect(await e.execute("account.delete", { acknowledge: true, confirm: true })).toEqual({ ok: true, result: { deleted: true } });
+    expect(events).toEqual([{ type: "session.changed", state: "signed_out", storage: "memory" }]);
+    expect(await e.execute("account.get")).toMatchObject({ ok: false, error: { code: "not_signed_in" } });
+  });
+});
+
+describe("account writes on the eero backend", () => {
+  it("answer not available yet until a live-tested source is found, without calling eero", async () => {
+    const server = createFakeEero();
+    const backend = createEeroBackend({ secrets: secretsWith(server.signIn()), origin: server.origin, fetch: server.fetch });
+    const engine = createEngine({ backend });
+    const before = server.log.length;
+    for (const [id, params] of [
+      ["account.name.set", { name: "Sam" }],
+      ["account.email.set", { email: "sam@example.com" }],
+      ["account.email.verify", { code: "123456" }],
+      ["account.phone.set", { phone: "+15550100199" }],
+      ["account.phone.verify", { code: "123456" }],
+      ["account.consents.set", { marketingEmails: true }],
+    ] as const) {
+      const res = await engine.execute(id, params);
+      expect(res, id).toMatchObject({ ok: false, error: { code: "eero_error" } });
+      if (!res.ok) expect(res.error.message).toMatch(/not available/);
+    }
+    expect(server.log.slice(before).filter((l) => l.method !== "GET")).toEqual([]);
   });
 });

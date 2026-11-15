@@ -26,7 +26,7 @@
  * Headless runs never show desktop alerts (`mesh:notify` is not registered).
  */
 
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -37,12 +37,14 @@ import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
 import { createEeroBackend } from "../core/eero/backend";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
-import type { SettingsStore, Surface } from "../core/spec";
+import type { HostActions, SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
 import { isRefreshKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import type { NotifyHost } from "./notify";
 import { guardCliHost } from "./cli-host";
+import { createHostActions } from "./host-actions";
+import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 
@@ -105,6 +107,34 @@ async function fakeOrigin(): Promise<string | undefined> {
 
 type EngineMode = { mode: "demo" } | { mode: "live" } | { mode: "fake"; origin: string; secrets: SecretStore };
 
+/** How this copy was installed (src/main/install-kind.ts). Read once. */
+const installKind = detectInstallKind({
+  packaged: app.isPackaged,
+  platform: process.platform,
+  env: process.env,
+  resourcesPath: process.resourcesPath,
+  exePath: process.execPath,
+  readText: (file) => {
+    try {
+      return readFileSync(file, "utf8");
+    } catch {
+      return null;
+    }
+  },
+  list: (dir) => {
+    try {
+      return readdirSync(dir);
+    } catch {
+      return [];
+    }
+  },
+});
+
+/** The window's host actions (updater, CLI install, demo relaunch). The CLI host gets none. */
+function windowActions(settings: SettingsStore): HostActions {
+  return createHostActions({ install: installKind, exePath: process.execPath, env: process.env, channel: async () => (await settings.get()).updateChannel });
+}
+
 /** The engine for any surface. Only live mode reads or writes the saved session. */
 async function buildEngine(m: EngineMode, surface: Surface, dir: string, settings: SettingsStore): Promise<Engine> {
   let backend: Backend;
@@ -124,6 +154,8 @@ async function buildEngine(m: EngineMode, surface: Surface, dir: string, setting
       electron: process.versions.electron ?? null,
       configDir: dir,
       keychainName: m.mode === "live" ? keychainName(safeStorage, process.platform) : null,
+      install: installKind,
+      ...(surface === "ui" ? { actions: windowActions(settings) } : {}),
     },
   });
 }

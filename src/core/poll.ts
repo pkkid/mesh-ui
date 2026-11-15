@@ -34,6 +34,10 @@ export const POLL = {
   usage: 300,
   /** updates.get on the Updates page */
   updates: 900,
+  /** account.get on App & account (name, verification and push change in the eero app too) */
+  account: 300,
+  /** app.info and app.audit.list on App & account (update state, CLI runs from another process) */
+  app: 60,
 } as const;
 
 /** Cache topics. A query reads one; a write invalidates some. */

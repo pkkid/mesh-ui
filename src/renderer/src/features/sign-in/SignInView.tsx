@@ -22,10 +22,10 @@ import {
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { execute, useCommand, useQuery } from "~/app/useCommand";
+import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import { Segmented } from "~/components/ui/segmented";
 import { Status } from "~/components/ui/status";
-import { hue } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
 import type { Account, AppInfo, AuthStatus, NetworkSummary } from "../../../../core/model";
@@ -112,13 +112,7 @@ function NoNetworks({ error, onRetry }: { error: ExecuteError | null; onRetry: (
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex items-center gap-3">
-        <div
-          aria-hidden
-          className="grid size-9 shrink-0 place-items-center rounded-full font-semibold text-background text-xs"
-          style={{ background: name ? hue("orange") : "var(--color-muted-foreground)" }}
-        >
-          {initials(name)}
-        </div>
+        <Avatar name={name} size="md" />
         <div className="min-w-0">
           <div className="truncate font-medium text-[13px]">{name ?? "-"}</div>
           <div className="truncate text-2xs text-muted-foreground">{contact ?? "-"}</div>
@@ -223,17 +217,6 @@ export function ErrorLine({ children }: { children: ReactNode }) {
 export function errorText(error: ExecuteError): string {
   if (error.code === "network_error") return "Can't reach eero. Check your internet connection.";
   return error.message;
-}
-
-/** Initials for the avatar: "Alex Kim" becomes "AK". */
-export function initials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 // ---------------------------------------------------------------------------

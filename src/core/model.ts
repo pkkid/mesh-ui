@@ -821,6 +821,40 @@ export type Integrations = Record<IntegrationId, Integration>;
 // ---------------------------------------------------------------------------
 // App
 
+/** How this copy of Mesh UI was installed (src/main/install-kind.ts). */
+export type InstallKind = "dev" | "mac" | "nsis" | "portable" | "appimage" | "deb" | "rpm";
+
+export type UpdateChannel = "latest" | "beta";
+
+export type UpdateState = "off" | "idle" | "checking" | "downloading" | "ready" | "error" | "unsupported";
+
+/** The auto-updater's state (docs/platform/build-and-release.md#auto-update). */
+export type UpdateStatus = {
+  /** `unsupported`: this install kind or host does not update itself (deb, rpm, portable, dev, the CLI). */
+  state: UpdateState;
+  /** The version found or downloaded; null when none. */
+  version: string | null;
+  channel: UpdateChannel;
+  checkedAt: Iso | null;
+  /** Download progress 0..1 while `downloading`, else null. */
+  progress: number | null;
+  /** One line when `state` is `error`. */
+  error: string | null;
+};
+
+/** The `mesh-ui` command on PATH (docs/platform/build-and-release.md#cli-launcher). */
+export type CliStatus = {
+  /** A launcher exists at `path`. */
+  installed: boolean;
+  path: string | null;
+  /** `mesh-ui` resolves on PATH. */
+  onPath: boolean;
+  /** `app.cli.install` can put it there (macOS and AppImage; installers do it themselves). */
+  canInstall: boolean;
+  /** Installed, but pointing at an app that moved or was replaced. */
+  reinstall: boolean;
+};
+
 export type AppInfo = {
   version: string;
   /** null under a plain Node test host. */
@@ -833,7 +867,10 @@ export type AppInfo = {
   sessionStorage: SessionStorageKind;
   /** "GNOME Keyring", "macOS Keychain", "Windows DPAPI". */
   keychainName: string | null;
-  update: { available: boolean; version: string | null; channel: "auto" | "package_manager" } | null;
+  install: InstallKind;
+  update: UpdateStatus;
+  /** null where the host cannot tell (the CLI and MCP hosts, tests): only the window installs the CLI. */
+  cli: CliStatus | null;
   configDir: string;
 };
 
@@ -844,15 +881,35 @@ export type AppSettings = {
   planMbps: Record<Id, PlanSpeed>;
   desktopNotifications: Record<string, boolean>;
   openOnLaunch: Id | null;
+  /** Check for updates 10 s after launch and every 6 h (default true). */
+  autoUpdate: boolean;
+  /** Default `latest`. */
+  updateChannel: UpdateChannel;
 };
 
+/** One CLI or MCP command from the audit log, as App & account lists it. */
 export type AuditEntry = {
   at: Iso;
   surface: "cli" | "mcp";
   id: string;
-  effect: Effect;
+  /** null for an unknown command id. */
+  effect: Effect | null;
   ok: boolean;
   code: string | null;
+};
+
+/** `app.audit.list`: the audit log summarised for the CLI and agents panel. */
+export type AuditList = {
+  /** Newest first, at most `limit`. */
+  entries: AuditEntry[];
+  /** The last 7 local days, oldest first, `date` as YYYY-MM-DD. */
+  week: { date: string; count: number }[];
+  /** Commands this week (the sum of `week`). */
+  weekTotal: number;
+  /** Commands this week refused with `needs_confirm`. */
+  needsConfirm: number;
+  /** Newest MCP command, or null when MCP was never used. */
+  mcpLastAt: Iso | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -861,4 +918,4 @@ export type AuditEntry = {
 export type HostEvent =
   | { type: "session.changed"; state: "signed_out" | "signed_in"; storage: SessionStorageKind }
   | { type: "network.selected"; networkId: Id }
-  | { type: "update.ready"; version: string };
+  | { type: "update.changed"; status: UpdateStatus };

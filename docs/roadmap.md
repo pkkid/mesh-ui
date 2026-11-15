@@ -1168,7 +1168,7 @@ from an agent; workers never sign, notarize, publish, add secrets or push
 tags; anything that needs a Mac, a Windows machine or the maintainer's
 credentials is a `MANUAL:` line.
 
-### M6.1 Core contracts, captures, fixtures and page skeleton ☐
+### M6.1 Core contracts, captures, fixtures and page skeleton ✅ (#210)
 - issue: [#196](https://github.com/pkkid/mesh-ui/issues/196)
 - after: M5.R
 - docs: architecture/commands.md (account, app), architecture/data-model.md, architecture/engine.md (Polling), architecture/security.md (Audit log), eero-api/endpoints.md, ux/pages/app-account.md, platform/build-and-release.md (Auto-update, CLI launcher)

@@ -22,11 +22,19 @@ Side panel:
 1. **About**: app logo, `Mesh UI`, "Version 0.1.0 · up to date"; Electron version and platform, Network ID, Support ID; links Release notes, Open source licenses, eero support articles, Source and issues; line "Mesh UI is an independent app and is not made by eero or Amazon."
 2. **Sign out and delete**: text saying where the session is stored ("saved in GNOME Keyring and refreshes on its own") and **Sign out**. Then **Delete account and data** (`Destructive` badge): what it does and what must happen first (transfer or delete owned networks; lose admin access to shared ones), a checkbox "I want to permanently close my account and delete my data", **Delete account** (solid danger, disabled until checked).
 
+**Deep links.** Each section has a stable id; `#/account/<section>` opens
+the page scrolled to it (a second `account` route, `/account/:section`, so
+the sidebar keeps App & account selected). Sections: `profile` (hero),
+`email` (Account), `notifications`, `networks`, `cli`, `theme`, `about`,
+`sign-out` (`ACCOUNT_SECTIONS` in `AccountPage.tsx`, DOM ids
+`account-<section>`). Activity's settings icon opens
+`#/account/notifications`; the sidebar's update chip opens `#/account/about`.
+
 ## Data
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Name, email, phone, verification, consents, push settings, Support ID | `account.get` | on load, after writes |
+| Name, email, phone, verification, consents, push settings, Support ID | `account.get` | on load, every 5 min, after writes |
 | Network alert toggles | `notifications.settings.get` | on load |
 | Network offline, eero offline toggles | `account.get` (push settings) | on load |
 | "3 this week" detail | `events.summary` `{type: ["device_joined"], range: "week"}` | on load |

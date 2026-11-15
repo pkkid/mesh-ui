@@ -257,6 +257,15 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     }
   };
 
+  /** Verifies a changed email or phone: only an unverified one waits for a code. */
+  const verifyContact = async (kind: "email" | "phone", code: string) => {
+    signedIn();
+    const contact = fx.account[kind];
+    if (!contact || contact.verified) throw new BackendError("eero_error", `No ${kind === "email" ? "email" : "mobile number"} change is waiting for a code.`, { status: 400 });
+    if (code === WRONG_CODE) throw new BackendError("eero_error", "That code didn't work.", { status: 400, eeroError: "error.verification.code.invalid" });
+    contact.verified = true;
+  };
+
   const tzOf = (data: NetworkData) => data.network.timezone ?? "UTC";
 
   // --- derived views ------------------------------------------------------
@@ -557,6 +566,35 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         signedIn();
         return clone(fx.account);
       },
+      setName: async (name) => {
+        signedIn();
+        fx.account.name = name;
+      },
+      setEmail: async (email) => {
+        signedIn();
+        fx.account.email = { value: email, verified: false };
+      },
+      verifyEmail: async (code) => verifyContact("email", code),
+      setPhone: async (phone) => {
+        signedIn();
+        fx.account.phone = { value: phone, verified: false };
+      },
+      verifyPhone: async (code) => verifyContact("phone", code),
+      setConsents: async (marketingEmails) => {
+        signedIn();
+        fx.account.marketingEmails = marketingEmails;
+      },
+      setPush: async (push) => {
+        signedIn();
+        fx.account.push = { ...push };
+      },
+      remove: async () => {
+        signedIn();
+        // The account is gone; reset() (a scenario) brings the fixtures back.
+        fx.networks = [];
+        fx.account.networkCount = 0;
+        auth = { signedIn: false, pending: false, login: null };
+      },
     },
 
     network: {
@@ -609,6 +647,9 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       remove: async (id) => {
         net(id);
         fx.networks = fx.networks.filter((n) => n.network.id !== id);
+      },
+      setNickname: async (id, nickname) => {
+        net(id).network.nickname = nickname;
       },
     },
 

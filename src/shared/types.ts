@@ -63,7 +63,7 @@ export type MeshApi = {
   onRefresh(listener: () => void): () => void;
   /** The command registry as JSON. */
   commands(): Promise<CommandInfo[]>;
-  /** Host events (session.changed, network.selected, update.ready). Returns an unsubscribe. */
+  /** Host events (session.changed, network.selected, update.changed). Returns an unsubscribe. */
   on(listener: (event: HostEvent) => void): () => void;
   /** Window-only, not a command. */
   setTitlebarColors(colors: TitlebarColors): void;

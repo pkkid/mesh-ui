@@ -10,13 +10,14 @@ import { LogOut, Wifi } from "lucide-react";
 import { Link, useLocation } from "~/app/router";
 import { ROUTES, type RouteDef } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
+import { Avatar } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { hue } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatCount } from "../../../../core/format";
 import type { Account, AuthStatus, Network, NetworkSummary } from "../../../../core/model";
 import { NetworkSwitcher } from "./NetworkSwitcher";
+import { UpdateChip } from "./UpdateChip";
 
 const GROUPS = [
   { id: "network", label: "Network" },
@@ -87,15 +88,6 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
   );
 }
 
-function initials(name: string | null | undefined): string {
-  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "-";
-  return words
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
 function UserFooter() {
   const account = useQuery<Account>("account.get");
   // Shares the switcher's network.list entry, which does the polling.
@@ -107,14 +99,9 @@ function UserFooter() {
 
   return (
     <div className="border-sidebar-border border-t p-2">
+      <UpdateChip />
       <div className="flex items-center gap-[9px] rounded-[var(--control-radius)] px-2 py-1.5">
-        <div
-          aria-hidden
-          className="grid size-[26px] shrink-0 place-items-center rounded-full font-semibold text-[11px] text-background"
-          style={{ background: name ? hue("orange") : "var(--color-muted-foreground)" }}
-        >
-          {initials(name)}
-        </div>
+        <Avatar name={name} />
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-[13px]">{name ?? "-"}</div>
           <div className="text-2xs text-muted-foreground">{role}</div>

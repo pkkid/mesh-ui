@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import type { Backend } from "./backend";
-import type { AppSettings, BackendKind, Effect, HostEvent, Id, Permission, Permissions, Role } from "./model";
+import type { AppSettings, BackendKind, CliStatus, Effect, HostEvent, Id, InstallKind, Permission, Permissions, Role, UpdateStatus } from "./model";
 import type { Topic } from "./poll";
 
 export type { Effect } from "./model";
@@ -26,6 +26,33 @@ export interface SettingsStore {
   update(patch: Partial<AppSettings>): Promise<AppSettings>;
 }
 
+/**
+ * What only the Mesh UI window can do: the updater, putting the CLI on PATH
+ * and relaunching. The Electron host gives them to the window's engine
+ * (src/main/host-actions.ts); the CLI and MCP hosts give none, so the
+ * commands that need them answer `bad_params` there (`HOST_ONLY`).
+ */
+export type HostActions = {
+  update?: {
+    /** The updater's state now. */
+    status(): Promise<UpdateStatus>;
+    /** Checks now and answers with the state after the check starts or ends. */
+    check(): Promise<UpdateStatus>;
+    /** Quits and installs a downloaded update (state `ready`). Only on request, never on its own. */
+    install(): Promise<void>;
+  };
+  cli?: {
+    status(): Promise<CliStatus>;
+    install(): Promise<CliStatus>;
+  };
+  relaunch?: {
+    /** Restarts Mesh UI in or out of demo mode. */
+    demo(enabled: boolean): Promise<void>;
+  };
+};
+
+export const HOST_ONLY = "Only in the Mesh UI window.";
+
 /** What the host tells the engine about itself, for app.info. */
 export type HostInfo = {
   version: string;
@@ -33,6 +60,9 @@ export type HostInfo = {
   electron: string | null;
   configDir: string | null;
   keychainName: string | null;
+  /** Default `dev`. */
+  install: InstallKind;
+  actions?: HostActions;
 };
 
 export interface CommandContext {
