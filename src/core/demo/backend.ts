@@ -664,7 +664,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       speedTests: async (id, q: SpeedTestQuery) => {
         const data = net(id);
         const { from, to } = range(q);
-        return clone(data.speedTests.filter((t) => Date.parse(t.at) >= from && Date.parse(t.at) <= to).slice(0, Math.max(0, q.limit)));
+        // Like eero, one read returns at most 100 tests, newest first.
+        return clone(data.speedTests.filter((t) => Date.parse(t.at) >= from && Date.parse(t.at) <= to).slice(0, Math.max(0, Math.min(q.limit, 100))));
       },
       runSpeedTest: async (id) => {
         const data = net(id);

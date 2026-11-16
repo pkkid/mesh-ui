@@ -4,7 +4,7 @@
  * states: docs/ux/pages/internet.md and docs/mockups/02-internet.html. Every
  * figure comes from a query command; the page only arranges and words it.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
@@ -19,13 +19,15 @@ import { EarlierTests } from "./EarlierTests";
 import { InternetHero } from "./InternetHero";
 import { InternetUsage } from "./InternetUsage";
 import { PlanSheet } from "./PlanSheet";
-import { SpeedHistory } from "./SpeedHistory";
+import { type HistoryRange, SpeedHistory } from "./SpeedHistory";
 
 /** Sections `#/internet/<section>` scrolls to, with their DOM ids. */
 const SECTION_IDS: Readonly<Record<string, string>> = { history: "internet-history" };
 
 export function InternetPage({ params }: PageProps) {
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
+  // Speed test history, Earlier tests and Export CSV share one window.
+  const [range, setRange] = useState<HistoryRange>("month");
   const section = params.section;
   useEffect(() => {
     const id = section ? SECTION_IDS[section] : undefined;
@@ -38,8 +40,8 @@ export function InternetPage({ params }: PageProps) {
       </TopBarSubtitle>
       <InternetHero />
       <Connection />
-      <SpeedHistory id={SECTION_IDS.history} />
-      <EarlierTests />
+      <SpeedHistory id={SECTION_IDS.history} range={range} onRangeChange={setRange} />
+      <EarlierTests range={range} />
       <InternetUsage />
       <PlanSheet />
     </>

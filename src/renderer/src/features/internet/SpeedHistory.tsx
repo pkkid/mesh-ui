@@ -1,11 +1,12 @@
 /**
- * Internet "Speed test history": Day / Week toggle, 7-day averages against
- * the plan, the gateway-to-ISP note and one point per test.
+ * Internet "Speed test history": Week / Month / All toggle (the page holds
+ * it, Earlier tests and Export CSV follow it), 7-day averages against the
+ * plan, the gateway-to-ISP note and one dotted point per test.
  * docs/ux/pages/internet.md (Layout 3). Tests, ratings and averages come
  * from `speedtest.history`.
  */
 import { ArrowDown, ArrowUp, Info } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
@@ -19,16 +20,26 @@ import { formatCount, formatMbps, formatPercent, networkClock } from "../../../.
 import type { Internet, Network, SpeedHistory as History } from "../../../../core/model";
 
 const RANGES = [
-  { value: "day", label: "Day" },
   { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "all", label: "All" },
 ] as const;
 
-type Range = (typeof RANGES)[number]["value"];
+export type HistoryRange = (typeof RANGES)[number]["value"];
 
-export function SpeedHistory({ id }: { id?: string }) {
-  const [range, setRange] = useState<Range>("week");
-  // The week shares its cache entry with the hero (default params).
-  const history = useQuery<History>("speedtest.history", range === "week" ? undefined : { range }, { poll: true });
+/** Subtitle and screen reader wording per range. eero keeps about a year of tests, at most 100 per read. */
+const RANGE_TEXT: Record<HistoryRange, string> = { week: "Last 7 days", month: "Last 30 days", all: "All eero returns" };
+
+/**
+ * `speedtest.history` params for a range, shared by the chart and Earlier
+ * tests so they read one cache entry. Week uses the defaults, the hero's entry.
+ */
+export function historyParams(range: HistoryRange): { range: HistoryRange; limit: number } | undefined {
+  return range === "week" ? undefined : { range, limit: 200 };
+}
+
+export function SpeedHistory({ id, range, onRangeChange }: { id?: string; range: HistoryRange; onRangeChange: (range: HistoryRange) => void }) {
+  const history = useQuery<History>("speedtest.history", historyParams(range), { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
 
@@ -39,11 +50,13 @@ export function SpeedHistory({ id }: { id?: string }) {
   const avg = history.data?.avg7d;
   const isp = internet.data?.isp.name ?? "your ISP";
   const count = history.data ? `${formatCount(history.data.tests.length)} ${history.data.tests.length === 1 ? "test" : "tests"}` : null;
-  const subtitle = [range === "week" ? "Last 7 days" : "Last 24 hours", count, "automatic test every 1 to 3 days"].filter(Boolean).join(" · ");
+  const oldest = history.data?.tests.at(-1)?.at;
+  const span = range === "all" && oldest ? `Since ${clock.day(oldest)}` : RANGE_TEXT[range];
+  const subtitle = [span, count, "automatic test every 1 to 3 days"].filter(Boolean).join(" · ");
   const fade = history.fading ? "opacity-40" : undefined;
 
   return (
-    <Section id={id} title="Speed test history" subtitle={subtitle} tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}>
+    <Section id={id} title="Speed test history" subtitle={subtitle} tools={<Segmented aria-label="Range" value={range} onValueChange={onRangeChange} options={RANGES} />}>
       {history.error && !history.data ? (
         <SectionError what="speed tests" error={history.error} onRetry={() => void history.refetch()} />
       ) : (
@@ -85,7 +98,8 @@ export function SpeedHistory({ id }: { id?: string }) {
             total={false}
             loading={history.loading && (!history.data || history.fading)}
             emptyText="No speed tests in this window."
-            ariaLabel={`Speed test results, ${range === "week" ? "last 7 days" : "last 24 hours"}, download and upload`}
+            dots={tests.length <= 40}
+            ariaLabel={`Speed test results, ${RANGE_TEXT[range].toLowerCase()}, download and upload`}
           />
         </div>
       )}

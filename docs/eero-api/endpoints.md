@@ -264,7 +264,7 @@ Response shape (charts): `{network_id, start, end, series: [{type | insight_type
 
 | Method | Path | Body / params | Returns | Kind | Clients | Notes |
 |---|---|---|---|---|---|---|
-| GET | `{net}/speedtest` (`resources.speedtest`) | `limit?`, `startTime?`, `endTime?` (camelCase) | `[{date, down_mbps, up_mbps}]` | R | FF, LD, ES, EH | History. Latest also in network `speed{status, date, down{value,units}, up{value,units}}`. |
+| GET | `{net}/speedtest` (`resources.speedtest`) | `limit?`, `startTime?`, `endTime?` (camelCase) | `[{date, down_mbps, up_mbps}]` | R | FF, LD, ES, EH | History, newest first. eero keeps about a year (a read-only capture, #241, got 100 tests back to 382 days with `limit=200`, so 100 per read is the cap). Latest also in network `speed{status, date, down{value,units}, up{value,units}}`. |
 | POST | `{net}/speedtest` | empty-JSON / none | `null` (HTTP 202) | W | SX, FF, LD, ES, EH | Result appears ~1 min later. Uses WAN bandwidth for ~30 s. |
 | GET | `{net}/diagnostics` | - | `{status, issue_area, results[...]}` | R | FF, LD, ES, EH | Real (2026-11-13), no run yet: only `{status: string}`. |
 | POST | `{net}/diagnostics` | none, or JSON `{symptom: "internet_slow"|"internet_offline"|"connection_drops"|"eeros_red", device?}` | - | W | FF, LD, EH | Runs cloud diagnostics. |

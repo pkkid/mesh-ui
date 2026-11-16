@@ -92,14 +92,29 @@ describe("internet commands (demo)", () => {
     const avg = (xs: number[]) => Math.round((xs.reduce((s, x) => s + x, 0) / xs.length) * 10) / 10;
     expect(week.avg7d).toEqual({ downMbps: avg(week.tests.map((t) => t.downMbps ?? 0)), upMbps: avg(week.tests.map((t) => t.upMbps ?? 0)) });
 
-    const day = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE, range: "day", limit: 1 }));
-    expect(day.tests).toHaveLength(1);
-    expect(day.tests[0]).toEqual(week.tests[0]);
-    expect(day.avg7d).toEqual(week.avg7d);
+    const latest = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE, limit: 1 }));
+    expect(latest.tests).toHaveLength(1);
+    expect(latest.tests[0]).toEqual(week.tests[0]);
+    expect(latest.avg7d).toEqual(week.avg7d);
+  });
+
+  it("speedtest.history month and all reach back past the week, averages stay 7-day", async () => {
+    const engine = demoEngine();
+    const week = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }));
+    const month = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE, range: "month" }));
+    expect(month.tests).toHaveLength(24);
+    expect(month.tests.every((t) => Date.parse(t.at) >= NOW - 30 * 24 * HOUR)).toBe(true);
+    expect(month.tests.slice(0, week.tests.length)).toEqual(week.tests);
+    expect(month.avg7d).toEqual(week.avg7d);
+    // Like eero, one read holds at most 100 tests, newest first, however far back it asks.
+    const all = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE, range: "all", limit: 200 }));
+    expect(all.tests).toHaveLength(100);
+    expect(Date.parse(all.tests.at(-1)?.at ?? "")).toBeLessThan(NOW - 180 * 24 * HOUR);
+    expect(all.avg7d).toEqual(week.avg7d);
   });
 
   it("speedtest.history format csv is the Export CSV file", async () => {
-    const csv = await ok(demoEngine().execute<string>("speedtest.history", { networkId: MAPLE, range: "day", format: "csv" }));
+    const csv = await ok(demoEngine().execute<string>("speedtest.history", { networkId: MAPLE, limit: 2, format: "csv" }));
     const lines = csv.trimEnd().split("\r\n");
     expect(lines[0]).toBe("When,Download (Mbps),Upload (Mbps),Verdict");
     expect(lines).toHaveLength(3);
@@ -109,7 +124,8 @@ describe("internet commands (demo)", () => {
   it("an offline network still answers", async () => {
     const engine = demoEngine();
     expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: LAKE }))).status).toBe("offline");
-    expect(await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: LAKE, range: "day" }))).toMatchObject({ tests: [] });
+    // eero keeps its tests while the network is down.
+    expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: LAKE }))).tests).toHaveLength(2);
   });
 
   it("rejects bad params", async () => {
@@ -117,7 +133,7 @@ describe("internet commands (demo)", () => {
     expect(await code(engine.execute("internet.get", { format: "csv" }))).toBe("bad_params");
     expect(await code(engine.execute("internet.get", { extra: 1 }))).toBe("bad_params");
     expect(await code(engine.execute("internet.get", { networkId: "Nowhere" }))).toBe("bad_params");
-    expect(await code(engine.execute("speedtest.history", { range: "month" }))).toBe("bad_params");
+    expect(await code(engine.execute("speedtest.history", { range: "day" }))).toBe("bad_params");
     expect(await code(engine.execute("speedtest.history", { limit: 0 }))).toBe("bad_params");
     expect(await code(engine.execute("speedtest.history", { limit: 201 }))).toBe("bad_params");
     expect(await code(engine.execute("speedtest.history", { limit: 1.5 }))).toBe("bad_params");
@@ -295,8 +311,12 @@ describe("internet commands (fake eero server)", () => {
     const q = new URLSearchParams(req?.query ?? "");
     expect([q.get("startTime"), q.get("endTime"), q.get("limit")]).toEqual(["2026-11-05T22:41:00.000Z", "2026-11-12T22:41:00.000Z", "200"]);
 
-    const day = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001", range: "day" }));
-    expect(day.tests.map((t) => t.at)).toEqual(["2026-11-12T03:00:00.000Z"]);
+    const month = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001", range: "month" }));
+    expect(month.tests.slice(0, 4).map((t) => t.at)).toEqual(["2026-11-12T03:00:00.000Z", "2026-11-11T03:00:00.000Z", "2026-11-10T03:00:00.000Z", "2026-11-04T03:00:00.000Z"]);
+    expect(month.avg7d).toEqual(history.avg7d);
+    // eero answers at most 100 tests per read, whatever limit asks.
+    const all = await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: "100001", range: "all", limit: 200 }));
+    expect(all.tests).toHaveLength(100);
   });
 
   it("uses the speedtest link eero handed back", async () => {

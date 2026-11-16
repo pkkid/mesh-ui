@@ -93,7 +93,7 @@ export function watchSpeedTest(run: SpeedTestRun): void {
   const tick = async () => {
     // Core decides when the test is over (`running` back to null): a result
     // newer than any seen before the start, or the 3 minute give-up.
-    const r = await execute<SpeedHistory>("speedtest.history", { networkId: run.networkId, range: "day", limit: 1 });
+    const r = await execute<SpeedHistory>("speedtest.history", { networkId: run.networkId, limit: 1 });
     const latest = r.ok ? r.result.tests[0] : undefined;
     // Checked first: past the give-up core clears `running` without a result.
     if (Date.now() - started >= GIVE_UP_MS) {

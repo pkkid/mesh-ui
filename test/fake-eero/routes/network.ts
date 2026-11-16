@@ -36,6 +36,9 @@ const time = (v: string | null): number | null => {
   return Number.isFinite(ms) ? ms : null;
 };
 
+/** The most tests one `GET {net}/speedtest` returns, whatever `limit` asks (eero caps at 100). */
+export const FAKE_SPEEDTEST_PAGE = 100;
+
 /** How long after `POST {net}/speedtest` its result shows (eero: about a minute). */
 export const FAKE_SPEEDTEST_MS = 60_000;
 
@@ -80,7 +83,7 @@ export const routes: Route[] = [
         const at = time(t.date ?? null);
         return at !== null && (start === null || at >= start) && (end === null || at <= end);
       });
-      return ok(Number.isInteger(limit) && limit > 0 ? rows.slice(0, limit) : rows);
+      return ok(rows.slice(0, Number.isInteger(limit) && limit > 0 ? Math.min(limit, FAKE_SPEEDTEST_PAGE) : FAKE_SPEEDTEST_PAGE));
     },
   },
   {
