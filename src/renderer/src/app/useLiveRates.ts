@@ -1,5 +1,6 @@
 /**
- * Live rates for every view that shows them (Devices, Internet "Using the
+ * Live rates for every view that shows them, only while the shared Live
+ * switch is on (`useLiveMode`, #319). Those views (Devices, Internet "Using the
  * most right now", Device detail Now box). While the window is visible and
  * `active`, it asks for `device.rates.refresh` every `POLL.rates` seconds
  * and, once the burst has settled, refetches `device.list` and `device.get`
@@ -17,13 +18,16 @@
 import { useEffect } from "react";
 
 import { invalidate, useCommand } from "~/app/useCommand";
+import { useLiveMode } from "~/app/useLiveMode";
 import type { BurstResult } from "../../../core/model";
 import { BURST_LIVE_SEC, burstReadTimes, POLL } from "../../../core/poll";
 
 export function useLiveRates(active: boolean, key = ""): void {
   const { run } = useCommand<Record<string, never>, BurstResult>("device.rates.refresh");
+  const [live] = useLiveMode();
+  const on = active && live;
   useEffect(() => {
-    if (!active) return;
+    if (!on) return;
     let cancelled = false;
     let next: ReturnType<typeof setTimeout> | undefined;
     let reads: ReturnType<typeof setTimeout>[] = [];
@@ -50,5 +54,5 @@ export function useLiveRates(active: boolean, key = ""): void {
       clearTimeout(next);
       for (const t of reads) clearTimeout(t);
     };
-  }, [active, key, run]);
+  }, [on, key, run]);
 }

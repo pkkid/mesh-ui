@@ -8,6 +8,7 @@
 import { Activity, type LucideIcon, MonitorSmartphone, Sparkles } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
+import { useLiveMode } from "~/app/useLiveMode";
 import { Donut, DonutLegendRow } from "~/components/charts/Donut";
 import { IconTile } from "~/components/ui/hero";
 import { entityColor, seriesColors } from "~/lib/chartColors";
@@ -33,7 +34,10 @@ type DeviceSummaryProps = {
 export function DeviceSummary({ summary: s, devices, eeroName, fading }: DeviceSummaryProps) {
   const byId = new Map((devices ?? []).map((d) => [d.id, d]));
   const fresh = (s?.newThisWeek ?? []).flatMap((id) => byId.get(id) ?? []);
-  const down = mbpsParts(s?.rates?.downMbps);
+  const [live] = useLiveMode();
+  // Live off (#319): no rates on screen, even ones core still holds from the last burst.
+  const rates = live ? (s?.rates ?? null) : null;
+  const down = mbpsParts(rates?.downMbps);
   const now = Date.now();
   const categoryTotal = s ? CATEGORIES.reduce((n, c) => n + s.byCategory[c], 0) : 0;
   /** The category highlighted from the donut or the legend. */
@@ -99,17 +103,21 @@ export function DeviceSummary({ summary: s, devices, eeroName, fading }: DeviceS
             {down.unit && <span className="text-muted-foreground text-sm"> {down.unit} down</span>}
           </div>
           <div className="mt-1 text-muted-foreground text-xs">
-            {s?.rates ? (
+            {rates ? (
               <>
-                <span className="font-medium text-foreground/80 tabular-nums">{formatMbps(s.rates.upMbps)}</span> up ·{" "}
-                {s.rates.active} {s.rates.active === 1 ? "device" : "devices"} active
+                <span className="font-medium text-foreground/80 tabular-nums">{formatMbps(rates.upMbps)}</span> up ·{" "}
+                {rates.active} {rates.active === 1 ? "device" : "devices"} active
               </>
-            ) : (
+            ) : live ? (
               "No live rates yet"
+            ) : (
+              "Turn on Live to see current rates"
             )}
           </div>
-          <BandInsight rates={s?.rates ?? null} />
-          <div className={cn("text-2xs text-muted-foreground/70", !s?.rates?.topBand && "mt-2")}>Sum of current device rates, refreshed every minute</div>
+          <BandInsight rates={rates} />
+          <div className={cn("text-2xs text-muted-foreground/70", !rates?.topBand && "mt-2")}>
+            {live ? "Sum of current device rates while Live is on" : "Live asks eero for current rates only while it is on"}
+          </div>
         </Cell>
 
         <Cell className={cn("border-t @3xl:border-l @6xl:border-t-0", fading && "opacity-40")}>

@@ -18,7 +18,8 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
      row: Profile (avatar and "Alex"), Connected to ("Office"), Signal (bars
      and "-52 dBm"). Action row: **Pause device** (primary), **Appearance**,
      **Change profile**, **Block** (danger).
-   - Right: **Now** live box: a live dot, "refreshes every minute",
+   - Right: **Now** live box: a live dot, the shared **Live** switch (pulse
+     icon, see devices.md, Live switch),
      Download "38.4 Mbps" and Upload "6.1 Mbps", and "Current rates while the
      device is active".
 2. Two columns.
@@ -50,7 +51,7 @@ Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
 | Element | Command | Refresh |
 | --- | --- | --- |
 | Hero (name, status, type, profile, eero, signal) | `device.get {device}` | 30 s |
-| Now box | `device.rates.refresh` then `device.get` | 60 s while visible and the device is online |
+| Now box | `device.rates.refresh` then `device.get` | 60 s while visible, Live is on and the device is online |
 | Data usage chart, totals, busiest hour | `usage.get {scope: "device", id: device, range}` | 5 min |
 | "#2 on the network" | `usage.breakdown {range, by: "device"}` (rank of this device) | 5 min |
 | Device information | `device.get` | 30 s |

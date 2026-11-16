@@ -302,7 +302,8 @@ only after a burst:
 
 Pages that show "Now" figures (Devices, Device detail, Internet "Using the
 most right now", eero detail) call `device.rates.refresh` once a minute
-while visible and read `device.list` and `device.get` again at each of
+while visible and the renderer's shared Live switch is on (#319: off on a
+first run, remembered, off again after 10 minutes) and read `device.list` and `device.get` again at each of
 `burstReadTimes` (`useLiveRates`), so the figures move a few times a minute.
 eero queues a burst asked for while its last one is still running (its
 `next_burst` then moves later every minute, seen up to 40 s), so the next

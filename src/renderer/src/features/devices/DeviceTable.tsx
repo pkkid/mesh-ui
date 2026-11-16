@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 
+import { useLiveMode } from "~/app/useLiveMode";
 import { Link, navigate, pathFor } from "~/app/router";
 import { type Gate, performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
@@ -672,12 +673,13 @@ function RenameInput({ device: d, onDone }: { device: Device; onDone: () => void
 }
 
 function NowCell({ device: d }: { device: Device }) {
+  const [live] = useLiveMode();
   if (!d.connected) {
     const seen = formatRelative(d.lastActive, Date.now());
     return <span className="text-muted-foreground/70 text-xs">{d.paused && !d.blocked ? `${seen} · paused` : seen}</span>;
   }
   if (d.paused) return <span className="text-muted-foreground/70 text-xs">Paused</span>;
-  if (!d.rates) return <span className="text-muted-foreground/70 text-xs">-</span>;
+  if (!d.rates || !live) return <span className="text-muted-foreground/70 text-xs">-</span>;
   const share = d.rates.sharePct;
   return (
     <div className="flex items-center gap-2.5">

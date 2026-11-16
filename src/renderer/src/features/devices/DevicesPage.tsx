@@ -8,7 +8,8 @@
  * Filters, search and sort are `device.list` params, applied in core; this
  * page only keeps what the user picked (per network, for the session) and
  * groups the rows it gets back. Clicking a table header sets the sort. Live rates come from `device.rates.refresh`
- * once a minute while the page is visible; the engine enforces the limit.
+ * once a minute while the page is visible and the Live switch in the top bar
+ * is on (#319); the engine enforces the limit.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -16,6 +17,7 @@ import { useQuery } from "~/app/useCommand";
 import { useGate } from "~/components/ui/page";
 import { useLiveRates } from "~/app/useLiveRates";
 import { ShareWifiButton } from "~/features/wifi/ShareSheet";
+import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { entityColors } from "~/lib/chartColors";
 import { TopBarActions, TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative } from "../../../../core/format";
@@ -192,6 +194,7 @@ export function DevicesPage() {
         <Updated at={list.fetchedAt} />
       </TopBarSubtitle>
       <TopBarActions>
+        <LiveToggle size="xs" />
         <ShareWifiButton size="xs" />
       </TopBarActions>
 
