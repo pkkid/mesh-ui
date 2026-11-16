@@ -161,6 +161,56 @@ describe("device.list (demo)", () => {
     expect(names(used)).toEqual(["Living Room TV"]);
   });
 
+  it("sorts by every key in both orders, missing values last, ties by name", async () => {
+    const { engine } = demo();
+    const eeros = new Map<string, string>();
+    const er = await engine.execute<M.Eero[]>("eero.list");
+    const pr = await engine.execute<M.ProfileList>("profile.list");
+    if (!er.ok || !pr.ok) throw new Error("setup");
+    for (const e of er.result) eeros.set(e.id, e.location);
+    const profiles = new Map(pr.result.profiles.map((p) => [p.id, p.name]));
+    const live = (d: M.Device) => d.connected && !d.blocked;
+    const ip = (s: string | null) => (s ? s.split(".").reduce((a, n) => a * 256 + Number(n), 0) : null);
+    const status = (d: M.Device) => (d.blocked ? 2 : !d.connected ? 3 : d.paused ? 1 : 0);
+    const keys: Record<string, (d: M.Device) => number | string | null> = {
+      rate: (d) => (d.rates ? d.rates.downMbps + d.rates.upMbps : null),
+      profile: (d) => (d.profileId ? (profiles.get(d.profileId) ?? null) : null),
+      eero: (d) => (d.eeroId ? (eeros.get(d.eeroId) ?? null) : null),
+      band: (d) => (live(d) && d.band ? ["2.4", "5", "6", "wired"].indexOf(d.band) : null),
+      signal: (d) => (live(d) && d.band !== "wired" && d.signal?.bars != null ? d.signal.bars : null),
+      ip: (d) => ip(d.ipv4),
+      status,
+    };
+    const cmp = (a: number | string, b: number | string) => (typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b), "en", { sensitivity: "base" }));
+    for (const [key, value] of Object.entries(keys)) {
+      for (const order of ["asc", "desc"] as const) {
+        const vals = (await list(engine, { sort: key, order })).devices.map(value);
+        const firstNull = vals.indexOf(null);
+        expect(vals.length, key).toBeGreaterThan(5);
+        if (firstNull >= 0) expect(vals.slice(firstNull).every((v) => v === null), `${key} ${order}: missing last`).toBe(true);
+        const present = vals.filter((v) => v !== null) as (number | string)[];
+        expect(new Set(present).size, `${key} has several values`).toBeGreaterThan(1);
+        for (let i = 1; i < present.length; i++) expect(cmp(present[i - 1]!, present[i]!) * (order === "asc" ? 1 : -1), `${key} ${order}`).toBeLessThanOrEqual(0);
+      }
+    }
+    // Natural defaults: signal strongest first, status online first; ties fall back to name A to Z.
+    const sig = (await list(engine, { sort: "signal" })).devices.map(keys.signal!);
+    expect(sig[0]).toBe(Math.max(...(sig.filter((v) => v !== null) as number[])));
+    const st = await list(engine, { sort: "status" });
+    expect(status(st.devices[0]!)).toBe(0);
+    const online = st.devices.filter((d) => status(d) === 0).map((d) => d.name);
+    expect(online).toEqual([...online].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" })));
+    // Name Z to A; IP in numeric order, not string order.
+    const za = names(await list(engine, { order: "desc" }));
+    expect(za).toEqual([...names(await list(engine))].reverse());
+    const ips = (await list(engine, { sort: "ip" })).devices.flatMap((d) => (d.ipv4 ? [ip(d.ipv4) as number] : []));
+    expect(ips).toEqual([...ips].sort((a, b) => a - b));
+    // Rate, last seen and usage flip too.
+    expect(names(await list(engine, { sort: "usage", order: "asc", limit: 1 }))).not.toEqual(["Living Room TV"]);
+    const seenAsc = await list(engine, { sort: "last_seen", order: "asc", status: "offline" });
+    expect(names(seenAsc).slice(0, 4)).toEqual(["Sam's Pixel", "Jamie's Peloton", "Leo's Chromebook", "Mia's iPhone"]);
+  });
+
   it("drops offline devices eero has aged out (7 days), but keeps blocked ones", async () => {
     const { engine } = demo();
     const lake = await list(engine, { networkId: LAKE });
@@ -179,7 +229,7 @@ describe("device.list (demo)", () => {
 
   it("fails bad_params for wrong values and unknown refs", async () => {
     const { engine } = demo();
-    for (const params of [{ status: "sleeping" }, { band: "7" }, { limit: 0 }, { firstSeenSince: "yesterday" }, { sort: "size" }, { eero: "Attic" }, { profile: "Nobody" }]) {
+    for (const params of [{ status: "sleeping" }, { band: "7" }, { limit: 0 }, { firstSeenSince: "yesterday" }, { sort: "size" }, { order: "up" }, { sort: "ip", order: "ASC" }, { eero: "Attic" }, { profile: "Nobody" }]) {
       expect(await engine.execute("device.list", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
     }
   });
