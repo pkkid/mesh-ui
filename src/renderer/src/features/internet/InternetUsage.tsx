@@ -10,7 +10,9 @@ import { type ReactNode, useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
+import { useLiveMode } from "~/app/useLiveMode";
 import { useLiveRates } from "~/app/useLiveRates";
+import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { BarChart } from "~/components/charts/BarChart";
 import { bandLabel } from "~/components/ui/band-badge";
@@ -120,6 +122,7 @@ function PerHour({ range, bridged, network }: { range: UsageRange; bridged: bool
 
 function UsingNow({ offline }: { offline: boolean }) {
   useLiveRates(!offline);
+  const [live] = useLiveMode();
   const list = useQuery<DeviceList>("device.list", { sort: "rate", limit: NOW_COUNT }, { poll: true });
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
   const where = new Map((eeros.data ?? []).map((e) => [e.id, e.location]));
@@ -127,12 +130,14 @@ function UsingNow({ offline }: { offline: boolean }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <span className="font-medium text-[13px]">Using the most right now</span>
-        <span className="text-muted-foreground text-xs">current rate · refreshed every minute</span>
+        <LiveToggle size="xs" />
       </div>
       {offline ? (
         <div className="text-muted-foreground text-xs">Live rates need a connection to eero.</div>
+      ) : !live ? (
+        <div className="text-muted-foreground text-xs">Turn on Live to see which devices are using the most right now.</div>
       ) : list.error && !list.data ? (
         <div className="text-muted-foreground text-xs">
           Couldn't load live rates.{" "}

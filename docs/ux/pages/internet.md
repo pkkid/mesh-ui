@@ -55,8 +55,9 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 4. **Data usage** section. Sub: "Internet (WAN) traffic only, local
    transfers excluded". Day / Week toggle. Two cards side by side:
    - **Per hour** (wide): legend with totals (Download 351 GB, Upload 61 GB),
-     hourly area chart, rule, then **Using the most right now** ("current rate
-     · refreshed every minute"): a 3-column grid of up to 6 devices with icon,
+     hourly area chart, rule, then **Using the most right now** with the
+     shared **Live** switch on the right (see devices.md, Live switch; off:
+     "Turn on Live to see which devices are using the most right now"): a 3-column grid of up to 6 devices with icon,
      name, eero and band ("Living Room · 5 GHz", "Wired"), and the current
      download rate in Mbps, `-` when idle.
    - **Per day**: "avg 388 GB / day", legend with weekly totals (2.31 TB,
@@ -81,7 +82,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | Speed test chart, count, Export CSV | `speedtest.history {range: "all", limit: 200}` (or `"month"`) | 10 min, and after a test |
 | 7-day averages | `avg7d` of the same read (always the last 7 days) | As above |
 | Per hour chart and totals | `usage.get {scope: "network", range: "day"}` | 5 min |
-| Using the most right now | `device.rates.refresh` then `device.list {sort: "rate", limit: 6}` | 60 s while visible |
+| Using the most right now | `device.rates.refresh` then `device.list {sort: "rate", limit: 6}` | 60 s while visible and Live is on |
 | Per day chart, average, today, busiest day | `usage.get {scope: "network", range: "week", cadence: "daily"}` | 5 min |
 | By device | `usage.breakdown {range, by: "device", top: 5}` (Others row folded in core) | 5 min |
 | By profile | `usage.breakdown {range, by: "profile"}` | 5 min |
