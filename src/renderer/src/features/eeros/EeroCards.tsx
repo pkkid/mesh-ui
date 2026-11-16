@@ -148,9 +148,7 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
             <div className="flex items-center gap-3 px-[18px] pt-4 pb-3">
               <IconTile icon={eeroIcon(e)} size="lg" />
               <div className="min-w-0 flex-1">
-                <Link to={to} className="outline-none hover:underline focus-visible:underline">
-                  <Title eero={e} large />
-                </Link>
+                <Title eero={e} to={to} large />
                 <div className="truncate text-muted-foreground text-xs">{facts(e, offlineDetail)}</div>
               </div>
               <Status tone={status.tone}>{status.label}</Status>
@@ -169,10 +167,17 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
   );
 }
 
-function Title({ eero, large = false }: { eero: Eero; large?: boolean }) {
+/** The eero's name plus its Gateway badge. With `to`, only the name is a link, so hover underlines just the name. */
+function Title({ eero, to, large = false }: { eero: Eero; to?: string; large?: boolean }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2 font-medium", large ? "text-[15px]" : "text-[13.5px]")}>
-      <span className="truncate">{eero.location}</span>
+      {to ? (
+        <Link to={to} className="truncate outline-none hover:underline focus-visible:underline">
+          {eero.location}
+        </Link>
+      ) : (
+        <span className="truncate">{eero.location}</span>
+      )}
       {eero.isGateway && (
         <Badge variant="outline" className="shrink-0">
           Gateway
