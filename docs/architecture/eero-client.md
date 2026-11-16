@@ -228,8 +228,9 @@ eero tolerates roughly 100 requests a minute per account before answering 429.
   `device.rates.refresh`) is allowed once a minute per network. Core
   enforces this in `commands/device.ts`, not the limiter (see `DeviceBackend.requestBurst`); a second
   call inside the minute returns the last result's `nextBurst` without
-  calling eero. Fresh `usage.down_mbps` /
-  `up_mbps` appear on devices about 12 s after a burst and decay again by
+  calling eero. `next_burst` is about the POST time, so the device area
+  times the burst from the POST (`BURST_LEAD_SEC`). Fresh `usage.down_mbps` /
+  `up_mbps` appear on devices about 12 s after the POST and decay again by
   about 30 s; the device area keeps the figures read inside the live window
   (`BURST_LIVE_SEC`) and shows them on later reads (engine.md, Live device
   rates).

@@ -26,7 +26,7 @@
 
 import { BackendError } from "../../errors";
 import type * as M from "../../model";
-import { BURST_LIVE_SEC } from "../../poll";
+import { BURST_LEAD_SEC, BURST_LIVE_SEC } from "../../poll";
 import { mapDevice, type RawDeviceFull } from "../map/device";
 import { asList, linkUrl, type RawBlockWrite, type RawBurstResult, type RawDeviceWrite, type RawProfile } from "../raw";
 import { compactMac, deviceWritePath, idFromUrl, networkPath } from "../urls";
@@ -49,10 +49,15 @@ export const device: EeroArea<"device"> = (ctx) => {
    * live window the rows are taken as read and remembered; outside it each
    * row carries the last live figures (none for a device that had none).
    */
-  const withRates = (net: M.Id, raws: RawDeviceFull[]): { rows: RawDeviceFull[]; ratesAt: string | null } => {
+  const isLive = (net: M.Id): boolean => {
     const due = bursts.get(net);
     const now = Date.now();
-    if (due !== undefined && now >= due && now <= due + BURST_LIVE_SEC * 1000) {
+    return due !== undefined && now >= due && now <= due + BURST_LIVE_SEC * 1000;
+  };
+
+  const withRates = (net: M.Id, raws: RawDeviceFull[]): { rows: RawDeviceFull[]; ratesAt: string | null } => {
+    const due = bursts.get(net);
+    if (due !== undefined && isLive(net)) {
       const at = new Date(due).toISOString();
       const prev = held.get(net);
       const h: Held = prev?.at === at ? prev : { at, byMac: new Map() };
@@ -94,7 +99,8 @@ export const device: EeroArea<"device"> = (ctx) => {
 
   const list = async (net: M.Id): Promise<M.Device[]> => {
     const [listed, blocked, members] = await Promise.all([
-      client.request({ method: "GET", path: networkPath(net, "devices") }).then((d) => asList<RawDeviceFull>(d, "devices")),
+      // While a burst is live each read must reach eero, not take the client's 5 s shared answer.
+      client.request({ method: "GET", path: networkPath(net, "devices"), share: !isLive(net) }).then((d) => asList<RawDeviceFull>(d, "devices")),
       blacklist(net),
       profileMembers(net),
     ]);
@@ -134,7 +140,7 @@ export const device: EeroArea<"device"> = (ctx) => {
 
   const getOne = async (net: M.Id, id: M.Id): Promise<M.Device> => {
     try {
-      const raw = await client.request<RawDeviceFull>({ method: "GET", path: networkPath(net, `devices/${compactMac(id) || encodeURIComponent(id)}`) });
+      const raw = await client.request<RawDeviceFull>({ method: "GET", path: networkPath(net, `devices/${compactMac(id) || encodeURIComponent(id)}`), share: !isLive(net) });
       if (raw && typeof raw === "object") {
         const blocked = raw.blocked === true || raw.blacklisted === true;
         const { rows, ratesAt } = withRates(net, [raw]);
@@ -183,7 +189,8 @@ export const device: EeroArea<"device"> = (ctx) => {
     async requestBurst(net) {
       const raw = await client.request<RawBurstResult>({ method: "POST", path: networkPath(net, "burst_reporters"), encoding: "empty" });
       const parsed = raw?.next_burst ? Date.parse(raw.next_burst) : Number.NaN;
-      const next = Number.isFinite(parsed) ? parsed : Date.now() + 12_000;
+      // eero's next_burst is about now; the figures land about BURST_LEAD_SEC after the POST.
+      const next = Math.max(Number.isFinite(parsed) ? parsed : 0, Date.now() + BURST_LEAD_SEC * 1000);
       bursts.set(net, next);
       return { nextBurstAt: new Date(next).toISOString() };
     },

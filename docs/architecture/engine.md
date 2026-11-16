@@ -268,7 +268,10 @@ eero has no network-wide live history. Live rates exist only per device and
 only after a burst:
 
 1. `device.rates.refresh` calls `POST {net}/burst_reporters`. The response
-   has `next_burst`, about 12 s ahead. eero allows one burst per minute per
+   has `next_burst`, but on a real network that is about the POST time
+   itself (request log, 2026-11-16), while the figures land about 12 s after
+   the POST. The eero backend answers `nextBurstAt` as the later of
+   `next_burst` and the POST plus `BURST_LEAD_SEC` (12 s). eero allows one burst per minute per
    network; core (not the eero client) keeps a per-network timestamp
    (`commands/device.ts`) and a second call inside `BURST_COOLDOWN_SEC`
    returns the pending `nextBurstAt` without calling eero.
@@ -277,7 +280,9 @@ only after a burst:
    2026-10-20). The command marks `devices` stale with `ctx.invalidate` at
    each of `burstReadTimes(next_burst)`: `BURST_SETTLE_SEC` (2 s) after
    `next_burst` and then every `BURST_READ_EVERY_SEC` (4 s) while the window
-   (`BURST_LIVE_SEC`, 14 s) lasts. Each `device.list` after a mark reads
+   (`BURST_LIVE_SEC`, 14 s) lasts. Reads inside the window skip the eero
+   client's 5 s shared GET answer (`share: false`), so each one reaches
+   eero. Each `device.list` after a mark reads
    fresh `usage.down_mbps` and `usage.up_mbps`, while reads between marks
    share the cache. The cache keeps every pending mark per topic, so a read
    is capped at the first mark after it.
