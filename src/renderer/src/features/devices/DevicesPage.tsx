@@ -16,7 +16,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "~/app/useCommand";
 import { useGate } from "~/components/ui/page";
 import { useLiveRates } from "~/app/useLiveRates";
-import { ShareWifiButton } from "~/features/wifi/ShareSheet";
 import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { entityColors } from "~/lib/chartColors";
 import { TopBarActions, TopBarSubtitle } from "~/features/shell/TopBar";
@@ -195,7 +194,6 @@ export function DevicesPage() {
       </TopBarSubtitle>
       <TopBarActions>
         <LiveToggle size="xs" />
-        <ShareWifiButton size="xs" />
       </TopBarActions>
 
       <DeviceSummary
