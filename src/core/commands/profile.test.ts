@@ -919,6 +919,12 @@ describe("Unassigned scheduled pauses (fake eero server)", () => {
   };
 
   it("writes through eero's default profile: POST, PUT and DELETE {default profile}/schedules, and reads back from its schedule[]", async () => {
+    // Midday on a Wednesday in the fake network's time zone, so the Sun/Mon 23:00 to 06:00 schedule never covers "now"
+    // (otherwise the add takes devices offline and answers needs_confirm).
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-18T12:00:00-05:00") });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const { fake, engine } = start();
     const before = await engine.execute<M.ProfileDetail>("profile.get", { profile: "unassigned" });
     expect(before).toMatchObject({ ok: true, result: { id: "unassigned", name: "Unassigned", schedules: [] } });
