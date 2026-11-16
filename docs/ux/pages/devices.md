@@ -17,7 +17,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
    font-semibold tabular-nums` (#248). The layout follows the hero's own
    width (container queries): three columns when wide (`auto 0.85fr
    1.15fr`); at the default 1200px window, Devices on the left with
-   Throughput now over New this week on the right; one column when narrow.
+   Current throughput over New this week on the right; one column when narrow.
    - **Devices**: "38" (every known device, `summary.total`) with "31
      online" and "3 paused · 2 blocked" in muted `text-xs` under it, then
      the By type donut and legend: a 96px donut with "38 devices" in the
@@ -30,7 +30,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
      "Phones & tablets · 12 devices · 32%" in a tooltip that follows the
      pointer, and highlights its legend row; hovering a legend row does the
      same to the ring.
-   - **Throughput now**: "186" with "Mbps down", then "24 Mbps up · 14
+   - **Current throughput**: "186" with "Mbps down", then "24 Mbps up · 14
      devices active", a band insight ("6 GHz carries 41% of traffic with
      19% of devices") and "Sum of current device rates, refreshed every
      minute".
@@ -47,7 +47,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
      (Wired 4, 2.4 GHz 11, 5 GHz 10, 6 GHz 6 toggles), Type, eero, Profile
      (with Unassigned) and Manufacturer (selects with an Any row), First seen
      (New this week 3), and a footer "3 filters set" with **Clear all**.
-   - Right: Group by menu (Category), Sort menu (Name), and a Columns button.
+   - Right: Group by menu (None), Sort menu (Name), and a Columns button.
      The menus show their name in the tooltip.
 3. **Active filters** (only while a popover filter is set): one small chip
    per filter ("6 GHz", "Computers", "Profile: Alex") with an x to remove it,
@@ -62,10 +62,11 @@ Wi-Fi**. Sidebar count: all known devices (38).
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Now down / up
    (two small numbers; "Paused" or last-seen text when not live), 24h
    (data used in the last 24 hours, `usage.breakdown` range day), Status (Online, Paused, Offline, Blocked), and a row menu (`...`).
-   - Rows are grouped. Group header rows have a chevron, an icon, the group
-     name and a count. Collapsed groups show a summary instead ("10 devices ·
-     all online · Nest Thermostat, Hue Bridge, Ring Doorbell, Kitchen Echo,
-     +6" and "Expand"). A group with no devices is not shown, with or
+   - Rows are a flat list by default. They can be grouped (Group by:
+     Category, Status, eero or Profile). Grouped rows have header rows with
+     a chevron, an icon, the group name and a count. Collapsed groups show
+     a summary instead ("10 devices · all online · Nest Thermostat, Hue
+     Bridge, Ring Doorbell, Kitchen Echo, +6" and "Expand"). A group with no devices is not shown, with or
      without filters.
    - Groups in the mockup (Group by Category): Computers & Personal,
      Entertainment, Home (collapsed), Other (hidden while empty), Recently
@@ -83,7 +84,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 | Element | Command | Refresh |
 | --- | --- | --- |
 | Table rows | `device.list {status?, ssid?, band?, eero?, profile?, type?, manufacturer?, firstSeenSince?, search?, sort?}` (New this week sends `firstSeenSince` a week before it was turned on) | 30 s |
-| Live "Now" column, Throughput now | `device.rates.refresh` then `device.list` (rates in each device's `rate`) | 60 s while the page is visible |
+| Live "Now" column, Current throughput | `device.rates.refresh` then `device.list` (rates in each device's `rate`) | 60 s while the page is visible |
 | Status and Filters popover counts, By type, band insight, guest count, New this week | `device.list` `summary` (counts by status, band, eero, profile, type, manufacturer; `newThisWeek`) | 30 s |
 | Profile avatars and names | `device.list` (embedded profile ref) + `profile.list` for colours | 60 s |
 | Assign profile menu | `profile.list` | 60 s |
@@ -124,15 +125,15 @@ Wi-Fi**. Sidebar count: all known devices (38).
   burst leaves the last rates and marks the column "rates from 3 min ago".
 - **Offline (this computer).** Shell banner; bulk and row-menu writes
   disabled; "Now" column shows `-`.
-- **Network offline.** Rows show the last known state muted; Throughput now
+- **Network offline.** Rows show the last known state muted; Current throughput
   shows `-` with "Maple Street is offline".
 - **No permission.** Admins may pause and block. If `network.permissions`
   denies device updates, bulk buttons and write menu items are disabled with
   the reason.
 - **Capability missing.** Firmware without per-device usage: 24h column
-  `-`. Burst reporter unsupported: "Now" column and Throughput now hidden.
+  `-`. Burst reporter unsupported: "Now" column and Current throughput hidden.
 - **Bridge mode.** Pause, Resume, Block, Assign profile and the Profile
-  column are hidden; "Now" column and Throughput now hidden; the bridge note
+  column are hidden; "Now" column and Current throughput hidden; the bridge note
   sits above the hero. The list, search and filters still work.
 - **Guest devices.** Tagged GUEST; on the Guest segment the bulk bar offers
   only Block (pause and profiles do not apply to guests).

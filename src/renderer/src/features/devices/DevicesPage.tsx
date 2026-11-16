@@ -36,7 +36,7 @@ import { DeviceTable, type ProfileInfo, visibleDevices } from "./DeviceTable";
 
 type ViewState = { filters: DeviceFilterState; sort: SortKey; groupBy: GroupBy };
 
-const DEFAULT_VIEW: ViewState = { filters: EMPTY_FILTERS, sort: "name", groupBy: "category" };
+const DEFAULT_VIEW: ViewState = { filters: EMPTY_FILTERS, sort: "name", groupBy: "none" };
 
 /** Filter state per network, kept while the app runs (docs: "filter state kept per network"). */
 const views = new Map<string, ViewState>();

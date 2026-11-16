@@ -279,7 +279,7 @@ only after a burst:
 3. The mapper stamps each device's `rates` with the read time. Rates older
    than 90 s become `null`, which the UI shows as `-`, never `0`.
 4. `DeviceList.summary.rates` sums current rates and counts active devices
-   ("Throughput now 186 Mbps, 14 devices active") and computes each band's
+   ("Current throughput 186 Mbps, 14 devices active") and computes each band's
    share of traffic, so every surface gets the same totals.
 
 Pages that show "Now" figures (Devices, Device detail, Internet "Using the

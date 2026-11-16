@@ -205,7 +205,8 @@ off, like the page header. A shared button that also appears outside a header
 | --- | --- |
 | Section header tools | 28px (`tool`) |
 | Page header (hero) actions | 28px (`hero`, 13px text) |
-| Segmented outside a header (forms, settings) | 30px (`default`) |
+| Segmented outside a header (forms, settings) | 30px (`sm`, the default) |
+| Toolbars (Devices filter row) | 32px (`md` Segmented, `h-8` inputs and buttons) |
 
 A fully flat layout, with sections directly on the page background, was tried
 in the mockups and rejected: on the warm Gruvbox surfaces sections blurred
@@ -226,7 +227,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Component | Look |
 | --- | --- |
 | Button | 30px, 8px radius, `bg-card` with control border; `primary` filled; `danger` red text; `ghost` no border; `icon` square |
-| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone |
+| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
 | Switch | 32 x 19, `bg-primary` when on |
 | Input, select | 30px, control border, mono variant for IPs and MACs |
 | Chip | Full radius, 26px, for filters; selected chip gets a stronger border, not colour |

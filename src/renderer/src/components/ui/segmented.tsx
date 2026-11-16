@@ -14,16 +14,18 @@ export type SegmentedOption<T extends string> = {
 };
 
 /**
- * Heights: `default` 30px (border, `p-0.5`, 24px items) for forms and
- * pages; `tool` 28px (22px items) in a section header, level with the 28px
- * buttons there. `Section` sets `tool` for its tools slot through
- * `SegmentedSizeContext`, so call sites leave `size` off.
+ * Heights (border plus `p-0.5` around the items): `tool` 28px (22px items)
+ * in a section header, level with the 28px buttons there; `sm` 30px (24px
+ * items, the default) in forms and settings; `md` 32px (26px items) in
+ * toolbars beside `h-8` inputs, buttons and selects. `Section` sets `tool`
+ * for its tools slot through `SegmentedSizeContext`, so call sites there
+ * leave `size` off.
  */
-export type SegmentedSize = "default" | "tool";
+export type SegmentedSize = "tool" | "sm" | "md";
 
-const ITEM_HEIGHT: Record<SegmentedSize, string> = { default: "h-6", tool: "h-[22px]" };
+const ITEM_HEIGHT: Record<SegmentedSize, string> = { tool: "h-[22px]", sm: "h-6", md: "h-[26px]" };
 
-const SegmentedSizeContext = createContext<SegmentedSize>("default");
+const SegmentedSizeContext = createContext<SegmentedSize>("sm");
 
 type SegmentedProps<T extends string> = {
   value: T;

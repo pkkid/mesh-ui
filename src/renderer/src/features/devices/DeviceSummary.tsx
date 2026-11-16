@@ -1,7 +1,7 @@
 /**
  * The hero at the top of Devices (docs/ux/pages/devices.md, Layout 1): three
  * cells at hero weight, each led by a key figure: devices (with status counts
- * and the By type donut), throughput now, and devices new this week. All of
+ * and the By type donut), current throughput, and devices new this week. All of
  * it comes from the `device.list` summary, which always covers the whole
  * network whatever the filters.
  */
@@ -95,7 +95,7 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
         </Cell>
 
         <Cell className={cn("border-t transition-opacity @3xl:border-t-0 @3xl:border-l", (ratesPending || fading) && "opacity-40")}>
-          <Label icon={Activity}>Throughput now</Label>
+          <Label icon={Activity}>Current throughput</Label>
           <div className="mt-2 whitespace-nowrap">
             <Figure>{down.value}</Figure>
             {down.unit && <span className="text-muted-foreground text-sm"> {down.unit} down</span>}

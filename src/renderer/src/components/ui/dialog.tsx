@@ -35,7 +35,7 @@ function DialogPopup({
   // Reset the control sizes: a dialog opened from a page or section header keeps its own sizes.
   return (
     <ButtonSizeContext value={undefined}>
-      <SegmentedSizeContext value="default">
+      <SegmentedSizeContext value="sm">
         <DialogPrimitive.Portal>
           <DialogPrimitive.Backdrop forceRender className={BACKDROP_CLASS} data-slot="dialog-backdrop" />
           <DialogPrimitive.Viewport
