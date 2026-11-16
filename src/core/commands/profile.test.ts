@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { createFakeEero } from "../../../test/fake-eero/server";
 import { type AuthState, composeBackend, type SecretStore } from "../backend";
 import { createDemoBackend } from "../demo";
@@ -749,6 +749,11 @@ describe("scheduled pauses (fake eero server)", () => {
   };
 
   it("adds with POST {profile}/schedules, JSON, days as Monday..Sunday, and the next read shows it", async () => {
+    // Midday on a Wednesday in the fake network's time zone, so the 22:00 to 06:30 schedule never covers "now".
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-18T12:00:00-05:00") });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const { fake, engine } = start();
     await engine.execute("profile.get", { profile: "Alex" }); // cached; the write must invalidate it
     const r = await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Alex", name: "Late night", days: ["SUN", "MON", "TUE"], start: "22:00", end: "06:30", confirm: true }); // confirm: the window may cover the real clock

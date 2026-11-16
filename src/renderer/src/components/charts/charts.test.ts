@@ -13,6 +13,7 @@ import {
   slotIndex,
   valueToY,
 } from "./scale";
+import { placeFloating } from "./Tooltip";
 import { formatMinute, layoutWeek, type TimelineBlock } from "../ui/timeline";
 
 /** Every tick step must be 1, 2 or 5 times a power of ten. */
@@ -283,5 +284,20 @@ describe("layoutWeek (week timeline)", () => {
     expect(formatMinute(21 * 60)).toBe("9:00 PM");
     expect(formatMinute(12 * 60 + 5)).toBe("12:05 PM");
     expect(formatMinute(1440)).toBe("12:00 AM");
+  });
+});
+
+describe("placeFloating", () => {
+  it("puts a pointer tooltip 12px below and right of the pointer", () => {
+    expect(placeFloating({ pointer: { x: 100, y: 100 } }, 150, 30, 1200, 800)).toEqual({ left: 112, top: 112 });
+  });
+  it("flips a pointer tooltip left and up near the window edge", () => {
+    expect(placeFloating({ pointer: { x: 1150, y: 790 } }, 150, 30, 1200, 800)).toEqual({ left: 988, top: 748 });
+  });
+  it("centres an anchored tooltip above the element", () => {
+    expect(placeFloating({ anchor: { left: 200, top: 100, width: 40, height: 20 } }, 100, 24, 1200, 800)).toEqual({ left: 170, top: 70 });
+  });
+  it("drops an anchored tooltip below when there is no room above, and keeps it in the window", () => {
+    expect(placeFloating({ anchor: { left: 0, top: 10, width: 20, height: 20 } }, 100, 24, 1200, 800)).toEqual({ left: 6, top: 36 });
   });
 });
