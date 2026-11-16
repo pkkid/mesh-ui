@@ -32,8 +32,8 @@ Wi-Fi**. Sidebar count: all known devices (38).
      same to the ring.
    - **Current throughput**: "186" with "Mbps down", then "24 Mbps up · 14
      devices active", a band insight ("6 GHz carries 41% of traffic with
-     19% of devices") and "Sum of current device rates, refreshed every
-     minute".
+     19% of devices") and "Sum of current device rates while Live is on".
+     With Live off: `-` and "Turn on Live to see current rates".
    - **New this week**: the count ("3") beside up to three devices with
      icon, name and a muted line ("48 min ago · Living Room", "Tue · Living
      Room", "Mon · blocked" in destructive text), or "No new devices this
@@ -94,7 +94,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 | Element | Command | Refresh |
 | --- | --- | --- |
 | Table rows | `device.list {status?, ssid?, band?, eero?, profile?, type?, manufacturer?, firstSeenSince?, search?, sort?, order?}` (New this week sends `firstSeenSince` a week before it was turned on) | 30 s |
-| Live "Now" column, Current throughput | `device.rates.refresh` then `device.list` (rates in each device's `rate`) | 60 s while the page is visible |
+| Live "Now" column, Current throughput | `device.rates.refresh` then `device.list` (rates in each device's `rate`) | 60 s while the page is visible and Live is on |
 | Status and Filters popover counts, By type, band insight, guest count, New this week | `device.list` `summary` (counts by status, band, eero, profile, type, manufacturer; `newThisWeek`) | 30 s |
 | Profile avatars and names | `device.list` (embedded profile ref) + `profile.list` for colours | 60 s |
 | Assign profile menu | `profile.list` | 60 s |
@@ -176,6 +176,15 @@ from the gates.
   (`mesh-ui run device.list --params '{"paused":true}'`) and the palette
   ("List paused devices") share one implementation. Grouping and columns are
   view state.
+- **Live switch (#319).** Live rates (a burst a minute plus the reads in its
+  window) run only while the shared **Live** switch is on: a pulse icon
+  (lucide `Activity`) and "Live", with a status dot while on. It sits in the
+  Devices top bar, beside "Using the most right now" on Internet and in a
+  device's Now box; one setting for all three, like the eero app's live usage
+  view. Off on a first run, the last choice is remembered (renderer view
+  state, `useLiveMode`), and it turns itself off after 10 minutes. While off,
+  nothing asks eero for live rates and rates show `-` with "Turn on Live to see
+  current rates". The CLI and MCP are unchanged.
 - Live rates: `device.rates.refresh` (`POST {net}/burst_reporters`) is
   allowed once a minute per network; rates are fresh about 12 s later and
   stay live for a few seconds, during which the page reads devices every
