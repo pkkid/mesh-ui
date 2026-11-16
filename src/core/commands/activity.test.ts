@@ -483,6 +483,8 @@ describe("events on a network that only sends its last 15 minutes", () => {
     expect(s.total).toBe(24);
     expect(s.counts.devices).toBe(24);
     expect(s.partial).toBe(false);
+    // The log reaches back to the first read, two hours ago: the hero's "since".
+    expect(s.earliest).toBe(new Date(FAKE_NOW).toISOString());
   });
 });
 

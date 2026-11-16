@@ -752,6 +752,12 @@ export type EventSummary = {
   counts: Record<EventCategory, number>;
   /** One per hour or day of the window, oldest first; `at` is the bucket start. */
   buckets: { at: Iso; total: number; counts: Record<EventCategory, number> }[];
+  /**
+   * The oldest event read, whatever the filters (null: none). On eero, which
+   * sends only its last ~15 minutes, this is how far back the backend's event
+   * log reaches, so the Activity hero says "since 9:41 AM".
+   */
+  earliest: Iso | null;
   /** The page budget ran out before the window start, so counts are a lower bound. */
   partial: boolean;
 };

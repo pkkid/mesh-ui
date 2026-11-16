@@ -1,19 +1,17 @@
 /**
  * Activity filter bar (docs/ux/pages/activity.md, Layout 2), built from the
  * shared filter bar like Devices: search and a Filters popover (Device, eero,
- * Profile) on the left, the Range dropdown on the right, and the filters that
- * are set as removable chips under it. Types hidden from the legend show as
+ * Profile), and the filters that are set as removable chips under it. There
+ * is no range: the stream is live (eero sends only its last ~15 minutes), so
+ * it holds what came in while the app was open. Types hidden from the legend show as
  * one chip too. Pure view state; the page passes it to `events.list` and
  * `events.summary`, which filter in core.
  */
-import { Calendar } from "lucide-react";
 import type { RefObject } from "react";
 
 import {
   FilterBar,
-  FilterBarEnd,
   type FilterChip,
-  FilterDropdown,
   type FilterOption,
   FilterRow,
   FilterSearch,
@@ -26,13 +24,11 @@ export type EventFilterState = {
   device: string | null;
   eero: string | null;
   profile: string | null;
-  /** Index into the range options; null is the whole 7 days. */
-  day: number | null;
 };
 
-export const EMPTY_FILTERS: EventFilterState = { search: "", device: null, eero: null, profile: null, day: null };
+export const EMPTY_FILTERS: EventFilterState = { search: "", device: null, eero: null, profile: null };
 
-/** Clears every filter in the Filters popover; search and range stay. */
+/** Clears every filter in the Filters popover; search stays. */
 const CLEAR_POPOVER: Partial<EventFilterState> = { device: null, eero: null, profile: null };
 
 export type Option = FilterOption;
@@ -46,7 +42,6 @@ export function EventFilters({
   devices,
   eeros,
   profiles,
-  days,
   hiddenTypes,
   onShowAllTypes,
 }: {
@@ -58,8 +53,6 @@ export function EventFilters({
   devices: ReadonlyArray<Option>;
   eeros: ReadonlyArray<Option>;
   profiles: ReadonlyArray<Option>;
-  /** One label per day of the window, newest first ("Today", "Yesterday", "Tuesday"). */
-  days: ReadonlyArray<string>;
   /** How many event types the legend hides (0 when all show). */
   hiddenTypes: number;
   onShowAllTypes: () => void;
@@ -99,16 +92,6 @@ export function EventFilters({
           <SelectPicker name="Profile" value={f.profile} options={profiles} onChange={(profile) => onChange({ profile })} />
         </FilterRow>
       </FiltersButton>
-      <FilterBarEnd>
-        <FilterDropdown
-          label="Range"
-          icon={Calendar}
-          value={f.day === null ? null : String(f.day)}
-          anyLabel="Last 7 days"
-          options={days.map((label, i) => ({ value: String(i), label }))}
-          onChange={(day) => onChange({ day: day === null ? null : Number(day) })}
-        />
-      </FilterBarEnd>
     </FilterBar>
   );
 }

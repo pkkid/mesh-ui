@@ -1,12 +1,14 @@
 /**
- * Activity (docs/ux/pages/activity.md, mockup 10): the week's events by type
- * (hero, legend that filters, stacked chart), the filter bar, and the event
- * stream with grouped rows, day bars and paging. Export CSV saves the
- * filtered range through the native save dialog.
+ * Activity (docs/ux/pages/activity.md, mockup 10): a live view. eero sends
+ * only its last ~15 minutes of events, so the page shows those plus every
+ * event read while the app is open: the last 24 hours by type (hero, legend
+ * that filters, stacked per hour chart), the filter bar (no range), and the
+ * event stream with grouped rows, day bars and paging. Export CSV saves the
+ * filtered events through the native save dialog.
  *
  * Every figure, filter and group comes from `events.summary` and
  * `events.list`; this page keeps only view state (types shown, filters,
- * Per day / Per hour, Grouped / Raw, pages loaded). The stream's "Unread"
+ * Grouped / Raw, pages loaded). The stream's "Unread"
  * marker is eero's one network-wide `has_unread` flag from `notifications.list`
  * (the bell's poll): eero keeps no read flag per event, so rows carry no dots.
  */
@@ -33,7 +35,6 @@ import { ActivityHero } from "./ActivityHero";
 import { EMPTY_FILTERS, type EventFilterState, EventFilters } from "./EventFilters";
 import { EventStream, StreamSettingsButton } from "./EventStream";
 
-type Bucket = "day" | "hour";
 type Mode = "grouped" | "raw";
 
 /** Whether the window is visible: the stream polls only then (useQuery pauses), and the Live dot says so. */
@@ -56,7 +57,6 @@ export function ActivityPage(_props: PageProps) {
   const notifications = useNotificationPage();
   const unread = notifications.data?.unread === true;
 
-  const [bucket, setBucket] = useState<Bucket>("day");
   const [mode, setMode] = useState<Mode>("grouped");
   const [hidden, setHidden] = useState<ReadonlySet<EventCategory>>(new Set());
   const [filters, setFilters] = useState<EventFilterState>(EMPTY_FILTERS);
@@ -72,30 +72,12 @@ export function ActivityPage(_props: PageProps) {
   }, [searchText, filters.search]);
 
   const entity = { device: unset(filters.device), eero: unset(filters.eero), profile: unset(filters.profile) };
-  // Chart and legend: every type (the legend hides types in view), entity filters applied.
-  const daySummary = useQuery<EventSummary>("events.summary", { range: "week", bucket: "day", ...entity }, { poll: true });
-  const hourSummary = useQuery<EventSummary>("events.summary", { range: "week", bucket: "hour", ...entity }, { poll: true });
-  // Per hour charts the last 24 hours: 168 hourly columns would be too thin to read.
-  const lastDay = useQuery<EventSummary>("events.summary", { range: "day", bucket: "hour", ...entity }, { poll: true, enabled: bucket === "hour" });
-  const chartSummary = bucket === "day" ? daySummary : lastDay;
-
-  // Range: one of the window's days (from the summary's day starts, network time zone), or all of them.
-  const dayStarts = daySummary.data?.buckets.map((b) => b.at) ?? [];
-  const dayLabels = dayStarts
-    .map((at, i) => (i === dayStarts.length - 1 ? "Today" : i === dayStarts.length - 2 ? "Yesterday" : `${clock.longWeekday(at)}, ${clock.day(at).slice(4)}`))
-    .reverse();
-  const range = useMemo(() => {
-    if (filters.day === null || dayStarts.length === 0) return {};
-    const i = dayStarts.length - 1 - filters.day;
-    const since = dayStarts[i];
-    const next = dayStarts[i + 1];
-    return { since, until: next ? new Date(Date.parse(next) - 1).toISOString() : undefined };
-  }, [filters.day, dayStarts.join()]);
+  // Hero, chart and day bars: the last 24 hours per hour, every type (the legend hides types in view), entity filters applied.
+  const summary = useQuery<EventSummary>("events.summary", { range: "day", bucket: "hour", ...entity }, { poll: true });
 
   const shownTypes = CATEGORY_ORDER.filter((c) => !hidden.has(c));
   const streamParams = {
     ...entity,
-    ...range,
     search: filters.search.trim() || undefined,
     type: hidden.size > 0 ? shownTypes : undefined,
   };
@@ -136,7 +118,7 @@ export function ActivityPage(_props: PageProps) {
   const eeroOptions = useMemo(() => (eeros.data ?? []).map((e) => ({ value: e.id, label: e.location ?? e.id })), [eeros.data]);
   const profileOptions = useMemo(() => (profiles.data?.profiles ?? []).map((p) => ({ value: p.id, label: p.name })), [profiles.data]);
 
-  const filtered = hidden.size > 0 || filters.search !== "" || searchText !== "" || filters.device !== null || filters.eero !== null || filters.profile !== null || filters.day !== null;
+  const filtered = hidden.size > 0 || filters.search !== "" || searchText !== "" || filters.device !== null || filters.eero !== null || filters.profile !== null;
   const toggle = (c: EventCategory) =>
     setHidden((h) => {
       const next = new Set(h);
@@ -160,7 +142,7 @@ export function ActivityPage(_props: PageProps) {
             {older.loading && older.key === paramsKey ? "Loading older events..." : "Load older events"}
           </Button>
         ) : (
-          <span className="text-muted-foreground text-xs">Start of history. eero only sends recent events; older ones are kept while Mesh UI is open.</span>
+          <span className="text-muted-foreground text-xs">That's every event so far. eero shares only its last 15 minutes; newer ones are added while Mesh UI is open.</span>
         )}
       </div>
     ) : null;
@@ -171,28 +153,14 @@ export function ActivityPage(_props: PageProps) {
         <ExportCsvButton params={streamParams} network={network.data?.name ?? null} />
       </TopBarActions>
 
-      <Section
-        title="Events by type"
-        subtitle={`${bucket === "day" ? "Stacked per day, last 7 days" : "Stacked per hour, last 24 hours"} · pick types to filter the stream`}
-        tools={
-          <Segmented
-            aria-label="Chart buckets"
-            value={bucket}
-            onValueChange={setBucket}
-            options={[
-              { value: "day", label: "Per day" },
-              { value: "hour", label: "Per hour" },
-            ]}
-          />
-        }
-      >
+      <Section title="Events by type" subtitle="Stacked per hour, last 24 hours · pick types to filter the stream">
         <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <ActivityHero summary={daySummary.data} hidden={hidden} onToggle={toggle} loading={daySummary.fading} />
-          {chartSummary.error && !chartSummary.data ? (
-            <SectionError what="the event chart" error={chartSummary.error} onRetry={() => void chartSummary.refetch()} />
+          <ActivityHero summary={summary.data} hidden={hidden} onToggle={toggle} loading={summary.fading} clock={clock} />
+          {summary.error && !summary.data ? (
+            <SectionError what="the event chart" error={summary.error} onRetry={() => void summary.refetch()} />
           ) : (
             <Card padded>
-              <ActivityChart summary={chartSummary.data} hidden={hidden} timeZone={network.data?.timezone ?? "UTC"} loading={chartSummary.fading || !chartSummary.data} />
+              <ActivityChart summary={summary.data} hidden={hidden} timeZone={network.data?.timezone ?? "UTC"} loading={summary.fading || !summary.data} />
             </Card>
           )}
         </div>
@@ -207,7 +175,6 @@ export function ActivityPage(_props: PageProps) {
         devices={deviceOptions}
         eeros={eeroOptions}
         profiles={profileOptions}
-        days={dayLabels}
         hiddenTypes={hidden.size}
         onShowAllTypes={() => setHidden(new Set())}
       />
@@ -243,12 +210,11 @@ export function ActivityPage(_props: PageProps) {
       >
         <EventStream
           rows={rows}
-          days={daySummary.data}
-          hours={hourSummary.data}
+          hours={summary.data}
           clock={clock}
           loading={first.loading}
           fading={first.fading}
-          emptyText={filtered ? "No events match these filters." : "No events in the last 7 days."}
+          emptyText={filtered ? "No events match these filters." : "No events yet. New ones show up here as they happen."}
           error={streamError}
           footer={footer}
           networkName={network.data?.name ?? null}
