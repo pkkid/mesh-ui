@@ -18,6 +18,7 @@ import {
   commandUnavailable,
   defaultParams,
   deviceItems,
+  eeroItems,
   entityWrite,
   highlightParts,
   matchText,
@@ -64,6 +65,7 @@ async function sources(): Promise<Sources & { commandsInfo: CommandInfo[] }> {
     commandsInfo: d.commands,
     commands: commandItems(d.commands, SIGNED_IN),
     pages: pageItems(ROUTES),
+    eeros: eeroItems(d.eeros),
     devices: deviceItems(d.devices.devices, d.profiles, d.eeros),
     profiles: profileItems(d.profiles),
   };
@@ -116,7 +118,7 @@ describe("search", () => {
     expect(first?.item.label.toLowerCase().startsWith("device")).toBe(true);
     expect(first?.ranges[0]).toEqual([0, 6]);
     expect(r.counts.page).toBe(1); // Devices, not the Device detail route
-    expect(r.total).toBe(r.counts.command + r.counts.page + r.counts.device + r.counts.profile);
+    expect(r.total).toBe(r.counts.command + r.counts.page + r.counts.eero + r.counts.device + r.counts.profile);
   });
 
   it("counts every kind but lists only the chosen scope", async () => {
@@ -144,7 +146,7 @@ describe("search", () => {
     const r = search(">eero.", s);
     expect(r.mode).toBe("id");
     expect(r.groups.map((g) => g.kind)).toEqual(["command"]);
-    expect(r.counts.device + r.counts.page + r.counts.profile).toBe(0);
+    expect(r.counts.device + r.counts.page + r.counts.eero + r.counts.profile).toBe(0);
     const ids = r.flat.map((h) => (h.item.kind === "command" ? h.item.info.id : ""));
     expect(ids.slice(0, 3).sort()).toEqual(["eero.find", "eero.get", "eero.list"]);
     expect(r.flat[0]?.idRanges[0]).toEqual([0, 5]);
@@ -160,6 +162,7 @@ describe("search", () => {
     const first = r.flat[0]?.item;
     expect(first?.kind === "command" && first.info.id).toBe("network.health");
     expect(r.counts.device).toBe(0);
+    expect(r.counts.eero).toBe(0);
     expect(r.counts.page).toBe(4);
   });
 
@@ -167,6 +170,66 @@ describe("search", () => {
     const s = await sources();
     const hit = search("online devices", s).flat[0]?.item;
     expect(hit?.kind === "command" && hit.params).toEqual({ status: "online" });
+  });
+});
+
+describe("eero rows", () => {
+  it("describe each eero by location, model, status and device count", async () => {
+    const d = await demo();
+    const items = eeroItems(d.eeros);
+    expect(items).toHaveLength(d.eeros.length);
+    const gateway = items.find((i) => i.eero.isGateway);
+    expect(gateway?.key).toBe(`eero:${gateway?.id}`);
+    expect(gateway?.label).toBe(gateway?.eero.location);
+    const n = gateway?.eero.clients.total ?? 0;
+    expect(gateway?.context).toBe(`${gateway?.eero.model} · ${n} ${n === 1 ? "device" : "devices"}`);
+    expect(eeroItems(null)).toEqual([]);
+  });
+
+  it("leave out a missing model or device count", async () => {
+    const d = await demo();
+    const [first] = d.eeros;
+    if (!first) throw new Error("no eeros");
+    const [bare] = eeroItems([{ ...first, model: null, clients: { total: null, wired: null, wireless: null } }]);
+    expect(bare?.context).toBe("");
+    const [one] = eeroItems([{ ...first, clients: { total: 1, wired: 0, wireless: 1 } }]);
+    expect(one?.context).toBe(`${first.model} · 1 device`);
+  });
+
+  it("find an eero by its location, ahead of devices on it", async () => {
+    const s = await sources();
+    const r = search("garage", s);
+    const group = r.groups.find((g) => g.kind === "eero");
+    expect(group?.hits.map((h) => h.item.label)).toEqual(["Garage"]);
+    expect(group?.hits[0]?.ranges).toEqual([[0, 6]]);
+    expect(r.counts.eero).toBe(1);
+    // The eeros group sits before devices.
+    const kinds = r.groups.map((g) => g.kind);
+    if (kinds.includes("device")) expect(kinds.indexOf("eero")).toBeLessThan(kinds.indexOf("device"));
+  });
+
+  it("match the model below every location match", async () => {
+    const s = await sources();
+    const r = search("beacon", s, "eero");
+    expect(r.flat.map((h) => h.item.label)).toEqual(["Garage"]);
+    expect(r.flat[0]?.ranges).toEqual([]); // the match is in the model, not the label
+    const office = search("office", s, "eero").flat[0];
+    expect(office?.score).toBeGreaterThan(r.flat[0]?.score ?? 0);
+  });
+
+  it("rank exact over prefix over word start over substring", async () => {
+    const s = await sources();
+    const names = (q: string) => search(q, s, "eero").flat.map((h) => h.item.label);
+    expect(names("up")).toEqual(["Upstairs Hall"]);
+    expect(names("hall")).toEqual(["Upstairs Hall"]);
+    expect(names("room")[0]).toBe("Living Room");
+  });
+
+  it("have their own scope", async () => {
+    const s = await sources();
+    const only = search("o", s, "eero");
+    expect(only.groups.map((g) => g.kind)).toEqual(["eero"]);
+    expect(only.total).toBe(only.counts.eero);
   });
 });
 

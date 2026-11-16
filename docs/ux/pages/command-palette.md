@@ -1,6 +1,6 @@
 # Command palette
 
-One search box for every command, device and profile, which also shows how to run the same command from the CLI or an agent.
+One search box for every command, page, eero, device and profile, which also shows how to run the same command from the CLI or an agent.
 
 Mockup: [../../mockups/19-command-palette.html](../../mockups/19-command-palette.html)
 
@@ -10,11 +10,12 @@ Shared patterns (dialogs, keyboard shortcuts, confirms, the command model) are d
 
 Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. Trigger: the titlebar search ("Search or run a command") or `Ctrl K` (`Cmd K` on macOS).
 
-1. **Input row**: search icon, the query, a result count (`10 results`), scope chips **All**, **Commands** (6), **Pages** (0), **Devices** (2), **Profiles** (2), and an `Esc` key hint. In `>` mode only **All** and **Commands** show.
+1. **Input row**: search icon, the query, a result count (`10 results`), scope chips **All**, **Commands** (6), **Pages** (0), **eeros** (0), **Devices** (2), **Profiles** (2), and an `Esc` key hint. In `>` mode only **All** and **Commands** show.
 2. **Body**, two panes:
    - **Result list**, grouped:
      - **Commands**: icon, label with the match highlighted ("Pause profile..."), the command id under it (`profile.pause`, or with preset params such as `device.list {"status":"online"}`), an effect tag (`query`, `write`, `disruptive`, `destructive`) and a shortcut if one exists (`Ctrl Shift P`). Presets are renderer-only shortcuts listed in `features/palette/search.ts` (`PRESETS`), like keyboard shortcuts.
-     - **Pages**: every page in `ROUTES` that has no id in its path (Overview, Devices, Wi-Fi, ...), with its icon and path. Detail pages are reached through device and profile rows.
+     - **Pages**: every page in `ROUTES` that has no id in its path (Overview, Devices, Wi-Fi, ...), with its icon and path. Detail pages are reached through eero, device and profile rows.
+     - **eeros**: the eero icon (router, or lamp for a Beacon), the location with the match highlighted, a **Gateway** badge on the gateway, the status as a dot and label ("Online", "Weak link", "Offline"), and context (model, connected device count). Matches the location, then (ranked below every location match) the model. No row action; Enter opens the eero page. eero pages stay available in bridge mode, so the group does too.
      - **Devices**: icon, name, state (`Paused`), context (profile, eero, usage today), and the contextual action it would run (`Resume`, `Pause`) with its effect.
      - **Profiles**: avatar, name, state (`Paused`, `Scheduled`), context (time left, device count, schedule), and the action (`Resume`, `Pause now`).
      - A hint row: type `>` to search all commands by id (e.g. `>eero.restart`).
@@ -36,6 +37,7 @@ Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. 
 | Command list, labels, ids, effects, param schemas, descriptions | `window.mesh.commands()` (the registry) | once per app start |
 | Device results and context | `device.list` | cached from the app's normal poll; refetched if older than 60 s when the palette opens |
 | Profile results and context | `profile.list` | same |
+| eero results and context | `eero.list` | same |
 | Context hints in the params form | the same cached lists | live as params change |
 | Result count, scope counts | computed in the renderer from the above | per keystroke |
 
@@ -43,12 +45,12 @@ Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. 
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Type | none (view state) | | | Filters and ranks results: exact, then prefix, word start, substring and fuzzy (in order) label matches; every word must match. Device rows also match their profile and eero |
+| Type | none (view state) | | | Filters and ranks results: exact, then prefix, word start, substring and fuzzy (in order) label matches; every word must match. Device rows also match their profile and eero; eero rows also match their model |
 | Scope chip | none | | | Limits to one group |
 | `>` prefix | none | | | Command only mode, matches ids as well as labels |
 | Up / Down | none | | | Moves selection; preview follows |
 | Tab | none | | | Moves focus into the params form |
-| Enter or run button on a page, device or profile | none (navigation) | | | Palette closes and the page, device or profile page opens |
+| Enter or run button on a page, eero, device or profile | none (navigation) | | | Palette closes and the page, eero, device or profile page opens |
 | Enter or run button (query) | `window.mesh.execute(id, params)` | query | no | The result (or error) JSON shows in the preview; the palette stays open |
 | Enter or run button (write) | `window.mesh.execute(id, params)` through `useWrite` | write | no | Success toast ("Done: Pause device, Leo's iPad"), or an error toast with Retry; the result envelope shows in the preview and the palette stays open. A write whose opposite is a `write` in the registry (`.pause` and `.resume`, `.block` and `.unblock`, `.enable` and `.disable`) toasts with Undo, which runs the opposite with the same targets (a bulk device write undoes only the devices it changed, and offers no Undo when none changed); `features/palette/undo.ts` |
 | Enter or run button (disruptive) | `useWrite`: runs once without `confirm`, then `{...params, confirm: true}` after the confirm | disruptive | confirm dialog nested over the palette, with the engine's `needs_confirm` message | Progress toast, then success or error toast |
@@ -63,11 +65,11 @@ Commands shown in the mockup: `profile.pause`, `device.pause`, `wifi.hide5g.set`
 
 ## States
 
-- **Empty query:** commands run from the palette in this session first, then every command and every page. The palette reopens on the last query, scope and selection (the query selected, so typing replaces it).
-- **No results:** "No commands, devices or profiles match." plus the `>` hint.
-- **Loading entities:** command results show at once; device and profile groups show a muted "Loading..." row.
+- **Empty query:** commands run from the palette in this session first, then every command and every page (no eeros, devices or profiles). The palette reopens on the last query, scope and selection (the query selected, so typing replaces it).
+- **No results:** "No commands, eeros, devices or profiles match." plus the `>` hint.
+- **Loading entities:** command results show at once; eero, device and profile groups show a muted "Loading..." row.
 - **Invalid params:** the run button is disabled and the field shows the zod message (the same text `bad_params` returns).
-- **Not signed in:** only app and auth commands are listed (no pages, devices or profiles). The sign-in commands themselves (`auth.login.*`) are never listed; they need the sign-in screen.
+- **Not signed in:** only app and auth commands are listed (no pages, eeros, devices or profiles). The sign-in commands themselves (`auth.login.*`) are never listed; they need the sign-in screen.
 - **No permission:** writes the user cannot run (per `network.permissions`) are listed dimmed with the reason beside the effect tag and the run button, and Enter does nothing: "Owner only" for an admin (and for every `destructive` command when the user is not the owner), "You don't have permission to change this" otherwise. The permission area comes from the id's area (`device` is `devices`, `wifi` and `guest` are `settings`, ...) and the operation from the verb (`create`/`add`, `delete`/`remove` or destructive, else `update`); see `commandGate` in `features/palette/search.ts`.
 - **Capability missing or bridge mode:** writes unavailable on this network are dimmed with "Not available on this network" (a `network.get` capability such as `device_blacklist` for block, `led_action` for the status light) or "Off in bridge mode" (pause, block, profiles, reservations, forwards, SQM). The same `gateFor` check the pages use (`app/useWrite.ts`). The engine still has the last word when a command runs.
 - **Confirm pending:** moving to another result cancels it; nothing has run. The preview shows no "Running..." while the confirm waits; it shows once the person confirms.

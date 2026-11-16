@@ -1,12 +1,12 @@
 /**
  * The command palette (docs/ux/pages/command-palette.md, mockup 19): one
- * search over every registry command, page, device and profile, with a
+ * search over every registry command, page, eero, device and profile, with a
  * preview that shows the same call as a CLI line and an MCP tool call.
  *
  * Opened by the titlebar search or Ctrl K / Cmd K (`openPalette`). It is a
  * surface like the CLI: commands come from `window.mesh.commands()` and run
  * through `window.mesh.execute`; nothing here knows what a command does.
- * Pages, devices and profiles navigate. Queries run and show their result;
+ * Pages, eeros, devices and profiles navigate. Queries run and show their result;
  * writes run through the write kit (`useWrite`): a toast for `write`, and
  * for `disruptive` and `destructive` a confirm dialog nested over the
  * palette, all built from the registry by `writeRequest` with no per-command code. A
@@ -33,6 +33,7 @@ import {
   commandItems,
   defaultParams,
   deviceItems,
+  eeroItems,
   entityWrite,
   type Item,
   KINDS,
@@ -138,6 +139,7 @@ function PaletteBody({ close }: { close: () => void }) {
     return {
       commands: commandItems(cmds, ctx),
       pages: signedIn ? pageItems(ROUTES) : [],
+      eeros: signedIn ? eeroItems(eeros.data ?? null) : [],
       devices: signedIn ? withActions(deviceItems(devices.data?.devices ?? [], profiles.data ?? null, eeros.data ?? null), cmds, ctx) : [],
       profiles: signedIn ? withActions(profileItems(profiles.data ?? null), cmds, ctx) : [],
       recent,
@@ -214,6 +216,7 @@ function PaletteBody({ close }: { close: () => void }) {
   const runItem = async (target: Item | null) => {
     if (!target) return;
     if (target.kind === "page") return void (close(), navigate(target.path));
+    if (target.kind === "eero") return void (close(), navigate(pathFor("eero", { eeroId: target.id })));
     if (target.kind === "device") return void (close(), navigate(pathFor("device", { deviceId: target.id })));
     if (target.kind === "profile") return void (close(), navigate(pathFor("profile", { profileId: target.id })));
     if (target !== item || blocked !== null || busy) return; // rows other than the selected one run after being selected
@@ -302,7 +305,11 @@ function PaletteBody({ close }: { close: () => void }) {
     })),
   ];
 
-  const listLoading = { device: signedIn && devices.data === undefined, profile: signedIn && profiles.data === undefined };
+  const listLoading = {
+    eero: signedIn && eeros.data === undefined,
+    device: signedIn && devices.data === undefined,
+    profile: signedIn && profiles.data === undefined,
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -318,7 +325,7 @@ function PaletteBody({ close }: { close: () => void }) {
             setSelected(null);
           }}
           onKeyDown={onInputKey}
-          placeholder="Search commands, pages, devices and profiles"
+          placeholder="Search commands, pages, eeros, devices and profiles"
           aria-label="Search or run a command"
           role="combobox"
           aria-expanded
@@ -372,7 +379,7 @@ function PaletteBody({ close }: { close: () => void }) {
             else setSelected(key);
           }}
           loading={listLoading}
-          showLoading={result.mode === "text" && query.trim() !== "" && (scope === "all" || scope === "device" || scope === "profile")}
+          showLoading={result.mode === "text" && query.trim() !== "" && (scope === "all" || scope === "eero" || scope === "device" || scope === "profile")}
           commandCount={registry?.length ?? 0}
           empty={result.total === 0 && registry !== null}
         />
