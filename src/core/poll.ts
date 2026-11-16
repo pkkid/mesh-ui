@@ -104,6 +104,14 @@ export const BURST_COOLDOWN_SEC = 60;
 /** Device rates older than this are shown as missing. */
 export const RATES_STALE_SEC = 90;
 
+/**
+ * When a burst's figures land, counted from the POST. eero's `next_burst` is
+ * about the POST time itself (request log on a real network, 2026-11-16:
+ * reads timed from it all came too early and saw stale figures), so the
+ * burst is due at the later of the two.
+ */
+export const BURST_LEAD_SEC = 12;
+
 /** Extra wait after `next_burst` before devices are read again. */
 export const BURST_SETTLE_SEC = 2;
 

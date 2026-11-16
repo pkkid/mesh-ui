@@ -6,6 +6,7 @@ import { createEeroBackend } from "../eero/backend";
 import { deviceCategory, deviceName, mapDevice } from "../eero/map/device";
 import { createEngine } from "../engine";
 import type * as M from "../model";
+import { BURST_LEAD_SEC, burstReadTimes } from "../poll";
 import { commands as deviceCommands, summarize } from "./device";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
@@ -281,11 +282,11 @@ describe("device.rates.refresh (demo)", () => {
 // ---------------------------------------------------------------------------
 // Against the fake eero server, through the real client and mappers.
 
-function fakeEngine() {
+function fakeEngine(readShareMs = 0) {
   const fake = createFakeEero();
   const token = fake.signIn();
   const secrets: SecretStore = { load: async () => token, save: async () => "memory", clear: async () => {}, storage: async () => "memory" };
-  const live = createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch });
+  const live = createEeroBackend({ secrets, origin: fake.origin, fetch: fake.fetch, readShareMs });
   const auth: AuthState = { signedIn: true, pending: false, login: null, storage: "memory" };
   const summary = (id: string, name: string) => ({ id, name, nickname: null, role: "owner", status: "online", eeroCount: null, devicesOnline: null, isp: null, updateAvailable: null, lastSeen: null, selected: false }) as M.NetworkSummary;
   // Stub auth (no eero auth area yet) and network (keeps these tests to their own routes).
@@ -429,6 +430,33 @@ describe("device commands (fake eero server)", () => {
     // Without another burst, rates go missing 90 s after the last one.
     vi.setSystemTime(start + 73_000 + 91_000);
     expect((await list(engine, { limit: 1 })).summary.rates).toBeNull();
+  });
+
+  it("times a burst from the POST, since eero's next_burst is about now, and reads each live time from eero (#254)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const start = Date.parse("2026-11-12T18:00:00Z");
+    vi.setSystemTime(start);
+    // The app's client shares a GET answer for 5 s; reads in the live window must not take it.
+    const { fake, engine } = fakeEngine(5_000);
+    close = fake.close;
+    await list(engine);
+    const burst = await engine.execute<M.BurstResult>("device.rates.refresh");
+    // The fake answers next_burst = the POST time, as eero does; the burst is due when the figures land.
+    expect(burst).toEqual({ ok: true, result: { nextBurstAt: new Date(start + BURST_LEAD_SEC * 1000).toISOString() } });
+    const gets = () => fake.log.filter((e) => e.method === "GET" && e.path === "/2.2/networks/100001/devices").length;
+    const phone = (l: M.DeviceList) => l.devices.find((d) => d.name === "Alex's Phone")?.rates;
+    // Too early: nothing live yet.
+    vi.setSystemTime(start + 3_000);
+    expect(phone(await list(engine))).toBeNull();
+    const reads = burstReadTimes(start + BURST_LEAD_SEC * 1000);
+    const seen: (number | undefined)[] = [];
+    for (const at of reads) {
+      vi.setSystemTime(at);
+      const before = gets();
+      seen.push(phone(await list(engine))?.downMbps);
+      expect(gets()).toBe(before + 1);
+    }
+    expect(seen).toEqual([10, 11, 12]);
   });
 
   it("sorts by usage from the usage breakdown", async () => {
