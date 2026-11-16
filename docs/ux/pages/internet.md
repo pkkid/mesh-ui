@@ -13,7 +13,9 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 1. **Hero** (card). Left:
    - Title is a one-line verdict built in core from the latest tests and
      plan: "Ziply Fiber is fast and steady" (other forms: "Ziply Fiber is
-     slower than your plan", "Ziply Fiber is down").
+     slower than your plan", "Ziply Fiber is down", or just "Ziply Fiber"
+     when there is no test or no plan to compare with; "Internet" when
+     eero names no ISP).
    - Status line: Connected, "Gateway up 23 days, 4 hours · since Oct 20,
      9:41 AM".
    - Muted line: "Last test 2 hours ago hit 78% of your 1.2 Gbps plan".
