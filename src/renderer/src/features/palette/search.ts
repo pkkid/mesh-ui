@@ -64,12 +64,23 @@ export type ProfileItem = {
   actionEffect?: Effect;
 };
 
-export type Item = CommandItem | PageItem | DeviceItem | ProfileItem;
+export type EeroItem = {
+  kind: "eero";
+  key: string;
+  id: string;
+  /** The eero's location ("Basement"). */
+  label: string;
+  eero: Eero;
+  /** "eero Pro 7 · 4 devices". The status shows beside it as a dot. */
+  context: string;
+};
+
+export type Item = CommandItem | PageItem | EeroItem | DeviceItem | ProfileItem;
 export type Kind = Item["kind"];
 export type Scope = "all" | Kind;
 
 /** Group order in the result list and the scope chips. */
-export const KINDS: ReadonlyArray<Kind> = ["command", "page", "device", "profile"];
+export const KINDS: ReadonlyArray<Kind> = ["command", "page", "eero", "device", "profile"];
 
 export type CommandPreset = { id: string; label: string; params: Record<string, unknown> };
 
@@ -155,10 +166,19 @@ export function commandItems(
 }
 
 export function pageItems(routes: ReadonlyArray<{ id: string; path: string; title: string }>): PageItem[] {
-  // Detail routes need an id; the palette reaches them through device and profile rows.
+  // Detail routes need an id; the palette reaches them through eero, device and profile rows.
   return routes
     .filter((r) => !r.path.includes(":"))
     .map((r) => ({ kind: "page", key: `page:${r.id}`, label: r.title, path: r.path, routeId: r.id }));
+}
+
+export function eeroItems(eeros: ReadonlyArray<Eero> | null): EeroItem[] {
+  return (eeros ?? []).map((e) => {
+    const n = e.clients.total;
+    const devices = n === null ? null : `${n} ${n === 1 ? "device" : "devices"}`;
+    const context = [e.model, devices].filter(Boolean).join(" · ");
+    return { kind: "eero", key: `eero:${e.id}`, id: e.id, label: e.location, eero: e, context };
+  });
 }
 
 export function deviceItems(devices: ReadonlyArray<Device>, profiles: ProfileList | null, eeros: ReadonlyArray<Eero> | null): DeviceItem[] {
@@ -278,6 +298,8 @@ export type Hit = {
 export type Sources = {
   commands: ReadonlyArray<CommandItem>;
   pages: ReadonlyArray<PageItem>;
+  /** Optional so older callers and tests without eeros still work. */
+  eeros?: ReadonlyArray<EeroItem>;
   devices: ReadonlyArray<DeviceItem>;
   profiles: ReadonlyArray<ProfileItem>;
   /** Keys of recently run commands, newest first; shown on an empty query. */
@@ -297,7 +319,7 @@ export type SearchResult = {
 };
 
 /** Most rows a group shows under "All"; its own scope shows every match. */
-export const GROUP_LIMIT: Record<Kind, number> = { command: 50, page: 6, device: 5, profile: 5 };
+export const GROUP_LIMIT: Record<Kind, number> = { command: 50, page: 6, eero: 5, device: 5, profile: 5 };
 
 function rank(hits: Hit[]): Hit[] {
   return hits.sort((a, b) => b.score - a.score || a.item.label.localeCompare(b.item.label));
@@ -309,7 +331,7 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
   // `>` lists only commands, so a device or page scope falls back to All.
   const scope: Scope = mode === "id" && requested !== "command" ? "all" : requested;
   const q = mode === "id" ? trimmed.slice(1).trim() : trimmed;
-  const byKind: Record<Kind, Hit[]> = { command: [], page: [], device: [], profile: [] };
+  const byKind: Record<Kind, Hit[]> = { command: [], page: [], eero: [], device: [], profile: [] };
 
   if (mode === "id") {
     for (const item of sources.commands) {
@@ -345,6 +367,8 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
     };
     add("command", sources.commands);
     add("page", sources.pages);
+    // An eero matches its location, then (ranked lower) its model.
+    add("eero", sources.eeros ?? [], (i) => (i.kind === "eero" ? i.eero.model : null));
     add("device", sources.devices, (i) => (i.kind === "device" ? i.context : null));
     add("profile", sources.profiles);
   }
@@ -353,6 +377,7 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
   const counts: Record<Kind, number> = {
     command: byKind.command.length,
     page: mode === "id" ? 0 : byKind.page.length,
+    eero: mode === "id" ? 0 : byKind.eero.length,
     device: mode === "id" ? 0 : byKind.device.length,
     profile: mode === "id" ? 0 : byKind.profile.length,
   };
@@ -360,7 +385,7 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
     .filter((k) => scope === "all" || scope === k)
     .map((kind) => ({ kind, hits: scope === "all" ? byKind[kind].slice(0, GROUP_LIMIT[kind]) : byKind[kind] }))
     .filter((g) => g.hits.length > 0);
-  const total = scope === "all" ? counts.command + counts.page + counts.device + counts.profile : counts[scope];
+  const total = scope === "all" ? KINDS.reduce((sum, k) => sum + counts[k], 0) : counts[scope];
   return { mode, groups, counts, total, flat: groups.flatMap((g) => g.hits) };
 }
 

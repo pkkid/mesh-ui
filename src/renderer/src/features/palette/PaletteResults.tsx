@@ -1,6 +1,6 @@
 /**
  * The palette's result list (docs/ux/pages/command-palette.md#layout):
- * grouped rows for commands, pages, devices and profiles with the match
+ * grouped rows for commands, pages, eeros, devices and profiles with the match
  * highlighted, plus the shared bits the preview also uses (effect tag,
  * command icon, highlight).
  */
@@ -17,16 +17,24 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
+import { eeroIcon } from "~/components/mesh/Topology";
+import { Badge } from "~/components/ui/badge";
 import { IconTile } from "~/components/ui/hero";
-import { Status } from "~/components/ui/status";
+import { networkStatus, Status } from "~/components/ui/status";
 import { effectColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import type { Effect } from "../../../../core/model";
 import { type Hit, highlightParts, type Item, type Kind, type Range } from "./search";
 
-export const KIND_LABEL: Record<Kind, string> = { command: "Commands", page: "Pages", device: "Devices", profile: "Profiles" };
-export const KIND_ICON: Record<Kind, LucideIcon> = { command: Terminal, page: FileText, device: MonitorSmartphone, profile: Users };
+export const KIND_LABEL: Record<Kind, string> = { command: "Commands", page: "Pages", eero: "eeros", device: "Devices", profile: "Profiles" };
+export const KIND_ICON: Record<Kind, LucideIcon> = {
+  command: Terminal,
+  page: FileText,
+  eero: Router,
+  device: MonitorSmartphone,
+  profile: Users,
+};
 
 /** Fallback icons by command area when the spec names none. */
 const AREA_ICON: Record<string, LucideIcon> = {
@@ -71,6 +79,7 @@ export function commandIcon(id: string, icon: string | null): LucideIcon {
 
 export function itemIcon(item: Item): LucideIcon {
   if (item.kind === "command") return commandIcon(item.info.id, item.info.icon);
+  if (item.kind === "eero") return eeroIcon(item.eero);
   if (item.kind === "device") return deviceIcon(item.device);
   if (item.kind === "profile") return Users;
   return FileText;
@@ -132,8 +141,8 @@ type ResultsProps = {
   selectedKey: string | null;
   onSelect: (key: string) => void;
   onRun: (key: string) => void;
-  /** Device and profile groups are still loading. */
-  loading: { device: boolean; profile: boolean };
+  /** Eero, device and profile groups are still loading. */
+  loading: { eero: boolean; device: boolean; profile: boolean };
   showLoading: boolean;
   commandCount: number;
   empty: boolean;
@@ -149,12 +158,12 @@ export function PaletteResults({ groups, counts, selectedKey, onSelect, onRun, l
     el?.scrollIntoView({ block: "nearest" });
   }, [selectedKey]);
 
-  const loadingKinds = showLoading ? (["device", "profile"] as const).filter((k) => loading[k]) : [];
+  const loadingKinds = showLoading ? (["eero", "device", "profile"] as const).filter((k) => loading[k]) : [];
 
   return (
     <div ref={listRef} role="listbox" aria-label="Results" className="min-h-0 overflow-y-auto border-e px-2 pt-1.5 pb-2">
       {empty && (
-        <p className="px-2.5 pt-6 pb-2 text-center text-muted-foreground text-sm">No commands, devices or profiles match.</p>
+        <p className="px-2.5 pt-6 pb-2 text-center text-muted-foreground text-sm">No commands, eeros, devices or profiles match.</p>
       )}
       {groups.map((g) => {
         const Icon = KIND_ICON[g.kind];
@@ -240,6 +249,7 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
           <span className="truncate font-medium text-[13.5px]">
             <Highlight text={item.label} ranges={hit.ranges} />
           </span>
+          {item.kind === "eero" && <EeroBadges item={item} />}
           {"state" in item && item.state && (
             <Status tone={item.state === "Scheduled" ? "info" : item.state === "Offline" ? "muted" : "warning"}>{item.state}</Status>
           )}
@@ -265,5 +275,20 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
         )}
       </div>
     </div>
+  );
+}
+
+/** An eero's Gateway badge and status dot, beside its location in the row and the preview. */
+export function EeroBadges({ item }: { item: Extract<Item, { kind: "eero" }> }) {
+  const status = networkStatus(item.eero.status);
+  return (
+    <>
+      {item.eero.isGateway && (
+        <Badge variant="outline" className="shrink-0">
+          Gateway
+        </Badge>
+      )}
+      <Status tone={status.tone}>{status.label}</Status>
+    </>
   );
 }

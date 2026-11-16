@@ -13,7 +13,7 @@ import { IconTile } from "~/components/ui/hero";
 import { Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import type { ExecuteResult } from "../../../../core/errors";
-import { EffectTag, itemIcon, Keys } from "./PaletteResults";
+import { EeroBadges, EffectTag, itemIcon, Keys } from "./PaletteResults";
 import { type EntityOptions, ParamsForm } from "./ParamsForm";
 import { cliLine, type Item, mcpCall, mcpHints, needsConfirm, type ParamField, toolName } from "./search";
 
@@ -230,7 +230,7 @@ function EntityPreview({
   onAction: () => void;
   running: boolean;
 }) {
-  const what = item.kind === "page" ? "Page" : item.kind === "device" ? "Device" : "Profile";
+  const what = item.kind === "page" ? "Page" : item.kind === "eero" ? "eero" : item.kind === "device" ? "Device" : "Profile";
   return (
     <>
       <div className="flex items-start gap-3">
@@ -238,6 +238,7 @@ function EntityPreview({
         <div className="min-w-0 grow">
           <div className="flex items-center gap-2">
           <span className="truncate font-semibold text-base">{item.label}</span>
+          {item.kind === "eero" && <EeroBadges item={item} />}
           {"state" in item && item.state && (
             <Status tone={item.state === "Scheduled" ? "info" : item.state === "Offline" ? "muted" : "warning"}>{item.state}</Status>
           )}
