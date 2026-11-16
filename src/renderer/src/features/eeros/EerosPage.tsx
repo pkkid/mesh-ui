@@ -109,7 +109,7 @@ export function EerosPage(_props: PageProps) {
           <SectionError what="eeros" error={eeros.error} onRetry={() => void eeros.refetch()} />
         ) : (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
-            {topoView === "map" ? <Topology {...topology} wiredChip={networkOffline ? null : wiredChip} /> : <TopologyTree {...topology} />}
+            {topoView === "map" ? <Topology {...topology} interactive wiredChip={networkOffline ? null : wiredChip} /> : <TopologyTree {...topology} />}
             <div className="flex flex-col gap-3">
               <WeakLinkNote issue={issue} eeros={list} networkName={network.data?.name ?? "This network"} lastSeen={lastSeen} />
               {selected && <SelectedEero eero={selected} eeros={list} />}
