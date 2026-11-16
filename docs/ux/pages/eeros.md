@@ -23,6 +23,12 @@ Sidebar count: number of eeros.
      muted outline. A small chip under the gateway summarises wired clients
      ("3 wired: NAS, PS5, Hue Bridge"). Legend bottom left (Wired, Good 3 to 5
      bars, Weak, Poor) and "Dashed lines are wireless backhaul" bottom right.
+     The drawing is centred in the card. Zoom and pan: small **-**, **+**
+     and **Fit** buttons top right; Ctrl or Cmd + scroll and trackpad pinch
+     zoom about the pointer (plain scroll still scrolls the page); dragging
+     the background (or a node) pans, and a click that did not move still
+     selects; with the map focused, `+`, `-` and `0` (Fit). Zoom runs 50% to
+     200%. Fit is the default and what the button and `0` return to.
    - **Tree** view (toggle): the same data as an indented list: eero,
      backhaul, bars, downstream eeros.
    - Right column (330 px):
@@ -148,8 +154,17 @@ Sidebar count: number of eeros.
 ## Notes
 
 - Topology layout (columns by hop, vertical spread, link label positions) is
-  view code in `components/`; the graph itself (who is upstream of whom,
-  quality words from bars) comes from `eero.list` and core mapping. Quality
+  view code in `components/`. Columns sit a fixed step apart (at most 30% of
+  the width, so a small mesh does not stretch across the card); once placed,
+  the whole drawing (nodes with their labels, the Internet node and the
+  wired chip) is shifted so its box is centred both ways. Fit scales that
+  box into the card above the legend with padding, shrinking a large mesh
+  (down to 50%) but never enlarging a small one past 100%. Zoom and pan is
+  one CSS `translate() scale()` on a layer holding both the nodes (HTML, in
+  percent) and the links (SVG, `viewBox 0 0 100 100`), so they stay in step.
+  It is opt-in (`interactive`), on only for this page's Map. The graph
+  itself (who is upstream of whom, quality words from bars) comes from
+  `eero.list` and core mapping. Quality
   words: 4 to 5 bars Excellent, 3 Good, 2 Weak, 0 to 1 Poor.
 - `eero.find` maps to `POST /2.2/eeros/{serial}/led_cycle` (form
   `colors[]=blue&colors[]=white&duration=30&time_per_color=1`; the eero id
