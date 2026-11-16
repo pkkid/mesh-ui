@@ -11,22 +11,33 @@ Wi-Fi**. Sidebar count: all known devices (38).
 
 ## Layout
 
-1. **Summary strip**: one card split into three cells by 1px rules.
-   - **By type**: a 96px donut, 13px thick, with "38 devices" in the middle (straight segment ends with a
-     small gap, its top level with the "BY TYPE" label) and an 11rem list of
+1. **Hero**: the page header, one card at hero weight (`--hero-radius`,
+   24px by 22px padding) split into three cells by 1px rules. Each cell has
+   a small uppercase label and leads with a key figure in `text-4xl
+   font-semibold tabular-nums` (#248). The layout follows the hero's own
+   width (container queries): three columns when wide (`auto 0.85fr
+   1.15fr`); at the default 1200px window, Devices on the left with
+   Throughput now over New this week on the right; one column when narrow.
+   - **Devices**: "38" (every known device, `summary.total`) with "31
+     online" and "3 paused · 2 blocked" in muted `text-xs` under it, then
+     the By type donut and legend: a 96px donut with "38 devices" in the
+     middle (straight segment ends with a small gap) and an 11rem list of
      device counts and their share: Phones & tablets "12 · 32%", Computers
      "7 · 18%", Entertainment "6 · 16%", Smart home "10 · 26%", Other
      "3 · 8%", each with its colour square (count in `font-medium`, percent
      muted, from the total of the counts). The cell takes only the width it
-     needs (`auto 1fr 1.2fr`). Hovering a segment dims the others and shows
-     "Phones & tablets · 12 devices · 32%" in a tooltip that follows the pointer, and highlights its legend
-     row; hovering a legend row does the same to the ring.
-   - **Throughput now**: "186 Mbps down", "24 Mbps up · 14 devices active",
-     a band insight ("6 GHz carries 41% of traffic with 19% of devices") and
-     "Sum of current device rates, refreshed every minute".
-   - **New this week** with the count (3): up to three devices with icon,
-     name and a muted line ("48 min ago · Living Room", "Tue · Living Room",
-     "Mon · blocked" in destructive text).
+     needs. Hovering a segment dims the others and shows
+     "Phones & tablets · 12 devices · 32%" in a tooltip that follows the
+     pointer, and highlights its legend row; hovering a legend row does the
+     same to the ring.
+   - **Throughput now**: "186" with "Mbps down", then "24 Mbps up · 14
+     devices active", a band insight ("6 GHz carries 41% of traffic with
+     19% of devices") and "Sum of current device rates, refreshed every
+     minute".
+   - **New this week**: the count ("3") beside up to three devices with
+     icon, name and a muted line ("48 min ago · Living Room", "Tue · Living
+     Room", "Mon · blocked" in destructive text), or "No new devices this
+     week."
 2. **Toolbar**, one row:
    - Search field "Search devices" (tooltip: name, manufacturer, MAC or IP)
      with a `/` hint. It grows up to 300px.
@@ -102,7 +113,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 
 ## States
 
-- **Loading.** Summary cells with `-`; toolbar and Filters popover render
+- **Loading.** Hero figures and cells with `-`; toolbar and Filters popover render
   with counts `-`; table shows blank rows at normal height. On refresh, the "Now" column
   fades to 40% while a burst is pending (about 12 s).
 - **Empty.** A filter with no matches: one muted sentence in the table body,
@@ -122,7 +133,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
   `-`. Burst reporter unsupported: "Now" column and Throughput now hidden.
 - **Bridge mode.** Pause, Resume, Block, Assign profile and the Profile
   column are hidden; "Now" column and Throughput now hidden; the bridge note
-  sits above the summary. The list, search and filters still work.
+  sits above the hero. The list, search and filters still work.
 - **Guest devices.** Tagged GUEST; on the Guest segment the bulk bar offers
   only Block (pause and profiles do not apply to guests).
 
