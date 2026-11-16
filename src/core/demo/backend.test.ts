@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BackendError, partialArea, type UsageQuery, WRITE_METHODS } from "../backend";
 import { createEeroBackend } from "../eero/backend";
-import { DEVICE_TYPE_IDS, deviceCategory } from "../eero/map/device";
+import { classifyDevice, DEVICE_TYPE_IDS } from "../eero/map/device";
 import { RateLimiter } from "../eero/ratelimit";
 import { createEngine } from "../engine";
 import type * as M from "../model";
@@ -42,7 +42,7 @@ describe("demo fixtures", () => {
     for (const n of createFixtures(NOW).networks) {
       for (const d of n.devices) {
         expect(known.has(d.type), `${d.name}: ${d.type}`).toBe(true);
-        expect(d.category, d.name).toBe(deviceCategory(d.type));
+        expect({ inferredType: d.inferredType, category: d.category }, d.name).toEqual(classifyDevice(d.type, d));
       }
     }
   });
@@ -143,7 +143,7 @@ describe("devices", () => {
     const byBand = (band: M.Band) => count(online, (d) => d.band === band);
     expect([byBand("wired"), byBand("2.4"), byBand("5"), byBand("6")]).toEqual([4, 11, 10, 6]);
     const byCat = (c: M.DeviceCategory) => count(devices, (d) => d.category === c);
-    expect([byCat("phones_tablets"), byCat("computers"), byCat("entertainment"), byCat("smart_home"), byCat("other")]).toEqual([12, 7, 6, 10, 3]);
+    expect([byCat("phones_tablets"), byCat("computers"), byCat("entertainment"), byCat("smart_home"), byCat("other")]).toEqual([13, 7, 6, 11, 1]);
     const weekAgo = NOW - 7 * 24 * HOUR;
     expect(devices.filter((d) => d.firstSeen && Date.parse(d.firstSeen) > weekAgo).map((d) => d.name)).toEqual(["Grandma's iPad", "Nest Thermostat", "ESP_3A9F21"]);
     expect(devices.filter((d) => d.ssid === "guest").map((d) => d.name)).toEqual(["Grandma's iPad", "Sam's Pixel"]);

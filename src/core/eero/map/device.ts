@@ -6,6 +6,7 @@
 import type * as M from "../../model";
 import { type RawDevice, linkUrl } from "../raw";
 import { compactMac, idFromUrl } from "../urls";
+import { inferDevice } from "./deviceInfer";
 
 type RateInfo = { rate_bps?: number; channel_width?: string | number; phy_type?: string };
 
@@ -110,6 +111,21 @@ export function deviceCategory(type: string | null | undefined): M.DeviceCategor
   return (type && CATEGORY[type]) || "other";
 }
 
+/**
+ * The guessed type and the category for a device. A guess (deviceInfer.ts)
+ * is made only when eero's type is `generic`; any other type, including one
+ * a person set, wins. Shared by the eero mapper and the demo backend.
+ */
+export function classifyDevice(
+  type: string,
+  d: { model?: string | null; hostname?: string | null; manufacturer?: string | null },
+): Pick<M.Device, "inferredType" | "category"> {
+  const guess = type === "generic" ? inferDevice(d) : null;
+  if (!guess) return { inferredType: null, category: deviceCategory(type) };
+  if ("type" in guess) return { inferredType: guess.type, category: deviceCategory(guess.type) };
+  return { inferredType: null, category: guess.category };
+}
+
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
@@ -186,6 +202,7 @@ export function mapDevice(raw: RawDeviceFull, opts: { blocked?: boolean; ratesAt
   const ratesAt = opts.ratesAt ?? null;
   const profileUrl = linkUrl(raw.profile?.url);
   const kind = str(raw.subnet_kind)?.toLowerCase();
+  const type = str(raw.device_type) ?? "generic";
   return {
     id,
     name: deviceName(raw),
@@ -193,8 +210,8 @@ export function mapDevice(raw: RawDeviceFull, opts: { blocked?: boolean; ratesAt
     hostname: str(raw.hostname),
     manufacturer: str(raw.manufacturer),
     model: str(raw.model_name),
-    type: str(raw.device_type) ?? "generic",
-    category: deviceCategory(str(raw.device_type)),
+    type,
+    ...classifyDevice(type, { model: raw.model_name, hostname: raw.hostname, manufacturer: raw.manufacturer }),
     mac,
     privateMac: raw.is_private === true,
     ipv4: str(raw.ipv4) ?? str(raw.ip) ?? str(raw.ips?.[0]),

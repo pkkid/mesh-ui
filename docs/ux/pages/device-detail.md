@@ -140,9 +140,10 @@ capability and permission checks of the write stories.
 - Nickname max is 32 characters (shown in the sheet). `device.rename` with
   an empty nickname clears it, so the device follows its hostname again.
 - The 32 icons in the type grid map to eero's `device_type` values in core
-  (`DEVICE_TYPES`); the grid order is fixed so muscle memory holds. Types
-  that share a category share an icon until `lib/deviceIcons.ts` maps
-  eero's type names, so each tile carries its label.
+  (`DEVICE_TYPES`); the grid order is fixed so muscle memory holds. Each
+  tile carries its label. The grid selects eero's `type`, so a `generic`
+  device has Other selected even when its icon shows core's guess
+  (`inferredType`). Picking a type drops the guess.
 - Device writes use `/2.3/` (`/2.2/` returns 200 and drops the change).
 - Unblocking from the mockup's copy points to "Devices > Blocked"; the
   Blocked group on Devices is that place.

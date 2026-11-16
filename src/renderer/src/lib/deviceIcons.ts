@@ -4,8 +4,9 @@
  * every page that shows an eero uses `eeroIcon`, so a thing looks the same
  * everywhere. Do not map devices or eeros to icons anywhere else.
  *
- * Amazon Echos are recognised by their model name before the device type,
- * since eero reports most of them as `generic`. The product glyphs live in
+ * eero reports most devices as `generic`. Core guesses a type for those from
+ * the model, hostname or manufacturer (`Device.inferredType`), and the icon
+ * uses that guess. Amazon Echos are recognised by their model name first. The product glyphs live in
  * `productIcons.ts`; the full product list is in
  * docs/design/design-system.md#product-icons.
  */
@@ -21,7 +22,6 @@ import {
   Car,
   Cast,
   Cctv,
-  CircleHelp,
   Coffee,
   Computer,
   CookingPot,
@@ -37,6 +37,7 @@ import {
   type LucideIcon,
   Mic,
   Monitor,
+  MonitorSmartphone,
   Network,
   PawPrint,
   Phone,
@@ -132,7 +133,8 @@ const CATEGORY_ICONS: Record<DeviceCategory, LucideIcon> = {
   computers: Laptop,
   entertainment: Tv,
   smart_home: House,
-  other: CircleHelp,
+  // A neutral device, not a question mark: "we don't know" is not an error.
+  other: MonitorSmartphone,
 };
 
 /**
@@ -201,8 +203,11 @@ export function echoIcon(model: string | null | undefined): LucideIcon | null {
   return EchoSphere;
 }
 
-/** The icon for a device: an Echo by its model, else by type, then category; generic when the device is not known (yet). */
-export function deviceIcon(d: (Pick<Device, "type" | "category"> & Partial<Pick<Device, "model">>) | null | undefined): LucideIcon {
-  if (!d) return CircleHelp;
-  return echoIcon(d.model) ?? TYPE_ICONS[d.type] ?? CATEGORY_ICONS[d.category] ?? CircleHelp;
+/**
+ * The icon for a device: an Echo by its model, else by eero's type or the
+ * guessed one, then the category; a neutral device when it is not known (yet).
+ */
+export function deviceIcon(d: (Pick<Device, "type" | "category"> & Partial<Pick<Device, "model" | "inferredType">>) | null | undefined): LucideIcon {
+  if (!d) return CATEGORY_ICONS.other;
+  return echoIcon(d.model) ?? TYPE_ICONS[d.type] ?? (d.inferredType ? TYPE_ICONS[d.inferredType] : undefined) ?? CATEGORY_ICONS[d.category] ?? CATEGORY_ICONS.other;
 }

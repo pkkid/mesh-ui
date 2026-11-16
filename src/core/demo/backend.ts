@@ -26,7 +26,7 @@
 
 import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type EventChunk, type NotificationChunk, type SpeedTestQuery, type UsageQuery, BackendError } from "../backend";
 import { INVERSE_PORT_ACTION, portSummary } from "../model";
-import { deviceCategory } from "../eero/map/device";
+import { classifyDevice } from "../eero/map/device";
 import { mapLan } from "../eero/map/routing";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
@@ -917,7 +917,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       setType: (id, deviceId, type) =>
         changeDevice(id, deviceId, (d) => {
           d.type = type;
-          d.category = deviceCategory(type);
+          Object.assign(d, classifyDevice(type, d));
         }),
       setProfile: (id, deviceId, profileId) =>
         changeDevice(id, deviceId, (d, data) => {
