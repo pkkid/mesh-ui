@@ -1,6 +1,7 @@
 /**
- * Activity "Events by type" chart: stacked columns per day (or per hour) by
- * event category, from `events.summary`. Also home to the category labels,
+ * Activity "Events by type" chart: stacked columns by event category, from
+ * `events.summary`: per day or hour, or (range kept) per step sized to the
+ * span of kept events, growing to fill its card (`fill`). Also home to the category labels,
  * icons and colours every part of the page shares (legend, chart, rows).
  * docs/ux/pages/activity.md (Layout 1).
  */
@@ -28,14 +29,14 @@ export type CategoryMeta = { label: string; icon: LucideIcon; color: string };
 
 /** Label, icon and colour per event category; colours come from chartColors.ts. */
 export const CATEGORIES: Readonly<Record<EventCategory, CategoryMeta>> = {
-  devices: { label: "Devices joined / left", icon: Smartphone, color: eventCategoryColors.devices },
+  devices: { label: "Devices", icon: Smartphone, color: eventCategoryColors.devices },
   pause_block: { label: "Paused / blocked", icon: PauseCircle, color: eventCategoryColors.pause_block },
   schedules: { label: "Schedules", icon: CalendarClock, color: eventCategoryColors.schedules },
   eero_status: { label: "eero status", icon: Router, color: eventCategoryColors.eero_status },
   speed_tests: { label: "Speed tests", icon: Gauge, color: eventCategoryColors.speed_tests },
   firmware: { label: "Firmware", icon: Download, color: eventCategoryColors.firmware },
   admin: { label: "Admin actions", icon: ShieldCheck, color: eventCategoryColors.admin },
-  ports_temperature: { label: "Ports & temperature", icon: Cable, color: eventCategoryColors.ports_temperature },
+  ports_temperature: { label: "Ports & temp", icon: Cable, color: eventCategoryColors.ports_temperature },
   other: { label: "Other", icon: Bell, color: eventCategoryColors.other },
 };
 
@@ -46,14 +47,19 @@ export function ActivityChart({
   hidden,
   timeZone,
   loading,
+  fill = false,
 }: {
   summary: EventSummary | undefined;
   hidden: ReadonlySet<EventCategory>;
   timeZone: string;
   loading: boolean;
+  /** Grow into the card's leftover height (at least h-32). */
+  fill?: boolean;
 }) {
   const clock = networkClock(timeZone);
   const hourly = summary?.bucket === "hour";
+  const minutes = summary?.bucket === "minutes";
+  const stepMs = (summary?.step ?? 60) * 60_000;
   const { series, labels, tips } = useMemo(() => {
     const buckets = summary?.buckets ?? [];
     // Largest series first, so small ones sit on top of the stack.
@@ -66,10 +72,12 @@ export function ActivityChart({
       color: CATEGORIES[c].color,
       values: buckets.map((b) => b.counts[c]),
     }));
-    const labels = buckets.map((b) => (hourly ? clock.hour(b.at) : clock.weekday(b.at)));
-    const tips = buckets.map((b) => (hourly ? `${clock.day(b.at)}, ${clock.hour(b.at)}` : clock.day(b.at)));
+    const labels = buckets.map((b) => (minutes ? clock.time(b.at) : hourly ? clock.hour(b.at) : clock.weekday(b.at)));
+    const tips = buckets.map((b) =>
+      minutes ? `${clock.time(b.at)} to ${clock.time(Date.parse(b.at) + stepMs)}` : hourly ? `${clock.day(b.at)}, ${clock.hour(b.at)}` : clock.day(b.at),
+    );
     return { series, labels, tips };
-  }, [summary, hidden, hourly, clock]);
+  }, [summary, hidden, hourly, minutes, stepMs, clock]);
 
   return (
     <BarChart
@@ -77,10 +85,24 @@ export function ActivityChart({
       labels={labels}
       tooltipLabels={tips}
       format={(v) => formatCount(Math.round(v))}
-      ariaLabel={hourly ? "Events per hour by type, last 24 hours" : "Events per day by type, last 7 days"}
+      ariaLabel={
+        minutes
+          ? `Events by type, every ${stepLabel(summary?.step ?? 1)}, since ${clock.time(summary?.from ?? Date.now())}`
+          : hourly
+            ? "Events per hour by type, last 24 hours"
+            : "Events per day by type, last 7 days"
+      }
       total
       loading={loading}
-      heightClassName="h-56"
+      fill={fill}
+      emptyText="No events yet."
+      heightClassName={fill ? "min-h-32" : "h-56"}
     />
   );
+}
+
+/** "5 minutes", "1 hour", "2 hours": the bucket step in words. */
+export function stepLabel(step: number): string {
+  if (step % 60 === 0) return step === 60 ? "1 hour" : `${step / 60} hours`;
+  return step === 1 ? "1 minute" : `${step} minutes`;
 }

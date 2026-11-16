@@ -50,9 +50,8 @@ type Day = { key: string; label: string; sub: string; strip: number[] | null; ro
 
 /**
  * Splits rows into days by their date in the network time zone. A day's
- * count and per hour strip come from the last-24-hours summary, so only the
- * hours it covers show (today, and the end of yesterday); older days get the
- * date alone.
+ * count and strip come from the kept-events summary's buckets on that day;
+ * a day it does not cover gets the date alone.
  */
 export function splitDays(rows: ReadonlyArray<NetworkEvent>, hours: EventSummary | undefined, clock: Clock, now = hours ? Date.parse(hours.to) : Date.now()): Day[] {
   const today = clock.day(now);
@@ -381,7 +380,7 @@ export function EventStream({
 }: {
   /** undefined while the first page loads. */
   rows: ReadonlyArray<NetworkEvent> | undefined;
-  /** events.summary for the last 24 hours, per hour: the day bars' counts and strips. */
+  /** events.summary {range: "kept"}: the day bars' counts and strips. */
   hours: EventSummary | undefined;
   clock: Clock;
   loading: boolean;
@@ -424,7 +423,7 @@ export function EventStream({
                   <Sparkline
                     values={d.strip}
                     color={seriesColors.neutral}
-                    ariaLabel={`Events per hour, ${d.label}`}
+                    ariaLabel={`Events over time, ${d.label}`}
                     dot={false}
                     className="ms-auto h-5 w-full max-w-72"
                   />

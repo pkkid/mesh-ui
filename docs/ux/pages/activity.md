@@ -10,10 +10,10 @@ Shared patterns (shell, section cards, status dots, charts, confirms, polling) a
 
 Titlebar: title "Activity", **Export CSV** button on the right of the titlebar actions, then the global search and bell.
 
-1. **Events by type** (section, sub line `Stacked per hour, last 24 hours · pick types to filter the stream`, no header controls).
-   - Left column: hero figure (`42 events`, the last 24 hours) with a muted line under it saying how far back the kept events reach: `Since 9:41 AM` (`Since Nov 15, 9:41 AM` on an earlier day; `Last 24 hours` once they reach past the window). It comes from `events.summary` `earliest`.
-   - Under it, the type legend. One row per event type: colour square, icon, label, count, share percent. Types: Devices joined / left, Paused / blocked, Schedules, eero status, Speed tests, Firmware, Admin actions, Ports & temperature. The legend doubles as the type filter: clicking a row toggles that type in the chart and the stream below.
-   - Right: stacked bar chart, one bar per hour for the last 24 hours, one segment colour per type (`eventCategoryColors` in `lib/chartColors.ts`, hues from the theme series palette; see [design system](../../design/design-system.md#series-colours)).
+1. **Events by type** (section, sub line `Since 9:41 AM · per 5 minutes · pick a type or a device to filter the stream`, no header controls). Two cards side by side, 50/50 (stacked on narrow windows), the same height:
+   - Left card, compact hero ([design system](../../design/design-system.md)): `58` (`text-2xl`) with `events · last 58 min` beside it, then a share bar of the types filling the rest of the line. Under it the type legend as wrapping chips (colour square, label, count): usually one line, two with all 8 types. The chips double as the type filter: clicking one toggles that type in the chart and the stream (struck through while hidden). Labels are short (Devices, Paused / blocked, Schedules, eero status, Speed tests, Firmware, Admin actions, Ports & temp).
+   - Under the legend, the stacked bar chart fills the card's leftover height (at least `h-32`), so a one-line legend gives a taller chart. It covers only the kept events: from the oldest kept event (at least 15 minutes back, at most 24 hours) to now, in about 12 bars whose step fits that span (1, 2, 5, 10, 15 or 30 minutes, 1 or 2 hours). Hover shows the slice (`10:15 to 10:20 AM`) with one row per type and a total. One segment colour per type (`eventCategoryColors` in `lib/chartColors.ts`, hues from the theme series palette; see [design system](../../design/design-system.md#series-colours)).
+   - Right card, **Most active**: a breakdown table of the 4 devices, eeros and profiles with the most kept events (name, with `eero` or `profile` after it; a 2px bar in the colour of its main event type, scaled to the top row; event count; last event, relative), then `+ 20 more` when others have events. Clicking a row filters the stream (and the summary) to it, as the Filters popover would; clicking it again clears that filter. Events are matched to names the way stream rows are linked (below).
 2. **Filter bar**, the shared list-page filter bar ([design system](../../design/design-system.md#filter-bar)), no card, as on Devices:
    - Left: search ("Filter events", `/` focuses it, Esc clears it) and a **Filters** button with a count of the popover filters that are set. Its popover has a row each for **Device**, **eero** and **Profile** (each "Any" by default), and a footer "2 filters set" with **Clear all**. The Device list is long, so its picker has a type-ahead field (Enter picks the first match).
    - No Range dropdown: the stream is live, so there is no older window to pick.
@@ -47,10 +47,11 @@ Row actions shown in the mockup:
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Hero total and "since" line | `events.summary` `{range: "day", bucket: "hour", device?, eero?, profile?}` (`total`, `earliest`) | on load, then with the stream poll |
-| Type legend counts and shares | `events.summary` (same call) | same |
-| Events by type chart | the same call | same |
-| Day bar counts and hourly strip | the same call's hour buckets | same |
+| Hero total, span and "since" sub line | `events.summary` `{range: "kept", device?, eero?, profile?}` (`total`, `earliest`, `step`) | on load, then with the stream poll |
+| Share bar and legend chips | `events.summary` (same call, `counts`) | same |
+| Events by type chart | the same call (`buckets`) | same |
+| Most active | the same call (`top`, `topMore`) | same |
+| Day bar counts and strip | the same call's buckets on that day | same |
 | Event stream rows | `events.list` `{cursor?, type?, device?, eero?, profile?, search?, grouped}` | every 60 s while the page is visible |
 | Unread marker | `notifications.list` (`unread`, network-wide; the bell's poll) | every 60 s |
 | Device, eero, profile filter options | `device.list`, `eero.list`, `profile.list` | on open of the page |

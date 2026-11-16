@@ -732,8 +732,22 @@ export type EventPage = {
   counts: Record<EventCategory, number>;
 };
 
-export type EventSummaryRange = "day" | "week";
-export type EventBucket = "hour" | "day";
+/** day: the last 24 hours; week: the last 7 days; kept: what the backend has kept, at most 24 hours (eero sends only its last ~15 minutes). */
+export type EventSummaryRange = "day" | "week" | "kept";
+/** minutes: a step picked from the span (range kept), in `step`. */
+export type EventBucket = "hour" | "day" | "minutes";
+
+/** One device, eero or profile in the Activity "Most active" list. */
+export type EventTopEntity = {
+  kind: "device" | "eero" | "profile";
+  id: Id;
+  name: string;
+  count: number;
+  /** Its newest event. */
+  last: Iso;
+  /** The category most of its events have: the colour of its bar. */
+  category: EventCategory;
+};
 
 /** `events.summary`: totals for the Activity hero, legend and chart. */
 export type EventSummary = {
@@ -758,6 +772,12 @@ export type EventSummary = {
    * log reaches, so the Activity hero says "since 9:41 AM".
    */
   earliest: Iso | null;
+  /** Bucket length in minutes: 60 for hour, 1440 for day, picked from the span for range kept. */
+  step: number;
+  /** Range kept only: the devices, eeros and profiles with the most events (at most 4), most first. */
+  top?: EventTopEntity[];
+  /** Range kept only: how many more devices, eeros and profiles have events. */
+  topMore?: number;
   /** The page budget ran out before the window start, so counts are a lower bound. */
   partial: boolean;
 };

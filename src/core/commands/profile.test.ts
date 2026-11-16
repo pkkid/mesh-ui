@@ -827,6 +827,11 @@ describe("scheduled pauses (fake eero server)", () => {
   });
 
   it("reads the new schedule back from the profile when eero answers without it", async () => {
+    // Midday on a Wednesday, so the Monday 13:00 to 14:00 schedule never covers "now" (that would need confirm).
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-18T12:00:00-05:00") });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     const { fake, engine } = start({
       routes: [
         {
