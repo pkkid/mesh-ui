@@ -227,7 +227,11 @@ building a new chart; port from them rather than inventing a style.
 - **Hero.** The key figure is `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   `18rem` column lists each series: colour dot, icon, label, value on the
-  right in `font-medium`, and a muted share line below.
+  right in `font-medium`, and a muted share line below. **Compact hero**
+  (Activity, where the summary shares a row with a table): the figure is
+  `text-2xl` with its muted line beside it and a share bar filling the rest
+  of the line, and the series legend is wrapping chips (`size-2` square,
+  muted label, value) under it, so the chart below gets the card's height.
 - **Metric row.** A grid (2 columns, 5 on wide) of label (`text-xs
   text-muted-foreground`) over value (`text-base font-medium tabular-nums`).
 - **Stat tiles** (status and diagnostics): icon plus label in `text-3xs

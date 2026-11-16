@@ -42,6 +42,18 @@ export const MAX_CSV_ROWS = 1000;
 /** Seconds a summary is kept; the Activity page polls it with the stream. */
 export const SUMMARY_TTL = 120;
 
+/** Bucket steps (minutes) range kept picks from: the smallest that gives at most KEPT_BARS bars. */
+export const KEPT_STEPS = [1, 2, 5, 10, 15, 30, 60, 120] as const;
+
+/** About how many bars range kept charts. */
+export const KEPT_BARS = 12;
+
+/** The shortest span range kept shows (eero's own window), so a new session still has a few bars. */
+const KEPT_MIN_MS = 15 * 60_000;
+
+/** How many devices, eeros and profiles range kept lists in `top`. */
+export const KEPT_TOP = 4;
+
 /** Events of the same type and title within this long of each other fold into one row. */
 export const GROUP_WINDOW_MS = 60 * 60_000;
 
@@ -332,8 +344,12 @@ const eventsSummary = defineCommand({
     "Event totals for the last day or week: total, daily average, change against the same length of time before it (null when history does not reach that far), counts per category and per hour or day bucket in the network time zone.",
   icon: "activity",
   params: z.object({
-    range: z.enum(["day", "week"]).describe("day: the last 24 hours; week: the last 7 days, today included."),
-    bucket: z.enum(["hour", "day"]).optional().describe("Bucket size. Default hour for day, day for week."),
+    range: z
+      .enum(["day", "week", "kept"])
+      .describe(
+        "day: the last 24 hours; week: the last 7 days, today included; kept: the events kept so far (eero sends only its last ~15 minutes, so the backend keeps what it reads), at most 24 hours, in about 12 buckets sized to that span, with the most active devices, eeros and profiles.",
+      ),
+    bucket: z.enum(["hour", "day"]).optional().describe("Bucket size. Default hour for day, day for week. Ignored for kept."),
     type: z.array(z.enum(EVENT_CATEGORIES)).min(1).optional().describe("Only these categories."),
     device: ref("device").optional(),
     eero: ref("eero").optional(),
@@ -344,9 +360,10 @@ const eventsSummary = defineCommand({
   ttl: SUMMARY_TTL,
   poll: POLL.events,
   async run(ctx, p): Promise<M.EventSummary> {
-    const bucket: M.EventBucket = p.bucket ?? (p.range === "day" ? "hour" : "day");
     const tz = (await ctx.backend.network.get(ctx.net)).timezone ?? "UTC";
     const filter = await eventFilter(ctx, p);
+    if (p.range === "kept") return keptSummary(ctx, filter, tz);
+    const bucket: M.EventBucket = p.bucket ?? (p.range === "day" ? "hour" : "day");
     const to = ctx.now();
     const from = p.range === "day" ? hourStart(to, tz) - 23 * HOUR : dayStart(to - 6 * 24 * HOUR, tz);
     const priorFrom = from - (to - from);
@@ -413,9 +430,110 @@ const eventsSummary = defineCommand({
       counts,
       buckets,
       earliest: earliest === null ? null : new Date(earliest).toISOString(),
+      step: bucket === "hour" ? 60 : 24 * 60,
       partial,
     };
   },
 });
+
+/**
+ * events.summary {range: "kept"}: every kept event of the last 24 hours, in
+ * about KEPT_BARS buckets whose step fits the span from the oldest kept event
+ * (at least KEPT_MIN_MS) to now, plus the devices, eeros and profiles with
+ * the most events (refs, or the name in the title as on events.list).
+ */
+async function keptSummary(ctx: CommandContext, filter: (e: M.NetworkEvent) => boolean, tz: string): Promise<M.EventSummary> {
+  const to = ctx.now();
+  const limit = to - 24 * HOUR;
+  const kept: M.NetworkEvent[] = [];
+  let earliest: number | null = null;
+  let partial = false;
+  let cursor: string | null = null;
+  scan: for (let pages = 1; ; pages++) {
+    const chunk = await ctx.backend.events.list(ctx.net, cursor);
+    for (const e of chunk.events) {
+      const at = Date.parse(e.at);
+      if (at > to) continue;
+      if (at < limit) break scan;
+      earliest = earliest === null ? at : Math.min(earliest, at);
+      if (filter(e)) kept.push(e);
+    }
+    if (!chunk.nextCursor) break;
+    if (pages >= MAX_SUMMARY_PAGES) {
+      partial = true;
+      break;
+    }
+    cursor = chunk.nextCursor;
+  }
+
+  const start = Math.min(earliest ?? to, to - KEPT_MIN_MS);
+  const step: number = KEPT_STEPS.find((s) => (to - start) / (s * 60_000) <= KEPT_BARS) ?? 120;
+  const stepMs = step * 60_000;
+  // Whole steps: minute steps line up in UTC (every zone offset is a whole number of 15 minutes), hours in the network zone.
+  const from = step >= 60 ? hourStart(start, tz) : Math.floor(start / stepMs) * stepMs;
+  const buckets: M.EventSummary["buckets"] = [];
+  for (let t = from; t <= to; t += stepMs) buckets.push({ at: new Date(t).toISOString(), total: 0, counts: emptyCounts() });
+  const counts = emptyCounts();
+  for (const e of kept) {
+    counts[e.category]++;
+    const b = buckets[Math.min(buckets.length - 1, Math.floor((Date.parse(e.at) - from) / stepMs))];
+    if (b) {
+      b.total++;
+      b.counts[e.category]++;
+    }
+  }
+
+  const { top, more } = await topEntities(ctx, kept);
+  return {
+    range: "kept",
+    bucket: "minutes",
+    from: new Date(from).toISOString(),
+    to: new Date(to).toISOString(),
+    total: kept.length,
+    dailyAverage: kept.length,
+    prior: null,
+    change: null,
+    counts,
+    buckets,
+    earliest: earliest === null ? null : new Date(earliest).toISOString(),
+    step,
+    top,
+    topMore: more,
+    partial,
+  };
+}
+
+/** The devices, eeros and profiles events are most about, most first, linked as events.list links rows. */
+async function topEntities(ctx: CommandContext, events: ReadonlyArray<M.NetworkEvent>): Promise<{ top: M.EventTopEntity[]; more: number }> {
+  if (!events.length) return { top: [], more: 0 };
+  const [devices, eeros, profiles] = await Promise.all([ctx.backend.device.list(ctx.net), ctx.backend.eero.list(ctx.net), ctx.backend.profile.list(ctx.net)]);
+  const label = { device: new Map(devices.map((d) => [d.id, d.name])), eero: new Map(eeros.map((e) => [e.id, e.location ?? e.id])), profile: new Map(profiles.map((p) => [p.id, p.name])) };
+  const index = events.some((e) => Object.keys(e.refs).length === 0) ? await nameIndex(ctx) : null;
+  type Tally = { kind: M.EventTopEntity["kind"]; id: M.Id; count: number; last: string; cats: Map<M.EventCategory, number> };
+  const tally = new Map<string, Tally>();
+  for (const e of events) {
+    const refs = index && Object.keys(e.refs).length === 0 ? refsByName(e.title, index.names, index.shared) : e.refs;
+    for (const kind of ["device", "eero", "profile"] as const) {
+      const id = refs[REF_KEY[kind]];
+      if (!id || !label[kind].has(id)) continue;
+      const key = `${kind}:${id}`;
+      const t = tally.get(key) ?? { kind, id, count: 0, last: e.at, cats: new Map() };
+      t.count++;
+      if (e.at > t.last) t.last = e.at;
+      t.cats.set(e.category, (t.cats.get(e.category) ?? 0) + 1);
+      tally.set(key, t);
+    }
+  }
+  const all = [...tally.values()].sort((a, b) => b.count - a.count || b.last.localeCompare(a.last));
+  const top = all.slice(0, KEPT_TOP).map((t) => ({
+    kind: t.kind,
+    id: t.id,
+    name: label[t.kind].get(t.id) ?? t.id,
+    count: t.count,
+    last: t.last,
+    category: [...t.cats].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ("other" as M.EventCategory),
+  }));
+  return { top, more: all.length - top.length };
+}
 
 export const commands = [eventsList, eventsSummary];

@@ -1,9 +1,10 @@
 /**
  * Activity (docs/ux/pages/activity.md, mockup 10): a live view. eero sends
  * only its last ~15 minutes of events, so the page shows those plus every
- * event read while the app is open: the last 24 hours by type (hero, legend
- * that filters, stacked per hour chart), the filter bar (no range), and the
- * event stream with grouped rows, day bars and paging. Export CSV saves the
+ * event read while the app is open: the kept events by type (compact hero,
+ * chip legend that filters, a stacked chart sized to the span) beside the
+ * most active devices, eeros and profiles (pick one to filter), the filter
+ * bar (no range), and the event stream with grouped rows, day bars and paging. Export CSV saves the
  * filtered events through the native save dialog.
  *
  * Every figure, filter and group comes from `events.summary` and
@@ -28,12 +29,13 @@ import { useNotificationPage } from "~/features/notifications/useDesktopAlerts";
 import { TopBarActions } from "~/features/shell/TopBar";
 import { datedName, saveTextFile } from "~/lib/saveFile";
 import { networkClock } from "../../../../core/format";
-import type { Device, DeviceList, Eero, EventCategory, EventPage, EventSummary, Network, NetworkEvent, ProfileList } from "../../../../core/model";
+import type { Device, DeviceList, Eero, EventCategory, EventPage, EventSummary, EventTopEntity, Network, NetworkEvent, ProfileList } from "../../../../core/model";
 
-import { ActivityChart, CATEGORY_ORDER } from "./ActivityChart";
-import { ActivityHero } from "./ActivityHero";
+import { ActivityChart, CATEGORY_ORDER, stepLabel } from "./ActivityChart";
+import { ActivityHero, sinceLine } from "./ActivityHero";
 import { EMPTY_FILTERS, type EventFilterState, EventFilters } from "./EventFilters";
 import { EventStream, StreamSettingsButton } from "./EventStream";
+import { MostActive } from "./MostActive";
 
 type Mode = "grouped" | "raw";
 
@@ -72,8 +74,12 @@ export function ActivityPage(_props: PageProps) {
   }, [searchText, filters.search]);
 
   const entity = { device: unset(filters.device), eero: unset(filters.eero), profile: unset(filters.profile) };
-  // Hero, chart and day bars: the last 24 hours per hour, every type (the legend hides types in view), entity filters applied.
-  const summary = useQuery<EventSummary>("events.summary", { range: "day", bucket: "hour", ...entity }, { poll: true });
+  // Hero, chart, Most active and day bars: the kept events, every type (the legend hides types in view), entity filters applied.
+  const summary = useQuery<EventSummary>("events.summary", { range: "kept", ...entity }, { poll: true });
+  const selectedEntity = filters.device ? `device:${filters.device}` : filters.eero ? `eero:${filters.eero}` : filters.profile ? `profile:${filters.profile}` : null;
+  const pickEntity = (t: EventTopEntity) =>
+    setFilters((f) => ({ ...f, device: null, eero: null, profile: null, ...(selectedEntity === `${t.kind}:${t.id}` ? {} : { [t.kind]: t.id }) }));
+  const since = sinceLine(summary.data, clock);
 
   const shownTypes = CATEGORY_ORDER.filter((c) => !hidden.has(c));
   const streamParams = {
@@ -153,17 +159,29 @@ export function ActivityPage(_props: PageProps) {
         <ExportCsvButton params={streamParams} network={network.data?.name ?? null} />
       </TopBarActions>
 
-      <Section title="Events by type" subtitle="Stacked per hour, last 24 hours · pick types to filter the stream">
-        <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <ActivityHero summary={summary.data} hidden={hidden} onToggle={toggle} loading={summary.fading} clock={clock} />
-          {summary.error && !summary.data ? (
-            <SectionError what="the event chart" error={summary.error} onRetry={() => void summary.refetch()} />
-          ) : (
-            <Card padded>
-              <ActivityChart summary={summary.data} hidden={hidden} timeZone={network.data?.timezone ?? "UTC"} loading={summary.fading || !summary.data} />
+      <Section
+        title="Events by type"
+        subtitle={[since, summary.data && `per ${stepLabel(summary.data.step)}`, "pick a type or a device to filter the stream"].filter(Boolean).join(" · ")}
+      >
+        {summary.error && !summary.data ? (
+          <SectionError what="the event summary" error={summary.error} onRetry={() => void summary.refetch()} />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card padded className="flex flex-col gap-3">
+              <ActivityHero summary={summary.data} hidden={hidden} onToggle={toggle} loading={summary.fading} />
+              <ActivityChart summary={summary.data} hidden={hidden} timeZone={network.data?.timezone ?? "UTC"} loading={summary.fading || !summary.data} fill />
             </Card>
-          )}
-        </div>
+            <Card padded>
+              <MostActive
+                summary={summary.data}
+                timeZone={network.data?.timezone ?? "UTC"}
+                loading={summary.fading}
+                selected={selectedEntity}
+                onPick={pickEntity}
+              />
+            </Card>
+          </div>
+        )}
       </Section>
 
       <EventFilters

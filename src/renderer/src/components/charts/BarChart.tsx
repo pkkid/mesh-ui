@@ -21,6 +21,11 @@ export type BarChartProps = {
   /** Dim every column but this one. */
   highlight?: number;
   heightClassName?: string;
+  /**
+   * Grow to fill a flex column's leftover height instead of a fixed height
+   * (heightClassName is then the minimum, e.g. "min-h-24").
+   */
+  fill?: boolean;
   hideYLabels?: boolean;
   className?: string;
 };
@@ -36,9 +41,11 @@ export function BarChart({
   emptyText = "No activity in this window.",
   highlight,
   heightClassName = "h-44",
+  fill = false,
   hideYLabels = false,
   className,
 }: BarChartProps) {
+  const plotHeight = fill ? cn("h-full", heightClassName) : heightClassName;
   const count = Math.max(labels.length, ...series.map((s) => s.values.length));
   const values = series.map((s) => Array.from({ length: count }, (_, i) => clean(s.values[i])));
   const scale = seriesScale(values, true);
@@ -58,10 +65,10 @@ export function BarChart({
   const tipLabels = tooltipLabels ?? labels;
 
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
-      <div className="flex gap-2">
+    <div className={cn("flex flex-col gap-1", fill && "min-h-0 flex-1", className)}>
+      <div className={cn("flex gap-2", fill && "min-h-0 flex-1")}>
         {hideYLabels ? null : (
-          <div className={cn("relative w-14 shrink-0", heightClassName)} aria-hidden>
+          <div className={cn("relative w-14 shrink-0", plotHeight)} aria-hidden>
             {scale.labeled
               ? scale.ticks.map((tick) => (
                   <span
@@ -78,7 +85,7 @@ export function BarChart({
 
         <div
           ref={plotRef}
-          className={cn("relative min-w-0 flex-1", heightClassName)}
+          className={cn("relative min-w-0 flex-1", plotHeight)}
           role="img"
           aria-label={ariaLabel}
           {...handlers}

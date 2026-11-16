@@ -1,19 +1,30 @@
 /**
- * Activity hero: the event total for the last 24 hours and how far back the
- * kept events reach ("since 9:41 AM": eero sends only its last ~15 minutes,
- * so older events are the ones read while the app was open), over the type
- * legend that doubles as the type filter (click a row to hide or show
- * that type in the chart and the stream). docs/ux/pages/activity.md (Layout 1).
+ * Activity hero (docs/ux/pages/activity.md, Layout 1): a compact event total
+ * with how far back the kept events reach, a share bar of the types, and the
+ * type legend as wrapping chips that double as the type filter (click one to
+ * hide or show that type in the chart and the stream). Kept small so the
+ * chart under it gets the card's height.
  */
+import { ShareBar } from "~/components/charts/ShareBar";
 import { cn } from "~/lib/utils";
-import { type Clock, formatCount, formatPercent, MISSING } from "../../../../core/format";
+import { type Clock, formatCount, MISSING } from "../../../../core/format";
 import type { EventCategory, EventSummary } from "../../../../core/model";
 
 import { CATEGORIES, CATEGORY_ORDER } from "./ActivityChart";
 
-/** "Since 9:41 AM" while the kept events start inside the last 24 hours, else "Last 24 hours". */
-export function summaryLine(s: EventSummary, clock: Clock): string {
-  if (!s.earliest || Date.parse(s.earliest) <= Date.parse(s.from)) return "Last 24 hours";
+/** "last 58 min", "last 3 h 10 min": how far back the kept events reach. */
+export function keptSpan(s: EventSummary): string {
+  const from = s.earliest ? Date.parse(s.earliest) : Date.parse(s.to);
+  const min = Math.max(1, Math.round((Date.parse(s.to) - from) / 60_000));
+  if (min < 60) return `last ${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `last ${h} h${m ? ` ${m} min` : ""}`;
+}
+
+/** "Since 9:41 AM" (with the date on an earlier day): the section's sub line. */
+export function sinceLine(s: EventSummary | undefined, clock: Clock): string | null {
+  if (!s?.earliest) return null;
   const at = s.earliest;
   return `Since ${clock.day(at) === clock.day(s.to) ? clock.time(at) : clock.dateTime(at)}`;
 }
@@ -23,55 +34,61 @@ export function ActivityHero({
   hidden,
   onToggle,
   loading,
-  clock,
 }: {
   summary: EventSummary | undefined;
-  clock: Clock;
   hidden: ReadonlySet<EventCategory>;
   onToggle: (c: EventCategory) => void;
   loading: boolean;
 }) {
   const total = summary?.total ?? null;
-  // Every type with events, plus any the user hid, so a hidden row can be shown again.
-  const rows = CATEGORY_ORDER.filter((c) => (summary?.counts[c] ?? 0) > 0 || hidden.has(c) || (c !== "other" && !summary));
+  // Every type with events, plus any the user hid, so a hidden chip can be shown again.
+  const rows = CATEGORY_ORDER.filter((c) => (summary?.counts[c] ?? 0) > 0 || hidden.has(c));
   return (
-    <div className={cn("flex flex-col gap-4 transition-opacity", loading && "opacity-40")}>
-      <div>
-        <div className="flex items-baseline gap-2">
-          <span className="font-semibold text-4xl tabular-nums">{total === null ? MISSING : formatCount(total)}</span>
-          <span className="text-muted-foreground text-sm">{total === 1 ? "event" : "events"}</span>
+    <div className={cn("flex flex-col gap-2 transition-opacity", loading && "opacity-40")}>
+      <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-baseline gap-1.5">
+          <span className="font-semibold text-2xl tabular-nums leading-none">{total === null ? MISSING : formatCount(total)}</span>
+          <span className="text-muted-foreground text-xs">
+            {total === 1 ? "event" : "events"}
+            {summary ? ` · ${keptSpan(summary)}` : ""}
+          </span>
         </div>
-        <div className="mt-1 text-muted-foreground text-xs">{summary ? summaryLine(summary, clock) : " "}</div>
+        <ShareBar
+          className="min-w-16 flex-1"
+          hideLegend
+          format={formatCount}
+          segments={CATEGORY_ORDER.filter((c) => !hidden.has(c)).map((c) => ({
+            label: CATEGORIES[c].label,
+            value: summary?.counts[c] ?? 0,
+            color: CATEGORIES[c].color,
+          }))}
+        />
       </div>
-      <div className="flex flex-col" role="group" aria-label="Event types shown">
-        {rows.map((c) => {
-          const meta = CATEGORIES[c];
-          const Icon = meta.icon;
-          const count = summary?.counts[c] ?? null;
-          const off = hidden.has(c);
-          return (
-            <button
-              key={c}
-              type="button"
-              aria-pressed={!off}
-              title={off ? `Show ${meta.label}` : `Hide ${meta.label}`}
-              onClick={() => onToggle(c)}
-              className={cn(
-                "-mx-1.5 grid grid-cols-[12px_16px_minmax(0,1fr)_auto_40px] items-center gap-2 rounded-md px-1.5 py-1 text-left text-[12.5px] outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
-                off && "opacity-45",
-              )}
-            >
-              <span className="size-2 rounded-[2px]" style={{ backgroundColor: meta.color }} />
-              <Icon className="size-3.5 text-muted-foreground" />
-              <span className={cn("truncate", off && "line-through")}>{meta.label}</span>
-              <span className="font-medium tabular-nums">{count === null ? MISSING : formatCount(count)}</span>
-              <span className="text-right text-muted-foreground text-xs tabular-nums">
-                {count === null || !total ? MISSING : formatPercent(Math.round((count / total) * 100))}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {rows.length > 0 && (
+        <div className="flex flex-wrap gap-x-2.5 gap-y-0.5" role="group" aria-label="Event types shown">
+          {rows.map((c) => {
+            const meta = CATEGORIES[c];
+            const off = hidden.has(c);
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={!off}
+                title={off ? `Show ${meta.label}` : `Hide ${meta.label}`}
+                onClick={() => onToggle(c)}
+                className={cn(
+                  "-mx-1 inline-flex items-center gap-1 rounded px-1 text-2xs outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
+                  off && "line-through opacity-45",
+                )}
+              >
+                <span className="size-2 rounded-[2px]" style={{ backgroundColor: meta.color }} />
+                <span className="text-muted-foreground">{meta.label}</span>
+                <span className="font-medium tabular-nums">{formatCount(summary?.counts[c] ?? 0)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

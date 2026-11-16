@@ -7,7 +7,7 @@ import { eventCategory, mapEvent } from "../eero/backend/events";
 import { createEngine } from "../engine";
 import type { RawAppEvent } from "../eero/raw";
 import type * as M from "../model";
-import { EVENT_CATEGORIES, eventAction, GROUP_WINDOW_MS, groupEvents, MAX_PAGES_PER_CALL, MAX_SUMMARY_PAGES, refsByName } from "./activity";
+import { EVENT_CATEGORIES, eventAction, GROUP_WINDOW_MS, groupEvents, KEPT_BARS, KEPT_TOP, MAX_PAGES_PER_CALL, MAX_SUMMARY_PAGES, refsByName } from "./activity";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const MAPLE = "4821907";
@@ -301,6 +301,39 @@ describe("events.summary on the demo backend", () => {
   });
 });
 
+describe("events.summary {range: kept}", () => {
+  it("buckets the kept events of the last 24 hours in about 12 steps, with the most active", async () => {
+    const { engine } = demoEngine();
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "kept" }));
+    const day = await ok(engine.execute<M.EventSummary>("events.summary", { range: "day" }));
+    expect(s.range).toBe("kept");
+    expect(s.bucket).toBe("minutes");
+    // The demo keeps a week, so the span is the 24 hour cap: 2 hour steps.
+    expect(s.step).toBe(120);
+    expect(s.buckets.length).toBeLessThanOrEqual(KEPT_BARS + 1);
+    expect(s.buckets.reduce((n, b) => n + b.total, 0)).toBe(s.total);
+    expect(s.total).toBeGreaterThan(0);
+    expect(Math.abs(s.total - day.total)).toBeLessThanOrEqual(day.buckets[0]?.total ?? 0);
+    expect(s.prior).toBeNull();
+    const top = s.top ?? [];
+    expect(top.length).toBeGreaterThan(0);
+    expect(top.length).toBeLessThanOrEqual(KEPT_TOP);
+    expect(top.map((t) => t.count)).toEqual([...top.map((t) => t.count)].sort((a, b) => b - a));
+    expect(top.every((t) => t.name.length > 0 && Date.parse(t.last) <= NOW)).toBe(true);
+    expect(s.topMore).toBeGreaterThanOrEqual(0);
+  });
+
+  it("narrows the most active to an entity filter", async () => {
+    const { engine } = demoEngine();
+    const all = await ok(engine.execute<M.EventSummary>("events.summary", { range: "kept" }));
+    const first = all.top?.[0];
+    if (!first) throw new Error("no entity in the demo top list");
+    const one = await ok(engine.execute<M.EventSummary>("events.summary", { range: "kept", [first.kind]: first.id }));
+    expect(one.top?.[0]).toMatchObject({ kind: first.kind, id: first.id, count: first.count });
+    expect(one.total).toBeLessThan(all.total);
+  });
+});
+
 describe("filters on events without refs (the real eero stream)", () => {
   it("match a device, eero or profile by name in the event text", async () => {
     const demo = createDemoBackend({ clock: () => NOW });
@@ -485,6 +518,12 @@ describe("events on a network that only sends its last 15 minutes", () => {
     expect(s.partial).toBe(false);
     // The log reaches back to the first read, two hours ago: the hero's "since".
     expect(s.earliest).toBe(new Date(FAKE_NOW).toISOString());
+    // Range kept: two hours of kept events in 10 minute steps.
+    const kept = await ok(engine.execute<M.EventSummary>("events.summary", { range: "kept" }));
+    expect(kept.step).toBe(10);
+    expect(kept.total).toBe(24);
+    expect(kept.from).toBe(new Date(FAKE_NOW).toISOString());
+    expect(kept.buckets.length).toBeLessThanOrEqual(KEPT_BARS + 1);
   });
 });
 
@@ -531,17 +570,17 @@ describe("events.summary on the fake eero server", () => {
   it("loads the Activity page well under the request budget", async () => {
     const { fake, engine } = fakeEngine();
     seedWeek(fake, 30, 7);
-    // What ActivityPage mounts at once: chart, day strips, the grouped stream.
+    // What ActivityPage mounts at once: the kept summary (hero, chart, Most active, day strips) and the grouped stream.
     const page: [string, unknown][] = [
-      ["events.summary", { range: "week", bucket: "day" }],
-      ["events.summary", { range: "week", bucket: "hour" }],
+      ["events.summary", { range: "kept" }],
       ["events.list", { grouped: true }],
     ];
     const results = await Promise.all(page.map(([id, params]) => engine.execute(id, params)));
     expect(results.every((r) => r.ok)).toBe(true);
+    const appEvents = eventRequests(fake).length;
+    // The last 24 hours (48 a day here) are one page, then one empty page; plus the stream's first page.
+    expect(appEvents).toBeLessThanOrEqual(4);
     const first = fake.log.length;
-    // Seven pages of 50 for the week, at most twice (the two summaries) plus the stream's first page.
-    expect(first).toBeLessThanOrEqual(2 * 8 + 2);
     // A poll inside the summary TTL reads only what is stale.
     await Promise.all(page.map(([id, params]) => engine.execute(id, params)));
     expect(fake.log.length - first).toBeLessThanOrEqual(1);

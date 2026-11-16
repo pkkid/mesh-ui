@@ -440,7 +440,10 @@ Other chart kinds in the mockups, same rules for colour and labels:
 - **Hero figure.** `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   18rem column lists each series: dot, icon, label, value right in
-  `font-medium`, muted share line below.
+  `font-medium`, muted share line below. Compact hero (Activity): `text-2xl`
+  figure with its muted line beside it and a share bar filling the line,
+  the legend as wrapping chips under it, and the chart filling the card's
+  leftover height (`BarChart fill`).
 - **Metric row.** Grid (2 columns, 5 on wide) of label (`text-xs` muted) over
   value (`text-base font-medium tabular-nums`).
 - **Stat tiles** (status and diagnostics): icon plus label in
