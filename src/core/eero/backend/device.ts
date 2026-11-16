@@ -4,6 +4,12 @@
  * The once-a-minute burst rule is enforced in core (commands/device.ts);
  * this area only remembers when bursts happened, to stamp live rates.
  *
+ * Live window (#254): eero's `usage` figures are live only for a few seconds
+ * after `next_burst` and then decay towards zero (eero-api, live-verified
+ * 2026-10-20). Reads inside `BURST_LIVE_SEC` take them as they are and
+ * remember them; reads after it (the regular device poll, a write) show the
+ * last live figures stamped with their burst, never the decayed ones.
+ *
  * Writes (M4.4): pause, nickname, type and profile are one JSON
  * `PUT /2.3/networks/{id}/devices/{mac}` each (`/2.2/` answers 200 and drops
  * them). "No profile" is eero's `default: true` profile, so it sends that
@@ -20,26 +26,46 @@
 
 import { BackendError } from "../../errors";
 import type * as M from "../../model";
+import { BURST_LIVE_SEC } from "../../poll";
 import { mapDevice, type RawDeviceFull } from "../map/device";
 import { asList, linkUrl, type RawBlockWrite, type RawBurstResult, type RawDeviceWrite, type RawProfile } from "../raw";
 import { compactMac, deviceWritePath, idFromUrl, networkPath } from "../urls";
 import type { EeroArea } from "./index";
 import { fetchRouting } from "./routing";
 
-/** When the last two bursts per network were due, epoch ms. */
-type Bursts = { last: number; prev: number | null };
+type Usage = RawDeviceFull["usage"];
+
+/** The last live figures per network: their burst's time and each device's usage, by compact MAC. */
+type Held = { at: string; byMac: Map<string, Usage> };
 
 export const device: EeroArea<"device"> = (ctx) => {
   const { client } = ctx;
-  const bursts = new Map<M.Id, Bursts>();
+  /** When the newest burst per network is due, epoch ms. */
+  const bursts = new Map<M.Id, number>();
+  const held = new Map<M.Id, Held>();
 
-  /** The time of the newest burst whose rates are in, or null when none is known. */
-  const ratesAt = (net: M.Id): string | null => {
-    const b = bursts.get(net);
-    if (!b) return null;
+  /**
+   * Device rows with the usage to show and its burst time. Inside a burst's
+   * live window the rows are taken as read and remembered; outside it each
+   * row carries the last live figures (none for a device that had none).
+   */
+  const withRates = (net: M.Id, raws: RawDeviceFull[]): { rows: RawDeviceFull[]; ratesAt: string | null } => {
+    const due = bursts.get(net);
     const now = Date.now();
-    const at = b.last <= now ? b.last : b.prev;
-    return at === null ? null : new Date(at).toISOString();
+    if (due !== undefined && now >= due && now <= due + BURST_LIVE_SEC * 1000) {
+      const at = new Date(due).toISOString();
+      const prev = held.get(net);
+      const h: Held = prev?.at === at ? prev : { at, byMac: new Map() };
+      for (const d of raws) {
+        const mac = compactMac(d.mac ?? "");
+        if (mac && d.connected === true && d.usage) h.byMac.set(mac, d.usage);
+      }
+      held.set(net, h);
+      return { rows: raws, ratesAt: at };
+    }
+    const h = held.get(net);
+    if (!h) return { rows: raws, ratesAt: null };
+    return { rows: raws.map((d) => ({ ...d, usage: h.byMac.get(compactMac(d.mac ?? "")) ?? null })), ratesAt: h.at };
   };
 
   const blacklist = async (net: M.Id): Promise<RawDeviceFull[]> => {
@@ -82,9 +108,9 @@ export const device: EeroArea<"device"> = (ctx) => {
       for (const k of keys) known.add(k);
       devices.push(m);
     }
-    const at = ratesAt(net);
+    const { rows, ratesAt } = withRates(net, devices);
     const blockedMacs = new Set(blocked.map((b) => compactMac(b.mac ?? "")).filter(Boolean));
-    const out = devices.map((d) => mapDevice(d, { blocked: blockedMacs.has(compactMac(d.mac ?? "")), ratesAt: at }));
+    const out = rows.map((d) => mapDevice(d, { blocked: blockedMacs.has(compactMac(d.mac ?? "")), ratesAt }));
     const seen = new Set(out.map((d) => compactMac(d.mac)));
     for (const b of blocked) {
       const mac = compactMac(b.mac ?? "");
@@ -111,7 +137,8 @@ export const device: EeroArea<"device"> = (ctx) => {
       const raw = await client.request<RawDeviceFull>({ method: "GET", path: networkPath(net, `devices/${compactMac(id) || encodeURIComponent(id)}`) });
       if (raw && typeof raw === "object") {
         const blocked = raw.blocked === true || raw.blacklisted === true;
-        return mapDevice(raw, { blocked, ratesAt: ratesAt(net) });
+        const { rows, ratesAt } = withRates(net, [raw]);
+        return mapDevice(rows[0] ?? raw, { blocked, ratesAt });
       }
     } catch (err) {
       // Blocked devices may only be on the blocklist.
@@ -131,7 +158,8 @@ export const device: EeroArea<"device"> = (ctx) => {
     const raw = await client.request<RawDeviceFull>({ method: "PUT", path: deviceWritePath(net, mac), body, encoding: "json" });
     if (raw && typeof raw === "object" && (raw.url || raw.mac)) {
       const blocked = raw.blocked === true || raw.blacklisted === true;
-      return mapDevice(raw, { blocked, ratesAt: ratesAt(net) });
+      const { rows, ratesAt } = withRates(net, [raw]);
+      return mapDevice(rows[0] ?? raw, { blocked, ratesAt });
     }
     return getOne(net, mac);
   };
@@ -156,8 +184,7 @@ export const device: EeroArea<"device"> = (ctx) => {
       const raw = await client.request<RawBurstResult>({ method: "POST", path: networkPath(net, "burst_reporters"), encoding: "empty" });
       const parsed = raw?.next_burst ? Date.parse(raw.next_burst) : Number.NaN;
       const next = Number.isFinite(parsed) ? parsed : Date.now() + 12_000;
-      const prev = bursts.get(net);
-      bursts.set(net, { last: next, prev: prev ? (prev.last <= Date.now() ? prev.last : prev.prev) : null });
+      bursts.set(net, next);
       return { nextBurstAt: new Date(next).toISOString() };
     },
 

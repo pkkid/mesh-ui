@@ -108,6 +108,24 @@ export const RATES_STALE_SEC = 90;
 export const BURST_SETTLE_SEC = 2;
 
 /**
+ * How long after `next_burst` eero's `usage` figures stay live. They land
+ * about 12 s after the POST and have largely decayed by 30 s (eero-api,
+ * live-verified 2026-10-20), so reads after this window keep the last live
+ * figures instead of the decayed ones.
+ */
+export const BURST_LIVE_SEC = 14;
+
+/** While a burst is live, devices are read again this often, like the eero app's live view. */
+export const BURST_READ_EVERY_SEC = 4;
+
+/** When to read devices for one burst, epoch ms: every few seconds through its live window. */
+export function burstReadTimes(nextBurstMs: number): number[] {
+  const out: number[] = [];
+  for (let s = BURST_SETTLE_SEC; s < BURST_LIVE_SEC; s += BURST_READ_EVERY_SEC) out.push(nextBurstMs + s * 1000);
+  return out;
+}
+
+/**
  * After a write, reads of its topics fetched in this window expire at its end,
  * so the read after it sees eero's new state even when eero is slow to apply it.
  */

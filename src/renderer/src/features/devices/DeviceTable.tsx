@@ -43,7 +43,7 @@ import { IconTile } from "~/components/ui/hero";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
-import { formatBytes, formatRelative, mbpsParts } from "../../../../core/format";
+import { formatBytes, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
 import type { DeviceSortKey } from "../../../../core/commands/device";
 import type { Device, DeviceCategory } from "../../../../core/model";
 
@@ -678,10 +678,26 @@ function NowCell({ device: d }: { device: Device }) {
   }
   if (d.paused) return <span className="text-muted-foreground/70 text-xs">Paused</span>;
   if (!d.rates) return <span className="text-muted-foreground/70 text-xs">-</span>;
+  const share = d.rates.sharePct;
   return (
-    <div className="w-[46px] text-end text-[11px] tabular-nums leading-tight">
-      <div className="text-foreground">{mbpsParts(d.rates.downMbps).value}</div>
-      <div className="text-muted-foreground">{mbpsParts(d.rates.upMbps).value}</div>
+    <div className="flex items-center gap-2.5">
+      <div className="w-[68px] text-end text-[11px] tabular-nums leading-tight">
+        <Rate mbps={d.rates.downMbps} className="text-foreground" />
+        <Rate mbps={d.rates.upMbps} className="text-muted-foreground" />
+      </div>
+      {/* Share of the network's current traffic, like the eero app's live view. */}
+      <span className="w-8 text-end text-2xs text-muted-foreground tabular-nums">{share ? formatPercent(share) : ""}</span>
+    </div>
+  );
+}
+
+/** A live rate with its unit, "4.2 Mbps", "320 kbps"; a real zero is a bare "0" so idle rows stay quiet. */
+function Rate({ mbps, className }: { mbps: number; className: string }) {
+  const p = mbpsParts(mbps);
+  return (
+    <div className={className}>
+      {p.value}
+      {mbps !== 0 && <span className="ms-0.5 text-3xs text-muted-foreground/70 leading-none">{p.unit}</span>}
     </div>
   );
 }

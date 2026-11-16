@@ -128,8 +128,8 @@ type CacheEntry = { promise: Promise<unknown>; topic: Topic; net: Id | null; exp
 
 function createCache(now: () => number, keepNetworks = CACHE_NETWORKS) {
   const entries = new Map<string, CacheEntry>();
-  /** Topic to the time cached data fetched before it becomes stale. */
-  const staleAt = new Map<Topic, number>();
+  /** Topic to the future times at which cached data fetched before them becomes stale. */
+  const staleAt = new Map<Topic, number[]>();
   /** Networks with cached entries, most recently used first. */
   const recent: Id[] = [];
 
@@ -155,8 +155,11 @@ function createCache(now: () => number, keepNetworks = CACHE_NETWORKS) {
       entries.set(key, entry);
       entry.promise.then(
         () => {
-          const floor = staleAt.get(topic);
-          const cap = floor !== undefined && fetchedAt < floor ? floor : Number.POSITIVE_INFINITY;
+          // The first stale mark after the fetch caps it; marks already passed are dropped.
+          const marks = (staleAt.get(topic) ?? []).filter((t) => t > now());
+          if (marks.length) staleAt.set(topic, marks);
+          else staleAt.delete(topic);
+          const cap = Math.min(Number.POSITIVE_INFINITY, ...marks.filter((t) => t > fetchedAt));
           entry.expires = Math.min(entry.expires, fetchedAt + ttlSec * 1000, cap);
         },
         () => {
@@ -167,7 +170,7 @@ function createCache(now: () => number, keepNetworks = CACHE_NETWORKS) {
     },
     invalidate(topics: Topic[], at: number) {
       for (const topic of topics) {
-        if (at > now()) staleAt.set(topic, Math.max(staleAt.get(topic) ?? 0, at));
+        if (at > now()) staleAt.set(topic, [...(staleAt.get(topic) ?? []).filter((t) => t > now() && t !== at), at]);
         for (const e of entries.values()) if (e.topic === topic) e.expires = Math.min(e.expires, at);
       }
     },

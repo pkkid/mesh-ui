@@ -12,7 +12,7 @@ import { BackendError, CommandError } from "../errors";
 import { DEVICE_TYPE_IDS } from "../eero/map/device";
 import { nameList, toCsv } from "../format";
 import type * as M from "../model";
-import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, POLL, RATES_STALE_SEC } from "../poll";
+import { BURST_COOLDOWN_SEC, burstReadTimes, POLL, RATES_STALE_SEC } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { offlineIn, unassignedIds, UNASSIGNED } from "./profile";
 import { usageWindow } from "./usage";
@@ -92,6 +92,14 @@ export function knownDevices(devices: M.Device[], now: number): M.Device[] {
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Each device's share of the whole network's current traffic (down plus up), like the eero app's live view. */
+function withShares(devices: M.Device[], all: M.Device[]): M.Device[] {
+  const traffic = (d: M.Device) => (d.connected && d.rates ? d.rates.downMbps + d.rates.upMbps : 0);
+  const total = all.reduce((s, d) => s + traffic(d), 0);
+  if (total <= 0) return devices;
+  return devices.map((d) => (d.rates && d.connected ? { ...d, rates: { ...d.rates, sharePct: round1((traffic(d) / total) * 100) } } : d));
+}
 
 /** Counts per key, largest first, then by key with null last; every device counted once. */
 function countBy<K extends string | null>(devices: M.Device[], key: (d: M.Device) => K): { key: K; count: number }[] {
@@ -333,8 +341,8 @@ async function refreshRates(ctx: CommandContext): Promise<M.BurstResult> {
   const result = await ctx.backend.device.requestBurst(ctx.net);
   perNet.set(ctx.net, { requestedAt: now, nextBurstAt: result.nextBurstAt });
   const due = Date.parse(result.nextBurstAt);
-  // Cached device reads go stale once the fresh rates are in.
-  ctx.invalidate(["devices"], (Number.isFinite(due) ? due : now) + BURST_SETTLE_SEC * 1000);
+  // Cached device reads go stale once the fresh rates are in, and again at each live read after that.
+  for (const at of burstReadTimes(Number.isFinite(due) ? due : now)) ctx.invalidate(["devices"], at);
   return { nextBurstAt: result.nextBurstAt };
 }
 
@@ -430,7 +438,7 @@ export const commands: AnyCommand[] = [
       let devices = await sort(ctx, await filter(ctx, all, p), p.sort, p.order);
       if (p.limit) devices = devices.slice(0, p.limit);
       if (p.format === "csv") return toDeviceCsv(ctx, devices);
-      return { devices, summary: summarize(all, now) };
+      return { devices: withShares(devices, all), summary: summarize(all, now) };
     },
   }),
 

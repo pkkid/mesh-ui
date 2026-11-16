@@ -274,8 +274,9 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     const base = typical.get(d.id);
     if (!base || !d.connected || d.paused || d.blocked) return null;
     const f = walk.get(d.id) ?? 1;
-    const r1 = (n: number) => Math.round(n * f * 10) / 10;
-    return { downMbps: r1(base.downMbps), upMbps: r1(base.upMbps), at: new Date(now()).toISOString() };
+    // To the kbps, so a trickle shows as one (#254).
+    const r = (n: number) => Math.round(n * f * 1000) / 1000;
+    return { downMbps: r(base.downMbps), upMbps: r(base.upMbps), at: new Date(now()).toISOString() };
   };
 
   const deviceView = (d: M.Device): M.Device => ({ ...clone(d), rates: rates(d), reservation: null });

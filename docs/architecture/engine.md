@@ -249,7 +249,7 @@ minute usage polls and the 10 minute account read line up):
 | eero detail | 29 / 50 |
 | Reservations & ports | 39 / 49 |
 | Troubleshooting | 26 / 36 |
-| Devices (live rates on) | 23 / 37 |
+| Devices (live rates on, three reads per burst) | 35 / 49 |
 | Wi-Fi | 21 / 31 |
 | Guest | 17 / 40 |
 | Advanced networking | 14 / 24 |
@@ -272,19 +272,31 @@ only after a burst:
    network; core (not the eero client) keeps a per-network timestamp
    (`commands/device.ts`) and a second call inside `BURST_COOLDOWN_SEC`
    returns the pending `nextBurstAt` without calling eero.
-2. The command marks `devices` stale at `next_burst` plus
-   `BURST_SETTLE_SEC` (2 s) with `ctx.invalidate`, so the next
-   `device.list` after that point reads fresh `usage.down_mbps` and
-   `usage.up_mbps`, while reads before it share the cache.
-3. The mapper stamps each device's `rates` with the read time. Rates older
-   than 90 s become `null`, which the UI shows as `-`, never `0`.
-4. `DeviceList.summary.rates` sums current rates and counts active devices
+2. eero's figures are live only briefly: they land about 12 s after the
+   POST and have largely decayed by 30 s (eero-api, live-verified
+   2026-10-20). The command marks `devices` stale with `ctx.invalidate` at
+   each of `burstReadTimes(next_burst)`: `BURST_SETTLE_SEC` (2 s) after
+   `next_burst` and then every `BURST_READ_EVERY_SEC` (4 s) while the window
+   (`BURST_LIVE_SEC`, 14 s) lasts. Each `device.list` after a mark reads
+   fresh `usage.down_mbps` and `usage.up_mbps`, while reads between marks
+   share the cache. The cache keeps every pending mark per topic, so a read
+   is capped at the first mark after it.
+3. The eero backend takes `usage` as read inside the live window and
+   remembers it per device. A read after the window (the regular device
+   poll, a write) shows those last live figures, not eero's decayed ones,
+   so an idle minute never reads as zeros (#254). `rates` are stamped with
+   the burst's time; rates older than 90 s become `null`, which the UI
+   shows as `-`, never `0`.
+4. `device.list` adds each device's `rates.sharePct`, its share of the
+   network's current traffic (down plus up), like the eero app's live view.
+5. `DeviceList.summary.rates` sums current rates and counts active devices
    ("Current throughput 186 Mbps, 14 devices active") and computes each band's
    share of traffic, so every surface gets the same totals.
 
 Pages that show "Now" figures (Devices, Device detail, Internet "Using the
 most right now", eero detail) call `device.rates.refresh` once a minute
-while visible and then poll `device.list`. Sparklines of recent rates are
+while visible and read `device.list` and `device.get` again at each of
+`burstReadTimes` (`useLiveRates`), so the figures move a few times a minute. Sparklines of recent rates are
 built by the renderer from the last 30 samples it has seen; nothing is
 stored, and there is no history to load.
 

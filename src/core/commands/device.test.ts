@@ -398,8 +398,30 @@ describe("device commands (fake eero server)", () => {
     const total = (["2.4", "5", "6", "wired"] as const).reduce((s, b) => s + bandTraffic(b), 0);
     for (const b of ["2.4", "5", "6", "wired"] as const) expect(r.byBand[b].trafficPct).toBeCloseTo((bandTraffic(b) / total) * 100, 0);
     expect(r.topBand).not.toBe("wired");
-    expect(l.devices.find((d) => d.name === "Alex's Phone")?.rates).toEqual({ downMbps: 10, upMbps: 1, at: new Date(start + 12_000).toISOString() });
+    const burstAt = new Date(start + 12_000).toISOString();
+    expect(l.devices.find((d) => d.name === "Alex's Phone")?.rates).toMatchObject({ downMbps: 10, upMbps: 1, at: burstAt });
     expect(l.devices.find((d) => d.name === "Leo's Switch")?.rates).toBeNull();
+    // Each device's share of the network's traffic, like the eero app's live view; together about 100.
+    const shares = l.devices.flatMap((d) => (d.rates?.sharePct === undefined ? [] : [d.rates.sharePct]));
+    expect(shares).toHaveLength(6);
+    expect(shares.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 0);
+
+    // #254: the burst's live window. The engine marks devices stale every few seconds through it, so the
+    // next read goes to eero again and shows the figures moving.
+    vi.setSystemTime(start + 18_100);
+    const moving = await list(engine);
+    expect(moving.devices.find((d) => d.name === "Alex's Phone")?.rates).toMatchObject({ downMbps: 11, upMbps: 1.1, at: burstAt });
+    // After the window eero's figures decay to zero; a later read (the regular poll) keeps the last live ones.
+    vi.setSystemTime(start + 45_000);
+    const gets = () => fake.log.filter((e) => e.method === "GET" && e.path === "/2.2/networks/100001/devices").length;
+    const before = gets();
+    const held = await engine.execute<M.DeviceList>("device.list", {}, { fresh: true });
+    if (!held.ok) throw new Error(held.error.message);
+    expect(gets()).toBe(before + 1);
+    expect(held.result.devices.find((d) => d.name === "Alex's Phone")?.rates).toMatchObject({ downMbps: 11, upMbps: 1.1, at: burstAt });
+    expect(held.result.summary.rates?.active).toBe(6);
+    const one = await engine.execute<M.Device>("device.get", { device: "Alex's Phone" }, { fresh: true });
+    expect(one.ok && one.result.rates).toMatchObject({ downMbps: 11, upMbps: 1.1 });
 
     vi.setSystemTime(start + 61_000);
     expect((await engine.execute("device.rates.refresh")).ok).toBe(true);
