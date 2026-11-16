@@ -6,20 +6,15 @@
  * commands. Layout, data and states: docs/ux/pages/profiles.md and
  * docs/mockups/07-profiles.html. Every figure comes from a query command.
  */
-import { Plus } from "lucide-react";
-import { useState } from "react";
-
 import { Link, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
-import { GatedButton, useGate } from "~/components/ui/page";
-import { TopBarActions } from "~/features/shell/TopBar";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import type { DeviceList, Network, ProfileList, UsageBreakdown, UsageSeries } from "../../../../core/model";
 
-import { PROFILE_GATE, ProfileCards, ProfileSheet } from "./ProfileCards";
+import { ProfileCards } from "./ProfileCards";
 import { ProfilesUsage } from "./ProfilesUsage";
 import { ScheduleOverview } from "./ScheduleOverview";
 import { UnassignedCard } from "./UnassignedCard";
@@ -40,8 +35,6 @@ export function ProfilesPage(_props: PageProps) {
   const colors = entityColors(list.map((p) => p.id));
   const colorOf: ProfileColor = (id) => (id === null ? seriesColors.neutral : (colors[id] ?? seriesColors.neutral));
   const timezone = network.data?.timezone ?? null;
-  const [adding, setAdding] = useState(false);
-  const createGate = useGate({ ...PROFILE_GATE, op: "create" });
 
   if (bridged) {
     return (
@@ -61,14 +54,6 @@ export function ProfilesPage(_props: PageProps) {
 
   return (
     <>
-      <TopBarActions>
-        <GatedButton gate={createGate} size="sm" variant="outline" onClick={() => setAdding(true)}>
-          <Plus />
-          Add a profile
-        </GatedButton>
-      </TopBarActions>
-      <ProfileSheet mode={adding ? { kind: "create" } : null} onClose={() => setAdding(false)} />
-
       <ProfileCards profiles={profiles} devices={devices.data?.devices} usage={today.data} colorOf={colorOf} timezone={timezone} />
       <ScheduleOverview profiles={profiles} colorOf={colorOf} timezone={timezone} />
       <ProfilesUsage profiles={profiles.data} colorOf={colorOf} timezone={timezone} />
