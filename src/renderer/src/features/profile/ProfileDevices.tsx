@@ -58,7 +58,7 @@ export function ProfileDevices({ profileId, profile, color, timezone, onEdit }: 
       title="Devices"
       subtitle={subtitle}
       tools={
-        <GatedButton gate={gate} size="xs" variant="outline" disabled={!profile} onClick={onEdit}>
+        <GatedButton gate={gate} variant="outline" disabled={!profile} onClick={onEdit}>
           <Plus />
           Add a device
         </GatedButton>

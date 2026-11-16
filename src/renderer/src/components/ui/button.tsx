@@ -15,6 +15,7 @@ const buttonVariants = cva(
         default: "h-8 px-[calc(--spacing(3)-1px)]",
         sm: "h-7 gap-1.5 px-[calc(--spacing(2.5)-1px)]",
         hero: "h-7 gap-1.5 px-[calc(--spacing(2.5)-1px)] text-[13px] [&_svg:not([class*='size-'])]:size-3.5",
+        tool: "h-7 gap-1 px-[calc(--spacing(2.5)-1px)] text-xs [&_svg:not([class*='size-'])]:size-3.5",
         xs: "h-6 gap-1 px-[calc(--spacing(2)-1px)] text-xs [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 px-[calc(--spacing(3.5)-1px)]",
         icon: "size-8",
@@ -48,13 +49,16 @@ interface ButtonProps extends useRender.ComponentProps<"button"> {
 
 /**
  * The size a Button takes when it is not given one. A region that owns its
- * button size (the page header actions, the QR block) provides it once, so
+ * button size (the page header actions, the QR block, section header tools) provides it once, so
  * call sites inside it leave `size` off. Dialogs reset it to the default.
  */
 const ButtonSizeContext = createContext<ButtonSize | undefined>(undefined);
 
 /** Every button in a page header (hero) and its QR block: see docs/design/design-system.md. */
 const HERO_BUTTON_SIZE: ButtonSize = "hero";
+
+/** Every button in a section header's tools slot, the same 28px as the Segmented beside it. */
+const SECTION_TOOL_SIZE: ButtonSize = "tool";
 
 function Button({ className, variant, size: sizeProp, render, ...props }: ButtonProps) {
   const size = sizeProp ?? use(ButtonSizeContext);
@@ -70,4 +74,4 @@ function Button({ className, variant, size: sizeProp, render, ...props }: Button
   });
 }
 
-export { Button, ButtonSizeContext, buttonVariants, HERO_BUTTON_SIZE, type ButtonProps };
+export { Button, ButtonSizeContext, buttonVariants, HERO_BUTTON_SIZE, SECTION_TOOL_SIZE, type ButtonProps };

@@ -42,7 +42,7 @@ export function useMarkAllRead(networkId: string | null, page: NotificationPage 
 export function MarkAllReadButton({ networkId, page }: { networkId: string | null; page: NotificationPage | undefined }) {
   const mark = useMarkAllRead(networkId, page);
   return (
-    <GatedButton gate={mark.gate} size="xs" variant="outline" disabled={mark.disabled} title={mark.title} onClick={() => void mark.run()}>
+    <GatedButton gate={mark.gate} variant="outline" disabled={mark.disabled} title={mark.title} onClick={() => void mark.run()}>
       Mark all read
     </GatedButton>
   );

@@ -192,6 +192,22 @@ with labelled buttons (Copy password, Save QR, Print a card) to its left
 (`text-sm font-medium` title, optional muted subtitle, controls on the right)
 that stays one line (title and tools never wrap; a long subtitle truncates
 with an ellipsis and shows in full in its tooltip) above a card with a solid `bg-card` surface, a 1px `border`, and 14px radius.
+**Header tools are 28px.** Every control in the tools slot (buttons,
+`HeaderLink`, Segmented toggles, selects) is 28px tall, the height of the
+title's line, so their top and bottom edges line up: buttons are the `tool`
+size (`h-7`, 12px text, 14px icons) and Segmented its `tool` size (border,
+`p-0.5`, 22px items). `Section` sets both once through `ButtonSizeContext`
+and `SegmentedSizeContext`, so call sites inside the tools slot leave `size`
+off, like the page header. A shared button that also appears outside a header
+(`CopyCommandButton`) reads the context and falls back to its own size.
+
+| Control row | Height |
+| --- | --- |
+| Section header tools | 28px (`tool`) |
+| Page header (hero) actions | 28px (`hero`, 13px text) |
+| Segmented outside a header (forms, settings) | 30px (`sm`, the default) |
+| Toolbars (Devices filter row) | 32px (`md` Segmented, `h-8` inputs and buttons) |
+
 A fully flat layout, with sections directly on the page background, was tried
 in the mockups and rejected: on the warm Gruvbox surfaces sections blurred
 together.
@@ -211,7 +227,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Component | Look |
 | --- | --- |
 | Button | 30px, 8px radius, `bg-card` with control border; `primary` filled; `danger` red text; `ghost` no border; `icon` square |
-| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Two sizes: `sm` (30px, the default) in section headers beside text, `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
+| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
 | Switch | 32 x 19, `bg-primary` when on |
 | Input, select | 30px, control border, mono variant for IPs and MACs |
 | Chip | Full radius, 26px, for filters; selected chip gets a stronger border, not colour |

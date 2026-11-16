@@ -68,7 +68,7 @@ export function QuietHours({ preferredHour, canChange }: { preferredHour: number
       tools={
         <span className="inline-flex items-center gap-2" title={canChange && !gate.allowed ? (gate.reason ?? undefined) : undefined}>
           {editable && d?.quietest && d.quietest.start !== start && (
-            <Button size="xs" variant="ghost" disabled={setHour.running} onClick={() => d.quietest && choose(d.quietest.start)}>
+            <Button variant="ghost" disabled={setHour.running} onClick={() => d.quietest && choose(d.quietest.start)}>
               Use quietest
             </Button>
           )}

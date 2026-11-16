@@ -199,7 +199,6 @@ export function UnassignedPauseButton({ paused, devices, hero = false }: { pause
   return (
     <GatedButton
       gate={!paused && devices.length === 0 && gate.allowed ? { allowed: false, reason: "No unassigned devices to pause" } : gate}
-      size={hero ? undefined : "xs"}
       variant={paused ? "default" : "outline"}
       className={hero ? "w-full" : undefined}
       disabled={write.running}

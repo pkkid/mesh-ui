@@ -2,6 +2,8 @@
 import type * as React from "react";
 
 import { Link, navigate } from "~/app/router";
+import { ButtonSizeContext, SECTION_TOOL_SIZE } from "~/components/ui/button";
+import { SegmentedSizeContext } from "~/components/ui/segmented";
 import { cn } from "~/lib/utils";
 
 /** Clicks on these, inside a clickable card, do their own thing and never open the card's page. */
@@ -69,7 +71,9 @@ type SectionProps = Omit<React.ComponentProps<"section">, "title"> & {
  * apart. The row aligns on baselines and the title takes the row's 28px line,
  * so a 14px title and a 12px subtitle share one baseline. The title and
  * tools never wrap; a long subtitle truncates with an ellipsis (full text in
- * its tooltip) so the row stays one line.
+ * its tooltip) so the row stays one line. Every tool is 28px, the height of
+ * the title's line: buttons take `SECTION_TOOL_SIZE` and Segmented its `tool`
+ * size from context, so callers leave `size` off.
  */
 function Section({ title, subtitle, tools, className, children, ...props }: SectionProps) {
   return (
@@ -81,7 +85,13 @@ function Section({ title, subtitle, tools, className, children, ...props }: Sect
             {subtitle}
           </span>
         )}
-        {tools && <div className="ms-auto flex shrink-0 items-center gap-2">{tools}</div>}
+        {tools && (
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <ButtonSizeContext value={SECTION_TOOL_SIZE}>
+              <SegmentedSizeContext value="tool">{tools}</SegmentedSizeContext>
+            </ButtonSizeContext>
+          </div>
+        )}
       </div>
       {children}
     </section>
