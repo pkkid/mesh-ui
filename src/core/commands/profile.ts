@@ -363,6 +363,7 @@ export const commands: AnyCommand[] = [
           deviceIds: unassigned.map((d) => d.id),
           devicesOnline: unassigned.filter((d) => d.connected).length,
           paused: unassignedPaused,
+          schedules,
         },
         today: {
           date: dateIn(now, tz),

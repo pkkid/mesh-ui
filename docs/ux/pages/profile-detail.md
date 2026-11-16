@@ -21,7 +21,8 @@ Profiles stays active.
    - Right: a large **Pause profile** button ("Stops internet on Mia's 4
      devices now") and under it "Resuming during a scheduled pause keeps Mia
      online until the next scheduled pause."
-2. Two columns:
+2. Two columns (one full-width **Schedules** line when there is nothing to
+   show, see States):
    - **Scheduled pauses**. Sub "This week · network time zone (Pacific)".
      Legend: one colour per schedule (Bedtime, Homework) and a dashed "Off"
      swatch. Card with a lane per day, Mon to Sun:
@@ -111,8 +112,13 @@ Profiles stays active.
 
 - **Loading.** Hero with avatar and name if cached, `-` metrics; lanes with
   gridlines only; schedule rows blank; chart gridlines.
-- **Empty.** No schedules: lanes empty with "No scheduled pauses. Add one to
-  pause Mia's devices automatically, like at bedtime." and the add button.
+- **Empty.** No schedules and no manual pause today: the week timeline hides
+  and only **Schedules** shows, full width, with one muted line in a small
+  card, "No scheduled pauses yet. Add one to pause Mia's devices
+  automatically, like at bedtime.", and **+ Add a scheduled pause**. Not
+  while `profile.get` is loading (the two columns keep their placeholders).
+  Adding the first schedule brings back both columns. A manual pause with no
+  schedules keeps the timeline.
   No devices: "No devices in this profile yet." with **+ Add a device**; Pause
   profile disabled ("Add a device first"). No usage: "No activity in this
   window." No activity: "Nothing has happened here yet."

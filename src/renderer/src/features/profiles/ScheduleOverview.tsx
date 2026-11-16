@@ -2,21 +2,27 @@
  * "Today's pauses": one lane per profile plus Unassigned, 12 AM to 12 AM in
  * the network time zone. Segments come from `profile.list` (`today`, computed
  * in core): past scheduled spans solid muted, upcoming ones hatched, a manual
- * pause in the warning colour, and a Now line across every lane.
- * docs/ux/pages/profiles.md (Layout 2), mockup 07.
+ * pause in the warning colour, and a Now line across every lane. With no
+ * schedules anywhere and nothing paused today it collapses to one line and
+ * an Add a schedule picker (a profile opens the schedule sheet, Unassigned
+ * opens its page). docs/ux/pages/profiles.md (Layout 2, States), mockup 07.
  */
-import type { CSSProperties } from "react";
+import { Popover } from "@base-ui/react/popover";
+import { Plus } from "lucide-react";
+import { type CSSProperties, useState } from "react";
 
 import { navigate, pathFor } from "~/app/router";
 import type { QueryState } from "~/app/useCommand";
 import { Card, Section } from "~/components/ui/card";
-import { SectionError, useNow } from "~/components/ui/page";
+import { Button } from "~/components/ui/button";
+import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
 import { formatMinute, MINUTES_PER_DAY } from "~/components/ui/timeline";
 import { cn } from "~/lib/utils";
 import { networkClock } from "../../../../core/format";
-import type { PauseSegment, ProfileList } from "../../../../core/model";
+import type { PauseSegment, Profile, ProfileList } from "../../../../core/model";
+import { ScheduleSheet } from "../profile/ScheduleSheet";
 
-import { Avatar } from "./ProfileCards";
+import { Avatar, PROFILE_GATE } from "./ProfileCards";
 import type { ProfileColor } from "./ProfilesPage";
 
 const TICKS = ["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"];
@@ -57,6 +63,18 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
   const minute = minuteIn(now, tz);
   const names = new Map((data?.profiles ?? []).map((p) => [p.id, p.name]));
   const lanes = data?.today.lanes ?? [];
+
+  // Nothing scheduled anywhere and nothing paused today: one line, not a chart of empty lanes.
+  // Only once the list has answered, so the empty form never flashes while it loads.
+  if (data && !profiles.error && !hasPauses(data)) {
+    return (
+      <Section title="Today's pauses" tools={<AddSchedule profiles={data.profiles} colorOf={colorOf} />}>
+        <Card className="px-[18px] py-3 text-[13px] text-muted-foreground">
+          No scheduled pauses. Schedules pause a profile's internet at set times, like bedtime.
+        </Card>
+      </Section>
+    );
+  }
 
   return (
     <Section
@@ -106,6 +124,63 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
         </Card>
       )}
     </Section>
+  );
+}
+
+/** Whether any profile or Unassigned has a schedule, or any lane has a pause today (a manual pause keeps the chart). */
+function hasPauses(data: ProfileList): boolean {
+  return (
+    data.profiles.some((p) => p.schedules.length > 0) ||
+    data.unassigned.schedules.length > 0 ||
+    data.today.lanes.some((l) => l.segments.length > 0)
+  );
+}
+
+/** "Add a schedule": pick a profile to open its schedule sheet, or Unassigned to open its page. */
+function AddSchedule({ profiles, colorOf }: { profiles: Profile[]; colorOf: ProfileColor }) {
+  const gate = useGate(PROFILE_GATE);
+  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<Profile | null>(null);
+  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted";
+  if (!gate.allowed) {
+    return (
+      <GatedButton gate={gate} variant="outline">
+        <Plus />
+        Add a schedule
+      </GatedButton>
+    );
+  }
+  const pick = (go: () => void) => () => {
+    setOpen(false);
+    go();
+  };
+  return (
+    <>
+      <Popover.Root open={open} onOpenChange={setOpen}>
+        <Popover.Trigger render={<Button variant="outline" />}>
+          <Plus />
+          Add a schedule
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
+            <Popover.Popup className="max-h-80 w-56 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
+              <div className="px-2 pt-1 pb-1.5 text-muted-foreground">Pick who to schedule</div>
+              {profiles.map((p) => (
+                <button key={p.id} type="button" className={item} onClick={pick(() => setTarget(p))}>
+                  <Avatar name={p.name} color={colorOf(p.id)} className="size-5 text-2xs" />
+                  <span className="truncate">{p.name}</span>
+                </button>
+              ))}
+              <button type="button" className={item} onClick={pick(() => navigate(pathFor("profile", { profileId: "unassigned" })))}>
+                <Avatar name="Unassigned" color={colorOf(null)} className="size-5 text-2xs" />
+                <span className="truncate">Unassigned</span>
+              </button>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
+      {target ? <ScheduleSheet profile={target} mode={{ kind: "add" }} onClose={() => setTarget(null)} /> : null}
+    </>
   );
 }
 
