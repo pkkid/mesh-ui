@@ -27,7 +27,7 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
   const editGate = useGate("forward.update");
   const removeGate = useGate("forward.remove");
   const tools = (
-    <GatedButton gate={addGate} onClick={() => setSheet({ kind: "add" })}>
+    <GatedButton gate={addGate} variant="outline" onClick={() => setSheet({ kind: "add" })}>
       <Plus />
       Add port forward
     </GatedButton>
