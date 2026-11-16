@@ -83,9 +83,10 @@ export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "ports", path: "/settings/ports", title: "Reservations & ports", icon: ArrowLeftRight, nav: "settings", natOnly: true, doc: "reservations-ports.md" },
   { id: "updates", path: "/settings/updates", title: "Updates & admins", icon: Download, nav: "settings", doc: "updates-admins.md" },
   { id: "troubleshooting", path: "/troubleshooting", title: "Troubleshooting", icon: Stethoscope, nav: "settings", doc: "troubleshooting.md" },
-  { id: "account", path: "/account", title: "App & account", icon: Settings, nav: "settings", doc: "app-account.md" },
-  // Deep links to an App & account section (#/account/notifications): the same page, no sidebar entry.
-  { id: "account", path: "/account/:section", title: "App & account", icon: Settings, doc: "app-account.md" },
+  { id: "account", path: "/account", title: "Account & Settings", icon: Settings, doc: "account-settings.md" },
+  // Account & Settings opens from the sidebar footer row, not a nav item. Deep links to a section
+  // (#/account/notifications) are the same page.
+  { id: "account", path: "/account/:section", title: "Account & Settings", icon: Settings, doc: "account-settings.md" },
   ...(import.meta.env.DEV ? [{ id: "dev-charts", path: "/dev/charts", title: "Chart kit", icon: LayoutDashboard, doc: "../../design/design-system.md" } satisfies RouteDef] : []),
 ];
 

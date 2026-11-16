@@ -1,18 +1,18 @@
 /**
  * The sidebar (docs/ux/overview.md#sidebar): app mark, network switcher,
- * the Network and Settings nav groups with counts, and the signed-in user.
+ * the Network and Settings nav groups with counts, and the account row (gear,
+ * name, role) that opens Account & Settings, with a sign-out icon.
  * Counts come from `network.get`; items the network cannot use (Profiles and
  * Reservations & ports in bridge mode) are hidden, not greyed out.
  */
 import { Popover } from "@base-ui/react/popover";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 
 import { Link, useLocation } from "~/app/router";
-import { ROUTES, type RouteDef } from "~/app/routes";
+import { ROUTES, type RouteDef, routeById } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
 import { AppIcon } from "~/components/mesh/AppIcon";
 import { AppWordmark } from "~/components/mesh/AppWordmark";
-import { Avatar } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
@@ -20,6 +20,12 @@ import { formatCount } from "../../../../core/format";
 import type { Account, AuthStatus, Network, NetworkSummary } from "../../../../core/model";
 import { NetworkSwitcher } from "./NetworkSwitcher";
 import { UpdateChip } from "./UpdateChip";
+
+// Nav rows and the footer account row share these states.
+const ROW_STATES = cn(
+  "hover:bg-sidebar-row-hover",
+  "data-active:bg-sidebar-row-selected data-active:font-medium data-active:text-foreground data-active:shadow-[0_1px_0_rgb(0_0_0/4%),inset_0_0_0_1px_var(--color-border)]",
+);
 
 const GROUPS = [
   { id: "network", label: "Network" },
@@ -61,7 +67,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <UserFooter />
+      <UserFooter active={active === "account"} />
     </aside>
   );
 }
@@ -75,8 +81,8 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
       data-active={active || undefined}
       className={cn(
         "flex h-8 items-center gap-[9px] rounded-[var(--control-radius)] px-2.5 text-[13.5px] text-sidebar-foreground outline-none",
-        "hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-ring",
-        "data-active:bg-sidebar-row-selected data-active:font-medium data-active:text-foreground data-active:shadow-[0_1px_0_rgb(0_0_0/4%),inset_0_0_0_1px_var(--color-border)]",
+        "focus-visible:ring-2 focus-visible:ring-ring",
+        ROW_STATES,
       )}
     >
       <Icon className={cn("size-4 shrink-0", active ? "text-foreground" : "text-muted-foreground")} />
@@ -88,7 +94,8 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
   );
 }
 
-function UserFooter() {
+/** The account row: opens Account & Settings. Sign out is a sibling, so it never navigates. */
+function UserFooter({ active }: { active: boolean }) {
   const account = useQuery<Account>("account.get");
   // Shares the switcher's network.list entry, which does the polling.
   const networks = useQuery<NetworkSummary[]>("network.list");
@@ -100,12 +107,27 @@ function UserFooter() {
   return (
     <div className="border-sidebar-border border-t p-2">
       <UpdateChip />
-      <div className="flex items-center gap-[9px] rounded-[var(--control-radius)] px-2 py-1.5">
-        <Avatar name={name} />
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-[13px]">{name ?? "-"}</div>
-          <div className="text-2xs text-muted-foreground">{role}</div>
-        </div>
+      <div
+        data-active={active || undefined}
+        className={cn("flex items-center gap-1 rounded-[var(--control-radius)] pe-1 text-sidebar-foreground", ROW_STATES)}
+      >
+        <Link
+          to={routeById("account").path}
+          aria-current={active ? "page" : undefined}
+          aria-label={`${routeById("account").title}: ${name ?? "account"}, ${role}`}
+          className="flex min-w-0 flex-1 items-center gap-[9px] rounded-[var(--control-radius)] py-1.5 ps-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span
+            aria-hidden
+            className="grid size-[26px] shrink-0 place-items-center rounded-[var(--control-radius)] bg-muted shadow-[inset_0_0_0_1px_var(--color-border)]"
+          >
+            <Settings className={cn("size-3.5", active ? "text-foreground" : "text-muted-foreground")} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-[13px]">{name ?? "-"}</span>
+            <span className="block font-normal text-2xs text-muted-foreground">{role}</span>
+          </span>
+        </Link>
         <Popover.Root>
           <Popover.Trigger
             aria-label="Sign out"

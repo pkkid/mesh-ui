@@ -138,7 +138,7 @@ export function weekDays(nowMs: number): string[] {
 
 const EFFECTS: readonly Effect[] = ["query", "write", "disruptive", "destructive"];
 
-/** One audit line as App & account lists it, or null when it is malformed. Params are never read. */
+/** One audit line as Account & Settings lists it, or null when it is malformed. Params are never read. */
 function parseLine(line: string): (ModelAuditEntry & { ms: number }) | null {
   let v: unknown;
   try {
@@ -155,7 +155,7 @@ function parseLine(line: string): (ModelAuditEntry & { ms: number }) | null {
 }
 
 /**
- * Reads `audit.jsonl` into the App & account summary (`app.audit.list`):
+ * Reads `audit.jsonl` into the Account & Settings summary (`app.audit.list`):
  * this week's commands newest first (at most `limit`), the count per local
  * day, how many were refused with `needs_confirm`, and the newest MCP
  * command at any age. Reads only the newest AUDIT_MAX_LINES lines, skips

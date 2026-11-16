@@ -1,4 +1,4 @@
-# App & account
+# Account & Settings
 
 The signed in eero account, notification choices, the networks on the account, the CLI and MCP hookup, themes, and app info, sign out and account deletion.
 
@@ -8,7 +8,7 @@ Shared patterns (hero, settings rows, side panel, destructive confirms) are desc
 
 ## Layout
 
-Breadcrumb `Settings / App & account`, subtitle "This computer and your eero account". Main column on the left, side panel on the right.
+Breadcrumb `Account & Settings`, subtitle "This computer and your eero account". Not a nav item: it opens from the sidebar footer row (gear icon, name and role), the palette, `Ctrl+,` and deep links. Main column on the left, side panel on the right.
 
 1. **Hero.** Avatar with initials at the top left. Title is the account name (`Alex Kim`) with `Signed in`. Under it the email with `Verified` and the mobile number with `Unverified`. Action row: **Edit name**, **Change email**, **Verify mobile** (the third button reads **Change mobile** once the number is verified).
 2. **Account** ("Email preferences and alerts"): **Stay up to date** switch (product news by email), then one **Notifications** row: a summary of the selected network's choices ("Desktop on · 6 of 9 alerts on", counting eero alerts and phone alerts) and **Edit** with a chevron. The whole row is the button (hover `bg-muted/50`); it opens the Notification settings sheet ([overview.md](../overview.md#notifications-bell)), the one place alerts are edited. The page has no Notifications section of its own.
@@ -23,7 +23,7 @@ Side panel:
 
 **Deep links.** Each section has a stable id; `#/account/<section>` opens
 the page scrolled to it (a second `account` route, `/account/:section`, so
-the sidebar keeps App & account selected). Sections: `profile` (hero),
+the sidebar footer row stays selected). Sections: `profile` (hero),
 `email` (Account), `notifications`, `networks`, `cli`, `theme`, `about`,
 `sign-out` (`ACCOUNT_SECTIONS` in `AccountPage.tsx`, DOM ids
 `account-<section>`). `#/account/notifications` scrolls to the Notifications

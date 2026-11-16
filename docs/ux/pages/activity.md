@@ -92,5 +92,5 @@ Row actions shown in the mockup:
 - Entity filters (device, eero, profile) and text search are applied in core over fetched pages, because `app_events` has no such query params. Large filters may need several pages; show a "Searching older events..." line while it works.
 - The event type list is ours, mapped in core from eero's `event_type` strings. Unknown types fall into an "Other" type and still show.
 - "Ports & temperature" and "run from Mesh UI" attribution depend on fields we have not seen; keep them if the real data supports them, otherwise drop the type.
-- Notification toggles live on [App & account](app-account.md); the bell in the titlebar opens a short popover of unread events with a link here.
+- Notification toggles live on [Account & Settings](account-settings.md); the bell in the titlebar opens a short popover of unread events with a link here.
 - Commands added: `events.summary` q and filter params on `events.list`. CSV export is `events.list {format: "csv"}`; there is no separate export command.

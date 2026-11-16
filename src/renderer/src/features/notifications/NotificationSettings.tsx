@@ -2,7 +2,7 @@
  * Notification settings (docs/ux/overview.md#notifications-bell): the one
  * editor for every alert choice, a sheet any page opens with
  * `openNotificationSettings()` (the bell's gear, Activity's settings icon,
- * the Notifications row on App & account and its `#/account/notifications`
+ * the Notifications row on Account & Settings and its `#/account/notifications`
  * deep link). The bell hosts it (`NotificationSettingsHost`), so it opens
  * wherever you are, for the selected network.
  *
@@ -268,7 +268,7 @@ function Group({ title, hint, children }: { title: string; hint: string; childre
 /**
  * One switch row: optional icon, label, muted detail, and a switch. `on` null
  * (eero sent no value) shows a dashed track that cannot be used. Also used
- * by App & account's Account section.
+ * by the Account & Settings page's Account section.
  */
 export function SwitchRow({
   icon,

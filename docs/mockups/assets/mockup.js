@@ -26,7 +26,6 @@
     { id: "ports", file: "14-reservations-ports.html", label: "Reservations & ports", icon: "arrow-left-right", c: "var(--s-aqua)" },
     { id: "updates", file: "15-updates-admins.html", label: "Updates & admins", icon: "download", c: "var(--s-blue)" },
     { id: "troubleshoot", file: "16-troubleshooting.html", label: "Troubleshooting", icon: "stethoscope", c: "var(--s-orange)" },
-    { id: "account", file: "17-account-settings.html", label: "App & account", icon: "settings", c: "var(--s-gray)" },
   ];
 
   // ---------- Helpers ----------
@@ -432,7 +431,7 @@
           <a href="index.html" class="xxs muted-2 ml-auto" title="All mockups">mockups</a></div>
         <div class="sb-net"><span class="dot"></span><div class="grow"><div class="sm m trunc">Maple Street</div><div class="xxs muted">Online · 1.2 Gbps fiber</div></div><i data-lucide="chevrons-up-down" style="width:14px;height:14px;color:var(--muted)"></i></div>
         <nav class="sb-scroll">${nav}</nav>
-        <div class="sb-foot"><div class="sb-user"><div class="avatar" style="--c:var(--s-orange);width:26px;height:26px;font-size:11px">AK</div><div class="grow"><div class="sm m trunc">Alex Kim</div><div class="xxs muted">Owner</div></div><i data-lucide="log-out" style="width:14px;height:14px;color:var(--muted)"></i></div></div>
+        <div class="sb-foot"><a class="sb-user ${active === "account" ? "active" : ""}" href="17-account-settings.html" title="Account & Settings"><div class="sb-gear"><i data-lucide="settings" style="width:14px;height:14px"></i></div><div class="grow"><div class="sm m trunc">Alex Kim</div><div class="xxs muted">Owner</div></div><i data-lucide="log-out" style="width:14px;height:14px;color:var(--muted)"></i></a></div>
       </aside>
       <section class="main">
         <header class="topbar">

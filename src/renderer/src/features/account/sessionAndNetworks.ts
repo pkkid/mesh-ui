@@ -1,5 +1,5 @@
 /**
- * Pure text for App & account's Networks table and Sign out and delete
+ * Pure text for Account & Settings's Networks table and Sign out and delete
  * panel (NetworksTable.tsx, SignOutDelete.tsx). Relative imports only, so
  * node tests can load it.
  */
