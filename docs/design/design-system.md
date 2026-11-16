@@ -211,7 +211,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Component | Look |
 | --- | --- |
 | Button | 30px, 8px radius, `bg-card` with control border; `primary` filled; `danger` red text; `ghost` no border; `icon` square |
-| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone |
+| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Two sizes: `sm` (30px, the default) in section headers beside text, `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
 | Switch | 32 x 19, `bg-primary` when on |
 | Input, select | 30px, control border, mono variant for IPs and MACs |
 | Chip | Full radius, 26px, for filters; selected chip gets a stronger border, not colour |

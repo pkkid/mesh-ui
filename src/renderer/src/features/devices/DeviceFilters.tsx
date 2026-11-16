@@ -179,6 +179,7 @@ export function DeviceFilters(props: DeviceFiltersProps) {
         </div>
         <Segmented
           aria-label="Status"
+          size="md"
           value={f.status}
           onValueChange={(status) => onChange({ status })}
           options={[
