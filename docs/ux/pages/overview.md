@@ -114,8 +114,9 @@ actions.
 ## States
 
 - **Loading.** Hero shows name and `-` metrics, gauges as empty arcs, usage
-  chart as unlabelled gridlines, lists as blank rows at normal height. Figures
-  fade to 40% on slow refresh.
+  chart as unlabelled gridlines, lists as blank rows at normal height. A
+  background refresh keeps the figures as they are; only the topbar Refresh
+  icon spins.
 - **Empty.** Usage with no data: "No activity in this window." Top devices
   with no data: same sentence. No profiles: "No profiles yet. Group devices
   by person to pause them together." with **Add a profile**. No events: "No

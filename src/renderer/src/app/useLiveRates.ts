@@ -6,18 +6,17 @@
  * Core keeps bursts to one a minute per network, so views that run at the
  * same time share that one burst instead of doubling it.
  *
- * Returns true while a burst is settling, so the figures can fade.
- * `key` restarts the cycle (pass the network id so a switch asks at once).
+ * The figures on screen stay as they are while a burst settles (no fade);
+ * the refetch after it shows on the topbar's updating cue. `key` restarts the cycle (pass the network id so a switch asks at once).
  */
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { invalidate, useCommand } from "~/app/useCommand";
 import type { BurstResult } from "../../../core/model";
 import { BURST_SETTLE_SEC, POLL } from "../../../core/poll";
 
-export function useLiveRates(active: boolean, key = ""): boolean {
+export function useLiveRates(active: boolean, key = ""): void {
   const { run } = useCommand<Record<string, never>, BurstResult>("device.rates.refresh");
-  const [pending, setPending] = useState(false);
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
@@ -30,12 +29,8 @@ export function useLiveRates(active: boolean, key = ""): boolean {
         if (res.ok) {
           const wait = Date.parse(res.result.nextBurstAt) + BURST_SETTLE_SEC * 1000 - Date.now();
           if (Number.isFinite(wait) && wait > 0) {
-            setPending(true);
             clearTimeout(settle);
-            settle = setTimeout(() => {
-              setPending(false);
-              invalidate(["device.list", "device.get"]);
-            }, wait);
+            settle = setTimeout(() => invalidate(["device.list", "device.get"]), wait);
           }
         }
       }
@@ -46,8 +41,6 @@ export function useLiveRates(active: boolean, key = ""): boolean {
       cancelled = true;
       clearTimeout(next);
       clearTimeout(settle);
-      setPending(false);
     };
   }, [active, key, run]);
-  return pending;
 }

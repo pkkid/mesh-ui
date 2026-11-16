@@ -145,7 +145,7 @@ export function DevicesPage() {
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
   const usage = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }, { poll: true });
-  const ratesPending = useLiveRates(netId !== "", netId);
+  useLiveRates(netId !== "", netId);
 
   const bridged = network.data?.connectionMode === "bridged" || network.data?.connectionMode === "ipPassthrough";
   const gate = useGate({ area: "devices", bridgeOff: true });
@@ -194,7 +194,6 @@ export function DevicesPage() {
         summary={summary}
         devices={all.data?.devices}
         eeroName={eeroName}
-        ratesPending={ratesPending}
         fading={all.fading && !all.data}
       />
 
@@ -242,7 +241,6 @@ export function DevicesPage() {
           profiles={profileInfo}
           usage={usageById}
           newIds={newIds}
-          ratesPending={ratesPending}
           fading={list.fading || (!list.data && !!shown)}
           error={list.error?.message ?? null}
           onRetry={() => void list.refetch()}

@@ -78,7 +78,7 @@ Row actions shown in the mockup:
 
 ## States
 
-- **Loading:** keep the layout; chart and figures fade to `opacity-40` after 150 ms; stream shows placeholder rows of the right height.
+- **Loading:** keep the layout; on a first load or a range switch, chart and figures fade to `opacity-40` after 150 ms; stream shows placeholder rows of the right height. Background refreshes do not dim them (the topbar Refresh icon spins).
 - **Empty:** for a filter with no matches, the stream shows one centred muted sentence ("No events match these filters.") and the chart shows "No activity in this window.".
 - **Error:** inline note above the stream with the error message and a **Retry** button; cached rows stay visible.
 - **Offline (network down):** the stream still loads from eero's cloud; the hero status elsewhere shows the outage. Poll keeps running.

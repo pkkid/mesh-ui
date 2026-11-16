@@ -227,13 +227,45 @@ function fetchEntry(entry: Entry, fresh = false): Promise<void> {
   update(entry, { loading: true });
   entry.stale = false;
   entry.inflightFresh = fresh;
+  // Data already on screen stays as it is; only the app-wide indicator shows the refetch.
+  const background = entry.snapshot.data !== undefined;
+  if (background) setUpdating(1);
   entry.inflight = execute(entry.id, entry.params, fresh ? { fresh } : undefined).then((res) => {
+    if (background) setUpdating(-1);
     entry.inflight = null;
     entry.inflightFresh = false;
     if (res.ok) update(entry, { data: res.result, error: null, loading: false, fetchedAt: Date.now() });
     else update(entry, { error: res.error, loading: false });
   });
   return entry.inflight;
+}
+
+// ---------------------------------------------------------------------------
+// Background updates: refetches of queries whose data is already on screen
+
+let updating = 0;
+const updatingListeners = new Set<() => void>();
+
+function setUpdating(delta: number): void {
+  const was = updating > 0;
+  updating += delta;
+  if (was !== updating > 0) updatingListeners.forEach((l) => l());
+}
+
+/** True while any query refetches with its data already on screen (a poll, an invalidate, Refresh). */
+export const isUpdating = (): boolean => updating > 0;
+
+/**
+ * The app-wide "updating" cue: true once a background refetch has run for
+ * 150 ms, false when the last one ends. Sections never dim for these; the
+ * topbar Refresh icon is the only sign (docs/architecture/ui.md#states-every-page-handles).
+ */
+export function useUpdating(): boolean {
+  const busy = useSyncExternalStore(
+    (l) => (updatingListeners.add(l), () => updatingListeners.delete(l)),
+    isUpdating,
+  );
+  return useFade(busy);
 }
 
 /** Subscribes to one query's snapshot. Returns an unsubscribe. */
@@ -410,8 +442,10 @@ export type QueryOptions = {
 
 export type QueryState<R> = QuerySnapshot<R> & {
   /**
-   * True once a request has been in flight for 150 ms. Fade figures to
-   * `opacity-40` while it is set; never show a spinner in page content.
+   * True once a first load (no data yet for these params) has been in flight
+   * for 150 ms. Fade placeholders to `opacity-40` while it is set; never show
+   * a spinner in page content. A refetch with data on screen never sets it:
+   * the old figures stay until the new ones arrive (see `useUpdating`).
    */
   fading: boolean;
   /**
@@ -455,7 +489,7 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
     // `params` is covered by `key`.
   }, [key, enabled, intervalSec]);
 
-  const fading = useFade(snapshot.loading);
+  const fading = useFade(snapshot.loading && snapshot.data === undefined);
   const refetch = useCallback((options?: { fresh?: boolean }) => {
     const current = entryFor(id, params);
     return fetchEntry(current, options?.fresh === true).then(() => current.snapshot as QuerySnapshot<R>);

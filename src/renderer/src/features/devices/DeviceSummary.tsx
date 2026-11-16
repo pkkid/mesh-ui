@@ -27,12 +27,10 @@ type DeviceSummaryProps = {
   /** Every device on the network, to show the new ones by id. */
   devices: ReadonlyArray<Device> | undefined;
   eeroName: ReadonlyMap<string, string>;
-  /** A rates burst is pending: fade the throughput figures. */
-  ratesPending: boolean;
   fading: boolean;
 };
 
-export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fading }: DeviceSummaryProps) {
+export function DeviceSummary({ summary: s, devices, eeroName, fading }: DeviceSummaryProps) {
   const byId = new Map((devices ?? []).map((d) => [d.id, d]));
   const fresh = (s?.newThisWeek ?? []).flatMap((id) => byId.get(id) ?? []);
   const down = mbpsParts(s?.rates?.downMbps);
@@ -94,7 +92,7 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
           </div>
         </Cell>
 
-        <Cell className={cn("border-t transition-opacity @3xl:border-t-0 @3xl:border-l", (ratesPending || fading) && "opacity-40")}>
+        <Cell className={cn("border-t transition-opacity @3xl:border-t-0 @3xl:border-l", fading && "opacity-40")}>
           <Label icon={Activity}>Current throughput</Label>
           <div className="mt-2 whitespace-nowrap">
             <Figure>{down.value}</Figure>

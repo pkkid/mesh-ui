@@ -186,9 +186,13 @@ building a new chart; port from them rather than inventing a style.
   totals make sense.
 - **Scale.** Series that overlap (not stacked) share a scale based on the
   largest single series, not the sum, so the plot height is not wasted.
-- **Loading and empty.** Keep the layout; fade figures to `opacity-40` after
-  a 150ms delay instead of spinners. Unlabelled placeholder gridlines while
-  there is no data yet. An empty range shows one centred muted sentence
+- **Loading and empty.** Keep the layout. On a first load (no data yet),
+  fade placeholders to `opacity-40` after a 150ms delay instead of spinners,
+  with unlabelled placeholder gridlines. A background refresh (poll, re-read
+  after a write, Refresh) never dims data already on screen: the old figures
+  stay until the new ones land, and the only cue is the topbar Refresh icon
+  spinning (`useUpdating`). User-triggered switches to data not loaded yet
+  (Day/Week, a filter) still fade. An empty range shows one centred muted sentence
   ("No activity in this window.").
 - **Accessible.** Every chart has `role="img"` and an `aria-label` that says
   what it shows.
