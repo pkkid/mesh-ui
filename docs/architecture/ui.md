@@ -214,7 +214,11 @@ From the mockups (`01-overview.html` and every page):
   the right the search field ("Search or run a command", `Ctrl K` / `Cmd K`),
   the notifications bell with an unread dot (`notifications.list`), and space
   for native window controls (`--titlebar-inset-right`). Every control in it
-  has `no-drag`.
+  has `no-drag`. Pages fill two slots: `TopBarSubtitle` (freshness) and
+  `TopBarActions`, which holds **navigation and global tools only** (Prev /
+  Next on Device detail). Page actions (Add a profile, Export CSV, Rename)
+  go in the page: hero actions or a section's `tools`. See
+  [design-system.md](../design/design-system.md#shell).
 - **Content**: a scrolling column, max width 1320px, padding 22px 28px.
 
 Navigation is view state: a small in-memory router (`page` + optional

@@ -39,7 +39,7 @@ Every action below is a command run through `engine.execute(id, params)` (see
 
 ```text
 +-----------+--------------------------------------------------------------+
-| sidebar   | topbar: crumbs · subtitle · page actions · search · bell ·   |
+| sidebar   | topbar: crumbs · subtitle · page nav · search · bell ·       |
 |           |         theme · window controls        (drag region)         |
 |           +--------------------------------------------------------------+
 |           | content: page (scrolls)                                      |
@@ -137,7 +137,7 @@ Left to right (mockup `.topbar`):
 | --- | --- | --- |
 | Crumbs | Page title as `h1`, or a path ("Devices / Alex's MacBook Pro", "eeros / Office", "Profiles / Mia") | Earlier crumbs are links. |
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
-| Page actions | Small buttons a page puts in the topbar slot: Share Wi-Fi (Devices), Prev and Next (Device detail), Add a profile (Profiles), Rename (Profile detail) | Optional per page. |
+| Page navigation | Small buttons a page puts in the topbar slot: Prev and Next (Device detail) | Optional per page. Navigation and global tools only; page actions (Add a profile, Export CSV, Rename) live in the page, in hero actions or section tools. Share Wi-Fi (Devices), Live (Devices), Export CSV (Activity), Check for updates (Updates) and Rename (Profile detail) still sit here until #323 moves them. |
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
 | Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |

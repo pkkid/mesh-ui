@@ -154,7 +154,7 @@ Sidebar on the left (`bg-sidebar`, 1px right border): app icon, network
 picker card, nav groups **Network** and **Settings**, and the account row
 at the bottom (a neutral gear tile in place of an avatar, name and role; it
 opens Account & Settings and uses the nav row hover and selected states).
-Main pane: a 44px top bar (breadcrumbs, page actions, search,
+Main pane: a 44px top bar (breadcrumbs, page navigation, search,
 Refresh, notifications, theme toggle, window controls) over a scrolling content
 column. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
 buttons with a `title` tooltip naming any shortcut ("Refresh (Ctrl+R)");
@@ -162,6 +162,13 @@ a running Refresh only spins its icon (rotation, no other animation). The top st
 window titlebar (`drag-region`); controls in it need `no-drag`, and it
 respects `--titlebar-inset-left/right`. See
 [architecture/ui.md](../architecture/ui.md#shell).
+
+**The titlebar holds navigation and global tools only**: breadcrumbs,
+search, Refresh, notifications, theme, and Prev / Next on detail pages.
+**Page actions live in the page**, in the hero actions or a section's tools
+(Add a profile sits in the Profiles section header beside Pause all). Pages
+that still use the titlebar actions slot for page actions are tracked in
+#323.
 
 ### Page header (hero)
 

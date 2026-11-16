@@ -7,13 +7,15 @@ sort out unassigned devices.
 Mockup: [../../mockups/07-profiles.html](../../mockups/07-profiles.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "Profiles", page action **+ Add a profile** (primary). Sidebar
+Topbar: title "Profiles", no page actions. Sidebar
 count: number of profiles, not counting Unassigned.
 
 ## Layout
 
 1. **Profiles** section. Sub "Group devices by person to pause them together
-   and see their usage". Tools: **Pause all** and a Cards / List toggle.
+   and see their usage". Tools: **+ Add a profile**, **Pause all** and a
+   Cards / List toggle, in that order (shown once there is a profile; with
+   none, the empty card has its own Add a profile).
    A 4-column grid of profile cards. Each card:
    - Avatar initial in the profile colour, name, "6 devices · 6 online".
    - A stacked row of device-type icons (offline devices greyed) and the

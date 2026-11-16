@@ -2,9 +2,9 @@
  * Profiles section: one card per profile (or one row in List view) with its
  * initial in the profile colour, devices and how many are online, device
  * type icons, state, the next scheduled change, and today's usage with a
- * 24 h sparkline. Pause and Resume per card, Pause all, and a menu with
- * Rename, Add a scheduled pause (the schedule sheet from profile detail)
- * and Delete. docs/ux/pages/profiles.md (Layout 1, Actions).
+ * 24 h sparkline. Add a profile and Pause all in the header, Pause and
+ * Resume per card, and a menu with Rename, Add a scheduled pause (the
+ * schedule sheet from profile detail) and Delete. docs/ux/pages/profiles.md (Layout 1, Actions).
  *
  * Also the profile write pieces shared with profile detail and Overview:
  * ProfilePauseButton, ProfileSheet (add, rename, devices) and
@@ -106,6 +106,10 @@ export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Pr
       tools={
         list.length > 0 ? (
           <>
+            <GatedButton gate={createGate} variant="outline" onClick={() => setSheet({ kind: "create" })}>
+              <Plus />
+              Add a profile
+            </GatedButton>
             <PauseAllButton profiles={list} />
             <Segmented aria-label="Profile layout" value={view} onValueChange={setView} options={VIEWS} />
           </>
