@@ -105,6 +105,13 @@ export type FakeNetwork = {
   acCompat: RawAcCompat;
   /** `GET {net}/app_events` rows in the captured shape, newest first. */
   appEvents: RawAppEvent[];
+  /**
+   * Set (ms) to answer `app_events` the way a real network does: only the
+   * events of the last `appEventsWindowMs` before state.now(), with the
+   * `timestamp` cursor ignored (capture of 2026-11-16: about 15 minutes, #263).
+   * Absent or null: pages back with `timestamp`, as the clients document.
+   */
+  appEventsWindowMs?: number | null;
   /** `GET {net}/notifications_history` rows, newest first. */
   notificationsHistory: RawNotification[];
   /** `GET {net}/notifications/has_unread`. */
