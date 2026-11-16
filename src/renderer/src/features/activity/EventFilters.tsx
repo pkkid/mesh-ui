@@ -1,16 +1,25 @@
 /**
- * Activity filter bar: text filter, Device, eero and Profile selects, the
- * Range select (a day inside the last 7, or all of them) and Reset. Pure view
- * state; the page passes it to `events.list` and `events.summary`, which
- * filter in core. docs/ux/pages/activity.md (Layout 2).
+ * Activity filter bar (docs/ux/pages/activity.md, Layout 2), built from the
+ * shared filter bar like Devices: search and a Filters popover (Device, eero,
+ * Profile) on the left, the Range dropdown on the right, and the filters that
+ * are set as removable chips under it. Types hidden from the legend show as
+ * one chip too. Pure view state; the page passes it to `events.list` and
+ * `events.summary`, which filter in core.
  */
-import { Calendar, MonitorSmartphone, RotateCcw, Router, Search, Users } from "lucide-react";
-import type { ReactNode } from "react";
+import { Calendar } from "lucide-react";
+import type { RefObject } from "react";
 
-import { Button } from "~/components/ui/button";
-import { Card } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { cn } from "~/lib/utils";
+import {
+  FilterBar,
+  FilterBarEnd,
+  type FilterChip,
+  FilterDropdown,
+  type FilterOption,
+  FilterRow,
+  FilterSearch,
+  FiltersButton,
+  SelectPicker,
+} from "~/components/ui/filter-bar";
 
 export type EventFilterState = {
   search: string;
@@ -23,99 +32,83 @@ export type EventFilterState = {
 
 export const EMPTY_FILTERS: EventFilterState = { search: "", device: null, eero: null, profile: null, day: null };
 
-export type Option = { value: string; label: string };
+/** Clears every filter in the Filters popover; search and range stay. */
+const CLEAR_POPOVER: Partial<EventFilterState> = { device: null, eero: null, profile: null };
 
-const selectClass =
-  "h-7 min-w-32 max-w-44 cursor-pointer truncate rounded-lg border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
-
-function Select({
-  label,
-  icon,
-  value,
-  any,
-  options,
-  onChange,
-}: {
-  label: string;
-  icon: ReactNode;
-  value: string | null;
-  any: string;
-  options: ReadonlyArray<Option>;
-  onChange: (value: string | null) => void;
-}) {
-  return (
-    <label className="flex items-center gap-1.5">
-      <span className="text-2xs text-muted-foreground">{label}</span>
-      <span className="relative inline-flex items-center">
-        <span className="pointer-events-none absolute left-2 text-muted-foreground [&_svg]:size-3.5">{icon}</span>
-        <select
-          aria-label={label}
-          className={cn(selectClass, "pl-7", value === null && "text-muted-foreground")}
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-        >
-          <option value="">{any}</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </span>
-    </label>
-  );
-}
+export type Option = FilterOption;
 
 export function EventFilters({
-  value,
+  value: f,
   searchText,
   onSearchText,
+  searchRef,
   onChange,
-  onReset,
   devices,
   eeros,
   profiles,
   days,
-  canReset,
+  hiddenTypes,
+  onShowAllTypes,
 }: {
   value: EventFilterState;
   searchText: string;
   onSearchText: (text: string) => void;
+  searchRef: RefObject<HTMLInputElement | null>;
   onChange: (patch: Partial<EventFilterState>) => void;
-  onReset: () => void;
   devices: ReadonlyArray<Option>;
   eeros: ReadonlyArray<Option>;
   profiles: ReadonlyArray<Option>;
   /** One label per day of the window, newest first ("Today", "Yesterday", "Tuesday"). */
   days: ReadonlyArray<string>;
-  canReset: boolean;
+  /** How many event types the legend hides (0 when all show). */
+  hiddenTypes: number;
+  onShowAllTypes: () => void;
 }) {
+  const labelOf = (options: ReadonlyArray<Option>, v: string) => options.find((o) => o.value === v)?.label ?? v;
+  const chips: FilterChip[] = [];
+  if (f.device) chips.push({ key: "device", text: `Device: ${labelOf(devices, f.device)}`, onRemove: () => onChange({ device: null }) });
+  if (f.eero) chips.push({ key: "eero", text: `eero: ${labelOf(eeros, f.eero)}`, onRemove: () => onChange({ eero: null }) });
+  if (f.profile) chips.push({ key: "profile", text: `Profile: ${labelOf(profiles, f.profile)}`, onRemove: () => onChange({ profile: null }) });
+  const popoverSet = chips.length;
+  if (hiddenTypes > 0) chips.push({ key: "types", text: `${hiddenTypes} ${hiddenTypes === 1 ? "type" : "types"} hidden`, onRemove: onShowAllTypes });
+
   return (
-    <Card className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3.5">
-      <Input
-        type="search"
+    <FilterBar
+      chips={chips}
+      onClearAll={() => {
+        onChange(CLEAR_POPOVER);
+        onShowAllTypes();
+      }}
+    >
+      <FilterSearch
+        inputRef={searchRef}
         aria-label="Filter events"
         placeholder="Filter events"
-        icon={<Search />}
-        className="w-44"
+        title="Filter by text in the event"
         value={searchText}
-        onChange={(e) => onSearchText(e.target.value)}
+        onValueChange={onSearchText}
       />
-      <Select label="Device" icon={<MonitorSmartphone />} value={value.device} any="Any device" options={devices} onChange={(device) => onChange({ device })} />
-      <Select label="eero" icon={<Router />} value={value.eero} any="Any eero" options={eeros} onChange={(eero) => onChange({ eero })} />
-      <Select label="Profile" icon={<Users />} value={value.profile} any="Any profile" options={profiles} onChange={(profile) => onChange({ profile })} />
-      <Select
-        label="Range"
-        icon={<Calendar />}
-        value={value.day === null ? null : String(value.day)}
-        any="Last 7 days"
-        options={days.map((label, i) => ({ value: String(i), label }))}
-        onChange={(day) => onChange({ day: day === null ? null : Number(day) })}
-      />
-      <Button size="xs" variant="ghost" className="ms-auto" disabled={!canReset} onClick={onReset}>
-        <RotateCcw />
-        Reset
-      </Button>
-    </Card>
+      <FiltersButton active={popoverSet} onClear={() => onChange(CLEAR_POPOVER)}>
+        <FilterRow label="Device">
+          <SelectPicker name="Device" value={f.device} options={devices} onChange={(device) => onChange({ device })} />
+        </FilterRow>
+        <FilterRow label="eero">
+          <SelectPicker name="eero" value={f.eero} options={eeros} onChange={(eero) => onChange({ eero })} />
+        </FilterRow>
+        <FilterRow label="Profile">
+          <SelectPicker name="Profile" value={f.profile} options={profiles} onChange={(profile) => onChange({ profile })} />
+        </FilterRow>
+      </FiltersButton>
+      <FilterBarEnd>
+        <FilterDropdown
+          label="Range"
+          icon={Calendar}
+          value={f.day === null ? null : String(f.day)}
+          anyLabel="Last 7 days"
+          options={days.map((label, i) => ({ value: String(i), label }))}
+          onChange={(day) => onChange({ day: day === null ? null : Number(day) })}
+        />
+      </FilterBarEnd>
+    </FilterBar>
   );
 }

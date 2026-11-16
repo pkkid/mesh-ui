@@ -257,6 +257,25 @@ Run again). This follows the restrained colour rule: buttons are neutral.
 | QR block | `qr.tsx`. `QrBlock`: small outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. The code is always black modules on a white tile with a quiet zone and 1px border, in both themes, because some scanners cannot read inverted codes: the one place fixed black and white are used. An empty muted frame while the payload loads. Save QR writes a black-on-white PNG through Chromium's download save dialog. Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
 
+### Filter bar
+
+List pages filter with one pattern, `components/ui/filter-bar.tsx`, used by
+Devices and Activity. Do not build another.
+
+- A bare toolbar (no card), 32px controls: `FilterSearch` (search icon, `/`
+  hint; `useSlashFocus` wires the key, Esc clears) and a `FiltersButton` on
+  the left, page-specific segments beside them (Devices' status).
+- `FiltersButton`: outline button with a muted count badge, a popover of
+  `FilterRow`s (label column plus control: `SelectPicker`, `FilterToggle`
+  chips, a Segmented) and a footer "N filters set" with **Clear all**.
+- Right (`FilterBarEnd`): `FilterDropdown` triggers for view choices such as
+  Group by, Sort or Range (icon, current value, chevron, the name in the
+  tooltip), then icon buttons such as Columns.
+- `FilterBar` shows each filter that is set as a removable chip under the
+  toolbar, then **Clear all**. Nothing else (no Reset button).
+- `Picker` lists over 10 options get a type-ahead field at the top; Enter
+  picks the first match.
+
 ### Tables
 
 - Header `text-xs text-muted-foreground font-normal`, 1px bottom border.
