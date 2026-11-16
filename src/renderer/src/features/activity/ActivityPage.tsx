@@ -11,12 +11,13 @@
  * (the bell's poll): eero keeps no read flag per event, so rows carry no dots.
  */
 import { Check, FileDown } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { PageProps } from "~/app/routes";
 import { execute, useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { useSlashFocus } from "~/components/ui/filter-bar";
 import { SectionError } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { Status } from "~/components/ui/status";
@@ -60,6 +61,8 @@ export function ActivityPage(_props: PageProps) {
   const [hidden, setHidden] = useState<ReadonlySet<EventCategory>>(new Set());
   const [filters, setFilters] = useState<EventFilterState>(EMPTY_FILTERS);
   const [searchText, setSearchText] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useSlashFocus(searchRef);
 
   // Text filter is a param: debounce so typing does not send a request per key.
   useEffect(() => {
@@ -134,11 +137,6 @@ export function ActivityPage(_props: PageProps) {
   const profileOptions = useMemo(() => (profiles.data?.profiles ?? []).map((p) => ({ value: p.id, label: p.name })), [profiles.data]);
 
   const filtered = hidden.size > 0 || filters.search !== "" || searchText !== "" || filters.device !== null || filters.eero !== null || filters.profile !== null || filters.day !== null;
-  const reset = () => {
-    setFilters(EMPTY_FILTERS);
-    setSearchText("");
-    setHidden(new Set());
-  };
   const toggle = (c: EventCategory) =>
     setHidden((h) => {
       const next = new Set(h);
@@ -204,13 +202,14 @@ export function ActivityPage(_props: PageProps) {
         value={filters}
         searchText={searchText}
         onSearchText={setSearchText}
+        searchRef={searchRef}
         onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
-        onReset={reset}
         devices={deviceOptions}
         eeros={eeroOptions}
         profiles={profileOptions}
         days={dayLabels}
-        canReset={filtered}
+        hiddenTypes={hidden.size}
+        onShowAllTypes={() => setHidden(new Set())}
       />
 
       <Section

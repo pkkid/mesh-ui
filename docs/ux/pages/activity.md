@@ -15,7 +15,10 @@ Titlebar: title "Activity", **Export CSV** button on the right of the titlebar a
    - Under it, the type legend. One row per event type: colour square, icon, label, count, share percent. Types: Devices joined / left, Paused / blocked, Schedules, eero status, Speed tests, Firmware, Admin actions, Ports & temperature. The legend doubles as the type filter: clicking a row toggles that type in the chart and the stream below.
    - Right: stacked bar chart, one bar per day for the last 7 days, or in Per hour mode one bar per hour for the last 24 hours (168 hourly bars are too thin to read), one segment colour per type (`eventCategoryColors` in `lib/chartColors.ts`, hues from the theme series palette; see [design system](../../design/design-system.md#series-colours)).
    - The hero line leaves out the change when history does not reach the prior period (a week on a free account keeps about 7 days, so "vs prior week" usually cannot be known).
-2. **Filter bar** (card): text filter ("Filter events"), **Device**, **eero** and **Profile** selects (each defaulting to "Any ..."), **Range** select (dates inside the last 7 days), **Reset** ghost button on the right.
+2. **Filter bar**, the shared list-page filter bar ([design system](../../design/design-system.md#filter-bar)), no card, as on Devices:
+   - Left: search ("Filter events", `/` focuses it, Esc clears it) and a **Filters** button with a count of the popover filters that are set. Its popover has a row each for **Device**, **eero** and **Profile** (each "Any" by default), and a footer "2 filters set" with **Clear all**. The Device list is long, so its picker has a type-ahead field (Enter picks the first match).
+   - Right: a **Range** dropdown trigger: "Last 7 days" (the default), then "Today", "Yesterday" and the earlier days of the window ("Friday, Nov 13").
+   - Under the bar, while any is set: one chip per popover filter ("Device: Alex's iPhone", "eero: Living Room", "Profile: Alex") with an x to remove it, a "2 types hidden" chip while the legend hides types (its x shows them all), then **Clear all**, which clears those filters and types (search and range stay).
 3. **Event stream** (section). Header: title, an **Unread notifications** status marker (info dot plus "Unread notifications") while eero's network-wide `has_unread` is set, sub line `Newest first · polled every 60 s`, then on the right a live dot ("Live"), segmented toggle **Grouped** / **Raw**, **Mark notifications read** button (`notifications.mark_read`; shown only while the flag is set, and hidden rather than greyed out while it is clear, since events themselves have no read state) and a settings icon button that opens the Notification settings sheet over Activity ([overview.md](../overview.md#notifications-bell)).
    - Day bars: `Today`, `Yesterday`, then weekday names. Each shows the date, event count and a small per hour sparkline strip.
    - Event rows: time (mono, right aligned), icon, title with bold entities, a muted detail line (entity chip, band, channel, MAC, IP, profile), and a right side slot holding a contextual action or a status.
@@ -51,7 +54,7 @@ Row actions shown in the mockup:
 | Day bar counts and hourly strip | day counts from the Per day call, strip from `events.summary` `{range: "week", bucket: "hour"}` | same |
 | Event stream rows | `events.list` `{cursor?, type?, device?, eero?, profile?, search?, since?, until?, grouped}` | every 60 s while the page is visible |
 | Unread marker | `notifications.list` (`unread`, network-wide; the bell's poll) | every 60 s |
-| Device, eero, profile filter options | `device.list`, `eero.list`, `profile.list` | on open of the select |
+| Device, eero, profile filter options | `device.list`, `eero.list`, `profile.list` | on open of the page |
 
 `events.summary` and the filter params on `events.list` are in the [catalogue](../../architecture/commands.md#activity-commandsactivityts). Grouping is done in `src/core` so the CLI and MCP get the same groups as the window.
 
@@ -62,8 +65,8 @@ Row actions shown in the mockup:
 | Export CSV | `events.list` `{format: "csv", limit: 1000, ...current filters}` | query | no | Save dialog; the file is built in core, every event in the filtered range (up to 1,000) |
 | Per day / Per hour | none (view state) | | | Rebuckets the chart |
 | Type legend row | none (view state) | | | Toggles the type in chart and stream |
-| Filter text, Device, eero, Profile, Range | none (view state, passed to `events.list`) | | | Refetches the stream |
-| Reset | none | | | Clears all filters and types |
+| Filter text, Filters (Device, eero, Profile), Range | none (view state, passed to `events.list`) | | | Refetches the stream |
+| Filter chip x, Clear all | none | | | Clears that filter (or the hidden types); Clear all clears every chip |
 | Grouped / Raw | none (passed as `grouped`) | | | Regroups the stream |
 | Mark notifications read | `notifications.mark_read` | write | no | Unread notifications marker, the button itself and the bell dot clear; "Marked all read" toast, no Undo |
 | Settings icon | none (opens the sheet) | | | The Notification settings sheet, over Activity |
