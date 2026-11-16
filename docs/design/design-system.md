@@ -253,6 +253,18 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 milestone), `SectionError` (what failed, eero's message, Retry; other
 sections keep working) and `useNow` (a ticking clock for relative times).
 
+**Clickable cards.** A large card that opens a detail page (an eero card,
+a profile card) is one clickable target: `<Card to={path}>` with its title in
+a `CardLink`. A click anywhere on the card opens the page; there is no
+chevron or "Details" button. The card gets `cursor-pointer` and, on hover,
+`bg-muted/30` plus a brighter border (`border-foreground/20`), with
+`transition-colors` only (no movement, no shadow). The title link is the
+keyboard focus target: focusing it gives the card the hover look plus the
+focus ring, and Enter opens it. Buttons, links, inputs and menus inside the
+card (Find, Pause, the `...` menu) keep their own clicks; wrap any other
+control in `data-card-ignore`. List rows (`Row`) are a separate pattern and
+keep `hover:bg-muted/50`.
+
 `components/ui/text-link.tsx` is the inline link inside muted copy ("Set
 your internet plan", "Change", "View history"): `text-foreground` with an
 always-on underline (`decoration-foreground/40`, offset 2), so it reads as

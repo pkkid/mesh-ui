@@ -22,6 +22,9 @@ count: number of profiles, not counting Unassigned.
      profile colour.
    - A full-width **Pause** button (or primary **Resume** when paused) and a
      `...` menu button.
+   - The whole card opens profile detail (a clickable card, see the design
+     system): hover brightens the background and border, and the name is
+     the keyboard focus target.
    - List view: one row per profile with the same fields in columns.
 2. **Today's pauses** section. Sub "Thursday, Nov 12 · scheduled and manual,
    network time zone (Pacific)". Legend on the right: Scheduled (muted

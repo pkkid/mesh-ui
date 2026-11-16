@@ -8,13 +8,12 @@
 import { ChevronRight, Lightbulb } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
-import { Link, pathFor } from "~/app/router";
+import { pathFor } from "~/app/router";
 import { eeroIcon } from "~/components/mesh/Topology";
 import { RadioTable, wirelessRadios } from "~/components/mesh/RadioTable";
 import { Badge } from "~/components/ui/badge";
 import { BandBadge } from "~/components/ui/band-badge";
-import { Button } from "~/components/ui/button";
-import { Card } from "~/components/ui/card";
+import { Card, CardLink } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { useWrite } from "~/app/useWrite";
 import { GatedButton, Row, RowList, useGate, useNow } from "~/components/ui/page";
@@ -144,7 +143,7 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
         const status = statusOf(e);
         const to = pathFor("eero", { eeroId: e.id });
         return (
-          <Card key={e.id}>
+          <Card key={e.id} to={to}>
             <div className="flex items-center gap-3 px-[18px] pt-4 pb-3">
               <IconTile icon={eeroIcon(e)} size="lg" />
               <div className="min-w-0 flex-1">
@@ -152,10 +151,9 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
                 <div className="truncate text-muted-foreground text-xs">{facts(e, offlineDetail)}</div>
               </div>
               <Status tone={status.tone}>{status.label}</Status>
-              <FindButton eero={e} />
-              <Button size="icon-xs" variant="outline" title="Details" aria-label={`${e.location} details`} render={<Link to={to} />}>
-                <ChevronRight />
-              </Button>
+              <span data-card-ignore className="flex">
+                <FindButton eero={e} />
+              </span>
             </div>
             <div className="border-t px-[18px] pt-3 pb-3.5">
               <RadioTable eero={e} />
@@ -167,14 +165,12 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
   );
 }
 
-/** The eero's name plus its Gateway badge. With `to`, only the name is a link, so hover underlines just the name. */
+/** The eero's name plus its Gateway badge. With `to` the name is the clickable card's link (its keyboard focus target). */
 function Title({ eero, to, large = false }: { eero: Eero; to?: string; large?: boolean }) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2 font-medium", large ? "text-[15px]" : "text-[13.5px]")}>
       {to ? (
-        <Link to={to} className="truncate outline-none hover:underline focus-visible:underline">
-          {eero.location}
-        </Link>
+        <CardLink to={to}>{eero.location}</CardLink>
       ) : (
         <span className="truncate">{eero.location}</span>
       )}
