@@ -179,7 +179,7 @@ building a new chart; port from them rather than inventing a style.
   uppercase text-muted-foreground`.
 - **Hover.** A 1px muted vertical line at the nearest point and a tooltip
   that follows the pointer 12px away and stays inside the plot. Tooltip: the
-  shared `tooltipSurface` (`bg-tooltip`, border, `rounded-xl shadow-lg
+  shared `tooltipSurface` (`bg-tooltip`, border, `rounded-md shadow-lg
   text-xs`; every tooltip in the app uses it, `title` attributes included), period label in
   muted text, one row per series (colour dot or icon, muted label, value
   right-aligned in `tabular-nums`), and a Total row under a top border when
