@@ -41,7 +41,8 @@ export function useMarkAllRead(networkId: string | null, page: NotificationPage 
 }
 
 /**
- * The Activity event stream's Mark all read, beside its Unread marker. Events
+ * The Activity event stream's Mark all read, on the stream's filter bar row
+ * (styled like the bar's controls: 13px, normal weight). Events
  * have no read state, so it is labelled for what it clears (the notifications)
  * and hidden while nothing is unread rather than shown greyed out.
  */
@@ -49,7 +50,7 @@ export function MarkAllReadButton({ networkId, page }: { networkId: string | nul
   const mark = useMarkAllRead(networkId, page);
   if (!networkId || page?.unread !== true) return null;
   return (
-    <GatedButton gate={mark.gate} variant="outline" disabled={mark.disabled} onClick={() => void mark.run()}>
+    <GatedButton gate={mark.gate} variant="outline" className="px-2 font-normal text-[13px]" disabled={mark.disabled} onClick={() => void mark.run()}>
       Mark notifications read
     </GatedButton>
   );
