@@ -18,9 +18,8 @@ import { Connection } from "./Connection";
 import { InternetHero } from "./InternetHero";
 import { InternetUsage } from "./InternetUsage";
 import { PlanSheet } from "./PlanSheet";
-import { SpeedHistory } from "./SpeedHistory";
 
-/** Sections `#/internet/<section>` scrolls to, with their DOM ids. */
+/** Sections `#/internet/<section>` scrolls to, with their DOM ids. History is the hero's speed test trend. */
 const SECTION_IDS: Readonly<Record<string, string>> = { history: "internet-history" };
 
 export function InternetPage({ params }: PageProps) {
@@ -35,9 +34,8 @@ export function InternetPage({ params }: PageProps) {
       <TopBarSubtitle>
         <Freshness at={internet.fetchedAt} />
       </TopBarSubtitle>
-      <InternetHero />
+      <InternetHero id={SECTION_IDS.history} />
       <Connection />
-      <SpeedHistory id={SECTION_IDS.history} />
       <InternetUsage />
       <PlanSheet />
     </>

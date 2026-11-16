@@ -283,7 +283,7 @@ shortcut list lives in App & account.
   state, never a command. Section deep links reuse a page's route with a
   `:section` segment (no sidebar entry, the page stays selected) and scroll
   to it: `#/account/<section>` (see app-account.md) and `#/internet/history`
-  (Speed test history, from Overview's "View history").
+  (the hero's speed test trend, from Overview's "View history").
 - Routes are per network: switching network keeps the route when the target
   exists. A detail route whose id is gone (device removed, profile deleted)
   shows "This device is no longer on Maple Street." with a link back to the

@@ -10,9 +10,9 @@
 
 <div id="page" class="page">
 
-  <!-- Hero: connection + speed test -->
-  <div class="hero">
-    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:28px;align-items:center">
+  <!-- Hero: verdict on the left, the speed test trend on the right (#240) -->
+  <div class="hero" id="internet-history">
+    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:32px;align-items:center">
       <div class="col gap-12">
         <div>
           <div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Ziply Fiber is fast and steady</div>
@@ -27,8 +27,24 @@
           <button class="btn ghost"><i data-lucide="stethoscope"></i>Troubleshoot</button>
         </div>
       </div>
-      <div id="g-down"></div>
-      <div id="g-up"></div>
+      <div class="col gap-8">
+        <div class="row between" style="align-items:flex-start">
+          <div class="row" style="gap:22px">
+            <div>
+              <div class="row xs muted" style="gap:6px"><span class="dot" style="--c:var(--c-down)"></span>Download, 7-day avg</div>
+              <div class="row" style="gap:8px;align-items:baseline"><span class="m tnum" style="font-size:16px">914 Mbps</span><span class="xs muted">76% of plan</span></div>
+            </div>
+            <div>
+              <div class="row xs muted" style="gap:6px"><span class="dot" style="--c:var(--c-up)"></span>Upload, 7-day avg</div>
+              <div class="row" style="gap:8px;align-items:baseline"><span class="m tnum" style="font-size:16px">906 Mbps</span><span class="xs muted">75% of plan</span></div>
+            </div>
+          </div>
+          <div class="row gap-8"><button class="btn sm"><i data-lucide="download"></i>Export CSV</button><div class="seg"><span>Month</span><span class="on">All</span></div></div>
+        </div>
+        <div id="ch-st"></div>
+        <div class="xxs muted">15 tests since Thu Nov 6 · Plan Fiber Gig, 1.2 Gbps down, 1.2 Gbps up · <a href="#" style="color:var(--fg);text-decoration:underline;text-underline-offset:2px">Edit plan</a></div>
+        <div class="row xxs muted" style="gap:6px"><i data-lucide="info" style="width:12px;height:12px"></i>Tests run from the gateway to your ISP, so they show what Ziply delivers, not Wi-Fi speed in a room.</div>
+      </div>
     </div>
   </div>
 
@@ -60,56 +76,6 @@
         </dl>
       </div>
     </div>
-  </section>
-
-  <!-- Speed test history -->
-  <section class="section">
-    <div class="section-h"><h2>Speed test history</h2><span class="sub">Last 7 days · 15 tests · automatic test every 1 to 3 days</span>
-      <div class="tools"><div class="seg"><span>Day</span><span class="on">Week</span></div></div></div>
-    <div class="grid g-side">
-      <div class="col gap-16">
-        <div class="col gap-12">
-          <div>
-            <div class="row between"><span class="row sm"><i data-lucide="arrow-down" style="width:15px;height:15px;color:var(--c-down)"></i>Download, 7-day average</span><span class="sm m tnum">914 Mbps</span></div>
-            <div class="meter mt-8" style="--c:var(--c-down)"><i style="width:76%"></i></div>
-            <div class="xs muted mt-4">76% of plan</div>
-          </div>
-          <div>
-            <div class="row between"><span class="row sm"><i data-lucide="arrow-up" style="width:15px;height:15px;color:var(--c-up)"></i>Upload, 7-day average</span><span class="sm m tnum">906 Mbps</span></div>
-            <div class="meter mt-8" style="--c:var(--c-up)"><i style="width:75%"></i></div>
-            <div class="xs muted mt-4">75% of plan</div>
-          </div>
-        </div>
-        <div class="hr"></div>
-        <div class="note info"><i data-lucide="info"></i><div class="body">Tests run from the gateway to your ISP, so they show what Ziply delivers, not Wi-Fi speed in a room.</div></div>
-      </div>
-      <div id="ch-st"></div>
-    </div>
-  </section>
-
-  <!-- Earlier tests -->
-  <section class="section">
-      <div class="section-h"><h2>Earlier tests</h2><span class="sub">Before the latest result above</span>
-        <div class="tools"><button class="btn sm"><i data-lucide="download"></i>Export CSV</button></div></div>
-      <div class="panel">
-        <table class="table">
-          <thead><tr><th>When</th><th style="width:50%">Download</th><th style="width:50%">Upload</th><th></th></tr></thead>
-          <tbody>
-            <tr><td class="nowrap"><div class="m">Nov 12, 3:30 AM</div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">948 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:79%"></i></div></div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">931 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:77%"></i></div></div></td><td><span class="pill ok nodot">Great</span></td></tr>
-            <tr><td class="nowrap"><div class="m">Nov 11, 6:30 PM</div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">914 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:76%"></i></div></div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">887 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:74%"></i></div></div></td><td><span class="pill ok nodot">Great</span></td></tr>
-            <tr><td class="nowrap"><div class="m">Nov 10, 8:30 PM</div></td>
-              <td><div class="row"><span class="tnum m warning" style="width:66px;flex-shrink:0">702 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:58%"></i></div></div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">846 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:70%"></i></div></div></td><td><span class="pill warn nodot">Below plan</span></td></tr>
-            <tr><td class="nowrap"><div class="m">Nov 9, 8:30 PM</div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">939 Mbps</span><div class="meter grow" style="--c:var(--c-down)"><i style="width:78%"></i></div></div></td>
-              <td><div class="row"><span class="tnum m" style="width:66px;flex-shrink:0">922 Mbps</span><div class="meter grow" style="--c:var(--c-up)"><i style="width:77%"></i></div></div></td><td><span class="pill ok nodot">Great</span></td></tr>
-          </tbody>
-        </table>
-      </div>
   </section>
 
   <!-- Data usage -->
@@ -170,15 +136,12 @@
 <script src="assets/mockup.js"></script>
 <script>
 MU.ready(() => {
-  MU.gauge("#g-down", { value: 942, max: 1200, color: "var(--c-down)", label: "Download", text: "942", unit: "Mbps", size: 164 });
-  MU.gauge("#g-up", { value: 918, max: 1200, color: "var(--c-up)", label: "Upload", text: "918", unit: "Mbps", size: 164 });
-
   // Speed tests over 7 days (15 tests, speedtest.history)
   const tLabels = ["Nov 6, 9:30 PM","Nov 7, 8:30 AM","Nov 7, 10:30 PM","Nov 8, 10:30 AM","Nov 8, 10:30 PM","Nov 9, 9:30 AM","Nov 9, 8:30 PM","Nov 10, 8:30 AM","Nov 10, 8:30 PM","Nov 11, 7:30 AM","Nov 11, 6:30 PM","Nov 12, 3:30 AM","Nov 12, 12:30 PM","Nov 13, 12:30 AM","Nov 13, 12:30 PM"];
   const down = [926, 933, 910, 944, 917, 928, 939, 921, 702, 936, 914, 948, 925, 931, 942];
   const up   = [908, 914, 889, 925, 896, 911, 922, 902, 846, 919, 887, 931, 905, 912, 918];
   MU.area("#ch-st", {
-    labels: tLabels, xTicks: ["Nov 6", "Nov 10", "Today"], height: 236, format: MU.fmt.mbps, label: "Speed test results, last 7 days",
+    labels: tLabels, xTicks: ["Nov 6", "Nov 10", "Today"], height: 150, format: MU.fmt.mbps, label: "Speed test results, last 7 days",
     max: 1200, ticks: [0, 300, 600, 900, 1200],
     series: [
       { name: "Download", color: "var(--c-down)", values: down },

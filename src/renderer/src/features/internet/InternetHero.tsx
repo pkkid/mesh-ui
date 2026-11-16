@@ -1,8 +1,9 @@
 /**
  * The Internet hero: the verdict built in core ("Ziply Fiber is fast and
  * steady"), connection status with gateway uptime, the last-test line, the
- * actions (Run speed test, Troubleshoot), the Download and Upload gauges and
- * the plan line that opens the plan sheet.
+ * actions (Run speed test, Troubleshoot), and on the right the speed test
+ * trend (`SpeedTrend`). Overview shows the latest result as gauges; this
+ * hero shows how tests have gone, so the two do not repeat (#240).
  * docs/ux/pages/internet.md (Layout 1, States).
  *
  * Also home to the speed test runner every Run speed test control shares
@@ -26,8 +27,8 @@ import { seriesColors } from "~/lib/chartColors";
 import type { SpeedTestRun } from "../../../../core/commands/internet";
 import { formatDuration, formatMbps, formatPlanShare, formatRelative, mbpsParts, networkClock } from "../../../../core/format";
 import type { Id, Internet, Network, SpeedHistory } from "../../../../core/model";
-import { TextLink } from "~/components/ui/text-link";
-import { openPlanSheet } from "./PlanSheet";
+import { cn } from "~/lib/utils";
+import { SpeedTrend } from "./SpeedTrend";
 
 // ---------------------------------------------------------------------------
 // Speed test runner
@@ -150,7 +151,8 @@ export function RunSpeedTestButton({ variant }: { variant?: "default" | "outline
 // ---------------------------------------------------------------------------
 // Hero
 
-export function InternetHero() {
+/** `id` lets `#/internet/history` (Overview's "View history") scroll here. */
+export function InternetHero({ id }: { id?: string }) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const history = useQuery<SpeedHistory>("speedtest.history", undefined, { poll: true });
@@ -163,12 +165,6 @@ export function InternetHero() {
   const down = i?.verdict?.kind === "down" || n?.status === "offline";
 
   const latest = history.data?.tests[0] ?? i?.lastSpeedTest ?? null;
-  const plan = i?.planMbps ?? null;
-  // No plan set: the gauge max falls back to the best result in history.
-  const best = Math.max(0, ...(history.data?.tests ?? []).flatMap((t) => [t.downMbps ?? 0, t.upMbps ?? 0]));
-  const fallbackMax = best > 0 ? Math.ceil(best / 100) * 100 : 1000;
-  // The gauges fade while a test runs and fill in with its result.
-  const gaugesLoading = (history.loading && !history.data) || history.fading || testing;
 
   const status = !i ? undefined : down ? (
     <>
@@ -196,6 +192,7 @@ export function InternetHero() {
 
   return (
     <PageHeader
+      id={id}
       title={i?.verdict?.title ?? "-"}
       status={status}
       facts={
@@ -218,19 +215,10 @@ export function InternetHero() {
           </>
         )
       }
+      asideClassName="min-w-0 flex-[1.2_1_0%]"
       aside={
-        <div className={down ? "opacity-60" : undefined}>
-          <div className="flex items-center gap-7">
-            <SpeedGauge label="Download" value={latest?.downMbps ?? null} plan={plan?.down ?? null} fallbackMax={fallbackMax} size={164} color={seriesColors.download} loading={gaugesLoading} />
-            <SpeedGauge label="Upload" value={latest?.upMbps ?? null} plan={plan?.up ?? null} fallbackMax={fallbackMax} size={164} color={seriesColors.upload} loading={gaugesLoading} />
-          </div>
-          {i && (
-            <div className="text-center text-3xs text-muted-foreground">
-              {plan ? `Plan ${plan.label ? `${plan.label}, ` : ""}${formatMbps(plan.down)} down, ${formatMbps(plan.up)} up` : "No plan set: gauges scale to your best result"}
-              {" · "}
-              <TextLink onClick={openPlanSheet}>{plan ? "Edit plan" : "Set plan"}</TextLink>
-            </div>
-          )}
+        <div className={cn("w-full min-w-0", down && "opacity-60")}>
+          <SpeedTrend testing={testing} />
         </div>
       }
     />

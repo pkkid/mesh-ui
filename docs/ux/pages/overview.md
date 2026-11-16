@@ -28,7 +28,7 @@ actions.
      caption under them says where the figures come from: "Last speed test
      Nov 14, 9:12 PM · **View history**" (network time; "No speed test yet"
      before the first; View history opens `#/internet/history`, Internet
-     scrolled to Speed test history). While no plan is set, a second line
+     with its hero in view, where the speed test trend lives). While no plan is set, a second line
      reads "**Set your internet plan** to scale the gauges" (opens the plan
      sheet). The links are `TextLink`s, so they read as links.
 2. **Data usage** section. Header: "Data usage", sub "Last 24 hours for all devices"

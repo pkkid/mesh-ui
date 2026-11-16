@@ -20,8 +20,30 @@ Topbar: title "Internet", subtitle freshness, no page actions.
      9:41 AM".
    - Muted line: "Last test 2 hours ago hit 78% of your 1.2 Gbps plan".
    - Actions: **Run speed test** (primary), **Troubleshoot** (ghost).
-   - Right: Download and Upload gauges, as on Overview (plan mark, "% of
-     plan" or flame and "% over plan" line).
+   - Right: the speed test trend (`SpeedTrend.tsx`). Overview's gauges show
+     the latest result; this shows how tests have gone, so the two pages do
+     not repeat each other (#240; it replaced a separate Speed test history
+     section). Deep link `#/internet/history` opens the page with the hero
+     in view (DOM id `internet-history`; Overview's "View history").
+     - Top row: Download and Upload 7-day averages, each a colour dot and
+       "Download, 7-day avg" over "914 Mbps" with "76% of plan" (or "9% over
+       plan") beside it. On the right, **Export CSV** of the chosen range,
+       then the Month / All toggle (All selected). eero keeps about a year of
+       tests and runs one only every 1 to 3 days, so a week holds only 2 to
+       5 and Day and Week ranges were dropped (#241).
+     - Chart: one point per test, each marked with a dot (up to 40 points)
+       so a few tests do not read as a broken line, download and upload
+       lines, fixed y scale to the plan (`AreaChart max`, nice ticks up to at
+       least the plan), x labels start, middle and end, tooltip per test
+       with date and time. There is no Earlier tests table: it repeated the
+       chart's points (removed in #241; each test's values are in the
+       tooltip and the CSV).
+     - Plan line: "100 tests since Wed Mar 4 · Plan Fiber Gig, 1.2 Gbps
+       down, 1.2 Gbps up · **Edit plan**" ("last 30 days" for Month; eero
+       returns at most 100 tests), or "No plan set: the chart scales to your
+       results · **Set plan**" (both open the plan sheet).
+     - Info note: "Tests run from the gateway to your ISP, so they show what
+       Ziply delivers, not Wi-Fi speed in a room."
 2. **Connection** section. Sub: "Gateway: Living Room (eero Max 7), WAN port
    10 GbE". Tools: **Copy details**, **ISP settings →**. Two cards:
    - **Internet provider** (globe icon, "From geo IP lookup", status "ISP
@@ -32,27 +54,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
      badge): WAN type ("DHCP"; eero sends no lease time), Public IPv4, Public IPv6,
      IPv6 prefix, ISP gateway, DNS in use (with "ISP auto" badge), Double NAT
      ("Not detected" in success colour).
-3. **Speed test history**. Sub: "Since Wed Mar 4 · 100 tests · automatic
-   test every 1 to 3 days" (eero returns at most 100 tests; "Last 30 days"
-   for Month). Month / All toggle (All selected); eero keeps about a year of
-   tests and runs one only every 1 to 3 days, so a week holds only 2 to 5
-   and Day and Week ranges were dropped (#241). Tool: **Export CSV** of the chosen range, left of the
-   toggle. There is no Earlier tests table: it repeated the chart's points
-   (removed in #241; each test's values are in the chart tooltip and the CSV).
-   Deep link
-   `#/internet/history` opens the page scrolled here (DOM id
-   `internet-history`; Overview's "View history"). Side column:
-   - Download, 7-day average "921 Mbps", a meter of the plan, "77% of plan".
-   - Upload, 7-day average "904 Mbps", meter, "75% of plan".
-   - Rule, then info note: "Tests run from the gateway to your ISP, so they
-     show what Ziply delivers, not Wi-Fi speed in a room."
-   - Main chart: one point per test, each marked with a dot (up to 40
-     points) so a few tests do not read as a broken line, download and
-     upload lines, fixed y
-     scale to the plan (`AreaChart max`, nice ticks up to at least the
-     plan), x labels "Nov 6", "Nov 9",
-     "Today", tooltip per test with date and time.
-4. **Data usage** section. Sub: "Internet (WAN) traffic only, local
+3. **Data usage** section. Sub: "Internet (WAN) traffic only, local
    transfers excluded". Day / Week toggle. Two cards side by side:
    - **Per hour** (wide): legend with totals (Download 351 GB, Upload 61 GB),
      hourly area chart, rule, then **Using the most right now** ("current rate
@@ -74,12 +76,11 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | Element | Command | Refresh |
 | --- | --- | --- |
 | Hero verdict, status, uptime, plan line | `internet.get` (connection, uptime, verdict) + `speedtest.history {limit: 1}` | 10 min, every 5 s during a test |
-| Gauges | `speedtest.history {limit: 1}` | As above |
 | Connection cards (ISP, ASN, location, WAN type, IPv4, IPv6, prefix, ISP gateway, DNS in use, double NAT, NAT or bridge mode) | `internet.get` | 10 min |
 | Gateway sub line | `eero.list` (gateway eero, WAN port speed) | 60 s |
 | Plan | `internet.get` (`plan` from `settings.json`) | On change |
-| Speed test chart, count, Export CSV | `speedtest.history {range: "all", limit: 200}` (or `"month"`) | 10 min, and after a test |
-| 7-day averages | `avg7d` of the same read (always the last 7 days) | As above |
+| Hero speed test chart, count, Export CSV | `speedtest.history {range: "all", limit: 200}` (or `"month"`) | 10 min, and after a test |
+| Hero 7-day averages | `avg7d` of the same read (always the last 7 days) | As above |
 | Per hour chart and totals | `usage.get {scope: "network", range: "day"}` | 5 min |
 | Using the most right now | `device.rates.refresh` then `device.list {sort: "rate", limit: 6}` | 60 s while visible |
 | Per day chart, average, today, busiest day | `usage.get {scope: "network", range: "week", cadence: "daily"}` | 5 min |
@@ -90,11 +91,11 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; gauges fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero and chart update. The same control and toast on Overview and Troubleshooting |
+| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; hero averages and chart fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero and chart update. The same control and toast on Overview and Troubleshooting |
 | Troubleshoot | - | - | No | Troubleshooting page |
 | Copy details | `internet.get {format: "text"}` | query | No | Copies a plain-text block of both cards (formatted in core); toast "Connection details copied" |
 | ISP settings → | - | - | No | Advanced networking, WAN section |
-| Set plan / Edit plan (the plan line under the gauges, the Connection card's Plan row; Overview "Set your internet plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
+| Set plan / Edit plan (the hero's plan line under the chart, the Connection card's Plan row; Overview "Set your internet plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; chart scale, shares, meters and verdicts recompute (and Overview's gauges) |
 | Month / All (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart, count and Export CSV switch range; averages stay 7-day |
 | Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog (`window.mesh.saveFile`), file `speed-tests-maple-street-2026-11-12.csv`; the button reads "CSV saved" for a moment, or "Couldn't save" with eero's or the host's message as its tooltip |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
@@ -156,7 +157,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
   about a year of tests (100 returned, the oldest 382 days old).
 - Built in M4.9: Run speed test (here, Overview and Troubleshooting share
   one runner and toast) and the plan sheet. The plan sheet opens from the
-  plan line under the gauges and the Connection card's Plan row. Built in M2.4: there was no toast yet, so Copy details and Export CSV confirm on the button
+  hero's plan line and the Connection card's Plan row. Built in M2.4: there was no toast yet, so Copy details and Export CSV confirm on the button
   ("Details copied", "CSV saved"). The Per day card always shows the last 7
   days (one bar for Day would say nothing); the Day / Week toggle switches the
   Per hour chart and both tables. Since M3.2 the speed test chart scales to

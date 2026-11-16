@@ -22,6 +22,8 @@ type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   actions?: React.ReactNode;
   /** Right-hand column: hero figures, gauges, QR block. */
   aside?: React.ReactNode;
+  /** Classes for the aside column, e.g. to let a chart grow instead of sizing to its content. */
+  asideClassName?: string;
 };
 
 function isIcon(icon: unknown): icon is LucideIcon {
@@ -29,7 +31,7 @@ function isIcon(icon: unknown): icon is LucideIcon {
   return typeof icon === "function" || (typeof icon === "object" && icon !== null && "render" in icon);
 }
 
-function PageHeader({ title, icon, status, facts, actions, aside, className, ...props }: PageHeaderProps) {
+function PageHeader({ title, icon, status, facts, actions, aside, asideClassName, className, ...props }: PageHeaderProps) {
   const Icon = isIcon(icon) ? icon : null;
   return (
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
@@ -50,7 +52,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, className, ...
               )}
             </div>
           </div>
-          {aside && <div className="flex shrink-0 items-center gap-7">{aside}</div>}
+          {aside && <div className={cn("flex shrink-0 items-center gap-7", asideClassName)}>{aside}</div>}
         </div>
       </div>
     </ButtonSizeContext>
