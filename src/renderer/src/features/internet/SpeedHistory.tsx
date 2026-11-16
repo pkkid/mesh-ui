@@ -1,5 +1,5 @@
 /**
- * Internet "Speed test history": Week / Month / All toggle, Export CSV of
+ * Internet "Speed test history": Month / All toggle, Export CSV of
  * that range, 7-day averages against the plan, the gateway-to-ISP note and
  * one dotted point per test. Export CSV saves `speedtest.history {format:
  * "csv"}` through the host's save dialog (`lib/saveFile.ts`).
@@ -23,7 +23,6 @@ import { formatCount, formatMbps, formatPercent, networkClock } from "../../../.
 import type { Internet, Network, SpeedHistory as History } from "../../../../core/model";
 
 const RANGES = [
-  { value: "week", label: "Week" },
   { value: "month", label: "Month" },
   { value: "all", label: "All" },
 ] as const;
@@ -31,15 +30,18 @@ const RANGES = [
 type HistoryRange = (typeof RANGES)[number]["value"];
 
 /** Subtitle and screen reader wording per range. eero keeps about a year of tests, at most 100 per read. */
-const RANGE_TEXT: Record<HistoryRange, string> = { week: "Last 7 days", month: "Last 30 days", all: "All eero returns" };
+const RANGE_TEXT: Record<HistoryRange, string> = { month: "Last 30 days", all: "All eero returns" };
 
-/** `speedtest.history` params for a range. Week uses the defaults, sharing the hero's cache entry. */
-function historyParams(range: HistoryRange): { range: HistoryRange; limit: number } | undefined {
-  return range === "week" ? undefined : { range, limit: 200 };
+/**
+ * `speedtest.history` params for a range. No Week: eero tests every 1 to 3
+ * days, so a week holds only 2 to 5 points (the hero still reads the week).
+ */
+function historyParams(range: HistoryRange): { range: HistoryRange; limit: number } {
+  return { range, limit: 200 };
 }
 
 export function SpeedHistory({ id }: { id?: string }) {
-  const [range, setRange] = useState<HistoryRange>("month");
+  const [range, setRange] = useState<HistoryRange>("all");
   const history = useQuery<History>("speedtest.history", historyParams(range), { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
