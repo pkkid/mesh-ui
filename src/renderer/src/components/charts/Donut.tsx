@@ -3,9 +3,8 @@
  * content in the middle. Fixed pixel size, so circles stay circles.
  * Segments have straight (butt) ends with a small gap between them.
  *
- * Hovering a segment dims the others, swaps the centre for that segment's
- * count and share, and shows its name in a tooltip that follows the
- * pointer. Pass `active` and `onActiveChange` to drive the same highlight
+ * The centre stays put (a total). Hovering a segment dims the others and
+ * shows its name, value and share in a tooltip that follows the pointer. Pass `active` and `onActiveChange` to drive the same highlight
  * from a legend (see `DonutLegendRow`).
  */
 import { type ReactNode, useState } from "react";
@@ -48,7 +47,7 @@ export function Donut({
   active?: string | null;
   /** Called with a segment's label when the pointer enters it, and null when it leaves. */
   onActiveChange?: (label: string | null) => void;
-  /** Centre content, e.g. a total. Kept inside the hole. */
+  /** Centre content: the total, always shown. Kept inside the hole. */
   children?: ReactNode;
   loading?: boolean;
   className?: string;
@@ -125,16 +124,7 @@ export function Donut({
       </svg>
       <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
         <div className="flex min-w-0 flex-col items-center overflow-hidden" style={{ maxWidth: hole }}>
-          {current !== undefined ? (
-            <>
-              <span className={cn("max-w-full truncate tabular-nums", hole >= 72 ? "font-semibold text-xl" : "font-medium text-base leading-tight")}>
-                {formatCount(current.value)}
-              </span>
-              <span className="text-3xs text-muted-foreground tabular-nums">{formatPercent((current.value / total) * 100)}</span>
-            </>
-          ) : (
-            children
-          )}
+          {children}
         </div>
       </div>
       {current !== undefined && pointer !== null && (
