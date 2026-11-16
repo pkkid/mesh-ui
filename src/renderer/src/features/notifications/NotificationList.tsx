@@ -3,7 +3,8 @@
  * 8 notifications newest first, each with an icon, its title and body on one
  * line each, a relative time and an unread marker, then the footer. "Mark all
  * read" (`notifications.mark_read`) clears eero's network-wide unread flag;
- * Activity's event stream uses the same control (MarkAllReadButton).
+ * Activity's event stream offers the same write as "Mark notifications read"
+ * (MarkAllReadButton), shown only while something is unread.
  */
 import { Bell, Globe, MonitorSmartphone, Router, Settings, Users } from "lucide-react";
 import type { ComponentType } from "react";
@@ -39,12 +40,17 @@ export function useMarkAllRead(networkId: string | null, page: NotificationPage 
   };
 }
 
-/** The Activity event stream's Mark all read, beside its Unread marker. */
+/**
+ * The Activity event stream's Mark all read, beside its Unread marker. Events
+ * have no read state, so it is labelled for what it clears (the notifications)
+ * and hidden while nothing is unread rather than shown greyed out.
+ */
 export function MarkAllReadButton({ networkId, page }: { networkId: string | null; page: NotificationPage | undefined }) {
   const mark = useMarkAllRead(networkId, page);
+  if (!networkId || page?.unread !== true) return null;
   return (
-    <GatedButton gate={mark.gate} variant="outline" disabled={mark.disabled} title={mark.title} onClick={() => void mark.run()}>
-      Mark all read
+    <GatedButton gate={mark.gate} variant="outline" disabled={mark.disabled} onClick={() => void mark.run()}>
+      Mark notifications read
     </GatedButton>
   );
 }

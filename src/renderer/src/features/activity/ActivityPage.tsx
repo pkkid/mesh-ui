@@ -219,7 +219,7 @@ export function ActivityPage(_props: PageProps) {
             Event stream
             {unread && (
               <Status tone="info" title="eero says some notifications are unread">
-                Unread
+                Unread notifications
               </Status>
             )}
           </span>
