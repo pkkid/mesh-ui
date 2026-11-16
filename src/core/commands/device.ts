@@ -23,6 +23,21 @@ const OFFLINE_KEEP_MS = 7 * DAY_MS;
 
 const BANDS = ["2.4", "5", "6", "wired"] as const;
 const CATEGORIES = ["phones_tablets", "computers", "entertainment", "smart_home", "other"] as const;
+export const SORT_KEYS = ["name", "usage", "rate", "last_seen", "profile", "eero", "band", "signal", "ip", "status"] as const;
+export type DeviceSortKey = (typeof SORT_KEYS)[number];
+/** Each sort key's natural direction, used when `order` is left out. */
+export const SORT_DEFAULT_ORDER: Record<DeviceSortKey, "asc" | "desc"> = {
+  name: "asc",
+  usage: "desc",
+  rate: "desc",
+  last_seen: "desc",
+  profile: "asc",
+  eero: "asc",
+  band: "asc",
+  signal: "desc",
+  ip: "asc",
+  status: "asc",
+};
 
 export const deviceListParams = z.object({
   status: z.enum(["online", "offline", "paused", "blocked"]).optional().describe("online: connected (paused included); offline: not connected and not blocked."),
@@ -37,7 +52,16 @@ export const deviceListParams = z.object({
   manufacturer: z.string().trim().min(1).optional().describe("Exact manufacturer, case-insensitive."),
   firstSeenSince: z.iso.datetime({ offset: true }).optional().describe("Only devices first seen at or after this ISO time."),
   search: z.string().trim().max(100).optional().describe("Matches name, hostname, manufacturer, model, MAC (with or without colons) or IP."),
-  sort: z.enum(["name", "usage", "rate", "last_seen"]).optional().describe("Default name, A to Z. usage: data used in the last 24 h (the usage.breakdown day window); rate: live rate; last_seen: most recent first."),
+  sort: z
+    .enum(SORT_KEYS)
+    .optional()
+    .describe(
+      "Default name. usage: data used in the last 24 h (the usage.breakdown day window); rate: live rate; last_seen: last active; profile: profile name; eero: the eero it is connected to; band; signal: strength; ip: IPv4 in numeric order; status: online, paused, blocked, offline. Missing values sort last in either order; ties fall back to name.",
+    ),
+  order: z
+    .enum(["asc", "desc"])
+    .optional()
+    .describe("Sort direction. Default per key: name, profile, eero, band, ip and status ascending; usage, rate, last_seen and signal descending (largest or most recent first)."),
   limit: z.number().int().min(1).max(500).optional(),
   format: z.enum(["json", "csv"]).optional(),
 });
@@ -184,24 +208,68 @@ async function usageByDevice(ctx: CommandContext): Promise<Map<M.Id, number>> {
   return new Map(b.rows.flatMap((r) => (r.id ? [[r.id, r.down + r.up] as const] : [])));
 }
 
-async function sort(ctx: CommandContext, devices: M.Device[], by: ListParams["sort"]): Promise<M.Device[]> {
-  const out = [...devices];
+type SortValue = number | string | null;
+
+/** "192.168.4.20" as one number, so .9 sorts before .10. */
+function ipNumber(ip: string | null): number | null {
+  const parts = ip?.split(".").map(Number);
+  if (!parts || parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+  return parts.reduce((acc, n) => acc * 256 + n, 0);
+}
+
+const STATUS_ORDER = { online: 0, paused: 1, blocked: 2, offline: 3 } as const;
+const BAND_ORDER: Record<M.Band, number> = { "2.4": 0, "5": 1, "6": 2, wired: 3 };
+/** Not live: offline or blocked. Band and signal read as missing, as the table shows them. */
+const notLive = (d: M.Device) => !d.connected || d.blocked;
+
+/** The value each key sorts by; null is missing and always sorts last. */
+async function sortValue(ctx: CommandContext, by: DeviceSortKey): Promise<(d: M.Device) => SortValue> {
   switch (by) {
-    case "rate": {
-      const rate = (d: M.Device) => (d.rates ? d.rates.downMbps + d.rates.upMbps : -1);
-      return out.sort((a, b) => rate(b) - rate(a) || byName(a, b));
-    }
-    case "last_seen": {
-      const seen = (d: M.Device) => (d.connected ? Number.POSITIVE_INFINITY : d.lastActive ? Date.parse(d.lastActive) : Number.NEGATIVE_INFINITY);
-      return out.sort((a, b) => seen(b) - seen(a) || byName(a, b));
-    }
+    case "name":
+      return () => null;
+    case "rate":
+      return (d) => (d.rates ? d.rates.downMbps + d.rates.upMbps : null);
+    case "last_seen":
+      return (d) => (d.connected ? Number.POSITIVE_INFINITY : d.lastActive && Number.isFinite(Date.parse(d.lastActive)) ? Date.parse(d.lastActive) : null);
     case "usage": {
       const used = await usageByDevice(ctx);
-      return out.sort((a, b) => (used.get(b.id) ?? 0) - (used.get(a.id) ?? 0) || byName(a, b));
+      return (d) => used.get(d.id) || null;
     }
-    default:
-      return out.sort(byName);
+    case "profile": {
+      // No profiles readable (bridge mode, an error): sort by id rather than fail the list.
+      const profiles = await ctx.backend.profile.list(ctx.net).catch(() => []);
+      const names = new Map(profiles.map((p) => [p.id, p.name]));
+      return (d) => (d.profileId ? (names.get(d.profileId) ?? d.profileId) : null);
+    }
+    case "eero": {
+      const names = new Map((await ctx.backend.eero.list(ctx.net)).map((e) => [e.id, e.location]));
+      return (d) => (d.eeroId ? (names.get(d.eeroId) ?? d.eeroId) : null);
+    }
+    case "band":
+      return (d) => (notLive(d) || !d.band ? null : BAND_ORDER[d.band]);
+    case "signal":
+      // Bars as the table shows them, then dBm within the same bars.
+      return (d) => (notLive(d) || d.band === "wired" || d.signal?.bars == null ? null : d.signal.bars * 1000 + 200 + (d.signal.dbm ?? -200));
+    case "ip":
+      return (d) => ipNumber(d.ipv4);
+    case "status":
+      return (d) => STATUS_ORDER[d.blocked ? "blocked" : !d.connected ? "offline" : d.paused ? "paused" : "online"];
   }
+}
+
+const compareValues = (a: number | string, b: number | string) =>
+  typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b), "en", { sensitivity: "base" });
+
+async function sort(ctx: CommandContext, devices: M.Device[], by: DeviceSortKey = "name", order?: "asc" | "desc"): Promise<M.Device[]> {
+  const dir = (order ?? SORT_DEFAULT_ORDER[by]) === "asc" ? 1 : -1;
+  if (by === "name") return [...devices].sort((a, b) => dir * byName(a, b));
+  const value = await sortValue(ctx, by);
+  const keyed = devices.map((d) => ({ d, v: value(d) }));
+  keyed.sort((a, b) => {
+    if (a.v === null || b.v === null) return a.v === b.v ? byName(a.d, b.d) : a.v === null ? 1 : -1;
+    return dir * compareValues(a.v, b.v) || byName(a.d, b.d);
+  });
+  return keyed.map((k) => k.d);
 }
 
 /**
@@ -359,7 +427,7 @@ export const commands: AnyCommand[] = [
     run: async (ctx, p): Promise<M.DeviceList | string> => {
       const now = ctx.now();
       const all = (await withUnassigned(ctx, knownDevices(await ctx.backend.device.list(ctx.net), now))).map((d) => fresh(d, now));
-      let devices = await sort(ctx, await filter(ctx, all, p), p.sort);
+      let devices = await sort(ctx, await filter(ctx, all, p), p.sort, p.order);
       if (p.limit) devices = devices.slice(0, p.limit);
       if (p.format === "csv") return toDeviceCsv(ctx, devices);
       return { devices, summary: summarize(all, now) };

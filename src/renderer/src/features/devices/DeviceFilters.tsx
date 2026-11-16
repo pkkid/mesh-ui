@@ -1,13 +1,13 @@
 /**
  * The Devices toolbar (docs/ux/pages/devices.md, Layout 2 and 3): search, a
  * status segment and a Filters popover (network, band, type, eero, profile,
- * manufacturer, new this week) on the left; Group by, Sort and Columns on
- * the right. Popover filters that are set show as removable chips under the
- * toolbar. Every filter and the sort become `device.list` params in
- * DevicesPage; grouping and columns are view state.
+ * manufacturer, new this week) on the left; Group by and Columns on the
+ * right. Popover filters that are set show as removable chips under the
+ * toolbar. Every filter becomes a `device.list` param in DevicesPage;
+ * grouping and columns are view state. Sorting is on the table headers.
  */
 import { Popover } from "@base-ui/react/popover";
-import { ArrowDownAZ, Check, ChevronDown, Columns3, Layers, ListFilter, type LucideIcon, Search, X } from "lucide-react";
+import { Check, ChevronDown, Columns3, Layers, ListFilter, type LucideIcon, Search, X } from "lucide-react";
 import { type ReactNode, type RefObject, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -17,7 +17,6 @@ import { cn } from "~/lib/utils";
 import type { Band, DeviceCategory, DeviceSummary } from "../../../../core/model";
 
 export type StatusFilter = "all" | "online" | "offline" | "paused" | "blocked";
-export type SortKey = "name" | "rate" | "usage" | "last_seen";
 export type GroupBy = "category" | "status" | "eero" | "profile" | "none";
 export type ColumnKey = "profile" | "eero" | "band" | "signal" | "addr" | "now" | "today";
 
@@ -88,13 +87,6 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   today: "24h",
 };
 
-const SORT_LABELS: Record<SortKey, string> = {
-  name: "Name",
-  rate: "Live rate",
-  usage: "Data, 24h",
-  last_seen: "Last seen",
-};
-
 const GROUP_LABELS: Record<GroupBy, string> = {
   category: "Category",
   status: "Status",
@@ -118,8 +110,6 @@ type DeviceFiltersProps = {
   manufacturers: ReadonlyArray<string>;
   groupBy: GroupBy;
   onGroupBy: (g: GroupBy) => void;
-  sort: SortKey;
-  onSort: (s: SortKey) => void;
   hidden: ReadonlySet<ColumnKey>;
   onToggleColumn: (c: ColumnKey) => void;
   searchRef: RefObject<HTMLInputElement | null>;
@@ -254,15 +244,6 @@ export function DeviceFilters(props: DeviceFiltersProps) {
             align="end"
             triggerClassName={compactClass}
             trigger={<SelectTrigger icon={Layers}>{GROUP_LABELS[props.groupBy]}</SelectTrigger>}
-          />
-          <Picker
-            label="Sort"
-            value={props.sort}
-            options={(Object.keys(SORT_LABELS) as SortKey[]).map((k) => ({ value: k, label: SORT_LABELS[k] }))}
-            onChange={(k) => props.onSort(k as SortKey)}
-            align="end"
-            triggerClassName={compactClass}
-            trigger={<SelectTrigger icon={ArrowDownAZ}>{SORT_LABELS[props.sort]}</SelectTrigger>}
           />
           <ColumnsButton hidden={props.hidden} onToggle={props.onToggleColumn} />
         </div>
@@ -432,7 +413,7 @@ function Picker({
 const selectClass =
   "inline-flex h-7 cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
 
-/** Group by and Sort: sized to their value, with the name in the tooltip and for screen readers. */
+/** Group by: sized to their value, with the name in the tooltip and for screen readers. */
 const compactClass =
   "inline-flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-input bg-background px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
 
