@@ -1,5 +1,6 @@
 /**
- * Internet "Earlier tests": the week's tests before the latest one, each
+ * Internet "Earlier tests": the tests before the latest one in the window
+ * Speed test history shows (Week / Month / All), each
  * direction with a meter of the plan, and the verdict core rated it.
  * Export CSV saves `speedtest.history {format: "csv"}` through the host's
  * save dialog (`lib/saveFile.ts`). docs/ux/pages/internet.md (Layout 4).
@@ -18,6 +19,8 @@ import { cn } from "~/lib/utils";
 import { formatMbps, networkClock } from "../../../../core/format";
 import type { Internet, Network, PlanSpeed, SpeedHistory, SpeedTest } from "../../../../core/model";
 
+import { type HistoryRange, historyParams } from "./SpeedHistory";
+
 const VERDICT: Record<NonNullable<SpeedTest["rating"]>, { label: string; className: string }> = {
   great: { label: "Great", className: "text-foreground/80" },
   below_plan: { label: "Below plan", className: "text-warning" },
@@ -32,8 +35,14 @@ function weakSide(t: SpeedTest, plan: PlanSpeed | null): "down" | "up" | null {
   return d <= u ? "down" : "up";
 }
 
-export function EarlierTests() {
-  const history = useQuery<SpeedHistory>("speedtest.history", undefined, { poll: true });
+const EMPTY: Record<HistoryRange, string> = {
+  week: "No earlier speed tests in the last 7 days.",
+  month: "No earlier speed tests in the last 30 days.",
+  all: "No earlier speed tests.",
+};
+
+export function EarlierTests({ range }: { range: HistoryRange }) {
+  const history = useQuery<SpeedHistory>("speedtest.history", historyParams(range), { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
 
@@ -41,7 +50,7 @@ export function EarlierTests() {
   const plan = internet.data?.planMbps ?? null;
   const rows = history.data?.tests.slice(1);
 
-  const tools = <ExportCsvButton network={network.data?.name ?? null} />;
+  const tools = <ExportCsvButton network={network.data?.name ?? null} range={range} />;
 
   return (
     <Section title="Earlier tests" subtitle="Before the latest result above" tools={tools}>
@@ -49,7 +58,7 @@ export function EarlierTests() {
         <SectionError what="speed tests" error={history.error} onRetry={() => void history.refetch()} />
       ) : rows && rows.length === 0 ? (
         <Card>
-          <Empty>No earlier speed tests in the last 7 days.</Empty>
+          <Empty>{EMPTY[range]}</Empty>
         </Card>
       ) : (
         <Card>
@@ -110,8 +119,8 @@ function fileStem(stem: string, network: string | null): string {
   return slug ? `${stem}-${slug}` : stem;
 }
 
-/** Export CSV: the week's tests as CSV from core, saved where the user picks. */
-function ExportCsvButton({ network }: { network: string | null }) {
+/** Export CSV: the window's tests as CSV from core, saved where the user picks. */
+function ExportCsvButton({ network, range }: { network: string | null; range: HistoryRange }) {
   const [state, setState] = useState<{ kind: "idle" | "busy" } | { kind: "saved"; name: string } | { kind: "failed"; message: string }>({ kind: "idle" });
   useEffect(() => {
     if (state.kind !== "saved" && state.kind !== "failed") return;
@@ -121,7 +130,7 @@ function ExportCsvButton({ network }: { network: string | null }) {
 
   const run = async () => {
     setState({ kind: "busy" });
-    const r = await execute<string>("speedtest.history", { range: "week", format: "csv" });
+    const r = await execute<string>("speedtest.history", { ...historyParams(range), format: "csv" });
     if (!r.ok) return setState({ kind: "failed", message: r.error.message });
     const saved = await saveTextFile(datedName(fileStem("speed-tests", network), "csv"), r.result);
     if (saved.status === "saved") setState({ kind: "saved", name: saved.name });

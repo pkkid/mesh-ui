@@ -26,8 +26,13 @@ export const GREAT_SHARE = 0.75;
 /** A result under this share of the plan is "poor". */
 export const POOR_SHARE = 0.4;
 
-/** The most tests one history call asks eero for (the 7-day window). */
+/** The most tests one history call asks eero for. */
 export const SPEEDTEST_FETCH_LIMIT = 200;
+/**
+ * How far back each `speedtest.history` range asks eero. "all" starts well
+ * before eero existed, so eero answers with whatever it keeps.
+ */
+const SPEEDTEST_RANGE_DAYS = { week: 7, month: 30, all: 20 * 365 } as const;
 
 /** About how long eero takes to post a result after `POST {net}/speedtest`. */
 export const SPEEDTEST_RESULT_MS = 60_000;
@@ -346,10 +351,10 @@ export const commands: AnyCommand[] = [
     id: "speedtest.history",
     label: "Speed test history",
     description:
-      "Speed tests newest first for the last day or week, rated against your plan, plus 7-day averages and `running` (a test started with speedtest.run that has no result yet, else null). `format: \"csv\"` returns the Export CSV file.",
+      "Speed tests newest first for the last week, month (30 days) or all that eero keeps, rated against your plan, plus 7-day averages and `running` (a test started with speedtest.run that has no result yet, else null). `format: \"csv\"` returns the Export CSV file.",
     icon: "gauge",
     params: z.object({
-      range: z.enum(["day", "week"]).default("week"),
+      range: z.enum(["week", "month", "all"]).default("week"),
       limit: z.number().int().min(1).max(200).default(50),
       format: z.enum(["json", "csv"]).default("json"),
     }),
@@ -358,19 +363,19 @@ export const commands: AnyCommand[] = [
     async run(ctx, p): Promise<M.SpeedHistory | string> {
       const net = ctx.net;
       const now = ctx.now();
-      const from = now - 7 * DAY_MS;
-      const [week, plan] = await Promise.all([
+      const from = now - SPEEDTEST_RANGE_DAYS[p.range] * DAY_MS;
+      const [rows, plan] = await Promise.all([
         ctx.backend.internet.speedTests(net, { from: new Date(from).toISOString(), to: new Date(now).toISOString(), limit: SPEEDTEST_FETCH_LIMIT }),
         planFor(ctx, net),
       ]);
-      const sorted = [...week].sort((a, b) => b.at.localeCompare(a.at));
+      const sorted = [...rows].sort((a, b) => b.at.localeCompare(a.at));
       const pending = checkRunning(ctx, net, sorted);
-      const since = p.range === "day" ? now - DAY_MS : from;
-      const tests = sorted.filter((t) => Date.parse(t.at) >= since).slice(0, p.limit).map((t) => rate(t, plan));
+      const tests = sorted.slice(0, p.limit).map((t) => rate(t, plan));
       if (p.format === "csv") return toCsv(tests, SPEED_CSV);
+      const week = sorted.filter((t) => Date.parse(t.at) >= now - 7 * DAY_MS);
       return {
         tests,
-        avg7d: { downMbps: average(sorted.map((t) => t.downMbps)), upMbps: average(sorted.map((t) => t.upMbps)) },
+        avg7d: { downMbps: average(week.map((t) => t.downMbps)), upMbps: average(week.map((t) => t.upMbps)) },
         running: pending,
       };
     },

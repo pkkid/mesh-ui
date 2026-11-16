@@ -518,6 +518,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       { date: "2026-11-12T03:00:00+0000", down_mbps: 912.4, up_mbps: 40.2 },
       { date: "2026-11-11T03:00:00+0000", down_mbps: 884.1, up_mbps: 39.7 },
       { date: "2026-11-10T03:00:00+0000", down_mbps: 901.9, up_mbps: 41.0 },
+      ...olderSpeedTests(),
     ],
     blacklist: [],
     unlisted: seed.devices.flatMap((d, i) => (d.unlisted ? [devices[i]?.url ?? ""] : [])),
@@ -690,4 +691,17 @@ function seedRouting(netUrl: string, devices: RawDevice[]): RawRouting {
     },
     pinholes: { url: `${netUrl}/pinholes`, data: picks.slice(1).map((d, i) => ({ url: `${netUrl}/pinholes/${500 + i}`, device: { url: d.url, mac: d.mac }, ip: "2001:db8:100:1::22", protocol: "tcp", port: "443" })) },
   };
+}
+
+/**
+ * Automatic tests every 3 days back about a year before the seeded three,
+ * newest first: eero keeps a long history (a capture found over a year).
+ */
+function olderSpeedTests(): RawSpeedTest[] {
+  const newest = Date.parse("2026-11-04T03:00:00Z");
+  return Array.from({ length: 122 }, (_, i) => ({
+    date: new Date(newest - i * 3 * 86_400_000).toISOString().replace(".000Z", "+0000"),
+    down_mbps: Math.round((890 + ((i * 37) % 41)) * 10) / 10,
+    up_mbps: Math.round((38 + ((i * 7) % 5)) * 10) / 10,
+  }));
 }

@@ -49,6 +49,8 @@ export type AreaChartProps = {
   heightClassName?: string;
   /** Hide the y gutter (small charts). */
   hideYLabels?: boolean;
+  /** Mark each point with a dot, so a few sparse points (speed tests) do not read as a broken line. */
+  dots?: boolean;
   className?: string;
 };
 
@@ -68,6 +70,7 @@ export function AreaChart({
   markers = [],
   heightClassName = "h-56",
   hideYLabels = false,
+  dots = false,
   className,
 }: AreaChartProps) {
   const count = Math.max(labels.length, ...series.map((s) => s.values.length));
@@ -193,6 +196,22 @@ export function AreaChart({
               />
             )}
           </svg>
+
+          {dots && !empty ? (
+            // HTML, not SVG circles: the plot stretches (preserveAspectRatio none), which would squash them.
+            <div className={cn("pointer-events-none absolute inset-0", fadeClass(loading))} aria-hidden>
+              {drawn.flatMap((d) => {
+                const k = series.indexOf(d.series);
+                return values[k]!.map((v, i) => (
+                  <span
+                    key={`${d.series.id}-${i}`}
+                    className="absolute size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{ left: `${((i * stepX) / VIEW_WIDTH) * 100}%`, top: `${(toY(v) / VIEW_HEIGHT) * 100}%`, backgroundColor: d.series.color }}
+                  />
+                ));
+              })}
+            </div>
+          ) : null}
 
           {empty && !loading ? <EmptyNote>{emptyText}</EmptyNote> : null}
 

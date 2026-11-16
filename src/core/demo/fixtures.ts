@@ -746,6 +746,8 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       [112, 917, 896], [124, 944, 925], [136, 910, 889], [150, 933, 914], [161, 926, 908],
       [190, 934, 910], [230, 921, 899], [282, 655, 801], [330, 940, 921], [390, 929, 905],
       [450, 918, 894], [520, 937, 916], [600, 912, 890], [680, 930, 909],
+      // Older automatic tests, about every 3 days back a year (eero keeps a long history).
+      ...Array.from({ length: 112 }, (_, i): [number, number, number] => [740 + i * 72, 905 + ((i * 29) % 43), 884 + ((i * 17) % 39)]),
     ]),
     events: [],
     reservations: [],
