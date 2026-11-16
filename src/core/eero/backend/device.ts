@@ -44,20 +44,36 @@ export const device: EeroArea<"device"> = (ctx) => {
   const bursts = new Map<M.Id, number>();
   const held = new Map<M.Id, Held>();
 
-  /**
-   * Device rows with the usage to show and its burst time. Inside a burst's
-   * live window the rows are taken as read and remembered; outside it each
-   * row carries the last live figures (none for a device that had none).
-   */
+  /** The last read's usage per network, by MAC, to count changes for the request log. */
+  const lastRead = new Map<M.Id, Map<string, string>>();
+
   const isLive = (net: M.Id): boolean => {
     const due = bursts.get(net);
     const now = Date.now();
     return due !== undefined && now >= due && now <= due + BURST_LIVE_SEC * 1000;
   };
 
-  const withRates = (net: M.Id, raws: RawDeviceFull[]): { rows: RawDeviceFull[]; ratesAt: string | null } => {
+  /**
+   * Device rows with the usage to show and its burst time. A read inside a
+   * burst's live window that has any traffic is taken as read and
+   * remembered. Otherwise (outside the window, or a read where every device
+   * is at zero because the figures have not landed or have decayed) each
+   * row carries the last live figures, none for a device that had none.
+   */
+  const withRates = (net: M.Id, raws: RawDeviceFull[], list = false): { rows: RawDeviceFull[]; ratesAt: string | null } => {
     const due = bursts.get(net);
-    if (due !== undefined && isLive(net)) {
+    const on = raws.filter((d) => d.connected === true);
+    const rate = (d: RawDeviceFull) => (Number(d.usage?.down_mbps) || 0) + (Number(d.usage?.up_mbps) || 0);
+    const nonZero = on.filter((d) => rate(d) > 0).length;
+    const live = due !== undefined && isLive(net) && nonZero > 0;
+    if (list && due !== undefined) {
+      const prev = lastRead.get(net);
+      const now = new Map(on.map((d) => [compactMac(d.mac ?? ""), `${d.usage?.down_mbps}/${d.usage?.up_mbps}`]));
+      const changed = prev ? [...now].filter(([k, v]) => prev.get(k) !== v).length : on.length;
+      lastRead.set(net, now);
+      client.note("GET", networkPath(net, "devices"), { sinceDueSec: Math.round((Date.now() - due) / 100) / 10, connected: on.length, nonZero, changed, held: live });
+    }
+    if (due !== undefined && live) {
       const at = new Date(due).toISOString();
       const prev = held.get(net);
       const h: Held = prev?.at === at ? prev : { at, byMac: new Map() };
@@ -114,7 +130,7 @@ export const device: EeroArea<"device"> = (ctx) => {
       for (const k of keys) known.add(k);
       devices.push(m);
     }
-    const { rows, ratesAt } = withRates(net, devices);
+    const { rows, ratesAt } = withRates(net, devices, true);
     const blockedMacs = new Set(blocked.map((b) => compactMac(b.mac ?? "")).filter(Boolean));
     const out = rows.map((d) => mapDevice(d, { blocked: blockedMacs.has(compactMac(d.mac ?? "")), ratesAt }));
     const seen = new Set(out.map((d) => compactMac(d.mac)));
@@ -189,9 +205,12 @@ export const device: EeroArea<"device"> = (ctx) => {
     async requestBurst(net) {
       const raw = await client.request<RawBurstResult>({ method: "POST", path: networkPath(net, "burst_reporters"), encoding: "empty" });
       const parsed = raw?.next_burst ? Date.parse(raw.next_burst) : Number.NaN;
-      // eero's next_burst is about now; the figures land about BURST_LEAD_SEC after the POST.
-      const next = Math.max(Number.isFinite(parsed) ? parsed : 0, Date.now() + BURST_LEAD_SEC * 1000);
+      // eero's next_burst is often about now; the figures land about BURST_LEAD_SEC after the POST.
+      const posted = Date.now();
+      const next = Math.max(Number.isFinite(parsed) ? parsed : 0, posted + BURST_LEAD_SEC * 1000);
       bursts.set(net, next);
+      const sec = (t: number) => Math.round((t - posted) / 100) / 10;
+      client.note("POST", networkPath(net, "burst_reporters"), { nextBurstSec: Number.isFinite(parsed) ? sec(parsed) : null, dueSec: sec(next) });
       return { nextBurstAt: new Date(next).toISOString() };
     },
 

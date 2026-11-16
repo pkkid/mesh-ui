@@ -427,6 +427,13 @@ describe("device commands (fake eero server)", () => {
     vi.setSystemTime(start + 61_000);
     expect((await engine.execute("device.rates.refresh")).ok).toBe(true);
     expect(posts()).toHaveLength(2);
+    // A read in the new burst's window where every device is at zero (eero's figures not in, or decayed)
+    // keeps the last live figures rather than showing zeros across the board.
+    for (const d of fake.state.networks.get("100001")?.devices ?? []) if (d.usage) d.usage = { down_mbps: 0, up_mbps: 0 };
+    vi.setSystemTime(start + 61_000 + 14_000);
+    const zeros = await engine.execute<M.DeviceList>("device.list", {}, { fresh: true });
+    if (!zeros.ok) throw new Error(zeros.error.message);
+    expect(zeros.result.devices.find((d) => d.name === "Alex's Phone")?.rates).toMatchObject({ downMbps: 11, upMbps: 1.1, at: burstAt });
     // Without another burst, rates go missing 90 s after the last one.
     vi.setSystemTime(start + 73_000 + 91_000);
     expect((await list(engine, { limit: 1 })).summary.rates).toBeNull();

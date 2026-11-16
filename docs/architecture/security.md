@@ -203,6 +203,11 @@ line each, so a user can attach it to a bug report:
   replaced by `:id`, no query string), HTTP `status` (null when eero was not
   reached), eero's `meta.error`, `ms`, `outcome` (`ok`, `retry`, `refresh`,
   `error`), and on failure Mesh UI's error `code` and `message`.
+- Live rates notes (`outcome: "note"`, no request behind them, #254): after a
+  burst, `rates.nextBurstSec` (eero's `next_burst` from the POST) and
+  `rates.dueSec`; after each device list read while a burst is known,
+  `rates.sinceDueSec`, `connected`, `nonZero`, `changed` (counts of devices)
+  and `held`. Counts and seconds only, never a rate, name or MAC.
 - Never in it: the token, cookies, headers, request or response bodies, the
   login, verification codes, names, MACs or IPs.
 - Mode 600. Past 1 MB the file moves to `eero-requests.1.jsonl` (replacing
