@@ -20,7 +20,7 @@ import { Card, Empty, Section } from "~/components/ui/card";
 import { Meter } from "~/components/ui/meter";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
-import { Donut } from "~/components/charts/Donut";
+import { Donut, DonutLegendRow } from "~/components/charts/Donut";
 import { wifiGenerationColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatCount, formatPercent, formatRelative, MISSING } from "../../../../core/format";
@@ -184,6 +184,7 @@ const GEN_LABEL: Record<UpgradeReport["byGeneration"][number]["generation"], str
 
 export function UpgradeReportCard({ eeros }: { eeros: Eero[] | undefined }) {
   const query = useQuery<UpgradeReport>("coverage.upgrade_report");
+  const [active, setActive] = useState<string | null>(null);
   if (unsupported(query)) return null;
   const report = query.data;
   const total = report?.byGeneration.reduce((n, g) => n + g.devices, 0) ?? 0;
@@ -199,19 +200,17 @@ export function UpgradeReportCard({ eeros }: { eeros: Eero[] | undefined }) {
             <Empty>No wireless devices to report on.</Empty>
           ) : (
             <div className="flex flex-wrap items-center gap-5">
-              <Donut segments={segments} ariaLabel={`Devices by Wi-Fi generation, ${total} in all`} size={112} thickness={12} loading={!report} format={(v) => `${formatCount(v)} devices`}>
+              <Donut segments={segments} ariaLabel={`Devices by Wi-Fi generation, ${total} in all`} size={112} thickness={12} loading={!report} format={(v) => `${formatCount(v)} ${v === 1 ? "device" : "devices"}`} active={active} onActiveChange={setActive}>
                 <span className="font-semibold text-xl tabular-nums">{report ? formatCount(total) : MISSING}</span>
                 <span className="text-2xs text-muted-foreground">devices</span>
               </Donut>
-              <ul className="flex min-w-36 flex-1 flex-col gap-1.5 text-xs">
+              <div className="flex min-w-36 max-w-56 flex-1 flex-col gap-1.5 text-xs">
                 {segments.map((s) => (
-                  <li key={s.label} className="flex items-center gap-2">
-                    <span className="size-2 shrink-0 rounded-[2px]" style={{ backgroundColor: s.color }} />
-                    <span className="flex-1 text-muted-foreground">{s.label}</span>
+                  <DonutLegendRow key={s.label} label={s.label} color={s.color} active={active} onActiveChange={setActive}>
                     <span className="font-medium tabular-nums">{formatCount(s.value)}</span>
-                  </li>
+                  </DonutLegendRow>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
           {report && (report.limitingEeros.length > 0 || report.notes.length > 0) && (

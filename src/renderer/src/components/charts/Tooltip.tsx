@@ -4,6 +4,7 @@
  * UsageChartTooltip and UsageChartPlot positioning.
  */
 import { type ReactNode, type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { cn } from "~/lib/utils";
 
@@ -17,6 +18,16 @@ export type TooltipRow = {
 };
 
 const GAP = 12;
+/** Room kept between a floating tooltip and the window edge. */
+const EDGE = 6;
+
+/**
+ * The one tooltip surface: the page background (one step darker than cards
+ * and popovers), a 1px border and a soft shadow. Chart tooltips, the share
+ * bar, the donut and every `title` tooltip (TitleTooltips) use it.
+ */
+export const tooltipSurface =
+  "rounded-xl border border-border bg-tooltip/95 text-xs text-tooltip-foreground shadow-lg backdrop-blur-md";
 
 export function ChartTooltip({
   tooltipRef,
@@ -39,7 +50,8 @@ export function ChartTooltip({
       ref={tooltipRef}
       role="presentation"
       className={cn(
-        "pointer-events-none absolute z-10 min-w-36 max-w-full rounded-xl border border-border/50 bg-popover/85 px-2.5 py-2 text-xs text-popover-foreground shadow-lg backdrop-blur-md",
+        "pointer-events-none absolute z-10 min-w-36 max-w-full px-2.5 py-2",
+        tooltipSurface,
         className,
       )}
       style={{ left: "var(--chart-tooltip-left, 0px)", top: "var(--chart-tooltip-top, 0px)", ...style }}
@@ -64,6 +76,59 @@ export function ChartTooltip({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Where a floating tooltip goes: 12px below and right of the pointer
+ * (flipped when it would leave the window), or centred above an element
+ * (below when there is no room above).
+ */
+export type FloatAt = { pointer: { x: number; y: number } } | { anchor: { left: number; top: number; width: number; height: number } };
+
+/** Top-left corner for a `width` x `height` tooltip at `at`, kept inside a `vw` x `vh` window. */
+export function placeFloating(at: FloatAt, width: number, height: number, vw: number, vh: number): { left: number; top: number } {
+  let left: number;
+  let top: number;
+  if ("pointer" in at) {
+    const { x, y } = at.pointer;
+    left = x + GAP + width <= vw - EDGE ? x + GAP : x - GAP - width;
+    top = y + GAP + height <= vh - EDGE ? y + GAP : y - GAP - height;
+  } else {
+    const a = at.anchor;
+    left = a.left + a.width / 2 - width / 2;
+    top = a.top - 6 - height >= EDGE ? a.top - 6 - height : a.top + a.height + 6;
+  }
+  return {
+    left: Math.round(Math.min(Math.max(EDGE, left), Math.max(EDGE, vw - EDGE - width))),
+    top: Math.round(Math.min(Math.max(EDGE, top), Math.max(EDGE, vh - EDGE - height))),
+  };
+}
+
+/**
+ * A tooltip rendered on <body> with fixed positioning, so it can leave a
+ * small chart (a donut) or a clipping card. Placed by `placeFloating`.
+ */
+export function FloatingTooltip({ at, className, children }: { at: FloatAt; className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el === null) return;
+    const { left, top } = placeFloating(at, el.offsetWidth, el.offsetHeight, window.innerWidth, window.innerHeight);
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+    el.style.visibility = "visible";
+  });
+  return createPortal(
+    <div
+      ref={ref}
+      role="presentation"
+      className={cn("pointer-events-none fixed z-[140] px-2.5 py-1.5", tooltipSurface, className)}
+      style={{ left: 0, top: 0, visibility: "hidden" }}
+    >
+      {children}
+    </div>,
+    document.body,
   );
 }
 

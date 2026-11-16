@@ -2,14 +2,22 @@
  * A ring split into segments (for example devices by band), with free
  * content in the middle. Fixed pixel size, so circles stay circles.
  * Segments have straight (butt) ends with a small gap between them.
+ *
+ * Hovering a segment dims the others, swaps the centre for that segment's
+ * count and share, and shows its name in a tooltip that follows the
+ * pointer. Pass `active` and `onActiveChange` to drive the same highlight
+ * from a legend (see `DonutLegendRow`).
  */
 import { type ReactNode, useState } from "react";
 
-import { formatPercent } from "../../../../core/format";
+import { formatCount, formatPercent } from "../../../../core/format";
 import { cn } from "~/lib/utils";
 
 import type { ShareSegment } from "./ShareBar";
-import { fadeClass } from "./Tooltip";
+import { fadeClass, FloatingTooltip } from "./Tooltip";
+
+/** Room kept between the centre content and the inside of the ring, in px. */
+const CENTRE_PADDING = 8;
 
 export function Donut({
   segments,
@@ -18,6 +26,8 @@ export function Donut({
   thickness = 14,
   gap = 3,
   format,
+  active,
+  onActiveChange,
   children,
   loading,
   className,
@@ -28,29 +38,41 @@ export function Donut({
   thickness?: number;
   /** Gap between segments along the ring, in px. */
   gap?: number;
-  /** Formats values for the hover line under the centre content. */
+  /** Formats a value for the tooltip ("12 devices"). Defaults to the plain count. */
   format?: (value: number) => string;
-  /** Centre content, e.g. a total. */
+  /** Label of the highlighted segment, when a caller (its legend) controls it. */
+  active?: string | null;
+  /** Called with a segment's label when the pointer enters it, and null when it leaves. */
+  onActiveChange?: (label: string | null) => void;
+  /** Centre content, e.g. a total. Kept inside the hole. */
   children?: ReactNode;
   loading?: boolean;
   className?: string;
 }) {
-  const [hovered, setHovered] = useState<number | null>(null);
+  const [ownActive, setOwnActive] = useState<string | null>(null);
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
   const visible = segments.filter((s) => Number.isFinite(s.value) && s.value > 0);
   const total = visible.reduce((sum, s) => sum + s.value, 0);
   const segmentGap = visible.length > 1 ? gap : 0;
+  const hole = Math.max(0, size - 2 * thickness - CENTRE_PADDING);
+
+  const activeLabel = active === undefined ? ownActive : active;
+  const current = visible.find((s) => s.label === activeLabel);
+  const setActive = (label: string | null) => {
+    setOwnActive(label);
+    onActiveChange?.(label);
+  };
 
   let offset = 0;
-  const arcs = visible.map((s, i) => {
+  const arcs = visible.map((s) => {
     const length = (s.value / total) * c;
     const dash = Math.max(0.01, length - segmentGap);
-    const arc = { segment: s, index: i, dash, offset };
+    const arc = { segment: s, dash, offset };
     offset += length;
     return arc;
   });
-  const active = hovered === null ? undefined : visible[hovered];
 
   return (
     <div
@@ -82,28 +104,90 @@ export function Donut({
               strokeLinecap="butt"
               strokeDasharray={`${a.dash} ${c}`}
               strokeDashoffset={-(a.offset + segmentGap / 2)}
-              className={cn("transition-opacity", hovered !== null && hovered !== a.index && "opacity-50")}
-              onPointerEnter={() => setHovered(a.index)}
-              onPointerLeave={() => setHovered(null)}
+              className={cn("transition-opacity", current !== undefined && current !== a.segment && "opacity-50")}
+              onPointerEnter={(e) => {
+                setPointer({ x: e.clientX, y: e.clientY });
+                setActive(a.segment.label);
+              }}
+              onPointerMove={(e) => setPointer({ x: e.clientX, y: e.clientY })}
+              onPointerLeave={() => {
+                setPointer(null);
+                setActive(null);
+              }}
             />
           ))}
         </g>
       </svg>
       <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
-        {active !== undefined && format !== undefined ? (
-          <div className="flex flex-col items-center">
-            <span className="text-3xs font-semibold tracking-widest text-muted-foreground/70 uppercase">
-              {active.label}
-            </span>
-            <span className="text-base font-medium tabular-nums">{format(active.value)}</span>
-            <span className="text-3xs text-muted-foreground tabular-nums">
-              {formatPercent((active.value / total) * 100)}
-            </span>
-          </div>
-        ) : (
-          children
-        )}
+        <div className="flex min-w-0 flex-col items-center overflow-hidden" style={{ maxWidth: hole }}>
+          {current !== undefined ? (
+            <>
+              <span className={cn("max-w-full truncate tabular-nums", hole >= 84 ? "font-semibold text-xl" : "font-medium text-base leading-tight")}>
+                {formatCount(current.value)}
+              </span>
+              <span className="text-3xs text-muted-foreground tabular-nums">{formatPercent((current.value / total) * 100)}</span>
+            </>
+          ) : (
+            children
+          )}
+        </div>
       </div>
+      {current !== undefined && pointer !== null && (
+        <FloatingTooltip at={{ pointer }} className="whitespace-nowrap">
+          <span className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: current.color }} />
+              {current.label}
+            </span>
+            <span className="tabular-nums">
+              {format ? format(current.value) : formatCount(current.value)} · {formatPercent((current.value / total) * 100)}
+            </span>
+          </span>
+        </FloatingTooltip>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A legend row beside a donut: colour square, muted label and a value on the
+ * right. Hovering it highlights its segment; while a segment is highlighted
+ * its row gets a faint fill and the other rows dim.
+ */
+export function DonutLegendRow({
+  label,
+  color,
+  active,
+  onActiveChange,
+  className,
+  children,
+}: {
+  label: string;
+  color: string;
+  /** Label of the highlighted segment, or null. */
+  active: string | null;
+  onActiveChange: (label: string | null) => void;
+  className?: string;
+  /** The value(s) on the right. */
+  children: ReactNode;
+}) {
+  const on = active === label;
+  return (
+    <div
+      className={cn(
+        "-mx-1 flex items-center justify-between gap-2 rounded-sm px-1 transition-opacity",
+        on && "bg-muted-foreground/12",
+        active !== null && !on && "opacity-50",
+        className,
+      )}
+      onPointerEnter={() => onActiveChange(label)}
+      onPointerLeave={() => onActiveChange(null)}
+    >
+      <span className={cn("flex min-w-0 items-center gap-1.5", on ? "text-foreground" : "text-muted-foreground")}>
+        <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: color }} />
+        <span className="truncate">{label}</span>
+      </span>
+      {children}
     </div>
   );
 }

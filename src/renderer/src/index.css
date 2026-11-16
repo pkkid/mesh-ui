@@ -25,6 +25,9 @@
   --color-card-foreground: var(--theme-text);
   --color-popover: var(--theme-surface-overlay);
   --color-popover-foreground: var(--theme-text);
+  /* Tooltips sit on the page background, one step darker than cards and popovers. */
+  --color-tooltip: var(--theme-canvas);
+  --color-tooltip-foreground: var(--theme-text);
   --color-surface-raised: var(--theme-surface-raised);
   --color-primary: var(--theme-message-action);
   --color-primary-foreground: var(--theme-message-action-foreground);

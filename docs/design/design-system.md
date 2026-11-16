@@ -53,7 +53,8 @@ mockup variable to the app token.
 | Titlebar and sidebar | `--chrome`, `--sidebar-bg` | `bg-chrome`, `bg-sidebar` | `#1d2021` | `#f2e5bc` |
 | Section and card surface | `--card` | `bg-card` | `#262829` | `#f9f5d7` |
 | Inset or raised surface | `--card-2` | `bg-surface-raised`, `bg-muted` | `#2e2f2f` | `#f2e5bc` |
-| Popover, tooltip | `--popover` | `bg-popover` | `#282828` | `#f9f5d7` |
+| Popover | `--popover` | `bg-popover` | `#282828` | `#f9f5d7` |
+| Tooltip | `--bg` | `bg-tooltip` (the page background, one step below cards) | `#1d2021` | `#f2e5bc` |
 | Text | `--fg` | `text-foreground` | `#ebdbb2` | `#3c3836` |
 | Secondary text | `--fg-2` | `text-foreground/80` | `#d5c4a1` | `#504945` |
 | Muted text | `--muted` | `text-muted-foreground` | `#a89984` | `#7c6f64` |
@@ -225,7 +226,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Band badge | `band-badge.tsx`. The neutral Badge box with "2.4 GHz", "5 GHz", "6 GHz" or a cable icon and "Wired". Never coloured: band colours are for chart series |
 | Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), or the series colour via `color` for a series share (download and upload plan meters), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
 | Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from device type (then category) to a lucide icon, shown in an Icon tile. Never map device types to icons anywhere else |
-| Tooltip | Glass card (see Charts) |
+| Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-xl`, `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
 | Dialog and sheet | `bg-popover`, border, large radius, dimmed backdrop |
 | QR block | `qr.tsx`. `QrBlock`: small outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. The code is always black modules on a white tile with a quiet zone and 1px border, in both themes, because some scanners cannot read inverted codes: the one place fixed black and white are used. An empty muted frame while the payload loads. Save QR writes a black-on-white PNG through Chromium's download save dialog. Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
@@ -342,9 +343,9 @@ toggle switches appearance). Headless: `pnpm ui:shot --fake --route
   `text-3xs text-muted-foreground tabular-nums`, zero shown as `0`. X labels
   only at start, middle and end, `text-3xs uppercase`.
 - **Hover.** A 1px muted vertical line at the nearest point and a tooltip that
-  follows the pointer 12px away and stays inside the plot. Tooltip: glass card
-  (`rounded-xl border-border/50 shadow-lg text-xs`, translucent popover with
-  backdrop blur), period label in muted text, one row per series (dot, muted
+  follows the pointer 12px away and stays inside the plot. Tooltip: the shared
+  tooltip surface (`tooltipSurface`: `bg-tooltip`, the page background, with
+  a border, `rounded-xl shadow-lg text-xs`), period label in muted text, one row per series (dot, muted
   label, value right-aligned), and a Total row under a top border when totals
   make sense.
 - **Ranges.** Usage charts offer Day and Week only (free accounts keep about 7
@@ -363,6 +364,7 @@ Other chart kinds in the mockups, same rules for colour and labels:
 | Sparkline | Tiny line, no labels, in tables and eero rows |
 | Gauge | Speed test result (download, upload) in Internet and Overview. With a plan: runs to 125% of it, a 2px foreground `mark` at the plan, and a `note` under the unit ("94% of plan", or a solid `Flame` in `overPlan` plus "9% over plan"); `SpeedGauge` in `InternetHero.tsx` is the shared one, `formatPlanShare` words it |
 | Heatmap | "When the network is busy", day by hour, one series colour at varying opacity |
+| Donut | `Donut.tsx`. A share of counts (devices by type, by band, by Wi-Fi generation) with butt segment ends and a small gap. Centre content is kept inside the hole (`size - 2 * thickness - 8px`). Hovering a segment dims the others, swaps the centre for its count over its percent, and shows "label · value · percent" in a tooltip that follows the pointer (`FloatingTooltip`, so it can leave the card). Its legend uses `DonutLegendRow`: hovering a row highlights its segment and the other way round |
 | Share bar | `h-2` bar of segments with `gap-0.5`, rounded outer ends, tooltip "label · value · percent", legend of `size-2` squares |
 | Topology | eero pucks joined by lines; wired solid, wireless dashed; weak links in the warning colour |
 

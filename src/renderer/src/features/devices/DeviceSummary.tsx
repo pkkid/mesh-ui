@@ -5,9 +5,9 @@
  * network whatever the filters.
  */
 import { Activity, type LucideIcon, Shapes, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
-import { Donut } from "~/components/charts/Donut";
+import { Donut, DonutLegendRow } from "~/components/charts/Donut";
 import { Card } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { entityColor, seriesColors } from "~/lib/chartColors";
@@ -37,29 +37,39 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
   const fresh = (s?.newThisWeek ?? []).flatMap((id) => byId.get(id) ?? []);
   const down = mbpsParts(s?.rates?.downMbps);
   const now = Date.now();
+  const categoryTotal = s ? CATEGORIES.reduce((n, c) => n + s.byCategory[c], 0) : 0;
+  /** The category highlighted from the donut or the legend. */
+  const [active, setActive] = useState<string | null>(null);
 
   return (
-    <Card className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1.2fr] [&>*+*]:border-t md:[&>*+*]:border-t-0 md:[&>*+*]:border-l">
+    <Card className="grid grid-cols-1 md:grid-cols-[auto_1fr_1.2fr] [&>*+*]:border-t md:[&>*+*]:border-t-0 md:[&>*+*]:border-l">
       <Cell className={cn("flex items-start gap-4", fading && "opacity-40")}>
         <Donut
-          size={84}
-          thickness={9}
+          size={96}
+          thickness={13}
           ariaLabel="Devices by type"
           format={(v) => `${formatCount(v)} ${v === 1 ? "device" : "devices"}`}
+          active={active}
+          onActiveChange={setActive}
           segments={CATEGORIES.map((c) => ({ label: CATEGORY_LABELS[c], value: s?.byCategory[c] ?? 0, color: categoryColor(c) }))}
         />
-        <div className="flex min-w-0 flex-1 flex-col gap-1 text-[11.5px]">
+        <div className="flex w-44 min-w-0 flex-col gap-1 text-[11.5px]">
           <Label icon={Shapes} className="mb-1">
             By type
           </Label>
           {CATEGORIES.map((c) => (
-            <div key={c} className="flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: categoryColor(c) }} />
-                <span className="truncate">{CATEGORY_LABELS[c]}</span>
+            <DonutLegendRow key={c} label={CATEGORY_LABELS[c]} color={categoryColor(c)} active={active} onActiveChange={setActive}>
+              <span className="shrink-0 whitespace-nowrap tabular-nums">
+                {s ? (
+                  <>
+                    <span className="font-medium">{formatCount(s.byCategory[c])}</span>
+                    <span className="text-muted-foreground"> · {categoryTotal > 0 ? formatPercent((s.byCategory[c] / categoryTotal) * 100) : "-"}</span>
+                  </>
+                ) : (
+                  "-"
+                )}
               </span>
-              <span className="font-medium tabular-nums">{s ? s.byCategory[c] : "-"}</span>
-            </div>
+            </DonutLegendRow>
           ))}
         </div>
       </Cell>

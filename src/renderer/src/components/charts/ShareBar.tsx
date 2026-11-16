@@ -7,6 +7,8 @@ import { type ReactNode, useState } from "react";
 import { formatPercent } from "../../../../core/format";
 import { cn } from "~/lib/utils";
 
+import { tooltipSurface } from "./Tooltip";
+
 export type ShareSegment = {
   label: string;
   value: number;
@@ -69,7 +71,7 @@ export function ShareBar({
         {hoveredSegment === undefined ? null : (
           <div
             role="presentation"
-            className="pointer-events-none absolute bottom-full z-10 mb-2 rounded-xl border border-border/50 bg-popover/85 px-2.5 py-1.5 text-xs whitespace-nowrap text-popover-foreground shadow-lg backdrop-blur-md"
+            className={cn("pointer-events-none absolute bottom-full z-10 mb-2 whitespace-nowrap px-2.5 py-1.5", tooltipSurface)}
             style={{ left: `${Math.min(hoverLeft * 100, 70)}%` }}
           >
             {hoveredSegment.label} · <span className="tabular-nums">{format(hoveredSegment.value)}</span> ·{" "}
