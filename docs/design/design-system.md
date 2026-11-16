@@ -261,7 +261,7 @@ chevron or "Details" button. The card gets `cursor-pointer` and, on hover,
 `transition-colors` only (no movement, no shadow). The title link is the
 keyboard focus target: focusing it gives the card the hover look plus the
 focus ring, and Enter opens it. Buttons, links, inputs and menus inside the
-card (Find, Pause, the `...` menu) keep their own clicks; wrap any other
+card (Blink light, Pause, the `...` menu) keep their own clicks; wrap any other
 control in `data-card-ignore`. List rows (`Row`) are a separate pattern and
 keep `hover:bg-muted/50`.
 

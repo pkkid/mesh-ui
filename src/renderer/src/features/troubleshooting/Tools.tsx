@@ -21,7 +21,7 @@ import { Card, Section } from "~/components/ui/card";
 import { GatedButton, HeaderLink, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { restartLine } from "~/features/eero/helpers";
-import { FindButton } from "~/features/eeros/EeroCards";
+import { BlinkLightButton } from "~/features/eeros/EeroCards";
 import { useRestartNetwork, watchRestart } from "~/features/eeros/NetworkActions";
 import { useSpeedTest } from "~/features/internet/InternetHero";
 import type { RestartResult } from "../../../../core/commands/network";
@@ -64,7 +64,7 @@ export function Tools({ eeros }: { eeros: Eero[] | undefined }) {
             ))}
           </select>
           {target ? (
-            <FindButton key={target.id} eero={target} label="Blink light" />
+            <BlinkLightButton key={target.id} eero={target} />
           ) : (
             <GatedButton gate={{ allowed: false, reason: "No eeros yet" }} size="xs" variant="outline">
               Blink light

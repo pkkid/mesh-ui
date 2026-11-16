@@ -44,7 +44,7 @@ Sidebar count: number of eeros.
 2. **Your eeros**. Sub "Bands, channels and load per eero". Tool: Grid / List
    toggle. Grid of cards, two per row. Each card:
    - Header: icon, name with a Gateway badge, "eero Max 7 · 192.168.4.1 · up
-     23d 4h", status (Online, Weak link), **Find** button, or while blinking
+     23d 4h", status (Online, Weak link), **Blink light** button, or while blinking
      an info-dot "Blinking · 24s" with **Stop**. The whole card opens the
      detail page (a clickable card, see the design system); no chevron
      button.
@@ -81,7 +81,7 @@ Sidebar count: number of eeros.
 | Weak link note and suggestions | `network.health` issues: the most serious one shows (`network_offline`, then `eero_offline`, then `weak_link`), with its eero, upstream and affected devices | 60 s |
 | Selected eero card | `eero.list` (view state picks the eero; default the first with an issue, else the first non-gateway) | 60 s |
 | eero cards: header fields, bands, channel, width, utilisation, clients | `eero.list` | 60 s |
-| Find state ("Blinking · 24s") | Result of `eero.find` (`until` timestamp); countdown in the renderer | - |
+| Blink light state ("Blinking · 24s") | Result of `eero.find` (`until` timestamp); countdown in the renderer | - |
 | Data usage by eero | `usage.get {scope: "eero", range}` (all eeros) | 5 min |
 | Clients by band | `device.list` summary (`byBand`) | 30 s |
 
@@ -95,9 +95,9 @@ Sidebar count: number of eeros.
 | Test placement | `eero.placement.test {eero}` | write | No | Note shows "Testing placement..." then the rating ("Good spot", "Move closer to Office") with the measured bars |
 | Scan coverage | - | - | No | Troubleshooting, coverage section, which runs `coverage.scan` |
 | Grid / List | - (view state) | - | No | Switches card layout |
-| Find | `eero.find {eero}` | write | No | LED flashes blue and white for 30 s; toast "Blinking Office"; the button reads "Blinking · 30s" counting down |
+| Blink light | `eero.find {eero}` | write | No | LED flashes blue and white for 30 s; toast "Blinking Office"; the button reads "Blinking · 30s" counting down. The same label on eero detail and Troubleshooting; its `aria-label` names the eero ("Blink Office's light") |
 | Stop (while blinking) | not built: no stop call is known | - | - | Hidden; the countdown runs out |
-| Card (click outside Find) | - | - | No | eero detail |
+| Card (click outside Blink light) | - | - | No | eero detail |
 | Day / Week (usage by eero) | - (re-queries `usage.get`) | - | No | Chart switches range |
 | Legend item | - (view state) | - | No | Hides or shows that eero's series |
 | Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog (the engine's `needs_confirm` message) | Progress toast "Restarting Maple Street" with "Back in about 2 to 3 minutes"; eeros show Updating; the eero and network queries refresh every 5 s until every restarted eero is back, then "Maple Street is back" |
@@ -110,7 +110,7 @@ Sidebar count: number of eeros.
 - **Empty.** A single eero: topology shows Internet and the gateway only, no
   note; usage by eero still shows one series.
 - **Error.** Per section note with Retry.
-- **Offline (this computer).** Shell banner; Find, Test placement and Restart
+- **Offline (this computer).** Shell banner; Blink light, Test placement and Restart
   network disabled.
 - **Network offline.** All nodes muted with Offline; links drawn grey and
   dashed; note "Maple Street is not reporting" in place of the weak-link
@@ -121,7 +121,7 @@ Sidebar count: number of eeros.
   offline issue that replaces the weak-link note.
 - **Restarting.** Nodes show Restarting (info); links hidden until back.
 - **No permission.** Restart network disabled with "Owner only" if
-  `network.permissions` denies it. Admins can Find and test placement.
+  `network.permissions` denies it. Admins can blink lights and test placement.
 - **Capability missing.** No 6 GHz radio: dual-band note. Utilisation not
   reported by a model or firmware: the meter column shows `-`. Placement
   test unsupported on a model: Test placement hidden for that eero.
@@ -129,7 +129,7 @@ Sidebar count: number of eeros.
 
 ## Built so far (M2.5, M4.8)
 
-- Find (`eero.find`) and Restart network (`network.restart`) work (M4.8).
+- Blink light (`eero.find`) and Restart network (`network.restart`) work (M4.8).
   Test placement runs `eero.placement.test` (M5) with the same hook and
   rating as Troubleshooting's coverage table (`usePlacementTest`,
   `PlacementRating` in `troubleshooting/Coverage.tsx`): "Testing
@@ -183,7 +183,7 @@ Sidebar count: number of eeros.
 - `network.restart` (`POST {net}/reboot`) restarts every eero. The run
   confirms in the UI, and the engine requires `confirm: true`. It returns
   `{ eeroIds, estimate }`: the reachable eeros that restart.
-- MANUAL: blink one eero's light | eeros page, Find on one eero | the light
+- MANUAL: blink one eero's light | eeros page, Blink light on one eero | the light
   cycles blue and white for about 30 s | risk: none.
 - MANUAL: Test placement on one non-gateway eero | eeros page, Test
   placement on the weak eero | a rating appears within a minute | risk:
