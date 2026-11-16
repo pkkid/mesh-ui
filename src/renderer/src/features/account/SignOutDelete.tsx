@@ -7,19 +7,20 @@
  *   In demo mode the panel says so and offers **Leave demo mode**
  *   (`app.demo.set {enabled: false}`, which relaunches Mesh UI without
  *   `--demo`).
- * - **Delete account and data** (`account.delete`, destructive): the
- *   checkbox, then the app's confirm dialog with core's message and type the
+ * - **Delete account and data** (`account.delete`, destructive): a quiet
+ *   collapsed row with a chevron, so reaching it takes a deliberate click. It
+ *   always starts collapsed (view state, not remembered) and collapses again
+ *   after a cancelled confirm. Expanded: the checkbox, then the app's confirm dialog with core's message and type the
  *   account's email (or name), sending `acknowledge: true` and, after the
  *   dialog, `confirm: true`. Disabled with the reason while the account owns
  *   a network; a network with no known role counts as owned, as core's
  *   refusal does. Core signs out afterwards, so the app returns to sign in.
  */
-import { FlaskConical, LogOut, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FlaskConical, LogOut, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
 import { useCommand, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { GatedButton } from "~/components/ui/page";
@@ -67,8 +68,10 @@ export function SignOutDelete({ id }: { id?: string }) {
 }
 
 function DeleteAccount({ account, networks }: { account: Account | undefined; networks: NetworkSummary[] | undefined }) {
+  const [open, setOpen] = useState(false);
   const [checked, setChecked] = useState(false);
   const checkId = useId();
+  const bodyId = useId();
   const plan = deletePlan(networks);
   const typeToConfirm = account?.email?.value ?? account?.name ?? undefined;
   const remove = useWrite<{ acknowledge: true }, { deleted: true }>("account.delete", {
@@ -80,31 +83,54 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
   const reason = owns ? `You own ${plan.owned.length === 1 ? "a network" : `${plan.owned.length} networks`}. Transfer or delete ${plan.owned.length === 1 ? "it" : "them"} first` : null;
   const gate = { allowed: Boolean(networks) && !owns && checked, reason: reason ?? (checked ? null : "Tick the box first") };
 
+  const Chevron = open ? ChevronDown : ChevronRight;
+  const toggle = () => {
+    setOpen(!open);
+    setChecked(false);
+  };
+  const del = async () => {
+    // A cancelled confirm puts the row back to its quiet, collapsed state.
+    if ((await remove.run({ acknowledge: true })) === null) {
+      setOpen(false);
+      setChecked(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 font-medium text-sm">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={bodyId}
+        onClick={toggle}
+        className="-mx-1 flex cursor-pointer items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-start text-foreground/80 text-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Chevron className="size-3.5 text-muted-foreground" />
         Delete account and data
-        <Badge variant="error">Destructive</Badge>
-      </div>
-      <p className="text-muted-foreground text-xs">{networks ? plan.text : "Closes your eero account and deletes your personal data."}</p>
-      <label htmlFor={checkId} className="flex cursor-pointer items-start gap-2 text-xs">
-        <input
-          id={checkId}
-          type="checkbox"
-          checked={checked}
-          disabled={owns}
-          onChange={(e) => setChecked(e.target.checked)}
-          className="mt-px size-3.5 shrink-0 cursor-pointer rounded-[4px] border accent-primary disabled:cursor-not-allowed disabled:opacity-60"
-        />
-        I want to permanently close my account and delete my data
-      </label>
-      <div>
-        <GatedButton size="sm" variant="destructive" gate={gate} disabled={remove.running} onClick={() => void remove.run({ acknowledge: true })}>
-          <Trash2 />
-          Delete account
-        </GatedButton>
-      </div>
-      {reason && <div className="text-muted-foreground text-xs">{reason}.</div>}
+      </button>
+      {open && (
+        <div id={bodyId} className="flex flex-col gap-2 ps-5">
+          <p className="text-muted-foreground text-xs">{networks ? plan.text : "Closes your eero account and deletes your personal data."}</p>
+          <label htmlFor={checkId} className="flex cursor-pointer items-start gap-2 text-xs">
+            <input
+              id={checkId}
+              type="checkbox"
+              checked={checked}
+              disabled={owns}
+              onChange={(e) => setChecked(e.target.checked)}
+              className="mt-px size-3.5 shrink-0 cursor-pointer rounded-[4px] border accent-primary disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            I want to permanently close my account and delete my data
+          </label>
+          <div>
+            <GatedButton size="sm" variant="destructive" gate={gate} disabled={remove.running} onClick={() => void del()}>
+              <Trash2 />
+              Delete account
+            </GatedButton>
+          </div>
+          {reason && <div className="text-muted-foreground text-xs">{reason}.</div>}
+        </div>
+      )}
     </div>
   );
 }
