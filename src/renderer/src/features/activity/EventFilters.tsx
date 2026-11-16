@@ -1,16 +1,19 @@
 /**
  * Activity filter bar (docs/ux/pages/activity.md, Layout 2), built from the
  * shared filter bar like Devices: search and a Filters popover (Device, eero,
- * Profile), and the filters that are set as removable chips under it. There
+ * Profile) on the left, the stream's own controls (`end`: Live, Grouped /
+ * Raw, Mark read, settings) on the right of the same row, and the filters
+ * that are set as removable chips under it. There
  * is no range: the stream is live (eero sends only its last ~15 minutes), so
  * it holds what came in while the app was open. Types hidden from the legend show as
  * one chip too. Pure view state; the page passes it to `events.list` and
  * `events.summary`, which filter in core.
  */
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import {
   FilterBar,
+  FilterBarEnd,
   type FilterChip,
   type FilterOption,
   FilterRow,
@@ -44,6 +47,7 @@ export function EventFilters({
   profiles,
   hiddenTypes,
   onShowAllTypes,
+  end,
 }: {
   value: EventFilterState;
   searchText: string;
@@ -56,6 +60,8 @@ export function EventFilters({
   /** How many event types the legend hides (0 when all show). */
   hiddenTypes: number;
   onShowAllTypes: () => void;
+  /** Controls on the right of the bar's row. */
+  end?: ReactNode;
 }) {
   const labelOf = (options: ReadonlyArray<Option>, v: string) => options.find((o) => o.value === v)?.label ?? v;
   const chips: FilterChip[] = [];
@@ -92,6 +98,7 @@ export function EventFilters({
           <SelectPicker name="Profile" value={f.profile} options={profiles} onChange={(profile) => onChange({ profile })} />
         </FilterRow>
       </FiltersButton>
+      {end && <FilterBarEnd>{end}</FilterBarEnd>}
     </FilterBar>
   );
 }

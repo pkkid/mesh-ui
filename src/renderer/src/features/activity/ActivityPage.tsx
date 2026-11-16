@@ -184,19 +184,6 @@ export function ActivityPage(_props: PageProps) {
         )}
       </Section>
 
-      <EventFilters
-        value={filters}
-        searchText={searchText}
-        onSearchText={setSearchText}
-        searchRef={searchRef}
-        onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
-        devices={deviceOptions}
-        eeros={eeroOptions}
-        profiles={profileOptions}
-        hiddenTypes={hidden.size}
-        onShowAllTypes={() => setHidden(new Set())}
-      />
-
       <Section
         title={
           <span className="inline-flex items-center gap-3">
@@ -209,23 +196,35 @@ export function ActivityPage(_props: PageProps) {
           </span>
         }
         subtitle="Newest first · polled every 60 s"
-        tools={
-          <>
-            <Status tone={visible ? "success" : "muted"}>{visible ? "Live" : "Paused"}</Status>
-            <Segmented
-              aria-label="Stream grouping"
-              value={mode}
-              onValueChange={setMode}
-              options={[
-                { value: "grouped", label: "Grouped" },
-                { value: "raw", label: "Raw" },
-              ]}
-            />
-            <MarkAllReadButton networkId={notifications.networkId} page={notifications.data} />
-            <StreamSettingsButton />
-          </>
-        }
       >
+        <EventFilters
+          value={filters}
+          searchText={searchText}
+          onSearchText={setSearchText}
+          searchRef={searchRef}
+          onChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
+          devices={deviceOptions}
+          eeros={eeroOptions}
+          profiles={profileOptions}
+          hiddenTypes={hidden.size}
+          onShowAllTypes={() => setHidden(new Set())}
+          end={
+            <>
+              <Status tone={visible ? "success" : "muted"}>{visible ? "Live" : "Paused"}</Status>
+              <Segmented
+                aria-label="Stream grouping"
+                value={mode}
+                onValueChange={setMode}
+                options={[
+                  { value: "grouped", label: "Grouped" },
+                  { value: "raw", label: "Raw" },
+                ]}
+              />
+              <MarkAllReadButton networkId={notifications.networkId} page={notifications.data} />
+              <StreamSettingsButton />
+            </>
+          }
+        />
         <EventStream
           rows={rows}
           hours={summary.data}
