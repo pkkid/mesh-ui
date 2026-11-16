@@ -219,6 +219,10 @@ building a new chart; port from them rather than inventing a style.
   `gap-6`, each headed by `text-sm font-medium text-foreground`. Controls for a
   section (range Day/Week/Month, metric switch) are a segmented toggle on the
   right of that header. Do not wrap every number in its own card.
+- **Page header columns** are top-aligned, never vertically centred; a wide
+  aside (a chart) drops under the main column below `lg`, where sections go
+  to one column (`PageHeader stackAside`). See
+  `docs/design/design-system.md#page-header-hero`.
 - **Hero.** The key figure is `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   `18rem` column lists each series: colour dot, icon, label, value on the

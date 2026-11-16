@@ -12,7 +12,7 @@
 
   <!-- Hero: verdict on the left, the speed test trend on the right (#240) -->
   <div class="hero" id="internet-history">
-    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:32px;align-items:center">
+    <div class="hero-in" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.45fr);gap:32px;align-items:start">
       <div class="col gap-12">
         <div>
           <div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Ziply Fiber is fast and steady</div>
@@ -32,18 +32,18 @@
           <div class="row" style="gap:22px">
             <div>
               <div class="row xs muted" style="gap:6px"><span class="dot" style="--c:var(--c-down)"></span>Download, 7-day avg</div>
-              <div class="row" style="gap:8px;align-items:baseline"><span class="m tnum" style="font-size:16px">914 Mbps</span><span class="xs muted">76% of plan</span></div>
+              <div class="row" style="gap:8px;align-items:baseline;padding-left:13px"><span class="m tnum" style="font-size:16px">914 Mbps</span><span class="xs muted">76% of plan</span></div>
             </div>
             <div>
               <div class="row xs muted" style="gap:6px"><span class="dot" style="--c:var(--c-up)"></span>Upload, 7-day avg</div>
-              <div class="row" style="gap:8px;align-items:baseline"><span class="m tnum" style="font-size:16px">906 Mbps</span><span class="xs muted">75% of plan</span></div>
+              <div class="row" style="gap:8px;align-items:baseline;padding-left:13px"><span class="m tnum" style="font-size:16px">906 Mbps</span><span class="xs muted">75% of plan</span></div>
             </div>
           </div>
-          <div class="row gap-8"><button class="btn sm"><i data-lucide="download"></i>Export CSV</button><div class="seg"><span>Month</span><span class="on">All</span></div></div>
+          <div class="seg"><span>Month</span><span class="on">All</span></div>
         </div>
         <div id="ch-st"></div>
         <div class="xxs muted">15 tests since Thu Nov 6 · Plan Fiber Gig, 1.2 Gbps down, 1.2 Gbps up · <a href="#" style="color:var(--fg);text-decoration:underline;text-underline-offset:2px">Edit plan</a></div>
-        <div class="row xxs muted" style="gap:6px"><i data-lucide="info" style="width:12px;height:12px"></i>Tests run from the gateway to your ISP, so they show what Ziply delivers, not Wi-Fi speed in a room.</div>
+        <div class="xxs muted">Tests run from the gateway to your ISP, so they show what Ziply delivers, not Wi-Fi speed in a room.</div>
       </div>
     </div>
   </div>
@@ -141,7 +141,7 @@ MU.ready(() => {
   const down = [926, 933, 910, 944, 917, 928, 939, 921, 702, 936, 914, 948, 925, 931, 942];
   const up   = [908, 914, 889, 925, 896, 911, 922, 902, 846, 919, 887, 931, 905, 912, 918];
   MU.area("#ch-st", {
-    labels: tLabels, xTicks: ["Nov 6", "Nov 10", "Today"], height: 150, format: MU.fmt.mbps, label: "Speed test results, last 7 days",
+    labels: tLabels, xTicks: ["Nov 6", "Nov 10", "Today"], height: 112, format: MU.fmt.mbps, label: "Speed test results, last 7 days",
     max: 1200, ticks: [0, 300, 600, 900, 1200],
     series: [
       { name: "Download", color: "var(--c-down)", values: down },

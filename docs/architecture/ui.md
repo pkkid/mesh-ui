@@ -92,9 +92,9 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   updater changed state, for example an update is downloaded). No eero
   data travels on it.
 - `saveFile` (`mesh:save-file`, renderer helper `lib/saveFile.ts`) saves a
-  text export, such as Internet's Export CSV, to a file the user picks in the
+  text export, such as Activity's Export CSV, to a file the user picks in the
   native save dialog. It is not a command: the text comes from a command
-  first (`speedtest.history {format: "csv"}`). Main refuses anything but a
+  first (`events.list {format: "csv"}`). Main refuses anything but a
   string (8 MB at most), keeps only the base name of `name` as the
   suggestion, allows only text extensions (`csv`, `tsv`, `txt`, `json`,
   `jsonl`, `log`), and returns just the chosen file name, never the folder or

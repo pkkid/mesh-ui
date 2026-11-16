@@ -24,6 +24,11 @@ type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   aside?: React.ReactNode;
   /** Classes for the aside column, e.g. to let a chart grow instead of sizing to its content. */
   asideClassName?: string;
+  /**
+   * Put the aside under the main column below `lg`, the width where page
+   * sections go from two columns to one. For a wide aside such as a chart.
+   */
+  stackAside?: boolean;
 };
 
 function isIcon(icon: unknown): icon is LucideIcon {
@@ -31,13 +36,14 @@ function isIcon(icon: unknown): icon is LucideIcon {
   return typeof icon === "function" || (typeof icon === "object" && icon !== null && "render" in icon);
 }
 
-function PageHeader({ title, icon, status, facts, actions, aside, asideClassName, className, ...props }: PageHeaderProps) {
+function PageHeader({ title, icon, status, facts, actions, aside, asideClassName, stackAside = false, className, ...props }: PageHeaderProps) {
   const Icon = isIcon(icon) ? icon : null;
   return (
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
       <div data-slot="page-header" className={cn("rounded-(--hero-radius) border bg-card", className)} {...props}>
-        <div className="flex items-center gap-7 px-6 py-[22px]">
-          <div className="flex min-w-0 flex-1 items-start gap-4">
+        {/* Columns are top-aligned, never centred: docs/design/design-system.md (Page header). */}
+        <div className={cn("flex items-start gap-7 px-6 py-[22px]", stackAside && "flex-col lg:flex-row")}>
+          <div className={cn("flex min-w-0 flex-1 items-start gap-4", stackAside && "w-full lg:w-auto")}>
             {Icon ? <IconTile icon={Icon} size="xl" /> : (icon as React.ReactNode)}
             <div className="flex min-w-0 flex-1 flex-col gap-3">
               <div>
@@ -52,7 +58,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, asideClassName
               )}
             </div>
           </div>
-          {aside && <div className={cn("flex shrink-0 items-center gap-7", asideClassName)}>{aside}</div>}
+          {aside && <div className={cn("flex shrink-0 items-start gap-7", stackAside && "w-full lg:w-auto", asideClassName)}>{aside}</div>}
         </div>
       </div>
     </ButtonSizeContext>

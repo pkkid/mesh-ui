@@ -172,6 +172,14 @@ Every page opens with the same header:
 - optional key facts as label-over-value pairs (ISP, Public IP, Last speed
   test);
 - **actions in a row at the bottom**, primary first, disruptive last.
+- **Columns are top-aligned, never vertically centred.** The main column
+  and the right-hand column (gauges, QR block, a chart) both start at the
+  top of the card, so the title stays in the same place on every page
+  whatever sits beside it. `PageHeader` does this (`items-start`).
+- A wide right-hand column (the Internet speed test chart) drops under the
+  main column below `lg`, the same width where page sections go from two
+  columns to one (`PageHeader stackAside`). Narrow ones (gauges, QR) stay
+  beside it.
 
 Every button in a header is the `hero` size (28px, `h-7`, 13px text,
 14px icons), on every page: the actions row, the buttons in the right-hand

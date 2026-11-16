@@ -215,7 +215,8 @@ export function InternetHero({ id }: { id?: string }) {
           </>
         )
       }
-      asideClassName="min-w-0 flex-[1.2_1_0%]"
+      stackAside
+      asideClassName="min-w-0 lg:flex-[1.2_1_0%]"
       aside={
         <div className={cn("w-full min-w-0", down && "opacity-60")}>
           <SpeedTrend testing={testing} />
