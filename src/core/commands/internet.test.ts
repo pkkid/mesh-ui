@@ -167,13 +167,14 @@ describe("internet verdict", () => {
     expect(internetVerdict({ ...base, isp: { ...base.isp, name: null }, status: "offline", planMbps: null, lastSpeedTest: null }, NOW).title).toBe("Your internet is down");
   });
 
-  it("is up without a test or without a plan", () => {
-    expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: null }, NOW)).toEqual({ kind: "steady", title: "Ziply Fiber is up", detail: "No speed test yet" });
+  it("is just the ISP name without a test or without a plan", () => {
+    expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: null }, NOW)).toEqual({ kind: "steady", title: "Ziply Fiber", detail: "No speed test yet" });
     expect(internetVerdict({ ...base, planMbps: null, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
       kind: "steady",
-      title: "Ziply Fiber is up",
+      title: "Ziply Fiber",
       detail: "Last test 2 h ago measured 942 Mbps down, 918 Mbps up",
     });
+    expect(internetVerdict({ ...base, isp: { ...base.isp, name: null }, planMbps: null, lastSpeedTest: null }, NOW).title).toBe("Internet");
   });
 
   it("comes back from internet.get in demo for every form", async () => {

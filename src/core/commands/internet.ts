@@ -262,20 +262,22 @@ function average(values: (number | null)[]): number | null {
 /**
  * The hero line on the Internet page, from the connection status, the last
  * test and the plan: "Ziply Fiber is down", "... is fast and steady" (last
- * test great), "... is slower than your plan" (below plan or poor), or "... is
- * up" when there is no test or no plan to compare with. `detail` words the
+ * test great), "... is slower than your plan" (below plan or poor), or just
+ * the ISP name ("Internet" when eero names none) when there is no test or no
+ * plan to compare with, since the status line already says Connected. `detail` words the
  * last test ("Last test 2 h ago hit 78% of your 1.2 Gbps plan").
  */
 export function internetVerdict(i: Omit<M.Internet, "verdict">, now: number): M.InternetVerdict {
   const name = i.isp.name ?? "Your internet";
   if (i.status === "offline") return { kind: "down", title: `${name} is down`, detail: null };
   const test = i.lastSpeedTest;
-  if (!test) return { kind: "steady", title: `${name} is up`, detail: "No speed test yet" };
+  const bare = i.isp.name ?? "Internet";
+  if (!test) return { kind: "steady", title: bare, detail: "No speed test yet" };
   const when = `Last test ${formatRelative(test.at, now)}`;
   const plan = i.planMbps;
   const rating = speedRating(test, plan);
   if (!plan || !rating) {
-    return { kind: "steady", title: `${name} is up`, detail: `${when} measured ${formatMbps(test.downMbps)} down, ${formatMbps(test.upMbps)} up` };
+    return { kind: "steady", title: bare, detail: `${when} measured ${formatMbps(test.downMbps)} down, ${formatMbps(test.upMbps)} up` };
   }
   // Download when it was measured, else upload.
   const [value, full] = test.downMbps !== null && plan.down > 0 ? [test.downMbps, plan.down] : [test.upMbps ?? 0, plan.up];
