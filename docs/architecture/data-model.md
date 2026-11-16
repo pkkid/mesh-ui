@@ -355,7 +355,8 @@ type Device = {
   manufacturer: string | null;
   model: string | null;
   type: DeviceType;               // eero device_type, "generic" if absent
-  category: DeviceCategory;
+  inferredType: DeviceType | null; // guess for a "generic" device, else null
+  category: DeviceCategory;       // from inferredType, else type
   mac: string;
   privateMac: boolean;
   ipv4: string | null;
@@ -406,7 +407,8 @@ type DeviceBulkResult = {
 | `id`, `mac` | `url` last segment, `mac` |
 | `name` | `nickname`, then `display_name`, `hostname`, `manufacturer`, `mac` |
 | `model`, `type` | `model_name`, `device_type` |
-| `category` | core table from `device_type` (phone and tablet, laptop and desktop, television and game console and media streamer, thermostat and plug and camera and so on) |
+| `inferredType` | only when `device_type` is `generic` (most devices on a real network): a guess from `model_name`, then `hostname`, then `manufacturer` (`src/core/eero/map/deviceInfer.ts`). Makers of many kinds of thing (Apple, Amazon, Google, Samsung) give no guess. null when eero sent a real type, so a type a person set always wins. Icons use it; `type` stays eero's value |
+| `category` | core table from `inferredType`, else `device_type` (phone and tablet, laptop and desktop, television and game console and media streamer, thermostat and plug and camera and so on). A maker with mixed products can set the category alone (Nest Labs: smart home; Intel: computers) |
 | `privateMac` | `is_private` |
 | `ipv4`, `ipv6` | `ipv4` or `ip`, `ipv6_addresses[].address` |
 | `ipv6LinkLocal` | the `fe80::` entry of `ipv6_addresses` |

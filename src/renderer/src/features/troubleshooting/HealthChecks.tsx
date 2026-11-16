@@ -148,7 +148,7 @@ export function HealthChecks({ health, symptoms }: { health: ReturnType<typeof u
           <h2 className="font-medium text-base">Network health check</h2>
           <p className="text-muted-foreground text-xs">{count ? `${count} checks` : "Checks"} across internet, DNS, eeros, mesh links and firmware, from what eero last reported.</p>
           <div className="mt-2">
-            <Button size="sm" onClick={runAgain} disabled={busy} aria-busy={busy} data-run-again>
+            <Button size="sm" variant="outline" onClick={runAgain} disabled={busy} aria-busy={busy} data-run-again>
               <RefreshCw className={cn(busy && "animate-spin")} />
               {busy ? "Checking..." : "Run again"}
             </Button>

@@ -27,6 +27,7 @@ import { IconTile } from "~/components/ui/hero";
 import { Input } from "~/components/ui/input";
 import { useGate } from "~/components/ui/page";
 import { entityColors, seriesColors } from "~/lib/chartColors";
+import { openNotificationSettings } from "~/features/notifications/NotificationSettings";
 import { cn } from "~/lib/utils";
 import { type Clock, formatCount } from "../../../../core/format";
 import type { Device, DeviceBulkResult, DeviceList, EventSummary, NetworkEvent, Profile, ProfileList } from "../../../../core/model";
@@ -317,16 +318,10 @@ function RenameDialog({ device: d, onClose }: { device: Device; onClose: () => v
   );
 }
 
-/** The Event stream header's settings icon: Account & Settings at Notifications. */
+/** The Event stream header's settings icon: opens the notification settings sheet here, over Activity. */
 export function StreamSettingsButton() {
   return (
-    <Button
-      size="icon-sm"
-      variant="ghost"
-      aria-label="Notification settings"
-      title="Notification settings"
-      render={<Link to={`${pathFor("account")}/notifications`} />}
-    >
+    <Button size="icon-sm" variant="ghost" aria-label="Notification settings" title="Notification settings" onClick={openNotificationSettings}>
       <Settings />
     </Button>
   );

@@ -162,12 +162,26 @@ Left to right (mockup `.topbar`):
   since eero cannot mark anything unread; disabled with "Nothing unread"
   when the flag is clear, and gated like other network writes),
   "All activity" (to Activity) and a gear that opens the Notification
-  settings sheet (`notifications.settings.get` / `notifications.settings.set`):
-  eero alerts for the selected network (the keys eero sends, never an eero
-  Plus one; unknown keys show as sent) and Desktop alerts for this computer
-  (Show desktop alerts, then Network or eero offline, Devices, Everything
-  else, dimmed while the first is off). Save sends only the changed keys; the
-  "Saved notification settings" toast offers Undo.
+  settings sheet.
+- **Notification settings sheet:** the one editor for every alert choice,
+  for the selected network. It opens over the current page from the bell's
+  gear, Activity's settings icon, the Notifications row on Account & Settings,
+  and the `#/account/notifications` deep link. Three groups:
+  - **eero alerts**, sent by eero for this network
+    (`notifications.settings.get`): the keys eero sends, never an eero Plus
+    one; unknown keys show as sent. New device joins shows this week's device
+    events (`events.summary` `{type: ["devices"], range: "week"}`, every
+    device event, as the summary has no narrower join category).
+  - **Phone alerts**, from the eero app for every network on the account:
+    Network goes offline and An eero goes offline (`account.push.set`).
+    Hidden when eero sends no push settings.
+  - **Desktop alerts** for this computer: Show desktop alerts, then Network
+    or eero offline, Devices, Everything else, dimmed while the first is off.
+
+  Switches only change the draft; Save and Cancel as in [Sheets](#sheets).
+  Save runs `notifications.settings.set` with only the changed eero and
+  desktop keys, then `account.push.set` with the changed push keys; the
+  "Saved notification settings" toast's Undo puts every changed key back.
 - **Desktop notifications:** the host shows an OS notification for new items
   whose kind is on in the desktop choices, only while the app runs. Turning
   them off stops alerts at once; items seen while off are not replayed later.

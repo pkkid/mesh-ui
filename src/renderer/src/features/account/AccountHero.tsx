@@ -4,7 +4,8 @@
  * mobile with Verified or Unverified, and the account writes. Edit name and
  * Change email or mobile open CodeDialog (the value, then eero's code); an
  * unverified address or number opens it at the code step. Stay up to date
- * is `account.consents.set` with Undo. Against the real eero API the writes
+ * is `account.consents.set` with Undo; the Notifications row under it opens
+ * the notification settings sheet. Against the real eero API the writes
  * answer "not available yet" until a live-tested request is known
  * (docs/eero-api/endpoints.md section 20); the toast says so.
  */
@@ -22,6 +23,7 @@ import { SwitchRow } from "~/features/notifications/NotificationSettings";
 import { cn } from "~/lib/utils";
 import type { Account } from "../../../../core/model";
 import { CodeDialog } from "./CodeDialog";
+import { NotificationsRow } from "./NotificationsRow";
 
 type Open = "name" | "email" | "email-code" | "phone" | "phone-code" | null;
 
@@ -118,15 +120,16 @@ function Contact({ contact }: { contact: Account["email"] }) {
   );
 }
 
-export function EmailPreferences({ id }: { id?: string }) {
+export function EmailPreferences({ id, notificationsId }: { id?: string; notificationsId?: string }) {
   const account = useQuery<Account>("account.get", undefined, { poll: true });
   const gate = useGate("account.consents.set");
   const write = useWrite<{ marketingEmails: boolean }, Account>("account.consents.set", { failure: "Couldn't change email preferences" });
   const on = account.data?.marketingEmails;
   return (
-    <Section id={id} title="Account" subtitle="Email preferences">
-      <Card className={cn("px-4", account.fading && "opacity-40")}>
+    <Section id={id} title="Account" subtitle="Email preferences and alerts">
+      <Card className="divide-y divide-border/50 px-4">
         <SwitchRow
+          className={cn(account.fading && "opacity-40")}
           icon={<Megaphone />}
           label="Stay up to date"
           detail="Product news and tips by email"
@@ -140,6 +143,7 @@ export function EmailPreferences({ id }: { id?: string }) {
             )
           }
         />
+        <NotificationsRow id={notificationsId} />
       </Card>
     </Section>
   );
