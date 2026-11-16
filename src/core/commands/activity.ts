@@ -363,6 +363,7 @@ const eventsSummary = defineCommand({
     let prior = 0;
     let reachedPrior = false;
     let partial = false;
+    let earliest: number | null = null;
 
     let cursor: string | null = null;
     scan: for (let pages = 1; ; pages++) {
@@ -370,6 +371,7 @@ const eventsSummary = defineCommand({
       for (const e of chunk.events) {
         const at = Date.parse(e.at);
         if (at > to) continue;
+        earliest = earliest === null ? at : Math.min(earliest, at);
         // Newest first: once past the prior period, nothing older counts.
         if (at < priorFrom) {
           reachedPrior = true;
@@ -410,6 +412,7 @@ const eventsSummary = defineCommand({
       change: known && prior > 0 ? (total - prior) / prior : null,
       counts,
       buckets,
+      earliest: earliest === null ? null : new Date(earliest).toISOString(),
       partial,
     };
   },

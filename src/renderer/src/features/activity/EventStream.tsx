@@ -1,7 +1,8 @@
 /**
- * Activity "Event stream": the network's events newest first, under a bar per
- * day (count and a per hour strip), with grouped rows folding repeats and a
- * "Load older events" footer that pages back to the start of history.
+ * Activity "Event stream": a live stream of the network's events newest first
+ * (eero's last ~15 minutes plus every event read while the app is open),
+ * under a bar per day (count and a per hour strip), with grouped rows folding
+ * repeats and a "Load older events" footer while more are kept.
  * Grouping is done in core (`events.list {grouped: true}`). Rows core gave an
  * `action` show it (Assign profile, Resume, Unblock) while the device or
  * profile still needs it, through the write kit (`useWrite`, gated by the
@@ -48,27 +49,24 @@ function rowLink(e: NetworkEvent): { to: string; label: string } | null {
 type Day = { key: string; label: string; sub: string; strip: number[] | null; rows: NetworkEvent[] };
 
 /**
- * Splits rows into days using the summary's day starts (network time zone).
- * Rows older than the window fall into their own day by date label.
+ * Splits rows into days by their date in the network time zone. A day's
+ * count and per hour strip come from the last-24-hours summary, so only the
+ * hours it covers show (today, and the end of yesterday); older days get the
+ * date alone.
  */
-export function splitDays(rows: ReadonlyArray<NetworkEvent>, days: EventSummary | undefined, hours: EventSummary | undefined, clock: Clock): Day[] {
-  const starts = (days?.buckets ?? []).map((b) => Date.parse(b.at));
-  const newest = starts.length - 1;
+export function splitDays(rows: ReadonlyArray<NetworkEvent>, hours: EventSummary | undefined, clock: Clock, now = hours ? Date.parse(hours.to) : Date.now()): Day[] {
+  const today = clock.day(now);
+  const yesterday = clock.day(now - 24 * 60 * 60 * 1000);
   const out: Day[] = [];
   for (const e of rows) {
-    const at = Date.parse(e.at);
-    let i = starts.length - 1;
-    while (i >= 0 && (starts[i] as number) > at) i--;
-    const key = i >= 0 ? `d${i}` : `x${clock.day(at)}`;
+    const key = clock.day(e.at);
     let day = out[out.length - 1];
     if (!day || day.key !== key) {
-      const bucket = i >= 0 ? days?.buckets[i] : undefined;
-      const label = i === newest ? "Today" : i === newest - 1 ? "Yesterday" : clock.longWeekday(at);
-      const end = i >= 0 && i < newest ? (starts[i + 1] as number) : Number.POSITIVE_INFINITY;
-      const strip =
-        i >= 0 && hours ? hours.buckets.filter((b) => Date.parse(b.at) >= (starts[i] as number) && Date.parse(b.at) < end).map((b) => b.total) : null;
-      const sub = bucket ? `${clock.day(at)} · ${formatCount(bucket.total)} ${bucket.total === 1 ? "event" : "events"}` : clock.day(at);
-      day = { key, label, sub, strip, rows: [] };
+      const label = key === today ? "Today" : key === yesterday ? "Yesterday" : clock.longWeekday(e.at);
+      const buckets = (hours?.buckets ?? []).filter((b) => clock.day(b.at) === key);
+      const total = buckets.reduce((n, b) => n + b.total, 0);
+      const sub = buckets.length ? `${key} · ${formatCount(total)} ${total === 1 ? "event" : "events"}` : key;
+      day = { key, label, sub, strip: buckets.length > 1 ? buckets.map((b) => b.total) : null, rows: [] };
       out.push(day);
     }
     day.rows.push(e);
@@ -372,7 +370,6 @@ function EventRow({ e, clock, ctx, networkName }: { e: NetworkEvent; clock: Cloc
 
 export function EventStream({
   rows,
-  days,
   hours,
   clock,
   loading,
@@ -384,7 +381,7 @@ export function EventStream({
 }: {
   /** undefined while the first page loads. */
   rows: ReadonlyArray<NetworkEvent> | undefined;
-  days: EventSummary | undefined;
+  /** events.summary for the last 24 hours, per hour: the day bars' counts and strips. */
   hours: EventSummary | undefined;
   clock: Clock;
   loading: boolean;
@@ -410,7 +407,7 @@ export function EventStream({
       </div>
     );
   }
-  const split = splitDays(rows, days, hours, clock);
+  const split = splitDays(rows, hours, clock);
   return (
     <div className="flex flex-col gap-3">
       {error}

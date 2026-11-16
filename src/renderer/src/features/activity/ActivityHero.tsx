@@ -1,22 +1,21 @@
 /**
- * Activity hero: the week's event total, daily average and change, over the
- * type legend that doubles as the type filter (click a row to hide or show
+ * Activity hero: the event total for the last 24 hours and how far back the
+ * kept events reach ("since 9:41 AM": eero sends only its last ~15 minutes,
+ * so older events are the ones read while the app was open), over the type
+ * legend that doubles as the type filter (click a row to hide or show
  * that type in the chart and the stream). docs/ux/pages/activity.md (Layout 1).
  */
 import { cn } from "~/lib/utils";
-import { formatCount, formatPercent, MISSING } from "../../../../core/format";
+import { type Clock, formatCount, formatPercent, MISSING } from "../../../../core/format";
 import type { EventCategory, EventSummary } from "../../../../core/model";
 
 import { CATEGORIES, CATEGORY_ORDER } from "./ActivityChart";
 
-/** "59 a day on average · +12% vs prior week". */
-export function summaryLine(s: EventSummary): string {
-  // Under 10 a day, one decimal so a quiet network does not read "0 a day".
-  const n = s.dailyAverage > 0 && s.dailyAverage < 10 ? s.dailyAverage.toFixed(1).replace(/\.0$/, "") : formatCount(s.dailyAverage);
-  const avg = `${n} a day on average`;
-  if (s.change === null) return avg;
-  const pct = Math.round(s.change * 100);
-  return `${avg} · ${pct > 0 ? "+" : ""}${formatPercent(pct)} vs prior ${s.range === "week" ? "week" : "day"}`;
+/** "Since 9:41 AM" while the kept events start inside the last 24 hours, else "Last 24 hours". */
+export function summaryLine(s: EventSummary, clock: Clock): string {
+  if (!s.earliest || Date.parse(s.earliest) <= Date.parse(s.from)) return "Last 24 hours";
+  const at = s.earliest;
+  return `Since ${clock.day(at) === clock.day(s.to) ? clock.time(at) : clock.dateTime(at)}`;
 }
 
 export function ActivityHero({
@@ -24,8 +23,10 @@ export function ActivityHero({
   hidden,
   onToggle,
   loading,
+  clock,
 }: {
   summary: EventSummary | undefined;
+  clock: Clock;
   hidden: ReadonlySet<EventCategory>;
   onToggle: (c: EventCategory) => void;
   loading: boolean;
@@ -40,7 +41,7 @@ export function ActivityHero({
           <span className="font-semibold text-4xl tabular-nums">{total === null ? MISSING : formatCount(total)}</span>
           <span className="text-muted-foreground text-sm">{total === 1 ? "event" : "events"}</span>
         </div>
-        <div className="mt-1 text-muted-foreground text-xs">{summary ? summaryLine(summary) : " "}</div>
+        <div className="mt-1 text-muted-foreground text-xs">{summary ? summaryLine(summary, clock) : " "}</div>
       </div>
       <div className="flex flex-col" role="group" aria-label="Event types shown">
         {rows.map((c) => {
