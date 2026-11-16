@@ -1,8 +1,9 @@
 /**
- * Devices (docs/ux/pages/devices.md, mockup 05): summary strip, toolbar with
- * the Filters popover, the bulk bar while rows are selected, and the grouped
- * table with live rates and a row menu. Selection is view state kept here;
- * Ctrl+A selects every row on screen, Esc clears.
+ * Devices (docs/ux/pages/devices.md, mockup 05): the hero (three summary
+ * cells), toolbar with the Filters popover, the bulk bar while rows are
+ * selected, and the grouped table with live rates and a row menu.
+ * Selection is view state kept here; Ctrl+A selects every row on screen, Esc
+ * clears.
  *
  * Filters, search and sort are `device.list` params, applied in core; this
  * page only keeps what the user picked (per network, for the session) and

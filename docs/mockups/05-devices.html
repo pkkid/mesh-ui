@@ -32,9 +32,13 @@
     display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 12px;
     background: var(--card-2); border: 1px solid var(--border-2);
   }
-  .sum { display: grid; grid-template-columns: 1.2fr 1fr 1.2fr; }
-  .sum > * { padding: 16px 18px; min-width: 0; }
-  .sum > * + * { border-left: 1px solid var(--border); }
+  .hsum { display: grid; grid-template-columns: auto 1fr 1.1fr; }
+  .hsum > * { padding: 22px 24px; min-width: 0; }
+  .hsum > * + * { border-left: 1px solid var(--border); }
+  .k4 { font-size: 36px; line-height: 1.05; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .bylegend { display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 11.5px; align-items: center; white-space: nowrap; }
+  .bylegend .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .bylegend .v small { color: var(--muted); font-size: 11.5px; }
   .lbl { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
   .lbl svg { width: 13px; height: 13px; color: var(--muted); }
   .newdev { display: flex; align-items: center; gap: 8px; font-size: 12px; }
@@ -63,34 +67,41 @@
 
 <div id="page" class="page">
 
-  <!-- Summary strip -->
-  <div class="card sum">
-    <div class="row gap-16" style="align-items:center">
-      <div id="dn-type"></div>
-      <div class="col gap-4 grow nowrap" style="font-size:11.5px">
-        <div class="lbl" style="margin-bottom:4px"><i data-lucide="shapes"></i>By type</div>
-        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-blue)"></i>Phones & tablets</span><b class="m tnum">12</b></div>
-        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-purple)"></i>Computers</span><b class="m tnum">7</b></div>
-        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-aqua)"></i>Entertainment</span><b class="m tnum">6</b></div>
-        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-orange)"></i>Smart home</span><b class="m tnum">10</b></div>
-        <div class="row between"><span class="row-6 muted"><i class="sw" style="--c:var(--s-gray)"></i>Other</span><b class="m tnum">3</b></div>
+  <!-- Hero: three cells at hero weight, each led by a key figure (#248) -->
+  <div class="hero hsum">
+    <div>
+      <div class="lbl"><i data-lucide="monitor-smartphone"></i>Devices</div>
+      <div class="row mt-8" style="gap:24px;align-items:center">
+        <div>
+          <div class="k4">38</div>
+          <div class="xs muted mt-4 nowrap">31 online<br>3 paused · 2 blocked</div>
+        </div>
+        <div id="dn-type"></div>
+        <div class="bylegend">
+          <span class="row-6 muted"><i class="sw" style="--c:var(--s-blue)"></i>Phones & tablets</span><span class="v"><b class="m">12</b><small> · 32%</small></span>
+          <span class="row-6 muted"><i class="sw" style="--c:var(--s-purple)"></i>Computers</span><span class="v"><b class="m">7</b><small> · 18%</small></span>
+          <span class="row-6 muted"><i class="sw" style="--c:var(--s-aqua)"></i>Entertainment</span><span class="v"><b class="m">6</b><small> · 16%</small></span>
+          <span class="row-6 muted"><i class="sw" style="--c:var(--s-orange)"></i>Smart home</span><span class="v"><b class="m">10</b><small> · 26%</small></span>
+          <span class="row-6 muted"><i class="sw" style="--c:var(--s-gray)"></i>Other</span><span class="v"><b class="m">3</b><small> · 8%</small></span>
+        </div>
       </div>
     </div>
     <div>
       <div class="lbl"><i data-lucide="activity"></i>Throughput now</div>
-      <div class="row mt-8" style="gap:14px;align-items:baseline">
-        <div><span class="mid tnum">171</span><span class="xs muted"> Mbps down</span></div>
-      </div>
-      <div class="xs muted"><span class="m tnum fg2">38 Mbps</span> up · 18 devices active</div>
+      <div class="mt-8"><span class="k4">171</span><span class="muted" style="font-size:14px"> Mbps down</span></div>
+      <div class="xs muted mt-4"><span class="m tnum fg2">38 Mbps</span> up · 18 devices active</div>
       <div class="xxs muted-2 mt-8">6 GHz carries 39% of traffic with 19% of devices</div>
       <div class="xxs muted-2">Sum of current device rates, refreshed every minute</div>
     </div>
     <div>
-      <div class="lbl"><i data-lucide="sparkles"></i>New this week <span class="tnum" style="margin-left:auto;color:var(--fg);font-size:12px;letter-spacing:0">3</span></div>
-      <div class="col gap-8 mt-12">
-        <div class="newdev"><div class="ico sm"><i data-lucide="thermometer"></i></div><div class="grow trunc"><div class="m">Nest Thermostat</div><div class="xxs muted">48 min ago · Living Room</div></div></div>
-        <div class="newdev"><div class="ico sm"><i data-lucide="tablet"></i></div><div class="grow trunc"><div class="m">Grandma's iPad</div><div class="xxs muted">Tue · Living Room</div></div></div>
-        <div class="newdev"><div class="ico sm"><i data-lucide="cpu"></i></div><div class="grow trunc"><div class="m">ESP_3A9F21</div><div class="xxs danger">Mon · blocked</div></div></div>
+      <div class="lbl"><i data-lucide="sparkles"></i>New this week</div>
+      <div class="row mt-8" style="gap:20px;align-items:flex-start">
+        <div class="k4">3</div>
+        <div class="col gap-8 grow" style="min-width:0;margin-top:4px">
+          <div class="newdev"><div class="ico sm"><i data-lucide="thermometer"></i></div><div class="grow trunc"><div class="m">Nest Thermostat</div><div class="xxs muted">48 min ago · Living Room</div></div></div>
+          <div class="newdev"><div class="ico sm"><i data-lucide="tablet"></i></div><div class="grow trunc"><div class="m">Grandma's iPad</div><div class="xxs muted">Tue · Living Room</div></div></div>
+          <div class="newdev"><div class="ico sm"><i data-lucide="cpu"></i></div><div class="grow trunc"><div class="m">ESP_3A9F21</div><div class="xxs danger">Mon · blocked</div></div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -261,7 +272,7 @@ MU.ready(() => {
   MU.donut("#dn-type", [
     { name: "Phones & tablets", color: "var(--s-blue)", value: 12 }, { name: "Computers", color: "var(--s-purple)", value: 7 },
     { name: "Entertainment", color: "var(--s-aqua)", value: 6 }, { name: "Smart home", color: "var(--s-orange)", value: 10 }, { name: "Other", color: "var(--s-gray)", value: 3 },
-  ], { size: 84, thickness: 9 });
+  ], { size: 96, thickness: 13, center: `<div><div class="tnum" style="font-size:20px;font-weight:650">38</div><div class="xxs muted">devices</div></div>` });
 });
 </script>
 </body>
