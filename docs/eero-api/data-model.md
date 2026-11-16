@@ -181,7 +181,7 @@ There is no `neighbor` on a connections port; `poe_status` was absent.
 | `mac` | str | "aa:bb:cc:dd:ee:ff" | key / details |
 | `eui64` | str | | |
 | `nickname`, `hostname`, `display_name`, `manufacturer`, `model_name` | str | "Kitchen iPad", "Apple" | **Name** (nickname > display_name > hostname > mac) |
-| `device_type` | str | see list below | **Icon** |
+| `device_type` | str | see list below; most devices are `generic` (40 of 54 on one real network, with a current iOS-app User-Agent) | **Icon** (core guesses for `generic`, see docs/architecture/data-model.md) |
 | `manufacturer_device_type_id` | str | | |
 | `ip`, `ipv4`, `ips[]`, `ipv6_addresses[]` | str / list | "192.168.4.23" | Details |
 | `connected` | bool | | **Online filter** |

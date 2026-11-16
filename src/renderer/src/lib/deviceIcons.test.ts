@@ -1,4 +1,4 @@
-import { CircleHelp, Speaker, Tv } from "lucide-react";
+import { Laptop, MonitorSmartphone, Speaker, Tv } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import { DEVICE_TYPES, deviceCategory } from "../../../core/eero/map/device";
@@ -15,8 +15,15 @@ describe("deviceIcon", () => {
   it("uses the eero name, then the category, then a generic icon", () => {
     expect(deviceIcon({ type: "television", category: "entertainment" })).toBe(TYPE_ICONS.television);
     expect(deviceIcon({ type: "remote", category: deviceCategory("remote") })).toBe(Tv);
-    expect(deviceIcon({ type: "generic", category: "other" })).toBe(CircleHelp);
-    expect(deviceIcon(null)).toBe(CircleHelp);
+    expect(deviceIcon({ type: "generic", category: "other" })).toBe(MonitorSmartphone);
+    expect(deviceIcon(null)).toBe(MonitorSmartphone);
+  });
+
+  it("uses core's guess for a generic device, then its category", () => {
+    expect(deviceIcon({ type: "generic", inferredType: "audio", category: "entertainment" })).toBe(TYPE_ICONS.audio);
+    expect(deviceIcon({ type: "generic", inferredType: null, category: "computers" })).toBe(Laptop);
+    // eero's (or a person's) own type wins over a guess.
+    expect(deviceIcon({ type: "printer", inferredType: "audio", category: "computers" })).toBe(TYPE_ICONS.printer);
   });
 });
 
@@ -75,6 +82,6 @@ describe("echoIcon", () => {
   it("wins over the device type in deviceIcon", () => {
     expect(deviceIcon({ type: "generic", category: "other", model: "Echo Dot (2nd Gen)" })).toBe(P.EchoPuck);
     expect(deviceIcon({ type: "digital_assistant", category: "smart_home", model: "Echo (4th Gen)" })).toBe(P.EchoSphere);
-    expect(deviceIcon({ type: "generic", category: "other", model: null })).toBe(CircleHelp);
+    expect(deviceIcon({ type: "generic", category: "other", model: null })).toBe(MonitorSmartphone);
   });
 });

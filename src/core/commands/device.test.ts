@@ -36,7 +36,7 @@ describe("device.list (demo)", () => {
       paused: 3,
       blocked: 2,
       byBand: { "2.4": 11, "5": 10, "6": 6, wired: 4 },
-      byCategory: { phones_tablets: 12, computers: 7, entertainment: 6, smart_home: 10, other: 3 },
+      byCategory: { phones_tablets: 13, computers: 7, entertainment: 6, smart_home: 11, other: 1 },
     });
     expect(l.summary.newThisWeek.map((id) => l.devices.find((d) => d.id === id)?.name)).toEqual(["Nest Thermostat", "Grandma's iPad", "ESP_3A9F21"]);
     const rated = l.devices.filter((d) => d.rates);
@@ -406,6 +406,14 @@ describe("device mapper", () => {
     expect(d).toMatchObject({ id: "0a0000000002", type: "generic", band: "6", ipv6: ["2001:db8::2", "2001:db8::3"], signal: { dbm: -61, bars: 5 }, link: { rxMbps: 2401.9, widthMhz: 160, standard: "Wi-Fi 7", snr: 31 }, rates: null });
     expect(() => mapDevice({})).not.toThrow();
   });
+
+  it("guesses a type for a generic device but keeps eero's type", () => {
+    const d = mapDevice({ mac: "0a:00:00:00:00:03", device_type: "generic", manufacturer: "Sonos, Inc." });
+    expect(d).toMatchObject({ type: "generic", inferredType: "audio", category: "entertainment" });
+    const set = mapDevice({ mac: "0a:00:00:00:00:04", device_type: "printer", manufacturer: "Sonos, Inc." });
+    expect(set).toMatchObject({ type: "printer", inferredType: null, category: "computers" });
+    expect(mapDevice({ mac: "0a:00:00:00:00:05" })).toMatchObject({ type: "generic", inferredType: null, category: "other" });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -513,6 +521,16 @@ describe("device writes (demo)", () => {
     expect(d).toMatchObject({ type: "television", category: "entertainment" });
     const p = await ok<M.Device>(engine, "device.type.set", { device: d.id, type: "laptop_computer" });
     expect(p.category).toBe("computers");
+  });
+
+  it("drops the guess when a person sets a type, and guesses again for Other", async () => {
+    const { engine } = demo();
+    const before = await ok<M.Device>(engine, "device.get", { device: "Sonos Kitchen" });
+    expect(before).toMatchObject({ type: "generic", inferredType: "audio", category: "entertainment" });
+    const set = await ok<M.Device>(engine, "device.type.set", { device: before.id, type: "thermostat" });
+    expect(set).toMatchObject({ type: "thermostat", inferredType: null, category: "smart_home" });
+    const back = await ok<M.Device>(engine, "device.type.set", { device: before.id, type: "generic" });
+    expect(back).toMatchObject({ type: "generic", inferredType: "audio", category: "entertainment" });
   });
 
   it("moves devices to a profile and back to Unassigned", async () => {

@@ -356,6 +356,13 @@ export type Device = {
   manufacturer: string | null;
   model: string | null;
   type: DeviceType;
+  /**
+   * A guess from the model, hostname or manufacturer when `type` is
+   * "generic" (most devices); null otherwise. Icons use it; `type` stays
+   * eero's value.
+   */
+  inferredType: DeviceType | null;
+  /** From `inferredType` when there is one, else from `type`. */
   category: DeviceCategory;
   mac: string;
   privateMac: boolean;
