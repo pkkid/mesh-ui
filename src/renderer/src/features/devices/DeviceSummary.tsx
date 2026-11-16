@@ -51,7 +51,10 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
           active={active}
           onActiveChange={setActive}
           segments={CATEGORIES.map((c) => ({ label: CATEGORY_LABELS[c], value: s?.byCategory[c] ?? 0, color: categoryColor(c) }))}
-        />
+        >
+          <span className="font-semibold text-xl tabular-nums">{s ? formatCount(categoryTotal) : "-"}</span>
+          <span className="text-2xs text-muted-foreground">{categoryTotal === 1 ? "device" : "devices"}</span>
+        </Donut>
         <div className="flex w-44 min-w-0 flex-col gap-1 text-[11.5px]">
           <Label icon={Shapes} className="mb-1">
             By type

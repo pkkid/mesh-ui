@@ -12,15 +12,14 @@ Wi-Fi**. Sidebar count: all known devices (38).
 ## Layout
 
 1. **Summary strip**: one card split into three cells by 1px rules.
-   - **By type**: a 96px donut, 13px thick (straight segment ends with a
+   - **By type**: a 96px donut, 13px thick, with "38 devices" in the middle (straight segment ends with a
      small gap, its top level with the "BY TYPE" label) and an 11rem list of
      device counts and their share: Phones & tablets "12 · 32%", Computers
      "7 · 18%", Entertainment "6 · 16%", Smart home "10 · 26%", Other
      "3 · 8%", each with its colour square (count in `font-medium`, percent
      muted, from the total of the counts). The cell takes only the width it
-     needs (`auto 1fr 1.2fr`). Hovering a segment dims the others, shows its
-     count over its percent in the middle and "Phones & tablets · 12 devices
-     · 32%" in a tooltip that follows the pointer, and highlights its legend
+     needs (`auto 1fr 1.2fr`). Hovering a segment dims the others and shows
+     "Phones & tablets · 12 devices · 32%" in a tooltip that follows the pointer, and highlights its legend
      row; hovering a legend row does the same to the ring.
    - **Throughput now**: "186 Mbps down", "24 Mbps up · 14 devices active",
      a band insight ("6 GHz carries 41% of traffic with 19% of devices") and

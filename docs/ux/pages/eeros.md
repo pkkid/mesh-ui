@@ -64,7 +64,8 @@ Sidebar count: number of eeros.
      - **Clients by band**. Donut with the client total in the middle ("31
        clients") and a list: 5 GHz 14, 2.4 GHz 9, 6 GHz 4, Wired 4, each
        with its band colour square. Hovering a segment or a row highlights
-       both and shows the count and percent in the middle, the band in a tooltip.
+       both and shows the band, count and percent in a tooltip; the total in
+       the middle stays.
      - **Network actions**. One row: Restart network, "Restarts every eero
        at once", a "Disruptive" label and **Restart**, which opens the confirm
        dialog: "Everyone loses internet for about 2 to 3 minutes,
