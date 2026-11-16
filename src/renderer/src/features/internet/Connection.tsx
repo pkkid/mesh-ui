@@ -4,12 +4,12 @@
  * Addressing cards; the Plan row opens the plan sheet. docs/ux/pages/internet.md (Layout 2, States).
  */
 import { Check, Copy, Globe, Network as NetworkIcon, Settings2 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, use, useEffect, useState } from "react";
 
 import { pathFor } from "~/app/router";
 import { execute, useQuery } from "~/app/useCommand";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
+import { Button, ButtonSizeContext } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { type KvItem, KvList } from "~/components/ui/kv-list";
@@ -37,6 +37,7 @@ function portLabel(mbps: number | null): string | null {
  */
 export function CopyCommandButton({ load, idle, done, icon }: { load: () => Promise<string | null>; idle: string; done: string; icon: ReactNode }) {
   const [state, setState] = useState<"idle" | "busy" | "done" | "failed">("idle");
+  const headerSize = use(ButtonSizeContext);
   useEffect(() => {
     if (state !== "done" && state !== "failed") return;
     const t = setTimeout(() => setState("idle"), 1600);
@@ -44,7 +45,8 @@ export function CopyCommandButton({ load, idle, done, icon }: { load: () => Prom
   }, [state]);
   return (
     <Button
-      size="xs"
+      // The section tool size in a header (Connection), xs in a card (Support).
+      size={headerSize ?? "xs"}
       variant="outline"
       disabled={state === "busy"}
       onClick={() => {

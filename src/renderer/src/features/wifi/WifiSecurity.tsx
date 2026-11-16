@@ -140,7 +140,7 @@ export function WifiNamePassword({
       title="Network name and password"
       subtitle="SSID and WPA passphrase for the main network"
       tools={
-        <GatedButton size="xs" variant="outline" gate={gate} disabled={!wifi || offline} onClick={() => setEditing(true)}>
+        <GatedButton variant="outline" gate={gate} disabled={!wifi || offline} onClick={() => setEditing(true)}>
           <Pencil />
           Change
         </GatedButton>

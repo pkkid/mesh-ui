@@ -113,7 +113,7 @@ export function CoverageScanCard({ eeros }: { eeros: Eero[] | undefined }) {
       title="Coverage scan"
       subtitle={scanning ? "Scanning..." : scan?.scannedAt ? `Scanned ${formatRelative(scan.scannedAt, now)}` : "Link quality per room"}
       tools={
-        <Button size="xs" variant="outline" disabled={scanning} onClick={scanAgain}>
+        <Button variant="outline" disabled={scanning} onClick={scanAgain}>
           {scanning ? "Scanning..." : scan?.rooms.length ? "Scan again" : "Scan now"}
         </Button>
       }

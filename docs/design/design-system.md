@@ -192,6 +192,21 @@ with labelled buttons (Copy password, Save QR, Print a card) to its left
 (`text-sm font-medium` title, optional muted subtitle, controls on the right)
 that stays one line (title and tools never wrap; a long subtitle truncates
 with an ellipsis and shows in full in its tooltip) above a card with a solid `bg-card` surface, a 1px `border`, and 14px radius.
+**Header tools are 28px.** Every control in the tools slot (buttons,
+`HeaderLink`, Segmented toggles, selects) is 28px tall, the height of the
+title's line, so their top and bottom edges line up: buttons are the `tool`
+size (`h-7`, 12px text, 14px icons) and Segmented its `tool` size (border,
+`p-0.5`, 22px items). `Section` sets both once through `ButtonSizeContext`
+and `SegmentedSizeContext`, so call sites inside the tools slot leave `size`
+off, like the page header. A shared button that also appears outside a header
+(`CopyCommandButton`) reads the context and falls back to its own size.
+
+| Control row | Height |
+| --- | --- |
+| Section header tools | 28px (`tool`) |
+| Page header (hero) actions | 28px (`hero`, 13px text) |
+| Segmented outside a header (forms, settings) | 30px (`default`) |
+
 A fully flat layout, with sections directly on the page background, was tried
 in the mockups and rejected: on the warm Gruvbox surfaces sections blurred
 together.

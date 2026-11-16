@@ -104,7 +104,7 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
       <Section
         title="Schedules"
         tools={
-          <GatedButton gate={gate} size="xs" variant="outline" disabled={!p} onClick={() => setSheet({ kind: "add" })}>
+          <GatedButton gate={gate} variant="outline" disabled={!p} onClick={() => setSheet({ kind: "add" })}>
             <Plus />
             Add a scheduled pause
           </GatedButton>

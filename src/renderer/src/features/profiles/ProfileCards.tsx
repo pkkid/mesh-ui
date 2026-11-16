@@ -338,7 +338,6 @@ function PauseAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
   return (
     <GatedButton
       gate={targets.length === 0 && gate.allowed ? { allowed: false, reason: "Every profile is paused" } : gate}
-      size="xs"
       variant="outline"
       disabled={running}
       onClick={() => void run()}

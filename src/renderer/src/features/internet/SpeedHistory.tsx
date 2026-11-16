@@ -164,7 +164,6 @@ function ExportCsvButton({ network, range }: { network: string | null; range: Hi
 
   return (
     <Button
-      size="xs"
       variant="outline"
       disabled={state.kind === "busy"}
       title={state.kind === "saved" ? `Saved ${state.name}` : state.kind === "failed" ? state.message : undefined}

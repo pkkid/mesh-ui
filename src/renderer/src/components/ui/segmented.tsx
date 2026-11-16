@@ -2,7 +2,7 @@
 // mockups' `.seg`: an inset track on `bg-muted` with the selected segment
 // raised on `bg-card`. Used for Day / Week, metric switches, Light / Dark.
 import type { LucideIcon } from "lucide-react";
-import { type KeyboardEvent, useRef } from "react";
+import { createContext, type KeyboardEvent, use, useRef } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -13,17 +13,31 @@ export type SegmentedOption<T extends string> = {
   disabled?: boolean;
 };
 
+/**
+ * Heights: `default` 30px (border, `p-0.5`, 24px items) for forms and
+ * pages; `tool` 28px (22px items) in a section header, level with the 28px
+ * buttons there. `Section` sets `tool` for its tools slot through
+ * `SegmentedSizeContext`, so call sites leave `size` off.
+ */
+export type SegmentedSize = "default" | "tool";
+
+const ITEM_HEIGHT: Record<SegmentedSize, string> = { default: "h-6", tool: "h-[22px]" };
+
+const SegmentedSizeContext = createContext<SegmentedSize>("default");
+
 type SegmentedProps<T extends string> = {
   value: T;
   onValueChange: (value: T) => void;
   options: ReadonlyArray<SegmentedOption<T>>;
   /** Names the group for screen readers ("Range"). */
   "aria-label": string;
+  size?: SegmentedSize;
   className?: string;
 };
 
 /** A radio group: arrow keys move and select, Tab leaves the group. */
-function Segmented<T extends string>({ value, onValueChange, options, className, ...props }: SegmentedProps<T>) {
+function Segmented<T extends string>({ value, onValueChange, options, size: sizeProp, className, ...props }: SegmentedProps<T>) {
+  const size = sizeProp ?? use(SegmentedSizeContext);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const enabled = options.filter((o) => !o.disabled);
 
@@ -63,7 +77,8 @@ function Segmented<T extends string>({ value, onValueChange, options, className,
             data-selected={selected || undefined}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "inline-flex h-6 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2.5 text-muted-foreground text-xs outline-none transition-colors",
+              "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2.5 text-muted-foreground text-xs outline-none transition-colors",
+              ITEM_HEIGHT[size],
               "hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
               "data-selected:bg-card data-selected:font-medium data-selected:text-foreground data-selected:shadow-[0_1px_2px_rgb(0_0_0/25%),inset_0_0_0_1px_var(--color-border)]",
             )}
@@ -77,4 +92,4 @@ function Segmented<T extends string>({ value, onValueChange, options, className,
   );
 }
 
-export { Segmented };
+export { Segmented, SegmentedSizeContext };

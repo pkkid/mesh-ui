@@ -27,7 +27,7 @@ export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lo
   const addGate = useGate("pinhole.add");
   const removeGate = useGate("pinhole.remove");
   const tools = ipv6Off ? null : (
-    <GatedButton gate={addGate} size="sm" variant="outline" onClick={() => setAdding(true)}>
+    <GatedButton gate={addGate} variant="outline" onClick={() => setAdding(true)}>
       <Plus />
       Add
     </GatedButton>
