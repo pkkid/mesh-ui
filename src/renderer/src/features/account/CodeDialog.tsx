@@ -1,5 +1,5 @@
 /**
- * The hero's account dialogs (docs/ux/pages/app-account.md, Actions): one
+ * The hero's account dialogs (docs/ux/pages/account-settings.md, Actions): one
  * field (Edit name, Change email, Change mobile), then, for email and
  * mobile, the 6 digit code eero sent (`account.email.verify`,
  * `account.phone.verify`). Verify only (an unverified address or number)

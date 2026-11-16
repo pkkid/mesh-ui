@@ -1,5 +1,5 @@
 /**
- * App & account, Application Theme (docs/ux/pages/app-account.md): a card
+ * Account & Settings, Application Theme (docs/ux/pages/account-settings.md): a card
  * per theme with preview orbs, and Light / Dark / System. Theme choice is
  * renderer view state in localStorage, not a command.
  */

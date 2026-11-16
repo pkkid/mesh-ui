@@ -157,7 +157,7 @@ function Group({ title, hint, children }: { title: string; hint: string; childre
 /**
  * One alert row: optional icon, label, muted detail, and a switch. `on` null
  * (eero sent no value) shows a dashed track that cannot be used. Shared with
- * App & account's Notifications section.
+ * Account & Settings's Notifications section.
  */
 export function SwitchRow({
   icon,

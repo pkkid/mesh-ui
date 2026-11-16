@@ -1,5 +1,5 @@
 /**
- * App & account, Command line and agents (docs/ux/pages/app-account.md,
+ * Account & Settings, Command line and agents (docs/ux/pages/account-settings.md,
  * Layout 5; docs/mockups/17-account-settings.html).
  *
  * Left: the Command line and MCP server lines to copy, or **Install CLI**

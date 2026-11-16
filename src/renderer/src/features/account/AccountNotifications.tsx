@@ -1,5 +1,5 @@
 /**
- * App & account, Notifications (docs/ux/pages/app-account.md, Layout 3):
+ * Account & Settings, Notifications (docs/ux/pages/account-settings.md, Layout 3):
  * the selected network's alerts, shown in the bell and as desktop
  * notifications. Header switch: Desktop notifications
  * (`notifications.settings.set` `{desktop: {enabled}}`). Rows: New device

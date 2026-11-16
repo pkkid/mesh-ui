@@ -8,7 +8,7 @@
  * command's own gate). Rows about a device also get a `...` menu: Rename (a
  * small dialog, `device.rename`), Block or Unblock (`device.block`,
  * disruptive: the confirm dialog first) and Device details, each gated by its command.
- * `StreamSettingsButton` is the header's settings icon, opening App & account
+ * `StreamSettingsButton` is the header's settings icon, opening Account & Settings
  * at Notifications. docs/ux/pages/activity.md (Layout 3, Actions).
  */
 import { Menu } from "@base-ui/react/menu";
@@ -317,7 +317,7 @@ function RenameDialog({ device: d, onClose }: { device: Device; onClose: () => v
   );
 }
 
-/** The Event stream header's settings icon: App & account at Notifications. */
+/** The Event stream header's settings icon: Account & Settings at Notifications. */
 export function StreamSettingsButton() {
   return (
     <Button

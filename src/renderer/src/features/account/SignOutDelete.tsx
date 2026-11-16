@@ -1,5 +1,5 @@
 /**
- * App & account side panel, Sign out and delete (docs/ux/pages/app-account.md,
+ * Account & Settings side panel, Sign out and delete (docs/ux/pages/account-settings.md,
  * Side panel 2).
  *
  * - **Sign out** (`auth.logout`): the text says where the session is kept,

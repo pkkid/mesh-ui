@@ -3,7 +3,7 @@
  * (docs/platform/build-and-release.md#auto-update): "Restart to update"
  * when `app.info` reports a downloaded update (`ready`), "Update available"
  * when an unsigned macOS build found one it cannot install (`available`).
- * It links to About on App & account, where the update is installed or
+ * It links to About on Account & Settings, where the update is installed or
  * downloaded. It also follows the
  * updater's `update.changed` host event, so the chip and About change as
  * soon as the state does instead of on the next 60 s poll.

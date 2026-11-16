@@ -163,7 +163,11 @@ button { font: inherit; color: inherit; }
 .sb-item .meta { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .sb-item .plus { margin-left: auto; font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 5px; color: var(--muted); border: 1px solid var(--border-2); }
 .sb-foot { border-top: 1px solid var(--border); padding: 8px; }
-.sb-user { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; }
+.sb-user { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; color: inherit; text-decoration: none; }
+.sb-user:hover { background: var(--hover); }
+.sb-user.active { background: var(--selected); box-shadow: 0 1px 0 rgb(0 0 0 / 4%), 0 0 0 1px var(--border) inset; }
+.sb-gear { display: grid; place-items: center; width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: var(--muted-bg, var(--hover)); color: var(--muted); box-shadow: 0 0 0 1px var(--border) inset; }
+.sb-user.active .sb-gear { color: var(--fg); }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
 .topbar {

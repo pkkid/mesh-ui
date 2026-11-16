@@ -23,7 +23,7 @@ export function Bell({ className }: { className?: string }) {
   useDesktopAlerts(networkId, data ?? null);
   const unread = data?.unread === true;
   const label = unread ? "Notifications, some unread" : "Notifications";
-  // The footer's gear is a link to App & account; with a network here it opens the sheet instead.
+  // The footer's gear is a link to Account & Settings; with a network here it opens the sheet instead.
   const openSettings = (e: MouseEvent) => {
     if (!networkId || !(e.target instanceof Element) || !e.target.closest('a[aria-label="Notification settings"]')) return;
     e.preventDefault();

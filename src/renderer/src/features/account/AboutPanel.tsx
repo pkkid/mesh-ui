@@ -1,5 +1,5 @@
 /**
- * App & account side panel, About (docs/ux/pages/app-account.md, Side panel 1):
+ * Account & Settings side panel, About (docs/ux/pages/account-settings.md, Side panel 1):
  * logo, version and update status, Check now and Restart to update, the
  * Automatic updates and Beta updates switches, Electron and platform,
  * Network ID, Support ID, links that open in the browser, Show eero

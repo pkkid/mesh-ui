@@ -38,7 +38,7 @@ a dark variant; appearance follows the system or a fixed choice.
 | Iris | |
 
 To add a theme, add a `ThemeDefinition` and list it in `BUILT_IN_THEMES`.
-The theme picker in App & account shows each as a card with preview orbs, as in
+The theme picker in Account & Settings shows each as a card with preview orbs, as in
 T3 Code's settings. The choice is stored in localStorage
 (`mesh-ui:theme:v1`), on this computer only.
 
@@ -100,7 +100,7 @@ and purple is safe. Themes other than Gruvbox Hard use T3-style mid-tones
 (`#5b9bbd` blue, `#8c7bd1` violet, `#4d9f8a` teal, `#d97757` orange). Check
 every chart in light and dark.
 
-Command effect badges (palette, App & account) use a dot in a fixed colour:
+Command effect badges (palette, Account & Settings) use a dot in a fixed colour:
 query aqua, write blue, disruptive yellow, destructive red. The badge itself is
 neutral.
 
@@ -151,7 +151,9 @@ numbers.
 ### Shell
 
 Sidebar on the left (`bg-sidebar`, 1px right border): app icon, network
-picker card, nav groups **Network** and **Settings**, user at the bottom.
+picker card, nav groups **Network** and **Settings**, and the account row
+at the bottom (a neutral gear tile in place of an avatar, name and role; it
+opens Account & Settings and uses the nav row hover and selected states).
 Main pane: a 44px top bar (breadcrumbs, page actions, search,
 Refresh, notifications, theme toggle, window controls) over a scrolling content
 column. Its icon controls (Refresh, bell, theme) are neutral 30px ghost

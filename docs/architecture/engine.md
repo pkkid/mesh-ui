@@ -228,7 +228,7 @@ calls but never polls in the background.
 | Settings, integrations, guest, Wi-Fi | `settings.get`, `integrations.get`, `guest.get`, `wifi.get` | 60 s (M5.R-fix9: Simple Setup, power saving, Thread and the rest change in the eero app too) |
 | Admins, permissions, networks | `admin.list`, `network.permissions` | on open and after a write (roles and owners rarely change); `network.list` 60 s from the network switcher, served from its 10 min cache |
 | Account | `account.get` | 5 min (TTL 4.5 min): name, verification and push choices change in the eero app too |
-| App info, CLI and agent log | `app.info`, `app.audit.list` | 60 s on App & account and the sidebar's update chip; no eero calls (update state, and CLI runs from another process) |
+| App info, CLI and agent log | `app.info`, `app.audit.list` | 60 s on Account & Settings and the sidebar's update chip; no eero calls (update state, and CLI runs from another process) |
 | Session | `auth.status` | not polled: it follows `session.changed` events |
 | App settings | `app.settings.get` | not polled: only written through commands, which answer with the new settings |
 | Weekly device joins | `events.summary` (week) | on open: a week's count moves slowly and pages through history (kept 2 min on purpose) |
@@ -253,7 +253,7 @@ minute usage polls and the 10 minute account read line up):
 | Wi-Fi | 21 / 31 |
 | Guest | 17 / 40 |
 | Advanced networking | 14 / 24 |
-| App & account (M6.1) | 7 / 18 |
+| Account & Settings (M6.1) | 7 / 18 |
 
 The test fails if a typical minute goes over 40 or any minute over 70, under
 the client's 80 a minute limiter and eero's limit of about 100. One poll of
