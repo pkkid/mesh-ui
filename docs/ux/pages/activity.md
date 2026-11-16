@@ -16,7 +16,7 @@ Titlebar: title "Activity", **Export CSV** button on the right of the titlebar a
    - Right: stacked bar chart, one bar per day for the last 7 days, or in Per hour mode one bar per hour for the last 24 hours (168 hourly bars are too thin to read), one segment colour per type (`eventCategoryColors` in `lib/chartColors.ts`, hues from the theme series palette; see [design system](../../design/design-system.md#series-colours)).
    - The hero line leaves out the change when history does not reach the prior period (a week on a free account keeps about 7 days, so "vs prior week" usually cannot be known).
 2. **Filter bar** (card): text filter ("Filter events"), **Device**, **eero** and **Profile** selects (each defaulting to "Any ..."), **Range** select (dates inside the last 7 days), **Reset** ghost button on the right.
-3. **Event stream** (section). Header: title, an **Unread** status marker (info dot plus "Unread") while eero's network-wide `has_unread` is set, sub line `Newest first · polled every 60 s`, then on the right a live dot ("Live"), segmented toggle **Grouped** / **Raw**, **Mark all read** button (`notifications.mark_read`; disabled with "Nothing unread" while the flag is clear) and a settings icon button that opens Notifications on [App & account](app-account.md).
+3. **Event stream** (section). Header: title, an **Unread** status marker (info dot plus "Unread") while eero's network-wide `has_unread` is set, sub line `Newest first · polled every 60 s`, then on the right a live dot ("Live"), segmented toggle **Grouped** / **Raw**, **Mark all read** button (`notifications.mark_read`; disabled with "Nothing unread" while the flag is clear) and a settings icon button that opens the Notification settings sheet over Activity ([overview.md](../overview.md#notifications-bell)).
    - Day bars: `Today`, `Yesterday`, then weekday names. Each shows the date, event count and a small per hour sparkline strip.
    - Event rows: time (mono, right aligned), icon, title with bold entities, a muted detail line (entity chip, band, channel, MAC, IP, profile), and a right side slot holding a contextual action or a status.
    - Rows carry no unread dots or counts: eero keeps no read flag per event or notification, only one `has_unread` for the whole network.
@@ -66,7 +66,7 @@ Row actions shown in the mockup:
 | Reset | none | | | Clears all filters and types |
 | Grouped / Raw | none (passed as `grouped`) | | | Regroups the stream |
 | Mark all read | `notifications.mark_read` | write | no | Unread marker and bell dot clear; "Marked all read" toast, no Undo |
-| Settings icon | none (navigation) | | | Opens App & account at Notifications (`#/account/notifications`) |
+| Settings icon | none (opens the sheet) | | | The Notification settings sheet, over Activity |
 | Assign profile | `device.profile.set` `{devices: [device], profile}` | write | only when the profile is paused or in a scheduled pause now | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
 | Row menu: Rename | `device.rename` `{device, nickname}` | write | no | Dialog; "Renamed to X" toast with Undo; field errors stay in the dialog |
 | Row menu: Block, Unblock | `device.block` / `device.unblock` `{devices: [device]}` | disruptive (Block) / write | Block: confirm dialog | "Blocked X" toast with Undo |

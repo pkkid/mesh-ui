@@ -5,18 +5,19 @@
  * docs/mockups/17-account-settings.html.
  *
  * Each section has a stable id for deep links: `#/account/<section>` opens
- * the page scrolled to `account-<section>` (ACCOUNT_SECTIONS), e.g.
- * Activity's settings icon opens `#/account/notifications`.
+ * the page scrolled to `account-<section>` (ACCOUNT_SECTIONS), e.g. the
+ * update chip opens `#/account/about`. `#/account/notifications` scrolls to
+ * the Notifications row and opens the notification settings sheet.
  */
 import { useEffect } from "react";
 
 import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
+import { openNotificationSettings } from "~/features/notifications/NotificationSettings";
 import { TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
 
 import { AboutPanel } from "./AboutPanel";
 import { AccountHero, EmailPreferences } from "./AccountHero";
-import { AccountNotifications } from "./AccountNotifications";
 import { CliAgents } from "./CliAgents";
 import { NetworksTable } from "./NetworksTable";
 import { SignOutDelete } from "./SignOutDelete";
@@ -33,6 +34,7 @@ export function AccountPage({ params }: PageProps) {
   useEffect(() => {
     if (!section || !(ACCOUNT_SECTIONS as readonly string[]).includes(section)) return;
     scrollToSection(sectionId(section as AccountSection));
+    if (section === "notifications") openNotificationSettings();
   }, [section]);
 
   return (
@@ -42,8 +44,7 @@ export function AccountPage({ params }: PageProps) {
       <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <AccountHero id={sectionId("profile")} />
-          <EmailPreferences id={sectionId("email")} />
-          <AccountNotifications id={sectionId("notifications")} />
+          <EmailPreferences id={sectionId("email")} notificationsId={sectionId("notifications")} />
           <NetworksTable id={sectionId("networks")} />
           <CliAgents id={sectionId("cli")} />
           <ThemePicker id={sectionId("theme")} />

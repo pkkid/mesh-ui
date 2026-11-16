@@ -1,36 +1,24 @@
 /**
  * The titlebar bell (docs/ux/overview.md#notifications-bell): a dot when eero
  * says anything is unread, and a popover with the latest notifications. It
- * also runs the desktop alerts from the same poll, and opens the
- * notification settings sheet from the popover's gear.
+ * also runs the desktop alerts from the same poll, and hosts the
+ * notification settings sheet that the popover's gear (and any page) opens.
  */
 import { Popover } from "@base-ui/react/popover";
 import { Bell as BellIcon } from "lucide-react";
-import { type MouseEvent, useState } from "react";
+import { useState } from "react";
 
-import { useQuery } from "~/app/useCommand";
 import { cn } from "~/lib/utils";
-import type { NetworkSummary } from "../../../../core/model";
 import { NotificationList } from "./NotificationList";
-import { NotificationSettingsSheet } from "./NotificationSettings";
+import { NotificationSettingsHost } from "./NotificationSettings";
 import { useDesktopAlerts, useNotificationPage } from "./useDesktopAlerts";
 
 export function Bell({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const { networkId, data, error } = useNotificationPage();
-  const networkName = useQuery<NetworkSummary[]>("network.list").data?.find((n) => n.id === networkId)?.name ?? null;
   useDesktopAlerts(networkId, data ?? null);
   const unread = data?.unread === true;
   const label = unread ? "Notifications, some unread" : "Notifications";
-  // The footer's gear is a link to App & account; with a network here it opens the sheet instead.
-  const openSettings = (e: MouseEvent) => {
-    if (!networkId || !(e.target instanceof Element) || !e.target.closest('a[aria-label="Notification settings"]')) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setOpen(false);
-    setSettingsOpen(true);
-  };
 
   return (
     <>
@@ -41,13 +29,13 @@ export function Bell({ className }: { className?: string }) {
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
-            <Popover.Popup onClickCapture={openSettings} className="no-drag w-[340px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+            <Popover.Popup className="no-drag w-[340px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
               <NotificationList networkId={networkId} page={data} error={error !== null && !data} onClose={() => setOpen(false)} />
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>
       </Popover.Root>
-      {networkId && <NotificationSettingsSheet networkId={networkId} networkName={networkName} open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
+      <NotificationSettingsHost />
     </>
   );
 }

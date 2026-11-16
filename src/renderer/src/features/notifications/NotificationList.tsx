@@ -16,6 +16,7 @@ import { cn } from "~/lib/utils";
 import { unreadCount } from "../../../../core/commands/notifications";
 import { formatRelative } from "../../../../core/format";
 import type { Notification, NotificationPage } from "../../../../core/model";
+import { openNotificationSettings } from "./NotificationSettings";
 import { notificationPath } from "./useDesktopAlerts";
 
 export const MAX_ITEMS = 8;
@@ -120,15 +121,18 @@ export function NotificationList({ networkId, page, error, onClose }: Props) {
         >
           All activity
         </Link>
-        <Link
-          to={routeById("account").path}
-          onClick={onClose}
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            openNotificationSettings();
+          }}
           title="Notification settings"
           aria-label="Notification settings"
           className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground [&_svg]:size-3.5"
         >
           <Settings />
-        </Link>
+        </button>
       </div>
     </div>
   );
