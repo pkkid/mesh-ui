@@ -1,7 +1,7 @@
 /**
  * The eero detail hero: product tile with an LED bar, name, status line
  * (status, model, radio badge, uptime), Devices and Data 24h, and the
- * Uplink card on the right. The LED bar pulses while Find blinks the eero. docs/ux/pages/eero-detail.md (Layout 1).
+ * Uplink card on the right. The LED bar pulses while Blink light blinks the eero. docs/ux/pages/eero-detail.md (Layout 1).
  */
 import { Badge } from "~/components/ui/badge";
 import { Metric, PageHeader } from "~/components/ui/hero";

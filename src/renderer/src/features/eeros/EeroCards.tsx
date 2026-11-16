@@ -1,7 +1,7 @@
 /**
- * "Your eeros": a card per eero (Grid) with the radio table and Find, or one
- * row per eero (List) with per-band client counts. Find (`eero.find`) blinks
- * the LED and the button counts down ("Blinking · 24s"); the blink state is
+ * "Your eeros": a card per eero (Grid) with the radio table and Blink light,
+ * or one row per eero (List) with per-band client counts. Blink light
+ * (`eero.find`) blinks the LED and the button counts down ("Blinking · 24s"); the blink state is
  * shared with eero detail (`useFind`). No Stop until a stop call is
  * verified. docs/ux/pages/eeros.md (Layout 2).
  */
@@ -24,7 +24,7 @@ import { formatCount, formatDuration } from "../../../../core/format";
 import type { Eero } from "../../../../core/model";
 
 // ---------------------------------------------------------------------------
-// Find: which eeros are blinking, until when (module state, so every page agrees)
+// Blink light: which eeros are blinking, until when (module state, so every page agrees)
 
 const blinking = new Map<string, number>();
 const blinkListeners = new Set<() => void>();
@@ -70,13 +70,20 @@ export function useFind(eero: Pick<Eero, "id" | "location" | "status"> | null) {
   };
 }
 
-/** Find button: "Find", or "Blinking · 24s" while the LED blinks. */
-export function FindButton({ eero, label = "Find" }: { eero: Eero; label?: string }) {
+/** "Blink light" (`eero.find`), or "Blinking · 24s" while the LED blinks. The same label on every page. */
+export function BlinkLightButton({ eero }: { eero: Eero }) {
   const find = useFind(eero);
   return (
-    <GatedButton size="xs" variant="outline" gate={find.gate} disabled={find.running || find.left !== null} onClick={() => void find.run()}>
+    <GatedButton
+      size="xs"
+      variant="outline"
+      gate={find.gate}
+      disabled={find.running || find.left !== null}
+      onClick={() => void find.run()}
+      aria-label={find.left !== null ? `${eero.location} blinking, ${find.left}s left` : `Blink ${eero.location}'s light`}
+    >
       <Lightbulb />
-      {find.left !== null ? <span className="tabular-nums">Blinking · {find.left}s</span> : label}
+      {find.left !== null ? <span className="tabular-nums">Blinking · {find.left}s</span> : "Blink light"}
     </GatedButton>
   );
 }
@@ -152,7 +159,7 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
                 <div className="truncate text-muted-foreground text-xs">{facts(e, offlineDetail)}</div>
               </div>
               <Status tone={status.tone}>{status.label}</Status>
-              <FindButton eero={e} />
+              <BlinkLightButton eero={e} />
               <Button size="icon-xs" variant="outline" title="Details" aria-label={`${e.location} details`} render={<Link to={to} />}>
                 <ChevronRight />
               </Button>

@@ -67,8 +67,8 @@ eeros stays active. `[` and `]` move to the previous and next eero.
    - **Device information** ("Joined Mar 3, 2025"): Model number, Serial, MAC,
      BSSID per band (mono).
 5. **More actions**, three rows:
-   - **Blink LED**, "Flashes blue and white for 30 s so you can find it",
-     **Blink**.
+   - **Blink light**, "Flashes blue and white for 30 s so you can find it",
+     **Blink light**.
    - **Restart Office**, "Its devices and Garage (downstream) drop for about
      1 minute", a "Disruptive" label and **Restart**.
    - **Remove Office eero** (title in destructive colour), "Owner only ·
@@ -111,7 +111,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Garage link in the Nightlight note | - | - | No | Garage detail |
 | Change (update window) | - | - | No | Updates & admins page |
 | Copy (IP addresses) | - (clipboard of the shown values) | - | No | Toast "IP addresses copied" |
-| Blink | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar pulses |
+| Blink light | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar pulses |
 | Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, in the confirm dialog (the engine's message: the gateway outage, or the eeros downstream that drop too) | Status Updating, progress toast "Restarting Office" with "Back in about 1 minute", refreshing every 5 s until the restarted eeros are back (see [eeros.md](eeros.md#built-so-far-m25-m48)) |
 | Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, in the confirm dialog, type the eero's name (the engine's message names the eeros that lose their uplink) | Toast "Office removed from Maple Street"; navigates to eeros |
 
@@ -127,7 +127,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
   eeros.
 - **Offline (this computer).** Shell banner; all writes disabled.
 - **This eero offline.** Status Offline, "last seen 2:16 AM"; Uplink shows
-  "No link"; radios and ports show `-`; Blink, Restart, LED and port actions
+  "No link"; radios and ports show `-`; Blink light, Restart, LED and port actions
   disabled with "Office is offline". Remove stays available to the owner.
 - **Restarting or updating.** Status Restarting or Updating; actions
   disabled until Online.
@@ -164,8 +164,8 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 - Built in M4.8: Location (input saves on Enter or blur, Esc reverts;
   preset chips; Custom selects the input), Status light (switch, brightness
   saved on release), Nightlight (Beacon: mode, brightness, On at and Off at
-  as time inputs saved on blur), Blink and Restart. Each write shows a
-  toast with Undo (the previous value), except Blink and Restart. Writes
+  as time inputs saved on blur), Blink light and Restart. Each write shows a
+  toast with Undo (the previous value), except Blink light and Restart. Writes
   dim with the reason when the eero is offline ("Office is offline") or
   restarting, or when `network.permissions` denies `eeros.update`; the
   status light also needs the network's `led_action` capability. The presets

@@ -1,5 +1,5 @@
 /**
- * eero detail "More actions": Blink LED (`eero.find`, counts down while
+ * eero detail "More actions": Blink light (`eero.find`, counts down while
  * blinking), Restart (`eero.restart`, disruptive: the engine's confirm in
  * the confirm dialog, naming the gateway outage or the eeros downstream,
  * then a progress toast until they are back) and Remove (`eero.remove`,
@@ -15,7 +15,7 @@ import { Badge } from "~/components/ui/badge";
 import { Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
-import { FindButton } from "~/features/eeros/EeroCards";
+import { BlinkLightButton } from "~/features/eeros/EeroCards";
 import { watchRestart } from "~/features/eeros/NetworkActions";
 import type { RestartResult } from "../../../../core/commands/network";
 import type { Eero } from "../../../../core/model";
@@ -56,14 +56,15 @@ export function EeroActions({ eero, eeros, networkName, offline }: { eero: Eero 
           <Row>
             <IconTile icon={Lightbulb} />
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-[13px]">Blink LED</div>
+              <div className="font-medium text-[13px]">Blink light</div>
               <div className="text-muted-foreground text-xs">Flashes blue and white for 30 s so you can find it</div>
             </div>
             {eero && !blocked ? (
-              <FindButton eero={eero} label="Blink" />
+              <BlinkLightButton eero={eero} />
             ) : (
               <GatedButton size="xs" variant="outline" gate={actionGate}>
-                Blink
+                <Lightbulb />
+                Blink light
               </GatedButton>
             )}
           </Row>
