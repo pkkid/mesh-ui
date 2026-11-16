@@ -37,6 +37,13 @@ count: number of profiles, not counting Unassigned.
      ("2:05 PM").
    - Empty lanes say "No pauses today".
    - Tick labels: 12 AM, 6 AM, 12 PM, 6 PM, 12 AM.
+   - Collapsed when there is nothing to show: no profile or Unassigned has a
+     schedule and nothing is paused today. The lanes, legend and sub give way
+     to one muted line in a small card, "No scheduled pauses. Schedules pause
+     a profile's internet at set times, like bedtime.", and the tool **+ Add
+     a schedule** opens a picker of profiles (opens that profile's schedule
+     sheet) and Unassigned (opens the Unassigned page). A manual pause with
+     no schedules keeps the full chart.
 3. **Usage by profile** section. Sub "Data used per day, last 7 days". Tools:
    segmented Profiles / Profiles + Unassigned, and Day / Week.
    - Side column: hero figure "2.71 TB" "in 7 days", then one row per
@@ -113,10 +120,12 @@ navigate as described.
 ## States
 
 - **Loading.** Cards at normal size with `-`; one empty lane without the now
-  line until the network time zone is known; chart gridlines; tile grid blank.
+  line until the network time zone is known (never the collapsed form until
+  `profile.list` answers); chart gridlines; tile grid blank.
 - **Empty: no profiles.** The Profiles section shows "No profiles yet. Group
   devices by person to pause them together." with **Add a profile**. Today's
-  pauses shows only the Unassigned lane. Usage by profile shows Unassigned
+  pauses shows the collapsed one-line form (only Unassigned in its picker),
+  or only the Unassigned lane when Unassigned has a pause. Usage by profile shows Unassigned
   only (or the empty sentence when Profiles is selected).
 - **Empty: no unassigned devices.** "Every device is in a profile." and the
   section tools hide.

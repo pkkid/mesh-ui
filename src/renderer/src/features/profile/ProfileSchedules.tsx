@@ -7,7 +7,8 @@
  * from its `today` segments and draws in the warning colour on today's lane.
  * "Add a scheduled pause", a timeline block, a row or its pencil open the schedule sheet
  * (ScheduleSheet.tsx); the row switch runs `profile.schedule.update
- * {enabled}` with Undo.
+ * {enabled}` with Undo. With no schedules and no manual pause the week
+ * timeline hides and only a one-line "Schedules" card shows (States).
  */
 import { BookOpen, CalendarClock, Moon, Pencil, Plus, Utensils } from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
@@ -59,7 +60,27 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
     ...manual.map((x) => ({ id: `manual-${x.start}`, label: "Paused", color: MANUAL_COLOR, days: [today.lane], start: x.start, end: x.end, inert: true })),
   ];
   const name = p?.name ?? "this profile";
-  const empty = p && schedules.length === 0;
+  const addButton = (
+    <GatedButton gate={gate} variant="outline" disabled={!p} onClick={() => setSheet({ kind: "add" })}>
+      <Plus />
+      Add a scheduled pause
+    </GatedButton>
+  );
+  const sheetEl = p ? <ScheduleSheet profile={p} mode={sheet} onClose={() => setSheet(null)} /> : null;
+
+  // Nothing to draw: one line instead of an empty week. Only once the profile has answered, so it never flashes while loading.
+  if (p && schedules.length === 0 && manual.length === 0) {
+    return (
+      <>
+        <Section title="Schedules" tools={addButton}>
+          <Card className={cn("px-[18px] py-3 text-[13px] text-muted-foreground transition-opacity", fading && "opacity-40")}>
+            No scheduled pauses yet. Add one to pause {p.name}'s devices automatically, like at bedtime.
+          </Card>
+        </Section>
+        {sheetEl}
+      </>
+    );
+  }
 
   return (
     <div className="grid gap-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
@@ -93,23 +114,10 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
             }
             ariaLabel={`Scheduled pauses for ${name} this week, Monday to Sunday${manual.length ? `, and a manual pause today` : ""}`}
           />
-          {empty ? (
-            <p className="mt-3 text-center text-muted-foreground text-xs">
-              No scheduled pauses. Add one to pause {p.name}'s devices automatically, like at bedtime.
-            </p>
-          ) : null}
         </Card>
       </Section>
 
-      <Section
-        title="Schedules"
-        tools={
-          <GatedButton gate={gate} variant="outline" disabled={!p} onClick={() => setSheet({ kind: "add" })}>
-            <Plus />
-            Add a scheduled pause
-          </GatedButton>
-        }
-      >
+      <Section title="Schedules" tools={addButton}>
         <Card className={cn("divide-y transition-opacity", fading && "opacity-40")}>
           {!p ? (
             <div className="h-[58px]" />
@@ -122,7 +130,7 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
           )}
         </Card>
       </Section>
-      {p ? <ScheduleSheet profile={p} mode={sheet} onClose={() => setSheet(null)} /> : null}
+      {sheetEl}
     </div>
   );
 }

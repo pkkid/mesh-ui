@@ -1,7 +1,8 @@
 /**
  * The grouped device table (docs/ux/pages/devices.md, Layout 4 and 5). Rows
  * arrive filtered and sorted by `device.list`; this file only groups them
- * (view state), lays out the columns and opens device detail on click.
+ * (view state, keeping the sorted order within each group), lays out the
+ * columns, sorts on a header click and opens device detail on click.
  * Selection (checkbox, Shift click for a range, the header checkbox) is view
  * state held by DevicesPage for the bulk bar (BulkBar.tsx). The row menu
  * runs the device writes: pause or resume, rename in place, change profile,
@@ -9,6 +10,8 @@
  */
 import { Menu } from "@base-ui/react/menu";
 import {
+  ArrowDown,
+  ArrowUp,
   Ban,
   ChevronDown,
   ChevronRight,
@@ -41,10 +44,12 @@ import { Status, type StatusTone } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatRelative, mbpsParts } from "../../../../core/format";
+import type { DeviceSortKey } from "../../../../core/commands/device";
 import type { Device, DeviceCategory } from "../../../../core/model";
 
 import { blockRequest, menuClasses, pauseRequest, type ProfileOption, ProfileItems, profileRequest } from "./BulkBar";
 import { COLUMN_LABELS, type ColumnKey, type GroupBy } from "./DeviceFilters";
+import type { SortOrder } from "./DevicesPage";
 
 // ---------------------------------------------------------------------------
 // States and labels
@@ -146,6 +151,10 @@ export type ProfileInfo = { name: string; color: string };
 type DeviceTableProps = {
   devices: ReadonlyArray<Device> | undefined;
   groupBy: GroupBy;
+  /** The `device.list` sort and its direction; a header click calls onSort with its key. */
+  sort: DeviceSortKey;
+  order: SortOrder;
+  onSort: (key: DeviceSortKey) => void;
   hidden: ReadonlySet<ColumnKey>;
   eeroName: ReadonlyMap<string, string>;
   profiles: ReadonlyMap<string, ProfileInfo>;
@@ -299,6 +308,11 @@ export function DeviceTable(props: DeviceTableProps) {
 
   visibleOrder = visible;
   const th = "whitespace-nowrap px-2.5 py-[9px] text-start font-normal text-muted-foreground text-xs";
+  const sortable = (key: DeviceSortKey, label: ReactNode, className?: string) => (
+    <SortHeader key={key} sortKey={key} active={props.sort === key} order={props.order} onSort={props.onSort} className={cn(th, className)}>
+      {label}
+    </SortHeader>
+  );
   return (
     <Card>
       <div className="overflow-x-auto">
@@ -314,21 +328,21 @@ export function DeviceTable(props: DeviceTableProps) {
                   onPick={() => onSelect(visible.every((id) => selected.has(id)) ? [] : visible)}
                 />
               </th>
-              <th className={th}>
-                <span className="font-medium text-foreground">Device</span>
-              </th>
-              {show("profile") && <th className={th}>Profile</th>}
-              {show("eero") && <th className={th}>Connected to</th>}
-              {show("band") && <th className={th}>Band</th>}
-              {show("signal") && <th className={th}>Signal</th>}
-              {show("addr") && <th className={th}>IP · MAC</th>}
-              {show("now") && (
-                <th className={th}>
-                  Now <span className="text-muted-foreground/70">down / up</span>
-                </th>
-              )}
-              {show("today") && <th className={cn(th, "text-end")}>24h</th>}
-              <th className={th}>Status</th>
+              {sortable("name", "Device")}
+              {show("profile") && sortable("profile", "Profile")}
+              {show("eero") && sortable("eero", "Connected to")}
+              {show("band") && sortable("band", "Band")}
+              {show("signal") && sortable("signal", "Signal")}
+              {show("addr") && sortable("ip", "IP · MAC")}
+              {show("now") &&
+                sortable(
+                  "rate",
+                  <>
+                    Now <span className="text-muted-foreground/70">down / up</span>
+                  </>,
+                )}
+              {show("today") && sortable("usage", "24h", "text-end")}
+              {sortable("status", "Status")}
               <th className={cn(th, "w-6")}>
                 <span className="sr-only">Actions</span>
               </th>
@@ -345,6 +359,40 @@ export function DeviceTable(props: DeviceTableProps) {
         </span>
       </div>
     </Card>
+  );
+}
+
+/** A sortable column header: the label is a button; the active one shows its direction. */
+function SortHeader({
+  sortKey,
+  active,
+  order,
+  onSort,
+  className,
+  children,
+}: {
+  sortKey: DeviceSortKey;
+  active: boolean;
+  order: SortOrder;
+  onSort: (key: DeviceSortKey) => void;
+  className: string;
+  children: ReactNode;
+}) {
+  const Arrow = order === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <th className={className} aria-sort={active ? (order === "asc" ? "ascending" : "descending") : undefined}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "-mx-1 inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+          active && "font-medium text-foreground",
+        )}
+      >
+        <span>{children}</span>
+        {active && <Arrow aria-hidden className="size-3 text-muted-foreground" />}
+      </button>
+    </th>
   );
 }
 

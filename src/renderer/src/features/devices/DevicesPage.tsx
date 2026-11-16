@@ -7,7 +7,7 @@
  *
  * Filters, search and sort are `device.list` params, applied in core; this
  * page only keeps what the user picked (per network, for the session) and
- * groups the rows it gets back. Live rates come from `device.rates.refresh`
+ * groups the rows it gets back. Clicking a table header sets the sort. Live rates come from `device.rates.refresh`
  * once a minute while the page is visible; the engine enforces the limit.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +19,7 @@ import { ShareWifiButton } from "~/features/wifi/ShareSheet";
 import { entityColors } from "~/lib/chartColors";
 import { TopBarActions, TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative } from "../../../../core/format";
+import { type DeviceSortKey, SORT_DEFAULT_ORDER } from "../../../../core/commands/device";
 import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
 
 import {
@@ -27,16 +28,16 @@ import {
   type DeviceFilterState,
   EMPTY_FILTERS,
   type GroupBy,
-  type SortKey,
   UNASSIGNED,
 } from "./DeviceFilters";
 import { BulkBar, type ProfileOption } from "./BulkBar";
 import { DeviceSummary } from "./DeviceSummary";
 import { DeviceTable, type ProfileInfo, visibleDevices } from "./DeviceTable";
 
-type ViewState = { filters: DeviceFilterState; sort: SortKey; groupBy: GroupBy };
+export type SortOrder = "asc" | "desc";
+type ViewState = { filters: DeviceFilterState; sort: DeviceSortKey; order: SortOrder; groupBy: GroupBy };
 
-const DEFAULT_VIEW: ViewState = { filters: EMPTY_FILTERS, sort: "name", groupBy: "none" };
+const DEFAULT_VIEW: ViewState = { filters: EMPTY_FILTERS, sort: "name", order: "asc", groupBy: "none" };
 
 /** Filter state per network, kept while the app runs (docs: "filter state kept per network"). */
 const views = new Map<string, ViewState>();
@@ -62,7 +63,7 @@ function saveHidden(hidden: ReadonlySet<ColumnKey>) {
 }
 
 /** The `device.list` params for what is picked. Unset filters are left out. */
-export function listParams(f: DeviceFilterState, sort: SortKey): Record<string, unknown> {
+export function listParams(f: DeviceFilterState, sort: DeviceSortKey, order: SortOrder = SORT_DEFAULT_ORDER[sort]): Record<string, unknown> {
   return {
     search: f.search.trim() || undefined,
     ssid: f.ssid === "all" ? undefined : f.ssid,
@@ -74,6 +75,7 @@ export function listParams(f: DeviceFilterState, sort: SortKey): Record<string, 
     manufacturer: f.manufacturer ?? undefined,
     firstSeenSince: f.newSince ?? undefined,
     sort: sort === "name" ? undefined : sort,
+    order: order === SORT_DEFAULT_ORDER[sort] ? undefined : order,
   };
 }
 
@@ -133,7 +135,10 @@ export function DevicesPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const params = listParams(view.filters, view.sort);
+  const params = listParams(view.filters, view.sort, view.order);
+  // A new column starts in its natural direction; the active one flips.
+  const sortBy = (sort: DeviceSortKey) =>
+    setView((v) => ({ ...v, sort, order: v.sort === sort ? (v.order === "asc" ? "desc" : "asc") : SORT_DEFAULT_ORDER[sort] }));
   const list = useQuery<DeviceList>("device.list", params, { poll: true });
   // A new filter is a new query: keep the last rows on screen (faded) until it answers.
   const lastList = useRef<DeviceList | undefined>(undefined);
@@ -210,8 +215,6 @@ export function DevicesPage() {
           manufacturers={manufacturers}
           groupBy={view.groupBy}
           onGroupBy={(groupBy) => setView((v) => ({ ...v, groupBy }))}
-          sort={view.sort}
-          onSort={(sort) => setView((v) => ({ ...v, sort }))}
           hidden={hidden}
           onToggleColumn={(c) =>
             setHidden((prev) => {
@@ -236,6 +239,9 @@ export function DevicesPage() {
         <DeviceTable
           devices={list.error && !list.data ? undefined : shown?.devices}
           groupBy={view.groupBy}
+          sort={view.sort}
+          order={view.order}
+          onSort={sortBy}
           hidden={hidden}
           eeroName={eeroName}
           profiles={profileInfo}

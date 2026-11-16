@@ -464,7 +464,13 @@ export type Profile = {
 };
 
 /** Devices with no profile. Not a profile and has no id. */
-export type UnassignedDevices = { deviceIds: Id[]; devicesOnline: number; paused: boolean };
+export type UnassignedDevices = {
+  deviceIds: Id[];
+  devicesOnline: number;
+  paused: boolean;
+  /** Unassigned's scheduled pauses (eero's default profile); none before eeroOS 7.12.4. */
+  schedules: Schedule[];
+};
 
 /** One pause on today's lane, in minutes after midnight in the network time zone (`start < end`, 0 to 1440). */
 export type PauseSegment = {

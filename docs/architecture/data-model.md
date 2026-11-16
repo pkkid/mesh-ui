@@ -476,7 +476,7 @@ length. The fake eero server seeds one default profile per network.
 
 ```ts
 type ProfileList = { profiles: Profile[]; unassigned: UnassignedDevices; today: PausesToday };
-type UnassignedDevices = { deviceIds: Id[]; devicesOnline: number; paused: boolean };
+type UnassignedDevices = { deviceIds: Id[]; devicesOnline: number; paused: boolean; schedules: Schedule[] };
 
 // Today's pauses per profile, and Unassigned (profileId null), for the Profiles page lanes.
 type PausesToday = {

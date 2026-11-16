@@ -47,8 +47,8 @@ Wi-Fi**. Sidebar count: all known devices (38).
      (Wired 4, 2.4 GHz 11, 5 GHz 10, 6 GHz 6 toggles), Type, eero, Profile
      (with Unassigned) and Manufacturer (selects with an Any row), First seen
      (New this week 3), and a footer "3 filters set" with **Clear all**.
-   - Right: Group by menu (None), Sort menu (Name), and a Columns button.
-     The menus show their name in the tooltip.
+   - Right: Group by menu (None) and a Columns button. The menu shows its
+     name in the tooltip. Sorting is on the table headers (below).
 3. **Active filters** (only while a popover filter is set): one small chip
    per filter ("6 GHz", "Computers", "Profile: Alex") with an x to remove it,
    then **Clear all**, which clears the popover filters (search and status
@@ -56,12 +56,20 @@ Wi-Fi**. Sidebar count: all known devices (38).
 4. **Bulk action bar** (only while rows are selected): mixed checkbox, "3
    selected", the selected names in muted text, then **Pause**, **Resume**,
    **Assign profile ▾**, **Block 3** (danger), a rule, **Clear**.
-5. **Device table** (card). Columns: checkbox, Device (sortable, icon, name
+5. **Device table** (card). Columns: checkbox, Device (icon, name
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Now down / up
    (two small numbers; "Paused" or last-seen text when not live), 24h
    (data used in the last 24 hours, `usage.breakdown` range day), Status (Online, Paused, Offline, Blocked), and a row menu (`...`).
+   - Every column header except the checkbox and the row menu sorts the
+     table (`device.list` `sort` and `order`). The default is Device, A to
+     Z. Clicking a new header sorts by it in its natural direction (Device,
+     Profile, Connected to, Band, IP and Status ascending; Signal, Now and
+     24h largest first); clicking the active header flips it. The active
+     header is in the text colour with a small muted up or down arrow and
+     `aria-sort`. Missing values (`-`, Unassigned) sort last either way, and
+     ties sort by name. With Group by on, rows are sorted within each group.
    - Rows are a flat list by default. They can be grouped (Group by:
      Category, Status, eero or Profile). Grouped rows have header rows with
      a chevron, an icon, the group name and a count. Collapsed groups show
@@ -83,7 +91,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Table rows | `device.list {status?, ssid?, band?, eero?, profile?, type?, manufacturer?, firstSeenSince?, search?, sort?}` (New this week sends `firstSeenSince` a week before it was turned on) | 30 s |
+| Table rows | `device.list {status?, ssid?, band?, eero?, profile?, type?, manufacturer?, firstSeenSince?, search?, sort?, order?}` (New this week sends `firstSeenSince` a week before it was turned on) | 30 s |
 | Live "Now" column, Current throughput | `device.rates.refresh` then `device.list` (rates in each device's `rate`) | 60 s while the page is visible |
 | Status and Filters popover counts, By type, band insight, guest count, New this week | `device.list` `summary` (counts by status, band, eero, profile, type, manufacturer; `newThisWeek`) | 30 s |
 | Profile avatars and names | `device.list` (embedded profile ref) + `profile.list` for colours | 60 s |
@@ -95,7 +103,7 @@ Wi-Fi**. Sidebar count: all known devices (38).
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Share Wi-Fi (topbar) | `wifi.share` | query | No | Share Wi-Fi sheet, the same one as Overview (QR code, network name, Copy password, Save QR); runs `wifi.share` when it opens |
-| Search, status segment, Filters popover, active filter chips, Clear all, sort | - (view state, passed as `device.list` params) | - | No | Table and counts update; filter state kept per network |
+| Search, status segment, Filters popover, active filter chips, Clear all, column header sort | - (view state, passed as `device.list` params) | - | No | Table and counts update; filter state kept per network |
 | Group by, Columns, expand or collapse a group | - (view state) | - | No | Layout only |
 | Row click, device name | - | - | No | Device detail (Prev and Next follow this table's order) |
 | Checkbox, `Shift+click`, `Ctrl+A`, header checkbox | - (view state) | - | No | Selection; bulk bar appears |
