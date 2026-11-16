@@ -1,20 +1,23 @@
 /**
- * Internet "Speed test history": Week / Month / All toggle (the page holds
- * it, Earlier tests and Export CSV follow it), 7-day averages against the
- * plan, the gateway-to-ISP note and one dotted point per test.
+ * Internet "Speed test history": Week / Month / All toggle, Export CSV of
+ * that range, 7-day averages against the plan, the gateway-to-ISP note and
+ * one dotted point per test. Export CSV saves `speedtest.history {format:
+ * "csv"}` through the host's save dialog (`lib/saveFile.ts`).
  * docs/ux/pages/internet.md (Layout 3). Tests, ratings and averages come
  * from `speedtest.history`.
  */
-import { ArrowDown, ArrowUp, Info } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowDown, ArrowUp, Check, Download, Info } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 
-import { useQuery } from "~/app/useCommand";
+import { execute, useQuery } from "~/app/useCommand";
+import { Button } from "~/components/ui/button";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { Section } from "~/components/ui/card";
 import { Meter } from "~/components/ui/meter";
 import { SectionError } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { seriesColors } from "~/lib/chartColors";
+import { datedName, saveTextFile } from "~/lib/saveFile";
 import { cn } from "~/lib/utils";
 import { formatCount, formatMbps, formatPercent, networkClock } from "../../../../core/format";
 import type { Internet, Network, SpeedHistory as History } from "../../../../core/model";
@@ -25,20 +28,18 @@ const RANGES = [
   { value: "all", label: "All" },
 ] as const;
 
-export type HistoryRange = (typeof RANGES)[number]["value"];
+type HistoryRange = (typeof RANGES)[number]["value"];
 
 /** Subtitle and screen reader wording per range. eero keeps about a year of tests, at most 100 per read. */
 const RANGE_TEXT: Record<HistoryRange, string> = { week: "Last 7 days", month: "Last 30 days", all: "All eero returns" };
 
-/**
- * `speedtest.history` params for a range, shared by the chart and Earlier
- * tests so they read one cache entry. Week uses the defaults, the hero's entry.
- */
-export function historyParams(range: HistoryRange): { range: HistoryRange; limit: number } | undefined {
+/** `speedtest.history` params for a range. Week uses the defaults, sharing the hero's cache entry. */
+function historyParams(range: HistoryRange): { range: HistoryRange; limit: number } | undefined {
   return range === "week" ? undefined : { range, limit: 200 };
 }
 
-export function SpeedHistory({ id, range, onRangeChange }: { id?: string; range: HistoryRange; onRangeChange: (range: HistoryRange) => void }) {
+export function SpeedHistory({ id }: { id?: string }) {
+  const [range, setRange] = useState<HistoryRange>("month");
   const history = useQuery<History>("speedtest.history", historyParams(range), { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -56,7 +57,17 @@ export function SpeedHistory({ id, range, onRangeChange }: { id?: string; range:
   const fade = history.fading ? "opacity-40" : undefined;
 
   return (
-    <Section id={id} title="Speed test history" subtitle={subtitle} tools={<Segmented aria-label="Range" value={range} onValueChange={onRangeChange} options={RANGES} />}>
+    <Section
+      id={id}
+      title="Speed test history"
+      subtitle={subtitle}
+      tools={
+        <div className="flex items-center gap-2">
+          <ExportCsvButton network={network.data?.name ?? null} range={range} />
+          <Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />
+        </div>
+      }
+    >
       {history.error && !history.data ? (
         <SectionError what="speed tests" error={history.error} onRetry={() => void history.refetch()} />
       ) : (
@@ -121,5 +132,44 @@ function Average({ icon, label, color, value, plan }: { icon: ReactNode; label: 
       <Meter className="mt-2" value={plan ? value : null} max={plan ?? 100} color={color} label={`${label}, share of plan`} />
       <div className="mt-1 text-muted-foreground text-xs">{share === null ? (plan ? "-" : "No plan set") : `${formatPercent(share)} of plan`}</div>
     </div>
+  );
+}
+
+/** "speed-tests-maple-street" from the network name; letters and digits only. */
+function fileStem(stem: string, network: string | null): string {
+  const slug = (network ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+  return slug ? `${stem}-${slug}` : stem;
+}
+
+/** Export CSV: the window's tests as CSV from core, saved where the user picks. */
+function ExportCsvButton({ network, range }: { network: string | null; range: HistoryRange }) {
+  const [state, setState] = useState<{ kind: "idle" | "busy" } | { kind: "saved"; name: string } | { kind: "failed"; message: string }>({ kind: "idle" });
+  useEffect(() => {
+    if (state.kind !== "saved" && state.kind !== "failed") return;
+    const t = setTimeout(() => setState({ kind: "idle" }), 2400);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  const run = async () => {
+    setState({ kind: "busy" });
+    const r = await execute<string>("speedtest.history", { ...historyParams(range), format: "csv" });
+    if (!r.ok) return setState({ kind: "failed", message: r.error.message });
+    const saved = await saveTextFile(datedName(fileStem("speed-tests", network), "csv"), r.result);
+    if (saved.status === "saved") setState({ kind: "saved", name: saved.name });
+    else if (saved.status === "failed") setState({ kind: "failed", message: saved.message });
+    else setState({ kind: "idle" });
+  };
+
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      disabled={state.kind === "busy"}
+      title={state.kind === "saved" ? `Saved ${state.name}` : state.kind === "failed" ? state.message : undefined}
+      onClick={() => void run()}
+    >
+      {state.kind === "saved" ? <Check /> : <Download />}
+      {state.kind === "saved" ? "CSV saved" : state.kind === "failed" ? "Couldn't save" : "Export CSV"}
+    </Button>
   );
 }

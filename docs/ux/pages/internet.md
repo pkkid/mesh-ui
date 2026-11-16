@@ -34,7 +34,9 @@ Topbar: title "Internet", subtitle freshness, no page actions.
    every 1 to 3 days" ("Last 7 days", or "Since Wed Mar 4" for All, eero returning at most 100 tests). Week / Month /
    All toggle (Month selected); eero keeps about a year of tests and runs
    one only every 1 to 3 days, so a week holds only 2 to 5 and a Day range
-   was dropped (#241). Earlier tests and Export CSV follow the same range.
+   was dropped (#241). Tool: **Export CSV** of the chosen range, left of the
+   toggle. There is no Earlier tests table: it repeated the chart's points
+   (removed in #241; each test's values are in the chart tooltip and the CSV).
    Deep link
    `#/internet/history` opens the page scrolled here (DOM id
    `internet-history`; Overview's "View history"). Side column:
@@ -48,11 +50,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
      scale to the plan (`AreaChart max`, nice ticks up to at least the
      plan), x labels "Nov 6", "Nov 9",
      "Today", tooltip per test with date and time.
-4. **Earlier tests** table. Sub "Before the latest result above", for the
-   range chosen in Speed test history. Tool: **Export CSV** (same range). Columns: When, Download (value plus meter of plan), Upload
-   (same), verdict (Great, Below plan in text colour). Values well below plan
-   use the warning text colour.
-5. **Data usage** section. Sub: "Internet (WAN) traffic only, local
+4. **Data usage** section. Sub: "Internet (WAN) traffic only, local
    transfers excluded". Day / Week toggle. Two cards side by side:
    - **Per hour** (wide): legend with totals (Download 351 GB, Upload 61 GB),
      hourly area chart, rule, then **Using the most right now** ("current rate
@@ -78,7 +76,7 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 | Connection cards (ISP, ASN, location, WAN type, IPv4, IPv6, prefix, ISP gateway, DNS in use, double NAT, NAT or bridge mode) | `internet.get` | 10 min |
 | Gateway sub line | `eero.list` (gateway eero, WAN port speed) | 60 s |
 | Plan | `internet.get` (`plan` from `settings.json`) | On change |
-| Speed test chart, count, table | `speedtest.history {range: "month", limit: 200}` (or `"week"` with defaults, `"all"`) | 10 min, and after a test |
+| Speed test chart, count, Export CSV | `speedtest.history {range: "month", limit: 200}` (or `"week"` with defaults, `"all"`) | 10 min, and after a test |
 | 7-day averages | `avg7d` of the same read (always the last 7 days) | As above |
 | Per hour chart and totals | `usage.get {scope: "network", range: "day"}` | 5 min |
 | Using the most right now | `device.rates.refresh` then `device.list {sort: "rate", limit: 6}` | 60 s while visible |
@@ -90,12 +88,12 @@ Topbar: title "Internet", subtitle freshness, no page actions.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; gauges fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero, chart and table update. The same control and toast on Overview and Troubleshooting |
+| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; gauges fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero and chart update. The same control and toast on Overview and Troubleshooting |
 | Troubleshoot | - | - | No | Troubleshooting page |
 | Copy details | `internet.get {format: "text"}` | query | No | Copies a plain-text block of both cards (formatted in core); toast "Connection details copied" |
 | ISP settings → | - | - | No | Advanced networking, WAN section |
 | Set plan / Edit plan (the plan line under the gauges, the Connection card's Plan row; Overview "Set your internet plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
-| Week / Month / All (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart, count and Earlier tests switch range; averages stay 7-day |
+| Week / Month / All (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart, count and Export CSV switch range; averages stay 7-day |
 | Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog (`window.mesh.saveFile`), file `speed-tests-maple-street-2026-11-12.csv`; the button reads "CSV saved" for a moment, or "Couldn't save" with eero's or the host's message as its tooltip |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
 | Device in "Using the most" or By device | - | - | No | Device detail |
