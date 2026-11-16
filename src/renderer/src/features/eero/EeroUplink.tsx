@@ -12,7 +12,8 @@ import { Globe, type LucideIcon } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
 import { LINK_COLOR, LinkChip, type LinkLook, linkSpeed, uplinkLook } from "~/components/mesh/LinkChip";
-import { behindOffline, eeroIcon } from "~/components/mesh/Topology";
+import { behindOffline } from "~/components/mesh/Topology";
+import { eeroIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import type { Eero } from "../../../../core/model";
 import { uplinkOf } from "./helpers";

@@ -8,10 +8,11 @@
  * its upstream (columns are relative to the smallest hop given), and leave
  * out `internet` unless the eero is the gateway.
  */
-import { Cable, Globe, Lamp, Maximize, Minus, Plus, Router } from "lucide-react";
+import { Cable, Globe, Maximize, Minus, Plus } from "lucide-react";
 import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import { eeroIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import type { Eero } from "../../../../core/model";
 
@@ -203,7 +204,6 @@ const curve = (a: MapPoint, b: MapPoint) => {
   return `M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`;
 };
 
-export const eeroIcon = (e: Pick<Eero, "model">) => (/beacon/i.test(e.model ?? "") ? Lamp : Router);
 
 export type TopologyProps = {
   eeros: ReadonlyArray<Eero>;

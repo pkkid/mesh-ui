@@ -225,7 +225,8 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Key-value list | `kv-list.tsx`. Two columns, muted keys, `tabular-nums` values; IPs, MACs and serials in mono with a small copy button |
 | Band badge | `band-badge.tsx`. The neutral Badge box with "2.4 GHz", "5 GHz", "6 GHz" or a cable icon and "Wired". Never coloured: band colours are for chart series |
 | Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), or the series colour via `color` for a series share (download and upload plan meters), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
-| Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from device type (then category) to a lucide icon, shown in an Icon tile. Never map device types to icons anywhere else |
+| Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from a device to an icon, shown in an Icon tile. An Amazon Echo is matched by its model name first (see [Product icons](#product-icons)), then the device type, then the category. Never map device types to icons anywhere else |
+| eero icon | `lib/deviceIcons.ts` `eeroIcon(eero)`: the only map from an eero to its product glyph, by `modelNumber`, then the model name, then the puck. See [Product icons](#product-icons) |
 | Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-md` (6px), `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
 | Dialog and sheet | `bg-popover`, border, large radius, dimmed backdrop |
 | QR block | `qr.tsx`. `QrBlock`: small outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. The code is always black modules on a white tile with a quiet zone and 1px border, in both themes, because some scanners cannot read inverted codes: the one place fixed black and white are used. An empty muted frame while the payload loads. Save QR writes a black-on-white PNG through Chromium's download save dialog. Encoder: `uqr` (MIT, pinned) |
@@ -464,3 +465,44 @@ because Qt's SVG renderer does not support them.
   status is never colour alone (always dot plus text).
 - Respect `prefers-reduced-motion`: no transitions beyond opacity.
 - Icons that act as buttons have labels or tooltips.
+
+## Product icons
+
+eero and Echo hardware get their own glyphs in `lib/productIcons.ts`,
+drawn in lucide's style (24px grid, 2px stroke, round caps) and built with
+lucide's `createLucideIcon`, so they size and colour like any lucide icon.
+Every eero shows its status LED; every Echo its light ring, screen or
+speaker. Products that look alike share a glyph, so there are 13 in all.
+
+| Glyph | eero products (`model_number`) |
+| --- | --- |
+| `EeroPuck` | eero 1st and 2nd gen (A010001, J010001), eero 6 (N010001), 6 Extender (Q010001), 6+ (R010001), eero Pro (B010001), Pro 6 (K010001), Pro 6E (S010001); also any unknown eero |
+| `EeroUpright` | eero Max 7 (V010001), eero 7 (PA10001), eero Pro 7 (ME10001) |
+| `EeroOutdoor` | eero Outdoor 7 (SN10001) |
+| `EeroBeacon` | eero Beacon (D010001) |
+| `EeroCeiling` | eero PoE 6 (T010001), eero PoE 7 (NV01) |
+| `EeroGateway` | eero PoE Gateway (U010001) |
+
+eero Signal (RG4U, RG4W, RG5W) has no glyph: it is eero Plus Internet
+Backup (out of scope).
+
+Echos are matched on the device's `model` (eero's `model_name`), because
+eero reports most of them as `device_type: generic`. The wording varies
+("Echo Dot (3rd Gen) with Clock", "Echo Dot (3rd generation)"), so
+`echoIcon` matches the family and then the generation number.
+
+| Glyph | Echo products |
+| --- | --- |
+| `EchoPuck` | Echo Dot 1st to 3rd gen (with or without Clock), Echo Input |
+| `EchoSphere` | Echo 4th gen, Echo Dot 4th gen and later (with or without Clock), Echo Dot Max; also any unknown Echo |
+| `EchoCylinder` | Echo 1st to 3rd gen, Echo Plus, Echo Studio, Echo Sub |
+| `EchoPop` | Echo Pop |
+| `EchoSpot` | Echo Spot (2017 and 2024) |
+| `EchoFlex` | Echo Flex |
+| `EchoDisplay` | Every Echo Show (5, 8, 10, 11, 15, 21) and Echo Hub |
+
+Echo Link, Link Amp and Amazon Tap use lucide `Speaker`, Echo Look
+`Camera`, Echo Connect `Phone`. Bluetooth-only Echo accessories (Buds,
+Frames, Auto, Glow, Wall Clock) never join the network. An Amazon device
+whose model is missing or not an Echo (Fire TV, Kindle) keeps its type icon.
+

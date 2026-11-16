@@ -12,7 +12,9 @@ import { cn } from "~/lib/utils";
 import type { Eero } from "../../../../core/model";
 
 import { LinkChip, linkSpeed, uplinkLook } from "./LinkChip";
-import { behindOffline, eeroIcon } from "./Topology";
+import { eeroIcon } from "~/lib/deviceIcons";
+
+import { behindOffline } from "./Topology";
 
 type TreeRow = { eero: Eero; depth: number };
 

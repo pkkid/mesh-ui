@@ -13,7 +13,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 ## Layout
 
 1. **Hero** (card), three columns:
-   - Left: a product tile (150 px rounded square, router or lamp glyph) with
+   - Left: a product tile (150 px rounded square, the eero product glyph from `eeroIcon`) with
      a small LED bar at the top that mirrors the LED state (on, dimmed, off,
      blinking).
    - Middle: name ("Office"); status line with Online, model badge ("eero Pro

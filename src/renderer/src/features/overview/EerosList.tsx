@@ -4,7 +4,6 @@
  * sparkline in that eero's series colour.
  * docs/ux/pages/overview.md (Layout 3).
  */
-import { Lamp, Router } from "lucide-react";
 
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
@@ -16,6 +15,7 @@ import { IconTile } from "~/components/ui/hero";
 import { HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
+import { eeroIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { formatCount } from "../../../../core/format";
 import type { Eero, NetworkHealth, UsageSeries } from "../../../../core/model";
@@ -67,7 +67,7 @@ export function EerosList() {
                 to={pathFor("eero", { eeroId: e.id })}
                 className="col-span-3 grid grid-cols-subgrid grid-rows-[auto_auto_auto] gap-y-0.5"
               >
-                <IconTile icon={/beacon/i.test(e.model ?? "") ? Lamp : Router} className="row-span-3" />
+                <IconTile icon={eeroIcon(e)} className="row-span-3" />
                 <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-[13.5px]">
                   <span className="truncate">{e.location}</span>
                   {e.isGateway && (
