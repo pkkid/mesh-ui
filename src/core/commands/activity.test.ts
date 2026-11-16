@@ -369,8 +369,8 @@ function memorySecrets(token: string): SecretStore {
 const FAKE_NET = "100001";
 const FAKE_NOW = Date.parse("2026-11-12T18:20:00Z");
 
-function fakeEngine() {
-  const fake: FakeEero = createFakeEero({ now: () => FAKE_NOW });
+function fakeEngine(now: () => number = () => FAKE_NOW, engineNow: () => number = now) {
+  const fake: FakeEero = createFakeEero({ now });
   const live = createEeroBackend({ secrets: memorySecrets(fake.signIn()), origin: fake.origin, fetch: fake.fetch });
   const summary = { id: FAKE_NET, name: "Maple Street", nickname: null, role: "owner", status: "online", eeroCount: null, devicesOnline: null, isp: null, updateAvailable: null, lastSeen: null, selected: false } as const;
   const backend = composeBackend("eero", {
@@ -381,7 +381,7 @@ function fakeEngine() {
     eero: live.eero,
     profile: live.profile,
   });
-  return { fake, engine: createEngine({ backend, clock: () => FAKE_NOW }) };
+  return { fake, backend, engine: createEngine({ backend, clock: engineNow }) };
 }
 
 const eventRequests = (fake: FakeEero) => fake.log.filter((e) => e.path.endsWith("/app_events"));
@@ -430,6 +430,62 @@ describe("events.list on the fake eero server", () => {
   });
 });
 
+describe("events on a network that only sends its last 15 minutes", () => {
+  const WINDOW_MS = 15 * 60_000;
+
+  /** One event every 5 minutes for 2 hours after FAKE_NOW, read every 10 minutes the way the Activity poll does. */
+  async function readForTwoHours() {
+    const end = FAKE_NOW + 120 * 60_000;
+    let now = FAKE_NOW;
+    const { fake, backend, engine } = fakeEngine(() => now, () => end);
+    const net = fake.state.networks.get(FAKE_NET);
+    if (!net) throw new Error("no fake network");
+    net.appEventsWindowMs = WINDOW_MS;
+    net.appEvents = [];
+    for (let m = 0; m < 120; m += 5) net.appEvents.push({ hash: `w${m}`, category: "device", description: `Phone ${m} connected`, timestamp_ms: FAKE_NOW + m * 60_000 });
+    for (; now <= end; now += 10 * 60_000) await backend.events.list(FAKE_NET, null);
+    now = end;
+    return { fake, engine, net };
+  }
+
+  it("answers short pages and ignores the timestamp cursor, like eero", async () => {
+    const { fake, net } = await readForTwoHours();
+    const res = await fake.fetch(`${fake.origin}/2.2/networks/${FAKE_NET}/app_events?page_size=50&timestamp=2026-11-12T18:00:00.000Z`, { headers: { cookie: `s=${fake.signIn()}` } });
+    const body = (await res.json()) as { data: { events: RawAppEvent[] } };
+    expect(body.data.events.length).toBeGreaterThan(0);
+    expect(body.data.events.length).toBeLessThan(net.appEvents.length);
+    expect(body.data.events.every((e) => (e.timestamp_ms ?? 0) >= fake.state.now() - WINDOW_MS)).toBe(true);
+    const epoch = await fake.fetch(`${fake.origin}/2.2/networks/${FAKE_NET}/app_events?timestamp=1763000000000`, { headers: { cookie: `s=${fake.signIn()}` } });
+    expect(epoch.status).toBe(400);
+  });
+
+  it("keeps events after they leave eero's window, so a short page is not the end", async () => {
+    const { fake, engine } = await readForTwoHours();
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const page: M.EventPage = await ok(engine.execute<M.EventPage>("events.list", cursor ? { cursor, limit: 5 } : { limit: 5 }));
+      ids.push(...page.events.map((e) => e.id));
+      cursor = page.nextCursor;
+    } while (cursor);
+    // Every event seen in any 15 minute window, newest first, each once.
+    expect(ids).toEqual(Array.from({ length: 24 }, (_, i) => `w${115 - i * 5}`));
+    // Past the log it asked eero once with the cursor, got nothing older and stopped asking.
+    const cursored = eventRequests(fake).filter((e) => new URLSearchParams(e.query).get("timestamp") !== null);
+    expect(cursored).toHaveLength(1);
+    await ok(engine.execute<M.EventPage>("events.list", { cursor: (await ok(engine.execute<M.EventPage>("events.list", { limit: 1 }))).nextCursor }));
+    expect(eventRequests(fake).filter((e) => new URLSearchParams(e.query).get("timestamp") !== null)).toHaveLength(1);
+  });
+
+  it("counts the kept events in the summary", async () => {
+    const { engine } = await readForTwoHours();
+    const s = await ok(engine.execute<M.EventSummary>("events.summary", { range: "day" }));
+    expect(s.total).toBe(24);
+    expect(s.counts.devices).toBe(24);
+    expect(s.partial).toBe(false);
+  });
+});
+
 describe("events.summary on the fake eero server", () => {
   /** A busy week: one event every `stepMin` minutes for `days` days before FAKE_NOW. */
   function seedWeek(fake: FakeEero, stepMin: number, days: number) {
@@ -452,9 +508,9 @@ describe("events.summary on the fake eero server", () => {
     expect(s.total).toBe(expected);
     expect(s.counts.devices + s.counts.eero_status).toBe(expected);
     expect(s.partial).toBe(false);
-    // Stops once past the prior week's start (9 days of history: fewer pages than the whole log).
+    // 9 days of history: every page, then one that comes back empty (a short page is not the end).
     const reqs = eventRequests(fake);
-    expect(reqs.length).toBeLessThanOrEqual(Math.ceil(432 / 50));
+    expect(reqs.length).toBeLessThanOrEqual(Math.ceil(432 / 50) + 1);
     expect(reqs.length).toBeLessThanOrEqual(MAX_SUMMARY_PAGES);
     const stamps = reqs.map((e) => new URLSearchParams(e.query).get("timestamp"));
     expect(stamps[0]).toBeNull();

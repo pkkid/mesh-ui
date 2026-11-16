@@ -160,7 +160,7 @@ export function ActivityPage(_props: PageProps) {
             {older.loading && older.key === paramsKey ? "Loading older events..." : "Load older events"}
           </Button>
         ) : (
-          <span className="text-muted-foreground text-xs">Start of history. eero keeps about 7 days.</span>
+          <span className="text-muted-foreground text-xs">Start of history. eero only sends recent events; older ones are kept while Mesh UI is open.</span>
         )}
       </div>
     ) : null;

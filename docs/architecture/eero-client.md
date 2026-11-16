@@ -358,6 +358,15 @@ Pagination is rare. `events.list` and `notifications.list` take a `cursor`
 that wraps eero's `timestamp`; `eero.firmware.history` uses `limit` and
 `offset`. Every other list comes back whole.
 
+`app_events` does not really page: a real network sends only about its last
+15 minutes and ignores `timestamp` (capture 2026-11-16, #263). So a short
+page is not the end of history, and the events area
+(`src/core/eero/backend/events.ts`) keeps a log per network of every event it
+has read (merged by `hash`, which is stable across reads; up to 15 days and
+10,000 events). Cursor pages come from the log; when it runs out the area
+asks eero once with `timestamp`, and stops asking for that network once eero
+sends nothing older. The log lives in memory only.
+
 ## Lenient parsing
 
 List responses vary: a bare array, `{ data: [...] }`, or a named key
