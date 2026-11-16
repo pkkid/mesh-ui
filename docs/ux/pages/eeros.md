@@ -45,8 +45,9 @@ Sidebar count: number of eeros.
    toggle. Grid of cards, two per row. Each card:
    - Header: icon, name with a Gateway badge, "eero Max 7 · 192.168.4.1 · up
      23d 4h", status (Online, Weak link), **Blink light** button, or while blinking
-     an info-dot "Blinking · 24s" with **Stop**, and a chevron button to the
-     detail page.
+     an info-dot "Blinking · 24s" with **Stop**. The whole card opens the
+     detail page (a clickable card, see the design system); no chevron
+     button.
    - Body: a band table with columns Band (badge "2.4 GHz", "5 GHz", "6
      GHz"), Channel ("ch 149"), Width ("160 MHz"), Utilisation (meter in the
      band colour, warning colour and text at 65% or more, percent on the
@@ -96,7 +97,7 @@ Sidebar count: number of eeros.
 | Grid / List | - (view state) | - | No | Switches card layout |
 | Blink light | `eero.find {eero}` | write | No | LED flashes blue and white for 30 s; toast "Blinking Office"; the button reads "Blinking · 30s" counting down. The same label on eero detail and Troubleshooting; its `aria-label` names the eero ("Blink Office's light") |
 | Stop (while blinking) | not built: no stop call is known | - | - | Hidden; the countdown runs out |
-| Card chevron, card title | - | - | No | eero detail |
+| Card (click outside Blink light) | - | - | No | eero detail |
 | Day / Week (usage by eero) | - (re-queries `usage.get`) | - | No | Chart switches range |
 | Legend item | - (view state) | - | No | Hides or shows that eero's series |
 | Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog (the engine's `needs_confirm` message) | Progress toast "Restarting Maple Street" with "Back in about 2 to 3 minutes"; eeros show Updating; the eero and network queries refresh every 5 s until every restarted eero is back, then "Maple Street is back" |

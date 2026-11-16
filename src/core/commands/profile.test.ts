@@ -751,7 +751,7 @@ describe("scheduled pauses (fake eero server)", () => {
   it("adds with POST {profile}/schedules, JSON, days as Monday..Sunday, and the next read shows it", async () => {
     const { fake, engine } = start();
     await engine.execute("profile.get", { profile: "Alex" }); // cached; the write must invalidate it
-    const r = await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Alex", name: "Late night", days: ["SUN", "MON", "TUE"], start: "22:00", end: "06:30" });
+    const r = await engine.execute<M.Schedule>("profile.schedule.add", { profile: "Alex", name: "Late night", days: ["SUN", "MON", "TUE"], start: "22:00", end: "06:30", confirm: true }); // confirm: the window may cover the real clock
     expect(r).toMatchObject({ ok: true, result: { name: "Late night", days: ["MON", "TUE", "SUN"], start: "22:00", end: "06:30", enabled: true } });
     expect(fake.writes).toHaveLength(1);
     expect(fake.writes.at(-1)).toMatchObject({

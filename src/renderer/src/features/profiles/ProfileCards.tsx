@@ -19,7 +19,7 @@ import { affectedBy, execute, invalidate, type QueryState, useQuery } from "~/ap
 import { askInDialog, errorText, fieldErrors, useWrite } from "~/app/useWrite";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { Button } from "~/components/ui/button";
-import { Card, Empty, Section } from "~/components/ui/card";
+import { Card, CardLink, Empty, Section } from "~/components/ui/card";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton, SectionError, useGate } from "~/components/ui/page";
@@ -211,8 +211,8 @@ function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder,
   return (
     <Card
       padded
-      className={cn("flex cursor-pointer flex-col gap-3.5 transition-colors hover:bg-muted/30", p.paused && "border-muted-foreground/40", placeholder && "pointer-events-none")}
-      onClick={() => !placeholder && navigate(to)}
+      to={placeholder ? undefined : to}
+      className={cn("flex flex-col gap-3.5", p.paused && "border-muted-foreground/40 hover:border-muted-foreground/60", placeholder && "pointer-events-none")}
     >
       <div className="flex items-center gap-3">
         <Avatar name={placeholder ? "" : p.name} color={placeholder ? "var(--color-muted)" : color} />
@@ -220,9 +220,9 @@ function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder,
           {placeholder ? (
             <div className="font-medium text-[15px]">{MISSING}</div>
           ) : (
-            <Link to={to} className="block truncate font-medium text-[15px] outline-none focus-visible:underline" onClick={(e) => e.stopPropagation()}>
+            <CardLink to={to} className="block font-medium text-[15px]">
               {p.name}
-            </Link>
+            </CardLink>
           )}
           <div className="truncate text-muted-foreground text-xs">{placeholder ? MISSING : deviceLine(p)}</div>
         </div>
@@ -244,7 +244,7 @@ function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder,
           ariaLabel={`Data used by ${p.name} per hour today`}
         />
       </div>
-      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+      <div data-card-ignore className="flex gap-2">
         <div className="min-w-0 flex-1 [&>span]:flex">{!placeholder && <PauseButton profile={p} />}</div>
         {!placeholder && <ProfileMenu profile={p} onRename={onRename} onSchedule={onSchedule} />}
       </div>
