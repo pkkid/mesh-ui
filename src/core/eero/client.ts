@@ -75,9 +75,17 @@ export type RequestLogEntry = {
   status: number | null;
   eeroError: string | null;
   ms: number;
-  outcome: "ok" | "retry" | "refresh" | "error";
+  outcome: "ok" | "retry" | "refresh" | "error" | "note";
   code?: BackendErrorCode;
   message?: string;
+  /**
+   * Live rates diagnostics (#254), counts and seconds only: on a burst, when
+   * eero's `next_burst` falls and when the figures are due, from the POST; on
+   * a device read, seconds from the due time, connected devices, devices with
+   * a non-zero rate, devices whose rate changed since the last read, and
+   * whether the read was held (taken as the live figures).
+   */
+  rates?: { nextBurstSec?: number | null; dueSec?: number; sinceDueSec?: number; connected?: number; nonZero?: number; changed?: number; held?: boolean };
 };
 
 export type EeroClientOptions = {
@@ -650,6 +658,11 @@ export class EeroClient {
       if (this.token === null) this.token = saved;
     })();
     return this.loaded;
+  }
+
+  /** A diagnostics line in the request log, with no request behind it (live rates, #254). */
+  note(method: RequestSpec["method"], path: string, rates: NonNullable<RequestLogEntry["rates"]>): void {
+    this.onLog?.({ method, path: redactPath(path), status: null, eeroError: null, ms: 0, outcome: "note", rates });
   }
 
   private log(spec: RequestSpec, status: number | null, eeroError: string | null, started: number, outcome: RequestLogEntry["outcome"], err?: unknown): void {

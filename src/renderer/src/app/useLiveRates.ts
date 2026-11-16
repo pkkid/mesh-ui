@@ -4,7 +4,10 @@
  * `active`, it asks for `device.rates.refresh` every `POLL.rates` seconds
  * and, once the burst has settled, refetches `device.list` and `device.get`
  * every few seconds while eero keeps the burst's figures live
- * (`burstReadTimes`), like the eero app's live view (#254).
+ * (`burstReadTimes`), like the eero app's live view (#254). eero queues a
+ * burst asked for while its last one is still running (its `next_burst` then
+ * moves later each minute), so the next ask waits until the last burst's
+ * live window is over, and is never sooner than `POLL.rates`.
  * Core keeps bursts to one a minute per network, so views that run at the
  * same time share that one burst instead of doubling it.
  *
@@ -15,7 +18,7 @@ import { useEffect } from "react";
 
 import { invalidate, useCommand } from "~/app/useCommand";
 import type { BurstResult } from "../../../core/model";
-import { burstReadTimes, POLL } from "../../../core/poll";
+import { BURST_LIVE_SEC, burstReadTimes, POLL } from "../../../core/poll";
 
 export function useLiveRates(active: boolean, key = ""): void {
   const { run } = useCommand<Record<string, never>, BurstResult>("device.rates.refresh");
@@ -25,6 +28,7 @@ export function useLiveRates(active: boolean, key = ""): void {
     let next: ReturnType<typeof setTimeout> | undefined;
     let reads: ReturnType<typeof setTimeout>[] = [];
     const tick = async () => {
+      let wait = POLL.rates * 1000;
       if (document.visibilityState === "visible") {
         const res = await run({});
         if (cancelled) return;
@@ -33,11 +37,12 @@ export function useLiveRates(active: boolean, key = ""): void {
           for (const t of reads) clearTimeout(t);
           reads = burstReadTimes(due)
             .map((at) => at - Date.now())
-            .filter((wait) => wait > 0)
-            .map((wait) => setTimeout(() => invalidate(["device.list", "device.get"]), wait));
+            .filter((ms) => ms > 0)
+            .map((ms) => setTimeout(() => invalidate(["device.list", "device.get"]), ms));
+          wait = Math.max(wait, due + (BURST_LIVE_SEC + 1) * 1000 - Date.now());
         }
       }
-      if (!cancelled) next = setTimeout(tick, POLL.rates * 1000);
+      if (!cancelled) next = setTimeout(tick, wait);
     };
     void tick();
     return () => {

@@ -287,7 +287,9 @@ only after a burst:
    share the cache. The cache keeps every pending mark per topic, so a read
    is capped at the first mark after it.
 3. The eero backend takes `usage` as read inside the live window and
-   remembers it per device. A read after the window (the regular device
+   remembers it per device. A read in the window where every device is at
+   zero (figures not in yet, or already decayed) is not taken. A read after
+   the window (the regular device
    poll, a write) shows those last live figures, not eero's decayed ones,
    so an idle minute never reads as zeros (#254). `rates` are stamped with
    the burst's time; rates older than 90 s become `null`, which the UI
@@ -301,7 +303,10 @@ only after a burst:
 Pages that show "Now" figures (Devices, Device detail, Internet "Using the
 most right now", eero detail) call `device.rates.refresh` once a minute
 while visible and read `device.list` and `device.get` again at each of
-`burstReadTimes` (`useLiveRates`), so the figures move a few times a minute. Sparklines of recent rates are
+`burstReadTimes` (`useLiveRates`), so the figures move a few times a minute.
+eero queues a burst asked for while its last one is still running (its
+`next_burst` then moves later every minute, seen up to 40 s), so the next
+ask waits until the last burst's live window is over. Sparklines of recent rates are
 built by the renderer from the last 30 samples it has seen; nothing is
 stored, and there is no history to load.
 
