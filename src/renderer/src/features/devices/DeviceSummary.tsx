@@ -46,7 +46,6 @@ export function DeviceSummary({ summary: s, devices, eeroName, ratesPending, fad
       <Cell className={cn("flex items-start gap-4", fading && "opacity-40")}>
         <Donut
           size={96}
-          thickness={13}
           ariaLabel="Devices by type"
           format={(v) => `${formatCount(v)} ${v === 1 ? "device" : "devices"}`}
           active={active}

@@ -24,7 +24,6 @@ export function ClientsByBand({ summary, fading = false }: { summary: DeviceSumm
       <Card padded className={cn("flex items-center gap-6 transition-opacity", fading && "opacity-40")}>
         <Donut
           size={120}
-          thickness={13}
           ariaLabel="Connected clients by band"
           active={active}
           onActiveChange={setActive}

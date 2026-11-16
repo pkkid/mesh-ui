@@ -16,6 +16,9 @@ import { cn } from "~/lib/utils";
 import type { ShareSegment } from "./ShareBar";
 import { fadeClass, FloatingTooltip } from "./Tooltip";
 
+/** Ring thickness as a share of the size, so every donut has the same weight (13px at 96px). */
+export const DONUT_THICKNESS = 0.135;
+
 /** Room kept between the centre content and the inside of the ring, in px. */
 const CENTRE_PADDING = 8;
 
@@ -23,7 +26,7 @@ export function Donut({
   segments,
   ariaLabel,
   size = 132,
-  thickness = 14,
+  thickness: thicknessProp,
   gap = 3,
   format,
   active,
@@ -35,6 +38,7 @@ export function Donut({
   segments: ReadonlyArray<ShareSegment>;
   ariaLabel: string;
   size?: number;
+  /** Ring width in px. Leave it out: the default keeps every donut the same weight. */
   thickness?: number;
   /** Gap between segments along the ring, in px. */
   gap?: number;
@@ -51,6 +55,7 @@ export function Donut({
 }) {
   const [ownActive, setOwnActive] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  const thickness = thicknessProp ?? Math.round(size * DONUT_THICKNESS);
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
   const visible = segments.filter((s) => Number.isFinite(s.value) && s.value > 0);
@@ -122,7 +127,7 @@ export function Donut({
         <div className="flex min-w-0 flex-col items-center overflow-hidden" style={{ maxWidth: hole }}>
           {current !== undefined ? (
             <>
-              <span className={cn("max-w-full truncate tabular-nums", hole >= 84 ? "font-semibold text-xl" : "font-medium text-base leading-tight")}>
+              <span className={cn("max-w-full truncate tabular-nums", hole >= 72 ? "font-semibold text-xl" : "font-medium text-base leading-tight")}>
                 {formatCount(current.value)}
               </span>
               <span className="text-3xs text-muted-foreground tabular-nums">{formatPercent((current.value / total) * 100)}</span>
