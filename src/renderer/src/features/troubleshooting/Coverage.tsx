@@ -200,7 +200,7 @@ export function UpgradeReportCard({ eeros }: { eeros: Eero[] | undefined }) {
             <Empty>No wireless devices to report on.</Empty>
           ) : (
             <div className="flex flex-wrap items-center gap-5">
-              <Donut segments={segments} ariaLabel={`Devices by Wi-Fi generation, ${total} in all`} size={112} thickness={12} loading={!report} format={(v) => `${formatCount(v)} ${v === 1 ? "device" : "devices"}`} active={active} onActiveChange={setActive}>
+              <Donut segments={segments} ariaLabel={`Devices by Wi-Fi generation, ${total} in all`} size={112} loading={!report} format={(v) => `${formatCount(v)} ${v === 1 ? "device" : "devices"}`} active={active} onActiveChange={setActive}>
                 <span className="font-semibold text-xl tabular-nums">{report ? formatCount(total) : MISSING}</span>
                 <span className="text-2xs text-muted-foreground">devices</span>
               </Donut>
