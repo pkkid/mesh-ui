@@ -14,7 +14,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { createPortal } from "react-dom";
 
 import { Link, useLocation } from "~/app/router";
-import { refreshAll, useRefresh } from "~/app/useCommand";
+import { refreshAll, useRefresh, useUpdating } from "~/app/useCommand";
 import { routeById } from "~/app/routes";
 import { Bell } from "~/features/notifications/Bell";
 import { openPalette } from "~/features/palette/CommandPalette";
@@ -112,12 +112,19 @@ export function TopBar() {
 }
 
 /**
- * Refetches every query on screen, skipping the engine cache. The icon spins
- * while it runs and clicks meanwhile are ignored. Main sends the same request
- * for Ctrl+R / Cmd+R and F5 (`window.mesh.onRefresh`) instead of reloading.
+ * Refetches every query on screen, skipping the engine cache. Clicks while it
+ * runs are ignored. Main sends the same request for Ctrl+R / Cmd+R and F5
+ * (`window.mesh.onRefresh`) instead of reloading.
+ *
+ * It is also the app's only "updating" cue: the icon spins while a refresh
+ * runs or any background refetch (a poll, a re-read after a write) has taken
+ * longer than 150 ms, so sections never dim for them. With reduced motion it
+ * does not spin; it turns foreground-coloured instead.
  */
 function RefreshButton({ isMac }: { isMac: boolean }) {
   const { refreshing, refresh } = useRefresh();
+  const updating = useUpdating();
+  const busy = refreshing || updating;
   useEffect(() => {
     const mesh = (window as { mesh?: { onRefresh?: (l: () => void) => () => void } }).mesh;
     return typeof mesh?.onRefresh === "function" ? mesh.onRefresh(() => void refreshAll()) : undefined;
@@ -128,12 +135,12 @@ function RefreshButton({ isMac }: { isMac: boolean }) {
       type="button"
       onClick={() => void refresh()}
       disabled={refreshing}
-      aria-busy={refreshing}
-      title={title}
+      aria-busy={busy}
+      title={busy ? "Updating..." : title}
       aria-label="Refresh"
       className={cn(iconButton, "disabled:cursor-default disabled:hover:bg-transparent")}
     >
-      <RefreshCw className={cn(refreshing && "animate-spin")} />
+      <RefreshCw className={cn(busy && "motion-safe:animate-spin motion-reduce:text-foreground")} />
     </button>
   );
 }

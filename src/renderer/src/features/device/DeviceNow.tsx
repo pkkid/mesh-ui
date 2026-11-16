@@ -16,7 +16,7 @@ import type { Device } from "../../../../core/model";
 
 export function DeviceNow({ device: d, muted = false }: { device: Device; muted?: boolean }) {
   const online = d.connected && !d.blocked;
-  const pending = useLiveRates(online && !d.paused);
+  useLiveRates(online && !d.paused);
   const live = online && !d.paused && d.rates;
 
   let note = "Current rates while the device is active";
@@ -33,7 +33,7 @@ export function DeviceNow({ device: d, muted = false }: { device: Device; muted?
         </span>
         <span className="text-3xs text-muted-foreground">refreshes every minute</span>
       </div>
-      <div className={cn("mt-2.5 flex gap-6 transition-opacity", pending && "opacity-40")}>
+      <div className="mt-2.5 flex gap-6">
         <Rate icon={<ArrowDown className="size-[13px]" style={{ color: seriesColors.download }} />} label="Download" mbps={live ? d.rates?.downMbps : null} />
         <Rate icon={<ArrowUp className="size-[13px]" style={{ color: seriesColors.upload }} />} label="Upload" mbps={live ? d.rates?.upMbps : null} />
       </div>

@@ -115,8 +115,9 @@ Wi-Fi**. Sidebar count: all known devices (38).
 ## States
 
 - **Loading.** Hero figures and cells with `-`; toolbar and Filters popover render
-  with counts `-`; table shows blank rows at normal height. On refresh, the "Now" column
-  fades to 40% while a burst is pending (about 12 s).
+  with counts `-`; table shows blank rows at normal height. While a rates burst
+  is pending (about 12 s) the "Now" column keeps its last figures at full
+  strength; the refetch after it shows on the topbar Refresh icon.
 - **Empty.** A filter with no matches: one muted sentence in the table body,
   "No devices match these filters." with **Reset filters**. A network with no
   devices: "No devices have joined Maple Street yet." Groups with no

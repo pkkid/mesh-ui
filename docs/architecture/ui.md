@@ -129,7 +129,10 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
 - **`useQuery(id, params, opts)`** caches by `id + params` (key order does
   not matter), dedupes concurrent calls, keeps the previous data while
   refetching, and returns `{ data, error, loading, fetchedAt, fading,
-  refetch }`. `fading` turns on after a request has been in flight 150 ms.
+  refetch }`. `fading` turns on after a first load (no data yet for that id
+  and params) has been in flight 150 ms; a refetch with data on screen never
+  sets it. Those background refetches count toward `useUpdating()`, true
+  once any has run 150 ms, which spins the topbar Refresh icon.
   `refetch({ fresh: true })` skips the engine cache and resolves with the
   new snapshot (Check for updates, Run again).
   `poll: true` refetches on the interval the registry reports for that
@@ -295,8 +298,11 @@ turns into a confirm in place.
 
 ## States every page handles
 
-- **Loading**: keep the layout; fade figures to `opacity-40` after 150 ms. No
-  spinners in content (a spinner only inside a button that is running).
+- **Loading**: keep the layout; on a first load fade placeholders to
+  `opacity-40` after 150 ms (`fading`). A background refresh with data on
+  screen does not dim it; the topbar Refresh icon spins instead
+  (`useUpdating`, no spin with reduced motion). No spinners in content (a
+  spinner only inside a button that is running).
 - **Empty**: one centred muted sentence ("No devices are paused.").
 - **Error**: inline message with Retry; the rest of the page stays usable.
 - **Offline** (`network_error`): a slim notice under the top bar, "Can't

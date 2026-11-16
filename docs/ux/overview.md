@@ -133,7 +133,7 @@ Left to right (mockup `.topbar`):
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
 | Page actions | Small buttons a page puts in the topbar slot: Share Wi-Fi (Devices), Prev and Next (Device detail), Add a profile (Profiles), Rename (Profile detail) | Optional per page. |
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
-| Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
+| Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
 | Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The theme itself (Gruvbox Hard by default; also Classic, Rose, Grove, Ocean, Ember, Iris) is picked in App & account. Stored in renderer `localStorage`, not a command. |
 | Window controls | Minimise, maximise, close | Windows and Linux only. |
@@ -420,9 +420,13 @@ From the chart rules in `AGENTS.md`, applied to every page.
 - **First load.** Keep the layout. Sections render with their headers and
   placeholder content: unlabelled gridlines for charts, empty rows at normal
   height for lists, `-` for figures. No spinners on pages.
-- **Refresh.** Keep showing the last data. If a refresh takes longer than
-  150 ms, fade the affected figures to `opacity-40` until it lands. Only
-  opacity transitions, no load animations.
+- **Refresh.** Keep showing the last data, at full strength, until the new
+  data lands; sections never dim for a background refresh. If any refresh
+  takes longer than 150 ms, the topbar Refresh icon spins until the last one
+  lands (with reduced motion it stays still and turns foreground-coloured).
+  A switch the person makes to data not loaded yet (Day/Week, a filter)
+  fades the affected figures to `opacity-40` after 150 ms. Only opacity
+  transitions, no load animations.
 - **Empty.** One centred muted sentence in the section body that says what
   is missing and, when there is one, a single action ("No activity in this
   window.", "No pauses today", "No devices in this profile yet. Add a

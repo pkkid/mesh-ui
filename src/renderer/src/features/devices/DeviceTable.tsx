@@ -152,8 +152,6 @@ type DeviceTableProps = {
   /** Bytes used in the last 24 hours per device id, from `usage.breakdown` range day. */
   usage: ReadonlyMap<string, number> | undefined;
   newIds: ReadonlySet<string>;
-  /** A rates burst is pending: fade the Now column. */
-  ratesPending: boolean;
   fading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -397,7 +395,7 @@ type RowProps = DeviceTableProps & {
 };
 
 function Row(props: RowProps) {
-  const { device: d, show, eeroName, profiles, usage, newIds, ratesPending, isSelected, onPick, renaming, onRename } = props;
+  const { device: d, show, eeroName, profiles, usage, newIds, isSelected, onPick, renaming, onRename } = props;
   const state = deviceState(d);
   const off = state === "offline" || state === "blocked";
   const profile = d.profileId ? profiles.get(d.profileId) : undefined;
@@ -483,7 +481,7 @@ function Row(props: RowProps) {
         </td>
       )}
       {show("now") && (
-        <td className={cn(td, "whitespace-nowrap transition-opacity", ratesPending && "opacity-40")}>
+        <td className={cn(td, "whitespace-nowrap")}>
           <NowCell device={d} />
         </td>
       )}

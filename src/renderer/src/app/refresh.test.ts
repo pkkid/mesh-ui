@@ -10,7 +10,7 @@ import { composeBackend } from "../../../core/backend";
 import { createEngine } from "../../../core/engine";
 import type { ExecuteOptions } from "../../../core/engine";
 import { defineCommand } from "../../../core/spec";
-import { isRefreshing, mountQuery, refreshAll, resetRegistry } from "./useCommand";
+import { isRefreshing, isUpdating, mountQuery, refreshAll, resetRegistry } from "./useCommand";
 
 function setup() {
   const runs: Record<string, number> = {};
@@ -119,5 +119,27 @@ describe("refreshAll", () => {
     await refreshAll();
     expect(t.sent).toEqual([{ id: "rf.unknown", options: { fresh: true } }]);
     expect(isRefreshing()).toBe(false);
+  });
+});
+
+describe("isUpdating (the topbar's background-refresh cue)", () => {
+  it("stays off for a first load and is on while a query refetches with data on screen", async () => {
+    const t = setup();
+    offs.push(mountQuery("rf.devices", { q: "upd" }));
+    // First load: nothing on screen yet, so sections show placeholders and the cue stays off.
+    t.holdReads();
+    const first = refreshAll();
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    expect(isUpdating()).toBe(false);
+    t.releaseRead();
+    await first;
+    // A refetch with data on screen: the data stays and the cue turns on until it lands.
+    t.holdReads();
+    const second = refreshAll();
+    await vi.waitFor(() => expect(t.sent).toHaveLength(2));
+    expect(isUpdating()).toBe(true);
+    t.releaseRead();
+    await second;
+    expect(isUpdating()).toBe(false);
   });
 });

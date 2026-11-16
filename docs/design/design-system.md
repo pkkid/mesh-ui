@@ -363,8 +363,11 @@ toggle switches appearance). Headless: `pnpm ui:shot --fake --route
   make sense.
 - **Ranges.** Usage charts offer Day and Week only (free accounts keep about 7
   days). The toggle sits in the section header.
-- **Loading and empty.** Keep the layout; fade figures to `opacity-40` after a
-  150ms delay. Unlabelled placeholder gridlines while there is no data. An
+- **Loading and empty.** Keep the layout. On a first load, or a switch to a
+  range or filter not loaded yet, fade figures to `opacity-40` after a 150ms
+  delay, with unlabelled placeholder gridlines while there is no data. A
+  background refresh never dims data already on screen; the topbar Refresh
+  icon spins instead (static and foreground-coloured with reduced motion). An
   empty range shows one centred muted sentence ("No activity in this window.").
 - **Accessible.** `role="img"` and an `aria-label` saying what it shows.
 - **No load animations.** Only opacity transitions; charts re-render cheaply
