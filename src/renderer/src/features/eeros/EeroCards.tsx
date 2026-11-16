@@ -9,7 +9,7 @@ import { ChevronRight, Lightbulb } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { pathFor } from "~/app/router";
-import { eeroIcon } from "~/components/mesh/Topology";
+import { eeroIcon } from "~/lib/deviceIcons";
 import { RadioTable, wirelessRadios } from "~/components/mesh/RadioTable";
 import { Badge } from "~/components/ui/badge";
 import { BandBadge } from "~/components/ui/band-badge";

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
-import { eeroIcon } from "~/components/mesh/Topology";
+import { eeroIcon } from "~/lib/deviceIcons";
 import { Badge } from "~/components/ui/badge";
 import { IconTile } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";

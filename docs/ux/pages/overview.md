@@ -46,8 +46,8 @@ actions.
    - Main chart: download and upload per hour, line plus soft area, hover
      tooltip with a Total row.
 3. Two columns:
-   - **eeros**. Header link "Topology →". One row per eero: icon (router, or
-     lamp for a Beacon) and three lines: the name followed by a Gateway badge;
+   - **eeros**. Header link "Topology →". One row per eero: icon (the eero
+     product glyph from `eeroIcon`) and three lines: the name followed by a Gateway badge;
      model · backhaul type; status (Online, Weak link, Offline), mesh bars for
      wireless, device count. A 24 h usage sparkline in that eero's series
      colour sits right of lines 2 and 3 (never beside the name), the same

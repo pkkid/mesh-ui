@@ -6,7 +6,7 @@
 import { Badge } from "~/components/ui/badge";
 import { Metric, PageHeader } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
-import { eeroIcon } from "~/components/mesh/Topology";
+import { eeroIcon } from "~/lib/deviceIcons";
 import { useBlinking } from "~/features/eeros/EeroCards";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount, formatDuration, formatPercent } from "../../../../core/format";
@@ -84,9 +84,9 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
 
 const LED_LABEL = { on: "Status light on", dim: "Status light dimmed", off: "Status light off", unknown: "Status light unknown", blink: "Status light blinking" } as const;
 
-/** A 150px rounded square with the router or lamp glyph and an LED bar at the top that mirrors the LED. */
+/** A 150px rounded square with the eero product glyph and an LED bar at the top that mirrors the LED. */
 function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean }) {
-  const Icon = eeroIcon({ model: eero?.model ?? null });
+  const Icon = eeroIcon(eero);
   const blinking = useBlinking(eero?.id) !== null;
   const led = blinking ? "blink" : ledState(eero, offline);
   return (
