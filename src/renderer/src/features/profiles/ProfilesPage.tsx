@@ -62,7 +62,7 @@ export function ProfilesPage(_props: PageProps) {
   return (
     <>
       <TopBarActions>
-        <GatedButton gate={createGate} size="sm" onClick={() => setAdding(true)}>
+        <GatedButton gate={createGate} size="sm" variant="outline" onClick={() => setAdding(true)}>
           <Plus />
           Add a profile
         </GatedButton>

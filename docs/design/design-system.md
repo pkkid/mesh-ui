@@ -238,6 +238,13 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Signal bars | Four bars; one bar red, two yellow, three or four in text colour |
 | Settings rows | Card with rows split by 1px borders: title, muted description, value or control on the right, chevron if it opens something |
 | Note | Bordered inset box with an icon in the status colour and body text in normal colour, for real warnings |
+
+**Buttons.** Primary (filled) is only for the one main action of a hero
+(Run speed test, Pause in the device hero) and for the submit button of a
+sheet, dialog or form (Save, Create, Send), plus Install update and the
+sign-in flow. Everything in section headers, the topbar and toolbars is
+`outline` or `ghost` (Add a reservation, Add port forward, Add a profile,
+Run again). This follows the restrained colour rule: buttons are neutral.
 | Key-value list | `kv-list.tsx`. Two columns, muted keys, `tabular-nums` values; IPs, MACs and serials in mono with a small copy button |
 | Band badge | `band-badge.tsx`. The neutral Badge box with "2.4 GHz", "5 GHz", "6 GHz" or a cable icon and "Wired". Never coloured: band colours are for chart series |
 | Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), or the series colour via `color` for a series share (download and upload plan meters), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
