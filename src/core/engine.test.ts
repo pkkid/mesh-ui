@@ -8,7 +8,7 @@ import { commands as deviceCommands } from "./commands/device";
 import { createEngine, fileSettings, memorySettings } from "./engine";
 import { BackendError } from "./errors";
 import type { Device, HostEvent, NetworkSummary } from "./model";
-import { BURST_COOLDOWN_SEC, BURST_SETTLE_SEC, WRITE_SETTLE_SEC } from "./poll";
+import { BURST_COOLDOWN_SEC, BURST_READ_EVERY_SEC, BURST_SETTLE_SEC, burstReadTimes, WRITE_SETTLE_SEC } from "./poll";
 import { createRegistry } from "./registry";
 import { type AnyCommand, defineCommand, ref } from "./spec";
 
@@ -408,6 +408,21 @@ describe("cache", () => {
     t += 2;
     await engine.execute("test.devices");
     expect(calls.devices).toBe(2);
+    // Through the burst's live window each read time makes devices stale again (#254), then the normal TTL holds.
+    const due = Date.parse("2026-11-12T00:00:12Z");
+    const marks = burstReadTimes(due).slice(1);
+    expect(marks.length).toBeGreaterThan(0);
+    for (const [i, at] of marks.entries()) {
+      t = at - 1;
+      await engine.execute("test.devices");
+      expect(calls.devices).toBe(2 + i);
+      t = at + 1;
+      await engine.execute("test.devices");
+      expect(calls.devices).toBe(3 + i);
+    }
+    t += BURST_READ_EVERY_SEC * 1000;
+    await engine.execute("test.devices");
+    expect(calls.devices).toBe(2 + marks.length);
     // Another network has its own minute; this one bursts again after BURST_COOLDOWN_SEC.
     await engine.execute("device.rates.refresh", { networkId: "n2" });
     expect(calls.bursts).toBe(2);

@@ -2,7 +2,10 @@
  * Fake device routes: `GET {net}/devices`, `GET {net}/devices/:mac`,
  * `GET {net}/blacklist` and `POST {net}/burst_reporters`. A burst sets live
  * `usage` on connected, unpaused devices and answers `next_burst` 12 s
- * ahead. Writes (M4.4): `PUT {net}/devices/:mac` JSON `{paused, nickname,
+ * ahead. As on a real network (eero-api, live-verified 2026-10-20) the
+ * figures are live for a short window after `next_burst`: reads in it see
+ * them move (10 percent more every 4 s), and reads after it see them decayed
+ * to zero. Writes (M4.4): `PUT {net}/devices/:mac` JSON `{paused, nickname,
  * device_type, profile{url}}` saves only on `/2.3/`; on `/2.2/` it answers
  * 200 with the device unchanged, as eero does. `POST {net}/blacklist` form
  * `mac` blocks, `DELETE {net}/blacklist/:mac` unblocks. See
@@ -15,6 +18,21 @@ import type { FakeNetwork } from "../state";
 
 const compact = (mac: string) => mac.toLowerCase().replace(/[^0-9a-f]/g, "");
 const BURST_LEAD_MS = 12_000;
+/** How long after `next_burst` the fake's usage stays live before it decays to zero. */
+const BURST_DECAY_MS = 18_000;
+
+/** When each network's last burst was due, epoch ms. */
+const burstDue = new WeakMap<FakeNetwork, number>();
+
+/** A device row as a read at `now` sees its usage: moving inside the live window, zero after it. */
+function live(net: FakeNetwork, d: RawDevice, now: number): RawDevice {
+  const due = burstDue.get(net);
+  if (due === undefined || now < due || !d.usage) return d;
+  if (now > due + BURST_DECAY_MS) return { ...d, usage: { down_mbps: 0, up_mbps: 0 } };
+  const f = 1 + 0.1 * Math.floor((now - due) / 4000);
+  const r = (n: number | undefined) => Math.round((n ?? 0) * f * 1000) / 1000;
+  return { ...d, usage: { down_mbps: r(d.usage.down_mbps), up_mbps: r(d.usage.up_mbps) } };
+}
 
 /** Bursts per network id, for tests: `state.extra.bursts`. */
 export type BurstLog = Record<string, number>;
@@ -34,20 +52,22 @@ export const routes: Route[] = [
   {
     method: "GET",
     path: "/networks/:net/devices",
-    handle: ({ params, network }) => {
+    handle: ({ params, network, state }) => {
       const net = network(params.net ?? "");
       // Profile members offline a while are only in their profile's `devices[]`, as on a real network.
-      return ok(net.devices.filter((d) => !net.unlisted.includes(d.url ?? "")).map((d) => (blocked(net, d) ? { ...d, blocked: true, connected: false } : d)));
+      return ok(
+        net.devices.filter((d) => !net.unlisted.includes(d.url ?? "")).map((d) => (blocked(net, d) ? { ...d, blocked: true, connected: false } : live(net, d, state.now()))),
+      );
     },
   },
   {
     method: "GET",
     path: "/networks/:net/devices/:mac",
-    handle: ({ params, network }) => {
+    handle: ({ params, network, state }) => {
       const net = network(params.net ?? "");
       const d = net.devices.find((x) => compact(x.mac ?? "") === compact(params.mac ?? ""));
       if (!d) return fail(404, "error.device.not.found");
-      return ok(blocked(net, d) ? { ...d, blocked: true, connected: false } : d);
+      return ok(blocked(net, d) ? { ...d, blocked: true, connected: false } : live(net, d, state.now()));
     },
   },
   {
@@ -126,6 +146,7 @@ export const routes: Route[] = [
       net.devices.forEach((d, i) => {
         d.usage = d.connected && !d.paused && !blocked(net, d) ? { down_mbps: 10 + i * 5.5, up_mbps: 1 + i * 0.5 } : null;
       });
+      burstDue.set(net, state.now() + BURST_LEAD_MS);
       return ok({ next_burst: new Date(state.now() + BURST_LEAD_MS).toISOString() });
     },
   },

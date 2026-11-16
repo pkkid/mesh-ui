@@ -60,7 +60,9 @@ Wi-Fi**. Sidebar count: all known devices (38).
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Now down / up
-   (two small numbers; "Paused" or last-seen text when not live), 24h
+   (two small rates with their unit, "4.2 Mbps" or "320 kbps", and the
+   device's share of current traffic, "12%", as in the eero app's live
+   view; "Paused" or last-seen text when not live), 24h
    (data used in the last 24 hours, `usage.breakdown` range day), Status (Online, Paused, Offline, Blocked), and a row menu (`...`).
    - Every column header except the checkbox and the row menu sorts the
      table (`device.list` `sort` and `order`). The default is Device, A to
@@ -125,7 +127,8 @@ Wi-Fi**. Sidebar count: all known devices (38).
 - **Loading.** Hero figures and cells with `-`; toolbar and Filters popover render
   with counts `-`; table shows blank rows at normal height. While a rates burst
   is pending (about 12 s) the "Now" column keeps its last figures at full
-  strength; the refetch after it shows on the topbar Refresh icon.
+  strength; the refetches after it (every 4 s while eero keeps the burst
+  live) show on the topbar Refresh icon.
 - **Empty.** A filter with no matches: one muted sentence in the table body,
   "No devices match these filters." with **Reset filters**. A network with no
   devices: "No devices have joined Maple Street yet." Groups with no
@@ -174,8 +177,11 @@ from the gates.
   ("List paused devices") share one implementation. Grouping and columns are
   view state.
 - Live rates: `device.rates.refresh` (`POST {net}/burst_reporters`) is
-  allowed once a minute per network; rates are fresh about 12 s later. The
-  engine owns the timer and shares it with other live views.
+  allowed once a minute per network; rates are fresh about 12 s later and
+  stay live for a few seconds, during which the page reads devices every
+  4 s. Later reads keep those last live figures (#254). The engine owns the
+  timer and shares it with other live views. Rates below 1 Mbps show in
+  kbps, so a trickle never reads as 0.
 - Device writes go to `/2.3/`; `/2.2/` returns 200 without saving.
 - Category groups come from eero's `device_type`, mapped in core to five
   categories (Phones & tablets, Computers, Entertainment, Smart home, Other)

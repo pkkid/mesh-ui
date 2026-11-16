@@ -13,7 +13,7 @@ import { IconTile } from "~/components/ui/hero";
 import { entityColor, seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
-import { formatCount, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
+import { formatCount, formatMbps, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
 import type { Device, DeviceCategory, DeviceSummary as Summary } from "../../../../core/model";
 
 import { CATEGORIES, CATEGORY_LABELS } from "./DeviceFilters";
@@ -101,7 +101,7 @@ export function DeviceSummary({ summary: s, devices, eeroName, fading }: DeviceS
           <div className="mt-1 text-muted-foreground text-xs">
             {s?.rates ? (
               <>
-                <span className="font-medium text-foreground/80 tabular-nums">{mbpsParts(s.rates.upMbps).value} Mbps</span> up ·{" "}
+                <span className="font-medium text-foreground/80 tabular-nums">{formatMbps(s.rates.upMbps)}</span> up ·{" "}
                 {s.rates.active} {s.rates.active === 1 ? "device" : "devices"} active
               </>
             ) : (

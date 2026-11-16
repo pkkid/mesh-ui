@@ -17,7 +17,7 @@ import { createFakeEero, type FakeEero } from "../../../test/fake-eero/server";
 import type { SecretStore } from "../backend";
 import { createEngine, type Engine } from "../engine";
 import type { NetworkSettings } from "../model";
-import { POLL, TTL } from "../poll";
+import { burstReadTimes, POLL, TTL } from "../poll";
 import { allCommands } from "../registry";
 import { createEeroBackend } from "./backend";
 import { RateLimiter } from "./ratelimit";
@@ -119,6 +119,14 @@ async function stay(page: Poll[]): Promise<number[]> {
     s.clock.advance(60);
     const before = s.fake.log.length;
     for (const { poll, sec } of due.values()) if ((minute * 60) % sec === 0) await run(poll);
+    // While a burst is live the renderer reads devices again every few seconds (useLiveRates, #254). Other
+    // device.list views on the page share those GETs in the client's 5 s read share, so one fresh read each.
+    if (due.has(key(["device.rates.refresh"]))) {
+      for (const _ of burstReadTimes(0)) {
+        const r = await s.engine.execute("device.list", {}, { fresh: true });
+        if (!r.ok) throw new Error(`device.list: ${r.error.code} ${r.error.message}`);
+      }
+    }
     perMinute.push(s.fake.log.length - before);
   }
   return perMinute;

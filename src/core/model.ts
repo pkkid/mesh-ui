@@ -345,7 +345,13 @@ export type UpgradeReport = {
 
 export type DeviceCategory = "phones_tablets" | "computers" | "entertainment" | "smart_home" | "other";
 
-export type DeviceRates = { downMbps: number; upMbps: number; at: Iso };
+export type DeviceRates = {
+  downMbps: number;
+  upMbps: number;
+  at: Iso;
+  /** device.list only: this device's share of the network's current traffic (down plus up), 0 to 100; absent when nothing is moving. */
+  sharePct?: number;
+};
 
 export type Device = {
   /** MAC without colons. */

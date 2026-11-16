@@ -18,13 +18,22 @@ function round(n: number, decimalsBelow: number): string {
 
 export type Parts = { value: string; unit: string };
 
-/** A rate in Mbps split into value and unit, e.g. { value: "186", unit: "Mbps" }. */
+/**
+ * A rate in Mbps split into value and unit, e.g. { value: "186", unit: "Mbps" }.
+ * Below 1 Mbps it scales to kbps ("320 kbps", "4.2 kbps"), so a trickle never
+ * reads as zero; only a real zero shows "0 Mbps".
+ */
 export function mbpsParts(mbps: Num): Parts {
   if (!isNum(mbps)) return { value: MISSING, unit: "" };
+  const kbps = mbps * 1000;
+  if (mbps !== 0 && Math.abs(kbps) < 999.5) {
+    if (Math.abs(kbps) < 0.05) return { value: "<0.1", unit: "kbps" };
+    return { value: round(kbps, 10), unit: "kbps" };
+  }
   return { value: round(mbps, 10), unit: "Mbps" };
 }
 
-/** "186 Mbps", "4.2 Mbps", "2,500 Mbps", "-". */
+/** "186 Mbps", "4.2 Mbps", "2,500 Mbps", "320 kbps", "0 Mbps", "-". */
 export function formatMbps(mbps: Num): string {
   const p = mbpsParts(mbps);
   return p.unit ? `${p.value} ${p.unit}` : p.value;

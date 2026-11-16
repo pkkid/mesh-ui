@@ -190,7 +190,7 @@ No factory-reset endpoint was found in any client. Closest are `DELETE {eero}` a
 | GET | `{net}/blacklist` (`resources.device_blacklist`) | - | `[device]` blocked devices | R | FF, LD, ES | |
 | POST | `{net}/blacklist` | **form** `mac=aa:bb:...` | - | W | FF (live-verified), LD | **Block device** (kicks it off Wi-Fi permanently). |
 | DELETE | `{net}/blacklist/{mac}` | - | - | W | FF, LD | Unblock. MAC with or without colons accepted. |
-| POST | `{net}/burst_reporters` | empty-JSON | `{next_burst: "<timestamp>"}` | W (benign) | FF, ES | **Requests live throughput.** ~12 s later `devices[].usage.down_mbps/up_mbps` are fresh. Max one per minute per network. Ideal for a "live bandwidth" view. |
+| POST | `{net}/burst_reporters` | empty-JSON | `{next_burst: "<timestamp>"}` | W (benign) | FF, ES | **Requests live throughput.** ~12 s later `devices[].usage.down_mbps/up_mbps` are fresh; they have largely decayed again by ~30 s (eero-api, live-verified 2026-10-20), so read inside that window. Max one per minute per network. Ideal for a "live bandwidth" view. |
 | GET | `{net}/transfer` and `{net}/devices/{mac}/transfer` | - | transfer stats | R | FF | Note `{net}/transfer` is also the ownership-transfer resource in LD; FF treats it as stats. Ambiguous, verify before use. |
 | GET | `{device}/activity`, `{net}/activity` | - | `{insights[], counts{blocked,allowed,inspected}}` | R? | EH only | Not corroborated by any other client. Treat as unverified; prefer `insights`. |
 | GET | `{net}/data_usage/devices/{mac}` | `start, end, cadence` | usage series | R | FF, LD | See section 9. |

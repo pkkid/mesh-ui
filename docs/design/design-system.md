@@ -426,7 +426,7 @@ Other chart kinds in the mockups, same rules for colour and labels:
 ## Numbers and copy
 
 - Shared formatters in `src/core/format.ts` (re-exported to the renderer)
-  for Mbps and Gbps, MB, GB and TB, percent, ms, relative time ("2h ago",
+  for Mbps and Gbps (kbps below 1 Mbps, so a trickle never shows as 0), MB, GB and TB, percent, ms, relative time ("2h ago",
   "Yesterday, 3:04 AM"), durations ("23 days, 4 hours"). The same quantity
   looks the same everywhere, including CLI table output.
 - Clock times and dates are always in the network's time zone, never the

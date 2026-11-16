@@ -229,14 +229,17 @@ eero tolerates roughly 100 requests a minute per account before answering 429.
   enforces this in `commands/device.ts`, not the limiter (see `DeviceBackend.requestBurst`); a second
   call inside the minute returns the last result's `nextBurst` without
   calling eero. Fresh `usage.down_mbps` /
-  `up_mbps` appear on devices about 12 s after a burst.
+  `up_mbps` appear on devices about 12 s after a burst and decay again by
+  about 30 s; the device area keeps the figures read inside the live window
+  (`BURST_LIVE_SEC`) and shows them on later reads (engine.md, Live device
+  rates).
 - **Polling.** Polling intervals are constants in `src/core/poll.ts`, shared by
   every surface. The renderer only polls while the window is visible.
 
 | Data | Interval |
 | --- | --- |
 | Network, eeros, devices, profiles | 60 s |
-| Device rates (burst, then `device.list`) | 60 s, only while a page shows live rates |
+| Device rates (burst, then `device.list` every 4 s while it is live) | 60 s, only while a page shows live rates |
 | Notifications | 60 s |
 | Usage charts | 5 min |
 | Speed test history, updates, settings | On open and after a write |

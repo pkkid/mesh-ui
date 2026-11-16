@@ -28,6 +28,15 @@ describe("formatters", () => {
     expect(formatMbps(2500)).toBe("2,500 Mbps");
   });
 
+  it("scales a trickle below 1 Mbps to kbps, so it never reads as zero (#254)", () => {
+    expect(formatMbps(0.32)).toBe("320 kbps");
+    expect(formatMbps(0.0042)).toBe("4.2 kbps");
+    expect(formatMbps(0.04)).toBe("40 kbps");
+    expect(formatMbps(0.00001)).toBe("<0.1 kbps");
+    expect(formatMbps(0.9996)).toBe("1.0 Mbps");
+    expect(formatMbps(1)).toBe("1.0 Mbps");
+  });
+
   it("format volumes in decimal units", () => {
     expect(formatBytes(0)).toBe("0 B");
     expect(formatBytes(999)).toBe("999 B");

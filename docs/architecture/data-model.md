@@ -422,7 +422,7 @@ type DeviceBulkResult = {
 | `security` | `auth` |
 | `paused`, `blocked` | `paused`, `blocked` or `blacklisted`, or present in `GET {net}/blacklist` |
 | `profileId` | `profile.url`; `null` (Unassigned) when the device has no profile or its profile is eero's default profile (see Profiles) |
-| `rates` | `usage.{down_mbps,up_mbps}` after a burst, stamped with the read time |
+| `rates` | `usage.{down_mbps,up_mbps}` read inside a burst's live window, stamped with the burst's time; later reads keep those figures (eero's decay to zero is not shown). `sharePct` (device.list only) is the device's share of current traffic |
 
 Blocked devices may be missing from `devices`; the backend merges
 `GET {net}/blacklist` entries in with `blocked: true, connected: false`.
