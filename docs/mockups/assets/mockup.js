@@ -460,7 +460,9 @@
 
   // Fake QR code (shape only, not scannable). Drawn at an exact pixel size so
   // every module lands on whole pixels: N modules of `cell` px, each a solid
-  // square `cell - 1` px wide, light on the surface (inverted, theme-coloured).
+  // square `cell - 1` px wide, in the foreground colour on the card surface
+  // (theme-coloured, so inverted in dark). The app's Save QR PNG and printed
+  // card stay black on white.
   function qr(target, seed, o = {}) {
     const host = $(target);
     if (!host) return;

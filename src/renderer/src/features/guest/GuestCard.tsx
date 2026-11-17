@@ -10,8 +10,8 @@
  * `afterprint`. The password lives only in this component's state for that
  * moment, never in the query cache.
  *
- * Paper is white whatever the theme, so the card uses black on white like
- * the QR tile does, not the theme tokens.
+ * Paper is white whatever the theme, so the card uses black on white, not
+ * the theme tokens, and overrides the on-screen QR tile's theme colours.
  */
 import { Ticket } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
@@ -61,7 +61,7 @@ export function GuestCard({ share, title = "Guest Wi-Fi" }: { share: WifiShare; 
           <Ticket className="size-5" />
           {title}
         </div>
-        <QrCode value={share.qr} ariaLabel={`QR code to join ${share.ssid}`} size={200} className="rounded-none border-0" />
+        <QrCode value={share.qr} ariaLabel={`QR code to join ${share.ssid}`} size={200} className="rounded-none border-0 bg-white text-black" />
         <div className="text-sm">Scan with your phone camera to join.</div>
         <dl className="flex w-full flex-col gap-3 text-left">
           <div>
