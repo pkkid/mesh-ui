@@ -49,6 +49,7 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "class-variance-authority": "^0.7.1",
     "electron-updater": "^6.8.11",
+    "jsonc-parser": "3.3.1",
     "lucide-react": "^1.72.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -138,7 +138,7 @@ Left to right (mockup `.topbar`):
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
 | Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
-| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The theme itself (Gruvbox Hard by default; also Classic, Rose, Grove, Ocean, Ember, Iris) is picked in Settings & Account. Stored in renderer `localStorage`, not a command. |
+| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The light and dark themes (Gruvbox Hard by default; also Gruvbox Medium and Soft, Classic, Rose, Grove, Ocean, Ember, Iris, and added VS Code themes) are picked in Settings & Account. Stored in renderer `localStorage`, not a command. |
 | Window controls | Minimise, maximise, close | Windows and Linux only. |
 
 ## Notifications bell

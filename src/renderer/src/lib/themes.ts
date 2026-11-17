@@ -1,60 +1,65 @@
 /**
  * Applies a theme palette to the document as --theme-* custom properties and
  * keeps the native titlebar overlay in sync. Preferences live in localStorage.
+ *
+ * As in T3 Code, light and dark are picked separately: `light` is the theme
+ * used in light mode and `dark` the one used in dark mode, so a pair can mix
+ * two themes or two styles of one collection (Gruvbox Soft by day, Hard at
+ * night). Picking a theme by its name sets both.
  */
 import { useSyncExternalStore } from "react";
+
 import {
-  BUILT_IN_THEMES,
   DEFAULT_THEME,
+  findTheme,
+  parseThemeSettings,
+  subscribeThemeLibrary,
+  type AppearanceMode,
+  type ThemeSettings,
+} from "./themeLibrary";
+import {
   SERIES_HUES,
   THEME_COLOR_ROLES,
   getSeriesForAppearance,
   getThemeColorsForAppearance,
+  getThemeModes,
   type ThemeAppearance,
   type ThemeDefinition,
 } from "./themePalettes";
 
-export type AppearanceMode = ThemeAppearance | "system";
-export type ThemeSettings = { themeId: string; mode: AppearanceMode };
+export type { AppearanceMode, ThemeSettings };
 
 const STORAGE_KEY = "mesh-ui:theme:v1";
-/** Ids saved by earlier builds. */
-const RENAMED_THEMES: Record<string, string> = { default: "classic", "t3-chat": "rose" };
-const MODES: ReadonlyArray<AppearanceMode> = ["light", "dark", "system"];
-
-const DEFAULT_SETTINGS: ThemeSettings = { themeId: DEFAULT_THEME.id, mode: "system" };
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 const listeners = new Set<() => void>();
 
-let settings = readSettings();
-
 function readSettings(): ThemeSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    const saved = JSON.parse(raw) as Partial<ThemeSettings>;
-    const themeId = RENAMED_THEMES[saved.themeId ?? ""] ?? saved.themeId;
-    return {
-      themeId: BUILT_IN_THEMES.some((t) => t.id === themeId) ? (themeId as string) : DEFAULT_SETTINGS.themeId,
-      mode: MODES.includes(saved.mode as AppearanceMode) ? (saved.mode as AppearanceMode) : DEFAULT_SETTINGS.mode,
-    };
+    return parseThemeSettings(localStorage.getItem(STORAGE_KEY), (id) => findTheme(id) !== undefined);
   } catch {
-    return DEFAULT_SETTINGS;
+    return parseThemeSettings(null, () => false);
   }
 }
 
-export const themes: ReadonlyArray<ThemeDefinition> = BUILT_IN_THEMES;
+let settings = readSettings();
 
 export function resolveAppearance(mode: AppearanceMode): ThemeAppearance {
   if (mode !== "system") return mode;
   return systemDark.matches ? "dark" : "light";
 }
 
+/** The theme picked for an appearance. */
+export function themeFor(current: ThemeSettings, appearance: ThemeAppearance): ThemeDefinition {
+  return findTheme(current[appearance]) ?? DEFAULT_THEME;
+}
+
 const kebab = (role: string) => role.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
 export function applyTheme(): void {
-  const theme = themes.find((t) => t.id === settings.themeId) ?? DEFAULT_THEME;
-  const appearance = resolveAppearance(settings.mode);
+  const wanted = resolveAppearance(settings.mode);
+  const theme = themeFor(settings, wanted);
+  // A one-appearance theme shows as itself, so the page stays legible.
+  const appearance = getThemeModes(theme).includes(wanted) ? wanted : theme.appearance;
   const colors = getThemeColorsForAppearance(theme, appearance);
   const root = document.documentElement;
 
@@ -88,7 +93,7 @@ function toHex(color: string): string {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** The topbar toggle: flip between the light and dark variant of the current theme. */
+/** The topbar toggle: flip between the light and dark pick. */
 export function toggleAppearance(): void {
   setThemeSettings({ mode: resolveAppearance(settings.mode) === "dark" ? "light" : "dark" });
 }
@@ -104,9 +109,27 @@ export function setThemeSettings(next: Partial<ThemeSettings>): void {
   listeners.forEach((l) => l());
 }
 
+/** Uses a theme for every appearance it has; a one-appearance theme sets only its own. */
+export function pickThemeEverywhere(theme: ThemeDefinition): void {
+  const next: Partial<ThemeSettings> = {};
+  for (const mode of getThemeModes(theme)) next[mode] = theme.id;
+  setThemeSettings(next);
+}
+
 systemDark.addEventListener("change", () => {
   if (settings.mode === "system") applyTheme();
   listeners.forEach((l) => l());
+});
+
+// A removed theme falls back to the default.
+subscribeThemeLibrary(() => {
+  const exists = (id: string) => findTheme(id) !== undefined;
+  if (!exists(settings.light) || !exists(settings.dark)) {
+    setThemeSettings({
+      light: exists(settings.light) ? settings.light : DEFAULT_THEME.id,
+      dark: exists(settings.dark) ? settings.dark : DEFAULT_THEME.id,
+    });
+  }
 });
 
 export function useThemeSettings(): ThemeSettings {

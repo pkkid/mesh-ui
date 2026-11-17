@@ -34,7 +34,7 @@ export function Sidebar() {
   const active = route.parent ?? route.id;
 
   return (
-    <aside className="flex w-(--sidebar-width) shrink-0 flex-col border-sidebar-border border-e bg-sidebar text-sidebar-foreground">
+    <aside className="flex w-(--sidebar-width) shrink-0 flex-col border-sidebar-border border-e bg-sidebar surface-grain text-sidebar-foreground">
       <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-[9px] ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
         <AppIcon className="size-[22px]" />
         <AppWordmark className="text-sm" />
