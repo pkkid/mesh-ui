@@ -1,36 +1,29 @@
 /**
  * The Overview status hero: network name and status, gateway uptime, ISP,
- * public IP, last speed test, the action row (Run speed test with a
- * progress toast until the result lands; Share Wi-Fi opens the Share Wi-Fi
- * sheet (QR, Copy password); Pause a profile picks a profile and pauses it
- * with Undo;
- * Restart network confirms in the dialog, then a progress toast until the eeros are
- * back) and the two speed gauges, captioned with when the last test ran,
+ * public IP, last speed test, the action row (Share Wi-Fi opens the Share
+ * Wi-Fi sheet (QR, Copy password); Restart network confirms in the dialog,
+ * then a progress toast until the eeros are back) and the two speed gauges, captioned with when the last test ran,
  * "View history" (Internet at Speed test history) and, without a plan, "Set
  * your internet plan" (the plan sheet).
  * docs/ux/pages/overview.md (Layout 1, States).
  */
-import { Popover } from "@base-ui/react/popover";
-import { PauseCircle, RotateCcw, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { RotateCcw, TriangleAlert } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
-import { useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
 import { Metric, PageHeader } from "~/components/ui/hero";
-import { GatedButton, useGate, useNow } from "~/components/ui/page";
+import { GatedButton, useNow } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { TextLink } from "~/components/ui/text-link";
 import { seriesColors } from "~/lib/chartColors";
-import { formatDuration, formatRelative, MISSING, networkClock } from "../../../../core/format";
-import type { Internet, Network, NetworkHealth, Profile, ProfileList, SpeedHistory } from "../../../../core/model";
+import { formatDuration, formatRelative, networkClock } from "../../../../core/format";
+import type { Internet, Network, NetworkHealth, SpeedHistory } from "../../../../core/model";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
 import { ShareWifiButton } from "~/features/wifi/ShareSheet";
-import { RunSpeedTestButton, SpeedGauge, useRunningSpeedTest } from "~/features/internet/InternetHero";
+import { SpeedGauge, useRunningSpeedTest } from "~/features/internet/InternetHero";
 import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
-import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 
 export function NetworkHero() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -44,7 +37,6 @@ export function NetworkHero() {
   const n = network.data;
   const tz = n?.timezone ?? "UTC";
   const offline = n?.status === "offline";
-  const bridged = n?.connectionMode === "bridged";
 
   // Status word and the cause beside it, from network.health when it has one.
   const eeros = health.data?.eeros ?? [];
@@ -67,6 +59,7 @@ export function NetworkHero() {
   return (
     <div className="flex flex-col gap-3">
       <PageHeader
+        flat
         title={n?.name ?? "-"}
         status={
           n || health.data ? (
@@ -93,9 +86,7 @@ export function NetworkHero() {
         }
         actions={
           <>
-            <RunSpeedTestButton />
             <ShareWifiButton />
-            {!bridged && <PauseProfileButton />}
             <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
               <RotateCcw />
               Restart network
@@ -125,7 +116,7 @@ export function NetworkHero() {
               />
             </div>
             {internet.data && (
-              <div className="flex flex-col items-center gap-0.5 text-3xs text-muted-foreground">
+              <div className="mt-3 flex flex-col items-center gap-0.5 text-3xs text-muted-foreground">
                 <div>
                   {latest ? <>Last speed test {networkClock(tz).dateTime(latest.at)}</> : "No speed test yet"}
                   {" · "}
@@ -157,72 +148,3 @@ export function NetworkHero() {
   );
 }
 
-
-/**
- * "Pause a profile": a menu of the profiles not yet paused; picking one runs
- * `profile.pause` (disruptive: the confirm dialog first) with a toast and
- * Undo (`profile.resume`).
- */
-function PauseProfileButton() {
-  const gate = useGate(PROFILE_GATE);
-  const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
-  const [open, setOpen] = useState(false);
-  const write = useWrite<{ profile: string }>("profile.pause");
-  const list = profiles.data?.profiles ?? [];
-  const targets = list.filter((p) => !p.paused);
-  const pause = (p: Profile) => {
-    setOpen(false);
-    void write.run(
-      { profile: p.id },
-      {
-        confirm: { title: `Pause ${p.name}?`, confirmLabel: "Pause profile" },
-        success: `Paused ${p.name}`,
-        failure: `Couldn't pause ${p.name}`,
-        undo: { id: "profile.resume", params: { profile: p.id }, success: `Resumed ${p.name}` },
-      },
-    );
-  };
-  const button = (
-    <>
-      <PauseCircle />
-      Pause a profile
-    </>
-  );
-  if (!gate.allowed) {
-    return (
-      <GatedButton gate={gate} variant="outline">
-        {button}
-      </GatedButton>
-    );
-  }
-  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted disabled:pointer-events-none disabled:opacity-60";
-  return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger render={<Button variant="outline" disabled={write.running} />}>{button}</Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-          <Popover.Popup aria-label="Pick a profile to pause" className="w-56 rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
-            {!profiles.data ? (
-              <div className="px-2 py-1.5 text-muted-foreground">{MISSING}</div>
-            ) : list.length === 0 ? (
-              <Link to={pathFor("profiles")} className={item} onClick={() => setOpen(false)}>
-                No profiles yet. Add one on Profiles.
-              </Link>
-            ) : targets.length === 0 ? (
-              <div className="px-2 py-1.5 text-muted-foreground">Every profile is paused</div>
-            ) : (
-              targets.map((p) => (
-                <button key={p.id} type="button" className={item} onClick={() => pause(p)}>
-                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                  <span className="shrink-0 text-muted-foreground">
-                    {p.deviceIds.length} {p.deviceIds.length === 1 ? "device" : "devices"}
-                  </span>
-                </button>
-              ))
-            )}
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}

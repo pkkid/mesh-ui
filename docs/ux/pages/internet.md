@@ -91,7 +91,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; gauges fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero and chart update. The same control and toast on Overview and Troubleshooting |
+| Run speed test | `speedtest.run` | write | No | Button "Testing..." with a spinner; gauges fade; progress toast "Testing internet speed" until the result appears (about a minute), then "Speed test: 941 Mbps down, 917 Mbps up"; hero and chart update. The same control and toast on Troubleshooting |
 | Troubleshoot | - | - | No | Troubleshooting page |
 | Copy details | `internet.get {format: "text"}` | query | No | Copies a plain-text block of both cards (formatted in core); toast "Connection details copied" |
 | ISP settings → | - | - | No | Advanced networking, WAN section |
@@ -155,7 +155,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 - Usage history is limited to about 7 days for free accounts, so Data usage
   has no Month range. Speed tests are not: a read-only check (#241) found
   about a year of tests (100 returned, the oldest 382 days old).
-- Built in M4.9: Run speed test (here, Overview and Troubleshooting share
+- Built in M4.9: Run speed test (here and Troubleshooting share
   one runner and toast) and the plan sheet. The plan sheet opens from the
   plan line under the gauges and the Connection card's Plan row. Built in M2.4: there was no toast yet, so Copy details and Export CSV confirm on the button
   ("Details copied", "CSV saved"). The Per day card always shows the last 7

@@ -12,18 +12,18 @@ import { AreaChart } from "~/components/charts/AreaChart";
 import { ShareBar } from "~/components/charts/ShareBar";
 import { Section } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { bytesParts, formatBytes, formatPercent, networkClock } from "../../../../core/format";
-import type { Eero, Network, UsageRange, UsageSeries } from "../../../../core/model";
+import type { DeviceList, Eero, Network, UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
+  { value: "day", label: "Last 24 hours" },
+  { value: "week", label: "Last 7 days" },
 ] as const;
 
-/** Half of the Day / Week crossfade: fade out, swap, fade in over the same time. */
+/** Half of the range crossfade: fade out, swap, fade in over the same time. */
 const SWITCH_MS = 150;
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
@@ -52,6 +52,8 @@ export function DataUsage() {
   const usage = useQuery<UsageSeries>("usage.get", { scope: "network", range }, { poll: true });
   const byEero = useQuery<UsageSeries[]>("usage.get", { scope: "eero", range }, { poll: true });
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
+  const devices = useQuery<DeviceList>("device.list", undefined, { poll: true });
+  const deviceCount = devices.data?.devices.length;
 
   const tz = network.data?.timezone ?? "UTC";
   const s = usage.data;
@@ -91,12 +93,23 @@ export function DataUsage() {
   return (
     <Section
       title="Data usage"
-      subtitle={
-        <span className={crossfade}>
-          {day ? "Last 24 hours for all devices" : "Last 7 days for all devices"}
-        </span>
+      description={
+        deviceCount === undefined ? "Showing all devices" : `Showing all ${deviceCount} ${deviceCount === 1 ? "device" : "devices"}`
       }
-      tools={<Segmented aria-label="Range" value={picked} onValueChange={pick} options={RANGES} />}
+      tools={
+        <Select items={RANGES} value={picked} onValueChange={(v) => v && pick(v)}>
+          <SelectTrigger size="tool" aria-label="Range">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {RANGES.map((r) => (
+              <SelectItem key={r.value} value={r.value}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+      }
     >
       {usage.error && !s ? (
         <SectionError what="data usage" error={usage.error} onRetry={() => void usage.refetch()} />

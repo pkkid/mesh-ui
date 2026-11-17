@@ -236,7 +236,7 @@ From the mockups (`01-overview.html` and every page):
   Next on Device detail). Page actions (Add a profile, Export CSV, Rename)
   go in the page: hero actions or a section's `tools`. See
   [design-system.md](../design/design-system.md#shell).
-- **Content**: a scrolling column, max width 1156px (1100px of content inside the padding), padding 22px 28px.
+- **Content**: a scrolling column, max width 1056px (1000px of content inside the padding), padding 22px 28px. See [Page width](../design/design-system.md#page-width).
 
 Navigation is view state: a small in-memory router (`page` + optional
 `id`), with the last page remembered in localStorage. It is not a command.

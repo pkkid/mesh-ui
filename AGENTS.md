@@ -147,6 +147,9 @@ of which must hold on macOS, Windows, and Linux:
 - Reuse the primitives in `components/ui/`. When you need a new one, port it
   from T3 Code's `apps/web/src/components/ui/` and trim what we do not use.
 - Dense UI: 14px base, `text-xs` and `text-2xs` for metadata, 8px control radius.
+- Page content is at most 1000px wide on every page, set once by the
+  content column in `RouterOutlet`; pages never set or override their own
+  max width. See `docs/design/design-system.md#page-width`.
 - The top strip of each pane is the window titlebar (`drag-region`). Interactive
   elements inside it need `no-drag`. Respect `--titlebar-inset-left/right`
   for native window controls.
@@ -226,7 +229,7 @@ building a new chart; port from them rather than inventing a style.
 ### Dashboard layout
 
 - **Sections, not boxes.** A page is a column of `<section>`s with
-  `gap-6`, each headed by `text-sm font-medium text-foreground`. Controls for a
+  `gap-6`, each headed by `text-base font-semibold text-foreground` (as T3 Code's settings section titles). Controls for a
   section (range Day/Week/Month, metric switch) are a segmented toggle on the
   right of that header. Do not wrap every number in its own card.
 - **Hero.** The key figure is `text-4xl font-semibold tabular-nums` with a
