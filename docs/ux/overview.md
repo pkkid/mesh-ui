@@ -66,9 +66,9 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 1. **Header.** The app icon (`AppIcon`, 22px, the same `build/icon.svg` the
    launchers use) and the wordmark (`AppWordmark`): "Mesh" bold in the text
    colour, "UI" in muted text, like T3 Code's "T3 Code".
-2. **Network switcher row.** Status dot, network name ("Maple Street"), a
-   status line, "status · ISP" ("Online · Ziply Fiber"), and a chevrons
-   icon. Opens the [network switcher](#network-switcher).
+2. **Network switcher row.** Status dot, network name ("Maple Street", or
+   the network nickname when one is set), a status line, "status · ISP"
+   ("Online · Ziply Fiber"), and a chevrons icon. Opens the [network switcher](#network-switcher).
 3. **Navigation**, in two groups. Items show an icon, label and an optional
    count on the right in `text-2xs text-muted-foreground tabular-nums`. The
    active item uses the selected surface; item icons use one muted colour
@@ -112,10 +112,12 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 
 A popover anchored under the sidebar network row.
 
-- **Data:** `network.list` (name, status, ISP, last seen).
+- **Data:** `network.list` (name, nickname, status, ISP, last seen).
 - **Rows** match the sidebar row they open from: status dot, network name,
   and one muted line, "status · ISP" ("Online · Ziply Fiber"), or
-  "Offline · last seen 2 days ago" for an offline network. No role badge and
+  "Offline · last seen 2 days ago" for an offline network. When the network
+  has a nickname (set on the Wi-Fi page), the nickname is the name and the
+  Wi-Fi name leads the muted line in place of the ISP ("Kim Home · Online"). No role badge and
   no eero or device counts. The popover is the same width as the sidebar
   row, and the current network's row uses the selected surface.
 - **Action:** choosing a row runs `network.select {networkId}` (app-local,

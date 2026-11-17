@@ -4,7 +4,8 @@
  * choosing one runs `network.select` and refetches every query. With one
  * network the row is not interactive and hides its chevrons. The popover is
  * the width of the row, and each of its rows shows what the row shows: status
- * dot, name and the same status line.
+ * dot, name and the same status line. The name is the network nickname when
+ * one is set, with the Wi-Fi name leading the line under it (#270).
  */
 import { Popover } from "@base-ui/react/popover";
 import { ChevronsUpDown, Settings } from "lucide-react";
@@ -18,10 +19,19 @@ import { cn } from "~/lib/utils";
 import { formatRelative } from "../../../../core/format";
 import type { NetworkSummary } from "../../../../core/model";
 
-/** "Online · Ziply Fiber" under the name, in the sidebar row and in every popover row. */
+/** The nickname when set, else the Wi-Fi name. */
+const title = (n: NetworkSummary): string => n.nickname ?? n.name;
+
+/**
+ * "Online · Ziply Fiber" under the name, in the sidebar row and in every
+ * popover row. Under a nickname the Wi-Fi name leads it instead of the ISP:
+ * "Maple Street · Online".
+ */
 function rowLine(n: NetworkSummary): string {
   const status = networkStatus(n.status).label;
-  if (n.status === "offline" && n.lastSeen) return `${status} · last seen ${formatRelative(n.lastSeen, Date.now())}`;
+  const wifi = n.nickname && n.nickname !== n.name ? n.name : null;
+  if (n.status === "offline" && n.lastSeen) return [wifi, `${status} · last seen ${formatRelative(n.lastSeen, Date.now())}`].filter(Boolean).join(" · ");
+  if (wifi) return `${wifi} · ${status}`;
   return n.isp ? `${status} · ${n.isp}` : status;
 }
 
@@ -59,7 +69,7 @@ export function NetworkSwitcher() {
     <>
       <StatusDot tone={status?.tone ?? "muted"} className="size-2" />
       <div className="min-w-0 flex-1 text-start">
-        <div className="truncate font-medium text-[13px] text-sidebar-foreground">{current?.name ?? "No network"}</div>
+        <div className="truncate font-medium text-[13px] text-sidebar-foreground">{current ? title(current) : "No network"}</div>
         <div className="truncate text-2xs text-muted-foreground">
           {current ? rowLine(current) : list.error ? "Not connected" : "-"}
         </div>
@@ -99,7 +109,7 @@ export function NetworkSwitcher() {
                   >
                     <StatusDot tone={s.tone} className="size-2" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-[13px]">{n.name}</div>
+                      <div className="truncate font-medium text-[13px]">{title(n)}</div>
                       <div className="truncate text-2xs text-muted-foreground">{rowLine(n)}</div>
                     </div>
                   </button>
