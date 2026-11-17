@@ -174,7 +174,7 @@ export function RouterOutlet() {
   const Page = PAGES[route.id];
   return (
     <div data-page-scroll className="topbar-scroll-fade min-h-0 flex-1 overflow-y-auto">
-      <div key={path} className="mx-auto flex max-w-[1156px] flex-col gap-7 px-7 pt-[22px] pb-12">
+      <div key={path} className="mx-auto flex max-w-[1056px] flex-col gap-7 px-7 pt-[22px] pb-12">
         {Page ? (
           <Suspense fallback={null}>
             <Page params={params} />

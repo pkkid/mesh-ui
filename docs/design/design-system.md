@@ -173,7 +173,7 @@ numbers.
 | Metadata, legends, section subtitles | 12px | `text-xs` |
 | Fine metadata | 11px | `text-2xs` |
 | Chart labels, group labels, tile labels | 10px | `text-3xs` |
-| Section heading | 13.5-14px, 500-600 | `text-sm font-medium` |
+| Section heading | 16px, 600 | `text-base font-semibold` (T3 Code settings section titles) |
 | Page title | 28px, 650 | `text-[28px] font-semibold tracking-tight` |
 | Hero figure | 36-40px, 650 | `text-4xl font-semibold tabular-nums` |
 | Stat tile value | 24-25px mono, 650 | `font-mono text-2xl font-semibold tracking-tighter tabular-nums` |
@@ -194,13 +194,27 @@ numbers.
 | Chips, status dots, avatars | Full |
 | Titlebar height | 44px |
 | Sidebar width | 15rem (mockup 236px) |
-| Page max width | 1156px (1100px of content), padding 22px 28px 48px |
+| Page max width | 1056px (1000px of content), padding 22px 28px 48px |
 | Gap between sections | 28px |
 | Gap inside a section (heading to card) | 12px |
 | Card padding | 18px 20px |
 | Settings row | 13px 18px, min height 58px |
 | Button height | 30px (small 26px) |
 | Icons | lucide, 16px in nav and buttons, 13-14px in chips and inputs |
+
+### Page width
+
+Every page's content is at most **1000px** wide, centred in the main pane.
+The cap lives in one place, the content column in `RouterOutlet`
+(`src/renderer/src/app/router.tsx`: `max-w-[1056px]` with `px-7`, so 1000px
+inside the padding), and every page renders inside it.
+
+- Pages never set their own max width, and never widen past the column
+  (no negative margins or full-bleed breakouts).
+- A page that should read narrower (a form, a settings list) narrows inside
+  the column; it does not change the column.
+- Check wide windows: at 1600px and up the content stays 1000px and the
+  margins grow.
 
 ## Layout
 
@@ -271,7 +285,7 @@ with labelled buttons (Copy password, Save QR, Print a card) to its left
 ### Sections
 
 **Sections are subtle cards**: a `<section>` with a heading row
-(`text-sm font-medium` title, optional muted subtitle, controls on the right)
+(`text-base font-semibold` title, optional muted subtitle beside it or description under it, controls on the right)
 that stays one line (title and tools never wrap; a long subtitle truncates
 with an ellipsis and shows in full in its tooltip) above a card styled as T3 Code's settings groups: `bg-card/40`, a 1px `border-border/60`, `shadow-xs/5`, 12px radius. Rows inside are divided by `border-border/50` (`divide-y divide-border/50`); settings rows are `px-4 py-3` with a `text-sm font-medium` title over a `text-xs leading-normal text-muted-foreground` description, the control 32px to the right (T3's `SettingsRow`). The page hero uses the same surface and border.
 **Header tools are 28px.** Every control in the tools slot (buttons,

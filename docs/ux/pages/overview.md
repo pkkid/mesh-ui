@@ -17,8 +17,8 @@ actions.
    - Metric row: ISP ("Ziply Fiber"), Public IP ("203.0.113.48"), Last
      speed test ("2h ago"), all three values in the same type so they share a
      baseline.
-   - Action row: **Run speed test** (primary), **Share Wi-Fi**, **Pause a
-     profile**, **Restart network** (ghost).
+   - Action row: **Share Wi-Fi**, **Restart network** (ghost). Speed tests
+     run from Internet and Troubleshooting; profiles pause on Profiles.
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      with the latest result in the middle ("942 Mbps", "918 Mbps") in the
      download and upload series colours. With a plan the arc runs to 125% of
@@ -31,9 +31,9 @@ actions.
      scrolled to Speed test history). While no plan is set, a second line
      reads "**Set your internet plan** to scale the gauges" (opens the plan
      sheet). The links are `TextLink`s, so they read as links.
-2. **Data usage** section. Header: "Data usage", sub "Last 24 hours for all devices"
-   (Week: "Last 7 days for all devices") on the heading's baseline, Day / Week toggle. Switching range
-   crossfades the subtitle and body (150 ms out, swap, 150 ms in, opacity
+2. **Data usage** section. Header: "Data usage", with "Showing all 38 devices"
+   (the `device.list` count) under it, and a range dropdown on the right ("Last 24 hours",
+   "Last 7 days"). Switching range crossfades the body (150 ms out, swap, 150 ms in, opacity
    only, none with reduced motion); background polls never crossfade. Body is
    a side column plus main chart:
    - Hero figure "412 GB" with "used in 24h · busiest hour 12 to 1 PM" and
@@ -60,7 +60,7 @@ actions.
    - **Top profiles**. Sub "Last 24 hours", link "All profiles →". The top 3
      profiles by data used in the last 24 hours (pure ranking: a paused
      profile with little usage drops out; pausing is one click away on
-     Profiles and in the hero's "Pause a profile" menu). One row per profile:
+     Profiles). One row per profile:
      avatar initial in the profile colour, name, a detail line ending in the
      same 24-hour total the rows are ranked by ("6 devices · 96 GB", "Bedtime
      9:00 PM to 7:00 AM · 1.2 GB", "3 devices paused · 40 MB"), status
@@ -96,11 +96,9 @@ actions.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run speed test | `speedtest.run` | write | No | Button reads "Testing..." and gauges fade to 40%; after about a minute the new result lands and "Last speed test" reads "Just now". Toast "Speed test: 942 down / 918 up Mbps" |
 | Share Wi-Fi | `wifi.share` | query | No | Opens the Share Wi-Fi sheet (`features/wifi/ShareSheet.tsx`, shared with Devices): opening it is the ask, so it runs `wifi.share` then and shows the QR code with Copy password and Save QR. The password lives only while the sheet is open |
-| Pause a profile | `profile.list` then `profile.pause {profile}` | disruptive | Yes, dialog | A menu of the profiles not yet paused (name and device count; "Every profile is paused", or a link to Profiles when there are none); picking one asks, then pauses it and toasts "Paused Leo" with Undo (`profile.resume`). Dims by the `profiles` permission |
 | Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog | Opens the confirm dialog "Everyone loses internet for about 2 to 3 minutes, including every connected device and any calls in progress." with "Yes, restart network" and Cancel. On run: progress toast, hero status Restarting, faster polling until Online |
-| Day / Week (Data usage) | - (view state; re-queries `usage.get` with the range) | - | No | Chart, hero and share bar switch range |
+| Range dropdown (Data usage) | - (view state; re-queries `usage.get` with the range) | - | No | Chart, hero and share bar switch range |
 | Topology → | - | - | No | eeros page |
 | eero row | - | - | No | eero detail |
 | All devices → | - | - | No | Devices, sorted by data today |
@@ -121,11 +119,12 @@ actions.
   with no data: same sentence. No profiles: "No profiles yet. Group devices
   by person to pause them together." with **Add a profile**. No events: "No
   recent activity."
-- **Speed test never run.** Gauges show `-`, "Last speed test" is `-`, and
-  the primary button stays Run speed test.
+- **Speed test never run.** Gauges show `-` and "Last speed test" is `-`.
+  A test started elsewhere (Internet, Troubleshooting) fades the gauges
+  until its result lands.
 - **Error.** Per section note with Retry; the hero keeps whatever loaded.
-- **Offline (this computer).** Banner from the shell; Run speed test, Pause a
-  profile and Restart network disabled.
+- **Offline (this computer).** Banner from the shell; Restart network
+  disabled.
 - **Network offline.** Hero status Offline with "last seen ..." in place of
   uptime, a warning note under the hero "Maple Street is not reporting.
   Check the gateway's power and cable." with **Troubleshoot**. Gauges show
@@ -139,7 +138,7 @@ actions.
   best result in history, and the caption's "Set your internet plan" link
   opens the plan sheet.
 - **Bridge mode.** Profiles section hidden (columns become eeros, busy
-  heatmap, activity); "Pause a profile" hidden; Top devices hidden (no
+  heatmap, activity); Top devices hidden (no
   per-device usage); bridge note at the top.
 
 ## Notes
@@ -156,7 +155,5 @@ actions.
   `settings.json`, see [internet.md](internet.md)), so a result above the
   plan still moves the arc; eero does not know the plan. Without a plan it
   is the best result in history, with no mark or "% of plan" line.
-- "Pause a profile" is a small menu of profiles rather than the palette:
-  one click picks and pauses, and the Undo toast is the same as on Profiles.
 - Live rates are not shown here, so this page never triggers
   `device.rates.refresh`.

@@ -64,24 +64,36 @@ type SectionProps = Omit<React.ComponentProps<"section">, "title"> & {
   title: React.ReactNode;
   /** Muted line beside the title ("Last 24 hours for all devices"). */
   subtitle?: React.ReactNode;
+  /** Muted line under the title ("Showing all 38 devices"). */
+  description?: React.ReactNode;
   /** Controls on the right of the heading: segmented toggle, small buttons, "See all" links. */
   tools?: React.ReactNode;
 };
 
 /**
  * A page section: heading row (title, subtitle, tools) over its body, 12px
- * apart. The row aligns on baselines and the title takes the row's 28px line,
- * so a 14px title and a 12px subtitle share one baseline. The title and
+ * apart. The title matches T3 Code's settings section titles (16px
+ * semibold). The row aligns on baselines and the title takes the row's 28px
+ * line, so the title and a 12px subtitle share one baseline. A
+ * `description` sits under the title instead, making a two-line header the
+ * whole body sits under (20px gap), with the tools aligned to its bottom. The title and
  * tools never wrap; a long subtitle truncates with an ellipsis (full text in
  * its tooltip) so the row stays one line. Every tool is 28px, the height of
  * the title's line: buttons take `SECTION_TOOL_SIZE` and Segmented its `tool`
  * size from context, so callers leave `size` off.
  */
-function Section({ title, subtitle, tools, className, children, ...props }: SectionProps) {
+function Section({ title, subtitle, description, tools, className, children, ...props }: SectionProps) {
   return (
-    <section data-slot="section" className={cn("flex flex-col gap-3", className)} {...props}>
-      <div className="flex min-h-7 min-w-0 items-baseline gap-2.5">
-        <h2 className="shrink-0 whitespace-nowrap font-medium text-foreground text-sm leading-7">{title}</h2>
+    <section data-slot="section" className={cn("flex flex-col", description ? "gap-5" : "gap-3", className)} {...props}>
+      <div className={cn("flex min-h-7 min-w-0 gap-2.5", description ? "items-end" : "items-baseline")}>
+        {description ? (
+          <div className="flex min-w-0 flex-col">
+            <h2 className="whitespace-nowrap font-semibold text-base text-foreground leading-7">{title}</h2>
+            <p className="truncate text-muted-foreground text-xs">{description}</p>
+          </div>
+        ) : (
+          <h2 className="shrink-0 whitespace-nowrap font-semibold text-base text-foreground leading-7">{title}</h2>
+        )}
         {subtitle && (
           <span className="min-w-0 truncate text-muted-foreground text-xs" title={typeof subtitle === "string" ? subtitle : undefined}>
             {subtitle}

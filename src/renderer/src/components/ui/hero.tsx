@@ -23,6 +23,8 @@ type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   actions?: React.ReactNode;
   /** Right-hand column: hero figures, gauges, QR block. */
   aside?: React.ReactNode;
+  /** No card: the header sits on the page, divided from what follows by a bottom rule. */
+  flat?: boolean;
 };
 
 function isIcon(icon: unknown): icon is LucideIcon {
@@ -30,12 +32,16 @@ function isIcon(icon: unknown): icon is LucideIcon {
   return typeof icon === "function" || (typeof icon === "object" && icon !== null && "render" in icon);
 }
 
-function PageHeader({ title, icon, status, facts, actions, aside, className, ...props }: PageHeaderProps) {
+function PageHeader({ title, icon, status, facts, actions, aside, flat = false, className, ...props }: PageHeaderProps) {
   const Icon = isIcon(icon) ? icon : null;
   return (
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
-      <div data-slot="page-header" className={cn("rounded-(--hero-radius) border border-border/60 bg-card/40 shadow-xs/5", className)} {...props}>
-        <div className="flex items-start gap-7 px-6 py-[22px]">
+      <div
+        data-slot="page-header"
+        className={cn(flat ? "mb-4 border-b" : "rounded-(--hero-radius) border border-border/60 bg-card/40 shadow-xs/5", className)}
+        {...props}
+      >
+        <div className={cn("flex items-start gap-7", flat ? "pt-6 pb-10" : "px-6 py-[22px]")}>
           <div className="flex min-w-0 flex-1 items-start gap-4">
             {Icon ? <IconTile icon={Icon} size="xl" /> : (icon as React.ReactNode)}
             <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -45,7 +51,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, className, ...
               </div>
               {facts && <div className="flex flex-wrap gap-x-[22px] gap-y-2">{facts}</div>}
               {actions && (
-                <div data-slot="hero-actions" className="flex flex-wrap items-center gap-2">
+                <div data-slot="hero-actions" className={cn("flex flex-wrap items-center gap-2", flat && "mt-3")}>
                   {actions}
                 </div>
               )}
