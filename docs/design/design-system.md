@@ -183,6 +183,13 @@ Every page opens with the same header:
   test);
 - **actions in a row at the bottom**, primary first, disruptive last.
 
+Everything in the header is **pinned to the top**. The left column (icon,
+title, status, facts, actions) and the right-hand column (gauges, QR block,
+hero figures) both start at the top padding and are never centred against
+each other, so a tall aside leaves the title where it is. Inside the aside,
+its own pieces keep their layout (the QR block's buttons sit centred beside
+the code).
+
 Every button in a header is the `hero` size (28px, `h-7`, 13px text,
 14px icons), on every page: the actions row, the buttons in the right-hand
 column (Pause profile) and the QR block. The one exception is "Show code"
