@@ -8,9 +8,12 @@
  * Project Nayuki's QR generator. The renderer only draws the payload core
  * built; it never keeps it beyond the component.
  *
- * A QR code is drawn dark on a light tile in both themes, with a quiet zone:
- * some scanners cannot read inverted (light on dark) codes. It is the one
- * place fixed black and white are used.
+ * On screen the code takes the theme: `text-foreground` modules on a
+ * `bg-card` tile with a quiet zone, so in the dark theme it is light on dark
+ * (current iOS and Android cameras read inverted codes). What leaves the app
+ * stays black on white, since paper and other scanners may not cope with an
+ * inverted code: the Save QR PNG here, and the printed card, which passes
+ * `bg-white text-black` to `QrCode`.
  */
 import { Check, Copy, ImageDown } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -90,18 +93,18 @@ export type QrCodeProps = {
   placeholder?: ReactNode;
 };
 
-/** Just the code on its light tile. An empty frame (with `placeholder` centred in it) while `value` is missing. */
+/** Just the code on its card-coloured tile. An empty frame (with `placeholder` centred in it) while `value` is missing. */
 export function QrCode({ value, ariaLabel, size = 116, className, placeholder }: QrCodeProps) {
   const modules = qrModules(value);
   const n = (modules?.length ?? 25) + SCREEN_QUIET * 2;
   return (
     <div
-      className={cn("relative shrink-0 overflow-hidden rounded-lg border bg-white", !modules && "bg-muted/40", className)}
+      className={cn("relative shrink-0 overflow-hidden rounded-lg border bg-card text-foreground", !modules && "bg-muted/40", className)}
       style={{ width: size, height: size }}
     >
       {modules ? (
         <svg viewBox={`0 0 ${n} ${n}`} width={size} height={size} shapeRendering="crispEdges" role="img" aria-label={ariaLabel} className="block">
-          <path d={qrPath(modules, SCREEN_QUIET)} fill="#000" />
+          <path d={qrPath(modules, SCREEN_QUIET)} fill="currentColor" />
         </svg>
       ) : (
         <>
