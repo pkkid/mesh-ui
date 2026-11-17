@@ -8,7 +8,7 @@
  * before `wifi.security.set`. 6 GHz is always WPA3.
  * docs/ux/pages/wifi.md (Layout, left column 1 and 2).
  */
-import { Check, Copy, Dices, Eye, EyeOff, Info, KeyRound, type LucideIcon, Pencil, ShieldCheck, ShieldHalf, Wifi } from "lucide-react";
+import { Check, Copy, Dices, Eye, EyeOff, Info, KeyRound, type LucideIcon, Pencil, Wifi } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { execute } from "~/app/useCommand";
@@ -138,7 +138,7 @@ export function WifiNamePassword({
   return (
     <Section
       title="Network name and password"
-      subtitle="SSID and WPA passphrase for the main network"
+      subtitle="For the main network"
       tools={
         <GatedButton variant="outline" gate={gate} disabled={!wifi || offline} onClick={() => setEditing(true)}>
           <Pencil />
@@ -146,13 +146,13 @@ export function WifiNamePassword({
         </GatedButton>
       }
     >
-      <Card padded>
-        <div className="grid gap-4 md:grid-cols-2">
+      <Card padded className="flex-1">
+        {/* Side by side when the section is full width; stacked once it sits beside Encryption (WifiPage). */}
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @3xl:grid-cols-1">
           <ReadField
             icon={Wifi}
             label="Wi-Fi network name"
             value={ssid}
-            hint={ssid !== null ? `${formatCount(bytes(ssid))} of ${SSID_MAX_BYTES} bytes` : null}
             actions={<CopyIcon label="Copy network name" text={() => ssid} disabled={!ssid} />}
           />
           <ReadField
@@ -160,7 +160,7 @@ export function WifiNamePassword({
             label="Wi-Fi password"
             mono={shown}
             value={passwordValue}
-            hint={secret.error ? <span className="text-destructive-foreground">{secret.error}</span> : shown && password ? `${formatCount(password.length)} characters` : "Hidden until you reveal it"}
+            hint={secret.error ? <span className="text-destructive-foreground">{secret.error}</span> : null}
             actions={
               open ? null : (
                 <>
@@ -306,10 +306,11 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
   );
 }
 
-const MODES: { value: Security; label: string; icon: LucideIcon }[] = [
-  { value: "WPA2", label: "Standard (WPA2)", icon: ShieldHalf },
-  { value: "WPA2_WPA3", label: "Hybrid (WPA2 + WPA3)", icon: ShieldHalf },
-  { value: "WPA3", label: "Enhanced (WPA3)", icon: ShieldCheck },
+/** Short labels so the control fits beside Name and password; the full eero name is each option's tooltip. */
+const MODES: { value: Security; label: string; title: string }[] = [
+  { value: "WPA2", label: "WPA2", title: "Standard (WPA2)" },
+  { value: "WPA2_WPA3", label: "Hybrid", title: "Hybrid (WPA2 + WPA3)" },
+  { value: "WPA3", label: "WPA3", title: "Enhanced (WPA3)" },
 ];
 
 const PLACEHOLDER_BANDS: WirelessBand[] = ["2.4", "5"];
@@ -351,9 +352,9 @@ export function WifiSecurity({ wifi, devices, offline }: { wifi: WifiSettings | 
   const params = Object.fromEntries(changes.map(([band, mode]) => [PARAM[band], mode]));
 
   return (
-    <Section title="Encryption" subtitle="WPA3 support per band">
-      <Card>
-        <div className="grid grid-cols-[8rem_minmax(0,1fr)_auto] items-center gap-4 border-b bg-muted/40 px-[18px] py-2 font-semibold text-3xs text-muted-foreground uppercase tracking-widest">
+    <Section title="Encryption" subtitle="WPA3 is stronger; Hybrid adds WPA2 for older devices">
+      <Card className="flex-1">
+        <div className="grid grid-cols-[6rem_minmax(0,1fr)_auto] items-center gap-4 border-b bg-muted/40 px-[18px] py-2 font-semibold text-3xs text-muted-foreground uppercase tracking-widest">
           <span>Band</span>
           <span>Security mode</span>
           <span className="text-right">WPA2 only</span>
@@ -365,12 +366,12 @@ export function WifiSecurity({ wifi, devices, offline }: { wifi: WifiSettings | 
           const fixed = band === "6";
           const title = fixed ? "6 GHz always uses WPA3" : !editable ? (gate.reason ?? (offline ? "The network is offline" : undefined)) : undefined;
           return (
-            <div key={band} className="grid grid-cols-[8rem_minmax(0,1fr)_auto] items-center gap-4 border-b border-border/50 px-[18px] py-3 last:border-b-0">
+            <div key={band} className="grid grid-cols-[6rem_minmax(0,1fr)_auto] items-center gap-4 border-b border-border/50 px-[18px] py-3 last:border-b-0">
               <span className="font-medium text-[13px]">
                 {bandLabel(band)}
                 {!fixed && value !== saved && <span className="ms-1.5 font-normal text-muted-foreground text-2xs">edited</span>}
               </span>
-              <div className="min-w-0 overflow-x-auto">
+              <div className="min-w-0">
                 {value ? (
                   <span title={title} className="inline-flex">
                     <Segmented<Security>
@@ -416,10 +417,10 @@ export function WifiSecurity({ wifi, devices, offline }: { wifi: WifiSettings | 
         <div className="flex items-start gap-2 border-t px-[18px] py-3 text-muted-foreground text-xs">
           <Info aria-hidden className="mt-px size-3.5 shrink-0" />
           <span>
-            {has6 ? "6 GHz always uses Enhanced (WPA3). " : ""}
+            {has6 ? "6 GHz always uses WPA3. " : ""}
             {names.length > 0 ? (
               <>
-                <b className="font-medium text-foreground">{listNames(names)}</b> joined with WPA2 only and would drop off if their band moved to Enhanced (WPA3).
+                <b className="font-medium text-foreground">{listNames(names)}</b> joined with WPA2 only and would drop off if their band moved to WPA3.
               </>
             ) : wifi && bands.some((b) => wifi.security[b] === "WPA2_WPA3") ? (
               "No device has joined with WPA2 only."

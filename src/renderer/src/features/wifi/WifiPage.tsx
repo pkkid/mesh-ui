@@ -112,16 +112,21 @@ export function WifiPage(_props: PageProps) {
         <SectionError what="Wi-Fi settings" error={wifi.error} onRetry={() => void wifi.refetch()} />
       ) : (
         <>
-          <WifiNamePassword
-            wifi={data}
-            password={password}
-            offline={offline}
-            onSaved={() => {
-              password.clear();
-              share.clear();
-            }}
-          />
-          <WifiSecurity wifi={data} devices={devices.data?.devices ?? null} offline={offline} />
+          {/* Name and password beside Encryption once the page is wide enough; stacked below that (#268). */}
+          <div className="@container">
+            <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-2">
+              <WifiNamePassword
+                wifi={data}
+                password={password}
+                offline={offline}
+                onSaved={() => {
+                  password.clear();
+                  share.clear();
+                }}
+              />
+              <WifiSecurity wifi={data} devices={devices.data?.devices ?? null} offline={offline} />
+            </div>
+          </div>
           <WifiBands wifi={data} offline={offline} fading={wifi.fading} />
         </>
       )}
