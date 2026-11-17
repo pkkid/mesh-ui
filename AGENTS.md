@@ -396,6 +396,10 @@ Work is planned and run with the `milestone-plan`, `milestone-start` and
 - When a read-only capture contradicts the docs or fixtures, the worker
   reports it in its PR even if the fix is outside its files; the lead turns
   it into a fix task.
+- Workers add PR screenshots with `gh pr create --attach` or `gh pr edit
+  --attach` (gh 2.99 or later; `--attach './shot.png#Alt text'` sets the alt
+  text). Write the local path in the body where each image belongs, and gh
+  swaps in the uploaded URL. Never push screenshots to a branch.
 - Reviews are written to `docs/reviews/M<n>.md` and include the Manual checks
   section above, plus demo-mode screenshots for UI changes.
 - Never merge the milestone PR (`milestone/M<n>` into `main`); the maintainer
