@@ -43,7 +43,7 @@ export function GuestSettings({ guest, networkName, onSaved }: Props) {
         <Field label="Guest network name" icon={<Wifi />} hint={networkName ? `Must be different from your main network name, ${networkName}` : undefined}>
           {guest ? (guest.name ?? "-") : ""}
         </Field>
-        <Field label="Guest network password" icon={<KeyRound />} hint={guest && !guest.hasPassword ? "Anyone nearby can join an open network." : "Copy it or share the QR code above."}>
+        <Field label="Guest network password" icon={<KeyRound />} hint={guest && !guest.hasPassword ? "Anyone nearby can join an open network." : guest && !guest.enabled ? "Set it now; guests use it once the network is on." : "Copy it or share the QR code above."}>
           {guest ? (guest.hasPassword ? <span className="tracking-[0.18em]">••••••••••</span> : "Open, no password") : ""}
         </Field>
         <div className="flex gap-2 sm:col-span-2">

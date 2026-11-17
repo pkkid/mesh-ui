@@ -1,8 +1,9 @@
 /**
  * Guest network hero: ticket tile, the guest network name, its status and
  * how many guests are on, the power button (`guest.enable`, or
- * `guest.disable` behind the confirm dialog), and the QR block with Copy
- * password, Save QR, Print a card and Send to a guest.
+ * `guest.disable` behind the confirm dialog), and, while it is on, the QR
+ * block with Copy password, Save QR, Print a card and Send to a guest. While
+ * it is off there is no QR block and the hero shrinks to its content.
  * docs/ux/pages/guest.md (Layout 1).
  *
  * The QR payload comes from `guest.share`, which reveals the password. It is
@@ -18,7 +19,7 @@ import { useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/ui/hero";
 import { GatedButton, useGate } from "~/components/ui/page";
-import { QrBlock, QrCode } from "~/components/ui/qr";
+import { QrBlock } from "~/components/ui/qr";
 import { copyText } from "~/lib/clipboard";
 import { Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
@@ -67,13 +68,13 @@ export function GuestHero({ guest, networkName, unavailable, offline = false, fa
         ) : null
       }
       actions={unavailable || !guest ? null : <PowerButton on={on} />}
-      aside={unavailable || !guest ? null : on ? <ShareBlock guest={guest} version={shareVersion} /> : <OffQr />}
+      aside={on && guest ? <ShareBlock guest={guest} version={shareVersion} /> : null}
     />
   );
 }
 
 /** Turn on (a plain write with Undo) or off (disruptive: the confirm dialog with the guests it drops, then a progress toast). */
-function PowerButton({ on }: { on: boolean }) {
+export function PowerButton({ on }: { on: boolean }) {
   const gate = useGate({ area: "settings" });
   const disable = useWrite("guest.disable", {
     confirm: { title: "Turn off guest network?", confirmLabel: "Turn off" },
@@ -152,16 +153,6 @@ function ShareBlock({ guest, version }: { guest: GuestNetwork; version: number }
         </>
       }
     />
-  );
-}
-
-/** An empty frame and one line while the guest network is off. */
-function OffQr() {
-  return (
-    <div className="flex max-w-[11rem] flex-col items-center gap-1.5 text-center">
-      <QrCode value={null} ariaLabel="QR code to join the guest network" className="opacity-60" />
-      <div className="text-muted-foreground text-xs">Turn the guest network on to share it.</div>
-    </div>
   );
 }
 
