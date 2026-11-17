@@ -82,8 +82,10 @@ export type ThemeDefinition = Readonly<{
   appearance: ThemeAppearance;
   colors: ThemeColors;
   variants?: ThemeVariants;
-  /** Chart series and status hues per appearance. Defaults to MID_TONE_SERIES. */
-  series?: SeriesVariants;
+  /** Themes that came together (one VS Code extension, a light and dark file), shown as one card. */
+  collection?: Readonly<{ id: string; label: string }>;
+  /** Chart series and status hues per appearance. Missing ones use MID_TONE_SERIES. */
+  series?: Readonly<Partial<Record<ThemeAppearance, SeriesPalette>>>;
 }>;
 
 /**
@@ -96,7 +98,7 @@ export type SeriesHue = (typeof SERIES_HUES)[number];
 export type SeriesPalette = Readonly<Record<SeriesHue, string>>;
 export type SeriesVariants = Readonly<Record<ThemeAppearance, SeriesPalette>>;
 
-/** T3-style mid-tones for every theme except Gruvbox Hard. */
+/** T3-style mid-tones for themes that bring no series colours of their own. */
 export const MID_TONE_SERIES: SeriesVariants = {
   light: {
     blue: "#3f7fa3",
@@ -117,30 +119,6 @@ export const MID_TONE_SERIES: SeriesVariants = {
     green: "#5fa86a",
     yellow: "#d4a64a",
     gray: "#8a8f98",
-  },
-};
-
-/** Gruvbox colours, the same values as docs/mockups/assets/mockup.css. */
-export const GRUVBOX_SERIES: SeriesVariants = {
-  light: {
-    blue: "#076678",
-    purple: "#8f3f71",
-    aqua: "#427b58",
-    orange: "#af3a03",
-    red: "#9d0006",
-    green: "#79740e",
-    yellow: "#b57614",
-    gray: "#7c6f64",
-  },
-  dark: {
-    blue: "#83a598",
-    purple: "#d3869b",
-    aqua: "#8ec07c",
-    orange: "#fe8019",
-    red: "#fb4934",
-    green: "#b8bb26",
-    yellow: "#fabd2f",
-    gray: "#928374",
   },
 };
 
@@ -943,215 +921,6 @@ export const IRIS_THEME: ThemeDefinition = {
   },
 };
 
-/**
- * Gruvbox Hard surfaces and text from the approved mockups
- * (docs/design/design-system.md, Tokens). They override the T3 Code export
- * below, which uses one colour for every surface so cards would not show.
- */
-const GRUVBOX_LIGHT_MOCKUP: Partial<ThemeColors> = {
-  canvas: "#f2e5bc",
-  chrome: "#f2e5bc",
-  toolbar: "#f2e5bc",
-  toolbarForeground: "#3c3836",
-  surface: "#f9f5d7",
-  surfaceRaised: "#f2e5bc",
-  surfaceOverlay: "#f9f5d7",
-  text: "#3c3836",
-  textMuted: "#7c6f64",
-  border: "#e1d3a8",
-  input: "#d5c4a1",
-  focus: "#a89984",
-  muted: "#f2e5bc",
-  mutedForeground: "#7c6f64",
-  secondaryLabel: "#7c6f64",
-  iconMuted: "#7c6f64",
-  error: "#9d0006",
-  errorForeground: "#9d0006",
-  warning: "#b57614",
-  warningForeground: "#b57614",
-  messageAction: "#076678",
-  messageActionForeground: "#f9f5d7",
-  messageActionHover: "#0b5a69",
-  sidebar: "#f2e5bc",
-  sidebarForeground: "#504945",
-  sidebarMutedForeground: "#7c6f64",
-  sidebarRowHover: "rgb(60 56 54 / 4%)",
-  sidebarRowActive: "#f9f5d7",
-  sidebarRowSelected: "#f9f5d7",
-  sidebarBorder: "#e1d3a8",
-};
-
-const GRUVBOX_DARK_MOCKUP: Partial<ThemeColors> = {
-  canvas: "#1d2021",
-  chrome: "#1d2021",
-  toolbar: "#1d2021",
-  toolbarForeground: "#ebdbb2",
-  surface: "#262829",
-  surfaceRaised: "#2e2f2f",
-  surfaceOverlay: "#282828",
-  text: "#ebdbb2",
-  textMuted: "#a89984",
-  border: "#353637",
-  input: "#45433f",
-  focus: "#7c6f64",
-  muted: "#2e2f2f",
-  mutedForeground: "#a89984",
-  secondaryLabel: "#a89984",
-  iconMuted: "#a89984",
-  error: "#fb4934",
-  errorForeground: "#fb4934",
-  warning: "#fabd2f",
-  warningForeground: "#fabd2f",
-  messageAction: "#458588",
-  messageActionForeground: "#f9f5d7",
-  messageActionHover: "#3f7a7d",
-  sidebar: "#1d2021",
-  sidebarForeground: "#d5c4a1",
-  sidebarMutedForeground: "#a89984",
-  sidebarRowHover: "rgb(235 219 178 / 4%)",
-  sidebarRowActive: "#2e2f2f",
-  sidebarRowSelected: "#2e2f2f",
-  sidebarBorder: "#353637",
-};
-
-/** Gruvbox Hard, exported from T3 Code (an Open VSX import of jdinhlife.gruvbox). */
-const GRUVBOX_HARD_T3_LIGHT: ThemeColors = {
-  canvas: "oklch(0.96548 0.039408 100.862)",
-  chrome: "oklch(0.96548 0.039408 100.862)",
-  toolbar: "oklch(0.96548 0.039408 100.862)",
-  toolbarForeground: "oklch(0.199464 0.009769 97.847)",
-  toolbarBorder: "oklch(0.86548 0.016937 98.381)",
-  toolbarControl: "oklch(0.91548 0.01211 98.381)",
-  toolbarControlForeground: "oklch(0.199464 0.009769 97.847)",
-  toolbarControlHover: "oklch(0.87548 0.014904 98.381)",
-  surface: "oklch(0.96548 0.039408 100.862)",
-  surfaceRaised: "oklch(0.96548 0.039408 100.862)",
-  surfaceOverlay: "oklch(0.96548 0.039408 100.862)",
-  text: "oklch(0.344068 0.006603 48.523)",
-  textMuted: "oklch(0.533616 0.022553 100.241)",
-  border: "oklch(0.894146 0.056589 89.24)",
-  input: "oklch(0.894146 0.056589 89.24)",
-  focus: "oklch(0.894146 0.056589 89.24)",
-  accent: "oklch(0.894146 0.056589 89.24)",
-  accentForeground: "oklch(0.344068 0.006603 48.523)",
-  secondary: "oklch(0.90548 0.021171 98.381)",
-  secondaryForeground: "oklch(0.2 0.010585 98.381)",
-  muted: "oklch(0.92548 0.01482 98.381)",
-  mutedForeground: "oklch(0.511408 0.011428 98.029)",
-  placeholder: "oklch(0.502742 0.00904 98.699)",
-  secondaryLabel: "oklch(0.533616 0.022553 100.241)",
-  iconMuted: "oklch(0.533616 0.022553 100.241)",
-  error: "oklch(0.545844 0.202957 28.662)",
-  errorForeground: "oklch(0.509494 0.208583 28.513)",
-  errorSurface: "oklch(0.931061 0.041746 74.926)",
-  warning: "oklch(0.549211 0.114737 77.385)",
-  warningForeground: "oklch(0.542466 0.15429 45.359)",
-  warningSurface: "oklch(0.947491 0.05338 93.627)",
-  update: "oklch(0.951577 0.042342 98.381)",
-  updateForeground: "oklch(0.2 0.010585 98.381)",
-  updateSurface: "oklch(0.87548 0.023288 98.381)",
-  accentSurface: "oklch(0.92975 0.048361 94.279)",
-  accentSurfaceForeground: "oklch(0.2 0.010585 98.381)",
-  messageSurface: "oklch(0.86548 0.025405 98.381)",
-  messageForeground: "oklch(0.2 0.010585 98.381)",
-  messageAction: "oklch(0.771946 0.038123 165.489)",
-  messageActionForeground: "oklch(0.344068 0.006603 48.523)",
-  messageActionHover: "oklch(0.79 0.06 148.381)",
-  codeBackground: "oklch(0.93048 0.007452 98.381)",
-  codeForeground: "oklch(0.199464 0.009769 97.847)",
-  searchMatchBackground: "oklch(0.875721 0.054109 76.177)",
-  searchMatchForeground: "oklch(0.344068 0.006603 48.523)",
-  searchMatchActiveBackground: "oklch(0.745174 0.043942 179.357)",
-  searchMatchActiveForeground: "oklch(0.344068 0.006603 48.523)",
-  sidebar: "oklch(0.96548 0.039408 100.862)",
-  sidebarForeground: "oklch(0.410976 0.011527 51.866)",
-  sidebarMutedForeground: "oklch(0.501867 0.01082 97.538)",
-  sidebarControlSurface: "oklch(0.89548 0.013973 98.381)",
-  sidebarRowHover: "oklch(0.92975 0.048361 94.279)",
-  sidebarRowActive: "oklch(0.92975 0.048361 94.279)",
-  sidebarRowSelected: "oklch(0.92975 0.048361 94.279)",
-  sidebarBorder: "oklch(0.894146 0.056589 89.24)",
-  terminalBackground: "oklch(0.96548 0.039408 100.862)",
-  terminalForeground: "oklch(0.344068 0.006603 48.523)",
-  terminalCursor: "oklch(0.344068 0.006603 48.523)",
-  terminalSelection: "oklch(0.886847 0.047919 120.343)",
-  terminalScrollbar: "oklch(0.882573 0.045425 91.757)",
-  terminalScrollbarHover: "oklch(0.74548 0.009315 98.381)",
-};
-
-const GRUVBOX_HARD_T3_DARK: ThemeColors = {
-  canvas: "oklch(0.240815 0.004864 219.672)",
-  chrome: "oklch(0.240815 0.004864 219.672)",
-  toolbar: "oklch(0.240815 0.004864 219.672)",
-  toolbarForeground: "oklch(0.949402 0.001332 286.375)",
-  toolbarBorder: "oklch(0.380815 0.001173 219.672)",
-  toolbarControl: "oklch(0.330815 0.0104 219.672)",
-  toolbarControlForeground: "oklch(0.949402 0.001332 286.375)",
-  toolbarControlHover: "oklch(0.380815 0.0128 219.672)",
-  surface: "oklch(0.240815 0.004864 219.672)",
-  surfaceRaised: "oklch(0.240815 0.004864 219.672)",
-  surfaceOverlay: "oklch(0.240815 0.004864 219.672)",
-  text: "oklch(0.894146 0.056589 89.24)",
-  textMuted: "oklch(0.650685 0.0022 238.876)",
-  border: "oklch(0.344068 0.006603 48.523)",
-  input: "oklch(0.344068 0.006603 48.523)",
-  focus: "oklch(0.344068 0.006603 48.523)",
-  accent: "oklch(0.344068 0.006603 48.523)",
-  accentForeground: "oklch(0.894146 0.056589 89.24)",
-  secondary: "oklch(0.340815 0.001467 219.672)",
-  secondaryForeground: "oklch(0.95 0.000733 219.672)",
-  muted: "oklch(0.300815 0.001027 219.672)",
-  mutedForeground: "oklch(0.672958 0.000958 252.358)",
-  placeholder: "oklch(0.665637 0.003585 221.062)",
-  secondaryLabel: "oklch(0.650685 0.0022 238.876)",
-  iconMuted: "oklch(0.650685 0.0022 238.876)",
-  error: "oklch(0.64456 0.203608 28.571)",
-  errorForeground: "oklch(0.702184 0.189226 22.228)",
-  errorSurface: "oklch(0.301279 0.041516 14.408)",
-  warning: "oklch(0.725123 0.142867 77.708)",
-  warningForeground: "oklch(0.829017 0.171221 81.038)",
-  warningSurface: "oklch(0.331706 0.04204 80.722)",
-  update: "oklch(0.262408 0.002933 196.977)",
-  updateForeground: "oklch(0.95 0.000733 219.672)",
-  updateSurface: "oklch(0.380815 0.001613 219.672)",
-  accentSurface: "oklch(0.294166 0.001445 17.239)",
-  accentSurfaceForeground: "oklch(0.95 0.000733 219.672)",
-  messageSurface: "oklch(0.400815 0.00176 219.672)",
-  messageForeground: "oklch(0.95 0.000733 219.672)",
-  messageAction: "oklch(0.417174 0.039707 200.534)",
-  messageActionForeground: "oklch(0.894146 0.056589 89.24)",
-  messageActionHover: "oklch(0.41 0.06 269.672)",
-  codeBackground: "oklch(0.275815 0.0064 219.672)",
-  codeForeground: "oklch(0.949402 0.001332 286.375)",
-  searchMatchBackground: "oklch(0.336355 0.043101 62.669)",
-  searchMatchForeground: "oklch(0.894146 0.056589 89.24)",
-  searchMatchActiveBackground: "oklch(0.452346 0.021404 174.419)",
-  searchMatchActiveForeground: "oklch(0.894146 0.056589 89.24)",
-  sidebar: "oklch(0.240815 0.004864 219.672)",
-  sidebarForeground: "oklch(0.82549 0.050676 85.116)",
-  sidebarMutedForeground: "oklch(0.687022 0.004495 224.419)",
-  sidebarControlSurface: "oklch(0.340815 0.012 219.672)",
-  sidebarRowHover: "oklch(0.294166 0.001445 17.239)",
-  sidebarRowActive: "oklch(0.294166 0.001445 17.239)",
-  sidebarRowSelected: "oklch(0.294166 0.001445 17.239)",
-  sidebarBorder: "oklch(0.344068 0.006603 48.523)",
-  terminalBackground: "oklch(0.240815 0.004864 219.672)",
-  terminalForeground: "oklch(0.894146 0.056589 89.24)",
-  terminalCursor: "oklch(0.894146 0.056589 89.24)",
-  terminalSelection: "oklch(0.350376 0.028449 150.713)",
-  terminalScrollbar: "oklch(0.346906 0.00543 56.217)",
-  terminalScrollbarHover: "oklch(0.540815 0.008 219.672)",
-};
-
-export const GRUVBOX_HARD_THEME: ThemeDefinition = {
-  id: "gruvbox-hard",
-  label: "Gruvbox Hard",
-  appearance: "dark",
-  colors: { ...GRUVBOX_HARD_T3_DARK, ...GRUVBOX_DARK_MOCKUP },
-  variants: { light: { ...GRUVBOX_HARD_T3_LIGHT, ...GRUVBOX_LIGHT_MOCKUP } },
-  series: GRUVBOX_SERIES,
-};
-
 /** Neutral zinc, T3 Code's default palette. */
 export const CLASSIC_THEME: ThemeDefinition = {
   id: "classic",
@@ -1161,12 +930,8 @@ export const CLASSIC_THEME: ThemeDefinition = {
   variants: { dark: DEFAULT_DARK_COLORS },
 };
 
-/** Gruvbox Hard is the default, as in the mockups. */
-export const DEFAULT_THEME: ThemeDefinition = GRUVBOX_HARD_THEME;
-
-/** In picker order. */
-export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [
-  GRUVBOX_HARD_THEME,
+/** Themes defined here, in picker order. Gruvbox comes from VS Code files (themeLibrary.ts). */
+export const PALETTE_THEMES: ReadonlyArray<ThemeDefinition> = [
   CLASSIC_THEME,
   ROSE_THEME,
   GROVE_THEME,
@@ -1174,6 +939,11 @@ export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [
   EMBER_THEME,
   IRIS_THEME,
 ];
+
+/** The appearances a theme has colours for: its own, plus any variant. */
+export function getThemeModes(theme: ThemeDefinition): ReadonlyArray<ThemeAppearance> {
+  return (["light", "dark"] as const).filter((mode) => mode === theme.appearance || theme.variants?.[mode]);
+}
 
 export function getThemeColorsForAppearance(
   theme: ThemeDefinition,
@@ -1184,5 +954,5 @@ export function getThemeColorsForAppearance(
 }
 
 export function getSeriesForAppearance(theme: ThemeDefinition, appearance: ThemeAppearance): SeriesPalette {
-  return (theme.series ?? MID_TONE_SERIES)[appearance];
+  return theme.series?.[appearance] ?? MID_TONE_SERIES[appearance];
 }

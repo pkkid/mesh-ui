@@ -22,30 +22,69 @@ semantic classes.
 
 ## Themes
 
-Themes are `ThemeDefinition`s in `src/renderer/src/lib/themePalettes.ts`
-(ported from T3 Code's `packages/shared/src/themePalettes.ts`), applied by
-`lib/themes.ts` as `--theme-*` CSS variables on `<html>`. Each has a light and
-a dark variant; appearance follows the system or a fixed choice.
+Themes work as in T3 Code. A `ThemeDefinition`
+(`src/renderer/src/lib/themePalettes.ts`, ported from T3 Code's
+`packages/shared/src/themePalettes.ts`) is a full set of colour roles for one
+appearance, an optional `variants` entry for the other, an optional
+`collection` that groups related themes on one card, and an optional series
+palette per appearance. `lib/themes.ts` applies the roles as `--theme-*` CSS
+variables on `<html>`.
 
 | Theme | Notes |
 | --- | --- |
-| **Gruvbox Hard** | Default. Warm, low-contrast surfaces; the mockups use it |
+| **Gruvbox** (Hard, Medium, Soft) | Default: Hard. Built from the `jdinhlife.gruvbox` VS Code theme files (MIT, `src/renderer/src/assets/vscode-themes/gruvbox/`) by the same import as T3 Code, so it matches T3 Code's Gruvbox role for role |
 | Classic | Neutral zinc, close to T3 Code's default |
-| Rose | |
+| Rose | T3 Code's T3 Chat theme |
 | Grove | |
 | Ocean | |
 | Ember | |
 | Iris | |
 
-To add a theme, add a `ThemeDefinition` and list it in `BUILT_IN_THEMES`.
-The theme picker in Settings & Account shows each as a card with preview orbs, as in
-T3 Code's settings. The choice is stored in localStorage
-(`mesh-ui:theme:v1`), on this computer only.
+**Light and dark are picked separately**, as in T3 Code: the settings hold a
+theme id for light mode, one for dark mode, and the mode (System, Light,
+Dark). Picking a theme by name sets both; a circle sets only its own mode.
+
+**VS Code themes.** `lib/vscodeTheme.ts` (a port of T3 Code's
+`apps/web/src/vscodeThemeImport.ts`; keep the two in step) turns a VS Code
+colour theme into a palette:
+
+- `editor.background` is the canvas. The type (`dark`, `light`, `hc-*`) or,
+  without one, the canvas luminance sets the appearance.
+- The accent is the first of `focusBorder`, `button.background`,
+  `textLink.foreground`, `activityBarBadge.background`,
+  `progressBar.background`, `badge.background` that stands apart from the
+  canvas (contrast 1.1 or more).
+- `createVividThemeColors` (`lib/themeColor.ts`) derives every role from the
+  canvas and a 20% wash of the accent; roles the theme names directly
+  (`sideBar.background`, `editorWidget.background`, `panel.border`,
+  `list.*`, `terminal.*`, ...) override it. Translucent colours are flattened
+  onto their surface, and text roles must reach 4.5:1 or fall back.
+- "X Light" and "X Dark" pair into one theme "X"; several themes from one
+  source become a collection, one card with a style per circle.
+- Mesh UI also reads `terminal.ansi*` for the chart series (T3 Code does
+  not): of each normal and bright pair, the one with more contrast on the
+  canvas, at least 3:1; orange is halfway between red and yellow; gray is
+  bright black. Themes without ANSI colours use the T3-style mid-tones.
+
+**Picker** (Settings & Account, Application Theme, from T3 Code's
+`ThemeSettings.tsx`): System / Light / Dark tiles with a small wireframe of the
+window in the picked themes, then a card per theme or collection with a light
+and a dark circle. The circle in use has a ring and a sun or moon badge. A
+collection's circle shows the picked style and "+n"; hovering it fans out its
+other styles. **Add theme** imports VS Code or Mesh UI / T3 Code theme files
+(choose, drop or paste); added themes have a remove button.
+
+Settings are stored in localStorage (`mesh-ui:theme:v1`, `{ light, dark,
+mode }`; the older `{ themeId, mode }` is read too), added themes in
+`mesh-ui:themes:v1`, on this computer only.
 
 ## Tokens
 
 Use semantic Tailwind tokens, never literal colours. The table maps the
-mockup variable to the app token.
+mockup variable to the app token. The hex columns are the mockups' values;
+the app's Gruvbox is the VS Code import (above), which matches T3 Code and
+differs on some surfaces (cards share the page colour and stand out by their
+border).
 
 | Role | Mockup variable | Tailwind token | Gruvbox Hard dark | Gruvbox Hard light |
 | --- | --- | --- | --- | --- |
@@ -96,7 +135,8 @@ series palette so they read on both light and dark.
 | Activity event types | `eventCategoryColors`: devices blue, paused / blocked orange, schedules red, eero status yellow, speed tests aqua, firmware gray, admin purple, ports & temperature green, other neutral | | |
 
 Download and upload never appear in the same chart as bands, so sharing blue
-and purple is safe. Themes other than Gruvbox Hard use T3-style mid-tones
+and purple is safe. VS Code themes (Gruvbox included) take the series from
+their ANSI colours (see Themes); the others use T3-style mid-tones
 (`#5b9bbd` blue, `#8c7bd1` violet, `#4d9f8a` teal, `#d97757` orange). Check
 every chart in light and dark.
 
