@@ -40,6 +40,14 @@ variables on `<html>`.
 | Ember | |
 | Iris | |
 
+**Surface grain.** As in T3 Code, the body, sidebar, main pane and topbar
+carry a faint fractal-noise tile (`surface-grain` in `index.css`, 3.5%
+opacity, copied from T3). It is texture, not colour, and is the reason a
+theme looks a few steps lighter (dark) or darker (light) than its flat role
+colour: Gruvbox Hard's `#1d2021` canvas paints at about `#202324`. Any other
+opaque surface that sits directly on the body opts in with `surface-grain`,
+or it shows as a flat patch.
+
 **Light and dark are picked separately**, as in T3 Code: the settings hold a
 theme id for light mode, one for dark mode, and the mode (System, Light,
 Dark). Picking a theme by name sets both; a circle sets only its own mode.

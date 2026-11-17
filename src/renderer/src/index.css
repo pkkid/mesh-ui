@@ -111,6 +111,31 @@
   --titlebar-inset-right: 140px;
 }
 
+/*
+ * Surface grain, ported from T3 Code (apps/web/src/index.css). A fractal
+ * noise tile at 3.5% opacity painted over each app surface's own background:
+ * it lifts dark themes by a few steps and dims light ones, which is why the
+ * same theme reads lighter in T3 Code than its flat colour (Gruvbox Hard dark
+ * #1d2021 paints as about #222526). Opaque surfaces that sit on the body
+ * (sidebar, main, topbar) opt in with `surface-grain`, or they would stand
+ * out against it. Rose is T3's T3 Chat theme and keeps its lighter tile.
+ */
+:root {
+  --surface-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  --surface-grain-size: 256px 256px;
+}
+
+html[data-theme-id="rose"] {
+  --surface-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02745'/%3E%3C/svg%3E");
+  --surface-grain-size: 128px 128px;
+}
+
+@utility surface-grain {
+  background-image: var(--surface-grain);
+  background-repeat: repeat;
+  background-size: var(--surface-grain-size);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -121,7 +146,7 @@
     height: 100%;
   }
   body {
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-background surface-grain font-sans text-foreground antialiased;
     font-size: 14px;
     overflow: hidden;
     user-select: none;

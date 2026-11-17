@@ -73,7 +73,7 @@ function Shell() {
     <div className="flex h-full">
       <Sidebar />
       <TopBarProvider>
-        <main className="flex min-w-0 flex-1 flex-col bg-background">
+        <main className="flex min-w-0 flex-1 flex-col bg-background surface-grain">
           <TopBar />
           <RouterOutlet />
         </main>
