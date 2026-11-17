@@ -11,7 +11,7 @@
  * Options (each also a field of a --shots entry, which override them):
  *   --route <hash>       route to open, e.g. '#/devices' (default '#/overview')
  *   --theme light|dark   appearance (default light)
- *   --theme-id <id>      theme palette id, e.g. gruvbox-hard (default: the app default)
+ *   --theme-id <id>      theme palette id, e.g. ocean (default: the app default)
  *   --size <WxH>         viewport size (default 1200x780, the window size)
  *   --scale <n>          device scale factor (default 1)
  *   --scenario <name>    demo scenario for demo.scenario.set (demo only; default "default")

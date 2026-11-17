@@ -31,9 +31,9 @@ server so scripts and AI agents can do the same.
   disruptive changes always ask first.
 - Everything the window does is also a command for the `mesh-ui` CLI and
   its MCP server.
-- Light, dark, and system appearance, with a separate theme for each. Gruvbox
-  (Hard, Medium, Soft), Classic, Rose, Grove, Ocean, Ember and Iris are built
-  in, and VS Code colour themes can be added.
+- Light, dark, and system appearance, with a separate theme for each. Classic,
+  Rose, Grove, Ocean, Ember and Iris are built in, and any VS Code colour
+  theme (Gruvbox, Catppuccin, ...) can be added from Open VSX or a file.
 - Free eero accounts only: nothing behind eero Plus.
 
 ## Install
