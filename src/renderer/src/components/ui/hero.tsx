@@ -2,7 +2,8 @@
 // docs/design/design-system.md (Layout, Page header) and mockups 01 to 08:
 // icon or avatar top-aligned with the title, a status line, key facts, then
 // the actions in a row at the bottom. Big figures, gauges or a QR block sit
-// on the right (`aside`).
+// on the right (`aside`). Both columns are pinned to the top, never centred
+// against each other, so a tall aside does not push the title down.
 import type { LucideIcon } from "lucide-react";
 import type * as React from "react";
 
@@ -34,7 +35,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, className, ...
   return (
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
       <div data-slot="page-header" className={cn("rounded-(--hero-radius) border bg-card", className)} {...props}>
-        <div className="flex items-center gap-7 px-6 py-[22px]">
+        <div className="flex items-start gap-7 px-6 py-[22px]">
           <div className="flex min-w-0 flex-1 items-start gap-4">
             {Icon ? <IconTile icon={Icon} size="xl" /> : (icon as React.ReactNode)}
             <div className="flex min-w-0 flex-1 flex-col gap-3">
