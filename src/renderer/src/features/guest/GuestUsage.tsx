@@ -21,7 +21,7 @@ const RANGES = [
   { value: "week", label: "Week" },
 ] as const;
 
-export function GuestUsage({ timezone, off }: { timezone: string | null; off: boolean }) {
+export function GuestUsage({ timezone }: { timezone: string | null }) {
   const [range, setRange] = useState<UsageRange>("day");
   const usage = useQuery<UsageSeries>("usage.get", { scope: "guest", range }, { poll: true });
   const network = useQuery<UsageSeries>("usage.get", { scope: "network", range }, { poll: true });
@@ -52,7 +52,7 @@ export function GuestUsage({ timezone, off }: { timezone: string | null; off: bo
         <SectionError what="guest usage" error={usage.error} onRetry={() => void usage.refetch()} />
       ) : s && !hasData ? (
         <Card>
-          <Empty>{off ? "No guest activity in this window. Turn the guest network on to share it." : "No guest activity in this window."}</Empty>
+          <Empty>No guest activity in this window.</Empty>
         </Card>
       ) : (
         <Card padded>

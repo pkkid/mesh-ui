@@ -1,7 +1,9 @@
 /**
  * Guest network: the hero with the power button and the QR block, guest
  * usage, isolation and security, name and password (with its edit sheet),
- * and the guest devices. Layout, data and states: docs/ux/pages/guest.md
+ * and the guest devices. While it is off, the hero has no QR block and one
+ * empty state (with Turn on) replaces usage, isolation and devices; Name &
+ * password stays so they can be set first. Layout, data and states: docs/ux/pages/guest.md
  * and docs/mockups/11-guest.html.
  */
 import { Check, Globe, House, Smartphone, Ticket, X } from "lucide-react";
@@ -18,7 +20,7 @@ import { TopBarTitle } from "~/features/shell/TopBar";
 import type { GuestNetwork, Network, Security, WirelessBand } from "../../../../core/model";
 
 import { GuestDevices } from "./GuestDevices";
-import { GuestHero } from "./GuestHero";
+import { GuestHero, PowerButton } from "./GuestHero";
 import { GuestSettings } from "./GuestSettings";
 import { GuestUsage } from "./GuestUsage";
 
@@ -29,6 +31,8 @@ export function GuestPage(_: PageProps) {
   const bridged = network.data?.connectionMode === "bridged";
   const g = guest.data;
   const on = g?.enabled === true && !bridged;
+  // Known to be off: while loading, the on layout keeps its placeholders.
+  const off = g !== undefined && !on;
   const timezone = network.data?.timezone ?? null;
   // Bumped after a name or password save, so the hero reads the QR again.
   const [shareVersion, bumpShare] = useReducer((n: number) => n + 1, 0);
@@ -46,10 +50,15 @@ export function GuestPage(_: PageProps) {
         <Card>
           <Empty>Guest network is not available in bridge mode. eero needs to route the network to keep guests apart.</Empty>
         </Card>
+      ) : off ? (
+        <>
+          <OffState />
+          <GuestSettings guest={g} networkName={network.data?.name ?? null} onSaved={bumpShare} />
+        </>
       ) : (
         <>
           <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <GuestUsage timezone={timezone} off={g !== undefined && !on} />
+            <GuestUsage timezone={timezone} />
             <Isolation guest={g} networkName={network.data?.name ?? null} />
           </div>
           <GuestSettings guest={g} networkName={network.data?.name ?? null} onSaved={bumpShare} />
@@ -57,6 +66,22 @@ export function GuestPage(_: PageProps) {
         </>
       )}
     </>
+  );
+}
+
+/** The one empty state while the guest network is off: what it is for and Turn on. */
+function OffState() {
+  return (
+    <Card padded className="flex flex-col items-center gap-3 py-12 text-center">
+      <div className="mb-1 grid size-16 place-items-center rounded-2xl border bg-muted/40 text-muted-foreground/70">
+        <Ticket className="size-8" strokeWidth={1.5} />
+      </div>
+      <h2 className="font-medium text-base text-foreground">The guest network is off</h2>
+      <p className="max-w-sm text-muted-foreground text-sm">Give visitors internet without access to your devices.</p>
+      <div className="mt-2">
+        <PowerButton on={false} />
+      </div>
+    </Card>
   );
 }
 
