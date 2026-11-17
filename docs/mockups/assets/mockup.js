@@ -462,7 +462,7 @@
   // every module lands on whole pixels: N modules of `cell` px, each a solid
   // square `cell - 1` px wide, in the foreground colour on the card surface
   // (theme-coloured, so inverted in dark). The app's Save QR PNG and printed
-  // card stay black on white.
+  // card stay black on white. The Mesh UI glyph sits in the cleared centre.
   function qr(target, seed, o = {}) {
     const host = $(target);
     if (!host) return;
@@ -486,7 +486,7 @@
     }
     const lo = (c - 2) * cell, ls = 5 * cell - 1;
     host.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" role="img" aria-label="${o.label ?? "QR code"}">
-      <g fill="var(--fg)">${rects}</g><rect x="${lo}" y="${lo}" width="${ls}" height="${ls}" rx="${cell}" fill="var(--fg)" shape-rendering="geometricPrecision"/></svg>`;
+      <g fill="var(--fg)">${rects}</g><svg x="${lo}" y="${lo}" width="${ls}" height="${ls}" viewBox="46.16 43.66 163.68 163.68" shape-rendering="geometricPrecision"><path d="M128 68.46 70.96 182.54 185.04 182.54ZM128 68.46 128 146.58M70.96 182.54 128 146.58 185.04 182.54" fill="none" stroke="var(--fg)" stroke-width="11.16" stroke-linecap="round" stroke-linejoin="round"/><g fill="var(--fg)"><circle cx="128" cy="68.46" r="24.8"/><circle cx="70.96" cy="182.54" r="24.8"/><circle cx="185.04" cy="182.54" r="24.8"/><circle cx="128" cy="146.58" r="16.12"/></g></svg></svg>`;
   }
 
   const readyFns = [];
