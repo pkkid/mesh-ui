@@ -41,8 +41,6 @@ read these before planning the next milestone):
 - Done-when `ui:shot` lines use the real route paths from
   `src/renderer/src/app/routes.ts` (settings pages are `#/settings/wifi`,
   `#/settings/advanced`, `#/settings/ports` and `#/settings/updates`).
-- Workers run headless and push PR screenshots to an assets branch; see
-  [AGENTS.md](../AGENTS.md#milestone-runs).
 
 ## Overview
 

@@ -276,8 +276,7 @@ building a new chart; port from them rather than inventing a style.
   unless asked. Usage: `docs/testing.md#screenshots-with-ui-shot`.
 - **Show visual changes inline in chat.** When a change alters what the UI
   looks like, the final reply to the maintainer must show screenshots inline
-  in the T3 Code chat. Pushing them to an `assets/` branch or a PR body does
-  not count; that is for the PR, and the chat needs its own copy.
+  in the T3 Code chat.
   1. Take them with `pnpm ui:shot` (demo data) and crop each to the area
      that changed, with a little context (`magick in.png -crop WxH+X+Y
      +repage out.png`). Show the core one to three changes, not every one.
@@ -397,8 +396,6 @@ Work is planned and run with the `milestone-plan`, `milestone-start` and
 - When a read-only capture contradicts the docs or fixtures, the worker
   reports it in its PR even if the fix is outside its files; the lead turns
   it into a fix task.
-- Workers push their PR screenshots to an `assets/<task id>-screenshots`
-  branch and link them in the PR body, as the review does.
 - Reviews are written to `docs/reviews/M<n>.md` and include the Manual checks
   section above, plus demo-mode screenshots for UI changes.
 - Never merge the milestone PR (`milestone/M<n>` into `main`); the maintainer
