@@ -1,9 +1,9 @@
 /**
  * Guest network hero: ticket tile, the guest network name, its status and
- * how many guests are on, the power button (`guest.enable`, or
- * `guest.disable` behind the confirm dialog), and, while it is on, the QR
- * block with Copy password, Save QR, Print a card and Send to a guest. While
- * it is off there is no QR block and the hero shrinks to its content.
+ * how many guests are on. While it is on: Turn off (`guest.disable` behind
+ * the confirm dialog) and the QR block with Copy password, Save QR, Print a
+ * card and Send to a guest. While it is off the hero is just the name and
+ * status; Turn on (`guest.enable`) is in the page's empty state.
  * docs/ux/pages/guest.md (Layout 1).
  *
  * The QR payload comes from `guest.share`, which reveals the password. It is
@@ -67,7 +67,8 @@ export function GuestHero({ guest, networkName, unavailable, offline = false, fa
           </>
         ) : null
       }
-      actions={unavailable || !guest ? null : <PowerButton on={on} />}
+      // Off: Turn on lives in the page's empty state, not here.
+      actions={on ? <PowerButton on /> : null}
       aside={on && guest ? <ShareBlock guest={guest} version={shareVersion} /> : null}
     />
   );
