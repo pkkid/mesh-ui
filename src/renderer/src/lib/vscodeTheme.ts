@@ -12,6 +12,9 @@
  */
 import { parse, type ParseError } from "jsonc-parser";
 
+import type { ThemeExtension, ThemeFile } from "@shared/types";
+import { trimVsCodeTheme, VSCODE_THEME_COLOR_KEYS } from "@shared/vscode-theme";
+
 import {
   colorToHex,
   contrastRatio,
@@ -39,61 +42,9 @@ import {
   type ThemeDefinition,
 } from "./themePalettes";
 
-/** The VS Code colour keys the import reads. Anything else in a theme file is ignored. */
-export const VSCODE_THEME_COLOR_KEYS: ReadonlySet<string> = new Set([
-  "activityBar.background",
-  "activityBarBadge.background",
-  "badge.background",
-  "button.background",
-  "button.foreground",
-  "contrastBorder",
-  "descriptionForeground",
-  "disabledForeground",
-  "dropdown.background",
-  "editor.background",
-  "editor.foreground",
-  "editor.findMatchBackground",
-  "editor.findMatchForeground",
-  "editor.findMatchHighlightBackground",
-  "editor.findMatchHighlightForeground",
-  "editor.selectionBackground",
-  "editorCursor.foreground",
-  "editorError.foreground",
-  "editorGroup.border",
-  "editorPane.background",
-  "editorWarning.foreground",
-  "editorWidget.background",
-  "errorForeground",
-  "focusBorder",
-  "foreground",
-  "input.background",
-  "input.border",
-  "input.placeholderForeground",
-  "list.activeSelectionBackground",
-  "list.hoverBackground",
-  "list.inactiveSelectionBackground",
-  "menu.background",
-  "panel.background",
-  "panel.border",
-  "progressBar.background",
-  "quickInput.background",
-  "scrollbarSlider.background",
-  "sideBar.background",
-  "sideBar.border",
-  "sideBar.foreground",
-  "terminal.background",
-  "terminal.foreground",
-  "terminal.selectionBackground",
-  "terminalCursor.foreground",
-  "textCodeBlock.background",
-  "textLink.foreground",
-  ...["Black", "Red", "Green", "Yellow", "Blue", "Magenta", "Cyan", "White"].flatMap((name) => [
-    `terminal.ansi${name}`,
-    `terminal.ansiBright${name}`,
-  ]),
-]);
-
 const MAX_LABEL = 48;
+
+export { trimVsCodeTheme, VSCODE_THEME_COLOR_KEYS };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -123,21 +74,6 @@ export function isVsCodeThemeFile(value: unknown): boolean {
   if (!isRecord(value) || value.version === THEME_FILE_VERSION) return false;
   const hasWorkbenchColors = isRecord(value.colors) && Object.keys(value.colors).some((key) => key.includes("."));
   return hasWorkbenchColors || Array.isArray(value.tokenColors);
-}
-
-/** Keeps only the colours the import reads, so stored and transferred themes stay small. */
-export function trimVsCodeTheme(value: Record<string, unknown>): Record<string, unknown> {
-  const colors = isRecord(value.colors) ? value.colors : {};
-  const kept = Object.fromEntries(
-    Object.entries(colors).filter(
-      ([key, color]) => VSCODE_THEME_COLOR_KEYS.has(key) && typeof color === "string" && color.length <= 128,
-    ),
-  );
-  return {
-    ...(typeof value.name === "string" ? { name: value.name } : {}),
-    ...(typeof value.type === "string" ? { type: value.type } : {}),
-    colors: kept,
-  };
 }
 
 function resolveAppearance(value: Record<string, unknown>, canvas: Rgb): ThemeAppearance {
@@ -507,3 +443,23 @@ export function parseThemeText(source: string, fileName?: string): ThemeDefiniti
   return parseThemeFile(value);
 }
 
+/**
+ * An extension's themes as Mesh UI themes: paired into light and dark, one
+ * collection per extension, ids prefixed with the extension so two
+ * extensions never replace each other's themes (and reinstalling updates).
+ */
+export function themesFromExtension(extension: ThemeExtension, files: ReadonlyArray<ThemeFile>): ReadonlyArray<ThemeDefinition> {
+  const parsed = files.flatMap((file) => {
+    try {
+      const theme = file.appearance && !file.theme.type ? { ...file.theme, type: file.appearance } : file.theme;
+      return [parseVsCodeTheme(theme, { label: file.label })];
+    } catch {
+      return []; // A theme with no editor background cannot become a palette.
+    }
+  });
+  if (parsed.length === 0) throw new Error(`${extension.name} has no themes Mesh UI can use.`);
+  const prefix = themeIdFromName(extension.id);
+  return buildThemeCollection(parsed, { id: `open-vsx:${extension.id.toLowerCase()}`, label: extension.name.slice(0, 48) }).map(
+    (theme) => ({ ...theme, id: themeIdFromName(`${prefix}-${theme.id}`) }),
+  );
+}

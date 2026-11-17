@@ -5,7 +5,7 @@
  * dark. Themes are saved in localStorage on this computer only.
  */
 import { FileUp, Plus } from "lucide-react";
-import { useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
@@ -66,6 +66,10 @@ export function ThemeImportDialog({
     setJson("");
     setError(null);
   };
+  // Each opening starts empty, however the last one ended.
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
   const close = () => {
     reset();
     onOpenChange(false);
@@ -92,7 +96,7 @@ export function ThemeImportDialog({
       const sources = files.length > 1 ? files : [{ name: files[0]?.name ?? "theme.json", text: json }];
       const installed = installThemes(themesFromFiles(sources));
       const first = installed[0];
-      if (first) pickThemeEverywhere(first);
+      pickThemeEverywhere(...installed);
       toast.success(`${first?.collection?.label ?? first?.label ?? "Theme"} added`);
       close();
     } catch (cause) {
@@ -110,7 +114,16 @@ export function ThemeImportDialog({
           </DialogDescription>
         </div>
 
-        {children}
+        {children && (
+          <>
+            {children}
+            <div aria-hidden className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-2xs uppercase tracking-wider text-muted-foreground">or import a file</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+          </>
+        )}
 
         <div
           className={cn(
@@ -156,13 +169,14 @@ export function ThemeImportDialog({
             </label>
             <textarea
               id="theme-json"
+              rows={files.length === 1 ? 6 : 3}
               value={json}
               spellCheck={false}
               onChange={(e) => {
                 setJson(e.target.value);
                 setError(null);
               }}
-              className="h-36 w-full resize-none rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs text-foreground outline-none placeholder:text-placeholder focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 dark:bg-input/32"
+              className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs text-foreground outline-none placeholder:text-placeholder focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 dark:bg-input/32"
               placeholder={'{ "name": "My Theme", "type": "dark", "colors": { "editor.background": "#1e1e1e" } }'}
             />
           </div>

@@ -22,6 +22,8 @@ export const IPC = {
   notify: "mesh:notify",
   notifyClick: "mesh:notify-click",
   refresh: "mesh:refresh",
+  themeSearch: "mesh:theme-search",
+  themeDownload: "mesh:theme-download",
 } as const;
 
 /**
@@ -47,6 +49,36 @@ export type TitlebarColors = {
   color: string;
   symbolColor: string;
 };
+
+/** Open VSX sort orders for theme search. */
+export const THEME_SEARCH_SORTS = ["downloadCount", "rating", "timestamp", "relevance"] as const;
+export type ThemeSearchSort = (typeof THEME_SEARCH_SORTS)[number];
+
+/** A theme extension on Open VSX that Mesh UI can install (permissive licence, has colour themes). */
+export type ThemeExtension = {
+  /** `namespace.name`, e.g. `jdinhlife.gruvbox`. */
+  id: string;
+  name: string;
+  publisher: string;
+  description: string;
+  version: string;
+  license: string;
+  downloadCount: number;
+  themeCount: number;
+};
+
+/** One colour theme from an extension, trimmed to the colours Mesh UI reads. */
+export type ThemeFile = {
+  /** The extension's label for it ("Gruvbox Dark Hard"). */
+  label: string;
+  appearance: "light" | "dark" | null;
+  theme: Record<string, unknown>;
+};
+
+export type ThemeSearchResult = { ok: true; extensions: ThemeExtension[] } | { ok: false; message: string };
+export type ThemeDownloadResult =
+  | { ok: true; extension: ThemeExtension; themes: ThemeFile[] }
+  | { ok: false; message: string };
 
 /** Where the eero session is kept: the OS keychain, or memory for this launch. */
 export type SessionStorage = SessionStorageKind;
@@ -77,4 +109,11 @@ export type MeshApi = {
   notify(alert: DesktopAlert): void;
   /** A desktop alert was clicked: the window is focused, open its target on its network. Returns an unsubscribe. */
   onNotificationClick(listener: (click: AlertTarget) => void): () => void;
+  /**
+   * Searches Open VSX for colour themes (main fetches; the renderer stays
+   * offline). Not a command: themes are view state. Never throws.
+   */
+  searchThemes(query: string, sort: ThemeSearchSort): Promise<ThemeSearchResult>;
+  /** Downloads, verifies and unpacks one Open VSX theme extension. Never throws. */
+  downloadThemes(extensionId: string): Promise<ThemeDownloadResult>;
 };

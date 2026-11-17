@@ -42,6 +42,7 @@ import type { HostActions, SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
 import { isRefreshKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
+import { createOpenVsx } from "./open-vsx";
 import type { NotifyHost } from "./notify";
 import { cliExitDelay, guardCliHost } from "./cli-host";
 import { isAmazonSignInContents } from "./amazon-native-signin";
@@ -419,6 +420,7 @@ if (isCli) {
       },
       saveFile: saveFileHost,
       ...(isHeadless ? {} : { notify: notifyHost }),
+      themes: createOpenVsx((url, init) => fetch(url, init)),
     });
     createWindow();
     app.on("activate", () => {

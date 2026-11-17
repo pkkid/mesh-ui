@@ -10,6 +10,7 @@ import {
   parseThemeText,
   parseVsCodeTheme,
   seriesFromAnsi,
+  themesFromExtension,
   trimVsCodeTheme,
 } from "./vscodeTheme";
 
@@ -174,5 +175,42 @@ describe("stored themes and settings", () => {
       mode: "system",
     });
     expect(parseThemeSettings("{", exists).light).toBe("gruvbox-hard");
+  });
+});
+
+describe("themesFromExtension", () => {
+  const extension = {
+    id: "sample.sample-theme",
+    name: "Sample Theme",
+    publisher: "sample",
+    description: "",
+    version: "1.0.0",
+    license: "MIT",
+    downloadCount: 1,
+    themeCount: 3,
+  };
+  const file = (label: string, appearance: "light" | "dark" | null, theme: Record<string, unknown>) => ({ label, appearance, theme });
+
+  it("pairs, prefixes ids with the extension and skips unusable themes", () => {
+    const { name: _n, type: _t, ...dark } = sample("dark");
+    const themes = themesFromExtension(extension, [
+      file("Sample Dark", "dark", dark),
+      file("Sample Light", "light", sample("light")),
+      file("Broken", "dark", { colors: {} }),
+    ]);
+    expect(themes.map((t) => [t.id, t.label, t.appearance])).toEqual([["sample-sample-theme-sample", "Sample", "light"]]);
+    expect(themes[0]?.variants?.dark).toBeDefined();
+  });
+
+  it("groups several styles as one collection", () => {
+    const themes = themesFromExtension(extension, [file("Sample Dark", "dark", sample("dark")), file("Other Dark", "dark", sample("dark"))]);
+    expect(themes.map((t) => t.collection)).toEqual([
+      { id: "open-vsx:sample.sample-theme", label: "Sample Theme" },
+      { id: "open-vsx:sample.sample-theme", label: "Sample Theme" },
+    ]);
+  });
+
+  it("fails when nothing is usable", () => {
+    expect(() => themesFromExtension(extension, [file("Broken", "dark", {})])).toThrow(/no themes/);
   });
 });

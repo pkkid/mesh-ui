@@ -399,13 +399,20 @@ describe("window.mesh bridge", () => {
   it("exposes execute, commands, on and setTitlebarColors over the mesh: channels", async () => {
     const { mesh, ipc } = await bridgeSetup();
     expect(mesh.platform).toBe("linux");
-    expect([...ipc.handlers.keys()].sort()).toEqual([IPC.commands, IPC.execute].sort());
+    expect([...ipc.handlers.keys()].sort()).toEqual([IPC.commands, IPC.execute, IPC.themeDownload, IPC.themeSearch].sort());
 
     const info = await mesh.execute<{ host: { configDir: string } }>("app.info");
     expect(info.ok && info.result.host.configDir).toBe(dir);
 
     const list = await mesh.commands();
     expect(list.map((c) => c.id)).toEqual(["app.info", "test.leak", "test.count", "test.reboot", "test.select"]);
+  });
+
+  it("answers theme search without a host, and refuses other senders", async () => {
+    const { mesh, ipc } = await bridgeSetup();
+    expect(await mesh.searchThemes("x", "rating")).toEqual({ ok: false, message: "Theme search is not available here." });
+    const handler = ipc.handlers.get(IPC.themeDownload);
+    expect(await handler?.({ senderFrame: { url: "https://evil.example/" } }, "a.b")).toMatchObject({ ok: false, message: expect.stringMatching(/refused/) });
   });
 
   it("carries { fresh: true } to the engine so a query skips its cache, and nothing else", async () => {
