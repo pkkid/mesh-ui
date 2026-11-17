@@ -54,8 +54,11 @@ interface ButtonProps extends useRender.ComponentProps<"button"> {
  */
 const ButtonSizeContext = createContext<ButtonSize | undefined>(undefined);
 
-/** Every button in a page header (hero) and its QR block: see docs/design/design-system.md. */
+/** Every button in a page header (hero): see docs/design/design-system.md. */
 const HERO_BUTTON_SIZE: ButtonSize = "hero";
+
+/** The buttons stacked beside a QR code: four of them fit the 116px code's height. */
+const QR_BUTTON_SIZE: ButtonSize = "xs";
 
 /** Every button in a section header's tools slot, the same 28px as the Segmented beside it. */
 const SECTION_TOOL_SIZE: ButtonSize = "tool";
@@ -74,4 +77,4 @@ function Button({ className, variant, size: sizeProp, render, ...props }: Button
   });
 }
 
-export { Button, ButtonSizeContext, buttonVariants, HERO_BUTTON_SIZE, SECTION_TOOL_SIZE, type ButtonProps };
+export { Button, ButtonSizeContext, buttonVariants, HERO_BUTTON_SIZE, QR_BUTTON_SIZE, SECTION_TOOL_SIZE, type ButtonProps };

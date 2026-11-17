@@ -26,7 +26,7 @@ import { encode } from "uqr";
 
 import { copyText } from "../../lib/clipboard";
 import { cn } from "../../lib/utils";
-import { Button, ButtonSizeContext, HERO_BUTTON_SIZE } from "./button";
+import { Button, ButtonSizeContext, QR_BUTTON_SIZE } from "./button";
 
 /** Quiet zone around the code, in modules (the spec asks for 4; 2 reads fine on screen). */
 const SCREEN_QUIET = 2;
@@ -224,7 +224,7 @@ export function QrBlock({ value, caption, copyLabel, copyText: copySource, fileN
   return (
     <div data-slot="qr-block" className={cn("flex items-start gap-4", className)}>
       {copyLabel || fileName || actions ? (
-        <ButtonSizeContext value={HERO_BUTTON_SIZE}>
+        <ButtonSizeContext value={QR_BUTTON_SIZE}>
           <div className="flex flex-col gap-1.5 [&>button]:justify-start">
             {copyLabel ? (
               <Button variant="outline" disabled={!value} onClick={() => void copy()}>
