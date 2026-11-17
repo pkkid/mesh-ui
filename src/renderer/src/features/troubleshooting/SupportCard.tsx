@@ -1,18 +1,19 @@
 /**
  * Get help, from `support.info`: support center and email links (opened in
- * the browser), eero and ISP phone numbers, the Support ID with Copy, and
+ * the browser), eero and ISP phone numbers, the Support ID and Network ID
+ * (from `network.get`) with Copy, and
  * Copy diagnostics report (`support.report`, redacted in core).
  * docs/ux/pages/troubleshooting.md (Get help), mockup 16.
  */
 import { ClipboardCopy, Copy, ExternalLink, Mail, Phone } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { execute, type QueryState } from "~/app/useCommand";
+import { execute, type QueryState, useQuery } from "~/app/useCommand";
 import { Card } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
 import { CopyCommandButton } from "~/features/internet/Connection";
 import { cn } from "~/lib/utils";
-import type { SupportInfo } from "../../../../core/model";
+import type { Network, SupportInfo } from "../../../../core/model";
 
 /** "+18775550123" as "(877) 555-0123"; other numbers as sent. */
 export function formatPhone(phone: string): string {
@@ -47,6 +48,8 @@ async function loadReport(): Promise<string | null> {
 
 export function SupportCard({ query }: { query: QueryState<SupportInfo> }) {
   const s = query.data;
+  // The selected network's id, for support to find it.
+  const networkId = useQuery<Network>("network.get").data?.id ?? null;
   if (query.error && !s) return <SectionError what="support contacts" error={query.error} onRetry={() => void query.refetch()} />;
   const help = s?.eero.helpUrl;
   const mail = s?.eero.emailFormUrl ?? s?.eero.contactUrl;
@@ -57,7 +60,7 @@ export function SupportCard({ query }: { query: QueryState<SupportInfo> }) {
         <div className="font-medium text-sm">Get help</div>
         <div className="text-muted-foreground text-xs">{who} support and your ISP</div>
       </div>
-      <div className="flex flex-col divide-y border-t">
+      <div className="flex flex-col divide-y divide-border/50 border-t">
         {help && (
           <LinkRow href={help} icon={<ExternalLink />}>
             Support center
@@ -82,6 +85,11 @@ export function SupportCard({ query }: { query: QueryState<SupportInfo> }) {
           <span className="flex-1">Support ID</span>
           <span className="font-mono text-xs tabular-nums">{s?.supportId ?? "-"}</span>
           {s?.supportId && <CopyCommandButton load={async () => s.supportId} idle="Copy" done="Copied" icon={<Copy />} />}
+        </div>
+        <div className="flex items-center gap-2.5 px-4 py-2.5 text-sm">
+          <span className="flex-1">Network ID</span>
+          <span className="font-mono text-xs tabular-nums">{networkId ?? "-"}</span>
+          {networkId && <CopyCommandButton load={async () => networkId} idle="Copy" done="Copied" icon={<Copy />} />}
         </div>
         <div className="px-4 py-3">
           <CopyCommandButton load={loadReport} idle="Copy diagnostics report" done="Report copied" icon={<ClipboardCopy />} />

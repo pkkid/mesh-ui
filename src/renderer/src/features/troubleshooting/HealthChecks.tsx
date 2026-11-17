@@ -16,7 +16,8 @@ import type { RouteId } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Card } from "~/components/ui/card";
-import { SectionError } from "~/components/ui/page";
+import { SectionError, useNow } from "~/components/ui/page";
+import { formatRelative } from "../../../../core/format";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
 import type { Check, HealthReport } from "../../../../core/model";
@@ -111,7 +112,7 @@ function CheckRow({ check }: { check: Check }) {
  * The health check with Run again: `health.check` polled, and Run again
  * refetches it with `{ fresh: true }` (a plain refetch was answered from the
  * engine's cache and looked like nothing happened). `report` feeds the hero
- * and the page subtitle alike.
+ * and its "Last health check" line alike.
  */
 export function useHealthCheck() {
   const query = useQuery<HealthReport>("health.check", undefined, { poll: true });
@@ -131,6 +132,7 @@ export function useHealthCheck() {
 
 export function HealthChecks({ health, symptoms }: { health: ReturnType<typeof useHealthCheck>; symptoms?: ReactNode }) {
   const { query, report, runAgain } = health;
+  const now = useNow();
   const busy = health.running;
   if (query.error && !report) return <SectionError what="the health check" error={query.error} onRetry={runAgain} />;
   const count = report?.checks.length;
@@ -146,7 +148,10 @@ export function HealthChecks({ health, symptoms }: { health: ReturnType<typeof u
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <h2 className="font-medium text-base">Network health check</h2>
-          <p className="text-muted-foreground text-xs">{count ? `${count} checks` : "Checks"} across internet, DNS, eeros, mesh links and firmware, from what eero last reported.</p>
+          <p className="text-muted-foreground text-xs">
+            {report ? `Last health check ${formatRelative(report.at, now)} · ` : ""}
+            {count ? `${count} checks` : "Checks"} across internet, DNS, eeros, mesh links and firmware, from what eero last reported.
+          </p>
           <div className="mt-2">
             <Button size="sm" variant="outline" onClick={runAgain} disabled={busy} aria-busy={busy} data-run-again>
               <RefreshCw className={cn(busy && "animate-spin")} />

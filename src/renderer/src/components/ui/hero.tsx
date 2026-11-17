@@ -34,7 +34,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, className, ...
   const Icon = isIcon(icon) ? icon : null;
   return (
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
-      <div data-slot="page-header" className={cn("rounded-(--hero-radius) border bg-card", className)} {...props}>
+      <div data-slot="page-header" className={cn("rounded-(--hero-radius) border border-border/60 bg-card/40 shadow-xs/5", className)} {...props}>
         <div className="flex items-start gap-7 px-6 py-[22px]">
           <div className="flex min-w-0 flex-1 items-start gap-4">
             {Icon ? <IconTile icon={Icon} size="xl" /> : (icon as React.ReactNode)}

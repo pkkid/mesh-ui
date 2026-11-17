@@ -11,8 +11,7 @@ import { Popover } from "@base-ui/react/popover";
 import { ChevronsUpDown, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Link } from "~/app/router";
-import { routeById } from "~/app/routes";
+import { Link, pathFor } from "~/app/router";
 import { useCommand, useQuery } from "~/app/useCommand";
 import { networkStatus, StatusDot } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
@@ -20,7 +19,9 @@ import { formatRelative } from "../../../../core/format";
 import type { NetworkSummary } from "../../../../core/model";
 
 /** The nickname when set, else the Wi-Fi name. */
-const title = (n: NetworkSummary): string => n.nickname ?? n.name;
+/** A network as people know it: its nickname, else its name. The topbar crumb uses it too. */
+export const networkTitle = (n: NetworkSummary): string => n.nickname ?? n.name;
+const title = networkTitle;
 
 /**
  * "Online · Ziply Fiber" under the name, in the sidebar row and in every
@@ -118,7 +119,7 @@ export function NetworkSwitcher() {
             </div>
             <div className="mt-1 border-sidebar-border border-t pt-1">
               <Link
-                to={routeById("account").path}
+                to={pathFor("account", { section: "networks" })}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-sidebar-row-hover hover:text-foreground [&_svg]:size-3.5"
               >

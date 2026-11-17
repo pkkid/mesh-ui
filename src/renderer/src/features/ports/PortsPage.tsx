@@ -14,7 +14,6 @@ import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty } from "~/components/ui/card";
 import { entityColors } from "~/lib/chartColors";
-import { TopBarSubtitle } from "~/features/shell/TopBar";
 import type { ForwardList, PinholeList, ReservationList } from "../../../../core/commands/routing";
 import type { ConnectionMode, DeviceList, Eero, Internet, Network } from "../../../../core/model";
 
@@ -52,7 +51,6 @@ export function PortsPage(_: PageProps) {
 
   return (
     <>
-      {mode && <TopBarSubtitle>{capital(MODE_LABEL[mode])}</TopBarSubtitle>}
       {unavailable ? (
         <Card>
           <Empty className="flex flex-col items-center gap-2">
@@ -71,7 +69,7 @@ export function PortsPage(_: PageProps) {
                 {network.data.name} is offline. These are the addresses and rules eero last reported.
               </div>
             )}
-            <LanMap query={reservations} />
+            <LanMap query={reservations} mode={mode ? capital(MODE_LABEL[mode]) : null} />
             <Reservations query={reservations} lookup={lookup} />
             <Forwards query={forwards} lookup={lookup} publicIp={internet.data?.publicIpv4 ?? null} />
             <Pinholes query={pinholes} lookup={lookup} />

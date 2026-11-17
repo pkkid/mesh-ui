@@ -19,7 +19,7 @@ import { GatedButton, useGate } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { toast } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
-import { networkClock } from "../../../../core/format";
+import { formatRelative, networkClock } from "../../../../core/format";
 import type { Eero, ReleaseNotes, Updates } from "../../../../core/model";
 
 /** How often the install watcher reads the eeros and the update state. */
@@ -92,6 +92,7 @@ export function SoftwareCard({
   now,
   canInstall,
   networkId,
+  checkedAt,
   fading,
 }: {
   updates: Updates | undefined;
@@ -102,6 +103,8 @@ export function SoftwareCard({
   canInstall: boolean;
   /** The network the page shows, so the watcher keeps reading it if another one is selected. */
   networkId: string | null;
+  /** When `updates.get` last answered, for "Checked 11 min ago" in the status line. */
+  checkedAt: number | null;
   fading: boolean;
 }) {
   const gate = useGate("updates.install");
@@ -137,6 +140,7 @@ export function SoftwareCard({
       {pending && u?.current && <span className="font-mono">from {osVersion(u.current)}</span>}
       {releasedAt && <span>Released {clock.day(releasedAt).replace(/^\w+ /, "")}</span>}
       {!pending && !installing && u?.lastUpdatedAt && <span>Last updated {clock.day(u.lastUpdatedAt).replace(/^\w+ /, "")}</span>}
+      {checkedAt !== null && <span>Checked {formatRelative(new Date(checkedAt).toISOString(), now, timezone ?? "UTC")}</span>}
     </>
   ) : null;
 
@@ -182,7 +186,7 @@ export function SoftwareCard({
               {countdown(scheduled - now)} <span className="font-normal text-muted-foreground text-xs">to go</span>
             </div>
             <Meter value={Math.max(0, 24 * HOUR - (scheduled - now))} max={24 * HOUR} label="Time until the update window" />
-            <div className="text-2xs text-muted-foreground">eero sends reminders 12 hours and 15 minutes before. Turn them on or off in Settings &amp; Account.</div>
+            <div className="text-2xs text-muted-foreground">eero sends reminders 12 hours and 15 minutes before. Turn them on or off in Account.</div>
           </Card>
         ) : undefined
       }

@@ -80,8 +80,9 @@
   --radius: 0.5rem;
   --control-radius: 0.5rem;
   /* Section cards and the page header (design-system.md, Shape and spacing). */
-  --card-radius: 14px;
-  --hero-radius: 18px;
+  /* Boxes follow T3 Code's settings groups: rounded-xl. */
+  --card-radius: 0.75rem;
+  --hero-radius: 0.75rem;
   /* Matches TITLEBAR_HEIGHT in src/main/index.ts. */
   --titlebar-height: 44px;
   --sidebar-width: 15rem;
@@ -94,6 +95,8 @@
   --scrollbar-thumb-hover: rgb(0 0 0 / 24%);
   /* Matches ::-webkit-scrollbar's width below; topbar-scroll-fade keeps this lane opaque. */
   --app-scrollbar-width: 6px;
+  /* Resting sidebar icons, as T3 Code: 85% of the muted sidebar text in the sidebar colour. */
+  --sidebar-icon-color: color-mix(in srgb, var(--color-sidebar-muted-foreground) 85%, var(--color-sidebar));
   --topbar-scroll-fade-height: 1.5rem;
 
   /* Status colours come from the theme's series palette (set by themes.ts as

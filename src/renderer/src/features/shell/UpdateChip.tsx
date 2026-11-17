@@ -3,7 +3,7 @@
  * (docs/platform/build-and-release.md#auto-update): "Restart to update"
  * when `app.info` reports a downloaded update (`ready`), "Update available"
  * when an unsigned macOS build found one it cannot install (`available`).
- * It links to About on Settings & Account, where the update is installed or
+ * It links to About on Settings, where the update is installed or
  * downloaded. It also follows the
  * updater's `update.changed` host event, so the chip and About change as
  * soon as the state does instead of on the next 60 s poll.
@@ -29,7 +29,7 @@ export function UpdateChip() {
   if (update?.state !== "ready" && update?.state !== "available") return null;
   return (
     <Link
-      to="/account/about"
+      to="/settings/about"
       className="mb-1 flex items-center gap-2 rounded-[var(--control-radius)] border px-2.5 py-1.5 text-xs outline-none hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Download className="size-3.5 text-muted-foreground" />

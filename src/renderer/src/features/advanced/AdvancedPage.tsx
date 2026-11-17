@@ -11,7 +11,7 @@ import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { SectionError } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
-import { TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
+import { TopBarTitle } from "~/features/shell/TopBar";
 import { ownerOnly } from "../../../../core/spec";
 import type { Integrations as IntegrationsData, Internet, Network, NetworkSettings } from "../../../../core/model";
 
@@ -37,7 +37,6 @@ export function AdvancedPage(_: PageProps) {
   return (
     <PendingImpactProvider>
       <TopBarTitle>Advanced networking</TopBarTitle>
-      <TopBarSubtitle>Changes apply to every eero</TopBarSubtitle>
       <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className={cn("flex min-w-0 flex-col gap-6 transition-opacity", settings.fading && "opacity-40")}>
           {settings.error && !s ? (

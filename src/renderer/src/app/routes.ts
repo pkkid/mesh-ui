@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Stethoscope,
   Ticket,
+  UserRound,
   Users,
   Wifi,
 } from "lucide-react";
@@ -40,6 +41,7 @@ export type RouteId =
   | "ports"
   | "updates"
   | "troubleshooting"
+  | "settings"
   | "account"
   | "dev-charts";
 
@@ -83,9 +85,13 @@ export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "ports", path: "/settings/ports", title: "Reservations & ports", icon: ArrowLeftRight, nav: "settings", natOnly: true, doc: "reservations-ports.md" },
   { id: "updates", path: "/settings/updates", title: "Updates & admins", icon: Download, nav: "settings", doc: "updates-admins.md" },
   { id: "troubleshooting", path: "/troubleshooting", title: "Troubleshooting", icon: Stethoscope, nav: "settings", doc: "troubleshooting.md" },
-  { id: "account", path: "/account", title: "Settings & Account", icon: Settings, nav: "settings", doc: "account-settings.md" },
-  // Deep links to an Settings & Account section (#/account/notifications): the same page, no sidebar entry.
-  { id: "account", path: "/account/:section", title: "Settings & Account", icon: Settings, doc: "account-settings.md" },
+  { id: "settings", path: "/settings", title: "Settings", icon: Settings, nav: "settings", doc: "settings.md" },
+  // Deep links to a Settings section (#/settings/theme). After the other /settings/* pages, which match first.
+  { id: "settings", path: "/settings/:section", title: "Settings", icon: Settings, doc: "settings.md" },
+  // Account opens from the sidebar footer (the signed-in name), not a nav item.
+  { id: "account", path: "/account", title: "Account", icon: UserRound, doc: "account.md" },
+  // Deep links to an Account section (#/account/notifications): the same page.
+  { id: "account", path: "/account/:section", title: "Account", icon: UserRound, doc: "account.md" },
   ...(import.meta.env.DEV ? [{ id: "dev-charts", path: "/dev/charts", title: "Chart kit", icon: LayoutDashboard, doc: "../../design/design-system.md" } satisfies RouteDef] : []),
 ];
 
@@ -100,6 +106,7 @@ export const page = (load: () => Promise<Record<string, unknown>>, name: string)
 export const PAGES: Partial<Record<RouteId, Page>> = {
   overview: page(() => import("~/features/overview/OverviewView"), "OverviewView"),
   account: page(() => import("~/features/account/AccountPage"), "AccountPage"),
+  settings: page(() => import("~/features/account/SettingsPage"), "SettingsPage"),
   devices: page(() => import("~/features/devices/DevicesPage"), "DevicesPage"),
   internet: page(() => import("~/features/internet/InternetPage"), "InternetPage"),
   eeros: page(() => import("~/features/eeros/EerosPage"), "EerosPage"),

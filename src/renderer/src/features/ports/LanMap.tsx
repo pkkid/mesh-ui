@@ -51,9 +51,18 @@ function kinds(lan: Lan, reserved: ReadonlyArray<string>, leases: ReadonlyArray<
   });
 }
 
-export function LanMap({ query }: { query: QueryState<ReservationList> }) {
+/** `mode` is the network's connection mode ("NAT mode"), first in the subtitle. */
+export function LanMap({ query, mode = null }: { query: QueryState<ReservationList>; mode?: string | null }) {
   const lan = query.data?.lan ?? null;
-  const subtitle = lan ? `${lan.subnet} · ${formatCount(lan.size)} addresses` : undefined;
+  const range = lan ? `${lan.subnet} · ${formatCount(lan.size)} addresses` : null;
+  const subtitle =
+    mode || range ? (
+      <>
+        {mode}
+        {mode && range && " · "}
+        {range && <span className="font-mono">{range}</span>}
+      </>
+    ) : undefined;
   const legend = (
     <div className="hidden items-center gap-3 text-muted-foreground text-xs xl:flex">
       {LEGEND.map(([k, label]) => (
@@ -66,7 +75,7 @@ export function LanMap({ query }: { query: QueryState<ReservationList> }) {
   );
 
   return (
-    <Section title="LAN address map" subtitle={subtitle && <span className="font-mono">{subtitle}</span>} tools={legend}>
+    <Section title="LAN address map" subtitle={subtitle} tools={legend}>
       {query.error && !query.data ? (
         <SectionError what="the address map" error={query.error} onRetry={() => void query.refetch()} />
       ) : (

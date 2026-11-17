@@ -9,7 +9,7 @@
  * command's own gate). Rows about a device also get a `...` menu: Rename (a
  * small dialog, `device.rename`), Block or Unblock (`device.block`,
  * disruptive: the confirm dialog first) and Device details, each gated by its command.
- * `StreamSettingsButton` is the header's settings icon, opening Settings & Account
+ * `StreamSettingsButton` is the header's settings icon, opening Account
  * at Notifications. docs/ux/pages/activity.md (Layout 3, Actions).
  */
 import { Menu } from "@base-ui/react/menu";
@@ -398,7 +398,7 @@ export function EventStream({
     return (
       <div className="flex flex-col gap-3">
         {error}
-        <Card className="divide-y">
+        <Card className="divide-y divide-border/50">
           {Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="h-[58px]" />
           ))}
@@ -429,7 +429,7 @@ export function EventStream({
                   />
                 )}
               </div>
-              <div className="divide-y divide-border/60">
+              <div className="divide-y divide-border/50">
                 {d.rows.map((e) => (
                   <EventRow key={e.id} e={e} clock={clock} ctx={actions} networkName={networkName} />
                 ))}

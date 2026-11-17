@@ -118,7 +118,7 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
       </Section>
 
       <Section title="Schedules" tools={addButton}>
-        <Card className={cn("divide-y transition-opacity", fading && "opacity-40")}>
+        <Card className={cn("divide-y divide-border/50 transition-opacity", fading && "opacity-40")}>
           {!p ? (
             <div className="h-[58px]" />
           ) : schedules.length === 0 ? (

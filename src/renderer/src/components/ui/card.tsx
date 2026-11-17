@@ -10,7 +10,9 @@ import { cn } from "~/lib/utils";
 const CARD_IGNORE = "a,button,input,select,textarea,label,[role=menuitem],[role=checkbox],[data-card-ignore]";
 
 /**
- * A subtle card: solid `bg-card`, 1px border, 14px radius. Keep it flat
+ * A subtle card, styled as T3 Code's settings groups: `bg-card/40`, a 1px
+ * `border-border/60`, a faint `shadow-xs/5`, 12px radius. Row dividers inside
+ * use `divide-border/50`. Keep it flat
  * inside: no nested cards, faint row dividers only. `padded` gives the
  * standard 18px 20px; tables and settings rows go in an unpadded card.
  *
@@ -41,7 +43,7 @@ function Card({
     <div
       data-slot="card"
       className={cn(
-        "rounded-(--card-radius) border bg-card text-card-foreground",
+        "rounded-(--card-radius) border border-border/60 bg-card/40 text-card-foreground shadow-xs/5",
         padded ? "px-5 py-[18px]" : "overflow-hidden",
         to &&
           "cursor-pointer transition-colors hover:border-foreground/20 hover:bg-muted/30 has-[[data-card-link]:focus-visible]:border-foreground/20 has-[[data-card-link]:focus-visible]:bg-muted/30 has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring",

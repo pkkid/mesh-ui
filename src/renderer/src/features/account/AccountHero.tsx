@@ -1,5 +1,5 @@
 /**
- * Settings & Account hero and Account section (docs/ux/pages/account-settings.md,
+ * Account hero and Account section (docs/ux/pages/account.md,
  * Layout 1 and 2): the shared Avatar, the name with `Signed in`, email and
  * mobile with Verified or Unverified, and the account writes. Edit name and
  * Change email or mobile open CodeDialog (the value, then eero's code); an

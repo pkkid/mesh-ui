@@ -6,7 +6,7 @@ what changed recently.
 Mockup: [../../mockups/01-overview.html](../../mockups/01-overview.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "Overview", subtitle freshness ("Updated just now"), no page
+Topbar: title "Overview", nothing after it (freshness, "Updated just now", is in the Refresh tooltip), no page
 actions.
 
 ## Layout

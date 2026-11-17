@@ -6,7 +6,7 @@ use, how speed tests have gone, and how much data crossed the WAN.
 Mockup: [../../mockups/02-internet.html](../../mockups/02-internet.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "Internet", subtitle freshness, no page actions.
+Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip), no page actions.
 
 ## Layout
 

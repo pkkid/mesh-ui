@@ -26,8 +26,8 @@ import { Card, Section } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
 import { Sheet, SheetField } from "~/components/ui/sheet";
-import { TopBarSubtitle } from "~/features/shell/TopBar";
-import { formatRelative, networkClock } from "../../../../core/format";
+import { useTopBarUpdated } from "~/features/shell/TopBar";
+import { networkClock } from "../../../../core/format";
 import { NICKNAME_MAX } from "../../../../core/commands/network";
 import type { WifiPassword } from "../../../../core/commands/wifi";
 import type { AppInfo, DeviceList, Network, NetworkHealth, NetworkSummary, WifiSettings, WifiShare } from "../../../../core/model";
@@ -90,6 +90,7 @@ function useSecret<R>(id: string, networkId: string | null): Secret<R> {
 
 export function WifiPage(_props: PageProps) {
   const wifi = useQuery<WifiSettings>("wifi.get", undefined, { poll: true });
+  useTopBarUpdated(wifi.fetchedAt);
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const health = useQuery<NetworkHealth>("network.health", undefined, { poll: true });
   const devices = useQuery<DeviceList>("device.list", {}, { poll: true });
@@ -102,9 +103,6 @@ export function WifiPage(_props: PageProps) {
 
   return (
     <>
-      <TopBarSubtitle>
-        <Freshness at={wifi.fetchedAt} />
-      </TopBarSubtitle>
 
       <WifiHero wifi={data} network={network.data ?? null} offline={offline} share={share} password={password} fading={wifi.fading} />
 
@@ -232,9 +230,3 @@ function NicknameSheet({ open, onClose, current }: { open: boolean; onClose: () 
   );
 }
 
-/** "Updated just now", counting up between polls. */
-function Freshness({ at }: { at: number | null }) {
-  const now = useNow(15_000);
-  if (at === null) return null;
-  return <>Updated {formatRelative(new Date(at).toISOString(), now)}</>;
-}

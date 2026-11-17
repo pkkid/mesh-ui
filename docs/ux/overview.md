@@ -39,7 +39,7 @@ Every action below is a command run through `engine.execute(id, params)` (see
 
 ```text
 +-----------+--------------------------------------------------------------+
-| sidebar   | topbar: crumbs · subtitle · page nav · search · bell ·       |
+| sidebar   | topbar: crumbs · page nav · search · bell ·                  |
 |           |         theme · window controls        (drag region)         |
 |           +--------------------------------------------------------------+
 |           | content: page (scrolls)                                      |
@@ -73,8 +73,11 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
    Opens the [network switcher](#network-switcher).
 3. **Navigation**, in two groups. Items show an icon, label and an optional
    count on the right in `text-2xs text-muted-foreground tabular-nums`. The
-   active item uses the selected surface (`bg-sidebar-row-selected`) with no
-   outline or shadow, as in T3 Code; item icons use one muted colour
+   labels rest in `font-medium text-sidebar-muted-foreground/80` with icons in
+   `--sidebar-icon-color` (T3 Code's lighter grey); hover and the active item
+   switch both to `text-sidebar-foreground`. The active item uses the selected
+   surface (`bg-sidebar-row-selected`) with no outline or shadow, as in T3
+   Code; item icons use one muted colour
    (the per-item `--item-color` in the mockup is only a faint accent on the
    active item, never a fill).
 4. **Footer.** Account name ("Alex Kim") and role on the selected network
@@ -95,7 +98,8 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 | Settings | Reservations & ports | `arrow-left-right` | - | [pages/reservations-ports.md](pages/reservations-ports.md) | 14 |
 | Settings | Updates & admins | `download` | - | [pages/updates-admins.md](pages/updates-admins.md) | 15 |
 | Settings | Troubleshooting | `stethoscope` | - | [pages/troubleshooting.md](pages/troubleshooting.md) | 16 |
-| Settings | Settings & Account | `settings` | - | [pages/account-settings.md](pages/account-settings.md) | 17 |
+| Settings | Settings | `settings` | - | [pages/settings.md](pages/settings.md) | 17 |
+| (sidebar footer) | Account | `account` | - | [pages/account.md](pages/account.md) | 17 |
 
 - Counts come from the same queries the pages use (`eero.list`,
   `device.list` summary, `profile.list`) and refresh with them. The Devices
@@ -124,7 +128,7 @@ A popover anchored under the sidebar network row.
   remembered in `settings.json` so the CLI uses the same default). Every page
   reloads its queries for the new network; the current page is kept if it
   exists on the new network, otherwise Overview.
-- **Footer of the popover:** "Manage networks" links to Settings & Account
+- **Footer of the popover:** "Manage networks" links to Account
   (Networks on this account). No create-network flow: setting up a new
   network needs the eero mobile app.
 - Keyboard: `Ctrl+Shift+N` opens the switcher; arrows and Enter choose.
@@ -137,13 +141,13 @@ Left to right (mockup `.topbar`):
 
 | Element | What it shows | Notes |
 | --- | --- | --- |
-| Crumbs | Page title as `h1`, or a path ("Devices / Alex's MacBook Pro", "eeros / Office", "Profiles / Mia") | Earlier crumbs are links. |
+| Crumbs | The selected network, then the page: "Maple Street / Overview", "Maple Street / eeros / Office", "Maple Street / Devices / Alex's MacBook Pro". The page is the `h1`. Settings and Account, which are not about a network, show only their title | As T3 Code's breadcrumb: `text-sm font-medium`, 12px apart; earlier crumbs in `text-muted-foreground` and links (the network goes to Overview), turning `text-foreground` on hover; the `/` in `text-icon-muted`; the page in `text-foreground`. Nothing follows the page. |
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
 | Page navigation | Small buttons a page puts in the topbar slot: Prev and Next (Device detail) | Optional per page. Navigation and global tools only; page actions (Add a profile, Export CSV, Rename) live in the page, in hero actions or section tools. Share Wi-Fi (Devices), Live (Devices), Export CSV (Activity), Check for updates (Updates) and Rename (Profile detail) still sit here until #323 moves them. |
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
 | Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
-| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The light and dark themes (Classic by default; also Rose, Grove, Ocean, Ember, Iris, and added VS Code themes such as Gruvbox) are picked in Settings & Account. Stored in renderer `localStorage`, not a command. |
+| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The light and dark themes (Classic by default; also Rose, Grove, Ocean, Ember, Iris, and added VS Code themes such as Gruvbox) are picked in Settings. Stored in renderer `localStorage`, not a command. |
 | Window controls | Minimise, maximise, close | Windows and Linux only. |
 
 ## Notifications bell
@@ -167,7 +171,7 @@ Left to right (mockup `.topbar`):
   settings sheet.
 - **Notification settings sheet:** the one editor for every alert choice,
   for the selected network. It opens over the current page from the bell's
-  gear, Activity's settings icon, the Notifications row on Settings & Account,
+  gear, Activity's settings icon, the Notifications row on Account,
   and the `#/account/notifications` deep link. Three groups:
   - **eero alerts**, sent by eero for this network
     (`notifications.settings.get`): the keys eero sends, never an eero Plus
@@ -282,7 +286,7 @@ the ones that run commands go through `execute` like any button.
 | `Ctrl+Shift+D` | Pause device... (palette with `device.pause`) | Global |
 | `Ctrl+Shift+N` | Open network switcher | Global |
 | `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Activity, Guest network | Global |
-| `Ctrl+,` | Settings & Account | Global |
+| `Ctrl+,` | Settings | Global |
 | `Alt+←` / `Alt+→` (`⌘[` / `⌘]`) | Back / forward | Global |
 | `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |
 | `Ctrl+B` | Hide or show the sidebar | Global |
@@ -293,7 +297,7 @@ the ones that run commands go through `execute` like any button.
 
 Only `Ctrl+K`, `/`, `Esc`, the palette keys, `Ctrl+Shift+P`, `Ctrl+Shift+D`
 and `Shift+click` appear in the mockups; the rest are proposed here. A
-shortcut list lives in Settings & Account.
+shortcut list lives in Settings.
 
 ## Navigation
 
@@ -304,7 +308,7 @@ shortcut list lives in Settings & Account.
   `#/settings/updates`, `#/troubleshooting`, `#/account`. Navigation is view
   state, never a command. Section deep links reuse a page's route with a
   `:section` segment (no sidebar entry, the page stays selected) and scroll
-  to it: `#/account/<section>` (see account-settings.md) and `#/internet/history`
+  to it: `#/account/<section>` and `#/settings/<section>` (see account.md and settings.md) and `#/internet/history`
   (Speed test history, from Overview's "View history").
 - Routes are per network: switching network keeps the route when the target
   exists. A detail route whose id is gone (device removed, profile deleted)
@@ -336,7 +340,7 @@ All pages share one structure (see the decisions in `AGENTS.md`):
 - **Sections** below, each with a header row: `text-sm font-medium` title, an
   optional muted sub line, and tools on the right (segmented Day / Week, view
   toggles, small buttons, "See all" links).
-- Section bodies are subtle cards: solid `bg-card`, 1px `border`, 14px radius.
+- Section bodies are subtle cards, as T3 Code's settings groups: `bg-card/40`, 1px `border-border/60`, `shadow-xs/5`, 12px radius, rows divided by `border-border/50`.
   A fully flat layout was tried and rejected. Tables sit in a card with faint
   row dividers.
 - Colour only for chart series and status. Notes (`info`, `warn`, `bad`) are
@@ -464,7 +468,7 @@ Error codes from `execute` and how the UI words them:
 | Code | UI |
 | --- | --- |
 | `not_signed_in` | Go to [sign-in](sign-in.md) with "Your session ended. Sign in again." |
-| `rate_limited` | Keep data, subtitle says "Updates paused for 30 s (eero rate limit)"; no toast for background polls, a toast for user actions |
+| `rate_limited` | Keep data, the Refresh tooltip says "Updates paused for 30 s (eero rate limit)"; no toast for background polls, a toast for user actions |
 | `network_error` | See [Offline](#offline) |
 | `eero_error` | Section note or toast with eero's message, plus Retry |
 | `bad_params` | Field-level message in the form or sheet |
@@ -575,8 +579,9 @@ engine.md wins.
   change made in the eero app shows at once instead of after the cache and
   the next poll. One request per query, never more than the page already
   loads; clicks while it runs are ignored.
-- **Freshness.** The topbar subtitle shows "Updated just now" / "Updated 4s
-  ago" for the page's main query and ticks every second. Sections with live
+- **Freshness.** Nothing follows the page title in the topbar. The Refresh
+  button's tooltip ends with "Updated just now" / "Updated 4s ago" for the
+  page's main query (`useTopBarUpdated`), ticking every 15 s. Sections with live
   data say how they refresh ("refreshes every minute").
 
 ## Toasts

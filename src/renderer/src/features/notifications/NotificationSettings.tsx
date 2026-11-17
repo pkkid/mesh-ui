@@ -2,7 +2,7 @@
  * Notification settings (docs/ux/overview.md#notifications-bell): the one
  * editor for every alert choice, a sheet any page opens with
  * `openNotificationSettings()` (the bell's gear, Activity's settings icon,
- * the Notifications row on Settings & Account and its `#/account/notifications`
+ * the Notifications row on Account and its `#/account/notifications`
  * deep link). The bell hosts it (`NotificationSettingsHost`), so it opens
  * wherever you are, for the selected network.
  *
@@ -260,7 +260,7 @@ function Group({ title, hint, children }: { title: string; hint: string; childre
         <h3 className="shrink-0 font-medium text-foreground text-sm">{title}</h3>
         <span className="truncate text-2xs text-muted-foreground">{hint}</span>
       </div>
-      <div className="flex flex-col divide-y divide-border/50 rounded-lg border px-3">{children}</div>
+      <div className="flex flex-col divide-y divide-border/50 rounded-xl border border-border/60 bg-card/40 px-3 shadow-xs/5">{children}</div>
     </section>
   );
 }
@@ -268,7 +268,7 @@ function Group({ title, hint, children }: { title: string; hint: string; childre
 /**
  * One switch row: optional icon, label, muted detail, and a switch. `on` null
  * (eero sent no value) shows a dashed track that cannot be used. Also used
- * by the Settings & Account page's Account section.
+ * by the Account page's Account section.
  */
 export function SwitchRow({
   icon,

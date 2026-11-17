@@ -19,11 +19,11 @@ import { Button } from "~/components/ui/button";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { KvList } from "~/components/ui/kv-list";
-import { SectionError, useNow } from "~/components/ui/page";
+import { SectionError } from "~/components/ui/page";
 import { Segmented } from "~/components/ui/segmented";
 import { networkStatus } from "~/components/ui/status";
-import { TopBarSubtitle } from "~/features/shell/TopBar";
-import { formatRelative, networkClock } from "../../../../core/format";
+import { useTopBarUpdated } from "~/features/shell/TopBar";
+import { networkClock } from "../../../../core/format";
 import type { DeviceList, Eero, Internet, Network, NetworkHealth, Updates } from "../../../../core/model";
 
 import { ClientsByBand } from "./ClientsByBand";
@@ -44,6 +44,7 @@ const CARD_VIEWS = [
 
 export function EerosPage(_props: PageProps) {
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
+  useTopBarUpdated(eeros.fetchedAt);
   const health = useQuery<NetworkHealth>("network.health", undefined, { poll: true });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
@@ -97,10 +98,6 @@ export function EerosPage(_props: PageProps) {
 
   return (
     <>
-      <TopBarSubtitle>
-        <Subtitle updates={updates.data} at={eeros.fetchedAt} />
-      </TopBarSubtitle>
-
       <Section
         title="Mesh topology"
         subtitle="Upstream links and mesh quality bars"
@@ -114,6 +111,7 @@ export function EerosPage(_props: PageProps) {
             <div className="flex flex-col gap-3">
               <WeakLinkNote issue={issue} eeros={list} networkName={network.data?.name ?? "This network"} lastSeen={lastSeen} />
               {selected && <SelectedEero eero={selected} eeros={list} />}
+              <FirmwareLine updates={updates.data} />
             </div>
           </div>
         )}
@@ -159,22 +157,22 @@ export function EerosPage(_props: PageProps) {
 }
 
 /** "eeroOS 7.12.1, up to date · updated 4s ago". */
-function Subtitle({ updates, at }: { updates: Updates | undefined; at: number | null }) {
-  const now = useNow(15_000);
-  const parts: string[] = [];
-  if (updates?.current) {
-    const state =
-      updates.status === "up_to_date"
-        ? "up to date"
-        : updates.status === "installing"
-          ? `installing ${updates.target ?? "an update"}`
-          : updates.status === "scheduled"
-            ? `${updates.target ?? "update"} scheduled`
-            : `${updates.target ?? "update"} available`;
-    parts.push(`eeroOS ${updates.current}, ${state}`);
-  }
-  if (at !== null) parts.push(`updated ${formatRelative(new Date(at).toISOString(), now)}`);
-  return <>{parts.join(" · ")}</>;
+/** Under the selected eero: the network's eeroOS and update state ("eeroOS 7.12.1, up to date"). */
+function FirmwareLine({ updates }: { updates: Updates | undefined }) {
+  if (!updates?.current) return null;
+  const state =
+    updates.status === "up_to_date"
+      ? "up to date"
+      : updates.status === "installing"
+        ? `installing ${updates.target ?? "an update"}`
+        : updates.status === "scheduled"
+          ? `${updates.target ?? "update"} scheduled`
+          : `${updates.target ?? "update"} available`;
+  return (
+    <p className="px-1 text-muted-foreground text-xs">
+      eeroOS {updates.current}, {state}
+    </p>
+  );
 }
 
 /** The selected eero: name, its uplink, Open, and backhaul, mesh quality and downstream eeros. */

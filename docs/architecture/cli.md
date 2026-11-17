@@ -69,12 +69,12 @@ The installer puts a `mesh-ui` launcher on `PATH`. Details per OS are in
 
 | OS | Launcher |
 | --- | --- |
-| macOS | Symlink `/usr/local/bin/mesh-ui` to a script inside the app bundle, offered from Settings & Account ("Install command line tool", needs an admin prompt) |
+| macOS | Symlink `/usr/local/bin/mesh-ui` to a script inside the app bundle, offered from Settings ("Install command line tool", needs an admin prompt) |
 | Windows | NSIS installer adds `<install dir>\bin` (holding `mesh-ui.cmd`) to the user `PATH` |
 | Linux deb / rpm | The package's after-install script writes the `/usr/bin/mesh-ui` launcher; after-remove deletes it |
-| Linux AppImage | "Install CLI" button in Settings & Account writes `~/.local/bin/mesh-ui` pointing at the AppImage path |
+| Linux AppImage | "Install CLI" button in Settings writes `~/.local/bin/mesh-ui` pointing at the AppImage path |
 
-The Settings & Account button runs `app.cli.install` (`src/main/cli-install.ts`),
+The Settings button runs `app.cli.install` (`src/main/cli-install.ts`),
 which reports where the launcher is and whether it is on `PATH`
 (`CliStatus`):
 

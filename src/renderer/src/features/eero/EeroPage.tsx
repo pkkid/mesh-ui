@@ -12,9 +12,9 @@ import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty } from "~/components/ui/card";
-import { SectionError, useNow } from "~/components/ui/page";
-import { TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
-import { formatRelative, networkClock } from "../../../../core/format";
+import { SectionError } from "~/components/ui/page";
+import { TopBarTitle, useTopBarUpdated } from "~/features/shell/TopBar";
+import { networkClock } from "../../../../core/format";
 import type { Eero, Internet, Network, NetworkHealth, UsageBreakdown } from "../../../../core/model";
 
 import { EeroActions } from "./EeroActions";
@@ -28,6 +28,7 @@ import { EeroUsage } from "./EeroUsage";
 export function EeroPage({ params }: PageProps) {
   const id = params.eeroId ?? "";
   const eero = useQuery<Eero>("eero.get", { eero: id }, { poll: true, enabled: id !== "" });
+  useTopBarUpdated(eero.fetchedAt);
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const health = useQuery<NetworkHealth>("network.health", undefined, { poll: true });
@@ -70,9 +71,6 @@ export function EeroPage({ params }: PageProps) {
   return (
     <>
       <TopBarTitle>{data?.location ?? ""}</TopBarTitle>
-      <TopBarSubtitle>
-        <Updated at={eero.fetchedAt} />
-      </TopBarSubtitle>
 
       <EeroHero
         eero={data}
@@ -102,11 +100,6 @@ export function EeroPage({ params }: PageProps) {
   );
 }
 
-/** "Updated 4s ago". */
-function Updated({ at }: { at: number | null }) {
-  const now = useNow(5_000);
-  return <>{at === null ? "" : `Updated ${formatRelative(new Date(at).toISOString(), now)}`}</>;
-}
 
 /** `[` and `]` open the previous and next eero, in `eero.list` order (gateway first). */
 function useEeroShortcuts(eeros: ReadonlyArray<Eero>, id: string) {

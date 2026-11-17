@@ -1,8 +1,8 @@
 /**
- * Settings & Account side panel, About (docs/ux/pages/account-settings.md, Side panel 1):
+ * Settings side panel, About (docs/ux/pages/settings.md, Side panel 1):
  * logo, version and update status, Check now and Restart to update, the
  * Automatic updates and Beta updates switches, Electron and platform,
- * Network ID, Support ID, links that open in the browser, Show eero
+ * Support ID, links that open in the browser, Show eero
  * request log (`app.log.show`), and the independence line. The updater lives in main (src/main/updater.ts);
  * install kinds that cannot update themselves (deb, rpm, portable, dev) hide
  * the update controls and point at the release page. An unsigned macOS
@@ -20,7 +20,7 @@ import { Meter } from "~/components/ui/meter";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import { formatPercent, formatRelative } from "../../../../core/format";
-import type { Account, AppInfo, AppSettings, InstallKind, Network, UpdateStatus } from "../../../../core/model";
+import type { Account, AppInfo, AppSettings, InstallKind, UpdateStatus } from "../../../../core/model";
 
 export const RELEASES_URL = "https://github.com/pkkid/mesh-ui/releases";
 const SOURCE_URL = "https://github.com/pkkid/mesh-ui";
@@ -67,7 +67,6 @@ export function releaseUrl(version: string | null): string {
 export function AboutPanel({ id }: { id?: string }) {
   const info = useQuery<AppInfo>("app.info", undefined, { poll: true });
   const settings = useQuery<AppSettings>("app.settings.get");
-  const network = useQuery<Network>("network.get");
   const account = useQuery<Account>("account.get", undefined, { poll: true });
   const check = useCommand<Record<string, never>, UpdateStatus>("app.update.check");
   const install = useCommand("app.update.install");
@@ -146,7 +145,6 @@ export function AboutPanel({ id }: { id?: string }) {
         className="text-xs"
         items={[
           { label: "Electron", value: app ? `${app.electron ?? "-"} · ${OS_NAME[app.os]} ${app.arch}` : null },
-          { label: "Network ID", value: network.data?.id ?? null, mono: true, copy: true },
           { label: "Support ID", value: account.data?.id ?? null, mono: true, copy: true },
         ]}
       />

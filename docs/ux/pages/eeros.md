@@ -6,7 +6,7 @@ where the traffic goes, and network-wide restart.
 Mockup: [../../mockups/03-eeros.html](../../mockups/03-eeros.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "eeros", subtitle "eeroOS 7.12.1, up to date · updated 4s ago".
+Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a muted line under the selected eero, to the right of the topology.
 Sidebar count: number of eeros.
 
 ## Layout

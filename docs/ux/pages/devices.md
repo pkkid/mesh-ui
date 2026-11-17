@@ -6,7 +6,7 @@ bulk actions (pause, resume, assign profile, block).
 Mockup: [../../mockups/05-devices.html](../../mockups/05-devices.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "Devices", subtitle "Updated 4s ago", page action the **Live**
+Topbar: title "Devices", nothing after it (freshness is in the Refresh tooltip), page action the **Live**
 switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known devices (38).
 
 ## Layout

@@ -90,7 +90,7 @@ keychain item, the Windows AppUserModelID and the auto-update identity.
 | Windows | x64 | `Mesh-UI-Setup-<v>-x64.exe` (NSIS) | Yes | Per-user install, no admin; adds CLI to `PATH` |
 | Windows | arm64 | `Mesh-UI-Setup-<v>-arm64.exe` (NSIS) | Yes | |
 | Windows | x64, arm64 | `Mesh-UI-<v>-<arch>-portable.zip` | No | Unzip and run; no CLI on `PATH` |
-| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage` | Yes | CLI via "Install CLI" in Settings & Account |
+| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage` | Yes | CLI via "Install CLI" in Settings |
 | Linux | x64 (amd64), arm64 | `mesh-ui_<v>_<arch>.deb` | No (package manager or release page) | Installs `/usr/bin/mesh-ui` |
 | Linux | x64 (x86_64), arm64 (aarch64) | `mesh-ui-<v>.<arch>.rpm` | No | Installs `/usr/bin/mesh-ui` |
 | All | | `latest.yml`, `latest-mac.yml`, `latest-linux.yml`, `latest-linux-arm64.yml` | | electron-updater metadata |
@@ -270,8 +270,8 @@ published releases.
   released. M6 is the last milestone, so later releases are `0.6.x` fixes,
   each from an issue and a PR into `main` (see [roadmap.md](../roadmap.md#after-m6)).
 - Pre-releases use `-beta.N` and are published as GitHub pre-releases. Users
-  on the beta channel (Settings & Account, stored in `settings.json`) get them.
-- The version shows in Settings & Account and in `mesh-ui --version`, and is
+  on the beta channel (Settings, stored in `settings.json`) get them.
+- The version shows in Settings and in `mesh-ui --version`, and is
   returned by `app.info`.
 - Release notes come from the milestone review (`docs/reviews/M<n>.md`):
   user-facing changes only (its section 4, through
@@ -352,7 +352,7 @@ Only the window has an updater; `app.info` `update` reports its state.
   `available`, `downloading`, `ready`, `error`, or `deb`, `rpm`, `portable` for an
   install kind that cannot update) gives a fixed state in unpackaged
   headless runs, so `MESH_UI_UPDATE_STATE=ready pnpm ui:shot --route
-  '#/account/about'` shows it. Packaged builds and windowed runs ignore it.
+  '#/settings/about'` shows it. Packaged builds and windowed runs ignore it.
 
 ## CLI launcher
 
@@ -374,12 +374,12 @@ launcher.
   It resolves its own symlink with `realpath` so it works from
   `/usr/local/bin` (on macOS before 13, which has no `realpath`, it follows
   the links with `readlink`). Source: `build/mac/mesh-ui`.
-- Settings & Account offers **Install command line tool** (`app.cli.install`),
+- Settings offers **Install command line tool** (`app.cli.install`),
   which creates `/usr/local/bin/mesh-ui` pointing at that script, asking for
   an admin password through the system prompt. If the app moves, the button
   shows "Reinstall".
 - Users who prefer not to give admin rights can add
-  `/Applications/Mesh UI.app/Contents/Resources/bin` to `PATH`; Settings & Account
+  `/Applications/Mesh UI.app/Contents/Resources/bin` to `PATH`; Settings
   shows the line to copy.
 
 ### Windows
@@ -419,7 +419,7 @@ launcher.
   Like the dev launcher (#115), it never lets the CLI reach a display
   server, even from a desktop terminal. The desktop entry still launches
   the window from `/opt`; only the launcher adds `--cli`.
-- AppImage: Settings & Account shows **Install CLI** (`app.cli.install`), which
+- AppImage: Settings shows **Install CLI** (`app.cli.install`), which
   writes `~/.local/bin/mesh-ui` (mode 755) calling the AppImage path
   (`$APPIMAGE`) with `--cli --ozone-platform=headless --disable-gpu` and no
   `DISPLAY` or `WAYLAND_DISPLAY`, like the deb launcher, and shows the

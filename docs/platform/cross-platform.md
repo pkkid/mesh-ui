@@ -49,7 +49,7 @@ Never hard-code a separator; use `path.join`.
   the Linux backend name still comes from `getSelectedStorageBackend()`.
 - Chromium picks the Linux backend from the desktop environment. Users can
   force one with `--password-store=gnome-libsecret` or `kwallet6`.
-- Test the no-keychain path with `--password-store=basic`; Settings & Account must
+- Test the no-keychain path with `--password-store=basic`; Account must
   say "Your session is kept in memory. You'll sign in again next launch."
 - The CLI uses the same binary and so the same backend (see
   [cli.md](../architecture/cli.md#how-the-cli-runs)).
@@ -81,7 +81,7 @@ Never hard-code a separator; use `path.join`.
 
 - macOS gets a standard app menu (About, Settings `Cmd ,`, Hide, Quit), plus
   Edit (needed for copy and paste in inputs) and Window. Windows and Linux get
-  no menu bar; the same items are in the sidebar and Settings & Account.
+  no menu bar; the same items are in the sidebar and Settings.
 - Modifier: `Cmd` on macOS, `Ctrl` elsewhere. Shortcut definitions use
   `Mod+K` and render per platform (`Cmd K`, `Ctrl K`).
 - `Ctrl Q` / `Cmd Q` quits; `Alt F4` on Windows and Linux closes as usual.
@@ -97,7 +97,7 @@ by main with Electron's `Notification`.
 | Windows | `app.setAppUserModelId("io.github.pkkid.meshui")` before the first notification, and the Start menu shortcut the NSIS installer creates; the portable zip shows none until run once from a shortcut |
 | Linux | A notification daemon (most desktops); silently skipped otherwise |
 
-The user can turn them off in Settings & Account (`app.settings.set`).
+The user can turn them off in Settings (`app.settings.set`).
 
 ## Fonts and rendering
 
@@ -112,7 +112,7 @@ The user can turn them off in Settings & Account (`app.settings.set`).
 
 | | macOS | Windows | Linux |
 | --- | --- | --- | --- |
-| Launcher | `/usr/local/bin/mesh-ui` symlink, installed from Settings & Account | `mesh-ui.cmd` in `<install dir>\bin`, added to user `PATH` by NSIS | `/usr/bin/mesh-ui` (deb, rpm); `~/.local/bin/mesh-ui` from Settings & Account (AppImage) |
+| Launcher | `/usr/local/bin/mesh-ui` symlink, installed from Settings | `mesh-ui.cmd` in `<install dir>\bin`, added to user `PATH` by NSIS | `/usr/bin/mesh-ui` (deb, rpm); `~/.local/bin/mesh-ui` from Settings (AppImage) |
 | How it starts | App binary with `--cli` | Node-mode relay spawns the app with `--cli` (console output) | App binary with `--cli` |
 | Dock or taskbar icon | Hidden (`app.dock.hide()`) | None (no window) | None |
 | No display | n/a | n/a | Launcher always drops `DISPLAY` and `WAYLAND_DISPLAY` and adds `--ozone-platform=headless --disable-gpu` |

@@ -18,8 +18,7 @@ import { useGate } from "~/components/ui/page";
 import { useLiveRates } from "~/app/useLiveRates";
 import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { entityColors } from "~/lib/chartColors";
-import { TopBarActions, TopBarSubtitle } from "~/features/shell/TopBar";
-import { formatRelative } from "../../../../core/format";
+import { TopBarActions, useTopBarUpdated } from "~/features/shell/TopBar";
 import { type DeviceSortKey, SORT_DEFAULT_ORDER } from "../../../../core/commands/device";
 import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
 
@@ -141,6 +140,7 @@ export function DevicesPage() {
   const sortBy = (sort: DeviceSortKey) =>
     setView((v) => ({ ...v, sort, order: v.sort === sort ? (v.order === "asc" ? "desc" : "asc") : SORT_DEFAULT_ORDER[sort] }));
   const list = useQuery<DeviceList>("device.list", params, { poll: true });
+  useTopBarUpdated(list.fetchedAt);
   // A new filter is a new query: keep the last rows on screen (faded) until it answers.
   const lastList = useRef<DeviceList | undefined>(undefined);
   if (list.data) lastList.current = list.data;
@@ -189,9 +189,6 @@ export function DevicesPage() {
 
   return (
     <>
-      <TopBarSubtitle>
-        <Updated at={list.fetchedAt} />
-      </TopBarSubtitle>
       <TopBarActions>
         <LiveToggle size="xs" />
       </TopBarActions>
@@ -267,13 +264,3 @@ export function DevicesPage() {
   );
 }
 
-/** "Updated just now", "Updated 2 min ago" in the topbar. */
-function Updated({ at }: { at: number | null }) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 15_000);
-    return () => clearInterval(t);
-  }, []);
-  if (at === null) return null;
-  return <>Updated {formatRelative(new Date(at).toISOString(), Date.now())}</>;
-}

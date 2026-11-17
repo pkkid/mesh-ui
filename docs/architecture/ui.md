@@ -105,7 +105,7 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   dialog instead.
 
 - `searchThemes` and `downloadThemes` (`mesh:theme-search`,
-  `mesh:theme-download`, `src/main/open-vsx.ts`) back Settings & Account's
+  `mesh:theme-download`, `src/main/open-vsx.ts`) back Settings'
   Add theme search. They are not commands (themes are renderer view state,
   and nothing touches eero). Main fetches only `https://open-vsx.org`,
   keeps only permissively licensed extensions with colour themes, checks the
@@ -220,19 +220,23 @@ From the mockups (`01-overview.html` and every page):
   chevrons) which calls `network.list` and `network.select`; two nav groups,
   **Network** (Overview, Internet, eeros, Devices, Profiles, Activity, Guest
   network) and **Settings** (Wi-Fi, Advanced networking, Reservations & ports,
-  Updates & admins, Troubleshooting, Settings & Account), with counts on
+  Updates & admins, Troubleshooting, Settings), with counts on
   eeros, Devices and Profiles; the footer shows the account name and role as
   plain text (not a link), plus a sign-out icon.
-- **Top bar** (44px, `drag-region`): breadcrumbs (`eeros / Office`), then on
+- **Top bar** (44px, `drag-region`): breadcrumbs (`Maple Street / eeros / Office`:
+  the selected network, from the switcher's `network.list`, then the page;
+  not on Settings and Account), then on
   the right the search field ("Search or run a command", `Ctrl K` / `Cmd K`),
   the notifications bell with an unread dot (`notifications.list`), and space
   for native window controls (`--titlebar-inset-right`). Every control in it
-  has `no-drag`. Pages fill two slots: `TopBarSubtitle` (freshness) and
-  `TopBarActions`, which holds **navigation and global tools only** (Prev /
+  has `no-drag`. Nothing follows the page title. Pages report
+  their data's age with `useTopBarUpdated(fetchedAt)`, shown in the Refresh
+  button's tooltip ("Refresh (Ctrl+R) · Updated 2 min ago"), and fill one
+  slot, `TopBarActions`, which holds **navigation and global tools only** (Prev /
   Next on Device detail). Page actions (Add a profile, Export CSV, Rename)
   go in the page: hero actions or a section's `tools`. See
   [design-system.md](../design/design-system.md#shell).
-- **Content**: a scrolling column, max width 1320px, padding 22px 28px.
+- **Content**: a scrolling column, max width 1156px (1100px of content inside the padding), padding 22px 28px.
 
 Navigation is view state: a small in-memory router (`page` + optional
 `id`), with the last page remembered in localStorage. It is not a command.

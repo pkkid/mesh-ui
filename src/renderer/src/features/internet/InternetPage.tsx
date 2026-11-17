@@ -9,9 +9,7 @@ import { useEffect } from "react";
 import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
-import { useNow } from "~/components/ui/page";
-import { TopBarSubtitle } from "~/features/shell/TopBar";
-import { formatRelative } from "../../../../core/format";
+import { useTopBarUpdated } from "~/features/shell/TopBar";
 import type { Internet } from "../../../../core/model";
 
 import { Connection } from "./Connection";
@@ -25,6 +23,7 @@ const SECTION_IDS: Readonly<Record<string, string>> = { history: "internet-histo
 
 export function InternetPage({ params }: PageProps) {
   const internet = useQuery<Internet>("internet.get", undefined, { poll: true });
+  useTopBarUpdated(internet.fetchedAt);
   const section = params.section;
   useEffect(() => {
     const id = section ? SECTION_IDS[section] : undefined;
@@ -32,9 +31,6 @@ export function InternetPage({ params }: PageProps) {
   }, [section]);
   return (
     <>
-      <TopBarSubtitle>
-        <Freshness at={internet.fetchedAt} />
-      </TopBarSubtitle>
       <InternetHero />
       <Connection />
       <SpeedHistory id={SECTION_IDS.history} />
@@ -44,9 +40,3 @@ export function InternetPage({ params }: PageProps) {
   );
 }
 
-/** "Updated just now", counting up between polls. */
-function Freshness({ at }: { at: number | null }) {
-  const now = useNow(15_000);
-  if (at === null) return null;
-  return <>Updated {formatRelative(new Date(at).toISOString(), now)}</>;
-}

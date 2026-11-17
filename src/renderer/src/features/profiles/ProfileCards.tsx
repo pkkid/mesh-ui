@@ -143,7 +143,7 @@ export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Pr
           ))}
         </div>
       ) : (
-        <Card className={cn("divide-y", profiles.fading && "opacity-40 transition-opacity")}>
+        <Card className={cn("divide-y divide-border/50", profiles.fading && "opacity-40 transition-opacity")}>
           {items.map((x) => (
             <ProfileRow key={x.profile.id} {...x} color={colorOf(x.profile.id)} timezone={timezone} />
           ))}

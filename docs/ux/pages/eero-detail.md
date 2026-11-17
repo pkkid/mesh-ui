@@ -7,7 +7,7 @@ Mockup: [../../mockups/04-eero-detail.html](../../mockups/04-eero-detail.html)
 (shows "Office", an eero Pro 7 with wireless backhaul and Garage downstream).
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: crumbs "eeros / Office", subtitle "Updated 4s ago". Sidebar item
+Topbar: crumbs "eeros / Office", nothing after them; the Refresh tooltip says "Updated 4s ago". Sidebar item
 eeros stays active. `[` and `]` move to the previous and next eero.
 
 ## Layout

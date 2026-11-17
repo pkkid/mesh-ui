@@ -216,8 +216,10 @@ building a new chart; port from them rather than inventing a style.
 - **Restrained colour.** Colour is only for chart series (and their legends,
   share bars, heatmaps) and status. No gradients, glows or coloured accent
   bars; icons, chips, badges, buttons and selected states are neutral; one
-  colour marker per legend item. Sections stay in subtle cards (solid
-  surface, 1px border); a fully flat layout was tried and rejected.
+  colour marker per legend item. Sections stay in subtle cards (T3 Code's
+  settings groups: `bg-card/40`, 1px `border-border/60`, `shadow-xs/5`,
+  12px radius, rows divided by `border-border/50`); a fully flat layout was
+  tried and rejected.
 - Semantic tokens (`success`, `warning`, `destructive`, `info`) mean status
   only (online, degraded, offline, notice), never "series number three".
 

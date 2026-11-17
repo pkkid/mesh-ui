@@ -71,7 +71,7 @@ const PAGES: Record<string, Poll[]> = {
   ],
   "reservations & ports": [["reservation.list"], ["forward.list"], ["pinhole.list"], ["device.list", undefined, 60], ["eero.list"], ["settings.get"]],
   troubleshooting: [["eero.list"], ["health.check"], ["wifi.get"], ["settings.get"]],
-  // Settings & Account: app.info and app.audit.list poll but never reach eero; auth.status, app.settings.get,
+  // Settings: app.info and app.audit.list poll but never reach eero; auth.status, app.settings.get,
   // notifications.settings.get and the weekly events.summary are read on open (engine.md, Polling intervals).
   // The networks table shares the shell switcher's 60 s network.list.
   "settings & account": [["account.get"], ["app.info"], ["app.audit.list"], ["network.list", undefined, 60]],

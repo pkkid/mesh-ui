@@ -1,5 +1,5 @@
 /**
- * The Mesh UI mark inside the app (sidebar, Settings & Account, sign-in),
+ * The Mesh UI mark inside the app (sidebar, Settings, sign-in),
  * drawn in the theme's colours: a quiet tile in `--color-app-icon` and the
  * three nodes in `--color-app-icon-foreground` (index.css), so it follows
  * every theme, light and dark, without standing out. The shapes are

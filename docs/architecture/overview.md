@@ -121,7 +121,7 @@ for both.
 
 The installer puts a `mesh-ui` launcher on `PATH`:
 
-- macOS: Settings & Account offers to symlink a launcher script into
+- macOS: Settings offers to symlink a launcher script into
   `/usr/local/bin/mesh-ui` (`app.cli.install`, asks for admin rights).
 - Windows: the NSIS installer adds a `mesh-ui` launcher to `PATH` that
   starts `Mesh UI.exe --cli` through the stdio relay.
@@ -158,7 +158,7 @@ Known caveats to verify in the CLI story:
 | --- | --- | --- |
 | `session.json` | `SecretStore` | `{ v: 2, token }`, token encrypted with `safeStorage`. Written only when a real keychain is available; atomic write, mode `0600`. |
 | `settings.json` | engine (`app.settings.*`) | Settings the CLI also needs: last selected network, User-Agent override, demo flag default, ISP plan speed per network, desktop notification choices. Never holds the token. |
-| `audit.jsonl` | engine | One line per command run from the CLI or MCP, never the result. Format and limits in [security.md](security.md#audit-log). Shown on Settings & Account. |
+| `audit.jsonl` | engine | One line per command run from the CLI or MCP, never the result. Format and limits in [security.md](security.md#audit-log). Shown on Settings. |
 | renderer `localStorage` | renderer | Pure UI preferences: theme, panel sizes, collapsed sections, table sort. |
 
 Tests, screenshots and agents always pass a throwaway `--user-data-dir` (or

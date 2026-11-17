@@ -61,7 +61,7 @@ xattr -d com.apple.quarantine "/Applications/Mesh UI.app"
 
 The app is not notarized, so on macOS 15 and later the old right-click,
 Open shortcut no longer works. **Updates on a Mac are by hand for now:**
-Mesh UI checks for new versions and, when one is out, Settings & Account links
+Mesh UI checks for new versions and, when one is out, Settings links
 to its release page. Download the new dmg and replace the app.
 
 ### Windows (x64 and arm64)
@@ -108,11 +108,11 @@ it. Sign in once in the app; the CLI uses the same saved session.
 
 | Install | How `mesh-ui` gets on your `PATH` |
 | --- | --- |
-| macOS | Settings & Account, **Install CLI** (asks for an admin password), or add `/Applications/Mesh UI.app/Contents/Resources/bin` to `PATH` |
+| macOS | Settings, **Install CLI** (asks for an admin password), or add `/Applications/Mesh UI.app/Contents/Resources/bin` to `PATH` |
 | Windows installer | Added to your user `PATH` by the installer; open a new terminal |
 | Windows portable | Not added; run `bin\mesh-ui.cmd` from the folder, or add it to `PATH` |
 | Linux deb, rpm | Installed as `/usr/bin/mesh-ui` |
-| Linux AppImage | Settings & Account, **Install CLI** writes `~/.local/bin/mesh-ui` |
+| Linux AppImage | Settings, **Install CLI** writes `~/.local/bin/mesh-ui` |
 
 ```sh
 mesh-ui --demo run app.info        # try it on invented demo networks
@@ -143,7 +143,7 @@ Other clients use the same command in their config:
 ```
 
 Agents must pass `confirm: true` for disruptive and destructive tools, and
-Settings & Account lists the commands the CLI and agents ran this week. See
+Settings lists the commands the CLI and agents ran this week. See
 [docs/architecture/mcp.md](docs/architecture/mcp.md).
 
 ## Demo mode
@@ -208,5 +208,5 @@ careful with it on every platform:
 - CLI and MCP calls are logged to `audit.jsonl` in the config dir, without
   the token or secret params.
 
-Settings & Account shows whether your session is saved in the keychain or held
+Account shows whether your session is saved in the keychain or held
 in memory.

@@ -49,7 +49,7 @@ export function Tools({ eeros }: { eeros: Eero[] | undefined }) {
   const target = eeros?.find((e) => e.id === picked) ?? eeros?.[0] ?? null;
   return (
     <Section title="Tools" subtitle="Speed test and find an eero">
-      <Card className="divide-y">
+      <Card className="divide-y divide-border/50">
         <ToolRow title="Run speed test" detail="Uses the WAN for about 30 s">
           <HeaderLink to={pathFor("internet")}>History</HeaderLink>
           <GatedButton gate={speedTest.gate} size="xs" variant="outline" onClick={() => void speedTest.run()}>
@@ -238,7 +238,7 @@ export function Fixes({ eeros, networkName, offline }: { eeros: Eero[] | undefin
         <LegacyMode />
         <StatusLights />
         <FixCard title="Restart a single eero">
-          <div className="flex flex-col divide-y">
+          <div className="flex flex-col divide-y divide-border/50">
             {(eeros ?? []).map((e) => (
               <RestartRow key={e.id} eero={e} eeros={eeros ?? []} networkName={networkName} />
             ))}

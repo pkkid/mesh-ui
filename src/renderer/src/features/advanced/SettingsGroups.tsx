@@ -68,14 +68,15 @@ export function Row({
   dim?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3 px-[18px] py-[14px]">
-      <div className={cn("flex items-center gap-3.5", dim && "opacity-50")}>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="flex flex-wrap items-center gap-2 font-medium text-sm">
+    // T3 Code's SettingsRow: px-4 py-3, title over a muted description, control 32px away.
+    <div className="flex flex-col gap-3 px-4 py-3">
+      <div className={cn("flex items-center gap-8", dim && "opacity-50")}>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex min-h-5 flex-wrap items-center gap-2 font-medium text-foreground text-sm">
             {title}
             {badge}
           </div>
-          {description && <div className="text-muted-foreground text-xs">{description}</div>}
+          {description && <div className="max-w-2xl text-pretty text-muted-foreground text-xs leading-normal">{description}</div>}
         </div>
         {control && <div className="ms-auto flex shrink-0 items-center gap-2.5">{control}</div>}
       </div>
@@ -86,7 +87,7 @@ export function Row({
 
 /** The indented panel under a row: label over value pairs in a grid. */
 export function SubPanel({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-xl border bg-muted/30 px-4 py-3.5 sm:ms-0", className)}>{children}</div>;
+  return <div className={cn("rounded-xl border border-border/60 bg-muted/20 px-4 py-3.5 sm:ms-0", className)}>{children}</div>;
 }
 
 export function Fields({ items, mono = true, cols = 2 }: { items: ReadonlyArray<{ label: string; value: ReactNode; mono?: boolean }>; mono?: boolean; cols?: 2 | 3 }) {
@@ -107,7 +108,7 @@ export function Group({ title, subtitle, children, hint }: { title: string; subt
   return (
     <Section title={title} subtitle={subtitle}>
       {hint && <div className="text-muted-foreground text-xs">{hint}</div>}
-      <Card className="divide-y">{children}</Card>
+      <Card className="divide-y divide-border/50">{children}</Card>
     </Section>
   );
 }

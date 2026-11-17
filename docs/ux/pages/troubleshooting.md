@@ -8,7 +8,7 @@ Shared patterns (hero, section cards, status, confirm dialogs) are described in 
 
 ## Layout
 
-Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
+Breadcrumb `Settings / Troubleshooting`, nothing after it. `Last health check 2 min ago` leads the muted line under the health check title.
 
 1. **Health check hero.** Left: a score ring (`86`, "Health") with status summary under it (`Good`, `1 warning`). Right: title "Network health check", sub line "8 checks across internet, DNS, eeros, mesh links and firmware.", **Run again** (primary). A grid of checks, each with a pass or warning mark, icon, name and value: Internet (ISP up, last speeds), DNS resolution, one row per eero (gateway shows the WAN link), Mesh links (warning: "Garage 2 bars to Office"), Firmware (current version and next update). Under it, "Something specific?" chips: **My connection drops**, **My internet is slow**, **My internet is offline**, **My eero's light is red**.
 2. **Tools.** Rows: **Run speed test** ("Uses the WAN for about 30 s") with **History** link and **Run**; **Find an eero** with an eero select and **Blink light**.
@@ -22,7 +22,7 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
    - **Status light colors**: reference list of LED states and meanings (solid white, blinking white, blinking blue, solid blue, solid green, solid red, off).
    - **Restart a single eero**: one row per eero with **Restart**; the gateway row warns "takes network offline"; an eero with wireless children notes "Garage restarts too".
    - **Restart network** (`Disruptive`): **Restart network** opens the confirm dialog: "Restart network? Maple Street will be offline for about 2 to 3 minutes. 31 devices will disconnect, including this computer if it is on Wi-Fi." **Cancel** and **Yes, restart network**; "Last restart Nov 11, 3:01 AM (firmware update)".
-   - **Get help**: Support center, Email support (external links), Call eero and ISP support numbers, **Support ID** with **Copy**, **Copy diagnostics report**.
+   - **Get help**: Support center, Email support (external links), Call eero and ISP support numbers, **Support ID** with **Copy**, then **Network ID** (the selected network) with **Copy**, **Copy diagnostics report**.
 
 ## Data
 
@@ -40,6 +40,7 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 | Restart rows, downstream eeros, last restart | `eero.list`, `events.list` `{type: "eero_status"}` | on load |
 | Device count in the restart confirm | `network.get` | on load |
 | Support contacts, ISP number, Support ID | `support.info` | on load |
+| Network ID | `network.get` | on load |
 | Diagnostics report text | `support.report` | on demand |
 
 ## Actions
@@ -60,6 +61,7 @@ Breadcrumb `Settings / Troubleshooting`, subtitle `Last health check 2 min ago`.
 | Restart network | `network.restart` | disruptive | confirm dialog | Network offline; page waits and refetches |
 | Support center, Email support | none | | | Opens eero support pages externally |
 | Support ID Copy | none | | | Copies the ID |
+| Network ID Copy | none | | | Copies the ID |
 | Copy diagnostics report | `support.report` | query | no | Report text on the clipboard |
 
 ## States

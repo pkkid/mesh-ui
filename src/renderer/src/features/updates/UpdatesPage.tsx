@@ -15,8 +15,8 @@ import { useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { IconTile } from "~/components/ui/hero";
 import { Row, RowList, SectionError, useNow } from "~/components/ui/page";
-import { TopBarActions, TopBarSubtitle, TopBarTitle } from "~/features/shell/TopBar";
-import { formatRelative, networkClock } from "../../../../core/format";
+import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
+import { networkClock } from "../../../../core/format";
 import type { AdminList, Network, ReleaseNotes, Updates } from "../../../../core/model";
 
 import { Admins } from "./Admins";
@@ -38,7 +38,6 @@ export function UpdatesPage(_: PageProps) {
   return (
     <>
       <TopBarTitle>Updates &amp; admins</TopBarTitle>
-      {updates.fetchedAt !== null && <TopBarSubtitle>Checked for updates {formatRelative(new Date(updates.fetchedAt).toISOString(), now, timezone ?? "UTC")}</TopBarSubtitle>}
       <TopBarActions>
         <Button size="xs" variant="outline" className="no-drag" onClick={() => void updates.refetch({ fresh: true })} disabled={updates.loading}>
           <RefreshCw />
@@ -49,7 +48,7 @@ export function UpdatesPage(_: PageProps) {
       {updates.error && !u ? (
         <SectionError what="software updates" error={updates.error} onRetry={() => void updates.refetch()} />
       ) : (
-        <SoftwareCard updates={u} notes={notes.error ? null : notes.data} timezone={timezone} now={now} canInstall={myRole === "owner"} networkId={network.data?.id ?? null} fading={updates.fading} />
+        <SoftwareCard updates={u} notes={notes.error ? null : notes.data} timezone={timezone} now={now} canInstall={myRole === "owner"} networkId={network.data?.id ?? null} checkedAt={updates.fetchedAt} fading={updates.fading} />
       )}
 
       <EveryEero updates={u} timezone={timezone} />

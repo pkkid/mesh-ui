@@ -1,5 +1,5 @@
 /**
- * Settings & Account, the Notifications row (docs/ux/pages/account-settings.md,
+ * Account, the Notifications row (docs/ux/pages/account.md,
  * Layout 2): one clickable row in the Account section with a summary of the
  * selected network's choices ("Desktop on · 6 of 9 alerts on") that opens
  * the notification settings sheet, the one place alerts are edited. The

@@ -1,5 +1,5 @@
 /**
- * Settings & Account, Application Theme (docs/ux/pages/account-settings.md),
+ * Settings, Application Theme (docs/ux/pages/settings.md),
  * modelled on T3 Code's theme settings (ThemeSettings.tsx): System / Light /
  * Dark tiles, then a card per theme or collection with a light and a dark
  * circle. Light and dark are picked separately; a collection's circles fan

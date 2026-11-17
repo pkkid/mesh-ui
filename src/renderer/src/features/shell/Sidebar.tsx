@@ -1,7 +1,7 @@
 /**
  * The sidebar (docs/ux/overview.md#sidebar): app mark, network switcher,
  * the Network and Settings nav groups with counts, and the signed-in user
- * (name and role, plain text) with a sign-out icon.
+ * (name and role, a button that opens Account) with a sign-out icon.
  * Counts come from `network.get`; items the network cannot use (Profiles and
  * Reservations & ports in bridge mode) are hidden, not greyed out.
  */
@@ -9,7 +9,7 @@ import { Popover } from "@base-ui/react/popover";
 import { LogOut } from "lucide-react";
 
 import { Link, useLocation } from "~/app/router";
-import { ROUTES, type RouteDef } from "~/app/routes";
+import { ROUTES, type RouteDef, routeById } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
 import { AppIcon } from "~/components/mesh/AppIcon";
 import { AppWordmark } from "~/components/mesh/AppWordmark";
@@ -61,7 +61,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <UserFooter />
+      <UserFooter active={active === "account"} />
     </aside>
   );
 }
@@ -74,12 +74,13 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
       aria-current={active ? "page" : undefined}
       data-active={active || undefined}
       className={cn(
-        "flex h-8 items-center gap-[9px] rounded-[var(--control-radius)] px-2.5 text-[13.5px] text-sidebar-foreground outline-none",
-        "hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-ring",
-        "data-active:bg-sidebar-row-selected data-active:font-medium data-active:text-foreground",
+        // T3 Code's SidebarMenuButton: muted at rest, full sidebar text on hover and when selected.
+        "group/nav flex h-8 items-center gap-[9px] rounded-[var(--control-radius)] px-2.5 font-medium text-[13.5px] text-sidebar-muted-foreground/80 outline-none",
+        "hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring",
+        "data-active:bg-sidebar-row-selected data-active:text-sidebar-foreground",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-foreground" : "text-muted-foreground")} />
+      <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-foreground" : "text-(--sidebar-icon-color) group-hover/nav:text-sidebar-foreground")} />
       <span className="min-w-0 flex-1 truncate">{route.title}</span>
       {count !== undefined && count !== null && (
         <span className="text-2xs text-muted-foreground tabular-nums">{formatCount(count)}</span>
@@ -88,8 +89,12 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
   );
 }
 
-/** The signed-in user's name and role, not a link. Sign out is the icon on the right. */
-function UserFooter() {
+/**
+ * The signed-in user's name and role, a button that opens Account (with the
+ * nav rows' hover and selected states). Sign out is a sibling icon on the
+ * right, so it never navigates.
+ */
+function UserFooter({ active }: { active: boolean }) {
   const account = useQuery<Account>("account.get");
   // Shares the switcher's network.list entry, which does the polling.
   const networks = useQuery<NetworkSummary[]>("network.list");
@@ -99,18 +104,28 @@ function UserFooter() {
   const name = account.data?.name ?? null;
 
   return (
-    <div className="border-sidebar-border border-t p-2">
+    <div className="p-2">
       <UpdateChip />
-      <div className="flex items-center gap-1 py-1.5 ps-2.5 pe-1 text-sidebar-foreground">
-        <div className="min-w-0 flex-1">
+      {/* The whole row is the Account button: the link's ::after covers it, and
+          sign out sits above that layer, so the markup never nests a button in a link. */}
+      <div
+        data-active={active || undefined}
+        className="relative flex items-center gap-1 rounded-[var(--control-radius)] py-1.5 ps-2.5 pe-1.5 text-sidebar-foreground hover:bg-sidebar-row-hover has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring data-active:bg-sidebar-row-selected"
+      >
+        <Link
+          to={routeById("account").path}
+          aria-current={active ? "page" : undefined}
+          title="Account"
+          className="min-w-0 flex-1 outline-none after:absolute after:inset-0 after:rounded-[inherit]"
+        >
           <div className="truncate font-medium text-[13px]">{name ?? "-"}</div>
           <div className="text-2xs text-muted-foreground">{role}</div>
-        </div>
+        </Link>
         <Popover.Root>
           <Popover.Trigger
             aria-label="Sign out"
             title="Sign out"
-            className="grid size-7 cursor-pointer place-items-center rounded-[var(--control-radius)] text-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-10 grid size-7 cursor-pointer place-items-center rounded-[var(--control-radius)] text-muted-foreground outline-none hover:bg-sidebar-row-active hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <LogOut className="size-3.5" />
           </Popover.Trigger>

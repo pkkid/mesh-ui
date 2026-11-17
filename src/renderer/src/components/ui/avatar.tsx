@@ -1,5 +1,5 @@
 /**
- * A person's initials in a neutral circle: sign-in and the Settings & Account
+ * A person's initials in a neutral circle: sign-in and the Account
  * hero (the sidebar footer shows only the name). Neutral on purpose: colour is for chart series and
  * status only (docs/design/design-system.md), so avatars take no hue.
  */

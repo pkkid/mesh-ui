@@ -78,7 +78,7 @@ colour theme into a palette:
   canvas, at least 3:1; orange is halfway between red and yellow; gray is
   bright black. Themes without ANSI colours use the T3-style mid-tones.
 
-**Picker** (Settings & Account, Application Theme, from T3 Code's
+**Picker** (Settings, Application Theme, from T3 Code's
 `ThemeSettings.tsx`): System / Light / Dark tiles with a small wireframe of the
 window in the picked themes, then a card per theme or collection with a light
 and a dark circle. The circle in use has a ring and a sun or moon badge. A
@@ -156,7 +156,7 @@ their ANSI colours (see Themes); the others use T3-style mid-tones
 (`#5b9bbd` blue, `#8c7bd1` violet, `#4d9f8a` teal, `#d97757` orange). Check
 every chart in light and dark.
 
-Command effect badges (palette, Settings & Account) use a dot in a fixed colour:
+Command effect badges (palette, Settings) use a dot in a fixed colour:
 query aqua, write blue, disruptive yellow, destructive red. The badge itself is
 neutral.
 
@@ -189,12 +189,12 @@ numbers.
 | Thing | Value |
 | --- | --- |
 | Control radius (buttons, inputs, segmented, nav items) | 8px |
-| Section card radius | 14px |
-| Page header (hero) radius | 18px |
+| Section card radius | 12px (`rounded-xl`, as T3 Code) |
+| Page header (hero) radius | 12px |
 | Chips, status dots, avatars | Full |
 | Titlebar height | 44px |
 | Sidebar width | 15rem (mockup 236px) |
-| Page max width | 1320px, padding 22px 28px 48px |
+| Page max width | 1156px (1100px of content), padding 22px 28px 48px |
 | Gap between sections | 28px |
 | Gap inside a section (heading to card) | 12px |
 | Card padding | 18px 20px |
@@ -273,7 +273,7 @@ with labelled buttons (Copy password, Save QR, Print a card) to its left
 **Sections are subtle cards**: a `<section>` with a heading row
 (`text-sm font-medium` title, optional muted subtitle, controls on the right)
 that stays one line (title and tools never wrap; a long subtitle truncates
-with an ellipsis and shows in full in its tooltip) above a card with a solid `bg-card` surface, a 1px `border`, and 14px radius.
+with an ellipsis and shows in full in its tooltip) above a card styled as T3 Code's settings groups: `bg-card/40`, a 1px `border-border/60`, `shadow-xs/5`, 12px radius. Rows inside are divided by `border-border/50` (`divide-y divide-border/50`); settings rows are `px-4 py-3` with a `text-sm font-medium` title over a `text-xs leading-normal text-muted-foreground` description, the control 32px to the right (T3's `SettingsRow`). The page hero uses the same surface and border.
 **Header tools are 28px.** Every control in the tools slot (buttons,
 `HeaderLink`, Segmented toggles, selects) is 28px tall, the height of the
 title's line, so their top and bottom edges line up: buttons are the `tool`

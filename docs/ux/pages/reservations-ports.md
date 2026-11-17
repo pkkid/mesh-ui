@@ -8,7 +8,7 @@ Shared patterns (tables, sheets, side panel) are described in [../overview.md](.
 
 ## Layout
 
-Breadcrumb `Settings / Reservations & ports`, subtitle shows the connection mode (`NAT mode`). Main column on the left, side panel on the right.
+Breadcrumb `Settings / Reservations & ports`, nothing after it. The connection mode (`NAT mode`) leads the LAN address map's subtitle ("NAT mode · 192.168.4.0/22 · 1,024 addresses"). Main column on the left, side panel on the right.
 
 1. **LAN address map.** Sub line is the subnet (`192.168.4.0/22 · 1,024 addresses`). Legend in the header: Gateway, Static range, Reserved, Leased, Free in pool. A range bar split into gateway, static range (`.4.2 to .4.99`) and DHCP pool (`192.168.4.100 to 192.168.7.254 · 923 addresses, 23 leased`). Below it a grid of squares, one per address (64 per row, the first address of each /24 labelled; subnets over 4,096 addresses show the range bar only), coloured by kind; hovering a square shows its address. Info line: reservations sit in the static range so they never collide with leases.
 2. **IPv4 reservations** ("Devices that always get the same address"). Header: filter input and **Add a reservation**. Table: Device (icon, name, connection and online state), MAC address, Reserved IP, Connected to (eero dot and name), Ports (count of forwards using this IP, `-` when none), overflow menu. Offline devices are dimmed.

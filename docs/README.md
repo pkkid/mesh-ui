@@ -58,7 +58,8 @@ Open questions from every doc are gathered in [open-questions.md](open-questions
 | [pages/reservations-ports.md](ux/pages/reservations-ports.md) | Reservations & ports |
 | [pages/updates-admins.md](ux/pages/updates-admins.md) | Updates & admins |
 | [pages/troubleshooting.md](ux/pages/troubleshooting.md) | Troubleshooting |
-| [pages/account-settings.md](ux/pages/account-settings.md) | Settings & Account |
+| [pages/settings.md](ux/pages/settings.md) | Settings (CLI and agents, theme, About) |
+| [pages/account.md](ux/pages/account.md) | Account (profile, notifications, networks, sign out) |
 | [pages/command-palette.md](ux/pages/command-palette.md) | Command palette |
 
 ## eero API reference

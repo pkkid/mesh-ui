@@ -82,10 +82,10 @@ export function GatedButton({ gate, title, ...props }: ButtonProps & { gate: Gat
 
 /** The card a list of rows sits in (eeros, profiles, activity). */
 export function RowList({ className, children }: { className?: string; children: ReactNode }) {
-  return <Card className={cn("divide-y", className)}>{children}</Card>;
+  return <Card className={cn("divide-y divide-border/50", className)}>{children}</Card>;
 }
 
-const ROW = "flex min-h-[58px] items-center gap-3.5 px-[18px] py-[13px]";
+const ROW = "flex min-h-[58px] items-center gap-3.5 px-4 py-3";
 
 /** One row in a RowList; a link when `to` is given. */
 export function Row({ to, className, children }: { to?: string; className?: string; children: ReactNode }) {

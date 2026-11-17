@@ -45,7 +45,7 @@ The page showed every group read only: values, switches and segmented choices re
 
 ## Layout
 
-Breadcrumb `Settings / Advanced networking`, subtitle "Changes apply to every eero". Settings column on the left, side panel on the right. Rows that restart eeros carry a **Restarts eeros** badge next to their title.
+Breadcrumb `Settings / Advanced networking`, nothing after it. Settings column on the left, side panel on the right. Rows that restart eeros carry a **Restarts eeros** badge next to their title.
 
 ### Internet ("How the gateway eero talks to Ziply Fiber")
 
