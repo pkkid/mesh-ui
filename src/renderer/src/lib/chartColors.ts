@@ -62,7 +62,7 @@ export function entityColors(ids: ReadonlyArray<string>): Record<string, string>
   return Object.fromEntries(sorted.map((id, i) => [id, entityColor(i)]));
 }
 
-/** Command effect badges (palette, Account & Settings): a dot in a fixed colour on a neutral badge. */
+/** Command effect badges (palette, Settings & Account): a dot in a fixed colour on a neutral badge. */
 export const effectColors: Readonly<Record<Effect, string>> = {
   query: hue("aqua"),
   write: hue("blue"),

@@ -97,7 +97,7 @@ const shQuote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 export function appImageScript(appImage: string): string {
   return [
     "#!/bin/sh",
-    "# Mesh UI command line launcher, written by Account & Settings (Install CLI).",
+    "# Mesh UI command line launcher, written by Settings & Account (Install CLI).",
     "# It runs the AppImage headless and never lets it reach a display server.",
     "unset DISPLAY WAYLAND_DISPLAY",
     `exec ${shQuote(appImage)} --cli --ozone-platform=headless --disable-gpu "$@"`,

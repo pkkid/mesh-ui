@@ -1,5 +1,5 @@
 /**
- * Account & Settings: the eero account, notification choices, the networks on
+ * Settings & Account: the eero account, notification choices, the networks on
  * the account, the CLI and agents, themes, About, sign out and delete.
  * Layout, data and states: docs/ux/pages/account-settings.md and
  * docs/mockups/17-account-settings.html.
@@ -39,7 +39,7 @@ export function AccountPage({ params }: PageProps) {
 
   return (
     <>
-      <TopBarTitle>Account &amp; Settings</TopBarTitle>
+      <TopBarTitle>Settings &amp; Account</TopBarTitle>
       <TopBarSubtitle>This computer and your eero account</TopBarSubtitle>
       <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">

@@ -938,7 +938,7 @@ export type AppSettings = {
   updateChannel: UpdateChannel;
 };
 
-/** One CLI or MCP command from the audit log, as Account & Settings lists it. */
+/** One CLI or MCP command from the audit log, as Settings & Account lists it. */
 export type AuditEntry = {
   at: Iso;
   surface: "cli" | "mcp";

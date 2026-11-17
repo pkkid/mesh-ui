@@ -13,7 +13,7 @@ import { Status } from "~/components/ui/status";
 type ComingSoonProps = {
   route: RouteDef;
   params?: Readonly<Record<string, string>>;
-  /** Anything a placeholder page already offers (Account & Settings keeps Appearance). */
+  /** Anything a placeholder page already offers (Settings & Account keeps Appearance). */
   children?: ReactNode;
 };
 

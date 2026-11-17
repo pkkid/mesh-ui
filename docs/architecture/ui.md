@@ -207,9 +207,9 @@ From the mockups (`01-overview.html` and every page):
   chevrons) which calls `network.list` and `network.select`; two nav groups,
   **Network** (Overview, Internet, eeros, Devices, Profiles, Activity, Guest
   network) and **Settings** (Wi-Fi, Advanced networking, Reservations & ports,
-  Updates & admins, Troubleshooting), with counts on eeros, Devices and
-  Profiles; the account row in the footer (gear icon, name, role) which
-  opens Account & Settings, plus a sign-out icon.
+  Updates & admins, Troubleshooting, Settings & Account), with counts on
+  eeros, Devices and Profiles; the footer shows the account name and role as
+  plain text (not a link), plus a sign-out icon.
 - **Top bar** (44px, `drag-region`): breadcrumbs (`eeros / Office`), then on
   the right the search field ("Search or run a command", `Ctrl K` / `Cmd K`),
   the notifications bell with an unread dot (`notifications.list`), and space

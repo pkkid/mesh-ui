@@ -1,6 +1,6 @@
 /**
- * A person's initials in a neutral circle: sign-in and the Account & Settings
- * hero (the sidebar footer uses a gear instead). Neutral on purpose: colour is for chart series and
+ * A person's initials in a neutral circle: sign-in and the Settings & Account
+ * hero (the sidebar footer shows only the name). Neutral on purpose: colour is for chart series and
  * status only (docs/design/design-system.md), so avatars take no hue.
  */
 import { cva, type VariantProps } from "class-variance-authority";

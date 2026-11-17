@@ -182,7 +182,7 @@ export function SoftwareCard({
               {countdown(scheduled - now)} <span className="font-normal text-muted-foreground text-xs">to go</span>
             </div>
             <Meter value={Math.max(0, 24 * HOUR - (scheduled - now))} max={24 * HOUR} label="Time until the update window" />
-            <div className="text-2xs text-muted-foreground">eero sends reminders 12 hours and 15 minutes before. Turn them on or off in Account &amp; Settings.</div>
+            <div className="text-2xs text-muted-foreground">eero sends reminders 12 hours and 15 minutes before. Turn them on or off in Settings &amp; Account.</div>
           </Card>
         ) : undefined
       }

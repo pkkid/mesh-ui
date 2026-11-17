@@ -34,9 +34,9 @@ export const POLL = {
   usage: 300,
   /** updates.get on the Updates page */
   updates: 900,
-  /** account.get on Account & Settings (name, verification and push change in the eero app too) */
+  /** account.get on Settings & Account (name, verification and push change in the eero app too) */
   account: 300,
-  /** app.info and app.audit.list on Account & Settings (update state, CLI runs from another process) */
+  /** app.info and app.audit.list on Settings & Account (update state, CLI runs from another process) */
   app: 60,
 } as const;
 

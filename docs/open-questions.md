@@ -16,15 +16,15 @@ gathers them ([testing.md](testing.md#manual-checks)).
 - 2026-11-13: Mobile-only items are dropped: the Switch to Amazon login row and the Add or replace eero section. ([account-settings.md](ux/pages/account-settings.md#notes), [eeros.md](ux/pages/eeros.md#notes))
 - 2026-11-13: The app id is `io.github.pkkid.meshui` (final). ([build-and-release.md](platform/build-and-release.md#identity))
 - 2026-11-13: Windows builds ship unsigned for now (users click through SmartScreen); signing, Azure Trusted Signing preferred, is added before a wider release. ([build-and-release.md](platform/build-and-release.md#windows))
-- 2026-11-13: **Remind me** on Updates is dropped; eero's own update notification toggles on Account & Settings cover it. ([updates-admins.md](ux/pages/updates-admins.md#notes))
+- 2026-11-13: **Remind me** on Updates is dropped; eero's own update notification toggles on Settings & Account cover it. ([updates-admins.md](ux/pages/updates-admins.md#notes))
 - 2026-11-14: macOS builds ship unsigned for now (ad-hoc signature, not notarized; no Apple secrets). Users open the app once with **Open Anyway** in System Settings > Privacy & Security, and update by hand from the release page, since an unsigned Mac copy only checks for updates. Developer ID signing and notarization are parked under After M6. ([build-and-release.md](platform/build-and-release.md#macos))
-- 2026-11-14: Account & Settings says "MCP used <age>" (or "MCP not used yet") from the audit log, never "MCP connected": there is no live connection to detect. ([account-settings.md](ux/pages/account-settings.md#notes))
+- 2026-11-14: Settings & Account says "MCP used <age>" (or "MCP not used yet") from the audit log, never "MCP connected": there is no live connection to detect. ([account-settings.md](ux/pages/account-settings.md#notes))
 - 2026-11-14: The weekly report row is not built in M6: no `report_settings` capture exists, so there is no known key. eero's own `network.dataUsageReport` alert key still shows as "Data usage report". The row can return once a capture names the setting. ([account-settings.md](ux/pages/account-settings.md#notes))
 
 ## Product decisions for the maintainer
 
 - Show the command's source file path in the palette preview only in dev builds? ([command-palette.md](ux/pages/command-palette.md#notes))
-- Topbar light/dark toggle alongside themes in Account & Settings: proposal is to keep both, the toggle only flips the variant. ([ux/overview.md](ux/overview.md#open-questions))
+- Topbar light/dark toggle alongside themes in Settings & Account: proposal is to keep both, the toggle only flips the variant. ([ux/overview.md](ux/overview.md#open-questions))
 - Wi-Fi page: move the Save button beside the nickname field, since the time zone saves on change. ([wifi.md](ux/pages/wifi.md#notes))
 
 ## Needs a manual check on the real network

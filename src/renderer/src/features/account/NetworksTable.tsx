@@ -1,5 +1,5 @@
 /**
- * Account & Settings, Networks on this account (docs/ux/pages/account-settings.md,
+ * Settings & Account, Networks on this account (docs/ux/pages/account-settings.md,
  * Layout 4): every network from `network.list` with its name, nickname,
  * "current" or "Shared with you", role, eeros and status (`Online`,
  * `Offline 2d`). A row click runs `network.select`, like the sidebar's

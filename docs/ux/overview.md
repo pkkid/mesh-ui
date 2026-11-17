@@ -74,12 +74,9 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
    active item uses the selected surface; item icons use one muted colour
    (the per-item `--item-color` in the mockup is only a faint accent on the
    active item, never a fill).
-4. **Footer.** The account row: a gear (`settings`) icon tile, account name
-   ("Alex Kim") and role on the selected network ("Owner" or "Admin"). The
-   whole row opens [Account & Settings](pages/account-settings.md), with the
-   same hover and selected states as nav items (selected while that page is
-   open). A sign-out icon sits on the right of the row. eero has no profile
-   pictures, so there is no initials avatar here.
+4. **Footer.** Account name ("Alex Kim") and role on the selected network
+   ("Owner" or "Admin") as plain text: no icon or avatar, and not a link.
+   A sign-out icon sits on the right.
 
 | Group | Item | Icon (lucide) | Count | Page doc | Mockup |
 | --- | --- | --- | --- | --- | --- |
@@ -95,16 +92,14 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 | Settings | Reservations & ports | `arrow-left-right` | - | [pages/reservations-ports.md](pages/reservations-ports.md) | 14 |
 | Settings | Updates & admins | `download` | - | [pages/updates-admins.md](pages/updates-admins.md) | 15 |
 | Settings | Troubleshooting | `stethoscope` | - | [pages/troubleshooting.md](pages/troubleshooting.md) | 16 |
+| Settings | Settings & Account | `settings` | - | [pages/account-settings.md](pages/account-settings.md) | 17 |
 
-- Account & Settings ([pages/account-settings.md](pages/account-settings.md),
-  mockup 17) is not a nav item: it opens from the footer row, the palette,
-  `Ctrl+,` and deep links.
 - Counts come from the same queries the pages use (`eero.list`,
   `device.list` summary, `profile.list`) and refresh with them. The Devices
   count is all known devices (38 in the mockup), not only online ones.
 - Items for features the network cannot use are hidden, not greyed out (for
   example Profiles in bridge mode, see [Bridge mode](#bridge-mode)).
-- Sign out (footer icon, which does not open the page) runs `auth.logout` after a small confirm popover
+- Sign out (footer icon) runs `auth.logout` after a small confirm popover
   ("Sign out of Mesh UI? Your networks keep running."). It returns to
   [sign-in](sign-in.md).
 
@@ -124,7 +119,7 @@ A popover anchored under the sidebar network row.
   remembered in `settings.json` so the CLI uses the same default). Every page
   reloads its queries for the new network; the current page is kept if it
   exists on the new network, otherwise Overview.
-- **Footer of the popover:** "Manage networks" links to Account & Settings
+- **Footer of the popover:** "Manage networks" links to Settings & Account
   (Networks on this account). No create-network flow: setting up a new
   network needs the eero mobile app.
 - Keyboard: `Ctrl+Shift+N` opens the switcher; arrows and Enter choose.
@@ -143,7 +138,7 @@ Left to right (mockup `.topbar`):
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
 | Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
-| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The theme itself (Gruvbox Hard by default; also Classic, Rose, Grove, Ocean, Ember, Iris) is picked in Account & Settings. Stored in renderer `localStorage`, not a command. |
+| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The theme itself (Gruvbox Hard by default; also Classic, Rose, Grove, Ocean, Ember, Iris) is picked in Settings & Account. Stored in renderer `localStorage`, not a command. |
 | Window controls | Minimise, maximise, close | Windows and Linux only. |
 
 ## Notifications bell
@@ -167,7 +162,7 @@ Left to right (mockup `.topbar`):
   settings sheet.
 - **Notification settings sheet:** the one editor for every alert choice,
   for the selected network. It opens over the current page from the bell's
-  gear, Activity's settings icon, the Notifications row on Account & Settings,
+  gear, Activity's settings icon, the Notifications row on Settings & Account,
   and the `#/account/notifications` deep link. Three groups:
   - **eero alerts**, sent by eero for this network
     (`notifications.settings.get`): the keys eero sends, never an eero Plus
@@ -282,7 +277,7 @@ the ones that run commands go through `execute` like any button.
 | `Ctrl+Shift+D` | Pause device... (palette with `device.pause`) | Global |
 | `Ctrl+Shift+N` | Open network switcher | Global |
 | `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Activity, Guest network | Global |
-| `Ctrl+,` | Account & Settings | Global |
+| `Ctrl+,` | Settings & Account | Global |
 | `Alt+←` / `Alt+→` (`⌘[` / `⌘]`) | Back / forward | Global |
 | `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |
 | `Ctrl+B` | Hide or show the sidebar | Global |
@@ -293,7 +288,7 @@ the ones that run commands go through `execute` like any button.
 
 Only `Ctrl+K`, `/`, `Esc`, the palette keys, `Ctrl+Shift+P`, `Ctrl+Shift+D`
 and `Shift+click` appear in the mockups; the rest are proposed here. A
-shortcut list lives in Account & Settings.
+shortcut list lives in Settings & Account.
 
 ## Navigation
 
