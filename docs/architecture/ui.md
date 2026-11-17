@@ -65,6 +65,8 @@ type MeshApi = {
   on(listener: (e: HostEvent) => void): () => void;         // host events; returns an unsubscribe
   setTitlebarColors(colors: TitlebarColors): void;          // window-only, not a command
   saveFile(name: string, text: string): Promise<SaveFileResult>; // native save dialog, text only
+  searchThemes(query: string, sort: ThemeSearchSort): Promise<ThemeSearchResult>; // Open VSX, fetched in main
+  downloadThemes(extensionId: string): Promise<ThemeDownloadResult>; // verified, unpacked, trimmed in main
 };
 type SaveFileResult = { status: "saved"; name: string } | { status: "canceled" } | { status: "failed"; message: string };
 type Result = { ok: true; result: unknown } | { ok: false; error: { code: string; message: string; detail?: unknown } };
@@ -101,6 +103,17 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   path. Headless runs (`ui:shot`) may set `MESH_UI_SAVE_DIR` to skip the
   dialog and write there. Images (Save QR) use Chromium's download save
   dialog instead.
+
+- `searchThemes` and `downloadThemes` (`mesh:theme-search`,
+  `mesh:theme-download`, `src/main/open-vsx.ts`) back Settings & Account's
+  Add theme search. They are not commands (themes are renderer view state,
+  and nothing touches eero). Main fetches only `https://open-vsx.org`,
+  keeps only permissively licensed extensions with colour themes, checks the
+  `.vsix` against Open VSX's sha256, unpacks only the theme files with size
+  limits (`src/main/zip.ts`), and returns each theme trimmed to the VS Code
+  colours Mesh UI reads (`src/shared/vscode-theme.ts`). The renderer turns
+  them into palettes like a dropped file. The download is chosen by
+  extension id alone; main looks the URLs up again.
 
 The renderer reads the bridge through a local `MeshBridge` type in
 `app/useCommand.ts` (`execute`, `commands`, optional `on`). If `window.mesh`

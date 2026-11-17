@@ -109,10 +109,16 @@ export function setThemeSettings(next: Partial<ThemeSettings>): void {
   listeners.forEach((l) => l());
 }
 
-/** Uses a theme for every appearance it has; a one-appearance theme sets only its own. */
-export function pickThemeEverywhere(theme: ThemeDefinition): void {
+/**
+ * Uses themes for every appearance they cover: each mode takes the first
+ * theme that has it (a pair sets both; Catppuccin's one light and three
+ * dark themes set Latte and Mocha). Modes none of them have stay as they are.
+ */
+export function pickThemeEverywhere(...themes: ReadonlyArray<ThemeDefinition>): void {
   const next: Partial<ThemeSettings> = {};
-  for (const mode of getThemeModes(theme)) next[mode] = theme.id;
+  for (const theme of themes) {
+    for (const mode of getThemeModes(theme)) next[mode] ??= theme.id;
+  }
   setThemeSettings(next);
 }
 

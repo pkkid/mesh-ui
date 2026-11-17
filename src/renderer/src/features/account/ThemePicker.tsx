@@ -26,6 +26,7 @@ import { collectionVariantLabels } from "~/lib/vscodeTheme";
 
 import { ThemeImportDialog } from "./ThemeImportDialog";
 import { ThemePreviewCircle, ThemeWireframe, previewColors } from "./ThemePreview";
+import { ThemeSearch } from "./ThemeSearch";
 
 const MODE_TILES = [
   { mode: "system", label: "System", aria: "Follow the system appearance" },
@@ -96,7 +97,9 @@ export function ThemePicker({ id }: { id?: string }) {
           ))}
         </div>
       </Card>
-      <ThemeImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ThemeImportDialog open={importOpen} onOpenChange={setImportOpen}>
+        <ThemeSearch onInstalled={() => setImportOpen(false)} />
+      </ThemeImportDialog>
     </Section>
   );
 }

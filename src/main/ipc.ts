@@ -16,7 +16,14 @@
 import type { Engine, ExecuteOptions } from "../core/engine";
 import type { ExecuteResult } from "../core/errors";
 import type { HostEvent } from "../core/model";
-import { IPC, type MeshApi, type SaveFileResult, type TitlebarColors } from "../shared/types";
+import {
+  IPC,
+  type MeshApi,
+  type SaveFileResult,
+  type ThemeDownloadResult,
+  type ThemeSearchResult,
+  type TitlebarColors,
+} from "../shared/types";
 import { type NotifyHost, registerNotify } from "./notify";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +50,14 @@ export type IpcOptions = {
   saveFile?: SaveFileHost;
   /** Desktop alerts; without it `mesh:notify` is not registered (headless runs, tests). */
   notify?: NotifyHost;
+  /** Open VSX theme search and download (src/main/open-vsx.ts); without it the channels answer "unavailable". */
+  themes?: ThemeHost;
+};
+
+/** What the host provides for `window.mesh.searchThemes` and `downloadThemes`. */
+export type ThemeHost = {
+  search(query: unknown, sort: unknown): Promise<ThemeSearchResult>;
+  download(extensionId: unknown): Promise<ThemeDownloadResult>;
 };
 
 /** What the host provides for `window.mesh.saveFile`. Paths stay in main. */
@@ -139,6 +154,17 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
     });
   }
 
+  const themes = opts.themes;
+  const unavailable = { ok: false, message: "Theme search is not available here." } as const;
+  ipcMain.handle(IPC.themeSearch, async (e, query, sort): Promise<ThemeSearchResult> => {
+    if (!trusted(e)) return { ok: false, message: "Request refused: not from the app window." };
+    return themes ? themes.search(query, sort) : unavailable;
+  });
+  ipcMain.handle(IPC.themeDownload, async (e, id): Promise<ThemeDownloadResult> => {
+    if (!trusted(e)) return { ok: false, message: "Request refused: not from the app window." };
+    return themes ? themes.download(id) : unavailable;
+  });
+
   const unregisterNotify = opts.notify ? registerNotify(ipcMain, trusted, opts.notify) : null;
 
   const unsubscribe = opts.engine.onEvent((event) => opts.broadcast(IPC.event, event));
@@ -148,6 +174,8 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
     ipcMain.removeHandler(IPC.execute);
     ipcMain.removeHandler(IPC.commands);
     if (saver) ipcMain.removeHandler(IPC.saveFile);
+    ipcMain.removeHandler(IPC.themeSearch);
+    ipcMain.removeHandler(IPC.themeDownload);
     ipcMain.removeAllListeners(IPC.titlebar);
     unregisterNotify?.();
   };
@@ -220,6 +248,22 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
       const { title, body, target, networkId } = alert;
       if (typeof title !== "string" || typeof body !== "string" || typeof target !== "string" || typeof networkId !== "string") return;
       ipc.send(IPC.notify, { title, body, target, networkId });
+    },
+    searchThemes: async (query, sort) => {
+      if (typeof query !== "string" || typeof sort !== "string") return { ok: false, message: "Bad search." };
+      try {
+        return (await ipc.invoke(IPC.themeSearch, query, sort)) as ThemeSearchResult;
+      } catch {
+        return { ok: false, message: "Lost contact with the app." };
+      }
+    },
+    downloadThemes: async (extensionId) => {
+      if (typeof extensionId !== "string") return { ok: false, message: "That is not an extension id." };
+      try {
+        return (await ipc.invoke(IPC.themeDownload, extensionId)) as ThemeDownloadResult;
+      } catch {
+        return { ok: false, message: "Lost contact with the app." };
+      }
     },
     onRefresh(listener) {
       const wrapped = () => listener();

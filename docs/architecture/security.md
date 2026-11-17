@@ -135,6 +135,18 @@ The renderer can write a file only through `window.mesh.saveFile`: text only,
 with a text extension, to a path the user picks in the native save dialog.
 The path stays in main; the renderer gets back only the file name.
 
+Besides eero (and Amazon sign-in), the only host Mesh UI contacts is
+`https://open-vsx.org`, and only when the user searches for or adds a
+theme in Settings & Account. Main does the fetching (`src/main/open-vsx.ts`),
+so the renderer's CSP (`default-src 'self'`) and the window lockdown are
+unchanged: no remote content is loaded into a page. URLs in Open VSX
+responses are used only when they are https on that host; the package must
+match its published sha256; the zip is read entry by entry with output caps
+(Node `zlib` `maxOutputLength`), entry count, ratio and total size limits, and
+theme paths that leave the package are refused. Only theme colours (strings
+for known VS Code keys) reach the renderer, which validates every colour
+before storing a theme.
+
 ## Confirmation
 
 `disruptive` and `destructive` commands fail with `needs_confirm` unless
