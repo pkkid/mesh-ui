@@ -55,7 +55,7 @@ Shared patterns (hero, section cards, QR block, confirm dialogs, tables) are des
 ## States
 
 - **Loading:** hero title and status placeholders; QR box shows an empty frame; chart keeps its height and fades.
-- **Guest network off:** the hero keeps the name, status "Off" and **Turn on guest network**, with no QR block (it shrinks to its content). Usage, Isolation & security and Guest devices are replaced by one empty state: a large dimmed Ticket icon, "The guest network is off", "Give visitors internet without access to your devices." and **Turn on guest network**. Name & password stays under it, editable, so they can be set before turning on. While `guest.get` is still loading, the on layout shows its placeholders.
+- **Guest network off:** the hero keeps only the name and status "Off" (no power button, no QR block, so it shrinks to its content). Usage, Isolation & security and Guest devices are replaced by one empty state: a large dimmed Ticket icon, "The guest network is off", "Give visitors internet without access to your devices." and **Turn on guest network**. Name & password stays under it, editable, so they can be set before turning on. While `guest.get` is still loading, the on layout shows its placeholders.
 - **Empty usage:** "No guest activity in this window."
 - **No guests:** table shows "No guests in the last 7 days."
 - **Error:** inline note in the failing section with **Retry**; a failed write keeps the edited values and shows the eero error.
