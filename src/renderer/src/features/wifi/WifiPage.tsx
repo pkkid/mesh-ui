@@ -143,15 +143,13 @@ export const NICKNAME_HINT = "A name for this network in Mesh UI and the eero ap
  * Network nickname (Edit opens NicknameSheet) and time zone, with the local
  * time there (Edit opens TimezoneSheet). The nickname comes from
  * `network.list`, which reads the account's network refs as well as
- * `GET {net}`, so it matches the network switcher. It only tells networks
- * apart, so with one network and no nickname the field is left out (#270).
+ * `GET {net}`, so it matches the network switcher (#270).
  */
 function Nickname({ network, offline }: { network: Network | null; offline: boolean }) {
   const now = useNow(30_000);
   const networks = useQuery<NetworkSummary[]>("network.list", undefined, { poll: 60 });
   const summary = networks.data?.find((n) => n.id === network?.id) ?? null;
   const nickname = summary ? summary.nickname : (network?.nickname ?? null);
-  const showNickname = nickname !== null || (networks.data?.length ?? 0) > 1;
   const [editing, setEditing] = useState<"nickname" | "timezone" | null>(null);
   const nicknameGate = useGate("network.nickname.set");
   const tzGate = useGate("settings.timezone.set");
@@ -165,15 +163,10 @@ function Nickname({ network, offline }: { network: Network | null; offline: bool
     </GatedButton>
   );
   return (
-    <Section
-      title={showNickname ? "Nickname and location" : "Location"}
-      subtitle={showNickname ? "The nickname names this network in the network switcher" : undefined}
-    >
+    <Section title="Nickname and location" subtitle="The nickname names this network in the network switcher">
       <Card padded className="flex flex-col gap-4">
         <div className="grid gap-4 md:grid-cols-2">
-          {showNickname && (
-            <ReadField icon={Tag} label="Network nickname" value={nickname} hint={NICKNAME_HINT} actions={edit("nickname", nicknameGate, "Edit nickname")} />
-          )}
+          <ReadField icon={Tag} label="Network nickname" value={nickname} hint={NICKNAME_HINT} actions={edit("nickname", nicknameGate, "Edit nickname")} />
           <ReadField
             icon={Clock}
             label="Time zone"
