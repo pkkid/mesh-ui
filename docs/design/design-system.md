@@ -32,13 +32,17 @@ variables on `<html>`.
 
 | Theme | Notes |
 | --- | --- |
-| **Gruvbox** (Hard, Medium, Soft) | Default: Hard. Built from the `jdinhlife.gruvbox` VS Code theme files (MIT, `src/renderer/src/assets/vscode-themes/gruvbox/`) by the same import as T3 Code, so it matches T3 Code's Gruvbox role for role |
-| Classic | Neutral zinc, close to T3 Code's default |
+| **Classic** | Default. Neutral zinc, close to T3 Code's default |
 | Rose | T3 Code's T3 Chat theme |
 | Grove | |
 | Ocean | |
 | Ember | |
 | Iris | |
+
+Other looks, Gruvbox included, are VS Code themes the user adds (Open VSX
+or a file). Gruvbox is no longer built in; the import's tests use its files
+(`test/fixtures/vscode-themes/gruvbox/`, MIT) because their result is known
+to match T3 Code's Gruvbox role for role.
 
 **Surface grain.** As in T3 Code, the body, sidebar, main pane and topbar
 carry a faint fractal-noise tile (`surface-grain` in `index.css`, 3.5%
@@ -93,10 +97,10 @@ mode }`; the older `{ themeId, mode }` is read too), added themes in
 ## Tokens
 
 Use semantic Tailwind tokens, never literal colours. The table maps the
-mockup variable to the app token. The hex columns are the mockups' values;
-the app's Gruvbox is the VS Code import (above), which matches T3 Code and
-differs on some surfaces (cards share the page colour and stand out by their
-border).
+mockup variable to the app token. The hex columns are the mockups' values,
+drawn in Gruvbox Hard. Gruvbox added from Open VSX matches T3 Code instead,
+and differs on some surfaces (cards share the page colour and stand out by
+their border).
 
 | Role | Mockup variable | Tailwind token | Gruvbox Hard dark | Gruvbox Hard light |
 | --- | --- | --- | --- | --- |

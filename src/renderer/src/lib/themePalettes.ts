@@ -930,7 +930,7 @@ export const CLASSIC_THEME: ThemeDefinition = {
   variants: { dark: DEFAULT_DARK_COLORS },
 };
 
-/** Themes defined here, in picker order. Gruvbox comes from VS Code files (themeLibrary.ts). */
+/** The built-in themes, in picker order. More come from VS Code themes the user adds. */
 export const PALETTE_THEMES: ReadonlyArray<ThemeDefinition> = [
   CLASSIC_THEME,
   ROSE_THEME,

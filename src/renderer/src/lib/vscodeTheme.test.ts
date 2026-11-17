@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { colorToHex, contrastRatio, parseColor, parseRgb } from "./themeColor";
-import { GRUVBOX_THEMES, groupThemes, parseStoredTheme, parseThemeSettings } from "./themeLibrary";
+import gruvboxDarkHard from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-dark-hard.json";
+import gruvboxDarkMedium from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-dark-medium.json";
+import gruvboxDarkSoft from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-dark-soft.json";
+import gruvboxLightHard from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-light-hard.json";
+import gruvboxLightMedium from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-light-medium.json";
+import gruvboxLightSoft from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-light-soft.json";
+import { groupThemes, parseStoredTheme, parseThemeSettings } from "./themeLibrary";
 import { THEME_COLOR_ROLES, getThemeColorsForAppearance, type ThemeDefinition } from "./themePalettes";
 import {
   buildThemeCollection,
@@ -15,6 +21,18 @@ import {
 } from "./vscodeTheme";
 
 const hex = (value: string) => colorToHex(value);
+
+/**
+ * Gruvbox (jdinhlife.gruvbox on Open VSX, MIT), trimmed to the keys the
+ * import reads: a real theme with three styles, whose import is known to
+ * match T3 Code's role for role.
+ */
+const GRUVBOX_THEMES = buildThemeCollection(
+  [gruvboxLightHard, gruvboxDarkHard, gruvboxLightMedium, gruvboxDarkMedium, gruvboxLightSoft, gruvboxDarkSoft].map((t) =>
+    parseVsCodeTheme(t),
+  ),
+  { id: "gruvbox", label: "Gruvbox" },
+);
 const white = { r: 255, g: 255, b: 255 };
 
 /** An invented VS Code theme, enough to exercise every rule. */
@@ -158,12 +176,12 @@ describe("stored themes and settings", () => {
 
   it("round-trips a stored theme and rejects tampered ones", () => {
     expect(parseStoredTheme(JSON.parse(JSON.stringify(theme)))).toEqual(theme);
-    expect(parseStoredTheme({ ...theme, id: "gruvbox-hard" })).toBeNull();
+    expect(parseStoredTheme({ ...theme, id: "classic" })).toBeNull();
     expect(parseStoredTheme({ ...theme, colors: { ...theme.colors, canvas: "url(x)" } })).toBeNull();
   });
 
   it("migrates the single theme id of earlier builds", () => {
-    const exists = (id: string) => ["rose", "gruvbox-hard", "ocean"].includes(id);
+    const exists = (id: string) => ["rose", "classic", "ocean"].includes(id);
     expect(parseThemeSettings(JSON.stringify({ themeId: "t3-chat", mode: "dark" }), exists)).toEqual({
       light: "rose",
       dark: "rose",
@@ -171,10 +189,10 @@ describe("stored themes and settings", () => {
     });
     expect(parseThemeSettings(JSON.stringify({ light: "ocean", dark: "gone", mode: "bad" }), exists)).toEqual({
       light: "ocean",
-      dark: "gruvbox-hard",
+      dark: "classic",
       mode: "system",
     });
-    expect(parseThemeSettings("{", exists).light).toBe("gruvbox-hard");
+    expect(parseThemeSettings("{", exists).light).toBe("classic");
   });
 });
 

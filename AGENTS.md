@@ -143,7 +143,7 @@ of which must hold on macOS, Windows, and Linux:
   by `lib/vscodeTheme.ts` (a port of T3's `vscodeThemeImport.ts`; keep them in
   step), the list in `lib/themeLibrary.ts`, applied by `lib/themes.ts` as
   `--theme-*` CSS variables. To add a built-in, add a `ThemeDefinition` to
-  `PALETTE_THEMES`, or bundle VS Code theme files the way Gruvbox is.
+  `PALETTE_THEMES`; other looks (Gruvbox, ...) are VS Code themes users add.
 - Reuse the primitives in `components/ui/`. When you need a new one, port it
   from T3 Code's `apps/web/src/components/ui/` and trim what we do not use.
 - Dense UI: 14px base, `text-xs` and `text-2xs` for metadata, 8px control radius.
@@ -209,7 +209,7 @@ building a new chart; port from them rather than inventing a style.
   profile). Never pick a colour inline.
 - Series colours come from the active theme's palette (blue, purple, aqua,
   orange, red, green, yellow, gray; VS Code themes take them from their
-  terminal ANSI colours, Gruvbox Hard is the default), with a
+  terminal ANSI colours; Classic is the default), with a
   light and a dark value each, so they read on both. A neutral series uses a
   mix of `--foreground` with the background. Check every chart in light and
   dark. See `docs/design/design-system.md`.

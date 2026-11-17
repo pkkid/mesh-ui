@@ -1,20 +1,14 @@
 /**
- * Every theme the picker offers: the palettes in themePalettes.ts, the
- * bundled Gruvbox collection (built from its VS Code theme files by the same
- * import T3 Code uses), and themes the user added, which live in
- * localStorage on this computer only. Pure view state, not a command.
+ * Every theme the picker offers: the palettes in themePalettes.ts and themes
+ * the user added (VS Code themes from files or Open VSX, such as Gruvbox),
+ * which live in localStorage on this computer only. Pure view state, not a
+ * command.
  */
 import { useSyncExternalStore } from "react";
 
-import gruvboxDarkHard from "~/assets/vscode-themes/gruvbox/gruvbox-dark-hard.json";
-import gruvboxDarkMedium from "~/assets/vscode-themes/gruvbox/gruvbox-dark-medium.json";
-import gruvboxDarkSoft from "~/assets/vscode-themes/gruvbox/gruvbox-dark-soft.json";
-import gruvboxLightHard from "~/assets/vscode-themes/gruvbox/gruvbox-light-hard.json";
-import gruvboxLightMedium from "~/assets/vscode-themes/gruvbox/gruvbox-light-medium.json";
-import gruvboxLightSoft from "~/assets/vscode-themes/gruvbox/gruvbox-light-soft.json";
-
 import { parseColor } from "./themeColor";
 import {
+  CLASSIC_THEME,
   PALETTE_THEMES,
   SERIES_HUES,
   THEME_COLOR_ROLES,
@@ -22,26 +16,10 @@ import {
   type ThemeColors,
   type ThemeDefinition,
 } from "./themePalettes";
-import { buildThemeCollection, parseVsCodeTheme } from "./vscodeTheme";
 
-/**
- * Gruvbox by jdinhlife (MIT, Open VSX `jdinhlife.gruvbox`), each style a
- * light and dark pair. Hard comes first: it is the default.
- */
-export const GRUVBOX_THEMES: ReadonlyArray<ThemeDefinition> = buildThemeCollection(
-  [
-    parseVsCodeTheme(gruvboxLightHard),
-    parseVsCodeTheme(gruvboxDarkHard),
-    parseVsCodeTheme(gruvboxLightMedium),
-    parseVsCodeTheme(gruvboxDarkMedium),
-    parseVsCodeTheme(gruvboxLightSoft),
-    parseVsCodeTheme(gruvboxDarkSoft),
-  ],
-  { id: "gruvbox", label: "Gruvbox" },
-);
-
-export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [...GRUVBOX_THEMES, ...PALETTE_THEMES];
-export const DEFAULT_THEME: ThemeDefinition = GRUVBOX_THEMES[0]!;
+export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = PALETTE_THEMES;
+/** Classic, T3 Code's own default. */
+export const DEFAULT_THEME: ThemeDefinition = CLASSIC_THEME;
 
 export type AppearanceMode = ThemeAppearance | "system";
 export type ThemeSettings = { light: string; dark: string; mode: AppearanceMode };
