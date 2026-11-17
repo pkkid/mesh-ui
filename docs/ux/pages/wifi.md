@@ -41,6 +41,13 @@ Name, password, security and 2.4 GHz only now change through the write kit; ever
 - **Print a card** (hero, beside Copy password and Save QR): reads `wifi.share`, the same read as **Show code** (it runs it first if the code is not shown yet), and prints the guest card layout (`GuestCard.tsx`) titled "Wi-Fi": the QR code, the network name and the password, black on white. No new command.
 - **Time zone on a live network is read only.** The eero backend has no time zone write, so `settings.timezone.set` answers "not available yet" there and sends nothing. The only request any client sends, `PUT {net}/settings` JSON `{timezone: {value}}`, answered 200 on a real network and kept the old zone (M5.R-fix4, M5 review). No client has tested a time zone write live (endpoints.md section 20). On the eero backend (`app.info` `backend: eero`, the fake server included) the time zone pencil dims with "Change the time zone in the eero app: eero keeps the old zone when Mesh UI sends it", and the line under the fields adds "Change it in the eero app." Demo still applies it through the M5 sheet. If a working request turns up, add `setTimezone` back to the eero backend and drop the gate.
 
+## Name and password beside Encryption (#268)
+
+- **Name and password** and **Encryption** sit side by side once the page content is at least 48rem wide (a container query on the pair, so it follows the sidebar too), and stack full width below that. Bands stays full width below them. Both cards stretch to the taller one.
+- Beside Encryption the name and password fields stack; full width they sit side by side again.
+- The read-only name and password fields have no helper lines: the byte count lives only in the Change sheet, and "Hidden until you reveal it" and the revealed "N characters" are gone. A failed reveal still shows its error under the password.
+- **Encryption** uses short segment labels, **WPA2** / **Hybrid** / **WPA3**, with no icons; each option's tooltip is eero's full name (Standard (WPA2), Hybrid (WPA2 + WPA3), Enhanced (WPA3)). The section subtitle explains them ("WPA3 is stronger; Hybrid adds WPA2 for older devices"). No control scrolls sideways; the device count per band stays on the right.
+
 ## Layout
 
 Breadcrumb: `Settings / Wi-Fi`.
@@ -50,8 +57,8 @@ Breadcrumb: `Settings / Wi-Fi`.
 
 Left column:
 
-1. **Network name and password.** Two fields side by side. Name with copy icon and a character count (`12 of 32 characters`). Password (mono) with hide, copy and generate icons; an `edited` marker when it differs from the saved value; a 4 step strength bar ("Strong · 25 chars").
-2. **Encryption** ("WPA3 support per band"). Header switch **WPA3** (master on or off). Table: Band, Security mode (segmented **Standard (WPA2)** / **Hybrid (WPA2 + WPA3)** / **Enhanced (WPA3)**), and "WPA2 only" devices count. 6 GHz is fixed to Enhanced, other options disabled. Info note: 6 GHz always uses WPA3; choosing Enhanced on 2.4 or 5 GHz asks to confirm and names the WPA2 only devices (HP LaserJet, Ring Doorbell, Nest Thermostat); the section is hidden while Compatibility Mode is on.
+1. **Network name and password** (beside Encryption on wide pages, #268). Two fields, stacked beside Encryption and side by side full width. Name with copy icon and a character count (`12 of 32 characters`). Password (mono) with hide, copy and generate icons; an `edited` marker when it differs from the saved value; a 4 step strength bar ("Strong · 25 chars").
+2. **Encryption** ("WPA3 support per band"). Header switch **WPA3** (master on or off). Table: Band, Security mode (segmented **WPA2** / **Hybrid** / **WPA3**, full names in tooltips), and "WPA2 only" devices count. 6 GHz is fixed to Enhanced, other options disabled. Info note: 6 GHz always uses WPA3; choosing Enhanced on 2.4 or 5 GHz asks to confirm and names the WPA2 only devices (HP LaserJet, Ring Doorbell, Nest Thermostat); the section is hidden while Compatibility Mode is on.
 3. **Bands** ("All three radios on, managed by eero"). Three band cards (2.4, 5, 6 GHz): icon, label, hint, `On` status, client count, Width, Channels, Share of clients. Footnote: eero picks channels automatically, no per band SSID, and which eero lacks a 6 GHz radio.
 4. **Nickname and location.** Network nickname field (hint: helps tell networks apart). Timezone select with a `saved` marker and a hint with the local time. A row listing schedules that follow this timezone (profile bedtime, power saving, updates) and a **Save** button.
 

@@ -10,6 +10,8 @@ export type SegmentedOption<T extends string> = {
   value: T;
   label: string;
   icon?: LucideIcon;
+  /** Tooltip, e.g. the full name behind a short label. */
+  title?: string;
   disabled?: boolean;
 };
 
@@ -76,6 +78,7 @@ function Segmented<T extends string>({ value, onValueChange, options, size: size
             aria-checked={selected}
             tabIndex={selected ? 0 : -1}
             disabled={option.disabled}
+            title={option.title}
             data-selected={selected || undefined}
             onClick={() => onValueChange(option.value)}
             className={cn(
