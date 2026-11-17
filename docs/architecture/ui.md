@@ -342,8 +342,11 @@ turns into a confirm in place.
   `geometrychange` and resize) and sets the right inset to its width, so a
   desktop showing only minimise and close leaves no gap; 140px stays as the
   fallback when the overlay API is missing.
-- `themes.ts` sends the chrome colours to main so the Windows and Linux
-  titlebar overlay matches the theme.
+- The Windows and Linux titlebar overlay (the native minimise, maximise and
+  close buttons) is transparent (`#01000000`; fully transparent misbehaves on
+  Linux), as in T3 Code, so the buttons sit on the page's own titlebar.
+  `themes.ts` sends the toolbar text colour to main for the button symbols;
+  main ignores the colour it sends for the overlay itself.
 - Shortcuts use `Cmd` on macOS and `Ctrl` elsewhere; labels follow the
   platform.
 

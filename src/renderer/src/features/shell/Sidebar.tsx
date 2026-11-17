@@ -34,7 +34,7 @@ export function Sidebar() {
   const active = route.parent ?? route.id;
 
   return (
-    <aside className="flex w-(--sidebar-width) shrink-0 flex-col border-sidebar-border border-e bg-sidebar surface-grain text-sidebar-foreground">
+    <aside data-app-sidebar="" className="flex w-(--sidebar-width) shrink-0 flex-col border-e bg-sidebar surface-grain text-sidebar-foreground">
       <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-[9px] ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
         <AppIcon className="size-[22px]" />
         <AppWordmark className="text-sm" />
@@ -76,7 +76,7 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
       className={cn(
         "flex h-8 items-center gap-[9px] rounded-[var(--control-radius)] px-2.5 text-[13.5px] text-sidebar-foreground outline-none",
         "hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-ring",
-        "data-active:bg-sidebar-row-selected data-active:font-medium data-active:text-foreground data-active:shadow-[0_1px_0_rgb(0_0_0/4%),inset_0_0_0_1px_var(--color-border)]",
+        "data-active:bg-sidebar-row-selected data-active:font-medium data-active:text-foreground",
       )}
     >
       <Icon className={cn("size-4 shrink-0", active ? "text-foreground" : "text-muted-foreground")} />

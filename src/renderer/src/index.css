@@ -41,6 +41,11 @@
   --color-accent: var(--theme-accent-surface);
   --color-accent-foreground: var(--theme-accent-surface-foreground);
   --color-brand: var(--theme-accent);
+  /* The in-app Mesh UI mark (components/mesh/AppIcon.tsx): a quiet tile, the
+     text colour washed into the page, with the nodes in a softened text
+     colour, so it sits on every theme without standing out. */
+  --color-app-icon: color-mix(in oklab, var(--theme-text) 10%, var(--theme-canvas));
+  --color-app-icon-foreground: color-mix(in oklab, var(--theme-text) 80%, var(--theme-canvas));
   --color-brand-foreground: var(--theme-accent-foreground);
   --color-border: var(--theme-border);
   --color-input: var(--theme-input);
@@ -87,6 +92,9 @@
   --titlebar-inset-right: 0px;
   --scrollbar-thumb: rgb(0 0 0 / 14%);
   --scrollbar-thumb-hover: rgb(0 0 0 / 24%);
+  /* Matches ::-webkit-scrollbar's width below; topbar-scroll-fade keeps this lane opaque. */
+  --app-scrollbar-width: 6px;
+  --topbar-scroll-fade-height: 1.5rem;
 
   /* Status colours come from the theme's series palette (set by themes.ts as
      --series-*), so Gruvbox status dots match the mockups. Warning and
@@ -178,6 +186,49 @@ html[data-theme-id="rose"] {
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+/*
+ * Content fading under the topbar, ported from T3 Code (index.css,
+ * topbar-scroll-fade). The topbar has no bottom border; instead the top
+ * --topbar-scroll-fade-height of the page scroll column is masked from
+ * transparent to opaque, so content scrolling up dissolves as it reaches the
+ * bar. The scrollbar lane on the right stays opaque so the thumb never fades.
+ */
+@utility topbar-scroll-fade {
+  --topbar-scroll-fade-mask: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 10%) 10%,
+    rgb(0 0 0 / 30%) 24%,
+    rgb(0 0 0 / 58%) 42%,
+    rgb(0 0 0 / 82%) 62%,
+    rgb(0 0 0 / 96%) 82%,
+    black 100%
+  );
+  mask-image: var(--topbar-scroll-fade-mask), linear-gradient(black, black), linear-gradient(black, black);
+  mask-position: top, bottom, right;
+  mask-repeat: no-repeat;
+  mask-size:
+    100% calc(var(--topbar-scroll-fade-height) + 1px),
+    100% calc(100% - var(--topbar-scroll-fade-height)),
+    var(--app-scrollbar-width) 100%;
+}
+
+/*
+ * The divider between the sidebar and the main pane, as T3 Code draws it
+ * ([data-app-sidebar] in its index.css): not the theme's sidebarBorder role
+ * but a hairline of the sidebar's text colour, 10% in light and 8% in dark,
+ * so it never stands out. Rose (T3's T3 Chat) keeps its tinted divider in dark.
+ */
+[data-app-sidebar] {
+  border-color: color-mix(in srgb, var(--color-sidebar-foreground) 10%, transparent);
+}
+.dark [data-app-sidebar] {
+  border-color: color-mix(in srgb, var(--color-sidebar-foreground) 8%, transparent);
+}
+html.dark[data-theme-id="rose"] [data-app-sidebar] {
+  border-color: var(--color-sidebar-border);
 }
 
 /* Regions of the window that drag it around (the custom titlebar). */

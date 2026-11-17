@@ -70,7 +70,7 @@ export function TopBar() {
   const themeLabel = appearance === "dark" ? "Switch to light" : "Switch to dark";
 
   return (
-    <header className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-3 border-b bg-background surface-grain ps-5 pe-[calc(var(--titlebar-inset-right)+0.875rem)]">
+    <header className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-3 ps-5 pe-[calc(var(--titlebar-inset-right)+0.875rem)]">
       <div className="flex min-w-0 items-baseline gap-2">
         {parent && (
           <>

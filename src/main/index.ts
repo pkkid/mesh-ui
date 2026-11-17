@@ -55,12 +55,15 @@ import { isAmazonAllowedNavigation } from "../core/eero/amazonNative";
 
 /** Matches --titlebar-height in the renderer's index.css. */
 const TITLEBAR_HEIGHT = 44;
+/** The Windows and Linux controls overlay covers the whole titlebar strip. */
+const OVERLAY_HEIGHT = TITLEBAR_HEIGHT;
 /**
- * The Windows and Linux controls overlay stops 1px short of the titlebar so
- * the header's 1px bottom border (the last row of the 44px strip) is not
- * painted over and runs to the window's right edge.
+ * The overlay behind the native window controls is transparent, as in T3
+ * Code, so the page's own titlebar (and its grain) shows through and the
+ * buttons sit on exactly the same surface. `#00000000` does not work
+ * correctly on Linux, hence the 1/255 alpha (T3's DesktopWindow.ts).
  */
-const OVERLAY_HEIGHT = TITLEBAR_HEIGHT - 1;
+const OVERLAY_COLOR = "#01000000";
 
 const argv = process.argv;
 const cliIndex = argv.indexOf("--cli");
@@ -277,7 +280,7 @@ function createWindow(): BrowserWindow {
         : {
             titleBarStyle: "hidden",
             titleBarOverlay: {
-              color: "#00000000",
+              color: OVERLAY_COLOR,
               symbolColor: dark ? "#f5f5f5" : "#18181b",
               height: OVERLAY_HEIGHT,
             },
@@ -416,7 +419,8 @@ if (isCli) {
       },
       setTitlebarColors: (colors) => {
         if (!mainWindow || process.platform === "darwin" || isHeadless) return;
-        mainWindow.setTitleBarOverlay({ ...colors, height: OVERLAY_HEIGHT });
+        // Only the symbol colour follows the theme; the overlay stays transparent.
+        mainWindow.setTitleBarOverlay({ color: OVERLAY_COLOR, symbolColor: colors.symbolColor, height: OVERLAY_HEIGHT });
       },
       saveFile: saveFileHost,
       ...(isHeadless ? {} : { notify: notifyHost }),

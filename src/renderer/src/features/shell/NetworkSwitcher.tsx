@@ -78,7 +78,7 @@ export function NetworkSwitcher() {
     </>
   );
   const rowClass =
-    "mx-2.5 mt-1 mb-2 flex items-center gap-2.5 rounded-[10px] border bg-card px-2.5 py-[9px] outline-none focus-visible:ring-2 focus-visible:ring-ring";
+    "mx-2.5 mt-1 mb-2 flex items-center gap-2.5 rounded-[10px] bg-sidebar-row-selected px-2.5 py-[9px] outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   if (!many) {
     return <div className={rowClass}>{row}</div>;
@@ -86,12 +86,12 @@ export function NetworkSwitcher() {
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger className={cn(rowClass, "cursor-pointer hover:bg-sidebar-row-hover")} aria-label="Switch network">
+      <Popover.Trigger className={cn(rowClass, "cursor-pointer hover:bg-sidebar-row-active")} aria-label="Switch network">
         {row}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-          <Popover.Popup className="no-drag w-(--anchor-width) rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
+          <Popover.Popup className="no-drag w-(--anchor-width) rounded-xl border border-sidebar-border bg-sidebar surface-grain p-1 text-sidebar-foreground text-xs shadow-lg outline-none">
             <div role="group" aria-label="Networks">
               {networks.map((n) => {
                 const s = networkStatus(n.status);
@@ -103,8 +103,8 @@ export function NetworkSwitcher() {
                     aria-current={selected || undefined}
                     onClick={() => void choose(n)}
                     className={cn(
-                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-start outline-none hover:bg-muted/60 focus-visible:bg-muted/60",
-                      selected && "bg-muted",
+                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-start outline-none hover:bg-sidebar-row-hover focus-visible:bg-sidebar-row-hover",
+                      selected && "bg-sidebar-row-selected hover:bg-sidebar-row-selected",
                     )}
                   >
                     <StatusDot tone={s.tone} className="size-2" />
@@ -116,11 +116,11 @@ export function NetworkSwitcher() {
                 );
               })}
             </div>
-            <div className="mt-1 border-t pt-1">
+            <div className="mt-1 border-sidebar-border border-t pt-1">
               <Link
                 to={routeById("account").path}
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground [&_svg]:size-3.5"
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-muted-foreground hover:bg-sidebar-row-hover hover:text-foreground [&_svg]:size-3.5"
               >
                 <Settings />
                 Manage networks

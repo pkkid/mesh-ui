@@ -63,15 +63,18 @@ Every action below is a command run through `engine.execute(id, params)` (see
 
 Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.js`):
 
-1. **Header.** The app icon (`AppIcon`, 22px, the same `build/icon.svg` the
-   launchers use) and the wordmark (`AppWordmark`): "Mesh" bold in the text
+1. **Header.** The app icon (`AppIcon`, 22px, the shapes of `build/icon.svg`
+   the launchers use, in the theme's colours) and the wordmark (`AppWordmark`): "Mesh" bold in the text
    colour, "UI" in muted text, like T3 Code's "T3 Code".
 2. **Network switcher row.** Status dot, network name ("Maple Street", or
    the network nickname when one is set), a status line, "status · ISP"
-   ("Online · Ziply Fiber"), and a chevrons icon. Opens the [network switcher](#network-switcher).
+   ("Online · Ziply Fiber"), and a chevrons icon, on the same selected
+   surface as the active nav item (`bg-sidebar-row-selected`, no border).
+   Opens the [network switcher](#network-switcher).
 3. **Navigation**, in two groups. Items show an icon, label and an optional
    count on the right in `text-2xs text-muted-foreground tabular-nums`. The
-   active item uses the selected surface; item icons use one muted colour
+   active item uses the selected surface (`bg-sidebar-row-selected`) with no
+   outline or shadow, as in T3 Code; item icons use one muted colour
    (the per-item `--item-color` in the mockup is only a faint accent on the
    active item, never a fill).
 4. **Footer.** Account name ("Alex Kim") and role on the selected network
@@ -114,7 +117,9 @@ A popover anchored under the sidebar network row.
   has a nickname (set on the Wi-Fi page), the nickname is the name and the
   Wi-Fi name leads the muted line in place of the ISP ("Kim Home · Online"). No role badge and
   no eero or device counts. The popover is the same width as the sidebar
-  row, and the current network's row uses the selected surface.
+  row and drawn on the sidebar surface (`bg-sidebar`), so the current
+  network's row uses the same selected colour as the active nav item
+  (`bg-sidebar-row-selected`) and other rows the sidebar hover.
 - **Action:** choosing a row runs `network.select {networkId}` (app-local,
   remembered in `settings.json` so the CLI uses the same default). Every page
   reloads its queries for the new network; the current page is kept if it

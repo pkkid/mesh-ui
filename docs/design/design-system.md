@@ -206,13 +206,21 @@ numbers.
 
 ### Shell
 
-Sidebar on the left (`bg-sidebar`, 1px right border): app icon, network
-picker card, nav groups **Network** and **Settings**, and the account name
+Sidebar on the left (`bg-sidebar`, a 1px right divider in the sidebar text
+colour at 10% light and 8% dark, as T3 Code draws it, `[data-app-sidebar]`
+in `index.css`; Rose keeps its tinted `sidebarBorder` in dark): app icon, network
+picker (on the selected-row surface, like the active nav item; selections
+have no outline, as in T3 Code), nav groups **Network** and **Settings**, and the account name
 and role at the bottom as plain text (no icon or avatar, not a link) with a
 sign-out icon.
 Main pane: a 44px top bar (breadcrumbs, page navigation, search,
 Refresh, notifications, theme toggle, window controls) over a scrolling content
-column. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
+column. The top bar paints no background of its own (the main pane's
+surface and grain show through, so it matches the content and the
+transparent native window controls exactly) and has no bottom border: as in T3 Code, the scroll column's
+top 1.5rem fades from transparent to opaque (`topbar-scroll-fade`, a mask;
+the scrollbar lane stays opaque), so content scrolling up dissolves under the
+bar. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
 buttons with a `title` tooltip naming any shortcut ("Refresh (Ctrl+R)");
 a running Refresh only spins its icon (rotation, no other animation). The top strip of each pane is the
 window titlebar (`drag-region`); controls in it need `no-drag`, and it
@@ -549,10 +557,16 @@ the same everywhere (never a note in place of the button):
 
 One mark everywhere: the mesh triangle (three nodes, a hub, and the links
 between them) in the [Gruvbox Plus](https://github.com/SylEleuth/gruvbox-plus-icon-pack)
-app-icon style. `build/icon.svg` is the only source; `pnpm icons` renders
-`build/icon.png`, the Linux sizes in `build/icons/` and the website copies
-from it, and the UI draws it with `AppIcon` (`components/mesh/AppIcon.tsx`)
-in the sidebar, the sign-in titlebar and Welcome step, and the About panel.
+app-icon style. `build/icon.svg` is the only source for the launchers;
+`pnpm icons` renders `build/icon.png`, the Linux sizes in `build/icons/` and
+the website copies from it. Inside the app, `AppIcon`
+(`components/mesh/AppIcon.tsx`) draws the same tile and node shapes inline,
+flat and in the theme's colours: a quiet tile in `--color-app-icon` (10% of
+the text colour in the page colour) with the nodes in
+`--color-app-icon-foreground` (80% text colour), so it follows every theme,
+light and dark, without standing out, instead of the launcher's fixed
+Gruvbox colours. It appears in the sidebar, the sign-in titlebar and Welcome
+step, and the About panel. Keep its paths in step with `build/icon.svg`.
 Never draw the app mark with a lucide glyph.
 
 Beside the icon, the name is the wordmark `AppWordmark`
