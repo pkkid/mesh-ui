@@ -2,22 +2,23 @@
  * Wi-Fi "Bands": a card per band any eero offers, with its state, clients,
  * widths, channels and share of wireless clients, plus the 2.4 GHz only
  * switch (`wifi.hide5g.set`, confirm dialog, with its impact) with a countdown
- * to eero's own expiry, and a link to Troubleshooting. A band no eero has is
+ * to eero's own expiry. A band no eero has is
  * not shown, so a single-band network shows one card. Offline: figures show "-".
  * docs/ux/pages/wifi.md (Layout, left column 3).
  */
-import { Radio, RadioTower } from "lucide-react";
+import { RadioTower } from "lucide-react";
 
-import { pathFor } from "~/app/router";
+import { Badge } from "~/components/ui/badge";
 import { bandLabel } from "~/components/ui/band-badge";
 import { Card, Section } from "~/components/ui/card";
 import { KvList } from "~/components/ui/kv-list";
 import { useWrite } from "~/app/useWrite";
-import { GatedButton, HeaderLink, useGate, useNow } from "~/components/ui/page";
+import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { bandColor } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatCount, formatPercent } from "../../../../core/format";
+import { HIDE_5G } from "../../../../core/hide5g";
 import type { WifiSettings, WirelessBand } from "../../../../core/model";
 import { WifiImpact } from "./WifiImpact";
 
@@ -46,16 +47,7 @@ export function WifiBands({ wifi, offline, fading = false }: { wifi: WifiSetting
           : `${formatCount(on)} of ${formatCount(bands.length)} radios on`;
 
   return (
-    <Section
-      title="Bands"
-      subtitle={subtitle}
-      tools={
-        <HeaderLink to={pathFor("troubleshooting")}>
-          <Radio />
-          2.4 GHz only devices
-        </HeaderLink>
-      }
-    >
+    <Section title="Bands" subtitle={subtitle}>
       {wifi && bands.some((b) => b.band === "2.4") && <Hide5g wifi={wifi} offline={offline} />}
       <div className={cn("grid gap-3 transition-opacity", bands.length >= 3 ? "md:grid-cols-3" : bands.length === 2 ? "md:grid-cols-2" : "", fading && "opacity-40")}>
         {bands.map((b) => (
@@ -133,19 +125,30 @@ function Hide5g({ wifi, offline }: { wifi: WifiSettings; offline: boolean }) {
           <div className="flex items-center gap-2 font-medium">
             2.4 GHz only
             {active ? <Status tone="warning">On</Status> : <Status tone="muted">Off</Status>}
+            <Badge variant="warning">Disruptive</Badge>
           </div>
-          <div className="text-muted-foreground text-xs">
-            {active
-              ? "5 and 6 GHz are hidden so older devices can join. eero turns it off when the time runs out."
-              : "Hides 5 and 6 GHz for a while so a device that only speaks 2.4 GHz can join. eero turns it off on its own."}
-          </div>
+          {active ? (
+            <div className="text-muted-foreground text-xs">{HIDE_5G.active}</div>
+          ) : (
+            <>
+              <div className="text-foreground/80 text-xs">{HIDE_5G.why}</div>
+              <div className="text-muted-foreground text-xs">{HIDE_5G.cost}</div>
+            </>
+          )}
         </div>
         {left && (
           <span title="Time left" aria-label={`${left} left`} className="font-mono font-semibold text-lg tabular-nums tracking-tighter">
             {left}
           </span>
         )}
-        <GatedButton size="sm" variant="outline" gate={gate} disabled={offline || write.running} onClick={() => void write.run({ enabled: !active })}>
+        <GatedButton
+          size="sm"
+          variant="outline"
+          gate={gate}
+          title={active ? undefined : HIDE_5G.action}
+          disabled={offline || write.running}
+          onClick={() => void write.run({ enabled: !active })}
+        >
           {active ? "Turn off" : "Turn on"}
         </GatedButton>
       </div>

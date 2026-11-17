@@ -25,6 +25,7 @@ import { BlinkLightButton } from "~/features/eeros/EeroCards";
 import { useRestartNetwork, watchRestart } from "~/features/eeros/NetworkActions";
 import { useSpeedTest } from "~/features/internet/InternetHero";
 import type { RestartResult } from "../../../../core/commands/network";
+import { HIDE_5G } from "../../../../core/hide5g";
 import type { Eero, NetworkSettings, WifiSettings } from "../../../../core/model";
 
 function ToolRow({ title, detail, children }: { title: string; detail: string; children: ReactNode }) {
@@ -117,8 +118,15 @@ function TwoFourOnly({ offline }: { offline: boolean }) {
   return (
     <FixCard title="Connect 2.4 GHz only devices" badge={disruptive}>
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1 text-muted-foreground text-xs">
-          {active ? "5 and 6 GHz are paused so older devices can join." : "eero brings 5 and 6 GHz back on its own when the window ends."}
+        <div className="flex min-w-0 flex-1 flex-col text-xs">
+          {active ? (
+            <span className="text-muted-foreground">{HIDE_5G.active}</span>
+          ) : (
+            <>
+              <span className="text-foreground/80">{HIDE_5G.why}</span>
+              <span className="text-muted-foreground">{HIDE_5G.cost}</span>
+            </>
+          )}
         </div>
         {left && <span className="font-mono font-semibold text-lg tabular-nums tracking-tighter">{left}</span>}
       </div>
@@ -129,6 +137,7 @@ function TwoFourOnly({ offline }: { offline: boolean }) {
           gate={offline ? { allowed: false, reason: "The network is offline" } : gate}
           size="xs"
           variant="outline"
+          title={active ? undefined : HIDE_5G.action}
           disabled={!wifi.data || write.running}
           onClick={() => void write.run({ enabled: !active })}
         >

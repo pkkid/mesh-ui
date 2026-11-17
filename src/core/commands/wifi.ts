@@ -20,6 +20,7 @@ import { CommandError } from "../errors";
 import { type AnyCommand, type CommandContext, defineCommand } from "../spec";
 import { WIFI_PASSWORD, wifiPasswordSchema, wifiShare } from "./guest";
 import { IMPACT } from "./settings";
+import { HIDE_5G } from "../hide5g";
 
 export { WIFI_PASSWORD };
 
@@ -323,8 +324,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "wifi.hide5g.set",
     label: "Connect 2.4 GHz only devices",
-    description:
-      "Hides 5 and 6 GHz for a while so a device that only speaks 2.4 GHz can join; devices on 5 and 6 GHz move to 2.4 GHz meanwhile. eero turns it off on its own (hide5g.expiresAt); enabled false turns it off now.",
+    description: `${HIDE_5G.action} ${HIDE_5G.why} eero turns it off on its own (hide5g.expiresAt); enabled false turns it off now.`,
     icon: "radio",
     params: hide5gParams,
     effect: "disruptive",
