@@ -469,7 +469,7 @@ tried. What earlier captures already settle:
 | Admin role value | none: the captured network has no admins | **open**; the fake's `admin` and `standard-admin` stay from the clients |
 | `network.list` role counts | none | **open** |
 | `{net}` `timezone` | sections 17 and 19: `timezone{value, geo_ip}`, both strings | known |
-| `{net}` `nickname_label` | none (the account's `networks.data[]` carries it per LD) | **open** |
+| `{net}` `nickname_label` | none (the account's `networks.data[]` carries it per LD) | **open**; #270: after the maintainer set a nickname in the app, `network.get` and `network.list` both mapped it as null (raw keys not captured), so whether eero keeps the label is a MANUAL check |
 | `{net}/data_usage/report_settings` | none | **open**: M6.7 decides the weekly report toggle from it |
 
 `MANUAL:` line (M6.1 PR): sign in on the maintainer's machine, then an
@@ -518,6 +518,20 @@ request a real network ignored, so the eero backend no longer sends it:
 `settings.timezone.set` answers "not available yet" there and the Wi-Fi
 page dims it. The fake server answers that request 200 and keeps the zone,
 as the real network did.
+
+**Network nickname fields (#270, 2026-11-16).** Write: `PUT
+{net}/label?labelType=specialMarket`, form `label` (Eeronaut, quoting
+eero's Android client); an empty `label` clears it. Read: `nickname_label`,
+on the account's `networks.data[]` (LD) and, per data-model.md, on `{net}`.
+Only the account ref is backed by a client, so `network.nickname.set` now
+checks the value through `network.list`, which takes `{net}`'s
+`nickname_label` and falls back to the ref's; before it read `GET {net}`
+alone, and a `{net}` without the key made every save fail its read-back. A
+read-only check after the maintainer's save found no nickname in either
+read, and the app's request log (which starts after that save) has no
+`/label` write, so it is still unproven that eero keeps the label:
+`labelType=specialMarket` may be a market-specific label. MANUAL check in
+the #270 PR; if eero does not keep it, drop the command.
 
 ---
 

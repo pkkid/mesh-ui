@@ -41,6 +41,17 @@ export const RESTART_ESTIMATE = {
 /** Longest network nickname (eero's app limit, as device nicknames). */
 export const NICKNAME_MAX = 32;
 
+/**
+ * The nickname as the network list reports it. The list reads it from the
+ * account's network refs (`networks.data[].nickname_label`) as well as
+ * `GET {net}`, which may not carry it (endpoints.md section 20), so the
+ * check before and after a write sees what the switcher shows (#270).
+ */
+async function currentNickname(ctx: CommandContext): Promise<string | null> {
+  const ref = (await ctx.backend.network.list()).find((n) => n.id === ctx.net);
+  return ref ? (ref.nickname ?? null) : ((await ctx.backend.network.get(ctx.net)).nickname ?? null);
+}
+
 /** What a restart returns: the eeros that go down and how long for. */
 export type RestartResult = { networkId: M.Id; eeroIds: M.Id[]; estimate: string };
 
@@ -194,15 +205,14 @@ export const commands: AnyCommand[] = [
     invalidates: ["account", "network"],
     async run(ctx, p): Promise<{ networkId: M.Id; nickname: string | null }> {
       const want = p.nickname === "" ? null : p.nickname;
-      const before = await ctx.backend.network.get(ctx.net);
-      if ((before.nickname ?? null) === want) return { networkId: before.id, nickname: want };
+      if ((await currentNickname(ctx)) === want) return { networkId: ctx.net, nickname: want };
       await ctx.backend.network.setNickname(ctx.net, want);
-      const got = (await ctx.backend.network.get(ctx.net)).nickname ?? null;
+      const got = await currentNickname(ctx);
       if (got !== want) {
         const shown = (v: string | null) => (v === null ? "no nickname" : `"${v}"`);
         throw new CommandError("eero_error", `eero accepted the nickname but still reports ${shown(got)}, not ${shown(want)}. Check again in a minute; if it has not changed, eero did not save it.`);
       }
-      return { networkId: before.id, nickname: got };
+      return { networkId: ctx.net, nickname: got };
     },
   }),
 

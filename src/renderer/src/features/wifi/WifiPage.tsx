@@ -30,7 +30,7 @@ import { TopBarSubtitle } from "~/features/shell/TopBar";
 import { formatRelative, networkClock } from "../../../../core/format";
 import { NICKNAME_MAX } from "../../../../core/commands/network";
 import type { WifiPassword } from "../../../../core/commands/wifi";
-import type { AppInfo, DeviceList, Network, NetworkHealth, WifiSettings, WifiShare } from "../../../../core/model";
+import type { AppInfo, DeviceList, Network, NetworkHealth, NetworkSummary, WifiSettings, WifiShare } from "../../../../core/model";
 
 import { WifiBands } from "./WifiBands";
 import { TimezoneSheet } from "./TimezoneSheet";
@@ -136,9 +136,22 @@ export const TIMEZONE_LIVE_REASON = "Change the time zone in the eero app: eero 
 
 const OFFLINE: Gate = { allowed: false, reason: "The network is offline" };
 
-/** Network nickname (Edit opens NicknameSheet) and time zone, with the local time there (Edit opens TimezoneSheet). */
+/** What the nickname is for, under the field and in the sheet (#270). */
+export const NICKNAME_HINT = "A name for this network in Mesh UI and the eero app, handy if you manage more than one. Your Wi-Fi name doesn't change.";
+
+/**
+ * Network nickname (Edit opens NicknameSheet) and time zone, with the local
+ * time there (Edit opens TimezoneSheet). The nickname comes from
+ * `network.list`, which reads the account's network refs as well as
+ * `GET {net}`, so it matches the network switcher. It only tells networks
+ * apart, so with one network and no nickname the field is left out (#270).
+ */
 function Nickname({ network, offline }: { network: Network | null; offline: boolean }) {
   const now = useNow(30_000);
+  const networks = useQuery<NetworkSummary[]>("network.list", undefined, { poll: 60 });
+  const summary = networks.data?.find((n) => n.id === network?.id) ?? null;
+  const nickname = summary ? summary.nickname : (network?.nickname ?? null);
+  const showNickname = nickname !== null || (networks.data?.length ?? 0) > 1;
   const [editing, setEditing] = useState<"nickname" | "timezone" | null>(null);
   const nicknameGate = useGate("network.nickname.set");
   const tzGate = useGate("settings.timezone.set");
@@ -152,16 +165,15 @@ function Nickname({ network, offline }: { network: Network | null; offline: bool
     </GatedButton>
   );
   return (
-    <Section title="Nickname and location" subtitle="Shown under the network name and in the network switcher">
+    <Section
+      title={showNickname ? "Nickname and location" : "Location"}
+      subtitle={showNickname ? "The nickname names this network in the network switcher" : undefined}
+    >
       <Card padded className="flex flex-col gap-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <ReadField
-            icon={Tag}
-            label="Network nickname"
-            value={network?.nickname ?? null}
-            hint="Helps tell networks apart on accounts with more than one"
-            actions={edit("nickname", nicknameGate, "Edit nickname")}
-          />
+          {showNickname && (
+            <ReadField icon={Tag} label="Network nickname" value={nickname} hint={NICKNAME_HINT} actions={edit("nickname", nicknameGate, "Edit nickname")} />
+          )}
           <ReadField
             icon={Clock}
             label="Time zone"
@@ -177,7 +189,7 @@ function Nickname({ network, offline }: { network: Network | null; offline: bool
           </span>
         </div>
       </Card>
-      <NicknameSheet open={editing === "nickname"} onClose={() => setEditing(null)} current={network?.nickname ?? null} />
+      <NicknameSheet open={editing === "nickname"} onClose={() => setEditing(null)} current={nickname} />
       <TimezoneSheet open={editing === "timezone"} onClose={() => setEditing(null)} current={tz} />
     </Section>
   );
@@ -205,7 +217,7 @@ function NicknameSheet({ open, onClose, current }: { open: boolean; onClose: () 
       onClose={onClose}
       icon={<Tag />}
       title="Network nickname"
-      subtitle="A label for this network in eero's apps and the network switcher, not the Wi-Fi name"
+      subtitle={NICKNAME_HINT}
       dirty={next !== (current ?? "") && !tooLong}
       onSave={() => save.run({ nickname: next })}
       error={errors._form}

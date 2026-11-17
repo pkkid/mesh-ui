@@ -453,6 +453,20 @@ describe("network.nickname.set (M6.9)", () => {
     });
   });
 
+  it("checks the nickname the network list reports, so a GET {net} without nickname_label is not a failed save (#270)", async () => {
+    const demo = createDemoBackend({ clock: () => NOW });
+    // Like a GET {net} that leaves nickname_label out: only the account's network refs carry it.
+    const backend: Backend = { ...demo, network: { ...demo.network, get: async (id) => ({ ...(await demo.network.get(id)), nickname: null }) } };
+    const engine = createEngine({ backend, clock: () => NOW });
+    expect(await ok(engine.execute("network.nickname.set", { networkId: MAPLE, nickname: "Home base" }))).toEqual({ networkId: MAPLE, nickname: "Home base" });
+    expect((await ok(engine.execute<M.NetworkSummary[]>("network.list"))).find((n) => n.id === MAPLE)?.nickname).toBe("Home base");
+    // Set again: the list already shows it, so nothing is written.
+    let writes = 0;
+    const counting: Backend = { ...backend, network: { ...backend.network, setNickname: async (id, n) => void (writes++, await demo.network.setNickname(id, n)) } };
+    await ok(createEngine({ backend: counting, clock: () => NOW }).execute("network.nickname.set", { networkId: MAPLE, nickname: "Home base" }));
+    expect(writes).toBe(0);
+  });
+
   it("sends PUT {net}/label?labelType=specialMarket form label once, reads nickname_label back, and an empty label clears it (fake eero server)", async () => {
     const { engine, fake } = fakeEngine();
     try {
