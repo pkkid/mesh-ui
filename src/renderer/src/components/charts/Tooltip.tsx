@@ -109,11 +109,31 @@ export function placeFloating(at: FloatAt, width: number, height: number, vw: nu
  * A tooltip rendered on <body> with fixed positioning, so it can leave a
  * small chart (a donut) or a clipping card. Placed by `placeFloating`.
  */
+/**
+ * A wrapped tooltip keeps the width of its max-width, leaving a gap on the
+ * right of every line (CSS cannot shrink a box to its wrapped lines). Measure
+ * the widest line and set the box to it, so the padding is even on both sides.
+ * The line breaks stay the same, since every line still fits.
+ */
+function shrinkToLines(el: HTMLElement) {
+  el.style.width = "";
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0);
+  if (rects.length < 2) return;
+  const lines = Math.max(...rects.map((r) => r.right)) - Math.min(...rects.map((r) => r.left));
+  const cs = getComputedStyle(el);
+  const frame = Number.parseFloat(cs.paddingLeft) + Number.parseFloat(cs.paddingRight) + Number.parseFloat(cs.borderLeftWidth) + Number.parseFloat(cs.borderRightWidth);
+  // +1: sub-pixel text widths, so the last word never wraps again.
+  el.style.width = `${Math.ceil(lines) + frame + 1}px`;
+}
+
 export function FloatingTooltip({ at, className, children }: { at: FloatAt; className?: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (el === null) return;
+    shrinkToLines(el);
     const { left, top } = placeFloating(at, el.offsetWidth, el.offsetHeight, window.innerWidth, window.innerHeight);
     el.style.left = `${left}px`;
     el.style.top = `${top}px`;

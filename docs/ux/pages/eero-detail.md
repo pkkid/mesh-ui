@@ -98,9 +98,10 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      "Remove "Office" from Maple Street? Its devices move to other eeros if
      in range, and Garage loses its uplink and may go offline until it
      finds another path." with type-the-name, **Remove from network** and
-     **Cancel**. For the gateway while other eeros remain: no button, "The
-     gateway can't be removed while other eeros use it; replace it in the
-     eero app."
+     **Cancel**. For the gateway while other eeros remain: the button stays,
+     disabled and dimmed, with the tooltip "Disabled: the gateway can't be
+     removed while other eeros use it", and the description "The gateway
+     can't be removed while other eeros use it; replace it in the eero app."
 
 ## Data
 

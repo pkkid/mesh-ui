@@ -54,12 +54,18 @@ export function RemoveEeroRow({ eero, eeros, networkName }: { eero: Eero | null;
       title="Remove eero"
       description={eero && !removable ? "The gateway can't be removed while other eeros use it; replace it in the eero app." : `Removes ${name} from ${networkName} and resets it. Owner only.`}
       control={
-        removable && (
-          // Destructive text, outline; the ellipsis because it asks first (type the name).
-          <GatedButton size="sm" variant="outline" className="text-destructive-foreground" gate={removeGate} disabled={remove.running} onClick={() => void runRemove()}>
-            Remove eero…
-          </GatedButton>
-        )
+        // Destructive text, outline; the ellipsis because it asks first (type the name).
+        // The gateway keeps the button, disabled and dimmed, with the reason in its tooltip.
+        <GatedButton
+          size="sm"
+          variant="outline"
+          className="text-destructive-foreground"
+          gate={eero && !removable ? { allowed: false, reason: "Disabled: the gateway can't be removed while other eeros use it" } : removeGate}
+          disabled={!eero || remove.running}
+          onClick={() => void runRemove()}
+        >
+          Remove eero…
+        </GatedButton>
       }
     />
   );
