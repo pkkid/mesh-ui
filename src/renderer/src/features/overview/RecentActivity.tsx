@@ -66,7 +66,7 @@ export function RecentActivity() {
   const list = events.data?.events ?? [];
 
   return (
-    <Section title="Recent activity" tools={<HeaderLink to={pathFor("activity")}>All</HeaderLink>}>
+    <Section title="Recent activity" tools={<HeaderLink to={pathFor("activity")} className="font-normal">All</HeaderLink>}>
       {events.error && !events.data ? (
         <SectionError what="recent activity" error={events.error} onRetry={() => void events.refetch()} />
       ) : !events.data ? (

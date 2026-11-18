@@ -235,7 +235,8 @@ building a new chart; port from them rather than inventing a style.
 - **Hero.** The key figure is `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   `18rem` column lists each series: colour dot, icon, label, value on the
-  right in `font-medium`, and a muted share line below. **Compact hero**
+  right in `font-medium` with its share after it in muted `text-xs`
+  ("254 GB (83%)"), one line per series. **Compact hero**
   (Activity, where the summary shares a row with a table): the figure is
   `text-2xl` with its muted line beside it and a share bar filling the rest
   of the line, and the series legend is wrapping chips (`size-2` square,
@@ -248,7 +249,7 @@ building a new chart; port from them rather than inventing a style.
   detail in `text-3xs text-muted-foreground/60`. Warning or danger values
   take the semantic foreground colour.
 - **Share bars.** An `h-2` bar split into segments with `gap-0.5`, rounded
-  outer ends, each segment's width proportional to its value with a tooltip
+  outer ends and square inner corners, each segment's width proportional to its value with a tooltip
   ("label · value · percent"), and a legend of `size-2` colour squares with
   muted label and value.
 - **Breakdown tables.** Header `text-xs text-muted-foreground font-normal`,

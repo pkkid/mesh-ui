@@ -125,7 +125,8 @@ export function TopBar() {
           type="button"
           onClick={() => openPalette()}
           aria-label="Search or run a command"
-          className="ms-2 flex h-7 w-[260px] cursor-pointer items-center gap-2 rounded-[var(--control-radius)] border bg-card px-2.5 text-[12.5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5"
+          // 15px on top of the 4px gap (plus Refresh's 7px glyph padding), about 26px to the Refresh glyph, set by eye against the native window controls.
+          className="ms-2 me-[15px] flex h-7 w-[260px] cursor-pointer items-center gap-2 rounded-[var(--control-radius)] border bg-card px-2.5 text-[12.5px] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5"
         >
           <Search />
           <span>Search or run a command</span>

@@ -25,6 +25,9 @@ import { ShareWifiButton } from "~/features/wifi/ShareSheet";
 import { SpeedGauge, useRunningSpeedTest } from "~/features/internet/InternetHero";
 import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
 
+/** Icons inside buttons use the dim text colour; the label stays bright. */
+const DIM_ICON = "[&_svg]:text-muted-foreground";
+
 export function NetworkHero() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const health = useQuery<NetworkHealth>("network.health", undefined, { poll: true });
@@ -86,10 +89,11 @@ export function NetworkHero() {
         }
         actions={
           <>
-            <ShareWifiButton />
-            <GatedButton variant="ghost" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
+            {/* Outline buttons with dim icons (design-system.md, Buttons and links). */}
+            <ShareWifiButton className={DIM_ICON} />
+            <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
               <RotateCcw />
-              Restart network
+              Restart network…
             </GatedButton>
           </>
         }

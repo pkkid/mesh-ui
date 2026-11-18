@@ -64,7 +64,7 @@ export function ProfilesList() {
       title="Top profiles"
       subtitle="Last 24 hours"
       tools={
-        <HeaderLink to={pathFor("profiles")} arrow>
+        <HeaderLink to={pathFor("profiles")} arrow className="font-normal">
           All profiles
         </HeaderLink>
       }

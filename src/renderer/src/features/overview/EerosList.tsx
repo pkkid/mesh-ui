@@ -12,7 +12,7 @@ import { MeshBars } from "~/components/mesh/LinkChip";
 import { Badge } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
-import { HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
+import { PlaceholderRows, Row, RowList, SectionError, SectionLink } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { eeroIcon } from "~/lib/deviceIcons";
@@ -30,9 +30,24 @@ export function EerosList() {
   const colors = entityColors(list.map((e) => e.id));
   const weak = new Set((health.data?.eeros ?? []).filter((e) => e.weakLink).map((e) => e.id));
   const series = new Map((usage.data ?? []).map((s) => [s.id, s]));
+  // "4 eeros · 3 online, 1 weak link": the count and anything not healthy.
+  const offline = list.filter((e) => e.status === "offline").length;
+  const weakCount = list.filter((e) => e.status !== "offline" && weak.has(e.id)).length;
+  const description = eeros.data
+    ? [
+        `${formatCount(list.length)} ${list.length === 1 ? "eero" : "eeros"}`,
+        [
+          `${formatCount(list.length - offline)} online`,
+          weakCount > 0 && `${formatCount(weakCount)} weak ${weakCount === 1 ? "link" : "links"}`,
+          offline > 0 && `${formatCount(offline)} offline`,
+        ]
+          .filter(Boolean)
+          .join(", "),
+      ].join(" · ")
+    : "-";
 
   return (
-    <Section title="eeros" tools={<HeaderLink to={pathFor("eeros")} arrow>Topology</HeaderLink>}>
+    <Section title="eeros" description={description} tools={<SectionLink to={pathFor("eeros")}>View topology</SectionLink>}>
       {eeros.error && !eeros.data ? (
         <SectionError what="eeros" error={eeros.error} onRetry={() => void eeros.refetch()} />
       ) : !eeros.data ? (

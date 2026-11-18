@@ -32,26 +32,29 @@ export function OverviewView(_props: PageProps) {
         </Card>
       )}
       <NetworkHero />
-      <DataUsage />
-      {bridged ? (
-        <div className="grid gap-7 lg:grid-cols-3">
-          <EerosList />
-          <BusyHeatmap />
-          <RecentActivity />
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-7 lg:grid-cols-2">
+      {/* 56px between sections, the same as from the hero's rule to Data usage. */}
+      <div className="flex flex-col gap-14">
+        <DataUsage />
+        {bridged ? (
+          <div className="grid gap-x-7 gap-y-14 lg:grid-cols-3">
             <EerosList />
-            <TopDevices />
-          </div>
-          <div className="grid gap-7 lg:grid-cols-3">
-            <ProfilesList />
             <BusyHeatmap />
             <RecentActivity />
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            <div className="grid gap-x-7 gap-y-14 lg:grid-cols-2">
+              <EerosList />
+              <TopDevices />
+            </div>
+            <div className="grid gap-x-7 gap-y-14 lg:grid-cols-3">
+              <ProfilesList />
+              <BusyHeatmap />
+              <RecentActivity />
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 }

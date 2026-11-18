@@ -38,7 +38,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, flat = false, 
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
       <div
         data-slot="page-header"
-        className={cn(flat ? "mb-4 border-b" : "rounded-(--hero-radius) border border-border/60 bg-card/40 shadow-xs/5", className)}
+        className={cn(flat ? "mb-7 border-b" : "rounded-(--hero-radius) border border-border/60 bg-card/40 shadow-xs/5", className)}
         {...props}
       >
         <div className={cn("flex items-start gap-7", flat ? "pt-6 pb-10" : "px-6 py-[22px]")}>

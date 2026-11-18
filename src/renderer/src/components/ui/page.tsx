@@ -28,12 +28,29 @@ export function useNow(everyMs = 30_000): number {
 }
 
 /** An outline button in a section header that goes to another page ("Topology →"); `Section` sets its size. */
-export function HeaderLink({ to, children, arrow = false }: { to: string; children: ReactNode; arrow?: boolean }) {
+export function HeaderLink({ to, children, arrow = false, className }: { to: string; children: ReactNode; arrow?: boolean; className?: string }) {
   return (
-    <Button variant="outline" render={<Link to={to} />}>
+    <Button variant="outline" className={className} render={<Link to={to} />}>
       {children}
       {arrow && <ArrowRight />}
     </Button>
+  );
+}
+
+/**
+ * A text link in a section header that goes to another part of the app
+ * ("View topology ->", "View all devices ->"): muted text with an arrow, foreground on
+ * hover. Links stay dim so they never outshine the section title. Navigation is a link, not a button (design-system.md, Buttons and links).
+ */
+export function SectionLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex items-center gap-1 rounded-sm text-muted-foreground text-xs outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+      <ArrowRight className="size-3.5" />
+    </Link>
   );
 }
 

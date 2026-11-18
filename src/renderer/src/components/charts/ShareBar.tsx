@@ -60,7 +60,7 @@ export function ShareBar({
             visible.map((s, i) => (
               <div
                 key={s.label}
-                className="h-full min-w-1 rounded-xs first:rounded-l-full last:rounded-r-full"
+                className="h-full min-w-1 first:rounded-l-full last:rounded-r-full"
                 style={{ flex: `${s.value} 1 0`, backgroundColor: s.color }}
                 onPointerEnter={() => setHovered(i)}
                 onPointerLeave={() => setHovered(null)}
