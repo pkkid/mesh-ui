@@ -9,7 +9,7 @@
  * notifications and the light/dark toggle. Pages fill the slots with
  * <TopBarTitle> and <TopBarActions>, which portal into the bar, and report
  * how fresh their data is with `useTopBarUpdated(at)`, which Refresh's
- * tooltip shows ("Refresh (Ctrl+R) · Updated 2 min ago").
+ * tooltip shows ("Refresh (Ctrl+R) · Updated 2m ago").
  */
 import { Moon, RefreshCw, Search, Sun } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -125,7 +125,8 @@ export function TopBar() {
           type="button"
           onClick={() => openPalette()}
           aria-label="Search or run a command"
-          className="ms-2 flex h-7 w-[260px] cursor-pointer items-center gap-2 rounded-[var(--control-radius)] border bg-card px-2.5 text-[12.5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5"
+          // 15px on top of the 4px gap (plus Refresh's 7px glyph padding), about 26px to the Refresh glyph, set by eye against the native window controls.
+          className="ms-2 me-[15px] flex h-7 w-[260px] cursor-pointer items-center gap-2 rounded-[var(--control-radius)] border bg-card px-2.5 text-[12.5px] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5"
         >
           <Search />
           <span>Search or run a command</span>
@@ -154,7 +155,7 @@ const setUpdatedAt = (at: number | null) => {
 
 /**
  * Reports when the page's data was last fetched; Refresh's tooltip says
- * "Updated 2 min ago". Cleared when the page unmounts.
+ * "Updated 2m ago". Cleared when the page unmounts.
  */
 export function useTopBarUpdated(at: number | null): void {
   useEffect(() => {

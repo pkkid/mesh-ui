@@ -10,7 +10,7 @@ import { useState } from "react";
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { GatedButton, HeaderLink, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
+import { GatedButton, PlaceholderRows, Row, RowList, SectionError, SectionLink, useGate } from "~/components/ui/page";
 import { PROFILE_GATE, ProfileSheet } from "~/features/profiles/ProfileCards";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
@@ -54,6 +54,8 @@ export function ProfilesList() {
   const used = new Map((usage.data ?? []).map((s) => [s.id, s.total.down + s.total.up]));
   // Rank by the same 24-hour total each row shows. Profiles without usage sort last.
   const top = [...list].sort((a, b) => (used.get(b.id) ?? -1) - (used.get(a.id) ?? -1)).slice(0, TOP);
+  // "24 hours, 1.2 GB": data used by every profile in the window.
+  const description = usage.data ? `24 hours, ${formatBytes([...used.values()].reduce((a, b) => a + b, 0))}` : "24 hours";
   // Wait for usage too, so the order does not jump; if usage fails, show list order with "-".
   const loading = !usage.data && !usage.error;
   const [adding, setAdding] = useState(false);
@@ -61,13 +63,10 @@ export function ProfilesList() {
 
   return (
     <Section
+      className="gap-[15px]"
       title="Top profiles"
-      subtitle="Last 24 hours"
-      tools={
-        <HeaderLink to={pathFor("profiles")} arrow>
-          All profiles
-        </HeaderLink>
-      }
+      description={description}
+      tools={<SectionLink to={pathFor("profiles")}>View all profiles</SectionLink>}
     >
       {profiles.error && !profiles.data ? (
         <SectionError what="profiles" error={profiles.error} onRetry={() => void profiles.refetch()} />
@@ -100,7 +99,7 @@ export function ProfilesList() {
                   {p.name.slice(0, 1).toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-[13.5px]">{p.name}</div>
+                  <div className="truncate font-medium text-sm">{p.name}</div>
                   <div className="text-muted-foreground text-xs">{detail(p, used.get(p.id))}</div>
                 </div>
                 <Status tone={state.tone}>{state.label}</Status>

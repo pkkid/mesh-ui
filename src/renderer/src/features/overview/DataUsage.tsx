@@ -15,7 +15,7 @@ import { SectionError } from "~/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { bytesParts, formatBytes, formatPercent, networkClock } from "../../../../core/format";
+import { bytesParts, formatBytes, formatCount, formatPercent, networkClock } from "../../../../core/format";
 import type { DeviceList, Eero, Network, UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
@@ -92,9 +92,13 @@ export function DataUsage() {
 
   return (
     <Section
+      className="gap-[15px]"
       title="Data usage"
       description={
-        deviceCount === undefined ? "Showing all devices" : `Showing all ${deviceCount} ${deviceCount === 1 ? "device" : "devices"}`
+        // "Last 24 hours, 53 devices": the range leads, then what it covers.
+        `${day ? "Last 24 hours" : "Last 7 days"}, ${
+          deviceCount === undefined ? "all devices" : `${formatCount(deviceCount)} ${deviceCount === 1 ? "device" : "devices"}`
+        }`
       }
       tools={
         <Select items={RANGES} value={picked} onValueChange={(v) => v && pick(v)}>
@@ -122,12 +126,11 @@ export function DataUsage() {
                 {hero.unit && <small className="ms-1 font-medium text-base text-muted-foreground">{hero.unit}</small>}
               </div>
               <div className="mt-1 text-muted-foreground text-xs">
-                {day ? "used in 24h" : "used in 7 days"}
-                {busiest && ` · ${busiest}`}
+                {busiest ? busiest.charAt(0).toUpperCase() + busiest.slice(1) : "-"}
               </div>
               <div className="text-muted-foreground text-xs">{formatBytes(hasData ? s?.todaySoFar : null)} so far today</div>
             </div>
-            <div className={cn("flex flex-col gap-3", fade)}>
+            <div className={cn("flex flex-col gap-2", fade)}>
               <SeriesRow
                 icon={<ArrowDown className="size-[15px]" style={{ color: seriesColors.download }} />}
                 label="Download"
@@ -185,17 +188,15 @@ function SeriesRow({
   share: number | null;
 }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 text-[13px]">
-        <span className="flex items-center gap-2">
-          {icon}
-          {label}
-        </span>
-        <span className="font-medium tabular-nums">{formatBytes(value)}</span>
-      </div>
-      <div className="mt-1 ps-[23px] text-muted-foreground text-xs">
-        {share === null ? "-" : `${formatPercent(share)} of traffic`}
-      </div>
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <span className="flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
+      <span className="tabular-nums">
+        <span className="font-medium">{formatBytes(value)}</span>
+        {share !== null && <span className="ms-1 text-muted-foreground text-xs">({formatPercent(share)})</span>}
+      </span>
     </div>
   );
 }

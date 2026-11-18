@@ -56,7 +56,7 @@ describe("internet commands (demo)", () => {
     const engine = demoEngine({ settings: memorySettings(DEMO_SETTINGS) });
     const maple = await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }));
     expect(maple.planMbps).toEqual({ down: 1200, up: 1200 });
-    expect(maple.verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber is fast and steady" });
+    expect(maple.verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber" });
     const networks = await ok(engine.execute<M.Network[]>("network.list"));
     for (const n of networks.filter((x) => x.id !== MAPLE)) {
       expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: n.id }))).planMbps).toBeNull();
@@ -157,19 +157,19 @@ describe("internet verdict", () => {
   });
   const plan = { down: 1200, up: 1200 };
 
-  it("is fast and steady when the last test reached 75% of the plan", () => {
+  it("is steady when the last test reached 75% of the plan", () => {
     expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
       kind: "steady",
-      title: "Ziply Fiber is fast and steady",
-      detail: "Last test 2 h ago hit 79% of your 1,200 Mbps plan",
+      title: "Ziply Fiber",
+      detail: "Last test 2h ago hit 79% of your 1,200 Mbps plan",
     });
   });
 
-  it("is slower than your plan when below plan or poor", () => {
+  it("is slow when below plan or poor", () => {
     expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(702, 846) }, NOW)).toMatchObject({
       kind: "slow",
-      title: "Ziply Fiber is slower than your plan",
-      detail: "Last test 2 h ago hit 59% of your 1,200 Mbps plan",
+      title: "Ziply Fiber",
+      detail: "Last test 2h ago hit 59% of your 1,200 Mbps plan",
     });
     expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(300, 900) }, NOW).kind).toBe("slow");
   });
@@ -177,10 +177,15 @@ describe("internet verdict", () => {
   it("is down when the internet is offline", () => {
     expect(internetVerdict({ ...base, status: "offline", planMbps: plan, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
       kind: "down",
-      title: "Ziply Fiber is down",
+      title: "Ziply Fiber",
       detail: null,
     });
-    expect(internetVerdict({ ...base, isp: { ...base.isp, name: null }, status: "offline", planMbps: null, lastSpeedTest: null }, NOW).title).toBe("Your internet is down");
+    expect(internetVerdict({ ...base, isp: { ...base.isp, name: null }, status: "offline", planMbps: null, lastSpeedTest: null }, NOW).title).toBe("Internet");
+  });
+
+  it("titles itself with the ISP name, then the geo IP organisation, then Internet", () => {
+    const noName = { ...base, isp: { ...base.isp, name: null, org: "Northwest Fiber, LLC" } };
+    expect(internetVerdict({ ...noName, planMbps: plan, lastSpeedTest: test(942, 918) }, NOW).title).toBe("Northwest Fiber, LLC");
   });
 
   it("is just the ISP name without a test or without a plan", () => {
@@ -188,7 +193,7 @@ describe("internet verdict", () => {
     expect(internetVerdict({ ...base, planMbps: null, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
       kind: "steady",
       title: "Ziply Fiber",
-      detail: "Last test 2 h ago measured 942 Mbps down, 918 Mbps up",
+      detail: "Last test 2h ago measured 942 Mbps down, 918 Mbps up",
     });
     expect(internetVerdict({ ...base, isp: { ...base.isp, name: null }, planMbps: null, lastSpeedTest: null }, NOW).title).toBe("Internet");
   });
@@ -196,12 +201,12 @@ describe("internet verdict", () => {
   it("comes back from internet.get in demo for every form", async () => {
     const plan = memorySettings({ planMbps: { [MAPLE]: { down: 1200, up: 1200 }, [LAKE]: { down: 500, up: 50 } } });
     const engine = demoEngine({ settings: plan });
-    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }))).verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber is fast and steady" });
+    expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }))).verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber" });
     expect((await ok(engine.execute<M.Internet>("internet.get", { networkId: LAKE }))).verdict?.kind).toBe("down");
     const slow = demoEngine({ settings: memorySettings({ planMbps: { [MAPLE]: { down: 2000, up: 2000 } } }) });
     expect((await ok(slow.execute<M.Internet>("internet.get", { networkId: MAPLE }))).verdict).toMatchObject({
       kind: "slow",
-      title: "Ziply Fiber is slower than your plan",
+      title: "Ziply Fiber",
     });
   });
 });
@@ -277,7 +282,7 @@ describe("internet commands (fake eero server)", () => {
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
       planMbps: { down: 1000, up: 50 },
       lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
-      verdict: { kind: "steady", title: "Example Fiber is fast and steady", detail: "Last test 20 h ago hit 91% of your 1,000 Mbps plan" },
+      verdict: { kind: "steady", title: "Example Fiber", detail: "Last test 20h ago hit 91% of your 1,000 Mbps plan" },
     });
   });
 
@@ -446,7 +451,7 @@ describe("speedtest.run and internet.plan.set (demo)", () => {
     expect(plan).toEqual({ down: 1200, up: 1200, label: "Fiber Gig" });
     const rated = await ok(engine.execute<M.Internet>("internet.get", { networkId: MAPLE }));
     expect(rated.planMbps).toEqual({ down: 1200, up: 1200, label: "Fiber Gig" });
-    expect(rated.verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber is fast and steady" });
+    expect(rated.verdict).toMatchObject({ kind: "steady", title: "Ziply Fiber" });
     expect((await ok(engine.execute<M.SpeedHistory>("speedtest.history", { networkId: MAPLE }))).tests[0]?.rating).toBe("great");
     expect((await settings.get()).planMbps).toEqual({ [LAKE]: { down: 300, up: 20 }, [MAPLE]: { down: 1200, up: 1200, label: "Fiber Gig" } });
 

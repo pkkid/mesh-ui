@@ -210,6 +210,18 @@ There is no `neighbor` on a connections port; `poe_status` was absent.
 | `amazon_devices_detail` | `{model_name_internal}` | | |
 | `is_proxied_node` | bool | | |
 
+**Wired clients behind a wired-backhaul eero are reported on the gateway.**
+A device plugged into an eero that uses Ethernet backhaul gets the
+gateway as its `source` (and the gateway's port in
+`connection.ethernet_status.interface_number`), and the gateway's
+`connected_clients_count` counts it as wired while the leaf eero counts 0.
+The leaf bridges its spare ports onto the backhaul cable, so eero seems to
+place a wired client by the gateway port it arrives on. The eero mobile app
+shows the same thing; eero Community threads report it too
+(community.eero.com/t/k9gm5q, /t/36talf). Mesh UI shows `source` as eero
+reports it, on purpose (maintainer's call, 2026-11-17), rather than
+guessing.
+
 `device_type` values: air_conditioner, air_purifier, alarm_system, audio, bed, cable_box, car, cash_register, coffee_maker, credit_card_terminal, desktop_computer, digital_assistant, door_bell, door_lock, e_reader, exercise_bike, fan, game_console, garage_door, generic, hard_drive, hub, laptop_computer, light, media_streamer, network_equipment, oven, pet_device, phone, plug, printer, refrigerator, remote, scale, security_camera, smoke_detector, sprinkler, tablet, television, thermostat, toaster, unknown_computer, vacuum, washer_dryer, watch. SX groups them into categories: computers_personal, entertainment, home, other.
 
 ## Profile (`GET {network}/profiles`)

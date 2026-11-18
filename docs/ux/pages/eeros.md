@@ -6,13 +6,15 @@ where the traffic goes, and network-wide restart.
 Mockup: [../../mockups/03-eeros.html](../../mockups/03-eeros.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a muted line under the selected eero, to the right of the topology.
+Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a muted line under the selected eero, to the right of the topology, with a check icon when up to date or an up arrow otherwise; the update part ("7.13.0 available", "7.13.0 scheduled") is a TextLink to Updates & admins. Under it, only when an eero other than the gateway has a wired backhaul and eero reports wired devices (not eeros) on the gateway, an info note: "Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet ports straight through to the cable, so eero sees them arrive at the gateway's port." Mesh UI shows the device's eero as eero reports it (see eero-api/data-model.md, Device).
 Sidebar count: number of eeros.
 
 ## Layout
 
-1. **Mesh topology** section. Sub "Upstream links and mesh quality bars".
-   Tool: Map / Tree segmented toggle. Two columns:
+1. **Mesh topology** section. Description under the title: the count, the
+   wired backhaul count, then what needs attention ("4 eeros, 1 weak link",
+   "3 eeros, 1 wired backhaul"; zero counts left out). Tool: a view
+   dropdown, "Map view" or "Tree view". Two columns:
    - **Map** (card, 430 px tall): left to right, an Internet node ("Ziply
      ONT"), the gateway (larger puck, "eero Max 7 · Gateway"), then each
      eero placed by hop count, with a link line to its upstream. Wired links
@@ -37,40 +39,52 @@ Sidebar count: number of eeros.
        devices connected through it get slower speeds than the rest of the
        mesh.", three suggestions with icons (move it 1 or 2 rooms closer, in
        line of sight; run Ethernet for wired backhaul; add an eero halfway),
-       and buttons **Test placement** and **Scan coverage**.
+       and buttons **Test placement** and **Scan coverage**, both outline with
+       dim icons (Scan coverage opens Troubleshooting but reads as an
+       action, so it stays a button, like the Internet hero's Troubleshoot).
      - Selected eero card: icon, name, "Selected · uplink to Living Room",
-       **Open →**; key values Backhaul (Wireless), Mesh quality ("4 of 4
+       a clickable card (a click anywhere opens the eero; no View link); key values Backhaul (Wireless), Mesh quality ("4 of 4
        bars"), Downstream (Garage).
-2. **Your eeros**. Sub "Bands, channels and load per eero". Tool: Grid / List
-   toggle. Grid of cards, two per row. Each card:
-   - Header: icon, name with a Gateway badge, "eero Max 7 · 192.168.4.1 · up
-     23d 4h", status (Online, Weak link), **Blink light** button, or while blinking
+2. **Your eeros**. Description under the title: connected clients across
+   the mesh, then any busy radio ("31 clients", "31 clients, 1 busy radio";
+   busy is utilisation at 65% or more). Tool: a view dropdown, "Grid view"
+   or "List view". Grid of cards, two per row. Each card:
+   - Header: icon, name with "Gateway" in plain dim text, "eero Max 7 · 192.168.4.1 · up
+     23d 4h", status (Online, Weak link), **Blink light** button (outline, dim icon; no ellipsis, it blinks at once), or while blinking
      an info-dot "Blinking · 24s" with **Stop**. The whole card opens the
      detail page (a clickable card, see the design system); no chevron
      button.
    - Body: a band table with columns Band (badge "2.4 GHz", "5 GHz", "6
      GHz"), Channel ("ch 149"), Width ("160 MHz"), Utilisation (meter in the
      band colour, warning colour and text at 65% or more, percent on the
-     right), Cl. (clients). A note for dual-band models ("eero 7 is dual band,
-     no 6 GHz radio") and a Wired row with the wired client count when there
-     are any.
+     right), Cl. (clients); headers in normal case. A Wired row with the wired
+     client count, when there are any, is the last row of the same table
+     (same dashed divider), and the note for dual-band models ("eero 7 is
+     dual band, no 6 GHz radio") sits under the whole table. The header's
+     status and Blink light are level with the eero name, 4px further right
+     so the button's gap to the card edge matches its gap to the top.
    - List view: one row per eero with the header fields and per-band client
      counts.
-3. Two columns:
-   - **Data usage by eero**. Sub "Last 24 hours" ("Last 7 days" on
-     Week). Day / Week toggle. Legend with each eero's total in its series colour, then a
-     stacked area chart with a Total row in the tooltip.
-   - Right column, stacked:
-     - **Clients by band**. Donut with the client total in the middle ("31
-       clients") and a list: 5 GHz 14, 2.4 GHz 9, 6 GHz 4, Wired 4, each
-       with its band colour square. Hovering a segment or a row highlights
-       both and shows the band, count and percent in a tooltip; the total in
-       the middle stays.
-     - **Network actions**. One row: Restart network, "Restarts every eero
-       at once", a "Disruptive" label and **Restart**, which opens the confirm
-       dialog: "Everyone loses internet for about 2 to 3 minutes,
-       including every connected device and any calls in progress." with
-       **Yes, restart network** and **Cancel**.
+3. Two columns, 56px below Your eeros:
+   - **Data usage by eero**. Description under the title: the window and the
+     busiest eero's share ("24 hours, Living Room carried 66%"). Range
+     dropdown "Last 24 hours" or "Last 7 days". Legend with each eero's
+     total in its series colour, then a stacked area chart with a Total row
+     in the tooltip.
+   - **Clients by band**. Description: the busiest band ("Most on 2.4 GHz",
+     "Most wired", "No clients"). Donut with the client total in the middle
+     ("31 clients") and a list: 5 GHz 14, 2.4 GHz 9, 6 GHz 4, Wired 4, each
+     with its band colour square. Hovering a segment or a row highlights
+     both and shows the band, count and percent in a tooltip; the total in
+     the middle stays.
+4. **Network actions**, its own full-width section at the bottom of the
+   page (disruptive actions sit apart from the read-only sections).
+   Description: "31 devices online would lose internet" (from
+   `settings.impact`). One row: Restart network, "Restarts every eero at
+   once" with the impact line, and **Restart network…** (outline, 28px like the
+   section dropdowns, centred in the row; the ellipsis because it opens the confirm dialog: "Everyone loses
+   internet for about 2 to 3 minutes, including every connected device and
+   any calls in progress." with **Yes, restart network** and **Cancel**).
 
 ## Data
 

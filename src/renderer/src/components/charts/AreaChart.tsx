@@ -110,7 +110,8 @@ export function AreaChart({
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <div className="flex gap-2">
+      {/* flex-1: with a className that gives the chart a height (flex-1 in a card), the plot fills it. */}
+      <div className="flex min-h-0 flex-1 gap-2">
         {hideYLabels ? null : (
           <div className={cn("relative w-14 shrink-0", heightClassName)} aria-hidden>
             {scale.labeled
@@ -233,7 +234,7 @@ export function AreaChart({
 
       {labels.length === 0 ? null : (
         <div
-          className={cn("flex justify-between text-3xs text-muted-foreground uppercase", !hideYLabels && "pl-16")}
+          className={cn("flex justify-between text-3xs text-muted-foreground", !hideYLabels && "pl-16")}
           aria-hidden
         >
           <span>{start}</span>

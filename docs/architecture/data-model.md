@@ -231,7 +231,7 @@ type UsageBreakdown = {
 | `wanType` | `wan_type`, `lease.mode`, `pppoe_enabled` |
 | `ispGateway` | `gateway_ip` or `lease.dhcp.router` |
 | `dnsInUse`, `dnsMode` | `dns.parent.ips` or `dns.custom.ips`, `dns.mode` |
-| `verdict` | built in core from status, plan and the last speed test |
+| `verdict` | built in core from status, plan and the last speed test. `title` is only the provider (ISP name, else geo IP organisation, else "Internet"); `kind` is the rating (down, slow under 75% of plan, else steady); `detail` words the last test |
 | `gateway.wanPortSpeedMbps` | gateway eero `ethernet_status.statuses[isWanPort].speed` (`"P2500"` to 2500), only when that port `hasCarrier` (an unlinked port reports `"P10"`) |
 | `lastSpeedTest` | `speed.{date,down.value,up.value}` |
 | `SpeedTest` | `GET {net}/speedtest` rows `{date, down_mbps, up_mbps}`; `rating` vs `planMbps` in core |

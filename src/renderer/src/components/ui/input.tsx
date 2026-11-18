@@ -10,7 +10,7 @@ function Input({ className, icon, ...props }: InputProps) {
     <span
       data-slot="input-control"
       className={cn(
-        "relative inline-flex w-full items-center rounded-lg border border-input bg-background text-sm text-foreground shadow-xs/5 ring-ring/24 transition-shadow has-focus-visible:border-ring has-focus-visible:ring-[3px] has-disabled:opacity-64 has-aria-invalid:border-destructive/36 dark:bg-input/32",
+        "relative inline-flex w-full items-center rounded-lg border border-input bg-background text-sm text-foreground shadow-xs/5 ring-ring/24 transition-shadow has-focus-visible:border-ring has-focus-visible:ring-[3px] has-focus-visible:ring-inset has-disabled:opacity-64 has-aria-invalid:border-destructive/36 dark:bg-input/32",
         className,
       )}
     >

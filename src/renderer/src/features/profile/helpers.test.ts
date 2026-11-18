@@ -133,7 +133,7 @@ describe("devices", () => {
     expect(connectionLine(device({ id: "a", name: "A" }), "Upstairs Hall", NOW, TZ)).toBe("Upstairs Hall · 5 GHz");
     expect(connectionLine(device({ id: "a", name: "A", band: "wired", paused: true }), "Office", NOW, TZ)).toBe("Office · Wired");
     const gone = device({ id: "a", name: "A", connected: false, lastActive: new Date(NOW - 2 * 3_600_000).toISOString() });
-    expect(connectionLine(gone, "Upstairs Hall", NOW, TZ)).toBe("Offline · last seen 2 h ago on Upstairs Hall");
+    expect(connectionLine(gone, "Upstairs Hall", NOW, TZ)).toBe("Offline · last seen 2h ago on Upstairs Hall");
     expect(connectionLine({ ...gone, lastActive: null }, null, NOW, TZ)).toBe("Offline");
   });
 

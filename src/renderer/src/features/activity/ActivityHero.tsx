@@ -12,7 +12,7 @@ import type { EventCategory, EventSummary } from "../../../../core/model";
 
 import { CATEGORIES, CATEGORY_ORDER } from "./ActivityChart";
 
-/** "last 58 min", "last 3 h 10 min": how far back the kept events reach. */
+/** "last 58m", "last 3h 10m": how far back the kept events reach. */
 export function keptSpan(s: EventSummary): string {
   const from = s.earliest ? Date.parse(s.earliest) : Date.parse(s.to);
   const min = Math.max(1, Math.round((Date.parse(s.to) - from) / 60_000));

@@ -8,7 +8,7 @@ Shared patterns (hero, settings rows, side panel, destructive confirms) are desc
 
 ## Layout
 
-Breadcrumb `Settings / Updates & admins`, titlebar action **Check for updates**. When the updates were last read ("Checked 2 h ago") ends the hero's status line.
+Breadcrumb `Settings / Updates & admins`, titlebar action **Check for updates**. When the updates were last read ("Checked 2h ago") ends the hero's status line.
 
 1. **Update hero.** Title is the target version (`eeroOS 7.13.0`) with `from 7.12.1` in muted mono. Status line: `Update available` (info) and "Released Nov 10, 2026 · gradual rollout, your network is eligible". **What's new** list from the release notes. Action row: **Install now** (primary) with a `Disruptive · all eeros restart` badge. On the right, a card **Installs automatically** ("Tonight, in your preferred update time") with a countdown (`11h 46m to go`), a progress meter toward the window, and a muted line "eero sends reminders 12 hours and 15 minutes before. Turn them on or off in Account."
 2. **Every eero updates together**: a row naming all eeros and when they were last updated.

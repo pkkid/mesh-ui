@@ -93,14 +93,14 @@ function BandCard({ band: b, known, share }: { band: BandRow; known: boolean; sh
   );
 }
 
-/** "17:42" until eero turns 2.4 GHz only off; "1 h 05 min" past an hour. */
+/** "17:42" until eero turns 2.4 GHz only off; "1h 05m" past an hour. */
 export function countdown(expiresAt: string, now: number): string | null {
   const left = Math.max(0, Math.round((Date.parse(expiresAt) - now) / 1000));
   if (!Number.isFinite(left)) return null;
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   const sec = left % 60;
-  return h > 0 ? `${h} h ${String(m).padStart(2, "0")} min` : `${m}:${String(sec).padStart(2, "0")}`;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}:${String(sec).padStart(2, "0")}`;
 }
 
 /**

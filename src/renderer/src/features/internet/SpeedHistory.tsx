@@ -15,7 +15,7 @@ import { AreaChart } from "~/components/charts/AreaChart";
 import { Section } from "~/components/ui/card";
 import { Meter } from "~/components/ui/meter";
 import { SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { seriesColors } from "~/lib/chartColors";
 import { datedName, saveTextFile } from "~/lib/saveFile";
 import { cn } from "~/lib/utils";
@@ -23,8 +23,8 @@ import { formatCount, formatMbps, formatPercent, networkClock } from "../../../.
 import type { Internet, Network, SpeedHistory as History } from "../../../../core/model";
 
 const RANGES = [
-  { value: "month", label: "Month" },
-  { value: "all", label: "All" },
+  { value: "month", label: "Last month" },
+  { value: "all", label: "All results" },
 ] as const;
 
 type HistoryRange = (typeof RANGES)[number]["value"];
@@ -54,19 +54,33 @@ export function SpeedHistory({ id }: { id?: string }) {
   const isp = internet.data?.isp.name ?? "your ISP";
   const count = history.data ? `${formatCount(history.data.tests.length)} ${history.data.tests.length === 1 ? "test" : "tests"}` : null;
   const oldest = history.data?.tests.at(-1)?.at;
-  const span = range === "all" && oldest ? `Since ${clock.day(oldest)}` : RANGE_TEXT[range];
-  const subtitle = [span, count, "automatic test every 1 to 3 days"].filter(Boolean).join(" · ");
+  // Short, window first, comma joined: "Since Fri Oct 31, 100 tests" or "30 days, 12 tests".
+  const span = range === "all" ? (oldest ? `Since ${clock.day(oldest)}` : null) : "30 days";
+  const description = [span, count].filter(Boolean).join(", ") || "-";
   const fade = history.fading ? "opacity-40" : undefined;
 
   return (
     <Section
       id={id}
       title="Speed test history"
-      subtitle={subtitle}
+      description={description}
+      className="gap-[15px]"
       tools={
         <div className="flex items-center gap-2">
           <ExportCsvButton network={network.data?.name ?? null} range={range} />
-          <Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />
+          {/* A dropdown, not a Segmented toggle, like Overview's Data usage range (design-system.md). */}
+          <Select items={RANGES} value={range} onValueChange={(v) => v && setRange(v)}>
+            <SelectTrigger size="tool" aria-label="Range">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {RANGES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
         </div>
       }
     >
@@ -75,27 +89,28 @@ export function SpeedHistory({ id }: { id?: string }) {
       ) : (
         <div className="grid gap-7 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
           <div className="flex flex-col gap-4">
-            <div className={cn("flex flex-col gap-3 transition-opacity", fade)}>
+            <div className={cn("flex flex-col gap-4 transition-opacity", fade)}>
               <Average
                 icon={<ArrowDown className="size-[15px]" style={{ color: seriesColors.download }} />}
-                label="Download, 7-day average"
+                label="Download"
                 color={seriesColors.download}
                 value={avg?.downMbps ?? null}
                 plan={plan?.down ?? null}
               />
               <Average
                 icon={<ArrowUp className="size-[15px]" style={{ color: seriesColors.upload }} />}
-                label="Upload, 7-day average"
+                label="Upload"
                 color={seriesColors.upload}
                 value={avg?.upMbps ?? null}
                 plan={plan?.up ?? null}
               />
             </div>
             <div className="h-px bg-border" />
-            <div className="flex gap-2 text-muted-foreground text-xs">
+            <div className="flex gap-2 text-muted-foreground/50 text-xs">
               <Info className="mt-px size-3.5 shrink-0" />
               <span>
-                Tests run from the gateway to your ISP, so they show what {isp} delivers, not Wi-Fi speed in a room.
+                Values show 7d average. Tests run from the gateway to your ISP, so they show what {isp} delivers, not Wi-Fi speed in a
+                room.
               </span>
             </div>
           </div>
@@ -123,16 +138,19 @@ export function SpeedHistory({ id }: { id?: string }) {
 function Average({ icon, label, color, value, plan }: { icon: ReactNode; label: string; color: string; value: number | null; plan: number | null }) {
   const share = value !== null && plan ? (value / plan) * 100 : null;
   return (
+    // The share of plan sits after the value, "540 Mbps (108%)", like the Overview series rows; no line under the meter.
     <div>
       <div className="flex items-center justify-between gap-3 text-[13px]">
-        <span className="flex items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
           {icon}
-          {label}
+          <span className="truncate">{label}</span>
         </span>
-        <span className="font-medium tabular-nums">{formatMbps(value)}</span>
+        <span className="shrink-0 whitespace-nowrap tabular-nums">
+          <span className="font-medium">{formatMbps(value)}</span>
+          {share !== null && <span className="ms-1 text-muted-foreground text-xs">({formatPercent(share)})</span>}
+        </span>
       </div>
-      <Meter className="mt-2" value={plan ? value : null} max={plan ?? 100} color={color} label={`${label}, share of plan`} />
-      <div className="mt-1 text-muted-foreground text-xs">{share === null ? (plan ? "-" : "No plan set") : `${formatPercent(share)} of plan`}</div>
+      <Meter className="mt-2" value={plan ? value : null} max={plan ?? 100} color={color} label={`${label}, 7-day average, share of plan`} />
     </div>
   );
 }
@@ -165,12 +183,14 @@ function ExportCsvButton({ network, range }: { network: string | null; range: Hi
   return (
     <Button
       variant="outline"
+      // Icons inside buttons are dim (design-system.md, Buttons and links).
+      className="[&_svg]:text-muted-foreground"
       disabled={state.kind === "busy"}
       title={state.kind === "saved" ? `Saved ${state.name}` : state.kind === "failed" ? state.message : undefined}
       onClick={() => void run()}
     >
       {state.kind === "saved" ? <Check /> : <Download />}
-      {state.kind === "saved" ? "CSV saved" : state.kind === "failed" ? "Couldn't save" : "Export CSV"}
+      {state.kind === "saved" ? "CSV saved" : state.kind === "failed" ? "Couldn't save" : "Export CSV…"}
     </Button>
   );
 }

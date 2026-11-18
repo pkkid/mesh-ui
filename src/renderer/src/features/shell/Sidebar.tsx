@@ -80,7 +80,8 @@ function NavItem({ route, active, count }: { route: RouteDef; active: boolean; c
         "data-active:bg-sidebar-row-selected data-active:text-sidebar-foreground",
       )}
     >
-      <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-foreground" : "text-(--sidebar-icon-color) group-hover/nav:text-sidebar-foreground")} />
+      {/* -translate-y-px: centred by the box, the glyphs read 1px low beside the text. */}
+      <Icon className={cn("size-4 shrink-0 -translate-y-px", active ? "text-sidebar-foreground" : "text-(--sidebar-icon-color) group-hover/nav:text-sidebar-foreground")} />
       <span className="min-w-0 flex-1 truncate">{route.title}</span>
       {count !== undefined && count !== null && (
         <span className="text-2xs text-muted-foreground tabular-nums">{formatCount(count)}</span>

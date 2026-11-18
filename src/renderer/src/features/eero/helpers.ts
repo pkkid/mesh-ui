@@ -51,7 +51,7 @@ export function portsLine(ports: ReadonlyArray<EeroPort>): string | null {
   const counts = new Map<number, number>();
   for (const p of ports) if (p.supportedMbps) counts.set(p.supportedMbps, (counts.get(p.supportedMbps) ?? 0) + 1);
   const speeds = [...counts].sort((a, b) => b[0] - a[0]).map(([mbps, n]) => `${n} x ${ethernet(mbps)}`);
-  return [speeds.join(", ") || `${ports.length} ports`, "numbered left to right"].join(", ");
+  return speeds.join(", ") || `${ports.length} ports`;
 }
 
 /** "Port 1", or eero's own name for it ("WAN"). */

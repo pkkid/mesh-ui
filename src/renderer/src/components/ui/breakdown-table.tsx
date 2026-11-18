@@ -42,6 +42,8 @@ type BreakdownTableProps<T> = {
   placeholderCount?: number;
   /** Fades figures while a refetch is slow. */
   fading?: boolean;
+  /** The header row sticks to the top of a scrolling container (a capped-height card). */
+  stickyHeader?: boolean;
   className?: string;
 };
 
@@ -60,6 +62,7 @@ function BreakdownTable<T>({
   ranked = false,
   limit,
   others,
+  stickyHeader = false,
   placeholderCount = 5,
   fading = false,
   className,
@@ -89,7 +92,13 @@ function BreakdownTable<T>({
   return (
     <table className={cn("w-full border-collapse text-[13px] transition-opacity", fading && "opacity-40", className)}>
       <thead>
-        <tr className="border-b text-left text-muted-foreground text-xs">
+        <tr
+          className={cn(
+            "border-b text-left text-muted-foreground text-xs",
+            // Opaque, the card's look over the page, so rows scroll under it.
+            stickyHeader && "sticky top-0 z-10 bg-[color-mix(in_oklab,var(--color-card)_40%,var(--color-background))]",
+          )}
+        >
           {ranked && <th className="whitespace-nowrap px-3 py-2 font-normal">#</th>}
           <th className="w-full px-3 py-2 font-normal">{nameHeader}</th>
           {columns.map((c) => (

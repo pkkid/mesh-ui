@@ -86,6 +86,8 @@ function WeakLink({ eero, upstream, gateway, deviceCount: n }: { eero: Eero | un
               <GatedButton
                 size="xs"
                 variant="outline"
+                // Icons inside buttons are dim (design-system.md, Buttons and links).
+                className="[&_svg]:text-muted-foreground"
                 gate={eero.status === "offline" ? { allowed: false, reason: `${eero.location} is offline` } : placement.gate}
                 onClick={() => void placement.test(eero.id)}
               >
@@ -94,7 +96,8 @@ function WeakLink({ eero, upstream, gateway, deviceCount: n }: { eero: Eero | un
               </GatedButton>
             )
           )}
-          <Button size="xs" variant="ghost" render={<Link to={pathFor("troubleshooting")} />}>
+          {/* Same variant as Test placement beside it; like Troubleshoot, it reads as an action, so it stays a button. */}
+          <Button size="xs" variant="outline" render={<Link to={pathFor("troubleshooting")} />}>
             Scan coverage
           </Button>
         </>

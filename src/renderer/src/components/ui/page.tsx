@@ -37,6 +37,23 @@ export function HeaderLink({ to, children, arrow = false }: { to: string; childr
   );
 }
 
+/**
+ * A text link in a section header that goes to another part of the app
+ * ("View topology ->", "View all devices ->"): muted text with an arrow, foreground on
+ * hover. Links stay dim so they never outshine the section title. Navigation is a link, not a button (design-system.md, Buttons and links).
+ */
+export function SectionLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="inline-flex items-center gap-1 rounded-sm text-muted-foreground text-xs outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+      <ArrowRight className="size-3.5" />
+    </Link>
+  );
+}
+
 /** A button for an action whose write command lands in a later milestone: disabled, with a tooltip. */
 export function ComingSoonButton({ title = "Coming soon", ...props }: ButtonProps & { title?: string }) {
   return (

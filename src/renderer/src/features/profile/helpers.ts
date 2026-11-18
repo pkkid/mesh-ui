@@ -166,7 +166,7 @@ export function deviceRows(devices: ReadonlyArray<Device>, usage: ReadonlyArray<
     );
 }
 
-/** "Upstairs Hall · 5 GHz", "Office · Wired", "Offline · last seen 2 h ago on Upstairs Hall". Paused shows in the status column. */
+/** "Upstairs Hall · 5 GHz", "Office · Wired", "Offline · last seen 2h ago on Upstairs Hall". Paused shows in the status column. */
 export function connectionLine(d: Device, eeroName: string | null, now: number, timezone: string | null): string {
   const where = eeroName ?? null;
   if (!d.connected) {

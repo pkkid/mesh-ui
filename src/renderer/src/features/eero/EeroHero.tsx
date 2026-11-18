@@ -1,13 +1,18 @@
 /**
- * The eero detail hero: product tile with an LED bar, name, status line
- * (status, model, radio badge, uptime), Devices and Data 24h, and the
+ * The eero detail hero, flat like every page header: a 64px product tile
+ * (the device hero's size) with a small LED bar, name with "Gateway", status
+ * line (status, uptime), facts (Model, Radios, Devices, Data 24h), and the
  * Uplink card on the right. The LED bar pulses while Blink light blinks the eero. docs/ux/pages/eero-detail.md (Layout 1).
  */
-import { Badge } from "~/components/ui/badge";
+import { Lightbulb, RotateCcw } from "lucide-react";
+
+import { GatewayLabel } from "~/components/ui/badge";
+import { GatedButton } from "~/components/ui/page";
 import { Metric, PageHeader } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
 import { eeroIcon } from "~/lib/deviceIcons";
-import { useBlinking } from "~/features/eeros/EeroCards";
+import { BlinkLightButton, useBlinking } from "~/features/eeros/EeroCards";
+import { useEeroRestart } from "./EeroActions";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount, formatDuration, formatPercent } from "../../../../core/format";
 import type { Eero, UsageBreakdownRow } from "../../../../core/model";
@@ -27,10 +32,13 @@ export type EeroHeroProps = {
   usage: UsageBreakdownRow | null;
   /** The Internet node, for the gateway only. */
   internet: { label: string | null; wanMbps: number | null } | null;
+  /** For Restart's confirm and toast when this eero is the gateway. */
+  networkName: string;
   fading?: boolean;
 };
 
-export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage, internet, fading = false }: EeroHeroProps) {
+export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage, internet, networkName, fading = false }: EeroHeroProps) {
+  const restart = useEeroRestart(eero, eeros, networkName, offline);
   const status = offline ? networkStatus("offline") : networkStatus(eero?.status);
   const badge = eero ? radioBadge(eero) : null;
   const wired = eero?.clients.wired ?? null;
@@ -39,20 +47,27 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
 
   return (
     <PageHeader
+      flat
       className={cn("transition-opacity", fading && "opacity-40")}
-      title={eero?.location ?? "-"}
+      title={
+        // "Gateway" is a role label beside the name: plain dim text (design-system.md, Role label).
+        <span className="flex min-w-0 items-baseline gap-2.5">
+          <span className="truncate">{eero?.location ?? "-"}</span>
+          {eero?.isGateway && <GatewayLabel />}
+        </span>
+      }
       icon={<ProductTile eero={eero} offline={offline} />}
       status={
         <>
           <Status tone={status.tone}>{status.label}</Status>
-          {eero?.model && <Badge variant="outline">{eero.model}</Badge>}
-          {badge && <Badge variant="outline">{badge}</Badge>}
-          {eero?.isGateway && <Badge variant="outline">Gateway</Badge>}
           <span>{offline ? (lastSeen ? `Last seen ${lastSeen}` : null) : eero?.uptimeSec != null ? `Up ${formatDuration(eero.uptimeSec)}` : null}</span>
         </>
       }
+      // Model and radios are facts, label over value like every hero, not boxed badges.
       facts={
         <>
+          <Metric label="Model" value={eero?.model ?? null} />
+          <Metric label="Radios" value={badge} />
           <Metric
             label="Devices"
             value={
@@ -70,21 +85,49 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
               bytes === null ? null : (
                 <>
                   {formatBytes(bytes)}
-                  {usage && <small className="ms-1.5 font-normal text-muted-foreground text-xs">{formatPercent(usage.share)} of network</small>}
+                  {/* The share after the value, "142 GB (32%)", as on Overview. */}
+                  {usage && <small className="ms-1.5 font-normal text-muted-foreground text-xs">({formatPercent(usage.share)})</small>}
                 </>
               )
             }
           />
         </>
       }
+      // Hero actions, as on Overview and Internet: outline, the hero's 28px size, dim icons, under the facts.
+      actions={
+        eero ? (
+          <>
+            {restart.blocked ? (
+              <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate}>
+                <Lightbulb />
+                Blink light
+              </GatedButton>
+            ) : (
+              <span className={cn("inline-flex", DIM_ICON)}>
+                <BlinkLightButton eero={eero} size="context" />
+              </span>
+            )}
+            {/* Ellipsis: it confirms first. The tooltip says what it takes down. */}
+            <span title={restart.line ?? undefined} className="inline-flex">
+              <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate} disabled={restart.running} onClick={() => void restart.run()}>
+                <RotateCcw />
+                Restart eero…
+              </GatedButton>
+            </span>
+          </>
+        ) : undefined
+      }
       aside={eero ? <EeroUplink eero={eero} eeros={eeros} internet={internet} networkOffline={networkOffline} /> : null}
     />
   );
 }
 
+/** Icons inside buttons are dim (design-system.md, Buttons and links). */
+const DIM_ICON = "[&_svg]:text-muted-foreground";
+
 const LED_LABEL = { on: "Status light on", dim: "Status light dimmed", off: "Status light off", unknown: "Status light unknown", blink: "Status light blinking" } as const;
 
-/** A 150px rounded square with the eero product glyph and an LED bar at the top that mirrors the LED. */
+/** A 64px tile like the device hero's IconTile, with the eero glyph and a small LED bar at the top that mirrors the LED. */
 function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean }) {
   const Icon = eeroIcon(eero);
   const blinking = useBlinking(eero?.id) !== null;
@@ -93,19 +136,19 @@ function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean })
     <div
       role="img"
       aria-label={`${eero?.model ?? "eero"}. ${LED_LABEL[led]}`}
-      className="relative mt-1 grid size-[150px] shrink-0 place-items-center rounded-[34px] bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--color-border)]"
+      className="relative grid size-16 shrink-0 place-items-center rounded-(--hero-radius) bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--color-border)]"
     >
       <span
         aria-hidden
         className={cn(
-          "absolute top-4 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full",
+          "absolute top-2 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full",
           led === "on" && "bg-foreground/80",
           led === "blink" && "animate-pulse bg-foreground/80",
           led === "dim" && "bg-foreground/40",
           (led === "off" || led === "unknown") && "bg-border",
         )}
       />
-      <Icon aria-hidden className={cn("size-14", offline && "opacity-60")} strokeWidth={1.5} />
+      <Icon aria-hidden className={cn("size-[30px]", offline && "opacity-60")} />
     </div>
   );
 }

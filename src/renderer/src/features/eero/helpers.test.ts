@@ -126,12 +126,12 @@ describe("ports", () => {
   });
 
   it("counts ports by speed, fastest first", () => {
-    expect(portsLine([port(1, 5000), port(2, 5000)])).toBe("2 x 5 GbE, numbered left to right");
-    expect(portsLine([port(0, 10_000, "WAN"), port(1, 2500), port(2, 10_000), port(3, 2500)])).toBe("2 x 10 GbE, 2 x 2.5 GbE, numbered left to right");
+    expect(portsLine([port(1, 5000), port(2, 5000)])).toBe("2 x 5 GbE");
+    expect(portsLine([port(0, 10_000, "WAN"), port(1, 2500), port(2, 10_000), port(3, 2500)])).toBe("2 x 10 GbE, 2 x 2.5 GbE");
   });
 
   it("falls back to a port count when no speed is known, and is null with no ports", () => {
-    expect(portsLine([port(1, null), port(2, null)])).toBe("2 ports, numbered left to right");
+    expect(portsLine([port(1, null), port(2, null)])).toBe("2 ports");
     expect(portsLine([])).toBeNull();
   });
 

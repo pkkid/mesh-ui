@@ -35,7 +35,7 @@ Open questions from every doc are gathered in [open-questions.md](open-questions
 | [platform/cross-platform.md](platform/cross-platform.md) | macOS, Windows and Linux differences: titlebar, keychains, paths, CLI on PATH |
 | [platform/build-and-release.md](platform/build-and-release.md) | Build artifacts per OS, signing, notarization, CI matrix, versioning, auto-update |
 | [testing.md](testing.md) | The sandbox rule, demo backend, fake eero server, test layout, manual checks |
-| [design/design-system.md](design/design-system.md) | Themes, tokens, colour, status, cards, tables, charts, headers, confirms |
+| [design/design-system.md](design/design-system.md) | Themes, tokens, colour, typography, spacing, radius, borders, surfaces, components, charts, headers, confirms |
 
 ## UX
 

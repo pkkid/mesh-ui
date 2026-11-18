@@ -15,6 +15,27 @@ semantic classes.
   colour.
 - **Dense and calm.** 14px base type, small metadata, tight rows. Information
   first, chrome second.
+- **1000px content.** The main content of every page is at most 1000px
+  wide, centred, set once for the whole app (see [Page width](#page-width)).
+- **Flat hero.** Each page opens with a header on the page background, no
+  card, closed by a horizontal rule (see [Page header](#page-header-hero)).
+- **Buttons act, links go.** Controls that change something (a setting, the
+  view, a filter) are buttons, dropdowns, toggles and inputs. Anything that
+  only navigates to another part of the app is a text link, in the dim
+  `text-muted-foreground` colour, brightening on hover (see
+  [Buttons and links](#buttons-and-links)).
+- **Subtext under titles.** Muted detail sits on its own line below a
+  title, never beside it (see [Sections](#sections)).
+- **Dropdowns, not pill toggles.** View choices (range, metric, grouping)
+  are dropdowns, never Segmented pill toggles (see
+  [Buttons and links](#buttons-and-links)).
+- **Room to scroll past the end.** Every page ends with 100px of empty
+  space, so the last section can scroll up away from the bottom edge. Set
+  once on the page column (see [Page width](#page-width)); pages never add
+  or remove their own.
+- **Subtitles carry live data.** A subtitle says something about the data
+  on screen, built from values that change with it, not a fixed label (see
+  [Subtitles carry data](#subtitles-carry-data)).
 - **One look per kind of thing.** A download is always the same blue, a
   status is always a dot plus text, a quantity always uses the same formatter.
 - **Every action is a command.** Controls map to command ids; risky ones
@@ -162,45 +183,138 @@ neutral.
 
 ## Typography
 
-Inter Variable for text, `ui-monospace` stack for code, ids and big tile
-numbers.
+Fonts are set once in `src/renderer/src/index.css` (`@theme`):
 
-| Use | Size | Class |
+- `font-sans`: Inter Variable (bundled through `@fontsource-variable/inter`),
+  falling back to the system UI font. Used for all text.
+- `font-mono`: `ui-monospace`, SF Mono, Menlo, Consolas, Liberation Mono.
+  Used for IPs, MACs, serials, code, command ids and stat tile values.
+
+`body` sets 14px, `antialiased`, `text-foreground` on `bg-background`.
+`text-2xs` (11px) and `text-3xs` (10px) are custom sizes defined in
+`index.css`; the rest are Tailwind's.
+
+### Size scale
+
+Pick from this scale. Each size has a job; a new piece of UI takes the size
+of the closest existing job rather than a new value.
+
+| Size | Class | Use |
 | --- | --- | --- |
-| Body | 14px | base |
-| Sidebar items, settings row titles | 13.5px | `text-[13.5px]` |
-| Secondary body, buttons, tables | 13px | `text-[13px]` |
-| Metadata, legends, section subtitles | 12px | `text-xs` |
-| Fine metadata | 11px | `text-2xs` |
-| Chart labels, group labels, tile labels | 10px | `text-3xs` |
-| Section heading | 16px, 600 | `text-base font-semibold` (T3 Code settings section titles) |
-| Page title | 28px, 650 | `text-[28px] font-semibold tracking-tight` |
-| Hero figure | 36-40px, 650 | `text-4xl font-semibold tabular-nums` |
-| Stat tile value | 24-25px mono, 650 | `font-mono text-2xl font-semibold tracking-tighter tabular-nums` |
+| 10px | `text-3xs` | Chart axis labels, sidebar group labels, stat tile labels, table group headers |
+| 11px | `text-2xs` | Fine metadata: counts in the sidebar, account role, badges, timeline day labels |
+| 12px | `text-xs` | Metadata, legends, section descriptions, table headers, tooltips, toasts, `tool` and `xs` buttons, Segmented items, chips, badges |
+| 13px | `text-[13px]` | Secondary body: hero buttons, key-value lists, empty states, account name |
+| 13.5px | `text-[13.5px]` | Sidebar nav items |
+| 14px | `text-sm` / base | Body, default and `sm` buttons, inputs, selects, settings row titles, list row names (eeros, profiles on Overview), dialog descriptions |
+| 16px | `text-base` | Section headings, hero fact values |
+| 18px | `text-lg` | Dialog titles |
+| 24px | `text-2xl` | Compact hero figure, stat tile value (mono) |
+| 28px | `text-[28px]` | Page title |
+| 36px | `text-4xl` | Hero figure |
+
+Off-scale sizes (`text-[9px]`, `[9.5px]`, `[10.5px]`, `[11.5px]`,
+`[12.5px]`, `[15px]`, `[17px]`, `[22px]`) still appear in a few places
+(device table, palette, timeline, topology, eero and profile cards, sign-in).
+Do not add more; move a touched one to the nearest scale size.
+
+### Weights
+
+| Weight | Class | Use |
+| --- | --- | --- |
+| 400 | default, `font-normal` | Body, descriptions, table headers (`font-normal` resets `<th>`) |
+| 500 | `font-medium` | Buttons, nav items, settings row titles, row names, values in fact and metric rows, selected Segmented item, toast titles |
+| 600 | `font-semibold` | Page title, section and dialog headings, hero figures, stat tile values, group and tile labels, avatar initials |
+| 700 | `font-bold` | Reserved: the "Mesh" wordmark and tiny uppercase tags (the timeline Now label, the device table's tag) |
+
+### Type roles
+
+| Role | Classes |
+| --- | --- |
+| Page title | `text-[28px] font-semibold leading-tight tracking-tight` |
+| Section heading | `text-base font-semibold leading-7 text-foreground` (T3 Code settings section titles) |
+| Section description (under the title) | `text-xs text-muted-foreground`, truncates |
+| Settings row title | `text-sm font-medium text-foreground` |
+| Settings row description | `text-xs leading-normal text-muted-foreground` |
+| Group and tile label | `text-3xs font-semibold uppercase tracking-widest text-muted-foreground/70` |
+| Hero fact | label `text-xs text-muted-foreground` over value `text-base font-medium tabular-nums` (mono values `font-mono text-sm`) |
+| Hero figure | `text-4xl font-semibold tabular-nums` |
+| Stat tile value | `font-mono text-2xl font-semibold tracking-tighter tabular-nums` |
+| Dialog title | `text-lg font-semibold leading-snug` |
+
+### Text colour
+
+Text uses four levels, all from the theme: `text-foreground` (titles,
+values), `text-foreground/80` (status labels, chip text, avatar initials),
+`text-muted-foreground` (metadata, descriptions, table headers, resting
+icons) and `text-muted-foreground/70` (group labels). Placeholders use
+`text-placeholder`. Status colours (`text-success-foreground`, ...) only
+for status and errors.
+
+### Rules
 
 - All numbers use `tabular-nums`.
 - Group and tile labels are uppercase with wide tracking
-  (`tracking-widest`); nothing else is uppercase except X axis labels.
+  (`tracking-widest`); nothing else is uppercase, chart axis labels
+  included.
 - Sentence case everywhere ("Restart network", not "Restart Network").
 - "eero" is always lowercase, even at the start of a label.
 
 ## Shape and spacing
 
-| Thing | Value |
-| --- | --- |
-| Control radius (buttons, inputs, segmented, nav items) | 8px |
-| Section card radius | 12px (`rounded-xl`, as T3 Code) |
-| Page header (hero) radius | 12px |
-| Chips, status dots, avatars | Full |
-| Titlebar height | 44px |
-| Sidebar width | 15rem (mockup 236px) |
-| Page max width | 1056px (1000px of content), padding 22px 28px 48px |
-| Gap between sections | 28px |
-| Gap inside a section (heading to card) | 12px |
-| Card padding | 18px 20px |
-| Settings row | 13px 18px, min height 58px |
-| Button height | 30px (small 26px) |
-| Icons | lucide, 16px in nav and buttons, 13-14px in chips and inputs |
+Spacing uses Tailwind's 4px scale (`p-3` is 12px). The shell sizes live as
+CSS variables on `:root` in `index.css`.
+
+### Radius
+
+| Thing | Value | Class |
+| --- | --- | --- |
+| Controls: buttons, inputs, selects, nav items, sidebar rows | 8px | `rounded-(--control-radius)` (`--control-radius`), or `rounded-lg` |
+| Segmented track / its items | 9px / 7px | `rounded-[9px]` / `rounded-[7px]` |
+| Badges | 4px | `rounded-sm` |
+| Tooltips | 6px | `rounded-md` |
+| Section cards, notes, popovers, toasts | 12px | `rounded-(--card-radius)` or `rounded-xl` (as T3 Code) |
+| Carded page header (being replaced by the flat hero), xl icon tile | 12px | `rounded-(--hero-radius)` |
+| Dialogs | 16px | `rounded-2xl` |
+| Sheets | 18px | `rounded-[18px]` |
+| Icon tiles sm / md / lg | 7px / 9px / 12px | set by `IconTile` |
+| Chips, status dots, avatars, switches, count badges | Full | `rounded-full` |
+
+### Shell and page
+
+| Thing | Value | Where |
+| --- | --- | --- |
+| Titlebar height | 44px | `--titlebar-height` (matches `TITLEBAR_HEIGHT` in `src/main/index.ts`) |
+| Sidebar width | 15rem (240px; the mockups use 236px) | `--sidebar-width` |
+| Sidebar padding | nav `px-2`, items `h-8 px-2.5`, gap 9px to the icon | `features/shell/Sidebar.tsx` |
+| Page column | max 1056px (1000px of content), padding 22px 28px 100px | `max-w-[1056px] px-7 pt-[22px] pb-[100px]` in `RouterOutlet` |
+| Gap between sections | **56px**, the same as from the hero's rule to the first section, so every section on a page starts the same distance below the one before | Pages wrap the sections after the hero in `flex flex-col gap-14` (grids of side-by-side sections: `gap-x-7 gap-y-14`); the page column itself stays `gap-7`. Overview, Internet, eeros and eero detail follow this; other pages move over page by page, so check it whenever a page is updated |
+| Section heading to card | **15px from the subtitle to the card**; 12px when a section has no subtitle | `gap-[15px]`; `gap-3`. `Section` still defaults to `gap-5` (20px) with a description: Overview passes `gap-[15px]`, other pages move over page by page |
+| Section header tools gap | 8px | `gap-2` |
+| Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
+| Page header (hero) | flat: no side padding, 24px above, 40px below to a 1px rule, 28px after the rule; 28px between columns | `pt-6 pb-10 mb-7 border-b`, `gap-7` (see [Page header](#page-header-hero)) |
+| List row (`Row`) | 12px 16px, min height 58px, 14px gap | `min-h-[58px] px-4 py-3 gap-3.5` |
+| Settings row | 12px 16px, 32px to the control | `px-4 py-3`, `gap-8` |
+| Table cell | 8px 12px | `px-3 py-2` |
+| Hero actions, toolbars | 8px between controls | `gap-2` |
+
+### Control heights
+
+| Height | Class | Used by |
+| --- | --- | --- |
+| 20px | `h-5` | Badges, switches (`h-5 w-9`) |
+| 24px | `h-6` | `xs` buttons (QR block), chips, Segmented `sm` items |
+| 28px | `h-7` | `sm`, `hero` and `tool` buttons, `tool` selects, the Segmented `tool` track |
+| 30px | `size-[30px]` | Topbar icon buttons |
+| 32px | `h-8` | Default buttons, inputs, default selects, sidebar nav items, toolbars |
+| 36px | `h-9` | `lg` buttons |
+
+### Icons
+
+lucide icons. 16px (`size-4`) in nav items, default buttons and inputs;
+14px (`size-3.5`) in `hero`, `tool` and `xs` buttons, Segmented items and
+select chevrons; 12px (`size-3`) in badges. Resting icons are
+`text-muted-foreground` and turn `text-foreground` on hover or when active.
 
 ### Page width
 
@@ -215,6 +329,42 @@ inside the padding), and every page renders inside it.
   the column; it does not change the column.
 - Check wide windows: at 1600px and up the content stays 1000px and the
   margins grow.
+
+## Borders and surfaces
+
+Every border is 1px. Colour comes from two tokens, softened with opacity:
+
+| Border | Class | Used by |
+| --- | --- | --- |
+| Default | `border` (`border-border`) | Dialogs, popovers, tooltips, outline badges, the rule under the page header, table header rule, Segmented track, chips |
+| Card edge | `border-border/60` | Section cards, toasts (`/50`) |
+| Row divider | `divide-y divide-border/50`, `border-b border-border/50` | Rows inside a card, table rows |
+| Control | `border-input` | Outline buttons, inputs, selects |
+| Focus | `ring-2 ring-ring` (inputs: `ring-[3px] ring-ring/24` and `border-ring`) | Every focusable control |
+| Inset outline | `shadow-[inset_0_0_0_1px_var(--color-border)]` | Avatars, icon tiles, selected Segmented item |
+| Sidebar edge | `border-e`, coloured in `index.css` (`[data-app-sidebar]`) | Sidebar |
+
+No double borders: a card inside a card, or a bordered box flush against a
+card edge, is a mistake. Dashed borders mean "unknown" or "off" (a switch
+eero does not report, a disabled schedule).
+
+Backgrounds, from back to front:
+
+| Surface | Class |
+| --- | --- |
+| Page, titlebar, tooltips | `bg-background` (with `surface-grain`), `bg-tooltip/95` |
+| Sidebar | `bg-sidebar`; rows `bg-sidebar-row-hover`, `bg-sidebar-row-selected` |
+| Section card | `bg-card/40`, `shadow-xs/5` |
+| Hover on rows and cards | `hover:bg-muted/50` (rows), `hover:bg-muted/30` (cards) |
+| Inset: Segmented track, badges, avatars, icon tiles, table group rows | `bg-muted` |
+| Raised inside an inset: selected Segmented item | `bg-card` |
+| Outline buttons, popovers, dialogs, toasts | `bg-popover` (outline buttons `dark:bg-input/32`) |
+| Inputs | `bg-background` (`dark:bg-input/32`) |
+| Dialog backdrop | `bg-background/60` (`/64` dark), `backdrop-blur-[2px]` |
+
+Shadows are faint: `shadow-xs/5` on cards, outline buttons and inputs;
+`shadow-lg` only on floating things (tooltips, toasts, popovers); dialogs
+use their own deep soft shadow.
 
 ## Layout
 
@@ -234,7 +384,7 @@ surface and grain show through, so it matches the content and the
 transparent native window controls exactly) and has no bottom border: as in T3 Code, the scroll column's
 top 1.5rem fades from transparent to opaque (`topbar-scroll-fade`, a mask;
 the scrollbar lane stays opaque), so content scrolling up dissolves under the
-bar. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
+bar. The search field keeps about 26px to the Refresh glyph (`me-[15px]` on top of the 4px gap), set by eye against the space the theme toggle keeps to the native window controls. Headless screenshots cannot show the native controls; check this one in a real window. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
 buttons with a `title` tooltip naming any shortcut ("Refresh (Ctrl+R)");
 a running Refresh only spins its icon (rotation, no other animation). The top strip of each pane is the
 window titlebar (`drag-region`); controls in it need `no-drag`, and it
@@ -250,16 +400,44 @@ that still use the titlebar actions slot for page actions are tracked in
 
 ### Page header (hero)
 
-Every page opens with the same header:
+Every page opens with the same header, `PageHeader` in
+`components/ui/hero.tsx`. **The Overview hero (`NetworkHero`) is the model
+for every page**: a flat header that sits on the page background, not in a
+card.
 
-- icon tile (`size-16`, radius 18px) or avatar on the left, **top-aligned
-  with the title**;
+**Frame and spacing (the flat hero):**
+
+- **No outline or card.** No border box, background, radius or shadow
+  around the header. It reads as the top of the page, not as one more
+  section.
+- **A horizontal rule under it.** A 1px `border-b` (`border-border`) across
+  the full content column (1000px) closes the header and separates it from
+  the sections below. It is the only rule on the page; sections keep their
+  own cards.
+- **Space above:** 24px (`pt-6`) inside the header, on top of the page
+  column's 22px top padding, so the title starts 46px below the titlebar.
+- **Space below the content:** 40px (`pb-10`) from the lowest thing in the
+  header (the actions row, or the bottom of the aside) to the rule.
+- **Space after the rule:** 28px (`mb-7`) plus the page column's 28px
+  section gap, so the first section heading starts 56px below the rule.
+- **No side padding.** The header's content lines up with the left and right
+  edges of the sections below it.
+- The actions row gets an extra 12px (`mt-3`) above it, so the buttons sit
+  apart from the facts.
+
+These values live once in `PageHeader flat`; pages pass `flat` and never
+set their own margins or padding on the header.
+
+**Content, top to bottom on the left:**
+
+- optional icon tile (`IconTile size="xl"`: 64px, 12px radius) or avatar on
+  the left, **top-aligned with the title** (Overview has none);
 - title on the top row;
 - status line under it: status dot plus plain text, then muted context
   ("Online · Gateway up 23 days, 4 hours");
 - optional key facts as label-over-value pairs (ISP, Public IP, Last speed
   test);
-- **actions in a row at the bottom**, primary first, disruptive last.
+- **actions in a row at the bottom**, all `outline` buttons (never filled), the main action first, disruptive last.
 
 Everything in the header is **pinned to the top**. The left column (icon,
 title, status, facts, actions) and the right-hand column (gauges, QR block,
@@ -278,6 +456,12 @@ beside the 116px code. `PageHeader` and `QrBlock` set their size once through
 leave `size` off; a size given at the call site would break the match.
 Dialogs opened from a header reset it, so their buttons keep their own sizes.
 
+**Moving pages to the flat hero.** Only Overview passes `flat` today;
+the other pages still draw the older carded header (`bg-card/40`, 1px
+`border-border/60`, 12px radius, `px-6 py-[22px]`). New pages use `flat`,
+and the rest move over page by page. Once every page is flat, `flat` becomes
+the only `PageHeader` style and the card styling is removed.
+
 Guest network and Wi-Fi put a **QR block at the top right** of the header,
 with labelled buttons (Copy password, Save QR, Print a card) to its left
 (`components/ui/qr.tsx`, see Components).
@@ -285,9 +469,66 @@ with labelled buttons (Copy password, Save QR, Print a card) to its left
 ### Sections
 
 **Sections are subtle cards**: a `<section>` with a heading row
-(`text-base font-semibold` title, optional muted subtitle beside it or description under it, controls on the right)
-that stays one line (title and tools never wrap; a long subtitle truncates
-with an ellipsis and shows in full in its tooltip) above a card styled as T3 Code's settings groups: `bg-card/40`, a 1px `border-border/60`, `shadow-xs/5`, 12px radius. Rows inside are divided by `border-border/50` (`divide-y divide-border/50`); settings rows are `px-4 py-3` with a `text-sm font-medium` title over a `text-xs leading-normal text-muted-foreground` description, the control 32px to the right (T3's `SettingsRow`). The page hero uses the same surface and border.
+(`text-base font-semibold` title, optional muted text under it, controls on
+the right) above a card styled as T3 Code's settings groups: `bg-card/40`, a
+1px `border-border/60`, `shadow-xs/5`, 12px radius. Rows inside are divided
+by `border-border/50` (`divide-y divide-border/50`); settings rows are
+`px-4 py-3` with a `text-sm font-medium` title over a `text-xs
+leading-normal text-muted-foreground` description, the control 32px to the
+right (T3's `SettingsRow`).
+
+**Subtext goes under the title, never beside it.** Any muted line that
+belongs to a title (a section's freshness or count line, a settings row's
+description, a card's detail) sits on its own line below the title, in
+`text-xs text-muted-foreground`. The title stays alone on its line, so
+titles line up down the page and the subtext can be as long as it needs.
+In a section this is `Section`'s `description` (15px from the subtitle to the card,
+tools aligned to the bottom of the heading block); its older `subtitle`
+prop, which draws the text beside the title, is not used for new sections,
+and existing uses move to `description` when touched. The title and tools
+never wrap; a subtext too long for the line truncates with an ellipsis and
+shows in full in its tooltip.
+
+### Subtitles carry data
+
+A subtitle earns its line by telling the reader something they would
+otherwise have to work out from the section. **Build it from the data**:
+counts, totals, shares, the busiest or worst item, what is unusual right
+now. A fixed label is about a tenth as useful.
+
+| Section | Static (avoid) | Data-driven (do) |
+| --- | --- | --- |
+| eeros | "Your mesh nodes" | "4 eeros · 4 online, 1 weak link" |
+| Top devices | "Last 24 hours" | "Last 24 hours · 78% of all traffic" |
+| Data usage | "Download and upload" | "Last 24 hours, 38 devices" |
+| Top profiles | "Last 24 hours" | "24 hours, 1.2 GB" |
+| When the network is busy | "This week" | "Busiest Thursday, 4 to 6 PM" |
+| Recent activity | "Latest events" | "7 events" |
+
+- **Keep it short**: a few words, no sentence. Name the window bare ("24
+  hours", "7 days", not "Last 24 hours" or "This week"), then the fact that
+  changes, joined by a comma: "24 hours, 1.2 GB". The newest sections
+  (Top profiles, busy heatmap, Recent activity) follow this; the older ones
+  above still say "Last 24 hours" and use " · ".
+- Lead with the scope when the section has one (the range, the filter),
+  then the fact that changes.
+- **Skip the window when the content already shows it**: the busy heatmap's
+  Mon to Sun grid is obviously a week, so its subtitle is just "Busiest
+  Thursday, 4 to 6 PM".
+- **Only state a window that is true.** Leave the span out when the data
+  does not cover a fixed one: Recent activity says "7 events", not "24
+  hours, 7 events", because events are kept only from eero's last ~15
+  minutes plus the time the app has been open.
+- Call out what needs attention (weak links, offline, over plan) before
+  what is fine, and leave out zero counts ("1 weak link", never
+  "0 offline").
+- Use the shared formatters (`formatCount`,
+  `formatPercent`, `formatBytes`) so numbers match the rest of the app.
+- While the data loads, show the static part alone ("Last 24 hours") or
+  `-`, never a made-up number; the text fills in when the data lands.
+- A static subtitle is the last resort, only when nothing about the data
+  can be said. If a subtitle would only repeat the title, leave it out.
+
 **Header tools are 28px.** Every control in the tools slot (buttons,
 `HeaderLink`, Segmented toggles, selects) is 28px tall, the height of the
 title's line, so their top and bottom edges line up: buttons are the `tool`
@@ -322,34 +563,124 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 
 | Component | Look |
 | --- | --- |
-| Button | 30px, 8px radius, `bg-card` with control border; `primary` filled; `danger` red text; `ghost` no border; `icon` square |
+| Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
 | Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
-| Switch | 32 x 19, `bg-primary` when on |
-| Input, select | 30px, control border, mono variant for IPs and MACs |
-| Chip | Full radius, 26px, for filters; selected chip gets a stronger border, not colour |
+| Switch | 36 x 20 (`h-5 w-9`), full radius, `bg-primary` when on, `bg-muted` with a border when off, dashed border when eero does not report the value |
+| Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`). Focus, as T3 Code: `border-ring` and a 3px glow inside the border (`ring-[3px] ring-inset ring-ring/24`), never outside. Text fields use `components/ui/input.tsx`, with no decorative icon (no pencil); an optional 16px leading icon only when it says what to type (search); selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
+| Chip | 24px (`h-6`), full radius, 1px border, `bg-card`, `text-xs text-foreground/80`, for filters; selected chip gets a stronger border, not colour |
 | Status | `size-1.5` dot in the status colour plus `text-xs text-foreground/80` label ("Online", "Weak link"). No pill outline, fill or uppercase |
-| Badge | Small neutral box (`bg-muted`, border) for counts, versions, "Gateway" |
+| Badge | `badge.tsx`. 20px (`h-5`), 4px radius, `text-xs font-medium`, neutral `secondary` by default, for counts, versions, "Gateway". Status variants (`success`, `warning`, `error`, `info`: an 8% tint, 16% dark) only for status |
+| Role label | A word that tags a name ("Gateway" beside an eero) is plain dim text, `text-xs text-muted-foreground font-normal`, never a pill or outlined badge. `GatewayLabel` in `badge.tsx` is the gateway one, used everywhere an eero is named |
 | Icon tile | Neutral square with inset border, icon in `text-muted-foreground`; sizes 24, 32, 44, 64 |
-| Avatar | Round, initials, profile colour from `chartColors.ts` |
+| Avatar | `avatar.tsx`. Round, initials in `font-semibold`, inset 1px border, `bg-muted` or the profile colour from `chartColors.ts`. Sizes `sm` 26px, `md` 36px, `lg` 56px |
 | Signal bars | Four bars; one bar red, two yellow, three or four in text colour |
 | Settings rows | Card with rows split by 1px borders: title, muted description, value or control on the right, chevron if it opens something |
 | Note | Bordered inset box with an icon in the status colour and body text in normal colour, for real warnings |
 
-**Buttons.** Primary (filled) is only for the one main action of a hero
-(Run speed test, Pause in the device hero) and for the submit button of a
-sheet, dialog or form (Save, Create, Send), plus Install update and the
-sign-in flow. Everything in section headers, the topbar and toolbars is
-`outline` or `ghost` (Add a reservation, Add port forward, Add a profile,
-Run again). This follows the restrained colour rule: buttons are neutral.
 | Key-value list | `kv-list.tsx`. Two columns, muted keys, `tabular-nums` values; IPs, MACs and serials in mono with a small copy button |
 | Band badge | `band-badge.tsx`. The neutral Badge box with "2.4 GHz", "5 GHz", "6 GHz" or a cable icon and "Wired". Never coloured: band colours are for chart series |
 | Meter | `meter.tsx`. `h-1.5` bar on `bg-muted` for plan use and utilisation; neutral fill (`bg-foreground/70`), or the series colour via `color` for a series share (download and upload plan meters), `warning` from `warnAt`, `destructive` from `dangerAt`; empty track for a missing value |
 | Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from a device to an icon, shown in an Icon tile. An Amazon Echo is matched by its model name first (see [Product icons](#product-icons)), then the device type, then core's guess for a `generic` device (`inferredType`), then the category. A device nothing is known about gets a neutral device icon (`MonitorSmartphone`), never a question mark. Never map device types to icons anywhere else |
 | eero icon | `lib/deviceIcons.ts` `eeroIcon(eero)`: the only map from an eero to its product glyph, by `modelNumber`, then the model name, then the puck. See [Product icons](#product-icons) |
 | Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-md` (6px), `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
-| Dialog and sheet | `bg-popover`, border, large radius, dimmed backdrop |
+| Dialog and sheet | `bg-popover`, 1px border, 16px radius (sheets 18px, max 540px wide), dialog `max-w-lg`, backdrop `bg-background/60` with a 2px blur |
 | QR block | `qr.tsx`. `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog, and the printed card (`GuestCard.tsx`) draws the code black on white. Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
+
+**Buttons.** Primary (filled) is only for the submit button of a sheet,
+dialog or form (Save, Create, Send) and the sign-in flow. Hero actions are
+never filled, not even the main one (Run speed test, Pause): every button in
+a hero is `outline`. Everything in section headers, the topbar and toolbars
+is `outline` or `ghost` (Add a reservation, Add port forward, Add a
+profile, Run again). This follows the restrained colour rule: buttons are
+neutral.
+
+### Buttons and links
+
+**Dropdowns, not pill toggles.** A choice between views (a range, a metric,
+a grouping) is a dropdown: `Select` with `SelectTrigger size="tool"` in a
+section header, as in Overview's Data usage ("Last 24 hours") and
+Internet's Speed test history ("Last month", "All results"). Option labels
+say what you get, not a bare unit ("Last month", not "Month"; "All
+results", not "All"). Do not add new Segmented toggles; existing ones (Day /
+Week, Devices' status filter, Grouped / Raw) move to dropdowns page by page.
+
+**An ellipsis means "asks first".** A button whose click opens a confirm
+or asks for more input before anything happens ends its label with an
+ellipsis character (`…`, U+2026, not three dots): "Restart network…",
+"Rename…", "Add a reservation…". A button that does its job on click has
+none, even when its result shows in a sheet or dialog: Share Wi-Fi opens
+the QR sheet, and that sheet is the action, so it is "Share Wi-Fi". The
+same goes for menu items and command palette entries. Overview follows
+this; other pages move over page by page.
+
+**Hover colour fades.** Anything that changes colour on hover (dim to
+bright text, a row or card background) eases with `transition-colors`
+(150ms), never a hard switch: section links, the titlebar search, rows and
+clickable cards all fade the same way.
+
+**Header actions sit on the title's line.** In a card or row header with an
+icon, a title and a subtitle under it, the status and buttons on the right
+(Online, Blink light, View eero) are level with the title, not centred on
+the two lines: top-aligned in a 20px box (`flex h-5 items-center
+self-start`), the title's line height.
+
+**Disruptive actions sit apart.** A section of disruptive or destructive
+actions (Restart network, Danger zone) is its own full-width section at the
+bottom of the page, never tucked beside read-only content.
+
+**Footnotes are extra dim.** An info line under a card (the speed test
+note, the eeroOS line, the wired backhaul note) is `flex gap-2 text-xs
+text-muted-foreground/50` with a 14px icon (`mt-px size-3.5 shrink-0`), half
+as strong as normal muted text, so it never competes with the content. A
+link inside one is dimmed the same way (`text-foreground/50`, underline
+`decoration-foreground/25`, `hover:text-foreground/70`), so only the
+underline marks it.
+
+**Icons in buttons are dim.** A button's icon uses `text-muted-foreground`
+while its label stays `text-foreground`, so the words lead and the icon
+supports them (`[&_svg]:text-muted-foreground` on the button). **Buttons
+side by side share a variant**: hero actions are all `outline`, never an
+outline next to a borderless `ghost`, which reads as a stray label. Overview
+follows both (Share Wi-Fi, Restart network); other pages move over page by
+page.
+
+**Buttons act, links go.** Pick the element by what happens on click:
+
+| Click does | Element | Examples |
+| --- | --- | --- |
+| Changes a setting or the network | Button, switch, input | Restart network, Pause, Save, Add a reservation |
+| Changes the view of this page | Dropdown (see below), button | Range (Last 24 hours), Group by, Columns |
+| Opens a sheet, dialog or menu on this page | Button | Share Wi-Fi, Copy details, Filters |
+| Navigates to another page or section | Text link | View topology ->, View all devices ->, View history |
+
+- **Section header links** use `SectionLink` (`components/ui/page.tsx`):
+  `text-xs text-muted-foreground`, a 14px `ArrowRight` after the label, and
+  `text-foreground` on hover. No border, background or underline; the arrow
+  says it goes somewhere. It sits in the section's tools slot, right-aligned
+  like a button would.
+- **Links are dim.** A standalone link to another part of the app (a
+  section header link, a "View all" under a list) uses
+  `text-muted-foreground` at rest and turns `text-foreground` on hover. It
+  is secondary to the content around it and must never outshine a section
+  title or a value (bright links were tried and stood out too much). The
+  arrow, the hover and the pointer cursor mark it as clickable. Colour stays
+  neutral: no blue or accent links.
+- **Navigation links start with "View".** Name the destination after the
+  verb: "View topology", "View all devices", "View all activity", "View
+  history". Never a bare "All" or a lone noun.
+- **Inline links** inside a sentence of muted copy ("Set your internet
+  plan", "View history") use `TextLink` (underlined `text-foreground`, see
+  Page kit): the underline is what separates them from the words around
+  them, and they are as small as that copy.
+- Rows and clickable cards that open a detail page stay rows and cards; the
+  rule is about what to draw in place of a button.
+- Do not style a link as a button, or a button as a link: a link never runs
+  a command, and a button never only navigates.
+
+Overview follows this (View topology, View all devices, View all profiles, View all activity). Other pages still use
+`HeaderLink`, an outline button that navigates, and move to `SectionLink`
+page by page.
 
 ### Filter bar
 
@@ -372,7 +703,9 @@ Devices and Activity. Do not build another.
 
 ### Tables
 
-- Header `text-xs text-muted-foreground font-normal`, 1px bottom border.
+- Header `text-xs text-muted-foreground font-normal`, 1px bottom border,
+  in normal case ("Band", "Channel"), never uppercase. This includes
+  table-like grids such as the radio table in eero cards.
 - Rows with a faint divider (`border-b border-border/50`) and
   `hover:bg-muted/50`; offline rows in muted text.
 - Numbers right-aligned, `tabular-nums`.
@@ -387,7 +720,7 @@ Devices and Activity. Do not build another.
 
 `components/ui/page.tsx` holds what every page reuses: `RowList` and `Row`
 (58px rows split by 1px borders, a link when given `to`),
-`PlaceholderRows` (blank rows at normal height while loading), `HeaderLink`
+`PlaceholderRows` (blank rows at normal height while loading), `SectionLink` (text link in a section header, see [Buttons and links](#buttons-and-links)), `HeaderLink`
 (small outline button in a section header, optional arrow),
 `ComingSoonButton` (disabled, "Coming soon" tooltip, for writes in a later
 milestone), `SectionError` (what failed, eero's message, Retry; other
@@ -397,10 +730,10 @@ sections keep working) and `useNow` (a ticking clock for relative times).
 a profile card) is one clickable target: `<Card to={path}>` with its title in
 a `CardLink`. A click anywhere on the card opens the page; there is no
 chevron or "Details" button. The card gets `cursor-pointer` and, on hover,
-`bg-muted/30` plus a brighter border (`border-foreground/20`), with
-`transition-colors` only (no movement, no shadow). The title link is the
-keyboard focus target: focusing it gives the card the hover look plus the
-focus ring, and Enter opens it. Buttons, links, inputs and menus inside the
+`bg-muted/30` only, with `transition-colors` (no brighter border, no
+movement, no shadow; a brighter outline was tried and was too loud). The title link is the
+keyboard focus target: focusing it gives the card the hover background plus
+the focus ring, and Enter opens it. Buttons, links, inputs and menus inside the
 card (Blink light, Pause, the `...` menu) keep their own clicks; wrap any other
 control in `data-card-ignore`. List rows (`Row`) are a separate pattern and
 keep `hover:bg-muted/50`.
@@ -492,7 +825,8 @@ toggle switches appearance). Headless: `pnpm ui:shot --fake --route
   vertical gridlines, border or background.
 - **Labels.** Y labels in a `w-14` gutter, right-aligned,
   `text-3xs text-muted-foreground tabular-nums`, zero shown as `0`. X labels
-  only at start, middle and end, `text-3xs uppercase`.
+  only at start, middle and end, `text-3xs`, in normal case ("Fri Oct 31",
+  "6 PM", heatmap rows "Mon"), never uppercase.
 - **Hover.** A 1px muted vertical line at the nearest point and a tooltip that
   follows the pointer 12px away and stays inside the plot. Tooltip: the shared
   tooltip surface (`tooltipSurface`: `bg-tooltip`, the page background, with
@@ -519,15 +853,24 @@ Other chart kinds in the mockups, same rules for colour and labels:
 | Gauge | Speed test result (download, upload) in Internet and Overview. With a plan: runs to 125% of it, a 2px foreground `mark` at the plan, and a `note` under the unit ("94% of plan", or a solid `Flame` in `overPlan` plus "9% over plan"); `SpeedGauge` in `InternetHero.tsx` is the shared one, `formatPlanShare` words it |
 | Heatmap | "When the network is busy", day by hour, one series colour at varying opacity |
 | Donut | `Donut.tsx`. A share of counts (devices by type, by band, by Wi-Fi generation) with butt segment ends and a small gap. Ring thickness is 13.5% of the size (`DONUT_THICKNESS`: 13px at 96px, 16px at 120px); callers set only `size`. Centre content is kept inside the hole (`size - 2 * thickness - 8px`). The centre always shows the total and does not change on hover. Hovering a segment dims the others and shows "label · value · percent" in a tooltip that follows the pointer (`FloatingTooltip`, so it can leave the card). Its legend uses `DonutLegendRow`: hovering a row highlights its segment and the other way round |
-| Share bar | `h-2` bar of segments with `gap-0.5`, rounded outer ends, tooltip "label · value · percent", legend of `size-2` squares |
+| Share bar | `h-2` bar of segments with `gap-0.5`, rounded outer ends and square inner corners (a short middle segment must not read as a pill), tooltip "label · value · percent", legend of `size-2` squares |
 | Topology | eero pucks joined by lines; wired solid, wireless dashed; weak links in the warning colour |
 
 ## Dashboard patterns
 
+- **Stats under a chart** (Internet's Per hour and Per day cards): a row
+  of label over figure, every one the same style so labels and figures line
+  up across cards: label `text-xs text-muted-foreground`, figure `text-xl
+  font-semibold tabular-nums` with its unit small and muted ("54.0 GB"), and
+  any context (a weekday, an hour) as a muted prefix in the unit's style
+  ("Thu 54.0 GB"). Short context only: an abbreviated weekday, not a date. Left
+  aligned, 50px apart (`flex gap-[50px]`), not spread across the row.
+
 - **Hero figure.** `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   18rem column lists each series: dot, icon, label, value right in
-  `font-medium`, muted share line below. Compact hero (Activity): `text-2xl`
+  `font-medium` with its share after it in muted `text-xs` ("254 GB
+  (83%)"), one line per series, 8px apart. Compact hero (Activity): `text-2xl`
   figure with its muted line beside it and a share bar filling the line,
   the legend as wrapping chips under it, and the chart filling the card's
   leftover height (`BarChart fill`).
@@ -543,8 +886,13 @@ Other chart kinds in the mockups, same rules for colour and labels:
 
 - Shared formatters in `src/core/format.ts` (re-exported to the renderer)
   for Mbps and Gbps (kbps below 1 Mbps, so a trickle never shows as 0), MB, GB and TB, percent, ms, relative time ("2h ago",
-  "Yesterday, 3:04 AM"), durations ("23 days, 4 hours"). The same quantity
+  "Yesterday, 3:04 AM"), durations ("23d 4h"). The same quantity
   looks the same everywhere, including CLI table output.
+- **Time units sit right after the number**, one letter each: `s`, `m`, `h`,
+  `d` ("45s", "12m", "3h 20m", "19d 19h", "5m ago", "in 5m"). No space
+  before the unit and no "min". Countdowns past an hour read "1h 05m".
+  Data and speed units keep their space ("942 Mbps", "1.2 GB"). Prose that
+  is not a formatted value can still say "about 30 seconds".
 - Clock times and dates are always in the network's time zone, never the
   viewer's: `networkClock(network.timezone)` in `src/core/format.ts` gives
   `time` ("9:41 AM"), `dateTime` ("Oct 20, 9:41 AM"), `day` ("Sat Nov 8"),

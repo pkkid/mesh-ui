@@ -17,7 +17,7 @@ actions.
    - Metric row: ISP ("Ziply Fiber"), Public IP ("203.0.113.48"), Last
      speed test ("2h ago"), all three values in the same type so they share a
      baseline.
-   - Action row: **Share Wi-Fi**, **Restart network** (ghost). Speed tests
+   - Action row: **Share Wi-Fi**, **Restart network…** (the ellipsis because it confirms first), both outline buttons with dim icons. Speed tests
      run from Internet and Troubleshooting; profiles pause on Profiles.
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      with the latest result in the middle ("942 Mbps", "918 Mbps") in the
@@ -31,33 +31,43 @@ actions.
      scrolled to Speed test history). While no plan is set, a second line
      reads "**Set your internet plan** to scale the gauges" (opens the plan
      sheet). The links are `TextLink`s, so they read as links.
-2. **Data usage** section. Header: "Data usage", with "Showing all 38 devices"
-   (the `device.list` count) under it, and a range dropdown on the right ("Last 24 hours",
+2. **Data usage** section. Header: "Data usage", with the range and the
+   `device.list` count under it ("Last 24 hours, 38 devices", "Last 7 days, 38
+   devices"), and a range dropdown on the right ("Last 24 hours",
    "Last 7 days"). Switching range crossfades the body (150 ms out, swap, 150 ms in, opacity
    only, none with reduced motion); background polls never crossfade. Body is
    a side column plus main chart:
-   - Hero figure "412 GB" with "used in 24h · busiest hour 12 to 1 PM" and
+   - Hero figure "412 GB" with "Busiest hour 12 to 1 PM" (the range is in the
+     subtitle, so it is not repeated here) and
      "48.2 GB so far today".
-   - Series list: Download (arrow icon in series colour, "351 GB", "85% of
-     traffic") and Upload ("61 GB", "15%").
+   - Series list, one line per series, 8px apart: Download (arrow icon in
+     series colour, then "351 GB (85%)" on the right, the share in muted
+     `text-xs` after the size) and Upload ("61 GB (15%)").
    - Rule, then **By eero**: a share bar split by eero (Living Room, Office,
      Upstairs Hall, Garage) with tooltips "Living Room · 212 GB · 51%" and a
      legend with percentages.
    - Main chart: download and upload per hour, line plus soft area, hover
      tooltip with a Total row.
 3. Two columns:
-   - **eeros**. Header link "Topology →". One row per eero: icon (the eero
-     product glyph from `eeroIcon`) and three lines: the name followed by a Gateway badge;
+   - **eeros**. Description under the title from the eero list and
+     `network.health`: count, then online, weak links and offline, zero
+     counts left out ("4 eeros · 4 online, 1 weak link"). Header link
+     "View topology →" (a dim text link). One row per eero: icon (the eero
+     product glyph from `eeroIcon`) and three lines: the name followed by "Gateway" in plain dim text;
      model · backhaul type; status (Online, Weak link, Offline), mesh bars for
      wireless, device count. A 24 h usage sparkline in that eero's series
      colour sits right of lines 2 and 3 (never beside the name), the same
      width in every row, up to 110 px; it narrows before the text does and
      hides below 40 px.
-   - **Top devices**. Sub "Last 24 hours", link "All devices
-     →". Table of the top 5: rank, device icon and name with a thin bar scaled
+   - **Top devices**. Description under the title: "Last 24 hours" and the
+     share of all traffic the rows account for, from the same
+     `usage.breakdown` ("Last 24 hours · 78% of all traffic"); only "Last 24
+     hours" until it loads. Link "View all devices →" (a dim text link). Table of the top 5: rank, device icon and name with a thin bar scaled
      to the top device, Down and Up (Up muted).
 4. Three columns:
-   - **Top profiles**. Sub "Last 24 hours", link "All profiles →". The top 3
+   - **Top profiles**. Description under the title: the window and the
+     data every profile used in it ("24 hours, 1.2 GB"). Link "View all profiles →" (a dim
+     text link). The top 3
      profiles by data used in the last 24 hours (pure ranking: a paused
      profile with little usage drops out; pausing is one click away on
      Profiles). One row per profile:
@@ -66,10 +76,18 @@ actions.
      9:00 PM to 7:00 AM · 1.2 GB", "3 devices paused · 40 MB"), status
      (Active, Scheduled, Paused). With no profiles it keeps the "No profiles
      yet" note with Add a profile.
-   - **When the network is busy**, sub "This week". A 7 x 24 heatmap (Mon to
-     Sun by hour) in one series colour, intensity by share of the week's peak
-     hour; hour labels every 6 hours; cell tooltip "Mon 20:00 · 78%".
-   - **Recent activity**, link "All". The latest 3 events with icon, one line
+   - **When the network is busy**. Description under the title: "Busiest
+     Thursday, 4 to 6 PM", the peak block (no window: a Mon to Sun grid is
+     obviously a week). A 7 x 12 heatmap (Mon to Sun by two-hour block, each
+     the sum of its two hours) in one series colour, intensity by share of
+     the week's peak block; labels 12a, 6a, 12p, 6p; cell tooltip "Thu 18:00
+     to 20:00 · 78%". Two-hour blocks give square cells that read as a grid in
+     a third-width column; hourly detail belongs on a detail page.
+   - **Recent activity**. Description under the title: the count of
+     kept events from `events.summary {range: "kept"}` ("7 events"), with no
+     time span: eero sends only its last ~15 minutes, so the log covers that
+     plus the time the app has been open. Link
+     "View all activity →" (a dim text link). The latest 3 events with icon, one line
      of text and relative time.
 
 ## Data
@@ -91,6 +109,7 @@ actions.
 | Top profiles ranking and totals | `usage.get {scope: "profile", range: "day"}`, sorted by `total.down + total.up`, first 3 | 5 min |
 | Busy heatmap | `usage.get {scope: "network", range: "week", cadence: "hourly"}`; core normalises to 0..1 | 5 min |
 | Recent activity | `events.list {limit: 3}` | 60 s |
+| Recent activity count | `events.summary {range: "kept"}` | 60 s |
 
 ## Actions
 

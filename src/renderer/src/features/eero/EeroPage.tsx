@@ -15,14 +15,15 @@ import { Card, Empty } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
 import { TopBarTitle, useTopBarUpdated } from "~/features/shell/TopBar";
 import { networkClock } from "../../../../core/format";
-import type { Eero, Internet, Network, NetworkHealth, UsageBreakdown } from "../../../../core/model";
+import type { Eero, Internet, Network, NetworkHealth, UsageBreakdown, DeviceList } from "../../../../core/model";
 
-import { EeroActions } from "./EeroActions";
+import { RemoveEeroRow } from "./EeroActions";
 import { EeroDevices } from "./EeroDevices";
+import { WiredBackhaulNote } from "~/features/eeros/WiredBackhaulNote";
 import { EeroHero } from "./EeroHero";
 import { EeroPorts } from "./EeroPorts";
 import { EeroRadios } from "./EeroRadios";
-import { EeroSettings } from "./EeroSettings";
+import { EeroInfo, EeroSettings } from "./EeroSettings";
 import { EeroUsage } from "./EeroUsage";
 
 export function EeroPage({ params }: PageProps) {
@@ -33,6 +34,8 @@ export function EeroPage({ params }: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const health = useQuery<NetworkHealth>("network.health", undefined, { poll: true });
   const byEero = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "eero" }, { poll: true });
+  // The same device.list the eeros page reads (cached), for the wired backhaul note under Ethernet ports.
+  const allDevices = useQuery<DeviceList>("device.list", undefined, { poll: true });
 
   const list = eeros.data ?? [];
   const listed = list.find((e) => e.id === id) ?? null;
@@ -66,11 +69,14 @@ export function EeroPage({ params }: PageProps) {
     ? (Date.now() - Date.parse(data.lastHeartbeat) > 20 * 3_600_000 ? clock.dateTime : clock.time)(data.lastHeartbeat)
     : null;
   const share = byEero.data?.rows.find((r) => r.id === id) ?? null;
+  const gatewayId = list.find((e) => e.isGateway)?.id;
+  const wiredOnGateway = (allDevices.data?.devices ?? []).filter((d) => d.connected && d.band === "wired" && d.eeroId === gatewayId).length;
   const name = data?.location ?? "eero";
 
   return (
     <>
-      <TopBarTitle>{data?.location ?? ""}</TopBarTitle>
+      {/* "Basement eero": the eero's name in the breadcrumb, with "eero" so it reads as one. */}
+      {data?.location && <TopBarTitle>{`${data.location} eero`}</TopBarTitle>}
 
       <EeroHero
         eero={data}
@@ -79,23 +85,30 @@ export function EeroPage({ params }: PageProps) {
         networkOffline={networkOffline}
         lastSeen={lastSeen}
         usage={share}
+        networkName={networkName}
         internet={isGateway ? { label: internet.data?.isp.name ?? null, wanMbps: internet.data?.gateway?.wanPortSpeedMbps ?? null } : null}
         fading={eero.fading}
       />
 
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <EeroUsage eeroId={id} name={name} timezone={network.data?.timezone ?? null} />
-        <EeroRadios eero={data} offline={offline} />
+      {/* 56px between sections (design-system.md, Shape and spacing). */}
+      <div className="flex flex-col gap-14">
+        <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <EeroUsage eeroId={id} name={name} timezone={network.data?.timezone ?? null} />
+          <EeroRadios eero={data} offline={offline} />
+        </div>
+
+        <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <EeroDevices eeroId={id} name={name} />
+          <div className="flex flex-col gap-3">
+            <EeroPorts eeroId={id} offline={offline} />
+            <WiredBackhaulNote eeros={list} wiredOnGateway={wiredOnGateway} />
+          </div>
+        </div>
+
+        <EeroInfo eero={data} clock={clock} />
+
+        <EeroSettings eero={data} remove={<RemoveEeroRow eero={data} eeros={list} networkName={networkName} />} />
       </div>
-
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <EeroDevices eeroId={id} name={name} />
-        <EeroPorts eeroId={id} offline={offline} />
-      </div>
-
-      <EeroSettings eero={data} eeros={list} clock={clock} />
-
-      <EeroActions eero={data} eeros={list} networkName={networkName} offline={offline} />
     </>
   );
 }

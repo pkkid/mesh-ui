@@ -46,7 +46,8 @@ function Card({
         "rounded-(--card-radius) border border-border/60 bg-card/40 text-card-foreground shadow-xs/5",
         padded ? "px-5 py-[18px]" : "overflow-hidden",
         to &&
-          "cursor-pointer transition-colors hover:border-foreground/20 hover:bg-muted/30 has-[[data-card-link]:focus-visible]:border-foreground/20 has-[[data-card-link]:focus-visible]:bg-muted/30 has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring",
+          // Hover only lightens the background; the border stays as it is (a brighter outline was too loud).
+          "cursor-pointer transition-colors hover:bg-muted/30 has-[[data-card-link]:focus-visible]:bg-muted/30 has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-ring",
         className,
       )}
       onClick={open}

@@ -35,7 +35,7 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
      19% of devices") and "Sum of current device rates while Live is on".
      With Live off: `-` and "Turn on Live to see current rates".
    - **New this week**: the count ("3") beside up to three devices with
-     icon, name and a muted line ("48 min ago · Living Room", "Tue · Living
+     icon, name and a muted line ("48m ago · Living Room", "Tue · Living
      Room", "Mon · blocked" in destructive text), or "No new devices this
      week."
 2. **Toolbar**, one row:
@@ -133,7 +133,7 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
   devices: "No devices have joined Maple Street yet." Groups with no
   devices are hidden.
 - **Error.** Table body note with Retry; summary keeps last values. A failed
-  burst leaves the last rates and marks the column "rates from 3 min ago".
+  burst leaves the last rates and marks the column "rates from 3m ago".
 - **Offline (this computer).** Shell banner; bulk and row-menu writes
   disabled; "Now" column shows `-`.
 - **Network offline.** Rows show the last known state muted; Current throughput
@@ -178,8 +178,9 @@ from the gates.
 - **Live switch (#319).** Live rates (a burst a minute plus the reads in its
   window) run only while the shared **Live** switch is on: a pulse icon
   (lucide `Activity`) and "Live", with a status dot while on. It sits in the
-  Devices top bar, beside "Using the most right now" on Internet and in a
-  device's Now box; one setting for all three, like the eero app's live usage
+  Devices top bar and in a device's Now box; one setting for both (Internet
+  had a "Using the most right now" panel and dropped it: its tables already
+  show who used the most), like the eero app's live usage
   view. Off on a first run, the last choice is remembered (renderer view
   state, `useLiveMode`), and it turns itself off after 10 minutes. While off,
   nothing asks eero for live rates and rates show `-` with "Turn on Live to see

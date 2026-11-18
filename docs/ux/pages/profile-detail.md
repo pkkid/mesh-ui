@@ -122,7 +122,7 @@ Profiles stays active.
   No devices: "No devices in this profile yet." with **+ Add a device**; Pause
   profile disabled ("Add a device first"). No usage: "No activity in this
   window." No activity: "Nothing has happened here yet."
-- **Paused (manual).** Status Paused, hero line "Paused 25 min ago, until
+- **Paused (manual).** Status Paused, hero line "Paused 25m ago, until
   resumed"; big button Resume profile.
 - **In a scheduled pause.** Status Paused and Scheduled, line "Bedtime until
   7:00 AM"; Resume profile overrides until the next scheduled start.

@@ -181,7 +181,8 @@ building a new chart; port from them rather than inventing a style.
 - **Quiet labels.** Y labels sit in a separate gutter (`w-14`) to the left,
   right-aligned, `text-3xs text-muted-foreground tabular-nums`, with the zero
   tick shown as `0`. X labels are only start, middle and end, `text-3xs
-  uppercase text-muted-foreground`.
+  text-muted-foreground`, in normal case ("Fri Oct 31", "6 PM"), never
+  uppercase.
 - **Hover.** A 1px muted vertical line at the nearest point and a tooltip
   that follows the pointer 12px away and stays inside the plot. Tooltip: the
   shared `tooltipSurface` (`bg-tooltip`, border, `rounded-md shadow-lg
@@ -235,7 +236,8 @@ building a new chart; port from them rather than inventing a style.
 - **Hero.** The key figure is `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   `18rem` column lists each series: colour dot, icon, label, value on the
-  right in `font-medium`, and a muted share line below. **Compact hero**
+  right in `font-medium` with its share after it in muted `text-xs`
+  ("254 GB (83%)"), one line per series. **Compact hero**
   (Activity, where the summary shares a row with a table): the figure is
   `text-2xl` with its muted line beside it and a share bar filling the rest
   of the line, and the series legend is wrapping chips (`size-2` square,
@@ -248,7 +250,7 @@ building a new chart; port from them rather than inventing a style.
   detail in `text-3xs text-muted-foreground/60`. Warning or danger values
   take the semantic foreground colour.
 - **Share bars.** An `h-2` bar split into segments with `gap-0.5`, rounded
-  outer ends, each segment's width proportional to its value with a tooltip
+  outer ends and square inner corners, each segment's width proportional to its value with a tooltip
   ("label · value · percent"), and a legend of `size-2` colour squares with
   muted label and value.
 - **Breakdown tables.** Header `text-xs text-muted-foreground font-normal`,

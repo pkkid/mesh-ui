@@ -62,7 +62,7 @@ describe("health.check (demo)", () => {
     const { engine } = demo("eero_offline");
     const r = await ok(engine.execute<M.HealthReport>("health.check", { networkId: MAPLE }));
     const garage = eeroChecks(r).find((c) => c.label === "Garage");
-    expect(garage).toMatchObject({ status: "problem", detail: "Offline · last seen 9 min ago" });
+    expect(garage).toMatchObject({ status: "problem", detail: "Offline · last seen 9m ago" });
     expect(byId(r, "internet")?.status).toBe("good");
     expect(byId(r, "mesh")).toMatchObject({ status: "good", detail: "No weak links among the eeros online" });
     expect(r.overall).toBe("problem");

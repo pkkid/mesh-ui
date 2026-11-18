@@ -1,5 +1,5 @@
 /**
- * Overview "eeros": one row per eero with name and Gateway badge, model and
+ * Overview "eeros": one row per eero with name and Gateway label, model and
  * backhaul, status with mesh bars and device count, and a 24 h usage
  * sparkline in that eero's series colour.
  * docs/ux/pages/overview.md (Layout 3).
@@ -9,10 +9,10 @@ import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { MeshBars } from "~/components/mesh/LinkChip";
-import { Badge } from "~/components/ui/badge";
+import { GatewayLabel } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
-import { HeaderLink, PlaceholderRows, Row, RowList, SectionError } from "~/components/ui/page";
+import { PlaceholderRows, Row, RowList, SectionError, SectionLink } from "~/components/ui/page";
 import { networkStatus, Status } from "~/components/ui/status";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { eeroIcon } from "~/lib/deviceIcons";
@@ -30,9 +30,24 @@ export function EerosList() {
   const colors = entityColors(list.map((e) => e.id));
   const weak = new Set((health.data?.eeros ?? []).filter((e) => e.weakLink).map((e) => e.id));
   const series = new Map((usage.data ?? []).map((s) => [s.id, s]));
+  // "4 eeros · 3 online, 1 weak link": the count and anything not healthy.
+  const offline = list.filter((e) => e.status === "offline").length;
+  const weakCount = list.filter((e) => e.status !== "offline" && weak.has(e.id)).length;
+  const description = eeros.data
+    ? [
+        `${formatCount(list.length)} ${list.length === 1 ? "eero" : "eeros"}`,
+        [
+          `${formatCount(list.length - offline)} online`,
+          weakCount > 0 && `${formatCount(weakCount)} weak ${weakCount === 1 ? "link" : "links"}`,
+          offline > 0 && `${formatCount(offline)} offline`,
+        ]
+          .filter(Boolean)
+          .join(", "),
+      ].join(" · ")
+    : "-";
 
   return (
-    <Section title="eeros" tools={<HeaderLink to={pathFor("eeros")} arrow>Topology</HeaderLink>}>
+    <Section title="eeros" description={description} className="gap-[15px]" tools={<SectionLink to={pathFor("eeros")}>View topology</SectionLink>}>
       {eeros.error && !eeros.data ? (
         <SectionError what="eeros" error={eeros.error} onRetry={() => void eeros.refetch()} />
       ) : !eeros.data ? (
@@ -59,7 +74,7 @@ export function EerosList() {
                   : networkStatus(e.status);
             const points = series.get(e.id)?.points ?? [];
             return (
-              // Three lines: name and Gateway badge; model and connection;
+              // Three lines: name and Gateway label; model and connection;
               // status, mesh bars and devices. The sparkline sits right of
               // lines 2 and 3 so line 1 keeps the full width for the name.
               <Row
@@ -68,12 +83,10 @@ export function EerosList() {
                 className="col-span-3 grid grid-cols-subgrid grid-rows-[auto_auto_auto] gap-y-0.5"
               >
                 <IconTile icon={eeroIcon(e)} className="row-span-3" />
-                <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-[13.5px]">
+                <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-sm">
                   <span className="truncate">{e.location}</span>
                   {e.isGateway && (
-                    <Badge variant="outline" className="shrink-0">
-                      Gateway
-                    </Badge>
+                    <GatewayLabel />
                   )}
                 </div>
                 <div className="flex items-center gap-x-1.5 whitespace-nowrap text-muted-foreground text-xs">
