@@ -1,31 +1,27 @@
 /**
  * Internet "Data usage": WAN bytes per hour (last 24 hours or 7 days) and
- * per day, the devices using the most right now, then "By device" and "By
- * profile" as their own sections side by side, following the same range. Totals, busiest day, today so far and the Others row come from
+ * per day, then "By device" and "By profile" as their own sections side by
+ * side, following the same range. No live rates here: the tables already
+ * show who used the most, and the charts refresh on their own poll. Totals, busiest day, today so far and the Others row come from
  * core (`usage.get`, `usage.breakdown {top}`). Bridge mode hides the
  * per-device parts. docs/ux/pages/internet.md (Layout 4 and 5, States).
  */
 import { ArrowDown, ArrowUp, Ellipsis } from "lucide-react";
 import { useState } from "react";
 
-import { Link, pathFor } from "~/app/router";
+import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
-import { useLiveMode } from "~/app/useLiveMode";
-import { useLiveRates } from "~/app/useLiveRates";
-import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { BarChart } from "~/components/charts/BarChart";
-import { bandLabel } from "~/components/ui/band-badge";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { IconTile } from "~/components/ui/hero";
 import { SectionError, SectionLink } from "~/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
-import { bytesParts, formatBytes, formatPercent, mbpsParts, networkClock } from "../../../../core/format";
-import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown, UsageRange, UsageSeries } from "../../../../core/model";
+import { bytesParts, formatBytes, formatPercent, networkClock } from "../../../../core/format";
+import type { DeviceList, Network, ProfileList, UsageBreakdown, UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
   { value: "day", label: "Last 24 hours" },
@@ -36,17 +32,18 @@ const RANGES = [
 const WINDOW: Record<UsageRange, string> = { day: "24 hours", week: "7 days" };
 
 const TOP = 5;
-const NOW_COUNT = 6;
 const HOUR = 3_600_000;
 
 export function InternetUsage() {
   const [range, setRange] = useState<UsageRange>("day");
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const bridged = network.data?.connectionMode === "bridged";
-  // Same query as the Per hour card (fetched once): "24 hours, 25.8 GB".
-  const usage = useQuery<UsageSeries>("usage.get", { scope: "network", range, cadence: "hourly" }, { poll: true });
-  const total = usage.data ? usage.data.total.down + usage.data.total.up : null;
-  const description = total === null ? WINDOW[range] : `${WINDOW[range]}, ${formatBytes(total)}`;
+  // "On pace for 13.9 TB a month": the last 7 days' daily average times 30, for anyone
+  // watching an ISP data cap. Same query as the Per day card (fetched once).
+  const week = useQuery<UsageSeries>("usage.get", { scope: "network", range: "week", cadence: "daily" }, { poll: true });
+  const weekTotal = week.data ? week.data.total.down + week.data.total.up : 0;
+  const days = week.data?.points.length ?? 0;
+  const description = weekTotal > 0 && days > 0 ? `On pace for ${formatBytes((weekTotal / days) * 30)} a month` : "-";
 
   return (
     <>
@@ -71,7 +68,7 @@ export function InternetUsage() {
         }
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <PerHour range={range} bridged={bridged} network={network.data} />
+          <PerHour range={range} network={network.data} />
           <PerDay network={network.data} />
         </div>
       </Section>
@@ -101,19 +98,29 @@ function Legend({ down, up }: { down: number | null; up: number | null }) {
   );
 }
 
-function PerHour({ range, bridged, network }: { range: UsageRange; bridged: boolean; network: Network | undefined }) {
+function PerHour({ range, network }: { range: UsageRange; network: Network | undefined }) {
   const usage = useQuery<UsageSeries>("usage.get", { scope: "network", range, cadence: "hourly" }, { poll: true });
   const clock = networkClock(network?.timezone);
   const s = usage.data;
   const points = s?.points ?? [];
   const has = !!s && s.total.down + s.total.up > 0;
   const day = range === "day";
+  // Stats under the chart, like Per day's: the busiest hour (down plus up), and the largest hour each way.
+  const busiest = has ? points.reduce<(typeof points)[number] | undefined>((a, p) => (!a || p.down + p.up > a.down + a.up ? p : a), undefined) : undefined;
+  const maxDown = has ? Math.max(...points.map((p) => p.down)) : null;
+  const maxUp = has ? Math.max(...points.map((p) => p.up)) : null;
+  const busiestWhen = busiest ? `${day ? "" : `${clock.weekday(busiest.at)} `}${clock.hour(busiest.at)}` : undefined;
 
   return (
     <Card padded className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline gap-2">
-        {/* The window is in the section subtitle, so it is not repeated here. */}
-        <span className="font-medium text-sm">Per hour</span>
+      {/* Title with the window and total under it ("24 hours, 462 GB"), like Per day's; legend on the right. */}
+      <div className="flex flex-wrap items-start gap-2">
+        <div>
+          <div className="font-medium text-sm">Per hour</div>
+          <div className={cn("text-muted-foreground text-xs transition-opacity", usage.fading && "opacity-40")}>
+            {WINDOW[range]}, {formatBytes(has ? (s?.total.down ?? 0) + (s?.total.up ?? 0) : null)}
+          </div>
+        </div>
         <div className={cn("ms-auto transition-opacity", usage.fading && "opacity-40")}>
           <Legend down={has ? (s?.total.down ?? null) : null} up={has ? (s?.total.up ?? null) : null} />
         </div>
@@ -130,73 +137,40 @@ function PerHour({ range, bridged, network }: { range: UsageRange; bridged: bool
           tooltipLabels={points.map((p) => `${clock.weekday(p.at)} ${clock.hour(p.at)} to ${clock.hour(Date.parse(p.at) + HOUR)}`)}
           format={formatBytes}
           loading={usage.loading && (!s || usage.fading)}
-          heightClassName="h-40"
+          // Fill the space above the stats; the card stretches to Per day's height, so the two charts end level.
+          className="min-h-0 flex-1"
+          heightClassName="h-full min-h-40"
           ariaLabel={`Data used per hour, ${day ? "last 24 hours" : "last 7 days"}, download and upload`}
         />
       )}
-      {!bridged && (
-        <>
-          <div className="h-px bg-border" />
-          <UsingNow offline={network?.status === "offline"} />
-        </>
-      )}
+      <div className="h-px bg-border" />
+      {/* Same Stat as Per day's row, so labels and figures line up across both cards and the charts end level. */}
+      <div className={cn("flex gap-[50px] transition-opacity", usage.fading && "opacity-40")}>
+        <Stat label="Busiest hour" bytes={busiest ? busiest.down + busiest.up : null} prefix={busiestWhen} />
+        <Stat label="Max down" bytes={maxDown} />
+        <Stat label="Max up" bytes={maxUp} />
+      </div>
     </Card>
   );
 }
 
-function UsingNow({ offline }: { offline: boolean }) {
-  useLiveRates(!offline);
-  const [live] = useLiveMode();
-  const list = useQuery<DeviceList>("device.list", { sort: "rate", limit: NOW_COUNT }, { poll: true });
-  const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
-  const where = new Map((eeros.data ?? []).map((e) => [e.id, e.location]));
-  const devices = (list.data?.devices ?? []).filter((d) => d.connected);
-
+/**
+ * A stat under a usage chart: a muted label over the figure in `text-xl
+ * font-semibold`, its unit small and muted ("54.0 GB"), and an optional
+ * muted prefix in the unit's style ("Thu 54.0 GB", "8 PM 41.0 GB").
+ * Every stat in both cards uses it, left aligned 50px apart, so labels and
+ * figures line up.
+ */
+function Stat({ label, bytes, prefix }: { label: string; bytes: number | null | undefined; prefix?: string }) {
+  const v = bytesParts(bytes);
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="font-medium text-[13px]">Using the most right now</span>
-        <LiveToggle size="xs" />
+    <div>
+      <div className="text-muted-foreground text-xs">{label}</div>
+      <div className="whitespace-nowrap font-semibold text-xl tabular-nums">
+        {prefix && v.unit && <small className="me-1.5 font-medium text-muted-foreground text-xs">{prefix}</small>}
+        {v.value}
+        {v.unit && <small className="ms-1 font-medium text-muted-foreground text-xs">{v.unit}</small>}
       </div>
-      {offline ? (
-        <div className="text-muted-foreground text-xs">Live rates need a connection to eero.</div>
-      ) : !live ? (
-        <div className="text-muted-foreground text-xs">Turn on Live to see which devices are using the most right now.</div>
-      ) : list.error && !list.data ? (
-        <div className="text-muted-foreground text-xs">
-          Couldn't load live rates.{" "}
-          <button type="button" className="cursor-pointer underline" onClick={() => void list.refetch()}>
-            Retry
-          </button>
-        </div>
-      ) : list.data && devices.length === 0 ? (
-        <div className="text-muted-foreground text-xs">No devices online.</div>
-      ) : (
-        <div className={cn("grid gap-x-6 gap-y-2.5 transition-opacity sm:grid-cols-2 xl:grid-cols-3", list.fading && "opacity-40")}>
-          {devices.map((d) => {
-            const rate = d.rates && d.rates.downMbps > 0 ? mbpsParts(d.rates.downMbps) : null;
-            const sub = [d.eeroId ? where.get(d.eeroId) : null, d.band ? bandLabel(d.band) : null].filter(Boolean).join(" · ");
-            return (
-              <Link key={d.id} to={pathFor("device", { deviceId: d.id })} className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <IconTile icon={deviceIcon(d)} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-[13px]">{d.name}</div>
-                  <div className="truncate text-2xs text-muted-foreground">{sub || "-"}</div>
-                </div>
-                <span className="font-medium text-[13px] tabular-nums">
-                  {rate ? (
-                    <>
-                      {rate.value} <span className="text-2xs text-muted-foreground">{rate.unit}</span>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -209,7 +183,6 @@ function PerDay({ network }: { network: Network | undefined }) {
   const total = s ? s.total.down + s.total.up : 0;
   const has = total > 0;
   const avg = has && points.length ? total / points.length : null;
-  const today = bytesParts(has ? s?.todaySoFar : null);
 
   return (
     <Card padded className="flex flex-col gap-3">
@@ -240,20 +213,15 @@ function PerDay({ network }: { network: Network | undefined }) {
         />
       )}
       <div className="h-px bg-border" />
-      <div className={cn("flex items-end justify-between gap-3 transition-opacity", usage.fading && "opacity-40")}>
-        <div>
-          <div className="text-muted-foreground text-xs">Today so far</div>
-          <div className="font-semibold text-xl tabular-nums">
-            {today.value}
-            {today.unit && <small className="ms-1 font-medium text-muted-foreground text-xs">{today.unit}</small>}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-muted-foreground text-xs">Busiest day</div>
-          <div className="font-medium text-[13px] tabular-nums">
-            {has && s?.busiest ? `${clock.day(s.busiest.at)} · ${formatBytes(s.busiest.down + s.busiest.up)}` : "-"}
-          </div>
-        </div>
+      <div className={cn("flex gap-[50px] transition-opacity", usage.fading && "opacity-40")}>
+        <Stat label="Today so far" bytes={has ? s?.todaySoFar : null} />
+        {/* The short weekday only ("Thu 54.0 GB"): the date made it too long. */}
+        <Stat
+          label="Busiest day"
+          bytes={has && s?.busiest ? s.busiest.down + s.busiest.up : null}
+          prefix={has && s?.busiest ? clock.weekday(s.busiest.at) : undefined}
+         
+        />
       </div>
     </Card>
   );

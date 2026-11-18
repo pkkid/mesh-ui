@@ -1,7 +1,6 @@
 /**
  * Live rates for every view that shows them, only while the shared Live
- * switch is on (`useLiveMode`, #319). Those views (Devices, Internet "Using the
- * most right now", Device detail Now box). While the window is visible and
+ * switch is on (`useLiveMode`, #319). Those views (Devices, Device detail Now box). While the window is visible and
  * `active`, it asks for `device.rates.refresh` every `POLL.rates` seconds
  * and, once the burst has settled, refetches `device.list` and `device.get`
  * every few seconds while eero keeps the burst's figures live

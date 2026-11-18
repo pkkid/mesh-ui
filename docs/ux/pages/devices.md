@@ -178,8 +178,9 @@ from the gates.
 - **Live switch (#319).** Live rates (a burst a minute plus the reads in its
   window) run only while the shared **Live** switch is on: a pulse icon
   (lucide `Activity`) and "Live", with a status dot while on. It sits in the
-  Devices top bar, beside "Using the most right now" on Internet and in a
-  device's Now box; one setting for all three, like the eero app's live usage
+  Devices top bar and in a device's Now box; one setting for both (Internet
+  had a "Using the most right now" panel and dropped it: its tables already
+  show who used the most), like the eero app's live usage
   view. Off on a first run, the last choice is remembered (renderer view
   state, `useLiveMode`), and it turns itself off after 10 minutes. While off,
   nothing asks eero for live rates and rates show `-` with "Turn on Live to see

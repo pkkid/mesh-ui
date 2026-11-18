@@ -540,8 +540,7 @@ upstream router does NAT and DHCP and eero drops a set of features.
   out addresses. Profiles, pausing, blocking and port forwarding are off."
   with a link to Advanced networking.
 - Hidden in bridge mode: Profiles (sidebar item and Overview section), pause
-  and block on devices, Reservations & ports, live device rates ("Using the
-  most right now", throughput now), per-device and per-profile usage
+  and block on devices, Reservations & ports, live device rates (throughput now), per-device and per-profile usage
   breakdowns, UPnP, IPv6 pinholes, NAT mode.
 - Kept: eeros, topology, Wi-Fi settings, guest network (if the firmware
   allows it), speed tests, updates, admins, troubleshooting.

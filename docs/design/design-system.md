@@ -834,6 +834,14 @@ Other chart kinds in the mockups, same rules for colour and labels:
 
 ## Dashboard patterns
 
+- **Stats under a chart** (Internet's Per hour and Per day cards): a row
+  of label over figure, every one the same style so labels and figures line
+  up across cards: label `text-xs text-muted-foreground`, figure `text-xl
+  font-semibold tabular-nums` with its unit small and muted ("54.0 GB"), and
+  any context (a weekday, an hour) as a muted prefix in the unit's style
+  ("Thu 54.0 GB"). Short context only: an abbreviated weekday, not a date. Left
+  aligned, 50px apart (`flex gap-[50px]`), not spread across the row.
+
 - **Hero figure.** `text-4xl font-semibold tabular-nums` with a
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   18rem column lists each series: dot, icon, label, value right in

@@ -1,8 +1,7 @@
 /**
  * The Live switch (#319): whether views that show live rates may ask eero for
- * them. One setting shared by the Devices page, Internet "Using the most right
- * now" and a device's Now box, so turning it on in one place turns it on
- * everywhere. Like the eero app's live usage view, live reporting runs only
+ * them. One setting shared by the Devices page and a device's Now box, so turning
+ * it on in one place turns it on everywhere. Like the eero app's live usage view, live reporting runs only
  * when asked: off on a first run, the last choice is remembered (view state,
  * kept in this browser), and it turns itself off after LIVE_AUTO_OFF_MIN so a
  * window left open does not keep asking eero.

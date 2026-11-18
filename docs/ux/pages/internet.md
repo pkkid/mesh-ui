@@ -68,21 +68,22 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
      scale to the plan (`AreaChart max`, nice ticks up to at least the
      plan), x labels "Nov 6", "Nov 9",
      "Today", tooltip per test with date and time.
-4. **Data usage** section. Description under the title: the window and the
-   WAN total ("24 hours, 489 GB"). Range dropdown (`Select`, tool size):
+4. **Data usage** section. Description under the title: the monthly pace,
+   the last 7 days' daily average times 30 ("On pace for 14.0 TB a month"),
+   for anyone watching an ISP data cap; `-` until it loads. Range dropdown (`Select`, tool size):
    "Last 24 hours" or "Last 7 days". Two cards side by side:
-   - **Per hour** (wide): legend with totals (Download 351 GB, Upload 61 GB)
-     on the right of the title (the window is in the section subtitle, so
-     not repeated), hourly area chart, rule, then **Using the most right
-     now** with the shared **Live** switch on the right (see devices.md,
-     Live switch; off: "Turn on Live to see which devices are using the
-     most right now"): a 3-column grid of up to 6 devices with icon, name,
-     eero and band ("Living Room · 5 GHz", "Wired"), and the current
-     download rate in Mbps, `-` when idle.
+   - **Per hour** (wide): title with the window and total under it ("24
+     hours, 463 GB"), like Per day's, and the legend with totals (Download
+     351 GB, Upload 61 GB) on the right, the hourly area chart filling the space so it ends
+     level with the Per day chart, rule, then stats like Per day's: **Busiest
+     hour** ("8 PM 41.0 GB"; "Mon 8 PM ..." on 7 days), **Max down** and
+     **Max up** (the largest hour each way). No live rates or Live switch on
+     this page (see Notes).
    - **Per day**: title with "7 days, 388 GB a day" under it, legend with
      weekly totals (2.31 TB, 402 GB), stacked daily columns with today
-     highlighted, rule, then "Today so far 48.2 GB" and "Busiest day Sat
-     Nov 8 · 512 GB".
+     highlighted, rule, then "Today so far 48.2 GB" and "Busiest day Sat 512 GB" (the
+     short weekday only; the date made it too long). Every stat in both cards
+     uses the same style (see design-system.md, Dashboard patterns).
 5. **By device** and **By profile**, two sections of their own side by side
    (56px below Data usage, like every section), following the Data usage
    range. Each has a description under its title and a dim text link:
@@ -109,7 +110,6 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 | Speed test chart, count, Export CSV | `speedtest.history {range: "all", limit: 200}` (or `"month"`) | 10 min, and after a test |
 | 7-day averages | `avg7d` of the same read (always the last 7 days) | As above |
 | Per hour chart and totals | `usage.get {scope: "network", range: "day"}` | 5 min |
-| Using the most right now | `device.rates.refresh` then `device.list {sort: "rate", limit: 6}` | 60 s while visible and Live is on |
 | Per day chart, average, today, busiest day | `usage.get {scope: "network", range: "week", cadence: "daily"}` | 5 min |
 | By device | `usage.breakdown {range, by: "device", top: 5}` (Others row folded in core) | 5 min |
 | By profile | `usage.breakdown {range, by: "profile"}` | 5 min |
@@ -143,8 +143,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
   elsewhere in the app (the palette, before a reload) shows the same way:
   `speedtest.history` reports it as `running`.
 - **Error.** Per card or section note with Retry.
-- **Offline (this computer).** Shell banner; Run speed test disabled;
-  "Using the most right now" shows "Live rates need a connection to eero".
+- **Offline (this computer).** Shell banner; Run speed test disabled.
 - **Network offline / internet down.** Hero title stays "Ziply Fiber",
   status Down with "since 2:17 AM"; Connection cards keep the last values
   muted with "as of"; Run speed test disabled; the buttons keep their places and style (the Down status draws the eye).
@@ -155,7 +154,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
   "-" and drops the Organisation and ASN rows.
 - **Bridge mode.** Badge "Bridge mode" replaces "NAT mode"; Double NAT row is
   hidden; DNS row shows what the upstream router hands out if eero reports
-  it, else `-`. "Using the most right now" and both breakdown tables are
+  it, else `-`. By device and By profile are
   hidden (no per-device data in bridge mode). Speed tests still work.
 
 ## Notes
@@ -176,9 +175,9 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
   under 75%, Poor under 40%) live in core.
 - Double NAT detection: true when the WAN address is private (RFC 1918 or
   CGNAT 100.64/10). Core computes it from `internet.get`.
-- "Using the most right now" needs a burst report; it shares the Devices
-  page's once-a-minute `device.rates.refresh` budget, so two visible views
-  never burst twice.
+- No live rates on this page: By device and By profile already show who
+  used the most, and the charts refresh on the usage poll (every 5 min), so
+  there is no Live switch here.
 - Usage history is limited to about 7 days for free accounts, so Data usage
   has no Month range. Speed tests are not: a read-only check (#241) found
   about a year of tests (100 returned, the oldest 382 days old).
