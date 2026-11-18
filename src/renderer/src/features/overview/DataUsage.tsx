@@ -92,6 +92,7 @@ export function DataUsage() {
 
   return (
     <Section
+      className="gap-[15px]"
       title="Data usage"
       description={
         // "Last 24 hours, 53 devices": the range leads, then what it covers.

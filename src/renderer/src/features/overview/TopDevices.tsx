@@ -28,6 +28,7 @@ export function TopDevices() {
 
   return (
     <Section
+      className="gap-[15px]"
       title="Top devices"
       description={description}
       tools={<SectionLink to={pathFor("devices")}>View all devices</SectionLink>}

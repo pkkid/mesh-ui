@@ -14,6 +14,12 @@ import type { Network, UsageSeries } from "../../../../core/model";
 
 /** Row labels, Monday first like `Clock.parts`. */
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const LONG_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+/** "8 PM" for hour 20. */
+function hourLabel(h: number): string {
+  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "AM" : "PM"}`;
+}
 
 /** Places each hourly point in its local weekday row and hour column. */
 function grid(series: UsageSeries | undefined, tz: string): number[][] {
@@ -34,9 +40,14 @@ export function BusyHeatmap() {
 
   const values = grid(usage.data, network.data?.timezone ?? "UTC");
   const peak = Math.max(0, ...values.flat());
+  // "Busiest Thursday 5 PM": the peak cell (the week is obvious from the grid), the one every other cell is a share of.
+  const peakDay = values.findIndex((row) => row.includes(peak));
+  const peakHour = peakDay >= 0 ? (values[peakDay] ?? []).indexOf(peak) : -1;
+  const description =
+    usage.data && peak > 0 && peakDay >= 0 ? `Busiest ${LONG_DAYS[peakDay]}, ${hourLabel(peakHour)}` : "-";
 
   return (
-    <Section title="When the network is busy" subtitle="This week">
+    <Section title="When the network is busy" description={description} className="gap-[15px]">
       {usage.error && !usage.data ? (
         <SectionError what="busy hours" error={usage.error} onRetry={() => void usage.refetch()} />
       ) : usage.data && peak === 0 ? (

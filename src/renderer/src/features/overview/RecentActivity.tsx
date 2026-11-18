@@ -22,10 +22,10 @@ import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
-import { HeaderLink, PlaceholderRows, Row, RowList, SectionError, useNow } from "~/components/ui/page";
+import { PlaceholderRows, Row, RowList, SectionError, SectionLink, useNow } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
-import { formatRelative } from "../../../../core/format";
-import type { EventCategory, EventPage, Network, NetworkEvent } from "../../../../core/model";
+import { formatCount, formatRelative } from "../../../../core/format";
+import type { EventCategory, EventPage, EventSummary, Network, NetworkEvent } from "../../../../core/model";
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
   device_new: PlusCircle,
@@ -64,9 +64,14 @@ export function RecentActivity() {
   const now = useNow();
   const tz = network.data?.timezone ?? "UTC";
   const list = events.data?.events ?? [];
+  // "7 events": everything kept, beyond the three rows shown. No time span: eero only sends
+  // its last ~15 minutes, so the log covers that plus the time the app has been open.
+  const summary = useQuery<EventSummary>("events.summary", { range: "kept" }, { poll: true });
+  const total = summary.data?.total;
+  const description = total === undefined ? "-" : `${formatCount(total)} ${total === 1 ? "event" : "events"}`;
 
   return (
-    <Section title="Recent activity" tools={<HeaderLink to={pathFor("activity")} className="font-normal">All</HeaderLink>}>
+    <Section title="Recent activity" description={description} className="gap-[15px]" tools={<SectionLink to={pathFor("activity")}>View all activity</SectionLink>}>
       {events.error && !events.data ? (
         <SectionError what="recent activity" error={events.error} onRetry={() => void events.refetch()} />
       ) : !events.data ? (

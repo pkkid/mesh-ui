@@ -199,7 +199,7 @@ of the closest existing job rather than a new value.
 | 12px | `text-xs` | Metadata, legends, section descriptions, table headers, tooltips, toasts, `tool` and `xs` buttons, Segmented items, chips, badges |
 | 13px | `text-[13px]` | Secondary body: hero buttons, key-value lists, empty states, account name |
 | 13.5px | `text-[13.5px]` | Sidebar nav items |
-| 14px | `text-sm` / base | Body, default and `sm` buttons, inputs, selects, settings row titles, dialog descriptions |
+| 14px | `text-sm` / base | Body, default and `sm` buttons, inputs, selects, settings row titles, list row names (eeros, profiles on Overview), dialog descriptions |
 | 16px | `text-base` | Section headings, hero fact values |
 | 18px | `text-lg` | Dialog titles |
 | 24px | `text-2xl` | Compact hero figure, stat tile value (mono) |
@@ -281,7 +281,7 @@ CSS variables on `:root` in `index.css`.
 | Sidebar padding | nav `px-2`, items `h-8 px-2.5`, gap 9px to the icon | `features/shell/Sidebar.tsx` |
 | Page column | max 1056px (1000px of content), padding 22px 28px 48px | `max-w-[1056px] px-7 pt-[22px] pb-12` in `RouterOutlet` |
 | Gap between sections | 28px; Overview 56px, the same as from the hero's rule to the first section (Overview only for now) | `gap-7` on the page column; Overview wraps its sections in `gap-14` (`gap-x-7 gap-y-14` in its grids) |
-| Section heading to card | 12px, 20px when it has a description | `gap-3` / `gap-5` in `Section` |
+| Section heading to card | 12px, 20px when it has a description (Overview: 15px, `gap-[15px]` on its sections, for now) | `gap-3` / `gap-5` in `Section` |
 | Section header tools gap | 8px | `gap-2` |
 | Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
 | Page header (hero) | flat: no side padding, 24px above, 40px below to a 1px rule, 28px after the rule; 28px between columns | `pt-6 pb-10 mb-7 border-b`, `gap-7` (see [Page header](#page-header-hero)) |
@@ -494,13 +494,28 @@ now. A fixed label is about a tenth as useful.
 | eeros | "Your mesh nodes" | "4 eeros · 4 online, 1 weak link" |
 | Top devices | "Last 24 hours" | "Last 24 hours · 78% of all traffic" |
 | Data usage | "Download and upload" | "Last 24 hours, 38 devices" |
+| Top profiles | "Last 24 hours" | "24 hours, 1.2 GB" |
+| When the network is busy | "This week" | "Busiest Thursday, 5 PM" |
+| Recent activity | "Latest events" | "7 events" |
 
+- **Keep it short**: a few words, no sentence. Name the window bare ("24
+  hours", "7 days", not "Last 24 hours" or "This week"), then the fact that
+  changes, joined by a comma: "24 hours, 1.2 GB". The newest sections
+  (Top profiles, busy heatmap, Recent activity) follow this; the older ones
+  above still say "Last 24 hours" and use " · ".
 - Lead with the scope when the section has one (the range, the filter),
-  then the fact that changes: "Last 24 hours · 78% of all traffic".
+  then the fact that changes.
+- **Skip the window when the content already shows it**: the busy heatmap's
+  Mon to Sun grid is obviously a week, so its subtitle is just "Busiest
+  Thursday, 5 PM".
+- **Only state a window that is true.** Leave the span out when the data
+  does not cover a fixed one: Recent activity says "7 events", not "24
+  hours, 7 events", because events are kept only from eero's last ~15
+  minutes plus the time the app has been open.
 - Call out what needs attention (weak links, offline, over plan) before
   what is fine, and leave out zero counts ("1 weak link", never
   "0 offline").
-- Join parts with " · ", and use the shared formatters (`formatCount`,
+- Use the shared formatters (`formatCount`,
   `formatPercent`, `formatBytes`) so numbers match the rest of the app.
 - While the data loads, show the static part alone ("Last 24 hours") or
   `-`, never a made-up number; the text fills in when the data lands.
@@ -616,6 +631,9 @@ page.
   title or a value (bright links were tried and stood out too much). The
   arrow, the hover and the pointer cursor mark it as clickable. Colour stays
   neutral: no blue or accent links.
+- **Navigation links start with "View".** Name the destination after the
+  verb: "View topology", "View all devices", "View all activity", "View
+  history". Never a bare "All" or a lone noun.
 - **Inline links** inside a sentence of muted copy ("Set your internet
   plan", "View history") use `TextLink` (underlined `text-foreground`, see
   Page kit): the underline is what separates them from the words around
@@ -625,7 +643,7 @@ page.
 - Do not style a link as a button, or a button as a link: a link never runs
   a command, and a button never only navigates.
 
-Overview follows this (View topology, View all devices). Other pages still use
+Overview follows this (View topology, View all devices, View all profiles, View all activity). Other pages still use
 `HeaderLink`, an outline button that navigates, and move to `SectionLink`
 page by page.
 

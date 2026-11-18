@@ -28,9 +28,9 @@ export function useNow(everyMs = 30_000): number {
 }
 
 /** An outline button in a section header that goes to another page ("Topology →"); `Section` sets its size. */
-export function HeaderLink({ to, children, arrow = false, className }: { to: string; children: ReactNode; arrow?: boolean; className?: string }) {
+export function HeaderLink({ to, children, arrow = false }: { to: string; children: ReactNode; arrow?: boolean }) {
   return (
-    <Button variant="outline" className={className} render={<Link to={to} />}>
+    <Button variant="outline" render={<Link to={to} />}>
       {children}
       {arrow && <ArrowRight />}
     </Button>

@@ -47,7 +47,7 @@ export function EerosList() {
     : "-";
 
   return (
-    <Section title="eeros" description={description} tools={<SectionLink to={pathFor("eeros")}>View topology</SectionLink>}>
+    <Section title="eeros" description={description} className="gap-[15px]" tools={<SectionLink to={pathFor("eeros")}>View topology</SectionLink>}>
       {eeros.error && !eeros.data ? (
         <SectionError what="eeros" error={eeros.error} onRetry={() => void eeros.refetch()} />
       ) : !eeros.data ? (
@@ -83,7 +83,7 @@ export function EerosList() {
                 className="col-span-3 grid grid-cols-subgrid grid-rows-[auto_auto_auto] gap-y-0.5"
               >
                 <IconTile icon={eeroIcon(e)} className="row-span-3" />
-                <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-[13.5px]">
+                <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-sm">
                   <span className="truncate">{e.location}</span>
                   {e.isGateway && (
                     <Badge variant="outline" className="shrink-0">
