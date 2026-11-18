@@ -3,24 +3,22 @@
  * from `internet.get {format: "text"}`), and the Internet provider and
  * Addressing cards; the Plan row opens the plan sheet. docs/ux/pages/internet.md (Layout 2, States).
  */
-import { Check, Copy, Globe, Network as NetworkIcon, Settings2 } from "lucide-react";
+import { Check, Copy, Globe, Network as NetworkIcon } from "lucide-react";
 import { type ReactNode, use, useEffect, useState } from "react";
 
 import { pathFor } from "~/app/router";
 import { execute, useQuery } from "~/app/useCommand";
-import { Badge } from "~/components/ui/badge";
 import { Button, ButtonSizeContext } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { type KvItem, KvList } from "~/components/ui/kv-list";
-import { HeaderLink, SectionError, useNow } from "~/components/ui/page";
+import { SectionError, SectionLink, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { formatMbps, formatRelative } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth } from "../../../../core/model";
 
-import { TextLink } from "~/components/ui/text-link";
 import { openPlanSheet } from "./PlanSheet";
 
 const WAN_LABEL: Record<NonNullable<Internet["wanType"]>, string> = { dhcp: "DHCP", static: "Static", pppoe: "PPPoE" };
@@ -35,7 +33,7 @@ function portLabel(mbps: number | null): string | null {
  * A small header button that runs `load` and copies its text, then reads
  * `done` for a moment (there is no toast yet). Failures read "Couldn't copy".
  */
-export function CopyCommandButton({ load, idle, done, icon }: { load: () => Promise<string | null>; idle: string; done: string; icon: ReactNode }) {
+export function CopyCommandButton({ load, idle, done, icon, className }: { load: () => Promise<string | null>; idle: string; done: string; icon: ReactNode; className?: string }) {
   const [state, setState] = useState<"idle" | "busy" | "done" | "failed">("idle");
   const headerSize = use(ButtonSizeContext);
   useEffect(() => {
@@ -48,6 +46,7 @@ export function CopyCommandButton({ load, idle, done, icon }: { load: () => Prom
       // The section tool size in a header (Connection), xs in a card (Support).
       size={headerSize ?? "xs"}
       variant="outline"
+      className={className}
       disabled={state === "busy"}
       onClick={() => {
         setState("busy");
@@ -74,13 +73,14 @@ export function Connection() {
   const offline = n?.status === "offline" || i?.status === "offline";
   const gw = i?.gateway;
   const port = portLabel(gw?.wanPortSpeedMbps ?? null);
-  const subtitle = gw
-    ? `Gateway: ${gw.location}${gw.model ? ` (${gw.model})` : ""}${port ? `, WAN port ${port}` : ""}`
-    : undefined;
+  // "Basement gateway (eero Pro), 1 GbE WAN": which eero carries the internet, and how fast its port is.
+  const description = gw ? `${gw.location} gateway${gw.model ? ` (${gw.model})` : ""}${port ? `, ${port} WAN` : ""}` : "-";
 
   const tools = (
     <>
       <CopyCommandButton
+        // Icons inside buttons are dim (design-system.md, Buttons and links).
+        className="[&_svg]:text-muted-foreground"
         icon={<Copy />}
         idle="Copy details"
         done="Details copied"
@@ -89,16 +89,13 @@ export function Connection() {
           return r.ok ? r.result : null;
         }}
       />
-      <HeaderLink to={pathFor("advanced")} arrow>
-        <Settings2 />
-        ISP settings
-      </HeaderLink>
+      <SectionLink to={pathFor("advanced")}>View ISP settings</SectionLink>
     </>
   );
 
   if (internet.error && !i) {
     return (
-      <Section title="Connection" tools={tools}>
+      <Section title="Connection" description="-" className="gap-[15px]" tools={tools}>
         <SectionError what="the connection" error={internet.error} onRetry={() => void internet.refetch()} />
       </Section>
     );
@@ -107,8 +104,6 @@ export function Connection() {
   const geo = i ? i.isp.name !== null || i.isp.org !== null : true;
   const place = i ? [[i.isp.city, i.isp.region].filter(Boolean).join(", "), i.isp.country].filter(Boolean).join(" · ") : null;
   const v6Off = !!i && i.publicIpv6 === null && i.ipv6Prefix === null;
-  const v6 = (value: string | null | undefined): ReactNode =>
-    v6Off ? <span className="text-muted-foreground">IPv6 is off</span> : value;
 
   const provider: KvItem[] = [
     { label: "ISP", value: i?.isp.name },
@@ -116,20 +111,19 @@ export function Connection() {
     { label: "Location", value: place },
     {
       label: "Plan",
-      value: i?.planMbps ? (
-        <span className="inline-flex items-center gap-1.5">
-          {formatMbps(i.planMbps.down)} / {formatMbps(i.planMbps.up)}
-          <Badge>set by you</Badge>
-          <TextLink className="text-xs" onClick={openPlanSheet}>
-            Change
-          </TextLink>
-        </span>
-      ) : i ? (
-        <span className="inline-flex items-center gap-1.5">
-          <span className="text-muted-foreground">Not set</span>
-          <TextLink className="text-xs" onClick={openPlanSheet}>
-            Set your internet plan
-          </TextLink>
+      // The plan, then a small button under it that opens the plan sheet (an ellipsis: it asks for input).
+      value: i ? (
+        <span className="inline-flex flex-col items-end gap-2">
+          {i.planMbps ? (
+            <span>
+              {formatMbps(i.planMbps.down)} / {formatMbps(i.planMbps.up)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Not set</span>
+          )}
+          <Button size="xs" variant="outline" onClick={openPlanSheet}>
+            {i.planMbps ? "Change plan…" : "Set plan…"}
+          </Button>
         </span>
       ) : null,
     },
@@ -141,15 +135,21 @@ export function Connection() {
       value: i?.wanType ? WAN_LABEL[i.wanType] : null,
     },
     { label: "Public IPv4", value: i?.publicIpv4, mono: true, copy: true },
-    { label: "Public IPv6", value: v6(i?.publicIpv6), mono: !v6Off, copy: v6Off ? false : true },
-    { label: "IPv6 prefix", value: v6(i?.ipv6Prefix), mono: !v6Off, copy: v6Off ? false : true },
+    // IPv6 off: only the Public IPv6 row, reading "IPv6 is off"; the prefix row would just repeat it.
+    ...(v6Off
+      ? [{ label: "Public IPv6", value: <span className="text-muted-foreground">IPv6 is off</span> }]
+      : [
+          { label: "Public IPv6", value: i?.publicIpv6, mono: true, copy: true },
+          { label: "IPv6 prefix", value: i?.ipv6Prefix, mono: true, copy: true },
+        ]),
     { label: "ISP gateway", value: i?.ispGateway, mono: true, copy: true },
     {
       label: "DNS in use",
       value: i?.dnsInUse.length ? (
         <span className="inline-flex items-center gap-1.5">
           <span className="font-mono text-xs">{i.dnsInUse.join(", ")}</span>
-          {i.dnsMode && <Badge>{i.dnsMode === "automatic" ? "ISP auto" : "Custom"}</Badge>}
+          {/* Plain muted text after the servers, like "1,200 Mbps (84%)": no badge box. */}
+          {i.dnsMode && <span className="text-muted-foreground text-xs">({i.dnsMode === "automatic" ? "ISP auto" : "custom"})</span>}
         </span>
       ) : null,
     },
@@ -159,10 +159,11 @@ export function Connection() {
           {
             label: "Double NAT",
             value:
+              // Status is a dot plus plain text, never coloured text.
               i?.doubleNat == null ? null : i.doubleNat ? (
-                <span className="text-warning">Detected</span>
+                <Status tone="warning">Detected</Status>
               ) : (
-                <span className="text-success">Not detected</span>
+                <Status tone="success">Not detected</Status>
               ),
           },
         ]),
@@ -172,7 +173,7 @@ export function Connection() {
   const asOf = offline && n?.lastSeen ? `as of ${formatRelative(n.lastSeen, now, n.timezone ?? "UTC")}` : null;
 
   return (
-    <Section title="Connection" subtitle={subtitle} tools={tools}>
+    <Section title="Connection" description={description} className="gap-[15px]" tools={tools}>
       <div className={cn("grid gap-4 transition-opacity lg:grid-cols-2", (internet.fading || offline) && "opacity-60")}>
         <ConnectionCard
           icon={Globe}
@@ -186,8 +187,9 @@ export function Connection() {
         <ConnectionCard
           icon={NetworkIcon}
           title="Addressing"
-          sub={asOf ?? "WAN address and DNS in use"}
-          badge={n?.connectionMode ? <Badge>{bridged ? "Bridge mode" : "NAT mode"}</Badge> : null}
+          // The mode as subtext, not a badge: "NAT mode", or "NAT mode, as of 5m ago" offline.
+          sub={[n?.connectionMode ? (bridged ? "Bridge mode" : "NAT mode") : null, asOf].filter(Boolean).join(", ") || null}
+          badge={null}
           items={addressing}
         />
       </div>
@@ -204,7 +206,7 @@ function ConnectionCard({
 }: {
   icon: typeof Globe;
   title: string;
-  sub: string;
+  sub: string | null;
   badge: ReactNode;
   items: KvItem[];
 }) {
@@ -214,7 +216,7 @@ function ConnectionCard({
         <IconTile icon={icon} />
         <div className="min-w-0 flex-1">
           <div className="font-medium text-sm">{title}</div>
-          <div className="text-muted-foreground text-xs">{sub}</div>
+          {sub && <div className="text-muted-foreground text-xs">{sub}</div>}
         </div>
         {badge}
       </div>

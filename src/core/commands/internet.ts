@@ -265,31 +265,29 @@ function average(values: (number | null)[]): number | null {
 }
 
 /**
- * The hero line on the Internet page, from the connection status, the last
- * test and the plan: "Ziply Fiber is down", "... is fast and steady" (last
- * test great), "... is slower than your plan" (below plan or poor), or just
- * the ISP name ("Internet" when eero names none) when there is no test or no
- * plan to compare with, since the status line already says Connected. `detail` words the
- * last test ("Last test 2 h ago hit 78% of your 1.2 Gbps plan").
+ * The Internet hero's verdict. `title` is only who provides the internet:
+ * eero's ISP name, else the organisation that owns the public IP (geo IP),
+ * else "Internet". It never judges: the status line says Connected or Down
+ * and the gauges show the speed against the plan. `kind` carries the rating
+ * for scripts and agents (down; slow when the last test was under 75% of the
+ * plan; else steady), and `detail` words the last test ("Last test 2h ago
+ * hit 78% of your 1.2 Gbps plan").
  */
 export function internetVerdict(i: Omit<M.Internet, "verdict">, now: number): M.InternetVerdict {
-  const name = i.isp.name ?? "Your internet";
-  if (i.status === "offline") return { kind: "down", title: `${name} is down`, detail: null };
+  const title = i.isp.name ?? i.isp.org ?? "Internet";
+  if (i.status === "offline") return { kind: "down", title, detail: null };
   const test = i.lastSpeedTest;
-  const bare = i.isp.name ?? "Internet";
-  if (!test) return { kind: "steady", title: bare, detail: "No speed test yet" };
+  if (!test) return { kind: "steady", title, detail: "No speed test yet" };
   const when = `Last test ${formatRelative(test.at, now)}`;
   const plan = i.planMbps;
   const rating = speedRating(test, plan);
   if (!plan || !rating) {
-    return { kind: "steady", title: bare, detail: `${when} measured ${formatMbps(test.downMbps)} down, ${formatMbps(test.upMbps)} up` };
+    return { kind: "steady", title, detail: `${when} measured ${formatMbps(test.downMbps)} down, ${formatMbps(test.upMbps)} up` };
   }
   // Download when it was measured, else upload.
   const [value, full] = test.downMbps !== null && plan.down > 0 ? [test.downMbps, plan.down] : [test.upMbps ?? 0, plan.up];
   const detail = `${when} hit ${Math.round((value / full) * 100)}% of your ${formatMbps(full)} plan`;
-  return rating === "great"
-    ? { kind: "steady", title: `${name} is fast and steady`, detail }
-    : { kind: "slow", title: `${name} is slower than your plan`, detail };
+  return { kind: rating === "great" ? "steady" : "slow", title, detail };
 }
 
 const or = (v: string | number | null | undefined) => (v === null || v === undefined || v === "" ? MISSING : String(v));

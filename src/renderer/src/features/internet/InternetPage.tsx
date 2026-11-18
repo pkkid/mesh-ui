@@ -32,9 +32,12 @@ export function InternetPage({ params }: PageProps) {
   return (
     <>
       <InternetHero />
-      <Connection />
-      <SpeedHistory id={SECTION_IDS.history} />
-      <InternetUsage />
+      {/* 56px between sections, the same as from the hero's rule to the first one (design-system.md). */}
+      <div className="flex flex-col gap-14">
+        <Connection />
+        <SpeedHistory id={SECTION_IDS.history} />
+        <InternetUsage />
+      </div>
       <PlanSheet />
     </>
   );

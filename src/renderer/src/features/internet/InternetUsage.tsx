@@ -1,12 +1,12 @@
 /**
- * Internet "Data usage": WAN bytes per hour (Day or Week) and per day, the
- * devices using the most right now, and the By device and By profile
- * tables. Totals, busiest day, today so far and the Others row come from
+ * Internet "Data usage": WAN bytes per hour (last 24 hours or 7 days) and
+ * per day, the devices using the most right now, then "By device" and "By
+ * profile" as their own sections side by side, following the same range. Totals, busiest day, today so far and the Others row come from
  * core (`usage.get`, `usage.breakdown {top}`). Bridge mode hides the
- * per-device parts. docs/ux/pages/internet.md (Layout 5, States).
+ * per-device parts. docs/ux/pages/internet.md (Layout 4 and 5, States).
  */
 import { ArrowDown, ArrowUp, Ellipsis } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
@@ -19,8 +19,8 @@ import { bandLabel } from "~/components/ui/band-badge";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
-import { HeaderLink, SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { SectionError, SectionLink } from "~/components/ui/page";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
@@ -28,9 +28,12 @@ import { bytesParts, formatBytes, formatPercent, mbpsParts, networkClock } from 
 import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown, UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
+  { value: "day", label: "Last 24 hours" },
+  { value: "week", label: "Last 7 days" },
 ] as const;
+
+/** The window in subtitles, bare ("24 hours", not "Last 24 hours"). */
+const WINDOW: Record<UsageRange, string> = { day: "24 hours", week: "7 days" };
 
 const TOP = 5;
 const NOW_COUNT = 6;
@@ -40,25 +43,46 @@ export function InternetUsage() {
   const [range, setRange] = useState<UsageRange>("day");
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const bridged = network.data?.connectionMode === "bridged";
-  const span = range === "day" ? "24h" : "7 days";
+  // Same query as the Per hour card (fetched once): "24 hours, 25.8 GB".
+  const usage = useQuery<UsageSeries>("usage.get", { scope: "network", range, cadence: "hourly" }, { poll: true });
+  const total = usage.data ? usage.data.total.down + usage.data.total.up : null;
+  const description = total === null ? WINDOW[range] : `${WINDOW[range]}, ${formatBytes(total)}`;
 
   return (
-    <Section
-      title="Data usage"
-      subtitle="Internet (WAN) traffic only, local transfers excluded"
-      tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
-    >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <PerHour range={range} bridged={bridged} network={network.data} />
-        <PerDay network={network.data} />
-      </div>
+    <>
+      <Section
+        title="Data usage"
+        description={description}
+        className="gap-[15px]"
+        tools={
+          // A dropdown, not a Segmented toggle, like Overview's Data usage range (design-system.md).
+          <Select items={RANGES} value={range} onValueChange={(v) => v && setRange(v)}>
+            <SelectTrigger size="tool" aria-label="Range">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {RANGES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        }
+      >
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <PerHour range={range} bridged={bridged} network={network.data} />
+          <PerDay network={network.data} />
+        </div>
+      </Section>
+      {/* By device and By profile are sections of their own, side by side, following the range above. */}
       {!bridged && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ByDevice range={range} span={span} />
-          <ByProfile range={range} span={span} />
+        <div className="grid gap-x-7 gap-y-14 lg:grid-cols-2">
+          <ByDevice range={range} />
+          <ByProfile range={range} />
         </div>
       )}
-    </Section>
+    </>
   );
 }
 
@@ -88,8 +112,8 @@ function PerHour({ range, bridged, network }: { range: UsageRange; bridged: bool
   return (
     <Card padded className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline gap-2">
+        {/* The window is in the section subtitle, so it is not repeated here. */}
         <span className="font-medium text-sm">Per hour</span>
-        <span className="text-muted-foreground text-xs">{day ? "last 24 hours" : "last 7 days"}</span>
         <div className={cn("ms-auto transition-opacity", usage.fading && "opacity-40")}>
           <Legend down={has ? (s?.total.down ?? null) : null} up={has ? (s?.total.up ?? null) : null} />
         </div>
@@ -189,9 +213,10 @@ function PerDay({ network }: { network: Network | undefined }) {
 
   return (
     <Card padded className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="font-medium text-sm">Per day</span>
-        <span className={cn("text-muted-foreground text-xs transition-opacity", usage.fading && "opacity-40")}>avg {formatBytes(avg)} / day</span>
+      {/* Subtext under the title, never beside it. */}
+      <div>
+        <div className="font-medium text-sm">Per day</div>
+        <div className={cn("text-muted-foreground text-xs transition-opacity", usage.fading && "opacity-40")}>7 days, {formatBytes(avg)} a day</div>
       </div>
       <div className={cn("transition-opacity", usage.fading && "opacity-40")}>
         <Legend down={has ? (s?.total.down ?? null) : null} up={has ? (s?.total.up ?? null) : null} />
@@ -234,57 +259,68 @@ function PerDay({ network }: { network: Network | undefined }) {
   );
 }
 
-function ByDevice({ range, span }: { range: UsageRange; span: string }) {
+function ByDevice({ range }: { range: UsageRange }) {
   const breakdown = useQuery<UsageBreakdown>("usage.breakdown", { range, by: "device", top: TOP }, { poll: true });
   const devices = useQuery<DeviceList>("device.list", undefined, { poll: true });
   const byId = new Map((devices.data?.devices ?? []).map((d) => [d.id, d]));
   const rows = breakdown.data?.rows.filter((r) => r.down + r.up > 0);
   const colors = entityColors((rows ?? []).flatMap((r) => (r.id ? [r.id] : [])));
+  // "24 hours, top 5 used 78%": how much the named rows (not Others) account for.
+  const named = (rows ?? []).filter((r) => r.id);
+  const topShare = named.reduce((sum, r) => sum + r.share, 0);
+  const description = rows && named.length ? `${WINDOW[range]}, top ${named.length} used ${formatPercent(topShare)}` : WINDOW[range];
 
   return (
-    <Card>
-      <TableHeader title="By device" span={span} link={<HeaderLink to={pathFor("devices")} arrow>All devices</HeaderLink>} />
-      {breakdown.error && !breakdown.data ? (
-        <Empty>
-          Couldn't load usage by device.{" "}
-          <button type="button" className="cursor-pointer underline" onClick={() => void breakdown.refetch()}>
-            Retry
-          </button>
-        </Empty>
-      ) : rows && rows.length === 0 ? (
-        <Empty>No activity in this window.</Empty>
-      ) : (
-        <BreakdownTable
-          rows={rows}
-          rowKey={(r) => r.id ?? r.name}
-          nameHeader="Device"
-          name={(r) => (r.id ? r.name : <span className="font-normal text-muted-foreground">{r.name}</span>)}
-          size={(r) => r.down + r.up}
-          columns={[
-            { header: "Down", cell: (r) => formatBytes(r.down) },
-            { header: "Up", cell: (r) => formatBytes(r.up), muted: true },
-            { header: "Share", cell: (r) => formatPercent(r.share) },
-          ]}
-          color={(r) => (r.id ? (colors[r.id] ?? seriesColors.neutral) : seriesColors.neutral)}
-          icon={(r) => (r.id ? deviceIcon(byId.get(r.id)) : Ellipsis)}
-          to={(r) => (r.id ? pathFor("device", { deviceId: r.id }) : undefined)}
-          placeholderCount={TOP + 1}
-          fading={breakdown.fading}
-        />
-      )}
-    </Card>
+    <Section
+      title="By device"
+      description={description}
+      className="gap-[15px]"
+      tools={<SectionLink to={pathFor("devices")}>View all devices</SectionLink>}
+    >
+      <Card>
+        {breakdown.error && !breakdown.data ? (
+          <Empty>
+            Couldn't load usage by device.{" "}
+            <button type="button" className="cursor-pointer underline" onClick={() => void breakdown.refetch()}>
+              Retry
+            </button>
+          </Empty>
+        ) : rows && rows.length === 0 ? (
+          <Empty>No activity in this window.</Empty>
+        ) : (
+          <BreakdownTable
+            rows={rows}
+            rowKey={(r) => r.id ?? r.name}
+            nameHeader="Device"
+            name={(r) => (r.id ? r.name : <span className="font-normal text-muted-foreground">{r.name}</span>)}
+            size={(r) => r.down + r.up}
+            columns={[
+              { header: "Down", cell: (r) => formatBytes(r.down) },
+              { header: "Up", cell: (r) => formatBytes(r.up), muted: true },
+              { header: "Share", cell: (r) => formatPercent(r.share) },
+            ]}
+            color={(r) => (r.id ? (colors[r.id] ?? seriesColors.neutral) : seriesColors.neutral)}
+            icon={(r) => (r.id ? deviceIcon(byId.get(r.id)) : Ellipsis)}
+            to={(r) => (r.id ? pathFor("device", { deviceId: r.id }) : undefined)}
+            placeholderCount={TOP + 1}
+            fading={breakdown.fading}
+          />
+        )}
+      </Card>
+    </Section>
   );
 }
 
 const countOf = (n: number) => `${n} ${n === 1 ? "device" : "devices"}`;
 
-function ByProfile({ range, span }: { range: UsageRange; span: string }) {
+function ByProfile({ range }: { range: UsageRange }) {
   const breakdown = useQuery<UsageBreakdown>("usage.breakdown", { range, by: "profile" }, { poll: true });
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
   const list = profiles.data?.profiles ?? [];
   const byId = new Map(list.map((p) => [p.id, p]));
   const colors = entityColors(list.map((p) => p.id));
-  const rows = breakdown.data?.rows;
+  // "Other devices" (unassigned) goes last, like By device's Others row.
+  const rows = breakdown.data && [...breakdown.data.rows.filter((r) => r.id !== null), ...breakdown.data.rows.filter((r) => r.id === null)];
 
   const detail = (id: string | null): string => {
     if (id === null) return "unassigned";
@@ -293,62 +329,64 @@ function ByProfile({ range, span }: { range: UsageRange; span: string }) {
     return p.paused ? `${countOf(p.deviceIds.length)} · paused` : countOf(p.deviceIds.length);
   };
 
-  return (
-    <Card>
-      <TableHeader title="By profile" span={span} link={<HeaderLink to={pathFor("profiles")} arrow>Profiles</HeaderLink>} />
-      {breakdown.error && !breakdown.data ? (
-        <Empty>
-          Couldn't load usage by profile.{" "}
-          <button type="button" className="cursor-pointer underline" onClick={() => void breakdown.refetch()}>
-            Retry
-          </button>
-        </Empty>
-      ) : rows && rows.every((r) => r.down + r.up === 0) ? (
-        <Empty>No activity in this window.</Empty>
-      ) : (
-        <BreakdownTable
-          rows={rows}
-          rowKey={(r) => r.id ?? "unassigned"}
-          nameHeader="Profile"
-          name={(r) => {
-            const color = r.id ? (colors[r.id] ?? seriesColors.neutral) : seriesColors.neutral;
-            return (
-              <span className="flex items-center gap-2.5">
-                <span
-                  aria-hidden
-                  className="grid size-6 shrink-0 place-items-center rounded-full font-semibold text-2xs text-background"
-                  style={{ backgroundColor: color }}
-                >
-                  {r.id ? r.name.slice(0, 1).toUpperCase() : "?"}
-                </span>
-                <span className="truncate">
-                  {r.id ? r.name : "Other devices"} <span className="font-normal text-2xs text-muted-foreground">{detail(r.id)}</span>
-                </span>
-              </span>
-            );
-          }}
-          size={(r) => r.down + r.up}
-          columns={[
-            { header: "Down", cell: (r) => formatBytes(r.down) },
-            { header: "Up", cell: (r) => formatBytes(r.up), muted: true },
-            { header: "Share", cell: (r) => formatPercent(r.share) },
-          ]}
-          color={(r) => (r.id ? (colors[r.id] ?? seriesColors.neutral) : seriesColors.neutral)}
-          to={(r) => (r.id ? pathFor("profile", { profileId: r.id }) : pathFor("profiles"))}
-          placeholderCount={4}
-          fading={breakdown.fading}
-        />
-      )}
-    </Card>
-  );
-}
+  // "24 hours, 3 profiles, 1 paused": the count, and what needs attention.
+  const paused = list.filter((p) => p.paused).length;
+  const description = profiles.data
+    ? [WINDOW[range], `${list.length} ${list.length === 1 ? "profile" : "profiles"}`, paused > 0 ? `${paused} paused` : null].filter(Boolean).join(", ")
+    : WINDOW[range];
 
-function TableHeader({ title, span, link }: { title: string; span: string; link: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 border-b px-4 py-2.5">
-      <span className="font-medium text-[13px]">{title}</span>
-      <span className="text-muted-foreground text-xs">{span}</span>
-      <div className="ms-auto">{link}</div>
-    </div>
+    <Section
+      title="By profile"
+      description={description}
+      className="gap-[15px]"
+      tools={<SectionLink to={pathFor("profiles")}>View all profiles</SectionLink>}
+    >
+      <Card>
+        {breakdown.error && !breakdown.data ? (
+          <Empty>
+            Couldn't load usage by profile.{" "}
+            <button type="button" className="cursor-pointer underline" onClick={() => void breakdown.refetch()}>
+              Retry
+            </button>
+          </Empty>
+        ) : rows && rows.every((r) => r.down + r.up === 0) ? (
+          <Empty>No activity in this window.</Empty>
+        ) : (
+          <BreakdownTable
+            rows={rows}
+            rowKey={(r) => r.id ?? "unassigned"}
+            nameHeader="Profile"
+            name={(r) => {
+              const color = r.id ? (colors[r.id] ?? seriesColors.neutral) : seriesColors.neutral;
+              return (
+                <span className="flex items-center gap-2.5">
+                  <span
+                    aria-hidden
+                    className="grid size-6 shrink-0 place-items-center rounded-full font-semibold text-2xs text-background"
+                    style={{ backgroundColor: color }}
+                  >
+                    {r.id ? r.name.slice(0, 1).toUpperCase() : "?"}
+                  </span>
+                  <span className="truncate">
+                    {r.id ? r.name : "Other devices"} <span className="font-normal text-2xs text-muted-foreground">{detail(r.id)}</span>
+                  </span>
+                </span>
+              );
+            }}
+            size={(r) => r.down + r.up}
+            columns={[
+              { header: "Down", cell: (r) => formatBytes(r.down) },
+              { header: "Up", cell: (r) => formatBytes(r.up), muted: true },
+              { header: "Share", cell: (r) => formatPercent(r.share) },
+            ]}
+            color={(r) => (r.id ? (colors[r.id] ?? seriesColors.neutral) : seriesColors.neutral)}
+            to={(r) => (r.id ? pathFor("profile", { profileId: r.id }) : pathFor("profiles"))}
+            placeholderCount={4}
+            fading={breakdown.fading}
+          />
+        )}
+      </Card>
+    </Section>
   );
 }

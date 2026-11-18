@@ -10,65 +10,92 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 
 ## Layout
 
-1. **Hero** (card). Left:
-   - Title is a one-line verdict built in core from the latest tests and
-     plan: "Ziply Fiber is fast and steady" (other forms: "Ziply Fiber is
-     slower than your plan", "Ziply Fiber is down", or just "Ziply Fiber"
-     when there is no test or no plan to compare with; "Internet" when
-     eero names no ISP).
+1. **Hero** (flat, as on Overview: no card, a rule under it). Left:
+   - Title is only the provider, the same in every state: eero's ISP name
+     ("Ziply Fiber"), else the organisation that owns the public IP (geo IP),
+     else "Internet". It never judges ("is fast and steady" was dropped: it
+     came from one test and repeated the status line and gauges).
    - Status line: Connected, "Gateway up 23 days, 4 hours · since Oct 20,
      9:41 AM".
-   - Muted line: "Last test 2 hours ago hit 78% of your 1.2 Gbps plan".
-   - Actions: **Run speed test** (primary), **Troubleshoot** (ghost).
+   - Facts, label over value as on Overview: Public IP, Plan ("1,200 /
+     1,200 Mbps"), Last speed test ("2h ago"). The share of plan is under each
+     gauge, so it is not repeated here.
+   - Actions: **Run speed test**, **Troubleshoot**, both outline buttons with
+     dim icons, in that order in every state. Troubleshoot only navigates but
+     reads as an action, so it stays a button (a one-off, not a rule).
    - Right: Download and Upload gauges, as on Overview (plan mark, "% of
      plan" or flame and "% over plan" line).
-2. **Connection** section. Sub: "Gateway: Living Room (eero Max 7), WAN port
-   10 GbE". Tools: **Copy details**, **ISP settings →**. Two cards:
+2. **Connection** section. Description under the title: "Living Room
+   gateway (eero Max 7), 10 GbE WAN" (`-` until it loads). Tools: **Copy
+   details** (outline, dim icon) and a dim text link **View ISP settings →**
+   (Advanced networking). Two cards:
    - **Internet provider** (globe icon, "From geo IP lookup", status "ISP
-     up"): ISP, Organisation, ASN (mono), Location, Plan ("Fiber Gig 1.2
-     Gbps" with a "set by you" badge and a **Change** link, or "Not set" with
-     **Set your internet plan**; both open the plan sheet).
-   - **Addressing** (network icon, "WAN address and DNS in use", "NAT mode"
-     badge): WAN type ("DHCP"; eero sends no lease time), Public IPv4, Public IPv6,
-     IPv6 prefix, ISP gateway, DNS in use (with "ISP auto" badge), Double NAT
-     ("Not detected" in success colour).
-3. **Speed test history**. Sub: "Since Wed Mar 4 · 100 tests · automatic
-   test every 1 to 3 days" (eero returns at most 100 tests; "Last 30 days"
-   for Month). Month / All toggle (All selected); eero keeps about a year of
+     up"): ISP, Organisation, ASN (mono), Location, Plan ("1,200 Mbps / 1,200
+     Mbps", or "Not set") with a small outline button under the value,
+     right-aligned: **Change plan…** (or **Set plan…**), opening the plan
+     sheet, hence the ellipsis. No "set by you" badge: only the user sets a
+     plan. The static "From geo IP lookup" stays: it says where the
+     rows come from, which nothing else on screen does.
+   - **Addressing** (network icon; subtitle "NAT mode" or "Bridge mode",
+     no badge): WAN type
+     ("DHCP"; eero sends no lease time), Public IPv4, Public IPv6 and IPv6
+     prefix (when IPv6 is off, only the Public IPv6 row, reading "IPv6 is off"), ISP gateway, DNS in use (the servers, then "(ISP auto)" or "(custom)" in muted text, no badge), Double NAT
+     (a status: dot plus "Not detected" or "Detected", never coloured text).
+   - Offline, both cards show "as of 5m ago" as their subtitle.
+3. **Speed test history**. Description under the title: "Since Wed Mar 4,
+   100 tests" (eero returns at most 100 tests; "30 days, 12 tests" for
+   Month). Range dropdown (`Select`, tool size), "Last month" or "All results" (All results selected); eero keeps about a year of
    tests and runs one only every 1 to 3 days, so a week holds only 2 to 5
-   and Day and Week ranges were dropped (#241). Tool: **Export CSV** of the chosen range, left of the
-   toggle. There is no Earlier tests table: it repeated the chart's points
+   and Day and Week ranges were dropped (#241). Tool: **Export CSV…** (outline, dim icon; the
+   ellipsis because it opens the save dialog) of the chosen range, left of
+   the dropdown. There is no Earlier tests table: it repeated the chart's points
    (removed in #241; each test's values are in the chart tooltip and the CSV).
    Deep link
    `#/internet/history` opens the page scrolled here (DOM id
    `internet-history`; Overview's "View history"). Side column:
-   - Download, 7-day average "921 Mbps", a meter of the plan, "77% of plan".
-   - Upload, 7-day average "904 Mbps", meter, "75% of plan".
-   - Rule, then info note: "Tests run from the gateway to your ISP, so they
-     show what Ziply delivers, not Wi-Fi speed in a room."
+   - "Download" and "921 Mbps (77%)" on one line (the 7-day average; the note
+     below says so), the share of
+     plan after the value in muted text as on Overview, then a meter of the
+     plan. No line under the meter; with no plan, no share and an empty
+     meter.
+   - "Upload", "904 Mbps (75%)", meter.
+   - Rule, then info note: "Values show 7d average. Tests run from the
+     gateway to your ISP, so they show what Ziply delivers, not Wi-Fi speed
+     in a room."
    - Main chart: one point per test, each marked with a dot (up to 40
      points) so a few tests do not read as a broken line, download and
      upload lines, fixed y
      scale to the plan (`AreaChart max`, nice ticks up to at least the
      plan), x labels "Nov 6", "Nov 9",
      "Today", tooltip per test with date and time.
-4. **Data usage** section. Sub: "Internet (WAN) traffic only, local
-   transfers excluded". Day / Week toggle. Two cards side by side:
-   - **Per hour** (wide): legend with totals (Download 351 GB, Upload 61 GB),
-     hourly area chart, rule, then **Using the most right now** with the
-     shared **Live** switch on the right (see devices.md, Live switch; off:
-     "Turn on Live to see which devices are using the most right now"): a 3-column grid of up to 6 devices with icon,
-     name, eero and band ("Living Room · 5 GHz", "Wired"), and the current
+4. **Data usage** section. Description under the title: the window and the
+   WAN total ("24 hours, 489 GB"). Range dropdown (`Select`, tool size):
+   "Last 24 hours" or "Last 7 days". Two cards side by side:
+   - **Per hour** (wide): legend with totals (Download 351 GB, Upload 61 GB)
+     on the right of the title (the window is in the section subtitle, so
+     not repeated), hourly area chart, rule, then **Using the most right
+     now** with the shared **Live** switch on the right (see devices.md,
+     Live switch; off: "Turn on Live to see which devices are using the
+     most right now"): a 3-column grid of up to 6 devices with icon, name,
+     eero and band ("Living Room · 5 GHz", "Wired"), and the current
      download rate in Mbps, `-` when idle.
-   - **Per day**: "avg 388 GB / day", legend with weekly totals (2.31 TB,
-     402 GB), stacked daily columns with today highlighted, rule, then "Today
-     so far 48.2 GB" and "Busiest day Sat Nov 8 · 512 GB".
-   - Below, two tables: **By device** (24h, "All devices →") and **By
-     profile** (24h, "Profiles →"). Columns Down, Up, Share. Device rows have
-     an icon and a 2px bar in the device's series colour scaled to the
-     largest row; the last row groups the rest ("Others (26)"). Profile rows
-     have the avatar, a muted detail ("6 devices", "3 devices · paused",
-     "unassigned") and the bar; "Other devices" covers unassigned.
+   - **Per day**: title with "7 days, 388 GB a day" under it, legend with
+     weekly totals (2.31 TB, 402 GB), stacked daily columns with today
+     highlighted, rule, then "Today so far 48.2 GB" and "Busiest day Sat
+     Nov 8 · 512 GB".
+5. **By device** and **By profile**, two sections of their own side by side
+   (56px below Data usage, like every section), following the Data usage
+   range. Each has a description under its title and a dim text link:
+   - **By device**: "24 hours, top 5 used 78%" (the share the named rows
+     account for), link "View all devices →".
+   - **By profile**: "24 hours, 4 profiles, 1 paused" (paused left out when
+     none), link "View all profiles →".
+   - Columns Down, Up, Share. Device rows have an icon and a 2px bar in the
+     device's series colour scaled to the largest row; the last row groups
+     the rest ("Others (26)"). Profile rows have the avatar, a muted detail
+     ("6 devices", "3 devices · paused", "unassigned") and the bar; "Other
+     devices" covers unassigned and is always the last row, like By
+     device's Others. Bridge mode hides both sections.
 
 ## Data
 
@@ -95,7 +122,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 | Troubleshoot | - | - | No | Troubleshooting page |
 | Copy details | `internet.get {format: "text"}` | query | No | Copies a plain-text block of both cards (formatted in core); toast "Connection details copied" |
 | ISP settings → | - | - | No | Advanced networking, WAN section |
-| Set plan / Edit plan (the plan line under the gauges, the Connection card's Plan row; Overview "Set your internet plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
+| Set plan… / Edit plan… (the plan line under the gauges, 12px under them as on Overview, the Connection card's Change plan… button; Overview "Set your internet plan") | `internet.plan.set {down, up, label?}` or `{clear: true}` | write | No | Plan sheet: Download and Upload (Mbps) and an optional name; Save toasts "Plan set to 1.2 Gbps down, 1.2 Gbps up" with Undo; Remove plan (asks inline) toasts "Plan removed" with Undo; gauges, meters and verdicts recompute |
 | Month / All (speed tests) | - (re-queries `speedtest.history`) | - | No | Chart, count and Export CSV switch range; averages stay 7-day |
 | Export CSV | `speedtest.history {range, format: "csv"}` | query | No | Host save dialog (`window.mesh.saveFile`), file `speed-tests-maple-street-2026-11-12.csv`; the button reads "CSV saved" for a moment, or "Couldn't save" with eero's or the host's message as its tooltip |
 | Day / Week (data usage) | - (re-queries `usage.get`, `usage.breakdown`) | - | No | Both cards and tables switch |
@@ -108,7 +135,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 - **Loading.** Cards show labels with `-` values; charts show placeholder
   gridlines; tables keep their header.
 - **Empty.** No speed tests yet: chart area says "No speed tests in this
-  window." and the hero line reads "No speed test yet". No usage: "No
+  window." and the Last speed test fact shows "-". No usage: "No
   activity in this window."
 - **Test running.** Only one at a time per network; the button reads
   "Testing..." and stays disabled until the result lands or 3 minutes pass,
@@ -118,9 +145,9 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
 - **Error.** Per card or section note with Retry.
 - **Offline (this computer).** Shell banner; Run speed test disabled;
   "Using the most right now" shows "Live rates need a connection to eero".
-- **Network offline / internet down.** Hero title "Ziply Fiber is down",
+- **Network offline / internet down.** Hero title stays "Ziply Fiber",
   status Down with "since 2:17 AM"; Connection cards keep the last values
-  muted with "as of"; Run speed test disabled; Troubleshoot becomes primary.
+  muted with "as of"; Run speed test disabled; the buttons keep their places and style (the Down status draws the eye).
 - **No permission.** Admins can run tests. `internet.plan.set` is app-local
   and always allowed.
 - **Capability missing.** No IPv6: IPv6 rows show `-` with "IPv6 is off"

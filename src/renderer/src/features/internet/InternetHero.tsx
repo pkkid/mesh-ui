@@ -1,8 +1,9 @@
 /**
- * The Internet hero: the verdict built in core ("Ziply Fiber is fast and
- * steady"), connection status with gateway uptime, the last-test line, the
- * actions (Run speed test, Troubleshoot), the Download and Upload gauges and
- * the plan line that opens the plan sheet.
+ * The Internet hero: the provider name as the title (the verdict title from
+ * core, "Ziply Fiber"), connection status with gateway uptime, the facts
+ * (Public IP, Plan, Last speed test), the actions (Run speed test,
+ * Troubleshoot), the Download and Upload gauges and the plan line that opens
+ * the plan sheet.
  * docs/ux/pages/internet.md (Layout 1, States).
  *
  * Also home to the speed test runner every Run speed test control shares
@@ -18,7 +19,7 @@ import { execute, invalidate, useQuery } from "~/app/useCommand";
 import { type Gate, useWrite } from "~/app/useWrite";
 import { Gauge } from "~/components/charts/Gauge";
 import { Button } from "~/components/ui/button";
-import { PageHeader } from "~/components/ui/hero";
+import { Metric, PageHeader } from "~/components/ui/hero";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { toast } from "~/components/ui/toast";
@@ -136,11 +137,14 @@ export function useSpeedTest(): { run: () => Promise<void>; gate: Gate; testing:
   return { run, gate, testing, label: testing ? "Testing..." : "Run speed test" };
 }
 
-/** The Run speed test button in a hero: primary, with a spinner while a test runs. */
-export function RunSpeedTestButton({ variant }: { variant?: "default" | "outline" }) {
+/** Icons inside hero buttons use the dim text colour; the label stays bright. */
+const DIM_ICON = "[&_svg]:text-muted-foreground";
+
+/** The Run speed test button in a hero: outline (hero buttons are never filled), with a spinner while a test runs. */
+export function RunSpeedTestButton() {
   const test = useSpeedTest();
   return (
-    <GatedButton gate={test.gate} variant={variant} onClick={() => void test.run()}>
+    <GatedButton gate={test.gate} variant="outline" className={DIM_ICON} onClick={() => void test.run()}>
       {test.testing ? <LoaderCircle className="animate-spin motion-reduce:animate-none" /> : <GaugeIcon />}
       {test.label}
     </GatedButton>
@@ -188,7 +192,8 @@ export function InternetHero() {
   );
 
   const troubleshoot = (
-    <Button variant={down ? "default" : "ghost"} render={<Link to={pathFor("troubleshooting")} />}>
+    // Navigates, but reads as an action ("go troubleshoot"), so it stays a button: a one-off, not a rule.
+    <Button variant="outline" className={DIM_ICON} render={<Link to={pathFor("troubleshooting")} />}>
       <Stethoscope />
       Troubleshoot
     </Button>
@@ -196,45 +201,47 @@ export function InternetHero() {
 
   return (
     <PageHeader
+      flat
       title={i?.verdict?.title ?? "-"}
       status={status}
       facts={
-        i?.verdict?.detail ? (
-          <span className="text-muted-foreground text-sm">{i.verdict.detail}</span>
-        ) : !i && latest ? (
-          <span className="text-muted-foreground text-sm">Last test {formatRelative(latest.at, now, n?.timezone ?? "UTC")}</span>
-        ) : undefined
+        <>
+          <Metric label="Public IP" value={i?.publicIpv4} />
+          <Metric label="Plan" value={plan ? planLabel(plan.down, plan.up) : null} />
+          <Metric label="Last speed test" value={latest ? formatRelative(latest.at, now, n?.timezone ?? "UTC") : null} />
+        </>
       }
+      // Same buttons in the same order in every state; the Down status already draws the eye.
       actions={
-        down ? (
-          <>
-            {troubleshoot}
-            <RunSpeedTestButton variant="outline" />
-          </>
-        ) : (
-          <>
-            <RunSpeedTestButton />
-            {troubleshoot}
-          </>
-        )
+        <>
+          <RunSpeedTestButton />
+          {troubleshoot}
+        </>
       }
       aside={
         <div className={down ? "opacity-60" : undefined}>
           <div className="flex items-center gap-7">
-            <SpeedGauge label="Download" value={latest?.downMbps ?? null} plan={plan?.down ?? null} fallbackMax={fallbackMax} size={164} color={seriesColors.download} loading={gaugesLoading} />
-            <SpeedGauge label="Upload" value={latest?.upMbps ?? null} plan={plan?.up ?? null} fallbackMax={fallbackMax} size={164} color={seriesColors.upload} loading={gaugesLoading} />
+            <SpeedGauge label="Download" value={latest?.downMbps ?? null} plan={plan?.down ?? null} fallbackMax={fallbackMax} size={168} color={seriesColors.download} loading={gaugesLoading} />
+            <SpeedGauge label="Upload" value={latest?.upMbps ?? null} plan={plan?.up ?? null} fallbackMax={fallbackMax} size={168} color={seriesColors.upload} loading={gaugesLoading} />
           </div>
           {i && (
-            <div className="text-center text-3xs text-muted-foreground">
+            <div className="mt-3 text-center text-3xs text-muted-foreground">
               {plan ? `Plan ${plan.label ? `${plan.label}, ` : ""}${formatMbps(plan.down)} down, ${formatMbps(plan.up)} up` : "No plan set: gauges scale to your best result"}
               {" · "}
-              <TextLink onClick={openPlanSheet}>{plan ? "Edit plan" : "Set plan"}</TextLink>
+              <TextLink onClick={openPlanSheet}>{plan ? "Edit plan…" : "Set plan…"}</TextLink>
             </div>
           )}
         </div>
       }
     />
   );
+}
+
+/** "1,200 / 1,200 Mbps"; each side keeps its own unit when they differ ("2 Gbps / 500 Mbps"). */
+function planLabel(down: number, up: number): string {
+  const d = mbpsParts(down);
+  const u = mbpsParts(up);
+  return d.unit === u.unit ? `${d.value} / ${formatMbps(up)}` : `${formatMbps(down)} / ${formatMbps(up)}`;
 }
 
 /** With a plan the arc runs this far past it, so a result that beats the plan shows it. */

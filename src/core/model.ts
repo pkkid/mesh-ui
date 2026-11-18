@@ -175,7 +175,7 @@ export type Internet = {
 };
 
 export type InternetVerdict = {
-  /** steady: fast and steady; slow: slower than your plan; down: no internet. */
+  /** steady: last test at 75% of the plan or more (or nothing to compare); slow: under it; down: no internet. `title` is only the provider name. */
   kind: "steady" | "slow" | "down";
   title: string;
   detail: string | null;

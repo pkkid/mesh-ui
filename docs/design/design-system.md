@@ -26,6 +26,9 @@ semantic classes.
   [Buttons and links](#buttons-and-links)).
 - **Subtext under titles.** Muted detail sits on its own line below a
   title, never beside it (see [Sections](#sections)).
+- **Dropdowns, not pill toggles.** View choices (range, metric, grouping)
+  are dropdowns, never Segmented pill toggles (see
+  [Buttons and links](#buttons-and-links)).
 - **Subtitles carry live data.** A subtitle says something about the data
   on screen, built from values that change with it, not a fixed label (see
   [Subtitles carry data](#subtitles-carry-data)).
@@ -248,7 +251,8 @@ for status and errors.
 
 - All numbers use `tabular-nums`.
 - Group and tile labels are uppercase with wide tracking
-  (`tracking-widest`); nothing else is uppercase except X axis labels.
+  (`tracking-widest`); nothing else is uppercase, chart axis labels
+  included.
 - Sentence case everywhere ("Restart network", not "Restart Network").
 - "eero" is always lowercase, even at the start of a label.
 
@@ -280,7 +284,7 @@ CSS variables on `:root` in `index.css`.
 | Sidebar width | 15rem (240px; the mockups use 236px) | `--sidebar-width` |
 | Sidebar padding | nav `px-2`, items `h-8 px-2.5`, gap 9px to the icon | `features/shell/Sidebar.tsx` |
 | Page column | max 1056px (1000px of content), padding 22px 28px 48px | `max-w-[1056px] px-7 pt-[22px] pb-12` in `RouterOutlet` |
-| Gap between sections | 28px; Overview 56px, the same as from the hero's rule to the first section (Overview only for now) | `gap-7` on the page column; Overview wraps its sections in `gap-14` (`gap-x-7 gap-y-14` in its grids) |
+| Gap between sections | **56px**, the same as from the hero's rule to the first section, so every section on a page starts the same distance below the one before | Pages wrap the sections after the hero in `flex flex-col gap-14` (grids of side-by-side sections: `gap-x-7 gap-y-14`); the page column itself stays `gap-7`. Overview and Internet follow this; other pages move over page by page |
 | Section heading to card | **15px from the subtitle to the card**; 12px when a section has no subtitle | `gap-[15px]`; `gap-3`. `Section` still defaults to `gap-5` (20px) with a description: Overview passes `gap-[15px]`, other pages move over page by page |
 | Section header tools gap | 8px | `gap-2` |
 | Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
@@ -430,7 +434,7 @@ set their own margins or padding on the header.
   ("Online · Gateway up 23 days, 4 hours");
 - optional key facts as label-over-value pairs (ISP, Public IP, Last speed
   test);
-- **actions in a row at the bottom**, primary first, disruptive last.
+- **actions in a row at the bottom**, all `outline` buttons (never filled), the main action first, disruptive last.
 
 Everything in the header is **pinned to the top**. The left column (icon,
 title, status, facts, actions) and the right-hand column (gauges, QR block,
@@ -579,14 +583,23 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | QR block | `qr.tsx`. `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog, and the printed card (`GuestCard.tsx`) draws the code black on white. Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
 
-**Buttons.** Primary (filled) is only for the one main action of a hero
-(Run speed test, Pause in the device hero) and for the submit button of a
-sheet, dialog or form (Save, Create, Send), plus Install update and the
-sign-in flow. Everything in section headers, the topbar and toolbars is
-`outline` or `ghost` (Add a reservation, Add port forward, Add a profile,
-Run again). This follows the restrained colour rule: buttons are neutral.
+**Buttons.** Primary (filled) is only for the submit button of a sheet,
+dialog or form (Save, Create, Send) and the sign-in flow. Hero actions are
+never filled, not even the main one (Run speed test, Pause): every button in
+a hero is `outline`. Everything in section headers, the topbar and toolbars
+is `outline` or `ghost` (Add a reservation, Add port forward, Add a
+profile, Run again). This follows the restrained colour rule: buttons are
+neutral.
 
 ### Buttons and links
+
+**Dropdowns, not pill toggles.** A choice between views (a range, a metric,
+a grouping) is a dropdown: `Select` with `SelectTrigger size="tool"` in a
+section header, as in Overview's Data usage ("Last 24 hours") and
+Internet's Speed test history ("Last month", "All results"). Option labels
+say what you get, not a bare unit ("Last month", not "Month"; "All
+results", not "All"). Do not add new Segmented toggles; existing ones (Day /
+Week, Devices' status filter, Grouped / Raw) move to dropdowns page by page.
 
 **An ellipsis means "asks first".** A button whose click opens a confirm
 or asks for more input before anything happens ends its label with an
@@ -615,7 +628,7 @@ page.
 | Click does | Element | Examples |
 | --- | --- | --- |
 | Changes a setting or the network | Button, switch, input | Restart network, Pause, Save, Add a reservation |
-| Changes the view of this page | Dropdown, Segmented toggle, button | Range (Last 24 hours), Group by, Day / Week, Columns |
+| Changes the view of this page | Dropdown (see below), button | Range (Last 24 hours), Group by, Columns |
 | Opens a sheet, dialog or menu on this page | Button | Share Wi-Fi, Copy details, Filters |
 | Navigates to another page or section | Text link | View topology ->, View all devices ->, View history |
 
@@ -788,7 +801,8 @@ toggle switches appearance). Headless: `pnpm ui:shot --fake --route
   vertical gridlines, border or background.
 - **Labels.** Y labels in a `w-14` gutter, right-aligned,
   `text-3xs text-muted-foreground tabular-nums`, zero shown as `0`. X labels
-  only at start, middle and end, `text-3xs uppercase`.
+  only at start, middle and end, `text-3xs`, in normal case ("Fri Oct 31",
+  "6 PM", heatmap rows "Mon"), never uppercase.
 - **Hover.** A 1px muted vertical line at the nearest point and a tooltip that
   follows the pointer 12px away and stays inside the plot. Tooltip: the shared
   tooltip surface (`tooltipSurface`: `bg-tooltip`, the page background, with
@@ -840,8 +854,13 @@ Other chart kinds in the mockups, same rules for colour and labels:
 
 - Shared formatters in `src/core/format.ts` (re-exported to the renderer)
   for Mbps and Gbps (kbps below 1 Mbps, so a trickle never shows as 0), MB, GB and TB, percent, ms, relative time ("2h ago",
-  "Yesterday, 3:04 AM"), durations ("23 days, 4 hours"). The same quantity
+  "Yesterday, 3:04 AM"), durations ("23d 4h"). The same quantity
   looks the same everywhere, including CLI table output.
+- **Time units sit right after the number**, one letter each: `s`, `m`, `h`,
+  `d` ("45s", "12m", "3h 20m", "19d 19h", "5m ago", "in 5m"). No space
+  before the unit and no "min". Countdowns past an hour read "1h 05m".
+  Data and speed units keep their space ("942 Mbps", "1.2 GB"). Prose that
+  is not a formatted value can still say "about 30 seconds".
 - Clock times and dates are always in the network's time zone, never the
   viewer's: `networkClock(network.timezone)` in `src/core/format.ts` gives
   `time` ("9:41 AM"), `dateTime` ("Oct 20, 9:41 AM"), `day` ("Sat Nov 8"),
