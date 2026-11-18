@@ -281,7 +281,7 @@ CSS variables on `:root` in `index.css`.
 | Sidebar padding | nav `px-2`, items `h-8 px-2.5`, gap 9px to the icon | `features/shell/Sidebar.tsx` |
 | Page column | max 1056px (1000px of content), padding 22px 28px 48px | `max-w-[1056px] px-7 pt-[22px] pb-12` in `RouterOutlet` |
 | Gap between sections | 28px; Overview 56px, the same as from the hero's rule to the first section (Overview only for now) | `gap-7` on the page column; Overview wraps its sections in `gap-14` (`gap-x-7 gap-y-14` in its grids) |
-| Section heading to card | 12px, 20px when it has a description (Overview: 15px, `gap-[15px]` on its sections, for now) | `gap-3` / `gap-5` in `Section` |
+| Section heading to card | **15px from the subtitle to the card**; 12px when a section has no subtitle | `gap-[15px]`; `gap-3`. `Section` still defaults to `gap-5` (20px) with a description: Overview passes `gap-[15px]`, other pages move over page by page |
 | Section header tools gap | 8px | `gap-2` |
 | Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
 | Page header (hero) | flat: no side padding, 24px above, 40px below to a 1px rule, 28px after the rule; 28px between columns | `pt-6 pb-10 mb-7 border-b`, `gap-7` (see [Page header](#page-header-hero)) |
@@ -475,7 +475,7 @@ belongs to a title (a section's freshness or count line, a settings row's
 description, a card's detail) sits on its own line below the title, in
 `text-xs text-muted-foreground`. The title stays alone on its line, so
 titles line up down the page and the subtext can be as long as it needs.
-In a section this is `Section`'s `description` (heading `gap-5` to the card,
+In a section this is `Section`'s `description` (15px from the subtitle to the card,
 tools aligned to the bottom of the heading block); its older `subtitle`
 prop, which draws the text beside the title, is not used for new sections,
 and existing uses move to `description` when touched. The title and tools
@@ -495,7 +495,7 @@ now. A fixed label is about a tenth as useful.
 | Top devices | "Last 24 hours" | "Last 24 hours · 78% of all traffic" |
 | Data usage | "Download and upload" | "Last 24 hours, 38 devices" |
 | Top profiles | "Last 24 hours" | "24 hours, 1.2 GB" |
-| When the network is busy | "This week" | "Busiest Thursday, 5 PM" |
+| When the network is busy | "This week" | "Busiest Thursday, 4 to 6 PM" |
 | Recent activity | "Latest events" | "7 events" |
 
 - **Keep it short**: a few words, no sentence. Name the window bare ("24
@@ -507,7 +507,7 @@ now. A fixed label is about a tenth as useful.
   then the fact that changes.
 - **Skip the window when the content already shows it**: the busy heatmap's
   Mon to Sun grid is obviously a week, so its subtitle is just "Busiest
-  Thursday, 5 PM".
+  Thursday, 4 to 6 PM".
 - **Only state a window that is true.** Leave the span out when the data
   does not cover a fixed one: Recent activity says "7 events", not "24
   hours, 7 events", because events are kept only from eero's last ~15

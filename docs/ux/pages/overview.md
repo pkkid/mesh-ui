@@ -77,10 +77,12 @@ actions.
      (Active, Scheduled, Paused). With no profiles it keeps the "No profiles
      yet" note with Add a profile.
    - **When the network is busy**. Description under the title: "Busiest
-     Thursday, 5 PM", the peak cell (no window: a Mon to Sun grid is
-     obviously a week). A 7 x 24 heatmap (Mon to
-     Sun by hour) in one series colour, intensity by share of the week's peak
-     hour; hour labels every 6 hours; cell tooltip "Mon 20:00 · 78%".
+     Thursday, 4 to 6 PM", the peak block (no window: a Mon to Sun grid is
+     obviously a week). A 7 x 12 heatmap (Mon to Sun by two-hour block, each
+     the sum of its two hours) in one series colour, intensity by share of
+     the week's peak block; labels 12a, 6a, 12p, 6p; cell tooltip "Thu 18:00
+     to 20:00 · 78%". Two-hour blocks give square cells that read as a grid in
+     a third-width column; hourly detail belongs on a detail page.
    - **Recent activity**. Description under the title: the count of
      kept events from `events.summary {range: "kept"}` ("7 events"), with no
      time span: eero sends only its last ~15 minutes, so the log covers that
