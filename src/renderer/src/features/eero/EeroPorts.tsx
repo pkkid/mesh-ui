@@ -65,8 +65,12 @@ export function EeroPorts({ eeroId, offline }: { eeroId: string; offline: boolea
     void write.run(params, options);
   };
 
+  // "2 x 5 GbE, 1 in use": the ports and how many have something plugged in.
+  const inUse = (list ?? []).filter((p) => p.status === "up").length;
+  const description = list ? [portsLine(list), list.length > 0 ? `${inUse} in use` : null].filter(Boolean).join(", ") : "-";
+
   return (
-    <Section title="Ethernet ports" subtitle={list ? portsLine(list) : null}>
+    <Section title="Ethernet ports" description={description} className="gap-[15px]">
       {ports.error && !ports.data ? (
         <SectionError what="ports" error={ports.error} onRetry={() => void ports.refetch()} />
       ) : list && list.length === 0 ? (
@@ -88,9 +92,10 @@ export function EeroPorts({ eeroId, offline }: { eeroId: string; offline: boolea
           )}
           {actions.map(({ port, action, words }) => (
             <div key={`${port.number}-${action}`} className="flex items-center gap-2">
-              <GatedButton size="xs" variant="outline" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
+              {/* Ellipsis: each port action confirms first. Dim icon. */}
+              <GatedButton size="xs" variant="outline" className="[&_svg]:text-muted-foreground" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
                 <Power />
-                {words.label(portName(port))}
+                {words.label(portName(port))}…
               </GatedButton>
               <span className="text-2xs text-muted-foreground">{words.consequence(port.attached?.name ?? null)}</span>
             </div>

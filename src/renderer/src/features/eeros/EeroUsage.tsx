@@ -9,15 +9,15 @@ import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { Card, Section } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { formatBytes, networkClock } from "../../../../core/format";
+import { formatBytes, formatPercent, networkClock } from "../../../../core/format";
 import type { Eero, UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
+  { value: "day", label: "Last 24 hours" },
+  { value: "week", label: "Last 7 days" },
 ] as const;
 
 export function EeroUsage({ eeros, timezone }: { eeros: ReadonlyArray<Eero> | undefined; timezone: string | null }) {
@@ -37,6 +37,11 @@ export function EeroUsage({ eeros, timezone }: { eeros: ReadonlyArray<Eero> | un
   const labels = points.map((p) => (day ? hour(p.at) : weekday(p.at)));
   const tooltipLabels = points.map((p) => (day ? `${weekday(p.at)} ${hour(p.at)} to ${hour(Date.parse(p.at) + 3_600_000)}` : longDate(p.at)));
   const shown = all.filter((x) => !hidden.has(x.id));
+  // "24 hours, Basement carried 91%": the window, then the busiest eero's share.
+  const sum = all.reduce((n, x) => n + x.total, 0);
+  const top = all[0];
+  const window = day ? "24 hours" : "7 days";
+  const description = usage.data && top && sum > 0 ? `${window}, ${names.get(top.id) ?? "eero"} carried ${formatPercent((top.total / sum) * 100)}` : window;
 
   const toggle = (id: string) =>
     setHidden((h) => {
@@ -48,8 +53,23 @@ export function EeroUsage({ eeros, timezone }: { eeros: ReadonlyArray<Eero> | un
   return (
     <Section
       title="Data usage by eero"
-      subtitle={day ? "Last 24 hours" : "Last 7 days"}
-      tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
+      description={description}
+      className="gap-[15px]"
+      tools={
+        // A dropdown, not a Segmented toggle (design-system.md, Dropdowns, not pill toggles).
+        <Select items={RANGES} value={range} onValueChange={(v) => v && setRange(v)}>
+          <SelectTrigger size="tool" aria-label="Range">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {RANGES.map((r) => (
+              <SelectItem key={r.value} value={r.value}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+      }
     >
       {usage.error && !usage.data ? (
         <SectionError what="usage by eero" error={usage.error} onRetry={() => void usage.refetch()} />

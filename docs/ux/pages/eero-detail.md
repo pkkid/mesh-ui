@@ -12,13 +12,20 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 
 ## Layout
 
-1. **Hero** (card), three columns:
-   - Left: a product tile (150 px rounded square, the eero product glyph from `eeroIcon`) with
-     a small LED bar at the top that mirrors the LED state (on, dimmed, off,
-     blinking).
-   - Middle: name ("Office"); status line with Online, model badge ("eero Pro
-     7"), radio badge ("Tri-band Wi-Fi 7") and "Up 1d 9h"; metric row:
-     Devices ("9", "1 wired"), Data, 24h ("118 GB · 29% of network").
+1. **Hero** (flat, as on Overview: no card, a rule under it), three columns:
+   - Left: a 64 px product tile, the device hero's size (the eero product
+     glyph from `eeroIcon`, 12 px radius), with a small LED bar at the top
+     that mirrors the LED state (on, dimmed, off, blinking).
+   - Middle: name ("Office", with "Gateway" in plain dim text after it for
+     the gateway); status line with Online and "Up 1d 9h"; facts, label
+     over value: Model ("eero Pro 7"), Radios ("Tri-band Wi-Fi 7"), Devices
+     ("9", "1 wired"), Data, 24h ("118 GB (29%)", the share of the network
+     after the value). No boxed badges.
+   - Actions under the facts, as on Overview and Internet (`hero` size,
+     28px, outline, dim icons, 12px above): **Blink light** (blinks at once,
+     then "Blinking · 30s") and **Restart eero…** (the ellipsis because it
+     confirms first; its tooltip says what drops, "Its devices and Garage
+     (downstream) drop for about 1 minute").
    - Right: **Uplink** card, "Wireless backhaul": upstream eero (Living Room,
      Gateway), a dashed link with its quality chip ("Excellent · 4 bars"),
      this eero, then any downstream eero with its own link chip ("Weak · 2
@@ -26,19 +33,30 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      node and the link is the WAN ("10 Gbps WAN"). With more than one
      downstream eero (the gateway, usually) they are listed under the row,
      each with its link chip, instead of drawn inline.
-2. Two columns:
-   - **Data usage**. Sub "Last 24 hours for all clients on Office"
-     ("Last 7 days for ..." on Week). Day / Week toggle.
-     Legend with totals (Download 101 GB, Upload 17 GB) and an area chart.
-   - **Radios**. Sub "Auto channel selection on". One small card per band:
-     band badge, "Ch 36", "160 MHz · tx 23 dBm", client count, and
-     "Utilisation now" with a meter in the band colour.
+2. Two columns, 56px below the hero:
+   - **Data usage**. Description under the title: the window and this
+     eero's total ("24 hours, 143 GB"; its share of the network is in the
+     hero). Range dropdown "Last 24 hours" or "Last 7 days". Legend with
+     totals (Download 101 GB, Upload 17 GB) and an area chart.
+   - **Radios**. Description: the radio count, then how channels are picked
+     ("3 radios, fixed channel on 5 GHz", "2 radios, auto channel selection
+     on"). One card with a row per band, split by faint dividers (no card
+     per band): band badge, "Ch 36", "160 MHz · tx 23 dBm", client count,
+     and "Utilisation now" with a meter in the band colour.
 3. Two columns:
-   - **Connected devices**, link "All devices →". Table: Device (icon, name,
+   - **Connected devices**. Description under the title: the count, then
+     how many are wired ("12 devices, 3 wired"). A dim text link "View all
+     devices →". The card is capped at about seven rows (392px); more rows
+     scroll inside it, with the header row pinned. Table: Device (icon, name,
      thin usage bar), Connection (band badge or Wired, plus Wi-Fi generation
      or port: "Wi-Fi 6E", "Port 1"), Signal (dBm and bars, `-` for wired),
      Rate (link rate, "866 Mbps"), Data 24h.
-   - **Ethernet ports**. Sub "2 x 5 GbE, numbered left to right". A tile per
+   - **Ethernet ports**. Description: the ports, then how many are in use
+     ("2 x 5 GbE, 1 in use"). Port actions under the tiles end in an
+     ellipsis ("Disable port 2…": each confirms first) with dim icons. Under the
+     ports card, the same wired backhaul info note as on the eeros page, under
+     the same condition (a non-gateway eero with a wired backhaul and wired
+     devices on the gateway); see eeros.md. A tile per
      port: name, status (Up, Empty), a jack drawing with link lights,
      negotiated speed ("2.5 Gbps", "of 5 Gbps supported", or `-` "no
      carrier"), and everything attached, one name per line ("Alex's MacBook
@@ -46,36 +64,43 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      "Turned off" for a disabled port). Under the tiles, port MACs (mono),
      then a button per action eero lists for a port, with its consequence
      ("Disable port 1", "Synology NAS loses its wired connection").
-4. Settings cards, a 3-column grid:
-   - **Location** ("Name shown everywhere for this eero"): name input with a
-     pencil, and preset chips (Office, Den, Bedroom, Kitchen, Basement,
-     + Custom).
-   - **Status light** ("LED on the front of this eero"): on/off switch,
-     Brightness slider (Dim to Full, "60%"), note "Solid white means all is
-     well. The LED returns to full brightness while offline, restarting or
-     resetting."
-   - **Nightlight** ("Ambient or scheduled glow"): on a model without one,
-     status "Not available", a disabled Off / Ambient / Schedule toggle and
-     an info note "Nightlight is only on eero Beacon. Your Garage eero has
-     one." (link to that eero). On a Beacon the toggle is live, with a
-     brightness slider and, for Schedule, on and off times.
-   - **Software** ("Updates install network-wide"): status Up to date;
-     eeroOS version; Update window "2 to 4 AM" with a **Change** link; a
+4. **Device information**. Description: the model and when it joined
+   ("eero Pro 7, joined Mar 3, 2025"). Three cards side by side:
+   - **Software** ("Updates install network-wide"): status Up to date,
+     level with the title;
+     eeroOS version; Update window "2 to 4 AM" with a **Change** link (the plain
+     underlined link style, not blue); a
      short history of versions with dates (current one marked).
    - **IP addresses** ("Assigned by the gateway"): IPv4, IPv6, Subnet,
-     Gateway (mono), with a copy button.
+     Gateway (mono, each with its own copy icon), then a right-aligned
+     **Copy IP addresses** button under the list.
    - **Device information** ("Joined Mar 3, 2025"): Model number, Serial, MAC,
      BSSID per band (mono).
-5. **More actions**, three rows:
-   - **Blink light**, "Flashes blue and white for 30 s so you can find it",
-     **Blink light**.
-   - **Restart Office**, "Its devices and Garage (downstream) drop for about
-     1 minute", a "Disruptive" label and **Restart**.
-   - **Remove Office eero** (title in destructive colour), "Owner only ·
-     resets this eero", and **Remove**, which opens the confirm dialog: "Remove
-     "Office" from Maple Street? Its devices move to other eeros if in range,
-     and Garage loses its uplink and may go offline until it finds another
-     path." with **Remove from network** and **Cancel**.
+5. **eero settings**. Description: what is set now ("Status light on,
+   nightlight ambient"). One card of settings rows split by faint dividers,
+   as T3 Code's settings groups (title over a muted description, the
+   control on the right, anything more under it):
+   - **Location**, "The name shown everywhere for this eero, for example
+     Office, Den, Bedroom, Kitchen or Basement.": the shared text field on
+     the right (no pencil, no preset chips).
+   - **Status light**, "The LED on the front. Solid white means all is
+     well; it returns to full brightness while offline, restarting or
+     resetting.": on/off switch, then a brightness dropdown to its right
+     (0%, 25%, 50%, 75%, 100%; a level eero reports between steps, such as
+     60%, is listed too). The dropdown is disabled while the light is off.
+   - **Nightlight**: only on eero Beacon; the row is hidden on every other
+     model. On a Beacon, a mode dropdown on the right (Off, Ambient,
+     Scheduled), with a brightness slider and, for Scheduled, on and off
+     times under it.
+   - **Remove eero**, "Removes Office from Maple Street and resets it.
+     Owner only.", and **Remove eero…** (outline, destructive text; the
+     ellipsis because it asks first), which opens the confirm dialog:
+     "Remove "Office" from Maple Street? Its devices move to other eeros if
+     in range, and Garage loses its uplink and may go offline until it
+     finds another path." with type-the-name, **Remove from network** and
+     **Cancel**. For the gateway while other eeros remain: no button, "The
+     gateway can't be removed while other eeros use it; replace it in the
+     eero app."
 
 ## Data
 

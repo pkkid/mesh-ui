@@ -27,7 +27,8 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
 
   return (
     <div className={cn("text-xs", className)} role="table" aria-label={`${eero.location} radios`}>
-      <div role="row" className={cn(COLS, radios.length === 0 && "hidden", "pb-1 text-3xs text-muted-foreground uppercase tracking-[0.06em]")}>
+      <div role="row" className={cn(COLS, radios.length === 0 && "hidden", "pb-1 text-muted-foreground")}>
+        {/* Table headers are normal case, small and dim (design-system.md, Tables). */}
         <span role="columnheader">Band</span>
         <span role="columnheader">Channel</span>
         <span role="columnheader">Width</span>
@@ -69,9 +70,9 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
           </div>
         );
       })}
-      {dualBand && <div className="mt-2 text-2xs text-muted-foreground">{eero.model ?? "This eero"} is dual band, no 6 GHz radio</div>}
+      {/* Wired is one more row of the same table (a dashed divider like the radio rows), with the footnote under it all. */}
       {wired > 0 && (
-        <div role="row" className={cn(COLS, "mt-1 border-t border-dashed py-[5px]")}>
+        <div role="row" className={cn(COLS, radios.length > 0 && "border-t", "border-dashed py-[5px]")}>
           <span role="cell">
             <BandBadge band="wired" />
           </span>
@@ -85,6 +86,7 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
           </span>
         </div>
       )}
+      {dualBand && <div className="mt-2 text-2xs text-muted-foreground">{eero.model ?? "This eero"} is dual band, no 6 GHz radio</div>}
     </div>
   );
 }

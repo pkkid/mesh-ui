@@ -18,7 +18,7 @@ import {
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import { eeroIcon } from "~/lib/deviceIcons";
-import { Badge } from "~/components/ui/badge";
+import { GatewayLabel } from "~/components/ui/badge";
 import { IconTile } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
 import { effectColors } from "~/lib/chartColors";
@@ -278,15 +278,13 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
   );
 }
 
-/** An eero's Gateway badge and status dot, beside its location in the row and the preview. */
+/** An eero's Gateway label and status dot, beside its location in the row and the preview. */
 export function EeroBadges({ item }: { item: Extract<Item, { kind: "eero" }> }) {
   const status = networkStatus(item.eero.status);
   return (
     <>
       {item.eero.isGateway && (
-        <Badge variant="outline" className="shrink-0">
-          Gateway
-        </Badge>
+        <GatewayLabel />
       )}
       <Status tone={status.tone}>{status.label}</Status>
     </>

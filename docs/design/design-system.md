@@ -29,6 +29,10 @@ semantic classes.
 - **Dropdowns, not pill toggles.** View choices (range, metric, grouping)
   are dropdowns, never Segmented pill toggles (see
   [Buttons and links](#buttons-and-links)).
+- **Room to scroll past the end.** Every page ends with 100px of empty
+  space, so the last section can scroll up away from the bottom edge. Set
+  once on the page column (see [Page width](#page-width)); pages never add
+  or remove their own.
 - **Subtitles carry live data.** A subtitle says something about the data
   on screen, built from values that change with it, not a fixed label (see
   [Subtitles carry data](#subtitles-carry-data)).
@@ -283,8 +287,8 @@ CSS variables on `:root` in `index.css`.
 | Titlebar height | 44px | `--titlebar-height` (matches `TITLEBAR_HEIGHT` in `src/main/index.ts`) |
 | Sidebar width | 15rem (240px; the mockups use 236px) | `--sidebar-width` |
 | Sidebar padding | nav `px-2`, items `h-8 px-2.5`, gap 9px to the icon | `features/shell/Sidebar.tsx` |
-| Page column | max 1056px (1000px of content), padding 22px 28px 48px | `max-w-[1056px] px-7 pt-[22px] pb-12` in `RouterOutlet` |
-| Gap between sections | **56px**, the same as from the hero's rule to the first section, so every section on a page starts the same distance below the one before | Pages wrap the sections after the hero in `flex flex-col gap-14` (grids of side-by-side sections: `gap-x-7 gap-y-14`); the page column itself stays `gap-7`. Overview and Internet follow this; other pages move over page by page |
+| Page column | max 1056px (1000px of content), padding 22px 28px 100px | `max-w-[1056px] px-7 pt-[22px] pb-[100px]` in `RouterOutlet` |
+| Gap between sections | **56px**, the same as from the hero's rule to the first section, so every section on a page starts the same distance below the one before | Pages wrap the sections after the hero in `flex flex-col gap-14` (grids of side-by-side sections: `gap-x-7 gap-y-14`); the page column itself stays `gap-7`. Overview, Internet, eeros and eero detail follow this; other pages move over page by page, so check it whenever a page is updated |
 | Section heading to card | **15px from the subtitle to the card**; 12px when a section has no subtitle | `gap-[15px]`; `gap-3`. `Section` still defaults to `gap-5` (20px) with a description: Overview passes `gap-[15px]`, other pages move over page by page |
 | Section header tools gap | 8px | `gap-2` |
 | Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
@@ -336,7 +340,6 @@ Every border is 1px. Colour comes from two tokens, softened with opacity:
 | Card edge | `border-border/60` | Section cards, toasts (`/50`) |
 | Row divider | `divide-y divide-border/50`, `border-b border-border/50` | Rows inside a card, table rows |
 | Control | `border-input` | Outline buttons, inputs, selects |
-| Hover on a clickable card | `border-foreground/20` | `Card to=...` |
 | Focus | `ring-2 ring-ring` (inputs: `ring-[3px] ring-ring/24` and `border-ring`) | Every focusable control |
 | Inset outline | `shadow-[inset_0_0_0_1px_var(--color-border)]` | Avatars, icon tiles, selected Segmented item |
 | Sidebar edge | `border-e`, coloured in `index.css` (`[data-app-sidebar]`) | Sidebar |
@@ -563,10 +566,11 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
 | Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
 | Switch | 36 x 20 (`h-5 w-9`), full radius, `bg-primary` when on, `bg-muted` with a border when off, dashed border when eero does not report the value |
-| Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`), 16px leading icon; selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
+| Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`). Focus, as T3 Code: `border-ring` and a 3px glow inside the border (`ring-[3px] ring-inset ring-ring/24`), never outside. Text fields use `components/ui/input.tsx`, with no decorative icon (no pencil); an optional 16px leading icon only when it says what to type (search); selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
 | Chip | 24px (`h-6`), full radius, 1px border, `bg-card`, `text-xs text-foreground/80`, for filters; selected chip gets a stronger border, not colour |
 | Status | `size-1.5` dot in the status colour plus `text-xs text-foreground/80` label ("Online", "Weak link"). No pill outline, fill or uppercase |
 | Badge | `badge.tsx`. 20px (`h-5`), 4px radius, `text-xs font-medium`, neutral `secondary` by default, for counts, versions, "Gateway". Status variants (`success`, `warning`, `error`, `info`: an 8% tint, 16% dark) only for status |
+| Role label | A word that tags a name ("Gateway" beside an eero) is plain dim text, `text-xs text-muted-foreground font-normal`, never a pill or outlined badge. `GatewayLabel` in `badge.tsx` is the gateway one, used everywhere an eero is named |
 | Icon tile | Neutral square with inset border, icon in `text-muted-foreground`; sizes 24, 32, 44, 64 |
 | Avatar | `avatar.tsx`. Round, initials in `font-semibold`, inset 1px border, `bg-muted` or the profile colour from `chartColors.ts`. Sizes `sm` 26px, `md` 36px, `lg` 56px |
 | Signal bars | Four bars; one bar red, two yellow, three or four in text colour |
@@ -614,6 +618,24 @@ this; other pages move over page by page.
 bright text, a row or card background) eases with `transition-colors`
 (150ms), never a hard switch: section links, the titlebar search, rows and
 clickable cards all fade the same way.
+
+**Header actions sit on the title's line.** In a card or row header with an
+icon, a title and a subtitle under it, the status and buttons on the right
+(Online, Blink light, View eero) are level with the title, not centred on
+the two lines: top-aligned in a 20px box (`flex h-5 items-center
+self-start`), the title's line height.
+
+**Disruptive actions sit apart.** A section of disruptive or destructive
+actions (Restart network, Danger zone) is its own full-width section at the
+bottom of the page, never tucked beside read-only content.
+
+**Footnotes are extra dim.** An info line under a card (the speed test
+note, the eeroOS line, the wired backhaul note) is `flex gap-2 text-xs
+text-muted-foreground/50` with a 14px icon (`mt-px size-3.5 shrink-0`), half
+as strong as normal muted text, so it never competes with the content. A
+link inside one is dimmed the same way (`text-foreground/50`, underline
+`decoration-foreground/25`, `hover:text-foreground/70`), so only the
+underline marks it.
 
 **Icons in buttons are dim.** A button's icon uses `text-muted-foreground`
 while its label stays `text-foreground`, so the words lead and the icon
@@ -681,7 +703,9 @@ Devices and Activity. Do not build another.
 
 ### Tables
 
-- Header `text-xs text-muted-foreground font-normal`, 1px bottom border.
+- Header `text-xs text-muted-foreground font-normal`, 1px bottom border,
+  in normal case ("Band", "Channel"), never uppercase. This includes
+  table-like grids such as the radio table in eero cards.
 - Rows with a faint divider (`border-b border-border/50`) and
   `hover:bg-muted/50`; offline rows in muted text.
 - Numbers right-aligned, `tabular-nums`.
@@ -706,10 +730,10 @@ sections keep working) and `useNow` (a ticking clock for relative times).
 a profile card) is one clickable target: `<Card to={path}>` with its title in
 a `CardLink`. A click anywhere on the card opens the page; there is no
 chevron or "Details" button. The card gets `cursor-pointer` and, on hover,
-`bg-muted/30` plus a brighter border (`border-foreground/20`), with
-`transition-colors` only (no movement, no shadow). The title link is the
-keyboard focus target: focusing it gives the card the hover look plus the
-focus ring, and Enter opens it. Buttons, links, inputs and menus inside the
+`bg-muted/30` only, with `transition-colors` (no brighter border, no
+movement, no shadow; a brighter outline was tried and was too loud). The title link is the
+keyboard focus target: focusing it gives the card the hover background plus
+the focus ring, and Enter opens it. Buttons, links, inputs and menus inside the
 card (Blink light, Pause, the `...` menu) keep their own clicks; wrap any other
 control in `data-card-ignore`. List rows (`Row`) are a separate pattern and
 keep `hover:bg-muted/50`.

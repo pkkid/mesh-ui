@@ -1,6 +1,7 @@
 /**
- * eero detail "Radios": a small card per band with channel, width, tx power,
- * clients and utilisation now. Missing figures show "-"; an offline eero
+ * eero detail "Radios": one card with a row per band (channel, width, tx
+ * power, clients and utilisation now), rows split by faint dividers like a
+ * settings group (no card per band: no nested boxes). Missing figures show "-"; an offline eero
  * shows "-" throughout. docs/ux/pages/eero-detail.md (Layout 2).
  */
 import { BUSY_AT, wirelessRadios } from "~/components/mesh/RadioTable";
@@ -24,25 +25,27 @@ const PLACEHOLDER: Radio[] = (["2.4", "5"] as const).map((band) => ({
 
 export function EeroRadios({ eero, offline }: { eero: Eero | null; offline: boolean }) {
   const radios = eero ? wirelessRadios(eero) : PLACEHOLDER;
-  const sub = eero && !offline ? autoChannelLine(radios) : null;
+  // "2 radios, auto channel on": the count, then how channels are picked (data-driven, under the title).
+  const auto = eero && !offline ? autoChannelLine(radios) : null;
+  const description = eero ? [`${radios.length} ${radios.length === 1 ? "radio" : "radios"}`, auto ? auto.charAt(0).toLowerCase() + auto.slice(1) : null].filter(Boolean).join(", ") : "-";
   return (
-    <Section title="Radios" subtitle={sub}>
+    <Section title="Radios" description={description} className="gap-[15px]">
       {eero && radios.length === 0 ? (
         <Card>
           <Empty>No radio details reported.</Empty>
         </Card>
       ) : (
-        <div className="flex flex-col gap-2">
+        <Card className="divide-y divide-border/50">
           {radios.map((r) => (
-            <RadioCard key={r.band} radio={r} offline={offline} />
+            <RadioRow key={r.band} radio={r} offline={offline} />
           ))}
-        </div>
+        </Card>
       )}
     </Section>
   );
 }
 
-function RadioCard({ radio: r, offline }: { radio: Radio; offline: boolean }) {
+function RadioRow({ radio: r, offline }: { radio: Radio; offline: boolean }) {
   const show = <T,>(v: T | null) => (offline ? null : v);
   const channel = show(r.channel);
   const width = show(r.widthMhz);
@@ -51,10 +54,10 @@ function RadioCard({ radio: r, offline }: { radio: Radio; offline: boolean }) {
   const clients = show(r.clients);
   const busy = meterTone(util === null ? null : util / 100, BUSY_AT) === "warning";
   return (
-    <Card className="px-3.5 py-3">
+    <div className="px-4 py-3">
       <div className="flex items-center gap-2.5">
         <BandBadge band={r.band} />
-        <span className="font-medium text-[13px] tabular-nums">Ch {channel ?? MISSING}</span>
+        <span className="font-medium text-sm tabular-nums">Ch {channel ?? MISSING}</span>
         {(width !== null || tx !== null) && (
           <span className="text-muted-foreground text-xs tabular-nums">
             {[width === null ? null : `${width} MHz`, tx === null ? null : `tx ${tx} dBm`].filter(Boolean).join(" · ")}
@@ -71,6 +74,6 @@ function RadioCard({ radio: r, offline }: { radio: Radio; offline: boolean }) {
         </div>
         <Meter value={util} warnAt={BUSY_AT} label={`${bandLabel(r.band)} utilisation`} className="mt-1" />
       </div>
-    </Card>
+    </div>
   );
 }

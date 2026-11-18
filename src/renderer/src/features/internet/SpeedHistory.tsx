@@ -106,7 +106,7 @@ export function SpeedHistory({ id }: { id?: string }) {
               />
             </div>
             <div className="h-px bg-border" />
-            <div className="flex gap-2 text-muted-foreground text-xs">
+            <div className="flex gap-2 text-muted-foreground/50 text-xs">
               <Info className="mt-px size-3.5 shrink-0" />
               <span>
                 Values show 7d average. Tests run from the gateway to your ISP, so they show what {isp} delivers, not Wi-Fi speed in a

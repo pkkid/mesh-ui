@@ -9,15 +9,15 @@ import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { Card, Section } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatBytes, networkClock } from "../../../../core/format";
 import type { UsageRange, UsageSeries } from "../../../../core/model";
 
 const RANGES = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
+  { value: "day", label: "Last 24 hours" },
+  { value: "week", label: "Last 7 days" },
 ] as const;
 
 export function EeroUsage({ eeroId, name, timezone }: { eeroId: string; name: string; timezone: string | null }) {
@@ -32,11 +32,30 @@ export function EeroUsage({ eeroId, name, timezone }: { eeroId: string; name: st
   const labels = points.map((p) => (day ? hour(p.at) : weekday(p.at)));
   const tooltipLabels = points.map((p) => (day ? `${weekday(p.at)} ${hour(p.at)} to ${hour(Date.parse(p.at) + 3_600_000)}` : longDate(p.at)));
 
+  // "24 hours, 14.4 GB": the window and this eero's total (its share of the network is in the hero).
+  const window = day ? "24 hours" : "7 days";
+  const description = s ? `${window}, ${formatBytes(s.total.down + s.total.up)}` : window;
+
   return (
     <Section
       title="Data usage"
-      subtitle={day ? `Last 24 hours for all clients on ${name}` : `Last 7 days for all clients on ${name}`}
-      tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
+      description={description}
+      className="gap-[15px]"
+      tools={
+        // A dropdown, not a Segmented toggle (design-system.md, Dropdowns, not pill toggles).
+        <Select items={RANGES} value={range} onValueChange={(v) => v && setRange(v)}>
+          <SelectTrigger size="tool" aria-label="Range">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {RANGES.map((r) => (
+              <SelectItem key={r.value} value={r.value}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+      }
     >
       {usage.error && !s ? (
         <SectionError what="data usage" error={usage.error} onRetry={() => void usage.refetch()} />

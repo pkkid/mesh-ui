@@ -11,11 +11,11 @@ import { useQuery } from "~/app/useCommand";
 import { BandBadge } from "~/components/ui/band-badge";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { HeaderLink, SectionError } from "~/components/ui/page";
+import { SectionError, SectionLink } from "~/components/ui/page";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { formatBytes, MISSING } from "../../../../core/format";
+import { formatBytes, formatCount, MISSING } from "../../../../core/format";
 import type { Device, DeviceList, UsageBreakdown } from "../../../../core/model";
 
 type Row = { device: Device; bytes: number | null };
@@ -29,8 +29,20 @@ export function EeroDevices({ eeroId, name }: { eeroId: string; name: string }) 
     .map((d) => ({ device: d, bytes: used.get(d.id) ?? null }))
     .sort((a, b) => (b.bytes ?? -1) - (a.bytes ?? -1) || a.device.name.localeCompare(b.device.name));
 
+  // "9 devices, 1 wired": how many are on this eero, and how many by cable.
+  const all = devices.data?.devices ?? [];
+  const wired = all.filter((d) => d.band === "wired").length;
+  const description = devices.data
+    ? [`${formatCount(all.length)} ${all.length === 1 ? "device" : "devices"}`, wired > 0 ? `${formatCount(wired)} wired` : null].filter(Boolean).join(", ")
+    : "-";
+
   return (
-    <Section title="Connected devices" tools={<HeaderLink to={pathFor("devices")} arrow>All devices</HeaderLink>}>
+    <Section
+      title="Connected devices"
+      description={description}
+      className="gap-[15px]"
+      tools={<SectionLink to={pathFor("devices")}>View all devices</SectionLink>}
+    >
       {devices.error && !devices.data ? (
         <SectionError what="devices" error={devices.error} onRetry={() => void devices.refetch()} />
       ) : rows && rows.length === 0 ? (
@@ -38,8 +50,10 @@ export function EeroDevices({ eeroId, name }: { eeroId: string; name: string }) 
           <Empty>No devices are connected to {name} right now.</Empty>
         </Card>
       ) : (
-        <Card>
+        // About seven rows tall, then the table scrolls inside the card with its header pinned.
+        <Card className="max-h-[392px] overflow-y-auto">
           <BreakdownTable<Row>
+            stickyHeader
             rows={rows}
             rowKey={(r) => r.device.id}
             nameHeader="Device"

@@ -53,7 +53,7 @@ actions.
      `network.health`: count, then online, weak links and offline, zero
      counts left out ("4 eeros · 4 online, 1 weak link"). Header link
      "View topology →" (a dim text link). One row per eero: icon (the eero
-     product glyph from `eeroIcon`) and three lines: the name followed by a Gateway badge;
+     product glyph from `eeroIcon`) and three lines: the name followed by "Gateway" in plain dim text;
      model · backhaul type; status (Online, Weak link, Offline), mesh bars for
      wireless, device count. A 24 h usage sparkline in that eero's series
      colour sits right of lines 2 and 3 (never beside the name), the same

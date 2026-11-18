@@ -10,6 +10,7 @@ import { RotateCcw } from "lucide-react";
 import { execute, invalidate, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Section } from "~/components/ui/card";
+import { formatCount } from "../../../../core/format";
 import { IconTile } from "~/components/ui/hero";
 import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
 import { toast } from "~/components/ui/toast";
@@ -87,16 +88,22 @@ export function NetworkActions() {
   const restart = useRestartNetwork();
   const impact = useQuery<SettingsImpact>("settings.impact", { changes: [{ id: "network.restart" }] });
   return (
-    <Section title="Network actions">
+    // "31 devices online would lose internet": what is at stake, from the same impact read as the row.
+    <Section
+      title="Network actions"
+      description={impact.data ? `${formatCount(impact.data.devicesOnline)} ${impact.data.devicesOnline === 1 ? "device" : "devices"} online would lose internet` : "-"}
+      className="gap-[15px]"
+    >
       <RowList>
         <Row>
           <IconTile icon={RotateCcw} />
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-[13.5px]">Restart network</div>
+            <div className="font-medium text-sm">Restart network</div>
             <div className="text-muted-foreground text-xs">Restarts every eero at once. {restartNetworkLine(impact.data)}</div>
           </div>
-          <GatedButton gate={restart.gate} size="xs" variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>
-            Restart
+          {/* Ellipsis: it confirms first. 28px (`sm`), the height of the section dropdowns, centred in the row. */}
+          <GatedButton gate={restart.gate} size="sm" variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>
+            Restart network…
           </GatedButton>
         </Row>
       </RowList>

@@ -1,5 +1,5 @@
 /**
- * Overview "eeros": one row per eero with name and Gateway badge, model and
+ * Overview "eeros": one row per eero with name and Gateway label, model and
  * backhaul, status with mesh bars and device count, and a 24 h usage
  * sparkline in that eero's series colour.
  * docs/ux/pages/overview.md (Layout 3).
@@ -9,7 +9,7 @@ import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { MeshBars } from "~/components/mesh/LinkChip";
-import { Badge } from "~/components/ui/badge";
+import { GatewayLabel } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { PlaceholderRows, Row, RowList, SectionError, SectionLink } from "~/components/ui/page";
@@ -74,7 +74,7 @@ export function EerosList() {
                   : networkStatus(e.status);
             const points = series.get(e.id)?.points ?? [];
             return (
-              // Three lines: name and Gateway badge; model and connection;
+              // Three lines: name and Gateway label; model and connection;
               // status, mesh bars and devices. The sparkline sits right of
               // lines 2 and 3 so line 1 keeps the full width for the name.
               <Row
@@ -86,9 +86,7 @@ export function EerosList() {
                 <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-sm">
                   <span className="truncate">{e.location}</span>
                   {e.isGateway && (
-                    <Badge variant="outline" className="shrink-0">
-                      Gateway
-                    </Badge>
+                    <GatewayLabel />
                   )}
                 </div>
                 <div className="flex items-center gap-x-1.5 whitespace-nowrap text-muted-foreground text-xs">

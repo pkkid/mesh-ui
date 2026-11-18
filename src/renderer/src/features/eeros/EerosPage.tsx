@@ -5,26 +5,26 @@
  * docs/ux/pages/eeros.md and docs/mockups/03-eeros.html. Every figure comes
  * from a query command; the page only arranges and words it.
  */
-import { ArrowRight, CircleArrowUp, CircleCheck, Info, LayoutGrid, List, Waypoints } from "lucide-react";
+import { CircleArrowUp, CircleCheck } from "lucide-react";
 import { useState } from "react";
 
-import { Link, navigate, pathFor } from "~/app/router";
+import { navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { MeshBars } from "~/components/mesh/LinkChip";
 import { Topology } from "~/components/mesh/Topology";
+import { BUSY_AT, wirelessRadios } from "~/components/mesh/RadioTable";
 import { eeroIcon } from "~/lib/deviceIcons";
 import { TopologyTree } from "~/components/mesh/TopologyTree";
-import { Button } from "~/components/ui/button";
-import { Card, Empty, Section } from "~/components/ui/card";
+import { Card, CardLink, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { KvList } from "~/components/ui/kv-list";
 import { SectionError } from "~/components/ui/page";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { TextLink } from "~/components/ui/text-link";
-import { Segmented } from "~/components/ui/segmented";
 import { networkStatus } from "~/components/ui/status";
 import { useTopBarUpdated } from "~/features/shell/TopBar";
-import { networkClock } from "../../../../core/format";
+import { formatCount, networkClock } from "../../../../core/format";
 import type { DeviceList, Eero, Internet, Network, NetworkHealth, Updates } from "../../../../core/model";
 
 import { ClientsByBand } from "./ClientsByBand";
@@ -32,15 +32,16 @@ import { EeroCards, type EeroStatusWord } from "./EeroCards";
 import { EeroUsage } from "./EeroUsage";
 import { NetworkActions } from "./NetworkActions";
 import { topIssue, WeakLinkNote } from "./WeakLinkNote";
+import { WiredBackhaulNote } from "./WiredBackhaulNote";
 
 const TOPOLOGY_VIEWS = [
-  { value: "map", label: "Map", icon: Waypoints },
-  { value: "tree", label: "Tree", icon: List },
+  { value: "map", label: "Map view" },
+  { value: "tree", label: "Tree view" },
 ] as const;
 
 const CARD_VIEWS = [
-  { value: "grid", label: "Grid", icon: LayoutGrid },
-  { value: "list", label: "List", icon: List },
+  { value: "grid", label: "Grid view" },
+  { value: "list", label: "List view" },
 ] as const;
 
 export function EerosPage(_props: PageProps) {
@@ -85,6 +86,29 @@ export function EerosPage(_props: PageProps) {
   const open = (id: string) => navigate(pathFor("eero", { eeroId: id }));
   const loading = !eeros.data && eeros.loading;
 
+  // "3 eeros, 2 wired backhaul, 1 weak link": the count, how many are wired, then what needs attention.
+  const wiredBackhaul = list.filter((e) => !e.isGateway && e.backhaul === "wired").length;
+  const offlineCount = list.filter((e) => e.status === "offline").length;
+  const topologyDescription = eeros.data
+    ? [
+        `${list.length} ${list.length === 1 ? "eero" : "eeros"}`,
+        wiredBackhaul > 0 ? `${wiredBackhaul} wired backhaul` : null,
+        weak.size > 0 ? `${weak.size} weak ${weak.size === 1 ? "link" : "links"}` : null,
+        offlineCount > 0 ? `${offlineCount} offline` : null,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "-";
+
+  // "37 clients, 1 busy radio": who is connected across the mesh, then any radio over the busy line.
+  const clientCount = list.reduce((sum, e) => sum + (e.clients.total ?? 0), 0);
+  const busyRadios = list.flatMap((e) => wirelessRadios(e)).filter((r) => r.utilization !== null && r.utilization / 100 >= BUSY_AT).length; // utilization is 0 to 100
+  const eerosDescription = eeros.data
+    ? [`${formatCount(clientCount)} ${clientCount === 1 ? "client" : "clients"}`, busyRadios > 0 ? `${busyRadios} busy ${busyRadios === 1 ? "radio" : "radios"}` : null]
+        .filter(Boolean)
+        .join(", ")
+    : "-";
+
   const topology = {
     eeros: list,
     internet: internetNode,
@@ -98,11 +122,27 @@ export function EerosPage(_props: PageProps) {
   };
 
   return (
-    <>
+    // 56px between sections (design-system.md, Shape and spacing).
+    <div className="flex flex-col gap-14">
       <Section
         title="Mesh topology"
-        subtitle="Upstream links and mesh quality bars"
-        tools={<Segmented aria-label="Topology view" value={topoView} onValueChange={setTopoView} options={TOPOLOGY_VIEWS} />}
+        description={topologyDescription}
+        className="gap-[15px]"
+        tools={
+          // A dropdown, not a Segmented toggle (design-system.md, Dropdowns, not pill toggles).
+          <Select items={TOPOLOGY_VIEWS} value={topoView} onValueChange={(v) => v && setTopoView(v)}>
+            <SelectTrigger size="tool" aria-label="Topology view">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {TOPOLOGY_VIEWS.map((v) => (
+                <SelectItem key={v.value} value={v.value}>
+                  {v.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        }
       >
         {eeros.error && !eeros.data ? (
           <SectionError what="eeros" error={eeros.error} onRetry={() => void eeros.refetch()} />
@@ -121,8 +161,23 @@ export function EerosPage(_props: PageProps) {
 
       <Section
         title="Your eeros"
-        subtitle="Bands, channels and load per eero"
-        tools={<Segmented aria-label="Card layout" value={cardView} onValueChange={setCardView} options={CARD_VIEWS} />}
+        description={eerosDescription}
+        className="gap-[15px]"
+        tools={
+          // A dropdown, not a Segmented toggle (design-system.md, Dropdowns, not pill toggles).
+          <Select items={CARD_VIEWS} value={cardView} onValueChange={(v) => v && setCardView(v)}>
+            <SelectTrigger size="tool" aria-label="Card layout">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {CARD_VIEWS.map((v) => (
+                <SelectItem key={v.value} value={v.value}>
+                  {v.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        }
       >
         {eeros.error && !eeros.data ? (
           <SectionError what="eeros" error={eeros.error} onRetry={() => void eeros.refetch()} />
@@ -141,20 +196,19 @@ export function EerosPage(_props: PageProps) {
         )}
       </Section>
 
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <EeroUsage eeros={eeros.data} timezone={network.data?.timezone ?? null} />
-        <div className="flex flex-col gap-7">
-          {devices.error && !devices.data ? (
-            <Section title="Clients by band">
-              <SectionError what="clients" error={devices.error} onRetry={() => void devices.refetch()} />
-            </Section>
-          ) : (
-            <ClientsByBand summary={devices.data?.summary} fading={devices.fading} />
-          )}
-          <NetworkActions />
-        </div>
+        {devices.error && !devices.data ? (
+          <Section title="Clients by band">
+            <SectionError what="clients" error={devices.error} onRetry={() => void devices.refetch()} />
+          </Section>
+        ) : (
+          <ClientsByBand summary={devices.data?.summary} fading={devices.fading} />
+        )}
       </div>
-    </>
+      {/* Disruptive actions in their own row at the bottom of the page, away from the read-only sections. */}
+      <NetworkActions />
+    </div>
   );
 }
 
@@ -171,37 +225,24 @@ function FirmwareLine({ updates }: { updates: Updates | undefined }) {
         : updates.status === "scheduled"
           ? `${updates.target ?? "update"} scheduled`
           : `${updates.target ?? "update"} available`;
-  const state = text === null ? "up to date" : <TextLink to={pathFor("updates")}>{text}</TextLink>;
+  // A link inside a footnote is dimmed with it (half the text colour), keeping its underline.
+  const state =
+    text === null ? (
+      "up to date"
+    ) : (
+      <TextLink to={pathFor("updates")} className="text-foreground/50 decoration-foreground/25 hover:text-foreground/70">
+        {text}
+      </TextLink>
+    );
   // An icon like the note below, so the two lines' text lines up: a check when up to date, an up arrow otherwise.
   const Icon = updates.status === "up_to_date" ? CircleCheck : CircleArrowUp;
   return (
-    <p className="flex gap-2 px-1 text-muted-foreground text-xs">
+    <p className="flex gap-2 px-1 text-muted-foreground/50 text-xs">
       <Icon className="mt-px size-3.5 shrink-0" />
       <span>
         eeroOS {updates.current}, {state}
       </span>
     </p>
-  );
-}
-
-/**
- * Shown only when an eero other than the gateway has a wired backhaul and
- * eero reports wired devices (not eeros) on the gateway, the ones that may
- * really be plugged into that other eero: eero
- * reports wired devices plugged into it as wired to the gateway, because the
- * eero passes its spare Ethernet ports straight through to the backhaul cable
- * (docs/eero-api/data-model.md, Device). Mesh UI shows it as eero reports it.
- */
-function WiredBackhaulNote({ eeros, wiredOnGateway }: { eeros: ReadonlyArray<Eero>; wiredOnGateway: number }) {
-  if (wiredOnGateway === 0 || !eeros.some((e) => !e.isGateway && e.backhaul === "wired")) return null;
-  return (
-    <div className="flex gap-2 px-1 text-muted-foreground text-xs">
-      <Info className="mt-px size-3.5 shrink-0" />
-      <span>
-        Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet
-        ports straight through to the cable, so eero sees them arrive at the gateway's port.
-      </span>
-    </div>
   );
 }
 
@@ -212,17 +253,16 @@ function SelectedEero({ eero, eeros }: { eero: Eero; eeros: ReadonlyArray<Eero> 
   const to = pathFor("eero", { eeroId: eero.id });
   const line = eero.isGateway ? "Selected · gateway" : upstream ? `Selected · uplink to ${upstream.location}` : "Selected";
   return (
-    <Card padded className="flex flex-col gap-3">
+    // A clickable card: a click anywhere opens the eero, so there is no View link (design-system.md, Clickable cards).
+    <Card padded to={to} className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <IconTile icon={eeroIcon(eero)} />
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-[13.5px]">{eero.location}</div>
+          <div className="truncate font-medium text-sm">
+            <CardLink to={to}>{eero.location}</CardLink>
+          </div>
           <div className="truncate text-muted-foreground text-xs">{line}</div>
         </div>
-        <Button size="xs" variant="outline" render={<Link to={to} />}>
-          Open
-          <ArrowRight />
-        </Button>
       </div>
       <KvList
         className="text-xs"

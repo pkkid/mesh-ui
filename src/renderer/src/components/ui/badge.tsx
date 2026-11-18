@@ -29,3 +29,13 @@ function Badge({ className, variant, ...props }: BadgeProps) {
 }
 
 export { Badge, badgeVariants };
+
+/**
+ * "Gateway" beside an eero's name: plain dim text, no pill or outline
+ * (design-system.md, Components). Every place that marks the gateway uses it.
+ */
+function GatewayLabel() {
+  return <span className="shrink-0 font-normal text-muted-foreground text-xs">Gateway</span>;
+}
+
+export { GatewayLabel };

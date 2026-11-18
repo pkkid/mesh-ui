@@ -11,7 +11,7 @@ import { useSyncExternalStore } from "react";
 import { pathFor } from "~/app/router";
 import { eeroIcon } from "~/lib/deviceIcons";
 import { RadioTable, wirelessRadios } from "~/components/mesh/RadioTable";
-import { Badge } from "~/components/ui/badge";
+import { GatewayLabel } from "~/components/ui/badge";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Card, CardLink } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
@@ -70,12 +70,15 @@ export function useFind(eero: Pick<Eero, "id" | "location" | "status"> | null) {
 }
 
 /** "Blink light" (`eero.find`), or "Blinking · 24s" while the LED blinks. The same label on every page. */
-export function BlinkLightButton({ eero }: { eero: Eero }) {
+export function BlinkLightButton({ eero, size = "xs" }: { eero: Eero; size?: "xs" | "context" }) {
   const find = useFind(eero);
   return (
     <GatedButton
-      size="xs"
+      // "context": the region's size (the hero's 28px), as the page header sets it.
+      size={size === "context" ? undefined : size}
       variant="outline"
+      // Icons inside buttons are dim (design-system.md, Buttons and links).
+      className="[&_svg]:text-muted-foreground"
       gate={find.gate}
       disabled={find.running || find.left !== null}
       onClick={() => void find.run()}
@@ -145,7 +148,7 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
   }
 
   return (
-    <div className={cn("grid gap-3.5 transition-opacity lg:grid-cols-2", fading && "opacity-40")}>
+    <div className={cn("grid gap-4 transition-opacity lg:grid-cols-2", fading && "opacity-40")}>
       {eeros.map((e) => {
         const status = statusOf(e);
         const to = pathFor("eero", { eeroId: e.id });
@@ -154,13 +157,17 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
             <div className="flex items-center gap-3 px-[18px] pt-4 pb-3">
               <IconTile icon={eeroIcon(e)} size="lg" />
               <div className="min-w-0 flex-1">
-                <Title eero={e} to={to} large />
+                <Title eero={e} to={to} />
                 <div className="truncate text-muted-foreground text-xs">{facts(e, offlineDetail)}</div>
               </div>
-              <Status tone={status.tone}>{status.label}</Status>
-              <span data-card-ignore className="flex">
-                <BlinkLightButton eero={e} />
-              </span>
+              {/* Level with the name: top-aligned in a 20px box, the title's line height.
+                  -me-1: 4px further right, so the button's gap to the card edge matches its gap to the top. */}
+              <div className="-me-1 flex h-5 items-center gap-3 self-start">
+                <Status tone={status.tone}>{status.label}</Status>
+                <span data-card-ignore className="flex">
+                  <BlinkLightButton eero={e} />
+                </span>
+              </div>
             </div>
             <div className="border-t px-[18px] pt-3 pb-3.5">
               <RadioTable eero={e} />
@@ -172,19 +179,18 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
   );
 }
 
-/** The eero's name plus its Gateway badge. With `to` the name is the clickable card's link (its keyboard focus target). */
-function Title({ eero, to, large = false }: { eero: Eero; to?: string; large?: boolean }) {
+/** The eero's name plus its Gateway label. With `to` the name is the clickable card's link (its keyboard focus target). */
+function Title({ eero, to }: { eero: Eero; to?: string }) {
   return (
-    <span className={cn("flex min-w-0 items-center gap-2 font-medium", large ? "text-[15px]" : "text-[13.5px]")}>
+    // 14px, the list-name size on the type scale (was an off-scale 15px / 13.5px).
+    <span className="flex min-w-0 items-center gap-2 font-medium text-sm">
       {to ? (
         <CardLink to={to}>{eero.location}</CardLink>
       ) : (
         <span className="truncate">{eero.location}</span>
       )}
       {eero.isGateway && (
-        <Badge variant="outline" className="shrink-0">
-          Gateway
-        </Badge>
+        <GatewayLabel />
       )}
     </span>
   );

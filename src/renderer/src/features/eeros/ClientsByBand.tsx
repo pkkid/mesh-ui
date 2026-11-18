@@ -15,12 +15,21 @@ import type { Band, DeviceSummary } from "../../../../core/model";
 
 const BANDS: ReadonlyArray<Band> = ["2.4", "5", "6", "wired"];
 
+/** "Most on 2.4 GHz", "Most wired"; "-" until loaded, "No clients" when empty. */
+function busiestBand(counts: Partial<Record<Band, number>> | undefined): string {
+  if (!counts) return "-";
+  const top = [...BANDS].sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0))[0];
+  if (!top || (counts[top] ?? 0) === 0) return "No clients";
+  return top === "wired" ? "Most wired" : `Most on ${bandLabel(top)}`;
+}
+
 export function ClientsByBand({ summary, fading = false }: { summary: DeviceSummary | undefined; fading?: boolean }) {
   const counts = summary?.byBand;
   const total = counts ? BANDS.reduce((n, b) => n + (counts[b] ?? 0), 0) : null;
   const [active, setActive] = useState<string | null>(null);
   return (
-    <Section title="Clients by band">
+    // "Most on 2.4 GHz": the busiest band, so the subtitle says something the donut does not lead with.
+    <Section title="Clients by band" description={busiestBand(counts)} className="gap-[15px]">
       <Card padded className={cn("flex items-center gap-6 transition-opacity", fading && "opacity-40")}>
         <Donut
           size={120}
@@ -37,7 +46,7 @@ export function ClientsByBand({ summary, fading = false }: { summary: DeviceSumm
         </Donut>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           {BANDS.map((b) => (
-            <DonutLegendRow key={b} label={bandLabel(b)} color={bandColor(b)} active={active} onActiveChange={setActive} className="gap-3 text-[13px]">
+            <DonutLegendRow key={b} label={bandLabel(b)} color={bandColor(b)} active={active} onActiveChange={setActive} className="gap-3 text-sm">
               <span className="font-medium tabular-nums">{counts ? formatCount(counts[b]) : "-"}</span>
             </DonutLegendRow>
           ))}
