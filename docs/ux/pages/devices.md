@@ -35,7 +35,7 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
      19% of devices") and "Sum of current device rates while Live is on".
      With Live off: `-` and "Turn on Live to see current rates".
    - **New this week**: the count ("3") beside up to three devices with
-     icon, name and a muted line ("48 min ago · Living Room", "Tue · Living
+     icon, name and a muted line ("48m ago · Living Room", "Tue · Living
      Room", "Mon · blocked" in destructive text), or "No new devices this
      week."
 2. **Toolbar**, one row:
@@ -133,7 +133,7 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
   devices: "No devices have joined Maple Street yet." Groups with no
   devices are hidden.
 - **Error.** Table body note with Retry; summary keeps last values. A failed
-  burst leaves the last rates and marks the column "rates from 3 min ago".
+  burst leaves the last rates and marks the column "rates from 3m ago".
 - **Offline (this computer).** Shell banner; bulk and row-menu writes
   disabled; "Now" column shows `-`.
 - **Network offline.** Rows show the last known state muted; Current throughput

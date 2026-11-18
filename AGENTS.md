@@ -181,7 +181,8 @@ building a new chart; port from them rather than inventing a style.
 - **Quiet labels.** Y labels sit in a separate gutter (`w-14`) to the left,
   right-aligned, `text-3xs text-muted-foreground tabular-nums`, with the zero
   tick shown as `0`. X labels are only start, middle and end, `text-3xs
-  uppercase text-muted-foreground`.
+  text-muted-foreground`, in normal case ("Fri Oct 31", "6 PM"), never
+  uppercase.
 - **Hover.** A 1px muted vertical line at the nearest point and a tooltip
   that follows the pointer 12px away and stays inside the plot. Tooltip: the
   shared `tooltipSurface` (`bg-tooltip`, border, `rounded-md shadow-lg

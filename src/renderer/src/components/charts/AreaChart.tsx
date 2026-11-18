@@ -233,7 +233,7 @@ export function AreaChart({
 
       {labels.length === 0 ? null : (
         <div
-          className={cn("flex justify-between text-3xs text-muted-foreground uppercase", !hideYLabels && "pl-16")}
+          className={cn("flex justify-between text-3xs text-muted-foreground", !hideYLabels && "pl-16")}
           aria-hidden
         >
           <span>{start}</span>

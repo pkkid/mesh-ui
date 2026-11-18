@@ -103,7 +103,7 @@ export function SoftwareCard({
   canInstall: boolean;
   /** The network the page shows, so the watcher keeps reading it if another one is selected. */
   networkId: string | null;
-  /** When `updates.get` last answered, for "Checked 11 min ago" in the status line. */
+  /** When `updates.get` last answered, for "Checked 11m ago" in the status line. */
   checkedAt: number | null;
   fading: boolean;
 }) {

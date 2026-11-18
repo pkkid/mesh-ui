@@ -160,7 +160,7 @@ navigate as described.
   Today's Unassigned lane on this page draws them. A real write there is
   unproven (a `MANUAL:` check). A network without a default profile
   (eeroOS before 7.12.4) has no Unassigned schedules.
-- Manual pause start time ("Paused 25 min ago", the manual segment start)
+- Manual pause start time ("Paused 25m ago", the manual segment start)
   comes from the latest pause event in `events.list` when eero does not
   return a start time.
 - `profile.devices.set` replaces the full list; `device.profile.set` is the

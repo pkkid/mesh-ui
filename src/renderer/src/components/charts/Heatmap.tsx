@@ -57,7 +57,7 @@ export function Heatmap({
     <div className={cn("grid grid-cols-[2.25rem_1fr] gap-x-1 gap-y-1", className)}>
       <div className="grid gap-[3px]" aria-hidden style={{ gridTemplateRows: `repeat(${rows.length}, 1fr)` }}>
         {rows.map((label) => (
-          <div key={label} className="flex items-center text-3xs text-muted-foreground uppercase">
+          <div key={label} className="flex items-center text-3xs text-muted-foreground">
             {label}
           </div>
         ))}

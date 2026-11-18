@@ -231,7 +231,7 @@ From the mockups (`01-overview.html` and every page):
   for native window controls (`--titlebar-inset-right`). Every control in it
   has `no-drag`. Nothing follows the page title. Pages report
   their data's age with `useTopBarUpdated(fetchedAt)`, shown in the Refresh
-  button's tooltip ("Refresh (Ctrl+R) · Updated 2 min ago"), and fill one
+  button's tooltip ("Refresh (Ctrl+R) · Updated 2m ago"), and fill one
   slot, `TopBarActions`, which holds **navigation and global tools only** (Prev /
   Next on Device detail). Page actions (Add a profile, Export CSV, Rename)
   go in the page: hero actions or a section's `tools`. See

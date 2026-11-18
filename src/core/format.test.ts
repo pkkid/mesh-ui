@@ -54,19 +54,19 @@ describe("formatters", () => {
   });
 
   it("format durations", () => {
-    expect(formatDuration(45)).toBe("45 s");
-    expect(formatDuration(12 * 60)).toBe("12 min");
-    expect(formatDuration(3 * 3600 + 20 * 60)).toBe("3 h 20 min");
-    expect(formatDuration(5 * 86400 + 3 * 3600)).toBe("5 d 3 h");
+    expect(formatDuration(45)).toBe("45s");
+    expect(formatDuration(12 * 60)).toBe("12m");
+    expect(formatDuration(3 * 3600 + 20 * 60)).toBe("3h 20m");
+    expect(formatDuration(5 * 86400 + 3 * 3600)).toBe("5d 3h");
   });
 
   it("format relative time", () => {
     const now = Date.parse("2026-11-12T22:41:00Z");
     expect(formatRelative("2026-11-12T22:40:30Z", now)).toBe("just now");
-    expect(formatRelative("2026-11-12T22:36:00Z", now)).toBe("5 min ago");
-    expect(formatRelative("2026-11-12T19:41:00Z", now)).toBe("3 h ago");
-    expect(formatRelative("2026-11-10T22:41:00Z", now)).toBe("2 d ago");
-    expect(formatRelative("2026-11-12T22:46:00Z", now)).toBe("in 5 min");
+    expect(formatRelative("2026-11-12T22:36:00Z", now)).toBe("5m ago");
+    expect(formatRelative("2026-11-12T19:41:00Z", now)).toBe("3h ago");
+    expect(formatRelative("2026-11-10T22:41:00Z", now)).toBe("2d ago");
+    expect(formatRelative("2026-11-12T22:46:00Z", now)).toBe("in 5m");
     expect(formatRelative("2026-11-01T12:00:00Z", now)).toBe("Nov 1");
     expect(formatRelative("not a date", now)).toBe(MISSING);
   });

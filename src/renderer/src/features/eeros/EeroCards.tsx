@@ -99,7 +99,7 @@ export type EeroCardsProps = {
   fading?: boolean;
 };
 
-/** "eero Max 7 · 192.168.4.1 · up 23 d 4 h", or the last-seen line when offline (no uptime). */
+/** "eero Max 7 · 192.168.4.1 · up 23d 4h", or the last-seen line when offline (no uptime). */
 function facts(e: Eero, offlineDetail: (e: Eero) => string | null): string {
   const up = e.status === "offline" || e.uptimeSec === null ? offlineDetail(e) : `up ${formatDuration(e.uptimeSec)}`;
   return [e.model, e.ipv4, up].filter(Boolean).join(" · ") || "-";

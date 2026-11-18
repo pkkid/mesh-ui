@@ -86,25 +86,25 @@ const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** A duration in seconds: "45 s", "12 min", "3 h 20 min", "5 d 3 h", "-". */
+/** A duration in seconds, units right after the number: "45s", "12m", "3h 20m", "5d 3h", "-". */
 export function formatDuration(seconds: Num): string {
   if (!isNum(seconds) || seconds < 0) return MISSING;
   const s = Math.floor(seconds);
-  if (s < MINUTE) return `${s} s`;
-  if (s < HOUR) return `${Math.floor(s / MINUTE)} min`;
+  if (s < MINUTE) return `${s}s`;
+  if (s < HOUR) return `${Math.floor(s / MINUTE)}m`;
   if (s < DAY) {
     const h = Math.floor(s / HOUR);
     const m = Math.floor((s % HOUR) / MINUTE);
-    return m ? `${h} h ${m} min` : `${h} h`;
+    return m ? `${h}h ${m}m` : `${h}h`;
   }
   const d = Math.floor(s / DAY);
   const h = Math.floor((s % DAY) / HOUR);
-  return h ? `${d} d ${h} h` : `${d} d`;
+  return h ? `${d}d ${h}h` : `${d}d`;
 }
 
 /**
- * Time relative to `now` (epoch ms): "just now", "5 min ago", "3 h ago",
- * "2 d ago", "in 5 min", and a short date ("Nov 3") beyond a week.
+ * Time relative to `now` (epoch ms): "just now", "5m ago", "3h ago",
+ * "2d ago", "in 5m", and a short date ("Nov 3") beyond a week.
  */
 export function formatRelative(iso: string | null | undefined, now: number, timeZone = "UTC"): string {
   if (!iso) return MISSING;
@@ -116,7 +116,7 @@ export function formatRelative(iso: string | null | undefined, now: number, time
   if (abs >= 7 * DAY) {
     return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone }).format(at);
   }
-  const text = abs < HOUR ? `${Math.max(1, Math.round(abs / MINUTE))} min` : abs < DAY ? `${Math.round(abs / HOUR)} h` : `${Math.round(abs / DAY)} d`;
+  const text = abs < HOUR ? `${Math.max(1, Math.round(abs / MINUTE))}m` : abs < DAY ? `${Math.round(abs / HOUR)}h` : `${Math.round(abs / DAY)}d`;
   return diff >= 0 ? `${text} ago` : `in ${text}`;
 }
 

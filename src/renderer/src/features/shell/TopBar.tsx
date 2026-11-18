@@ -9,7 +9,7 @@
  * notifications and the light/dark toggle. Pages fill the slots with
  * <TopBarTitle> and <TopBarActions>, which portal into the bar, and report
  * how fresh their data is with `useTopBarUpdated(at)`, which Refresh's
- * tooltip shows ("Refresh (Ctrl+R) · Updated 2 min ago").
+ * tooltip shows ("Refresh (Ctrl+R) · Updated 2m ago").
  */
 import { Moon, RefreshCw, Search, Sun } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -155,7 +155,7 @@ const setUpdatedAt = (at: number | null) => {
 
 /**
  * Reports when the page's data was last fetched; Refresh's tooltip says
- * "Updated 2 min ago". Cleared when the page unmounts.
+ * "Updated 2m ago". Cleared when the page unmounts.
  */
 export function useTopBarUpdated(at: number | null): void {
   useEffect(() => {

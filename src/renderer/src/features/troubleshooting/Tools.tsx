@@ -94,13 +94,13 @@ function FixCard({ title, badge, children }: { title: string; badge?: ReactNode;
 
 const disruptive = <Badge variant="warning">Disruptive</Badge>;
 
-/** "12:04" or "1 h 05 min" until `iso`. */
+/** "12:04" or "1h 05m" until `iso`. */
 function countdown(iso: string, now: number): string | null {
   const left = Math.max(0, Math.round((Date.parse(iso) - now) / 1000));
   if (!Number.isFinite(left)) return null;
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
-  return h > 0 ? `${h} h ${String(m).padStart(2, "0")} min` : `${m}:${String(left % 60).padStart(2, "0")}`;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}:${String(left % 60).padStart(2, "0")}`;
 }
 
 function TwoFourOnly({ offline }: { offline: boolean }) {
