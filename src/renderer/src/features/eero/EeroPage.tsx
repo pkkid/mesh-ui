@@ -75,7 +75,8 @@ export function EeroPage({ params }: PageProps) {
 
   return (
     <>
-      <TopBarTitle>{data?.location ?? ""}</TopBarTitle>
+      {/* "Basement eero": the eero's name in the breadcrumb, with "eero" so it reads as one. */}
+      {data?.location && <TopBarTitle>{`${data.location} eero`}</TopBarTitle>}
 
       <EeroHero
         eero={data}
