@@ -6,7 +6,7 @@ where the traffic goes, and network-wide restart.
 Mockup: [../../mockups/03-eeros.html](../../mockups/03-eeros.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a muted line under the selected eero, to the right of the topology.
+Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a muted line under the selected eero, to the right of the topology, with a check icon when up to date or an up arrow otherwise; the update part ("7.13.0 available", "7.13.0 scheduled") is a TextLink to Updates & admins. Under it, only when an eero other than the gateway has a wired backhaul and eero reports wired devices (not eeros) on the gateway, an info note: "Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet ports straight through to the cable, so eero sees them arrive at the gateway's port." Mesh UI shows the device's eero as eero reports it (see eero-api/data-model.md, Device).
 Sidebar count: number of eeros.
 
 ## Layout

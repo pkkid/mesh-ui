@@ -5,7 +5,7 @@
  * docs/ux/pages/eeros.md and docs/mockups/03-eeros.html. Every figure comes
  * from a query command; the page only arranges and words it.
  */
-import { ArrowRight, LayoutGrid, List, Waypoints } from "lucide-react";
+import { ArrowRight, CircleArrowUp, CircleCheck, Info, LayoutGrid, List, Waypoints } from "lucide-react";
 import { useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
@@ -20,6 +20,7 @@ import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { KvList } from "~/components/ui/kv-list";
 import { SectionError } from "~/components/ui/page";
+import { TextLink } from "~/components/ui/text-link";
 import { Segmented } from "~/components/ui/segmented";
 import { networkStatus } from "~/components/ui/status";
 import { useTopBarUpdated } from "~/features/shell/TopBar";
@@ -112,6 +113,7 @@ export function EerosPage(_props: PageProps) {
               <WeakLinkNote issue={issue} eeros={list} networkName={network.data?.name ?? "This network"} lastSeen={lastSeen} />
               {selected && <SelectedEero eero={selected} eeros={list} />}
               <FirmwareLine updates={updates.data} />
+              <WiredBackhaulNote eeros={list} wiredOnGateway={wired.length} />
             </div>
           </div>
         )}
@@ -160,18 +162,46 @@ export function EerosPage(_props: PageProps) {
 /** Under the selected eero: the network's eeroOS and update state ("eeroOS 7.12.1, up to date"). */
 function FirmwareLine({ updates }: { updates: Updates | undefined }) {
   if (!updates?.current) return null;
-  const state =
+  // Anything but up to date links to Updates & admins ("7.13.0 available", an inline TextLink).
+  const text =
     updates.status === "up_to_date"
-      ? "up to date"
+      ? null
       : updates.status === "installing"
         ? `installing ${updates.target ?? "an update"}`
         : updates.status === "scheduled"
           ? `${updates.target ?? "update"} scheduled`
           : `${updates.target ?? "update"} available`;
+  const state = text === null ? "up to date" : <TextLink to={pathFor("updates")}>{text}</TextLink>;
+  // An icon like the note below, so the two lines' text lines up: a check when up to date, an up arrow otherwise.
+  const Icon = updates.status === "up_to_date" ? CircleCheck : CircleArrowUp;
   return (
-    <p className="px-1 text-muted-foreground text-xs">
-      eeroOS {updates.current}, {state}
+    <p className="flex gap-2 px-1 text-muted-foreground text-xs">
+      <Icon className="mt-px size-3.5 shrink-0" />
+      <span>
+        eeroOS {updates.current}, {state}
+      </span>
     </p>
+  );
+}
+
+/**
+ * Shown only when an eero other than the gateway has a wired backhaul and
+ * eero reports wired devices (not eeros) on the gateway, the ones that may
+ * really be plugged into that other eero: eero
+ * reports wired devices plugged into it as wired to the gateway, because the
+ * eero passes its spare Ethernet ports straight through to the backhaul cable
+ * (docs/eero-api/data-model.md, Device). Mesh UI shows it as eero reports it.
+ */
+function WiredBackhaulNote({ eeros, wiredOnGateway }: { eeros: ReadonlyArray<Eero>; wiredOnGateway: number }) {
+  if (wiredOnGateway === 0 || !eeros.some((e) => !e.isGateway && e.backhaul === "wired")) return null;
+  return (
+    <div className="flex gap-2 px-1 text-muted-foreground text-xs">
+      <Info className="mt-px size-3.5 shrink-0" />
+      <span>
+        Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet
+        ports straight through to the cable, so eero sees them arrive at the gateway's port.
+      </span>
+    </div>
   );
 }
 
