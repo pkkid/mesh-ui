@@ -76,7 +76,8 @@ export function FilterSearch({
         onKeyDown={(e) => {
           if (e.key === "Escape") onValueChange("");
         }}
-        className="pe-7 text-[13px]"
+        // 32px outside like every toolbar control: the field's 1px border sits around the input.
+        className="pe-7 text-[13px] [&_input]:h-[30px]"
         {...props}
       />
       <kbd className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 rounded-[5px] border px-1.5 font-mono text-2xs text-muted-foreground">

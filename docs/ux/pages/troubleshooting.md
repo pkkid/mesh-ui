@@ -35,7 +35,7 @@ Breadcrumb `Settings / Troubleshooting`, nothing after it. `Last health check 2m
 | Upgrade report | `coverage.upgrade_report` | on load |
 | Radio channels table | `eero.list` (radio stats per band; `Radio.autoChannel` is always null on eero, so Auto channel shows `-`) | every 60 s |
 | 2.4 GHz mode state and countdown | `wifi.get` (`hide5g` with expiry) | every 15 s while active |
-| Joined during this window | `device.list` `{firstSeenSince}` (start of the window) | every 15 s while active |
+| Joined during this window | `device.list` `{newSince}` (start of the window; devices eero announced as new) | every 15 s while active |
 | Legacy mode state, devices that may need it | `settings.get` (legacy mode), `coverage.upgrade_report` | on load |
 | Restart rows, downstream eeros, last restart | `eero.list`, `events.list` `{type: "eero_status"}` | on load |
 | Device count in the restart confirm | `network.get` | on load |

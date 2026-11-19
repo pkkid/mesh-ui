@@ -42,7 +42,7 @@ export const isOfflineAlert = (n: M.Notification): boolean => (n.category === "n
 export const desktopEnabled = (desktop: Record<string, boolean> | null | undefined): boolean => desktop?.enabled !== false;
 
 /** Which desktop choice covers a notification: an offline network or eero, a device, or anything else. */
-export const desktopKind = (n: M.Notification): Exclude<DesktopKey, "enabled"> => (isOfflineAlert(n) ? "offline" : n.category === "device" || n.category === "devices" ? "devices" : "other");
+export const desktopKind = (n: M.Notification): Exclude<DesktopKey, "enabled"> => (isOfflineAlert(n) ? "offline" : n.category === "device" || n.category === "devices" || n.category?.startsWith("device.") ? "devices" : "other");
 
 /** Whether the desktop choices allow an OS alert for this notification. */
 export const desktopAllows = (desktop: Record<string, boolean> | null | undefined, n: M.Notification): boolean => desktopEnabled(desktop) && desktop?.[desktopKind(n)] !== false;

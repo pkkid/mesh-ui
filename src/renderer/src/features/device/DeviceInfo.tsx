@@ -5,12 +5,13 @@
  * the eero port and its negotiated speed instead. Anything eero does not
  * report, or that only applies while connected, shows `-`.
  */
-import { ShieldCheck } from "lucide-react";
+import { ExternalLink, ShieldCheck } from "lucide-react";
 
 import { useQuery } from "~/app/useCommand";
 import { Card, Section } from "~/components/ui/card";
 import { type KvItem, KvList } from "~/components/ui/kv-list";
-import { formatMbps, formatPercent } from "../../../../core/format";
+import { formatMbps, formatPercent, networkClock } from "../../../../core/format";
+import { deviceSearchQuery, deviceSearchUrl } from "../../../../core/deviceLookup";
 import type { Device, Eero } from "../../../../core/model";
 
 import type { DeviceView } from "./DevicePage";
@@ -20,14 +21,10 @@ const join = (parts: (string | null | undefined)[]) => {
   return shown.length ? shown.join(" · ") : null;
 };
 
-function firstSeen(iso: string | null, timeZone: string | null | undefined): string | null {
-  const ms = iso ? Date.parse(iso) : Number.NaN;
-  if (!Number.isFinite(ms)) return null;
-  try {
-    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: timeZone || "UTC" }).format(ms);
-  } catch {
-    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(ms);
-  }
+/** "Nov 18, 9:41 PM" in the network's time zone (shared clock); null when eero has no time. */
+function activeSince(iso: string | null, timeZone: string | null | undefined): string | null {
+  if (!iso || !Number.isFinite(Date.parse(iso))) return null;
+  return networkClock(timeZone).dateTime(iso);
 }
 
 const bandText = (d: Device) => (d.band && d.band !== "wired" ? `${d.band} GHz` : null);
@@ -76,13 +73,37 @@ export function DeviceInfo({ view }: { view: DeviceView }) {
       },
     );
   }
-  items.push({ label: "First seen", value: d ? firstSeen(d.firstSeen, view.network?.timezone) : null });
+  items.push({ label: "Active since", value: d ? activeSince(d.firstSeen, view.network?.timezone) : null });
 
   return (
-    <Section title="Device information">
+    <Section title="Device information" tools={d ? <LookUpOnline device={d} /> : null}>
       <Card padded>
         <KvList items={items} />
       </Card>
     </Section>
+  );
+}
+
+/**
+ * A web search for the device, opened in the user's browser (the window's open
+ * handler sends https links there, never into the app). It goes somewhere, so
+ * it is a link, not a button: dim like a section header link, with the
+ * external-link icon in place of the arrow because it leaves the app. The
+ * tooltip shows exactly what is searched; see core/deviceLookup.ts.
+ */
+function LookUpOnline({ device }: { device: Device }) {
+  const url = deviceSearchUrl(device);
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title={`Search the web for: ${deviceSearchQuery(device)}`}
+      className="inline-flex items-center gap-1 rounded-sm text-muted-foreground text-xs outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      Look up online
+      <ExternalLink aria-hidden className="size-3.5" />
+    </a>
   );
 }

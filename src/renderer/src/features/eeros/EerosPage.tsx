@@ -125,7 +125,8 @@ export function EerosPage(_props: PageProps) {
     // 56px between sections (design-system.md, Shape and spacing).
     <div className="flex flex-col gap-14">
       <Section
-        title="Mesh topology"
+        // The page's first heading, at the hero title size (28px) like every other page's header, though eeros has no hero.
+        title={<span className="text-[28px] leading-tight tracking-tight">Mesh topology</span>}
         description={topologyDescription}
         className="gap-[15px]"
         tools={

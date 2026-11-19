@@ -118,7 +118,7 @@ describe("device.list (demo)", () => {
     expect((await list(engine, { blocked: false })).devices).toHaveLength(36);
   });
 
-  it("filters by eero, profile, band, type, network, manufacturer and first seen", async () => {
+  it("filters by eero, profile, band, type, network, manufacturer and new this week", async () => {
     const { engine } = demo();
     const office = await list(engine, { eero: "Office" });
     expect(office.devices.every((d) => d.eeroId === "80012")).toBe(true);
@@ -132,7 +132,46 @@ describe("device.list (demo)", () => {
     expect(names(await list(engine, { ssid: "guest" }))).toEqual(["Grandma's iPad", "Sam's Pixel"]);
     expect(names(await list(engine, { manufacturer: "sonos" }))).toEqual(["Sonos Kitchen", "Sonos Living Room"]);
     const since = new Date(NOW - 7 * 86_400_000).toISOString();
-    expect(names(await list(engine, { firstSeenSince: since }))).toEqual(["ESP_3A9F21", "Grandma's iPad", "Nest Thermostat"]);
+    expect(names(await list(engine, { newSince: since }))).toEqual(["ESP_3A9F21", "Grandma's iPad", "Nest Thermostat"]);
+  });
+
+  it("takes New this week from eero's New Device notifications, not first_active", async () => {
+    const { engine } = demo();
+    const all = (await list(engine)).devices;
+    const tv = all.find((d) => d.name === "Living Room TV");
+    const esp = all.find((d) => d.name === "ESP_3A9F21");
+    if (!tv || !esp) throw new Error("fixture");
+    // The TV rejoined minutes ago (first_active restarts) but eero never announced it; the ESP was announced 10 days ago.
+    const rejoined = all.map((d) => (d.id === tv.id ? { ...d, firstSeen: new Date(NOW - 5 * 60_000).toISOString() } : d));
+    const announced = new Map([
+      [esp.id, NOW - 10 * 86_400_000],
+      [tv.id + "-gone", NOW - 60_000],
+    ]);
+    const s = summarize(rejoined, NOW, announced);
+    expect(s.newThisWeek).toEqual([]);
+    expect(s.newestAt).toBeNull();
+    const recent = summarize(all, NOW, new Map([[esp.id, NOW - 3_600_000]]));
+    expect(recent.newThisWeek).toEqual([esp.id]);
+    expect(recent.newestAt).toBe(new Date(NOW - 3_600_000).toISOString());
+  });
+
+  it("still lists devices when the notifications read fails, with none new", async () => {
+    const backend = createDemoBackend({ clock: () => NOW });
+    backend.notifications.list = async () => {
+      throw new Error("down");
+    };
+    const engine = createEngine({ backend, clock: () => NOW });
+    const r = await list(engine);
+    expect(r.devices.length).toBeGreaterThan(0);
+    expect(r.summary.newThisWeek).toEqual([]);
+  });
+
+  it("lists the demo's announced devices newest first", async () => {
+    const { engine } = demo();
+    const r = await list(engine);
+    const byId = new Map(r.devices.map((d) => [d.id, d.name]));
+    expect(r.summary.newThisWeek.map((id) => byId.get(id))).toEqual(["Nest Thermostat", "Grandma's iPad", "ESP_3A9F21"]);
+    expect(r.summary.newestAt).toBe(new Date(NOW - 48 * 60_000).toISOString());
   });
 
   it("searches name, manufacturer, MAC with or without colons, and IP", async () => {
@@ -223,14 +262,14 @@ describe("device.list (demo)", () => {
     const r = await demo().engine.execute<string>("device.list", { format: "csv", profile: "Leo" });
     if (!r.ok) throw new Error(r.error.message);
     const lines = r.result.trimEnd().split("\r\n");
-    expect(lines[0]).toBe("Name,Status,Connected to,Band,Network,IP,MAC,Profile,Manufacturer,Model,Category,Down Mbps,Up Mbps,Last active,First seen");
+    expect(lines[0]).toBe("Name,Status,Connected to,Band,Network,IP,MAC,Profile,Manufacturer,Model,Category,Down Mbps,Up Mbps,Last active,Active since");
     expect(lines).toHaveLength(4);
     expect(lines[3]).toMatch(/^Leo's Switch,Paused,Living Room,5 GHz,main,192\.168\.4\.172,[0-9a-f:]+,Leo,Nintendo,Switch 2,entertainment,,,/);
   });
 
   it("fails bad_params for wrong values and unknown refs", async () => {
     const { engine } = demo();
-    for (const params of [{ status: "sleeping" }, { band: "7" }, { limit: 0 }, { firstSeenSince: "yesterday" }, { sort: "size" }, { order: "up" }, { sort: "ip", order: "ASC" }, { eero: "Attic" }, { profile: "Nobody" }]) {
+    for (const params of [{ status: "sleeping" }, { band: "7" }, { limit: 0 }, { newSince: "yesterday" }, { sort: "size" }, { order: "up" }, { sort: "ip", order: "ASC" }, { eero: "Attic" }, { profile: "Nobody" }]) {
       expect(await engine.execute("device.list", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
     }
   });

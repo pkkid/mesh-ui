@@ -1,25 +1,24 @@
 /**
- * Device detail hero (docs/ux/pages/device-detail.md, Layout 1): type icon,
- * name with the GUEST tag, status line, Profile / Connected to / Signal, the
- * action row and the live Now box. Pause and Resume, Change profile and
- * Unblock run at once with an Undo toast; Block asks first through the
- * page's confirm dialog (`onBlock`); Appearance opens the sheet (nickname
- * and type, saving only what changed). Controls dim by permission.
+ * Device detail hero (docs/ux/pages/device-detail.md, Layout 1): the flat page
+ * header with the type icon, name with the GUEST tag, status line, Profile /
+ * Connected to / Signal, the action row (Pause or Resume, then Block, all
+ * outline) and Live throughput on the right (DeviceNow). Pause, Resume and
+ * Unblock run at once with an Undo toast; Block asks first through the page's
+ * confirm dialog (`onBlock`). Appearance and the profile are settings rows at
+ * the bottom of the page (DeviceSettings). Controls dim by permission.
  * States: offline ("last seen 2h ago on Upstairs Hall"), paused (Resume
- * device), blocked (only Unblock and Appearance), guest (no Pause or Change
- * profile), wired (Signal `-`) and bridge mode (no Pause, profile, Block or
- * Now box).
+ * device), blocked (only Unblock), guest (no Pause), wired (Signal `-`) and
+ * bridge mode (no Pause, Block or Live throughput).
  */
-import { Ban, ChevronDown, CircleCheck, Pause, Pencil, Play, UserRound } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { Ban, CircleCheck, Pause, Play } from "lucide-react";
+import { type ReactNode, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { fieldErrors, performWrite, type WriteOutcome } from "~/app/useWrite";
 import { Metric, PageHeader } from "~/components/ui/hero";
-import { Input } from "~/components/ui/input";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
-import { Sheet, SheetField } from "~/components/ui/sheet";
-import { blockRequest, pauseRequest, ProfileMenu, profileRequest } from "~/features/devices/BulkBar";
+import { Sheet } from "~/components/ui/sheet";
+import { blockRequest, pauseRequest } from "~/features/devices/BulkBar";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { entityColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
@@ -64,9 +63,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true, enabled: !view.bridged });
   const now = useNow();
   const gate = useGate({ area: "devices", bridgeOff: true });
-  const editGate = useGate({ area: "devices" });
   const blockGate = useGate({ area: "devices", bridgeOff: true, capability: "device_blacklist" });
-  const [appearance, setAppearance] = useState(false);
 
   // While device.get loads, the name and icon come from the list cache.
   const d = view.device ?? fallback;
@@ -99,53 +96,24 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   } else if (ready) {
     if (!view.bridged && !view.guest)
       actions.push(
-        <GatedButton key="pause" gate={gate} onClick={() => void performWrite(pauseRequest([ready], !ready.paused))}>
+        <GatedButton key="pause" gate={gate} variant="outline" onClick={() => void performWrite(pauseRequest([ready], !ready.paused))}>
           {ready.paused ? <Play /> : <Pause />}
-          {ready.paused ? "Resume device" : "Pause device"}
+          {ready.paused ? "Resume device" : "Pause device…"}
         </GatedButton>,
       );
   }
-  if (d)
-    actions.push(
-      <GatedButton key="appearance" gate={ready ? editGate : { allowed: false, reason: null }} variant="outline" onClick={() => setAppearance(true)}>
-        <Pencil />
-        Appearance
-      </GatedButton>,
-    );
   if (ready && state !== "blocked" && !view.bridged) {
-    if (!view.guest) {
-      const button = (
-        <GatedButton key="profile" gate={gate} variant="outline">
-          <UserRound />
-          Change profile
-          <ChevronDown />
-        </GatedButton>
-      );
-      const options = list.map((p) => ({ id: p.id, name: p.name, color: entityColors(list.map((x) => x.id))[p.id] }));
-      actions.push(
-        gate.allowed ? (
-          <ProfileMenu
-            key="profile"
-            profiles={options}
-            current={ready.profileId}
-            onPick={(p) => void performWrite(profileRequest([ready], p))}
-            trigger={button}
-          />
-        ) : (
-          button
-        ),
-      );
-    }
     actions.push(
       <GatedButton key="block" gate={blockGate} variant="outline" className="text-destructive-foreground" onClick={onBlock}>
         <Ban />
-        Block
+        Block…
       </GatedButton>,
     );
   }
 
   return (
     <PageHeader
+      flat
       icon={deviceIcon(d)}
       title={
         <span className="flex min-w-0 items-center gap-2.5">
@@ -202,138 +170,77 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
           />
         </>
       }
-      actions={
-        actions.length ? (
-          <>
-            {actions}
-            {ready && <AppearanceSheet key={`${ready.id}:${appearance}`} device={ready} open={appearance} onClose={() => setAppearance(false)} />}
-          </>
-        ) : undefined
-      }
-      aside={view.bridged || !d ? undefined : <DeviceNow device={d} muted={state === "blocked"} />}
+      actions={actions.length ? <>{actions}</> : undefined}
+      aside={view.bridged || !d ? undefined : <DeviceNow device={d} timezone={view.network?.timezone} />}
     />
   );
 }
 
 /**
- * The Appearance sheet (device-detail.md, Layout 3): nickname with a count
- * and "reset to hostname" (clears the nickname, so the device follows its own
- * name again), and the device type grid. Save runs `device.rename` and/or
- * `device.type.set`, only what changed.
+ * The icon sheet (device-detail.md, Layout 4), from the icon button on Device
+ * settings' Appearance row: only the device type grid. Save runs
+ * `device.type.set`, with Undo.
  */
-function AppearanceSheet({ device: d, open, onClose }: { device: Device; open: boolean; onClose: () => void }) {
-  const [nickname, setNickname] = useState(d.nickname ?? "");
+export function IconSheet({ device: d, open, onClose }: { device: Device; open: boolean; onClose: () => void }) {
   const [type, setType] = useState(d.type);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const nameId = useId();
-  const nameChanged = nickname.trim() !== (d.nickname ?? "");
-  const typeChanged = type !== d.type;
-  const label = DEVICE_TYPES.find((t) => t.type === type)?.label ?? typeLabel(type);
-
+  const [error, setError] = useState<string | null>(null);
+  const changed = type !== d.type;
   const save = async (): Promise<WriteOutcome<Device>> => {
-    setErrors({});
-    setFormError(null);
-    let res: WriteOutcome<Device> = null;
-    const name = nickname.trim();
-    if (nameChanged) {
-      res = await performWrite<Record<string, unknown>, Device>({
-        id: "device.rename",
-        params: { device: d.id, nickname: name },
-        form: true,
-        success: typeChanged ? undefined : "Saved",
-        failure: `Couldn't rename ${d.name}`,
-        undo: typeChanged ? undefined : { id: "device.rename", params: { device: d.id, nickname: d.nickname ?? "" } },
-      });
-      if (!res?.ok) {
-        if (res && !res.ok) setErrors(fieldErrors(res.error));
-        return res;
-      }
-    }
-    if (typeChanged) {
-      res = await performWrite<Record<string, unknown>, Device>({
-        id: "device.type.set",
-        params: { device: d.id, type },
-        form: true,
-        success: "Saved",
-        failure: `Couldn't change the type of ${d.name}`,
-        undo: nameChanged ? undefined : { id: "device.type.set", params: { device: d.id, type: d.type } },
-      });
-      if (res && !res.ok) {
-        const f = fieldErrors(res.error);
-        setErrors(f);
-        if (f._form) setFormError(f._form);
-      }
+    setError(null);
+    const res = await performWrite<Record<string, unknown>, Device>({
+      id: "device.type.set",
+      params: { device: d.id, type },
+      form: true,
+      success: "Saved",
+      failure: `Couldn't change the icon of ${d.name}`,
+      undo: { id: "device.type.set", params: { device: d.id, type: d.type } },
+    });
+    if (res && !res.ok) {
+      const f = fieldErrors(res.error);
+      setError(f.type ?? f._form ?? res.error.message);
     }
     return res;
   };
 
+  const CurrentIcon = deviceIcon({ type, category: deviceCategory(type) });
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<Pencil className="size-4" />}
-      title="Appearance"
-      subtitle="Nickname and icon, shown everywhere in Mesh UI and the eero app"
-      dirty={nameChanged || typeChanged}
-      valid={nickname.trim().length <= 32}
+      icon={<CurrentIcon className="size-4" />}
+      title="Icon"
+      subtitle={`The icon for ${d.name}, shown everywhere in Mesh UI and the eero app`}
+      dirty={changed}
+      valid
       onSave={save}
-      error={formError ?? errors._form}
+      error={error}
       className="max-w-xl"
+      clean
     >
-      <SheetField
-        label="Nickname"
-        htmlFor={nameId}
-        error={errors.nickname}
-        helper={
-          <span className="flex items-center gap-1.5">
-            <span className="tabular-nums">{nickname.trim().length} / 32</span>
-            {d.hostname && (
-              <>
-                <span aria-hidden>·</span>
-                <span>
-                  Hostname: <span className="font-mono">{d.hostname}</span>
-                </span>
-              </>
-            )}
-            {nickname !== "" && (
-              <>
-                <span aria-hidden>·</span>
-                <button type="button" className="cursor-pointer underline-offset-2 hover:underline" onClick={() => setNickname("")}>
-                  reset to {d.hostname ? "hostname" : "eero's name"}
-                </button>
-              </>
-            )}
-          </span>
-        }
-      >
-        <Input id={nameId} value={nickname} maxLength={32} placeholder={d.hostname ?? d.name} onChange={(e) => setNickname(e.target.value)} />
-      </SheetField>
-      <SheetField label={<span className="flex justify-between">Device type<span className="font-normal text-muted-foreground">{label}</span></span>} error={errors.type}>
-        <div role="radiogroup" aria-label="Device type" className="grid grid-cols-8 gap-1">
-          {DEVICE_TYPES.map((t) => {
-            const on = t.type === type;
-            const Icon = deviceIcon({ type: t.type, category: deviceCategory(t.type) });
-            return (
-              <button
-                key={t.type}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                title={t.label}
-                onClick={() => setType(t.type)}
-                className={cn(
-                  "flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-0.5 py-1.5 outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring",
-                  on ? "border-foreground/50 bg-muted text-foreground" : "border-transparent text-muted-foreground",
-                )}
-              >
-                <Icon aria-hidden className="size-4" />
-                <span className="w-full truncate text-center text-3xs">{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </SheetField>
+      {/* The grid alone: the title says what it is, and the picked tile is marked. */}
+      <div role="radiogroup" aria-label="Device type" className="grid grid-cols-8 gap-1">
+        {DEVICE_TYPES.map((t) => {
+          const on = t.type === type;
+          const Icon = deviceIcon({ type: t.type, category: deviceCategory(t.type) });
+          return (
+            <button
+              key={t.type}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              title={t.label}
+              onClick={() => setType(t.type)}
+              className={cn(
+                "flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-0.5 py-1.5 outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring",
+                on ? "border-foreground/50 bg-muted text-foreground" : "border-transparent text-muted-foreground",
+              )}
+            >
+              <Icon aria-hidden className="size-4" />
+              <span className="w-full truncate text-center text-3xs">{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </Sheet>
   );
 }

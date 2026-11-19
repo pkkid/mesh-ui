@@ -290,6 +290,8 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      // Live rates keep their 4 s burst reads while the window is minimized or hidden.
+      backgroundThrottling: false,
       ...(isHeadless ? { offscreen: true } : {}),
     },
   });

@@ -10,11 +10,12 @@
  * Undo) refreshes all of them and device detail's reservation (`RELATED` in
  * useCommand). Removals ask first in the app's confirm dialog.
  */
-import { ArrowRight, Bookmark, BookmarkPlus, Check, CircleAlert, Globe, Plus, Router, ShieldPlus } from "lucide-react";
+import { ArrowRight, Bookmark, BookmarkPlus, Check, CircleAlert, Globe, Plus, Router, ShieldPlus, Trash2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { fieldErrors, performWrite, useWrite } from "~/app/useWrite";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
 import { Sheet, SheetField } from "~/components/ui/sheet";
@@ -67,11 +68,18 @@ function CheckLine({ ok, children }: { ok: boolean; children: React.ReactNode })
 
 export type ReservationSheetMode = { kind: "add"; deviceId?: string } | { kind: "edit"; reservation: Reservation };
 
-export function ReservationSheet({ mode, onClose }: { mode: ReservationSheetMode | null; onClose: () => void }) {
-  return mode ? <ReservationBody key={mode.kind === "add" ? `add:${mode.deviceId ?? ""}` : mode.reservation.id} mode={mode} onClose={onClose} /> : null;
+/**
+ * Add or edit a reservation. With `removable`, editing also offers
+ * Remove reservation… on the left of the footer (device detail, which has
+ * no other way to remove one; the Reservations list removes from its rows).
+ */
+export function ReservationSheet({ mode, onClose, removable = false }: { mode: ReservationSheetMode | null; onClose: () => void; removable?: boolean }) {
+  return mode ? (
+    <ReservationBody key={mode.kind === "add" ? `add:${mode.deviceId ?? ""}` : mode.reservation.id} mode={mode} onClose={onClose} removable={removable} />
+  ) : null;
 }
 
-function ReservationBody({ mode, onClose }: { mode: ReservationSheetMode; onClose: () => void }) {
+function ReservationBody({ mode, onClose, removable }: { mode: ReservationSheetMode; onClose: () => void; removable: boolean }) {
   const devices = useDevices();
   const ids = { device: useId(), ip: useId(), name: useId() };
   const initial = mode.kind === "edit" ? mode.reservation : null;
@@ -80,6 +88,7 @@ function ReservationBody({ mode, onClose }: { mode: ReservationSheetMode; onClos
   const [ip, setIp] = useState(initial?.ip ?? "");
   const [ipTouched, setIpTouched] = useState(mode.kind === "edit");
   const [name, setName] = useState(initial?.name ?? "");
+  const [removing, setRemoving] = useState(false);
   // A new reservation suggests the device's current address until the person types one.
   const shownIp = ipTouched ? ip : (device?.ipv4 ?? "");
 
@@ -121,6 +130,27 @@ function ReservationBody({ mode, onClose }: { mode: ReservationSheetMode; onClos
       dirty={dirty}
       valid={valid}
       onSave={save}
+      footerStart={
+        removable && initial ? (
+          // Asks first (the confirm also names any port forwards that go with it), so it ends in an ellipsis.
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-destructive-foreground"
+            disabled={removing}
+            onClick={() => {
+              setRemoving(true);
+              void removeReservation(initial, device?.name ?? initial.name)
+                .then((r) => r?.ok && onClose())
+                .finally(() => setRemoving(false));
+            }}
+          >
+            <Trash2 />
+            Remove reservation{"\u2026"}
+          </Button>
+        ) : undefined
+      }
       saveLabel={mode.kind === "add" ? "Save reservation" : "Save"}
       error={errors._form}
     >

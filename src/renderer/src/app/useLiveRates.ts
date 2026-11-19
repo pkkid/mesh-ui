@@ -1,8 +1,9 @@
 /**
  * Live rates for every view that shows them, only while the shared Live
- * switch is on (`useLiveMode`, #319). Those views (Devices, Device detail Now box). While the window is visible and
- * `active`, it asks for `device.rates.refresh` every `POLL.rates` seconds
- * and, once the burst has settled, refetches `device.list` and `device.get`
+ * switch is on (`useLiveMode`, #319). Those views (Devices, Device detail Now box). While
+ * `active`, it asks for `device.rates.refresh` every `POLL.rates` seconds,
+ * minimized or hidden windows included (Live is bounded already: it turns
+ * off after 10 minutes and when the user leaves those pages), and, once the burst has settled, refetches `device.list` and `device.get`
  * every few seconds while eero keeps the burst's figures live
  * (`burstReadTimes`), like the eero app's live view (#254). eero queues a
  * burst asked for while its last one is still running (its `next_burst` then
@@ -32,18 +33,16 @@ export function useLiveRates(active: boolean, key = ""): void {
     let reads: ReturnType<typeof setTimeout>[] = [];
     const tick = async () => {
       let wait = POLL.rates * 1000;
-      if (document.visibilityState === "visible") {
-        const res = await run({});
-        if (cancelled) return;
-        const due = res.ok ? Date.parse(res.result.nextBurstAt) : Number.NaN;
-        if (Number.isFinite(due)) {
-          for (const t of reads) clearTimeout(t);
-          reads = burstReadTimes(due)
-            .map((at) => at - Date.now())
-            .filter((ms) => ms > 0)
-            .map((ms) => setTimeout(() => invalidate(["device.list", "device.get"]), ms));
-          wait = Math.max(wait, due + (BURST_LIVE_SEC + 1) * 1000 - Date.now());
-        }
+      const res = await run({});
+      if (cancelled) return;
+      const due = res.ok ? Date.parse(res.result.nextBurstAt) : Number.NaN;
+      if (Number.isFinite(due)) {
+        for (const t of reads) clearTimeout(t);
+        reads = burstReadTimes(due)
+          .map((at) => at - Date.now())
+          .filter((ms) => ms > 0)
+          .map((ms) => setTimeout(() => invalidate(["device.list", "device.get"]), ms));
+        wait = Math.max(wait, due + (BURST_LIVE_SEC + 1) * 1000 - Date.now());
       }
       if (!cancelled) next = setTimeout(tick, wait);
     };

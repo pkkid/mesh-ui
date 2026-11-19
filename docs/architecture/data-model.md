@@ -390,7 +390,8 @@ type DeviceList = {
     byEero: { eeroId: Id | null; count: number }[];
     byProfile: { profileId: Id | null; count: number }[];
     byManufacturer: { manufacturer: string | null; count: number }[];
-    newThisWeek: Id[];
+    newThisWeek: Id[]; // announced by eero's New Device notification (device.new) in the last 7 days, newest first
+    newestAt: Iso | null;
     rates: { downMbps: number; upMbps: number; active: number; at: Iso } | null;
   };
 };
@@ -412,7 +413,7 @@ type DeviceBulkResult = {
 | `privateMac` | `is_private` |
 | `ipv4`, `ipv6` | `ipv4` or `ip`, `ipv6_addresses[].address` |
 | `ipv6LinkLocal` | the `fe80::` entry of `ipv6_addresses` |
-| `connected`, `lastActive`, `firstSeen` | `connected`, `last_active`, `first_active` |
+| `connected`, `lastActive`, `firstSeen` | `connected`, `last_active`, `first_active` (when the current stretch of activity began: it restarts when a device rejoins after a while away or the eeros restart, so it is not "first ever seen"; shown as "Active since") |
 | `ssid` | `is_guest` (guest) else main; `subnet_kind` when present |
 | `eeroId` | `source.url` |
 | `band` | `interface.frequency` (`"2.4"`, `"5"`, `"6"`); `wireless == false` gives `"wired"` |

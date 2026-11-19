@@ -1,20 +1,20 @@
 /**
  * Device detail (docs/ux/pages/device-detail.md, mockup 06): hero with the
- * device writes and the live Now box, data usage, device information, IP
- * addresses and port forwards. Block asks first in the confirm dialog.
- * Reservations and forwards stay disabled
- * until their commands land (M5).
+ * device writes and Live throughput, data usage, device information, IP
+ * addresses, port forwards and Device settings. Block asks first in the
+ * confirm dialog. The topbar holds only the Live switch.
  *
- * Prev and Next (also `[` and `]`) follow the Devices table's order, which
- * is view state the table remembers; opened without it (a restart, a deep
- * link) they follow `device.list`'s default order, A to Z.
+ * `[` and `]` step to the previous and next device in the Devices table's
+ * order, which is view state the table remembers; opened without it (a
+ * restart, a deep link) they follow `device.list`'s default order, A to Z.
  */
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { type ReactNode, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
+import { useLivePage } from "~/app/useLiveMode";
+import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
@@ -24,10 +24,10 @@ import { blockRequest } from "~/features/devices/BulkBar";
 import { devicesOrder } from "~/features/devices/DeviceTable";
 import type { Device, DeviceList, Network } from "../../../../core/model";
 
-import { DeviceAddresses } from "./DeviceAddresses";
-import { DeviceForwards } from "./DeviceForwards";
 import { DeviceHero } from "./DeviceHero";
 import { DeviceInfo } from "./DeviceInfo";
+import { DeviceNetwork } from "./DeviceNetwork";
+import { DeviceSettings } from "./DeviceSettings";
 import { DeviceUsage } from "./DeviceUsage";
 
 /** What the page is showing, shared by its sections. */
@@ -56,7 +56,7 @@ export function DevicePage({ params }: PageProps) {
     guest: d?.ssid === "guest",
   };
 
-  // Prev and Next: the Devices table's order when it has one with this device, else A to Z.
+  // `[` and `]` step to the previous and next device: the Devices table's order when it has one with this device, else A to Z.
   const order = useMemo(() => {
     const shown = devicesOrder();
     if (shown.includes(id)) return shown;
@@ -80,35 +80,13 @@ export function DevicePage({ params }: PageProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [prev, next]);
 
-  const step = (to: string | undefined, label: string, kbd: string, children: ReactNode) => (
-    <Button
-      variant="ghost"
-      size="xs"
-      disabled={!to}
-      title={`${label} (${kbd})`}
-      aria-keyshortcuts={kbd}
-      onClick={() => to && navigate(pathFor("device", { deviceId: to }), { replace: true })}
-    >
-      {children}
-    </Button>
-  );
+  useLivePage();
 
   return (
     <>
       {d && <TopBarTitle>{d.name}</TopBarTitle>}
       <TopBarActions>
-        {step(prev, "Previous device", "[", (
-          <>
-            <ChevronLeft />
-            Prev
-          </>
-        ))}
-        {step(next, "Next device", "]", (
-          <>
-            Next
-            <ChevronRight />
-          </>
-        ))}
+        <LiveToggle size="tool" />
       </TopBarActions>
 
       {gone ? (
@@ -131,15 +109,18 @@ export function DevicePage({ params }: PageProps) {
               need eero to run the network (NAT), so they are hidden here.
             </Card>
           )}
-          <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-            <div className="flex min-w-0 flex-col gap-7">
-              <DeviceUsage view={view} id={id} />
-              <DeviceInfo view={view} />
+          {/* 56px between sections, the same as from the hero's rule to the first (design-system.md, Shape and spacing). */}
+          <div className="flex flex-col gap-14">
+            <div className="grid items-start gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+              <div className="flex min-w-0 flex-col gap-14">
+                <DeviceUsage view={view} id={id} />
+                <DeviceInfo view={view} />
+              </div>
+              <div className="flex min-w-0 flex-col gap-14">
+                <DeviceNetwork view={view} id={id} />
+              </div>
             </div>
-            <div className="flex min-w-0 flex-col gap-7">
-              <DeviceAddresses view={view} />
-              {!view.bridged && !view.guest && <DeviceForwards view={view} id={id} />}
-            </div>
+            <DeviceSettings view={view} />
           </div>
         </>
       )}

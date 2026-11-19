@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatDuration, formatMbps, formatPercent, formatPlanShare, formatRelative, MISSING, networkClock, toCsv } from "./format";
+import { formatBytes, formatCountdown, formatDuration, formatMbps, formatPercent, formatPlanShare, formatRelative, MISSING, networkClock, toCsv } from "./format";
 
 describe("formatters", () => {
   it("show '-' for a missing value, never 0 or blank", () => {
-    for (const f of [formatMbps, formatBytes, formatPercent, formatDuration]) {
+    for (const f of [formatMbps, formatBytes, formatPercent, formatDuration, formatCountdown]) {
       expect(f(null)).toBe(MISSING);
       expect(f(undefined)).toBe(MISSING);
       expect(f(Number.NaN)).toBe(MISSING);
@@ -60,6 +60,13 @@ describe("formatters", () => {
     expect(formatDuration(5 * 86400 + 3 * 3600)).toBe("5d 3h");
   });
 
+  it("format countdowns to the second", () => {
+    expect(formatCountdown(432)).toBe("7m 12s");
+    expect(formatCountdown(420)).toBe("7m");
+    expect(formatCountdown(44.2)).toBe("45s");
+    expect(formatCountdown(0)).toBe("0s");
+  });
+
   it("format relative time", () => {
     const now = Date.parse("2026-11-12T22:41:00Z");
     expect(formatRelative("2026-11-12T22:40:30Z", now)).toBe("just now");
@@ -92,6 +99,7 @@ describe("networkClock", () => {
   it("formats the same instant in two zones", () => {
     const at = "2026-10-20T13:41:00Z";
     expect(ny.time(at)).toBe("9:41 AM");
+    expect(ny.timeSeconds("2026-10-20T13:41:07Z")).toBe("9:41:07 AM");
     expect(tokyo.time(at)).toBe("10:41 PM");
     expect(ny.dateTime(at)).toBe("Oct 20, 9:41 AM");
     expect(tokyo.dateTime(at)).toBe("Oct 20, 10:41 PM");

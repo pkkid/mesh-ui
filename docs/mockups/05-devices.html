@@ -32,16 +32,9 @@
     display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 12px;
     background: var(--card-2); border: 1px solid var(--border-2);
   }
-  .hsum { display: grid; grid-template-columns: auto 1fr 1.1fr; }
-  .hsum > * { padding: 22px 24px; min-width: 0; }
-  .hsum > * + * { border-left: 1px solid var(--border); }
   .k4 { font-size: 36px; line-height: 1.05; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  .bylegend { display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 11.5px; align-items: center; white-space: nowrap; }
-  .bylegend .v { text-align: right; font-variant-numeric: tabular-nums; }
-  .bylegend .v small { color: var(--muted); font-size: 11.5px; }
   .lbl { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
   .lbl svg { width: 13px; height: 13px; color: var(--muted); }
-  .newdev { display: flex; align-items: center; gap: 8px; font-size: 12px; }
   .filterbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .filterbar .sep { width: 1px; height: 18px; background: var(--border-2); margin: 0 4px; }
   .chip .sw { width: 7px; height: 7px; }
@@ -63,47 +56,53 @@
 
 <div id="page" class="page">
 
-  <!-- Hero: three cells at hero weight, each led by a key figure (#248) -->
-  <div class="hero hsum">
-    <div>
-      <div class="lbl"><i data-lucide="monitor-smartphone"></i>Devices</div>
-      <div class="row mt-8" style="gap:24px;align-items:center">
-        <div>
-          <div class="k4">38</div>
-          <div class="xs muted mt-4 nowrap">31 online<br>3 paused · 2 blocked</div>
-        </div>
-        <div id="dn-type"></div>
-        <div class="bylegend">
-          <span class="row-6 muted"><i class="sw" style="--c:var(--s-blue)"></i>Phones & tablets</span><span class="v"><b class="m">13</b><small> · 34%</small></span>
-          <span class="row-6 muted"><i class="sw" style="--c:var(--s-purple)"></i>Computers</span><span class="v"><b class="m">7</b><small> · 18%</small></span>
-          <span class="row-6 muted"><i class="sw" style="--c:var(--s-aqua)"></i>Entertainment</span><span class="v"><b class="m">6</b><small> · 16%</small></span>
-          <span class="row-6 muted"><i class="sw" style="--c:var(--s-orange)"></i>Smart home</span><span class="v"><b class="m">11</b><small> · 29%</small></span>
-          <span class="row-6 muted"><i class="sw" style="--c:var(--s-gray)"></i>Other</span><span class="v"><b class="m">1</b><small> · 3%</small></span>
+  <!-- Hero: the flat page header (title, status, facts, By type share bar), Live throughput on the right, closed by a rule -->
+  <div style="display:flex;gap:28px;align-items:flex-start;padding:24px 0 40px;margin-bottom:28px;border-bottom:1px solid var(--border)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">38 devices</div>
+      <div class="row-12 mt-8">
+        <span class="pill ok">31 online</span>
+        <span class="xs muted">5 offline · 3 paused · 2 blocked</span>
+      </div>
+      <div class="row wrap mt-12" style="gap:8px 22px;align-items:flex-start">
+        <div class="metric" title="Show only devices new this week"><div class="l">New this week</div><div class="v">3<span class="xs muted"> · latest 48m ago</span></div></div>
+        <div class="metric"><div class="l">On guest</div><div class="v">2</div></div>
+        <div class="metric"><div class="l">Wired</div><div class="v">4</div></div>
+        <div class="metric"><div class="l">Busiest eero</div><div class="v">Living Room<span class="xs muted"> · 15</span></div></div>
+      </div>
+      <div class="col gap-8 mt-12">
+        <div class="share"><i style="--c:var(--s-blue);flex:13"></i><i style="--c:var(--s-purple);flex:7"></i><i style="--c:var(--s-aqua);flex:6"></i><i style="--c:var(--s-orange);flex:11"></i><i style="--c:var(--s-gray);flex:1"></i></div>
+        <div class="row wrap xs" style="gap:4px 16px">
+          <span class="row-6"><i class="sw" style="--c:var(--s-blue)"></i><span class="muted">Phones & tablets</span> 13</span>
+          <span class="row-6"><i class="sw" style="--c:var(--s-purple)"></i><span class="muted">Computers</span> 7</span>
+          <span class="row-6"><i class="sw" style="--c:var(--s-aqua)"></i><span class="muted">Entertainment</span> 6</span>
+          <span class="row-6"><i class="sw" style="--c:var(--s-orange)"></i><span class="muted">Smart home</span> 11</span>
+          <span class="row-6"><i class="sw" style="--c:var(--s-gray)"></i><span class="muted">Other</span> 1</span>
         </div>
       </div>
     </div>
-    <div>
-      <div class="lbl"><i data-lucide="activity"></i>Current throughput</div>
-      <div class="mt-8"><span class="k4">171</span><span class="muted" style="font-size:14px"> Mbps down</span></div>
-      <div class="xs muted mt-4"><span class="m tnum fg2">38 Mbps</span> up · 18 devices active</div>
-      <div class="xxs muted-2 mt-8">6 GHz carries 39% of traffic with 19% of devices</div>
-      <div class="xxs muted-2">Sum of current device rates, refreshed every minute</div>
-    </div>
-    <div>
-      <div class="lbl"><i data-lucide="sparkles"></i>New this week</div>
-      <div class="row mt-8" style="gap:20px;align-items:flex-start">
-        <div class="k4">3</div>
-        <div class="col gap-8 grow" style="min-width:0;margin-top:4px">
-          <div class="newdev"><div class="ico sm"><i data-lucide="thermometer"></i></div><div class="grow trunc"><div class="m">Nest Thermostat</div><div class="xxs muted">48 min ago · Living Room</div></div></div>
-          <div class="newdev"><div class="ico sm"><i data-lucide="tablet"></i></div><div class="grow trunc"><div class="m">Grandma's iPad</div><div class="xxs muted">Tue · Living Room</div></div></div>
-          <div class="newdev"><div class="ico sm"><i data-lucide="cpu"></i></div><div class="grow trunc"><div class="m">ESP_3A9F21</div><div class="xxs danger">Mon · blocked</div></div></div>
-        </div>
+    <!-- Live throughput: with Live off only the label ("· off") and the figures as "-"; the chart opens with Live -->
+    <div class="col gap-8" style="width:448px;flex-shrink:0">
+      <div class="row-6 xs muted">Live throughput <i class="dot" style="--c:var(--success)"></i></div>
+      <div class="row" style="gap:24px;align-items:baseline">
+        <span class="row-6" style="align-items:baseline"><i class="sw" style="--c:var(--s-blue)"></i><span class="tnum" style="font-size:24px;font-weight:650">171</span><span class="xs muted">Mbps down</span></span>
+        <span class="row-6" style="align-items:baseline"><i class="sw" style="--c:var(--s-purple)"></i><span class="tnum" style="font-size:24px;font-weight:650">38</span><span class="xs muted">Mbps up</span></span>
       </div>
+      <svg viewBox="0 0 960 260" preserveAspectRatio="none" style="width:100%;height:96px" role="img" aria-label="Current download and upload since Live was turned on">
+        <g stroke="var(--border)"><line x1="0" x2="960" y1="1" y2="1"/><line x1="0" x2="960" y1="130" y2="130"/><line x1="0" x2="960" y1="259" y2="259"/></g>
+        <path d="M0,150 C80,140 120,110 200,105 S320,130 400,118 S520,60 600,70 S760,100 840,90 S920,92 960,95 L960,260 L0,260Z" fill="var(--s-blue)" opacity=".12"/>
+        <path d="M0,232 C120,228 240,226 360,229 S600,224 720,228 S900,226 960,227 L960,260 L0,260Z" fill="var(--s-purple)" opacity=".12"/>
+        <path d="M0,150 C80,140 120,110 200,105 S320,130 400,118 S520,60 600,70 S760,100 840,90 S920,92 960,95" stroke="var(--s-blue)" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/>
+        <path d="M0,232 C120,228 240,226 360,229 S600,224 720,228 S900,226 960,227" stroke="var(--s-purple)" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <div class="row xxs muted" style="justify-content:space-between"><span>6:25 PM</span><span>6:29 PM</span><span>6:34 PM</span></div>
+      <div class="xs muted">18 devices active · 6 GHz carries 39% of traffic</div>
     </div>
   </div>
 
-  <!-- Toolbar -->
+  <!-- All devices: toolbar, filters, bulk bar, table -->
   <section class="section" style="gap:10px">
+    <div><div class="section-h"><h2>All devices</h2></div><div class="xs muted">38 devices, 31 online, 5 offline, 3 paused, 2 blocked</div></div>
     <div class="row gap-8">
       <div class="input" style="width:340px"><i data-lucide="search"></i><span class="ph">Search by name, manufacturer, MAC or IP</span><span class="kbd">/</span></div>
       <div class="seg"><span class="on">All networks</span><span>Main</span><span>Guest <span class="muted-2 tnum">2</span></span></div>
@@ -160,7 +159,7 @@
           <th>Band</th>
           <th>Signal</th>
           <th>IP · MAC</th>
-          <th>Now <span class="muted-2">down / up</span></th>
+          <th>Live <span class="muted-2">down / up</span></th>
           <th class="r">24h</th>
           <th>Status</th>
           <th style="width:24px"></th>
@@ -265,10 +264,6 @@ MU.ready(() => {
     }
   }
   document.getElementById("rows").innerHTML = html;
-  MU.donut("#dn-type", [
-    { name: "Phones & tablets", color: "var(--s-blue)", value: 13 }, { name: "Computers", color: "var(--s-purple)", value: 7 },
-    { name: "Entertainment", color: "var(--s-aqua)", value: 6 }, { name: "Smart home", color: "var(--s-orange)", value: 11 }, { name: "Other", color: "var(--s-gray)", value: 1 },
-  ], { size: 96, thickness: 13, center: `<div><div class="tnum" style="font-size:20px;font-weight:650">38</div><div class="xxs muted">devices</div></div>` });
 });
 </script>
 </body>

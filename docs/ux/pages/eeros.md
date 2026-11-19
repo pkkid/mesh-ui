@@ -11,7 +11,7 @@ Sidebar count: number of eeros.
 
 ## Layout
 
-1. **Mesh topology** section. Description under the title: the count, the
+1. **Mesh topology** section. The page has no hero, so this first title takes the hero title size (28px semibold, tight tracking) to match the other pages' headers. Description under the title: the count, the
    wired backhaul count, then what needs attention ("4 eeros, 1 weak link",
    "3 eeros, 1 wired backhaul"; zero counts left out). Tool: a view
    dropdown, "Map view" or "Tree view". Two columns:

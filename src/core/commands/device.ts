@@ -50,7 +50,10 @@ export const deviceListParams = z.object({
   band: z.enum(BANDS).optional(),
   type: z.enum(CATEGORIES).optional().describe("Device category."),
   manufacturer: z.string().trim().min(1).optional().describe("Exact manufacturer, case-insensitive."),
-  firstSeenSince: z.iso.datetime({ offset: true }).optional().describe("Only devices first seen at or after this ISO time."),
+  newSince: z.iso
+    .datetime({ offset: true })
+    .optional()
+    .describe("Only devices eero announced as new (its New Device notification) at or after this ISO time."),
   search: z.string().trim().max(100).optional().describe("Matches name, hostname, manufacturer, model, MAC (with or without colons) or IP."),
   sort: z
     .enum(SORT_KEYS)
@@ -110,7 +113,49 @@ function countBy<K extends string | null>(devices: M.Device[], key: (d: M.Device
     .sort((a, b) => b.count - a.count || (a.key === null ? 1 : b.key === null ? -1 : a.key.localeCompare(b.key)));
 }
 
-export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
+/** eero notification category for "a new device joined". */
+export const NEW_DEVICE_CATEGORY = "device.new";
+/** How long one read of the New Device notifications serves every device.list call for a network. */
+const ANNOUNCED_TTL_MS = 60_000;
+/** Notification pages read at most, looking for a week of New Device notices. */
+const ANNOUNCED_MAX_PAGES = 3;
+const announcedCache = new WeakMap<object, Map<M.Id, { at: number; byDevice: Map<M.Id, number> }>>();
+
+/**
+ * When eero announced each device as new (its newest `device.new` notification
+ * per device, epoch ms), reading pages until they reach a week back. Cached a
+ * minute per network, since device.list runs often with different filters. A
+ * failed read gives none, so the device list still loads.
+ */
+async function announcedDevices(ctx: CommandContext): Promise<Map<M.Id, number>> {
+  let perNet = announcedCache.get(ctx.backend);
+  if (!perNet) announcedCache.set(ctx.backend, (perNet = new Map()));
+  const now = ctx.now();
+  const hit = perNet.get(ctx.net);
+  if (hit && now - hit.at < ANNOUNCED_TTL_MS) return hit.byDevice;
+  const byDevice = new Map<M.Id, number>();
+  try {
+    let cursor: string | null = null;
+    for (let page = 0; page < ANNOUNCED_MAX_PAGES; page++) {
+      const chunk = await ctx.backend.notifications.list(ctx.net, cursor);
+      let oldest = Infinity;
+      for (const n of chunk.notifications) {
+        const at = Date.parse(n.at);
+        if (Number.isFinite(at)) oldest = Math.min(oldest, at);
+        const id = n.refs.deviceId;
+        if (n.category === NEW_DEVICE_CATEGORY && id && Number.isFinite(at) && at > (byDevice.get(id) ?? -Infinity)) byDevice.set(id, at);
+      }
+      cursor = chunk.nextCursor;
+      if (!cursor || oldest < now - 7 * DAY_MS) break;
+    }
+  } catch {
+    return hit?.byDevice ?? byDevice;
+  }
+  perNet.set(ctx.net, { at: now, byDevice });
+  return byDevice;
+}
+
+export function summarize(devices: M.Device[], now: number, announced: ReadonlyMap<M.Id, number> = new Map()): M.DeviceSummary {
   const byBand = Object.fromEntries(BANDS.map((b) => [b, 0])) as Record<M.Band, number>;
   const byCategory = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<M.DeviceCategory, number>;
   const bandRates = Object.fromEntries(BANDS.map((b) => [b, { down: 0, up: 0 }])) as Record<M.Band, { down: number; up: number }>;
@@ -133,10 +178,12 @@ export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
       if (Number.isFinite(at)) latest = Math.max(latest ?? at, at);
     }
   }
-  const newThisWeek = devices
-    .filter((d) => d.firstSeen && now - Date.parse(d.firstSeen) <= 7 * DAY_MS)
-    .sort((a, b) => Date.parse(b.firstSeen ?? "") - Date.parse(a.firstSeen ?? ""))
-    .map((d) => d.id);
+  // New this week comes from eero's own New Device notifications, not `first_active`, which restarts
+  // whenever a device rejoins after a while away (or the eeros restart), so old devices looked new.
+  const ids = new Set(devices.map((d) => d.id));
+  const fresh = [...announced].filter(([id, at]) => ids.has(id) && now - at <= 7 * DAY_MS).sort((a, b) => b[1] - a[1]);
+  const newThisWeek = fresh.map(([id]) => id);
+  const newestAt = fresh[0] ? new Date(fresh[0][1]).toISOString() : null;
   return {
     total: devices.length,
     online: devices.filter((d) => d.connected).length,
@@ -149,6 +196,7 @@ export function summarize(devices: M.Device[], now: number): M.DeviceSummary {
     byProfile: countBy(devices, (d) => d.profileId).map(({ key, count }) => ({ profileId: key, count })),
     byManufacturer: countBy(devices, (d) => d.manufacturer?.trim() || null).map(({ key, count }) => ({ manufacturer: key, count })),
     newThisWeek,
+    newestAt,
     rates: latest === null ? null : { downMbps: round1(down), upMbps: round1(up), active, at: new Date(latest).toISOString(), ...bandShares(byBand, bandRates) },
   };
 }
@@ -182,10 +230,10 @@ function matchesSearch(d: M.Device, q: string): boolean {
   return /^[0-9a-f:\-.]+$/.test(want) && hex(want).length >= 4 && hex(d.mac).includes(hex(want));
 }
 
-async function filter(ctx: CommandContext, devices: M.Device[], p: ListParams): Promise<M.Device[]> {
+async function filter(ctx: CommandContext, devices: M.Device[], p: ListParams, announced: ReadonlyMap<M.Id, number>): Promise<M.Device[]> {
   const eeroId = p.eero === undefined ? undefined : await ctx.resolve("eero", p.eero);
   const profileId = p.profile === undefined ? undefined : p.profile === null ? null : await ctx.resolve("profile", p.profile);
-  const since = p.firstSeenSince ? Date.parse(p.firstSeenSince) : null;
+  const since = p.newSince ? Date.parse(p.newSince) : null;
   return devices.filter((d) => {
     if (p.status === "online" && !d.connected) return false;
     if (p.status === "offline" && (d.connected || d.blocked)) return false;
@@ -200,7 +248,7 @@ async function filter(ctx: CommandContext, devices: M.Device[], p: ListParams): 
     if (p.band && d.band !== p.band) return false;
     if (p.type && d.category !== p.type) return false;
     if (p.manufacturer && norm(d.manufacturer) !== norm(p.manufacturer)) return false;
-    if (since !== null && !(d.firstSeen && Date.parse(d.firstSeen) >= since)) return false;
+    if (since !== null && !((announced.get(d.id) ?? -Infinity) >= since)) return false;
     if (p.search && !matchesSearch(d, p.search)) return false;
     return true;
   });
@@ -321,7 +369,7 @@ async function toDeviceCsv(ctx: CommandContext, devices: M.Device[]): Promise<st
     { header: "Down Mbps", value: (d) => d.rates?.downMbps },
     { header: "Up Mbps", value: (d) => d.rates?.upMbps },
     { header: "Last active", value: (d) => d.lastActive },
-    { header: "First seen", value: (d) => d.firstSeen },
+    { header: "Active since", value: (d) => d.firstSeen },
   ]);
 }
 
@@ -426,7 +474,7 @@ export const commands: AnyCommand[] = [
     id: "device.list",
     label: "Devices",
     description:
-      "Lists devices with filters, search and sort, plus a summary of the whole network (counts by status, band and category, devices new this week, live rate totals). Offline devices older than 7 days are left out.",
+      "Lists devices with filters, search and sort, plus a summary of the whole network (counts by status, band and category, devices new this week from eero's New Device notifications, live rate totals). Offline devices older than 7 days are left out.",
     icon: "laptop",
     effect: "query",
     topic: "devices",
@@ -435,10 +483,11 @@ export const commands: AnyCommand[] = [
     run: async (ctx, p): Promise<M.DeviceList | string> => {
       const now = ctx.now();
       const all = (await withUnassigned(ctx, knownDevices(await ctx.backend.device.list(ctx.net), now))).map((d) => fresh(d, now));
-      let devices = await sort(ctx, await filter(ctx, all, p), p.sort, p.order);
+      const announced = await announcedDevices(ctx);
+      let devices = await sort(ctx, await filter(ctx, all, p, announced), p.sort, p.order);
       if (p.limit) devices = devices.slice(0, p.limit);
       if (p.format === "csv") return toDeviceCsv(ctx, devices);
-      return { devices: withShares(devices, all), summary: summarize(all, now) };
+      return { devices: withShares(devices, all), summary: summarize(all, now, announced) };
     },
   }),
 

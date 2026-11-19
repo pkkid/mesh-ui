@@ -1,7 +1,8 @@
 /**
- * Devices (docs/ux/pages/devices.md, mockup 05): the hero (three summary
- * cells), toolbar with the Filters popover, the bulk bar while rows are
- * selected, and the grouped table with live rates and a row menu.
+ * Devices (docs/ux/pages/devices.md, mockup 05): the flat hero with Live
+ * throughput on its right, then All devices: toolbar with the Filters popover,
+ * the bulk bar while rows are selected, and the grouped table with live
+ * rates and a row menu.
  * Selection is view state kept here; Ctrl+A selects every row on screen, Esc
  * clears.
  *
@@ -15,11 +16,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { useGate } from "~/components/ui/page";
+import { useLivePage } from "~/app/useLiveMode";
 import { useLiveRates } from "~/app/useLiveRates";
 import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { entityColors } from "~/lib/chartColors";
 import { TopBarActions, useTopBarUpdated } from "~/features/shell/TopBar";
 import { type DeviceSortKey, SORT_DEFAULT_ORDER } from "../../../../core/commands/device";
+import { formatCount } from "../../../../core/format";
 import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
 
 import {
@@ -29,9 +32,11 @@ import {
   EMPTY_FILTERS,
   type GroupBy,
   UNASSIGNED,
+  WEEK_MS,
 } from "./DeviceFilters";
 import { BulkBar, type ProfileOption } from "./BulkBar";
-import { DeviceSummary } from "./DeviceSummary";
+import { DevicesHero } from "./DeviceSummary";
+import { LiveThroughput } from "./LiveThroughput";
 import { DeviceTable, type ProfileInfo, visibleDevices } from "./DeviceTable";
 
 export type SortOrder = "asc" | "desc";
@@ -73,7 +78,7 @@ export function listParams(f: DeviceFilterState, sort: DeviceSortKey, order: Sor
     profile: f.profile === null ? undefined : f.profile === UNASSIGNED ? null : f.profile,
     type: f.type ?? undefined,
     manufacturer: f.manufacturer ?? undefined,
-    firstSeenSince: f.newSince ?? undefined,
+    newSince: f.newSince ?? undefined,
     sort: sort === "name" ? undefined : sort,
     order: order === SORT_DEFAULT_ORDER[sort] ? undefined : order,
   };
@@ -87,6 +92,7 @@ export function DevicesPage() {
   const [searchText, setSearchText] = useState(view.filters.search);
   const [hidden, setHidden] = useState<Set<ColumnKey>>(readHidden);
   const searchRef = useRef<HTMLInputElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const select = (ids: Iterable<string>) => setSelectedIds(new Set(ids));
 
@@ -152,6 +158,7 @@ export function DevicesPage() {
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
   const usage = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }, { poll: true });
   useLiveRates(netId !== "", netId);
+  useLivePage();
 
   const bridged = network.data?.connectionMode === "bridged" || network.data?.connectionMode === "ipPassthrough";
   const gate = useGate({ area: "devices", bridgeOff: true });
@@ -182,6 +189,22 @@ export function DevicesPage() {
   const summary = shown?.summary ?? all.data?.summary;
   const newIds = useMemo(() => new Set(summary?.newThisWeek ?? []), [summary]);
   const filtersActive = JSON.stringify(view.filters) !== JSON.stringify(EMPTY_FILTERS);
+  // "55 devices, 38 online, 17 offline, 3 paused, 2 blocked": whole-network counts, zeros left out.
+  const showing = !summary
+    ? "-"
+    : summary.total === 0
+      ? "No devices"
+      : [
+          `${formatCount(summary.total)} ${summary.total === 1 ? "device" : "devices"}`,
+          ...(
+            [
+              [summary.online, "online"],
+              [summary.offline, "offline"],
+              [summary.paused, "paused"],
+              [summary.blocked, "blocked"],
+            ] as const
+          ).flatMap(([n, word]) => (n > 0 ? [`${formatCount(n)} ${word}`] : [])),
+        ].join(", ");
   const resetFilters = () => {
     setSearchText("");
     patchFilters(EMPTY_FILTERS);
@@ -190,51 +213,83 @@ export function DevicesPage() {
   return (
     <>
       <TopBarActions>
-        <LiveToggle size="xs" />
+        <LiveToggle size="tool" />
       </TopBarActions>
 
-      <DeviceSummary
+      <DevicesHero
         summary={summary}
-        devices={all.data?.devices}
         eeroName={eeroName}
+        guestCount={guests.data?.devices.length}
+        newOn={view.filters.newSince !== null}
+        onToggleNew={() => patchFilters({ newSince: view.filters.newSince ? null : new Date(Date.now() - WEEK_MS).toISOString() })}
+        aside={bridged ? undefined : <LiveThroughput netId={netId} rates={all.data?.summary.rates} timezone={network.data?.timezone} />}
         fading={all.fading && !all.data}
       />
 
-      <section className="flex flex-col gap-2.5" aria-label="Devices">
-        <DeviceFilters
-          filters={view.filters}
-          searchText={searchText}
-          onSearchText={setSearchText}
-          onChange={patchFilters}
-          summary={summary}
-          guestCount={guests.data?.devices.length}
-          eeros={(eeros.data ?? []).map((e) => ({ value: e.id, label: e.location }))}
-          profiles={(profiles.data?.profiles ?? []).map((p) => ({ value: p.id, label: p.name, count: p.deviceIds.length }))}
-          manufacturers={manufacturers}
-          groupBy={view.groupBy}
-          onGroupBy={(groupBy) => setView((v) => ({ ...v, groupBy }))}
-          hidden={hidden}
-          onToggleColumn={(c) =>
-            setHidden((prev) => {
-              const next = new Set(prev);
-              if (next.has(c)) next.delete(c);
-              else next.add(c);
-              saveHidden(next);
-              return next;
-            })
-          }
-          searchRef={searchRef}
-        />
-        <BulkBar
-          selected={selected}
-          profiles={profileOptions}
-          networkName={network.data?.name ?? null}
-          bridged={bridged}
-          gate={gate}
-          blockGate={blockGate}
-          onSelect={select}
-        />
+      <section aria-label="Devices" className="flex flex-col">
+        {/*
+          The title, its subtitle, the toolbar and the bulk bar stay at the top while the table scrolls under
+          them; the table's header row follows below (DeviceTable, usePinnedHead). The block starts 24px higher
+          with matching padding so its title sits below the topbar's scroll fade, and it carries the page
+          background (grain lined up with the main surface) so rows disappear behind it; 8px wider each side to
+          cover the table card's shadow.
+        */}
+        <div
+          ref={pinRef}
+          data-slot="devices-sticky"
+          className="group/pin sticky top-0 z-20 -mx-2 -mt-6 flex flex-col gap-2.5 bg-background bg-fixed px-2 pt-6 pb-2.5 surface-grain [background-position:var(--sidebar-width)_0]"
+        >
+          <div className="mb-2.5 flex min-w-0 flex-col">
+            <h2 className="whitespace-nowrap font-semibold text-base text-foreground leading-7">All devices</h2>
+            <p className="truncate text-muted-foreground text-xs">{showing}</p>
+          </div>
+          <DeviceFilters
+            filters={view.filters}
+            searchText={searchText}
+            onSearchText={setSearchText}
+            onChange={patchFilters}
+            summary={summary}
+            guestCount={guests.data?.devices.length}
+            eeros={(eeros.data ?? []).map((e) => ({ value: e.id, label: e.location }))}
+            profiles={(profiles.data?.profiles ?? []).map((p) => ({ value: p.id, label: p.name, count: p.deviceIds.length }))}
+            manufacturers={manufacturers}
+            groupBy={view.groupBy}
+            onGroupBy={(groupBy) => setView((v) => ({ ...v, groupBy }))}
+            hidden={hidden}
+            onToggleColumn={(c) =>
+              setHidden((prev) => {
+                const next = new Set(prev);
+                if (next.has(c)) next.delete(c);
+                else next.add(c);
+                saveHidden(next);
+                return next;
+              })
+            }
+            searchRef={searchRef}
+          />
+          <BulkBar
+            selected={selected}
+            profiles={profileOptions}
+            networkName={network.data?.name ?? null}
+            bridged={bridged}
+            gate={gate}
+            blockGate={blockGate}
+            onSelect={select}
+          />
+          {/*
+            While the table's header row is pinned (data-table-pinned, set by DeviceTable), the card's own rounded
+            top has scrolled away, so this cap redraws it just under the block: a rounded top border at the
+            card's radius, with the page colour spread around it to cover the card's straight sides at the corners.
+          */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-2 top-full hidden h-(--card-radius) overflow-hidden group-data-[table-pinned]/pin:block"
+          >
+            <div className="h-[calc(var(--card-radius)*2)] rounded-t-(--card-radius) border border-border/60 shadow-[0_0_0_16px_var(--color-background)]" />
+          </div>
+        </div>
         <DeviceTable
+          pinUnder={pinRef}
           devices={list.error && !list.data ? undefined : shown?.devices}
           groupBy={view.groupBy}
           sort={view.sort}

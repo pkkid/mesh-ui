@@ -300,9 +300,11 @@ only after a burst:
    ("Current throughput 186 Mbps, 14 devices active") and computes each band's
    share of traffic, so every surface gets the same totals.
 
-Pages that show "Now" figures (Devices, Device detail, eero detail) call `device.rates.refresh` once a minute
-while visible and the renderer's shared Live switch is on (#319: off on a
-first run, remembered, off again after 10 minutes) and read `device.list` and `device.get` again at each of
+Pages that show "Now" figures (Devices, Device detail) call `device.rates.refresh` once a minute
+while the renderer's shared Live switch is on, minimized or hidden windows
+included (#319: off at every launch, off again after 10 minutes or on
+leaving those pages; the window has `backgroundThrottling: false` so the
+reads keep their timing) and read `device.list` and `device.get` again at each of
 `burstReadTimes` (`useLiveRates`), so the figures move a few times a minute.
 eero queues a burst asked for while its last one is still running (its
 `next_burst` then moves later every minute, seen up to 40 s), so the next

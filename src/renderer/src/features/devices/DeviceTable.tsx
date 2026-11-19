@@ -32,7 +32,7 @@ import {
   Users,
   Wifi,
 } from "lucide-react";
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
 import { useLiveMode } from "~/app/useLiveMode";
 import { Link, navigate, pathFor } from "~/app/router";
@@ -150,6 +150,8 @@ function collapsedLine(g: Group): string {
 export type ProfileInfo = { name: string; color: string };
 
 type DeviceTableProps = {
+  /** The sticky block above the table (title, toolbar); the header row follows its bottom edge while scrolling. */
+  pinUnder?: RefObject<HTMLElement | null>;
   devices: ReadonlyArray<Device> | undefined;
   groupBy: GroupBy;
   /** The `device.list` sort and its direction; a header click calls onSort with its key. */
@@ -198,8 +200,10 @@ export function DeviceTable(props: DeviceTableProps) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const anchor = useRef<string | null>(null);
   const show = (c: ColumnKey) => !hidden.has(c);
-  // Checkbox, Device, Status and the row menu, plus the optional columns shown.
-  const columns = 4 + (Object.keys(COLUMN_LABELS) as ColumnKey[]).filter(show).length;
+  const headRef = useRef<HTMLTableSectionElement>(null);
+  usePinnedHead(headRef, props.pinUnder);
+  // Checkbox, Device and the row menu, plus the optional columns shown (Status among them).
+  const columns = 3 + (Object.keys(COLUMN_LABELS) as ColumnKey[]).filter(show).length;
 
   const toggle = (key: string) =>
     setCollapsed((prev) => {
@@ -318,7 +322,17 @@ export function DeviceTable(props: DeviceTableProps) {
     <Card>
       <div className="overflow-x-auto">
         <table className={cn("w-full border-collapse text-[12.5px]", props.fading && "opacity-40")} aria-label="Devices">
-          <thead>
+          <thead
+            ref={headRef}
+            // While pinned, the sticky block above draws the card's rounded top edge over this row (DevicesPage), and
+            // a fade the height of the topbar's runs down from each header cell, so rows dissolve as they slide
+            // under it instead of being cut off. The fade itself comes in with the scroll (--head-fade, 0 to 1
+            // over the first HEAD_FADE_PX pinned), so it does not pop in.
+            className={cn(
+              "relative z-10 [--head-bg:color-mix(in_srgb,var(--color-card)_40%,var(--color-background))] [&_th]:bg-(--head-bg)",
+              "data-pinned:[&_th]:relative data-pinned:[&_th]:after:pointer-events-none data-pinned:[&_th]:after:absolute data-pinned:[&_th]:after:inset-x-0 data-pinned:[&_th]:after:top-full data-pinned:[&_th]:after:h-(--topbar-scroll-fade-height) data-pinned:[&_th]:after:bg-linear-to-b data-pinned:[&_th]:after:from-(--head-bg) data-pinned:[&_th]:after:to-transparent data-pinned:[&_th]:after:opacity-(--head-fade) data-pinned:[&_th]:after:content-['']",
+            )}
+          >
             <tr className="border-b">
               <th className={cn(th, "w-7")}>
                 <Checkbox
@@ -339,11 +353,11 @@ export function DeviceTable(props: DeviceTableProps) {
                 sortable(
                   "rate",
                   <>
-                    Now <span className="text-muted-foreground/70">down / up</span>
+                    Live <span className="text-muted-foreground/70">down / up</span>
                   </>,
                 )}
               {show("today") && sortable("usage", "24h", "text-end")}
-              {sortable("status", "Status")}
+              {show("status") && sortable("status", "Status")}
               <th className={cn(th, "w-6")}>
                 <span className="sr-only">Actions</span>
               </th>
@@ -465,6 +479,10 @@ function Row(props: RowProps) {
       className={cn(
         "cursor-pointer border-border/50 border-b last:border-b-0 hover:bg-muted/50",
         off && "text-muted-foreground",
+        // Offline: all text between the checkbox and the row menu takes the muted subtext colour at 30%
+        // (name, MAC, status included), so the whole row reads as away; decorative marks (aria-hidden) keep their own.
+        state === "offline" &&
+          "[&>td:not(:first-child):not(:last-child)]:text-muted-foreground/30 [&>td:not(:first-child):not(:last-child)_*:not([aria-hidden])]:text-muted-foreground/30",
         isSelected && "bg-accent hover:bg-accent",
       )}
     >
@@ -496,7 +514,10 @@ function Row(props: RowProps) {
             <span className="flex items-center gap-1.5">
               <span
                 aria-hidden
-                className="grid size-5 shrink-0 place-items-center rounded-full font-semibold text-[10px] text-background"
+                className={cn(
+                  "grid size-5 shrink-0 place-items-center rounded-full font-semibold text-[10px] text-background",
+                  state === "offline" && "opacity-50",
+                )}
                 style={{ background: profile.color }}
               >
                 {profile.name.slice(0, 1).toUpperCase()}
@@ -537,9 +558,11 @@ function Row(props: RowProps) {
       {show("today") && (
         <td className={cn(td, "whitespace-nowrap text-end tabular-nums")}>{used ? formatBytes(used) : "-"}</td>
       )}
-      <td className={td}>
-        <Status tone={STATE[state].tone}>{STATE[state].label}</Status>
-      </td>
+      {show("status") && (
+        <td className={td}>
+          <Status tone={STATE[state].tone}>{STATE[state].label}</Status>
+        </td>
+      )}
       <td className={td}>
         <RowMenu {...props} />
       </td>
@@ -571,12 +594,12 @@ function RowMenu({ device: d, bridged, gate, blockGate, profileOptions, networkN
                 onClick={() => void performWrite(pauseRequest([d], !d.paused))}
               >
                 {d.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-                {d.paused ? "Resume" : "Pause"}
+                {d.paused ? "Resume" : "Pause…"}
               </Menu.Item>
             )}
             <Menu.Item className={menuClasses.item} disabled={!gate.allowed} title={reason(gate)} onClick={() => onRename(true)}>
               <Pencil className="size-3.5" />
-              Rename...
+              Rename…
             </Menu.Item>
             {canPause && (
               <Menu.SubmenuRoot>
@@ -615,7 +638,7 @@ function RowMenu({ device: d, bridged, gate, blockGate, profileOptions, networkN
                     onClick={() => void performWrite(blockRequest([d], true, { networkName }))}
                   >
                     <Ban className="size-3.5" />
-                    Block...
+                    Block…
                   </Menu.Item>
                 )}
               </>
@@ -728,4 +751,51 @@ function SignalBars({ bars }: { bars: number }) {
       ))}
     </span>
   );
+}
+
+/** Pixels scrolled past the pin point over which the fade under the header row comes in (about one row). */
+const HEAD_FADE_PX = 50;
+
+/**
+ * Keeps the header row under the sticky block above the table while the page
+ * scrolls, so rows slide up behind it. CSS `sticky` cannot do it here: the
+ * table sits in a box that scrolls sideways on narrow windows, and that box
+ * would capture a sticky header. So the row is moved with a transform instead,
+ * once a frame at most, and stops at the last row.
+ */
+function usePinnedHead(head: RefObject<HTMLTableSectionElement | null>, pinUnder: RefObject<HTMLElement | null> | undefined) {
+  useEffect(() => {
+    const el = head.current;
+    const block = pinUnder?.current;
+    const scroller = el?.closest<HTMLElement>("[data-page-scroll]");
+    if (!el || !block || !scroller) return;
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const table = el.parentElement;
+      if (!table) return;
+      const t = table.getBoundingClientRect();
+      const shift = Math.min(Math.max(0, block.getBoundingClientRect().bottom - t.top), Math.max(0, t.height - el.offsetHeight));
+      el.style.transform = shift > 0 ? `translateY(${shift}px)` : "";
+      el.toggleAttribute("data-pinned", shift > 0);
+      el.style.setProperty("--head-fade", String(Math.min(1, shift / HEAD_FADE_PX)));
+      block.toggleAttribute("data-table-pinned", shift > 0);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    scroller.addEventListener("scroll", schedule, { passive: true });
+    const sizes = new ResizeObserver(schedule);
+    sizes.observe(block);
+    sizes.observe(el.parentElement ?? el);
+    place();
+    return () => {
+      scroller.removeEventListener("scroll", schedule);
+      sizes.disconnect();
+      cancelAnimationFrame(frame);
+      el.style.transform = "";
+      el.removeAttribute("data-pinned");
+      block.removeAttribute("data-table-pinned");
+    };
+  }, [head, pinUnder]);
 }

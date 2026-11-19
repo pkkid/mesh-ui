@@ -834,11 +834,12 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     notifications: toNotifications(
       [
         { min: 25, title: "Leo is paused", body: "Alex Kim paused Leo's 3 devices until resumed.", read: false, category: "profile" },
-        { min: 48, title: "New device joined", body: "Nest Thermostat joined Maple Street on Living Room.", read: false, category: "device", deviceId: deviceId("Nest Thermostat") },
+        { min: 48, title: "New device joined", body: "Nest Thermostat joined Maple Street on Living Room.", read: false, category: "device.new", deviceId: deviceId("Nest Thermostat") },
         { min: 180, title: "Update tonight", body: "eeroOS 7.13.0 installs tonight between 2 AM and 5 AM.", read: false, category: "network" },
         { min: 220, title: "Weak link on Garage", body: "Garage dropped to 2 bars from Office. Moving it closer may help.", read: true, category: "eero" },
         { min: 2 * 24 * 60 + 12 * 60 + 4, title: "Garage is offline", body: "Garage stopped checking in. It came back 4 minutes later.", read: true, category: "eero" },
-        { min: 3 * 24 * 60 + 40, title: "New device joined", body: "ESP_3A9F21 joined Maple Street on Garage.", read: true, category: "device", deviceId: deviceId("ESP_3A9F21") },
+        { min: 2 * 24 * 60 + 300, title: "New device joined", body: "Grandma's iPad joined Maple Street on Living Room.", read: true, category: "device.new", deviceId: deviceId("Grandma's iPad") },
+        { min: 3 * 24 * 60 + 40, title: "New device joined", body: "ESP_3A9F21 joined Maple Street on Garage.", read: true, category: "device.new", deviceId: deviceId("ESP_3A9F21") },
       ],
       now,
       "ms",

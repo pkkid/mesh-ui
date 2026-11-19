@@ -4,115 +4,170 @@ One device: live rate, usage, connection details, addresses and port
 forwards, plus pause, rename, change type or profile, and block.
 
 Mockup: [../../mockups/06-device-detail.html](../../mockups/06-device-detail.html)
-(shows "Alex's MacBook Pro"; open the Appearance sheet with `?sheet=1`).
+(shows "Alex's MacBook Pro"; its `?sheet=1` Appearance sheet predates the
+name field on the row and the icon-only sheet).
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: crumbs "Devices / Alex's MacBook Pro", page actions **‹ Prev** and
-**Next ›** (also `[` and `]`). Sidebar item Devices stays active.
+Topbar: crumbs "Devices / Alex's MacBook Pro", then only the **Live** switch
+(see devices.md, Live switch), beside the search field, where it sits on
+Devices too. No Prev / Next buttons; `[` and `]` still step to the previous
+and next device in the Devices table's order. Sidebar item Devices stays active.
 
 ## Layout
 
-1. **Hero** (card), three columns:
-   - Left: device type icon in an 84 px rounded tile.
-   - Middle: name; status line with Online and the type ("Laptop"); metric
-     row: Profile (avatar and "Alex"), Connected to ("Office"), Signal (bars
-     and "-52 dBm"). Action row: **Pause device** (primary), **Appearance**,
-     **Change profile**, **Block** (danger).
-   - Right: **Now** live box: a live dot, the shared **Live** switch (pulse
-     icon, see devices.md, Live switch),
-     Download "38.4 Mbps" and Upload "6.1 Mbps", and "Current rates while the
-     device is active".
+1. **Hero**: the flat page header (`PageHeader flat`, as Devices and eero
+   detail; no card, closed by the 1px rule):
+   - Left: device type icon in the 64px tile; name with the GUEST tag; status
+     line with Online and the type ("Laptop"); facts: Profile (avatar and
+     "Alex"), Connected to ("Office"), Signal (bars and "-52 dBm"). Actions,
+     all outline: **Pause device…** (or **Resume device**), then **Block…**
+     (destructive text). Blocked: only **Unblock**. Appearance and the
+     profile are settings rows at the bottom of the page (5).
+   - Right: **Live throughput**, the same panel as the Devices hero
+     (`LivePanel`, 384px here; see devices.md, Layout 1) for this one device:
+     with Live off the dim watermark (pulse icon, "Live throughput off");
+     with Live on the title with the waiting bar, "38.4 Mbps down" and "6.1
+     Mbps up", a chart of this device's readings since Live was turned on,
+     and "Last reading 8:43:02 PM". With Live on but the device offline,
+     paused or blocked, the watermark reads "Device offline", "Device
+     paused" or "Device blocked". Hidden in bridge mode.
 2. Two columns.
    - Left:
-     - **Data usage**, sub "Last 24 hours" ("Last 7 days" on Week), Day / Week toggle. Hero
-       figure "86 GB" with "busiest hour 11 AM · 9.4 GB · #2 on the network",
-       legend with Download 64 GB and Upload 22 GB, and an area chart.
-     - **Device information** (card): Manufacturer, Model, Hostname (mono),
+     - **Data usage**, shaped like Overview's (no card): description under
+       the title "Last 24 hours, busiest hour 11 AM · 9.4 GB" (the range,
+       then its busiest hour or day), range dropdown on the right (Last 24
+       hours, Last 7 days, This month: the calendar month from the 1st, one
+       point a day, axis labels "Sat Nov 8", like the eero app's Month view). Hero figure "86 GB" on one line with the legend
+       Download "64 GB (74%)" and Upload "22 GB (26%)" (value, then its
+       share), then an area chart.
+     - **Device information** (card). Header link **Look up online** (dim
+       text link with the external-link icon, like a section header link,
+       not a button): opens a web search for the device in the
+       user's browser, built by `core/deviceLookup.ts` from the manufacturer,
+       model, a hostname that is not just the name or the MAC, and the MAC's
+       vendor prefix with "OUI" (never the full MAC; no prefix for a private
+       or other locally administered MAC). Its tooltip shows the search text. Hidden when there is nothing
+       to search for. Rows: Manufacturer, Model, Hostname (mono),
        MAC address (mono), Security (shield icon, "WPA3 Personal (SAE)"),
        Wi-Fi standard ("Wi-Fi 6E · 802.11ax"), Channel ("37 · 160 MHz · 6
        GHz"), Link rate ("2401 Mbps rx · 2161 Mbps tx"), SNR ("41 dB · 0.2%
-       retries"), First seen.
+       retries"), Active since ("Nov 18, 9:41 PM" in the network's time zone; eero's `first_active`: when this stretch of activity began, not when the device first joined).
    - Right:
-     - **IP addresses** (card): IPv4 with a "Reserved" badge (lock icon) and
-       an **Edit** link; IPv6 addresses (one per line); Link-local (muted).
-     - **Port forwarding**, link "All →". Card with a header row (Port
-       forward, Port, Protocol) and one row per forward: name, port or range
-       (mono), protocol badge (TCP, UDP, TCP+UDP), and a trash icon; a
-       disabled forward shows muted with an off switch. Button **+ Open a
-       port**.
-3. **Appearance sheet** (from Appearance): header "Appearance", "Nickname and
-   icon, shown everywhere in Mesh UI and the eero app". Body: Nickname input
-   with a character count ("18 / 32") and "Hostname: Alexs-MacBook-Pro ·
-   reset to hostname"; Device type grid of 32 icons in 8 columns with the
-   current type's name on the right ("Laptop"). Footer: Cancel, Save.
+     - **Addresses and ports** (one card of settings rows, like Device
+       settings; "Addresses" for guests, who have no port forwards).
+       Description "Reserved, 1 open" or "Not reserved, no ports open".
+       Header link "View in Reservations & ports →" (`SectionLink`; that
+       page holds both reservations and forwards; none in bridge mode).
+       Rows:
+       - **IPv4**: the address (mono, copy button), "IPv4, reserved: it
+         never changes" or "IPv4, can change when the device reconnects";
+         outline **Edit…** or **Reserve…** opening the reservation sheet
+         (not for guests, blocked devices or in bridge mode). Editing, the
+         sheet's footer has **Remove reservation…** on the left (ghost,
+         destructive text): the confirm "Remove the reservation for Synology
+         NAS?" (it also says which port forwards go with it), then the
+         sheet closes with a toast and Undo (no Undo when forwards went too).
+       - **IPv6**: the addresses (mono, one per line) or "No IPv6 address",
+         with "Link-local fe80::…" under them.
+       - **Port forwarding** (not for guests or in bridge mode): "No ports
+         open to this device" or "2 open, 1 off", outline **Open a port…**
+         (not while blocked), and the forwards listed under the row: name
+         ("(off)" when disabled), port or range (mono), protocol badge (TCP,
+         UDP, TCP+UDP), and a trash button ("Remove Plex…", asks first), or
+         an off switch on a disabled forward.
+3. Sections after the hero are 56px apart (design system, Shape and
+   spacing), the two columns 28px apart.
+4. **Icon sheet** (from the icon button on the Appearance row), a clean
+   sheet (no divider lines): header the current icon, "Icon", "The icon for
+   Kitchen Echo, shown everywhere in Mesh UI and the eero app". Body: only
+   the device type grid of 32 icons in 8 columns (no field label; the picked
+   tile is marked). Footer: Cancel, Save (`device.type.set`, toast with
+   Undo).
+5. **Device settings**, full width at the bottom, like eero detail's "eero
+   settings": description from the values ("Named Kitchen Echo, smart
+   speaker, in Alex"; the type is left out when eero has none), then one
+   card of settings rows:
+   - **Appearance**, "The name and icon shown for this device everywhere in
+     Mesh UI and the eero app. Leave the name empty to use the device's
+     own." Controls: first a 32px outline icon button showing the current
+     icon ("Change icon…" in its tooltip and name) that opens the icon sheet
+     (4), then the name in a 224px field (like eero's Location: the
+     nickname, with the device's own name or hostname as the placeholder;
+     Enter or blur saves `device.rename` with Undo, Escape cancels, empty
+     clears the nickname; 32 characters).
+   - **Profile**, "Pauses, schedules and usage for this device follow its
+     profile.", a menu button with the current profile ("Alex" or
+     "Unassigned") listing the profiles (`device.profile.set`, Undo toast).
+     Left out for guests and in bridge mode; dimmed while the device is
+     blocked ("Unblock Kitchen Echo to change its profile").
 
 ## Data
 
 | Element | Command | Refresh |
 | --- | --- | --- |
 | Hero (name, status, type, profile, eero, signal) | `device.get {device}` | 30 s |
-| Now box | `device.rates.refresh` then `device.get` | 60 s while visible, Live is on and the device is online |
+| Live throughput | `device.rates.refresh` then `device.get` | 60 s while Live is on and the device is online (minimized windows included) |
 | Data usage chart, totals, busiest hour | `usage.get {scope: "device", id: device, range}` | 5 min |
 | "#2 on the network" | `usage.breakdown {range, by: "device"}` (rank of this device) | 5 min |
 | Device information | `device.get` | 30 s |
-| IP addresses | `device.get` (IPv4, IPv6 list, link-local) | 30 s |
+| Addresses and ports: addresses | `device.get` (IPv4, IPv6 list, link-local) | 30 s |
 | Reserved badge | `reservation.list` (match on MAC), or `device.get` `reservation` | 60 s |
 | Link-local | `device.get` `ipv6LinkLocal` | 30 s |
 | Port forwarding rows | `forward.list {device}` (`unavailable` explains an empty list in bridge mode) | 60 s |
-| Prev / Next targets | Renderer list order from Devices (view state) | - |
-| Appearance: nickname, hostname, type list | `device.get`; type list is static in core | On open |
-| Change profile menu | `profile.list` | 60 s |
+| `[` and `]` targets | Renderer list order from Devices (view state) | - |
+| Appearance row and icon sheet: nickname, hostname, type list | `device.get`; type list is static in core | 30 s; type list on open |
+| Profile row menu (Device settings) | `profile.list` | 60 s |
 
 ## Actions
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| ‹ Prev / Next › | - | - | No | Next device in the Devices list order |
-| Pause device | `device.pause {devices: device}` | disruptive | Yes, dialog | Status Paused, button becomes **Resume device**; toast with Undo |
+| `[` and `]` keys | - | - | No | Previous and next device in the Devices list order |
+| Pause device… | `device.pause {devices: device}` | disruptive | Yes, dialog | Status Paused, button becomes **Resume device**; toast with Undo |
 | Resume device | `device.resume {devices: [device]}` | write | No | Status Online |
-| Appearance | - | - | No | Opens the Appearance sheet |
-| Sheet: reset to hostname | - (fills the field) | - | No | Nickname set to hostname, not saved yet |
-| Sheet: type tile | - (form state) | - | No | Selects a type |
-| Sheet: Save | `device.rename {device, nickname}` and/or `device.type.set {device, type}` (only what changed) | write | No | Sheet closes, toast "Saved"; name and icon update everywhere |
-| Change profile | `device.profile.set {devices: [device], profile}` (`profile: null` for Unassigned) | write | Only when the target profile is paused or in a scheduled pause now | Menu of profiles plus Unassigned; hero updates; toast with Undo |
+| Appearance row: name field | `device.rename {device, nickname}` on Enter or blur (empty clears the nickname) | write | No | Name updates everywhere; toast with Undo |
+| Appearance row: icon button (Change icon…) | - | - | No | Opens the icon sheet |
+| Icon sheet: type tile | - (form state) | - | No | Selects a type |
+| Icon sheet: Save | `device.type.set {device, type}` | write | No | Sheet closes, icon updates everywhere; toast with Undo |
+| Profile row (Device settings) | `device.profile.set {devices: [device], profile}` (`profile: null` for Unassigned) | write | Only when the target profile is paused or in a scheduled pause now | Menu of profiles plus Unassigned; hero updates; toast with Undo |
 | Block | - | - | - | Opens the confirm dialog: "Block Alex's MacBook Pro?", "It will be disconnected from every eero and can't rejoin Maple Street until you unblock it from Devices > Blocked.", **Cancel** and **Block device** |
 | Block device | `device.block {devices: [device]}` | disruptive | Yes, dialog | Status Blocked; hero actions become **Unblock**; toast |
 | Unblock | `device.unblock {devices: [device]}` | write | No | Device can rejoin |
-| Edit (IPv4 reserved) | - | - | No | Reservations & ports, this reservation open |
-| Reserve (IPv4 not reserved) | `reservation.add {device, ip}` | write | No | Badge Reserved; toast |
-| All → (port forwarding) | - | - | No | Reservations & ports, filtered to this device |
+| Reserve… / Edit reservation… (header) | Opens the reservation sheet: `reservation.add {device, ip}` or `reservation.update` | write | No | Badge Reserved; toast |
+| View in Reservations & ports → | - | - | No | Reservations & ports |
 | Trash on a forward | `forward.remove {forward}` | write | Yes, UI inline ("Remove Web dev server? Port 8080 closes.") | Row removed; toast with Undo (`forward.add` with the same fields) |
 | Switch on a disabled forward | `forward.update {forward, enabled}` | write | No | Row enabled or disabled |
-| + Open a port | `forward.add {device, description, externalPort, protocol}` (creates the reservation first if needed) | write | No | Sheet with name, port or range, protocol; if the device has no reservation, the sheet says "Port forwards need a reserved address. Mesh UI will reserve 192.168.4.23." and runs both |
+| Open a port… | `forward.add {device, description, externalPort, protocol}` (creates the reservation first if needed) | write | No | Sheet with name, port or range, protocol; if the device has no reservation, the sheet says "Port forwards need a reserved address. Mesh UI will reserve 192.168.4.23." and runs both |
 
 ## States
 
 - **Loading.** Hero shows name and icon from the list cache if known, `-`
-  elsewhere; Now box `-`; chart gridlines; cards with labels and `-`.
+  elsewhere; Live throughput watermark; chart gridlines; cards with labels and `-`.
 - **Empty.** No usage: "No activity in this window." No IPv6: IPv6 row `-`.
   No forwards: card body "No ports open to this device." with **+ Open a
   port**.
 - **Error.** Per section note with Retry. A device that is gone: "This
   device is no longer on Maple Street." with a link back to Devices.
 - **Offline device.** Status Offline with "last seen 2h ago on Upstairs
-  Hall"; Now box shows `-` and "Rates appear when the device is online";
+  Hall"; with Live on, Live throughput reads "Device offline";
   Signal, channel, link rate and SNR show `-`; Pause still allowed (applies
   when it reconnects).
-- **Paused.** Status Paused; Now box shows "Paused, no internet"; primary
-  button Resume device.
-- **Blocked.** Status Blocked; Now and usage muted; only Unblock and
-  Appearance are offered.
+- **Paused.** Status Paused; with Live on, Live throughput reads "Device
+  paused"; the first action is Resume device.
+- **Blocked.** Status Blocked; with Live on, Live throughput reads "Device
+  blocked"; the only hero action is Unblock; Appearance stays in Device
+  settings and the Profile row is dimmed.
 - **Wired device.** Signal shows `-`; Device information shows the eero port
   and negotiated speed instead of Wi-Fi standard, channel and SNR.
-- **Guest device.** GUEST tag; Pause, Change profile and port forwarding
+- **Guest device.** GUEST tag; Pause, the Profile row and port forwarding
   hidden; Block stays.
-- **Offline (this computer).** Shell banner; writes disabled; Now box `-`.
+- **Offline (this computer).** Shell banner; writes disabled; Live throughput shows its watermark.
 - **No permission.** Writes disabled with the reason if
   `network.permissions` denies device updates.
 - **Capability missing.** Fields eero does not report for this device
-  (security type, SNR, retries) show `-`. No burst support: Now box hidden.
-- **Bridge mode.** Pause, Change profile, Block, Reserve and Port forwarding
-  are hidden; Now box hidden; the bridge note sits under the hero.
+  (security type, SNR, retries) show `-`. No burst support: Live throughput hidden.
+- **Bridge mode.** Pause, the Profile row, Block, Reserve and Port forwarding
+  are hidden; Live throughput hidden; the bridge note sits under the hero.
 
 ## Built so far (M2.7, M4.4)
 
@@ -128,12 +183,12 @@ Block, the `device_blacklist` capability.
 
 Still read-only: Edit or Reserve, the trash and switch on a forward, and
 + Open a port stay disabled with "Coming soon" until their commands land
-(M5). The Now box asks
-for `device.rates.refresh` once a minute while the page is visible and the
-device is online, sharing the engine's one burst per network with Devices.
-Prev and Next follow the Devices table's last row order (groups in order);
+(M5). Live throughput asks
+for `device.rates.refresh` once a minute while Live is on and the device is
+online (minimized windows included), sharing the engine's one burst per network with Devices.
+`[` and `]` follow the Devices table's last row order (groups in order);
 opened without it, they follow `device.list`'s A to Z order. The "No burst
-support: Now box hidden" and "No permission" states wait for the
+support: Live throughput hidden" and "No permission" states wait for the
 capability and permission checks of the write stories.
 
 ## Notes
@@ -155,6 +210,6 @@ capability and permission checks of the write stories.
   not in the top 50.
 - Open question: whether eero exposes per-device retries ("0.2% retries")
   outside the mobile app's User-Agent; drop it if absent.
-- MANUAL: pause and resume one device | device detail, Pause device, wait,
+- MANUAL: pause and resume one device | device detail, Pause device…, wait,
   Resume device | the device loses and regains internet within seconds and
   the eero app agrees | risk: brief outage for that device.

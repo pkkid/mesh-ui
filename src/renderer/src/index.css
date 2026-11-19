@@ -247,3 +247,14 @@ html.dark[data-theme-id="rose"] [data-app-sidebar] {
 .no-transitions * {
   transition-duration: 0s !important;
 }
+
+/* Devices Live throughput: a quiet bar that fills, slower and slower, while waiting for the next live reading.
+   The curve is the animation's easing (LiveThroughput.tsx, WAIT_EASING). */
+@keyframes live-wait {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

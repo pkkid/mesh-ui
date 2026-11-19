@@ -1,13 +1,13 @@
 /**
  * The Devices toolbar (docs/ux/pages/devices.md, Layout 2 and 3): search, a
- * status segment and a Filters popover (network, band, type, eero, profile,
+ * Status dropdown and a Filters popover (network, band, type, eero, profile,
  * manufacturer, new this week) on the left; Group by and Columns on the
  * right. Popover filters that are set show as removable chips under the
  * toolbar. Every filter becomes a `device.list` param in DevicesPage;
  * grouping and columns are view state. Sorting is on the table headers.
  */
 import { Popover } from "@base-ui/react/popover";
-import { Check, Columns3, Layers } from "lucide-react";
+import { Check, CircleDot, Columns3, Layers } from "lucide-react";
 import type { RefObject } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -30,7 +30,7 @@ import type { Band, DeviceCategory, DeviceSummary } from "../../../../core/model
 
 export type StatusFilter = "all" | "online" | "offline" | "paused" | "blocked";
 export type GroupBy = "category" | "status" | "eero" | "profile" | "none";
-export type ColumnKey = "profile" | "eero" | "band" | "signal" | "addr" | "now" | "today";
+export type ColumnKey = "profile" | "eero" | "band" | "signal" | "addr" | "now" | "today" | "status";
 
 /** `profile` filter value for devices with no profile (sent as `profile: null`). */
 export const UNASSIGNED = "__unassigned__";
@@ -46,7 +46,7 @@ export type DeviceFilterState = {
   profile: string | null;
   type: DeviceCategory | null;
   manufacturer: string | null;
-  /** New this week: the ISO time one week before the filter was set (sent as `firstSeenSince`), or null. */
+  /** New this week: the ISO time one week before the filter was set (sent as `newSince`), or null. */
   newSince: string | null;
 };
 
@@ -73,7 +73,7 @@ const CLEAR_POPOVER: Partial<DeviceFilterState> = {
   newSince: null,
 };
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const CATEGORY_LABELS: Record<DeviceCategory, string> = {
   phones_tablets: "Phones & tablets",
@@ -95,8 +95,9 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   band: "Band",
   signal: "Signal",
   addr: "IP · MAC",
-  now: "Now",
+  now: "Live",
   today: "24h",
+  status: "Status",
 };
 
 const GROUP_LABELS: Record<GroupBy, string> = {
@@ -168,18 +169,19 @@ export function DeviceFilters(props: DeviceFiltersProps) {
         value={props.searchText}
         onValueChange={props.onSearchText}
       />
-      <Segmented
-        aria-label="Status"
-        size="md"
+      <FilterDropdown
+        label="Status"
+        icon={CircleDot}
+        align="start"
         value={f.status}
-        onValueChange={(status) => onChange({ status })}
         options={[
-          { value: "all", label: `All ${count(s?.total)}` },
-          { value: "online", label: `Online ${count(s?.online)}` },
-          { value: "offline", label: `Offline ${count(s?.offline)}` },
-          { value: "paused", label: `Paused ${count(s?.paused)}` },
-          { value: "blocked", label: `Blocked ${count(s?.blocked)}` },
+          { value: "all", label: "All devices", count: s?.total },
+          { value: "online", label: "Online", count: s?.online },
+          { value: "offline", label: "Offline", count: s?.offline },
+          { value: "paused", label: "Paused", count: s?.paused },
+          { value: "blocked", label: "Blocked", count: s?.blocked },
         ]}
+        onChange={(status) => onChange({ status: (status ?? "all") as DeviceFilterState["status"] })}
       />
       <FiltersButton active={chips.length} onClear={() => onChange(CLEAR_POPOVER)}>
         <FilterRow label="Network">

@@ -1,6 +1,6 @@
 /**
  * Data usage: `usage.get` (one series, or one per eero or profile) and
- * `usage.breakdown` (who used the most). Windows, the 7-day limit, totals,
+ * `usage.breakdown` (who used the most). Windows, the 7-day and month limits, totals,
  * busiest bucket, "today so far", sorting and shares are all decided here,
  * so the demo and eero backends only move bytes. See
  * docs/architecture/commands.md (internet) and docs/ux/pages/overview.md.
@@ -18,20 +18,34 @@ import { type CommandContext, defineCommand, ref } from "../spec";
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-/** Free eero accounts keep about 7 days of usage; nothing older is asked for or shown. */
+/** The longest day or week window: 7 days, which only clamps across a DST change. */
 export const USAGE_MAX_DAYS = 7;
+/**
+ * The longest month window. Free eero accounts answer for the current
+ * calendar month (the eero app's Month view, seen on a free account
+ * 2026-11-19), so a month range reaches back to the 1st, up to 31 days.
+ */
+export const USAGE_MONTH_MAX_DAYS = 31;
 
 export type UsageWindow = { from: number; to: number; cadence: M.UsageCadence };
 
 /**
  * The window a range covers, in the network time zone: day is the last 24
  * hours (whole local hours, the current one partial), week the last 7 local
- * days (today partial). `from` is clamped to `USAGE_MAX_DAYS` before `now`,
- * which only bites across a DST change.
+ * days (today partial), month this calendar month from the 1st (today
+ * partial), like the eero app's Month view. `from` is clamped to
+ * `USAGE_MAX_DAYS` (month: `USAGE_MONTH_MAX_DAYS`) before `now`.
  */
 export function usageWindow(range: M.UsageRange, cadence: M.UsageCadence | undefined, now: number, tz: string): UsageWindow {
-  const aligned = range === "day" ? hourStart(now, tz) - 23 * HOUR : dayStart(now - 6 * DAY, tz);
-  return { from: Math.max(aligned, now - USAGE_MAX_DAYS * DAY), to: now, cadence: cadence ?? (range === "day" ? "hourly" : "daily") };
+  const aligned = range === "day" ? hourStart(now, tz) - 23 * HOUR : range === "week" ? dayStart(now - 6 * DAY, tz) : monthStart(now, tz);
+  const max = range === "month" ? USAGE_MONTH_MAX_DAYS : USAGE_MAX_DAYS;
+  return { from: Math.max(aligned, now - max * DAY), to: now, cadence: cadence ?? (range === "day" ? "hourly" : "daily") };
+}
+
+/** Local midnight on the 1st of `now`'s month in `tz`. */
+export function monthStart(now: number, tz: string): number {
+  const dayOfMonth = new Date(now + tzOffset(now, tz)).getUTCDate();
+  return dayStart(now - (dayOfMonth - 1) * DAY, tz);
 }
 
 const bytesOf = (p: { down: number; up: number }) => p.down + p.up;
@@ -92,19 +106,22 @@ async function networkZone(ctx: CommandContext): Promise<string> {
   return (await ctx.backend.network.get(ctx.net)).timezone ?? "UTC";
 }
 
-const range = z.enum(["day", "week"]).default("day").describe("day: the last 24 hours. week: the last 7 days (the most eero keeps on free accounts).");
+const range = z
+  .enum(["day", "week", "month"])
+  .default("day")
+  .describe("day: the last 24 hours. week: the last 7 days. month: this calendar month from the 1st (network time), per day.");
 
 const usageGet = defineCommand({
   id: "usage.get",
   label: "Data usage",
   description:
-    "Bytes down and up over the last day or week, per hour or per day, for the network, one eero, device or profile, or the guest network. Without an id, the eero and profile scopes return one series each (profiles add Unassigned).",
+    "Bytes down and up over the last day or week, or this calendar month, per hour or per day, for the network, one eero, device or profile, or the guest network. Without an id, the eero and profile scopes return one series each (profiles add Unassigned).",
   icon: "chart-area",
   params: z.object({
     scope: z.enum(["network", "eero", "device", "profile", "guest"]).default("network"),
     id: ref("eero, device or profile").optional().describe("The eero, device or profile (id or exact name). Leave out for network and guest."),
     range,
-    cadence: z.enum(["hourly", "daily"]).optional().describe("Bucket size. Default hourly for day and daily for week; week with hourly feeds the busy-hours heatmap."),
+    cadence: z.enum(["hourly", "daily"]).optional().describe("Bucket size. Default hourly for day and daily for week and month; week with hourly feeds the busy-hours heatmap."),
   }),
   effect: "query",
   topic: "usage",

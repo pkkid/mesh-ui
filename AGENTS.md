@@ -23,7 +23,9 @@ subscription. Do not build commands, screens, mockups or stories for them:
 Advanced Security, ad blocking, content filters, block apps, block and allow
 sites, security insights, VPN, 1Password, Malwarebytes, Dynamic DNS, Hotspot
 or Internet Backup, Wi-Fi radio analytics, or usage history beyond what free
-accounts get (about 7 days). `notes/app-screens.md` marks these `[Plus]`.
+accounts get (the current calendar month: the eero app's Month view, and the
+API answers for it on a free account, checked 2026-11-19).
+`notes/app-screens.md` marks these `[Plus]`.
 
 ## Stack
 

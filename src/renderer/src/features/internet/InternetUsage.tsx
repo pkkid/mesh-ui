@@ -29,7 +29,7 @@ const RANGES = [
 ] as const;
 
 /** The window in subtitles, bare ("24 hours", not "Last 24 hours"). */
-const WINDOW: Record<UsageRange, string> = { day: "24 hours", week: "7 days" };
+const WINDOW: Record<UsageRange, string> = { day: "24 hours", week: "7 days", month: "this month" };
 
 const TOP = 5;
 const HOUR = 3_600_000;

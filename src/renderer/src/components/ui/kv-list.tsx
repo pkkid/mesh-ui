@@ -63,4 +63,4 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-export { KvList };
+export { CopyButton, KvList };

@@ -275,7 +275,7 @@ export function BulkBar({ selected, profiles, networkName, bridged, gate: writeG
           <>
             <GatedButton gate={gate} variant="outline" size="xs" onClick={() => void after(pauseRequest(selected, true))}>
               <Pause />
-              Pause
+              Pause…
             </GatedButton>
             <GatedButton gate={gate} variant="outline" size="xs" onClick={() => void after(pauseRequest(selected, false))}>
               <Play />
@@ -319,7 +319,7 @@ export function BulkBar({ selected, profiles, networkName, bridged, gate: writeG
               onClick={() => void after(blockRequest(selected.filter((d) => !d.blocked), true, { networkName }))}
             >
               <Ban />
-              Block {selected.filter((d) => !d.blocked).length}
+              Block {selected.filter((d) => !d.blocked).length}…
             </GatedButton>
           ))}
         <span aria-hidden className="h-[18px] w-px bg-border" />

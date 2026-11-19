@@ -1,64 +1,32 @@
 /**
- * The hero's Now box: this device's live download and upload, with the shared
- * Live switch (#319). While Live is on, the page is visible and the device is
- * online it asks for `device.rates.refresh`
- * through the shared `useLiveRates` hook, which refetches `device.get` once
- * the rates have settled.
+ * Device detail's Live throughput column (docs/ux/pages/device-detail.md,
+ * Layout 1): the shared hero panel from Devices (`LivePanel`) for this one
+ * device. With Live off it is the dim "Live throughput off" watermark; with
+ * Live on it shows this device's download and upload, a chart of its readings
+ * since Live was turned on, and when the last reading came. An offline,
+ * paused or blocked device has no live rates, so the watermark says why.
+ * While Live is on and the device is online it asks for
+ * `device.rates.refresh` through the shared `useLiveRates` hook, which
+ * refetches `device.get` once the rates have settled.
  */
-import { ArrowDown, ArrowUp } from "lucide-react";
-import type { ReactNode } from "react";
-
-import { useLiveMode } from "~/app/useLiveMode";
 import { useLiveRates } from "~/app/useLiveRates";
-import { LiveToggle } from "~/components/mesh/LiveToggle";
-import { StatusDot } from "~/components/ui/status";
-import { seriesColors } from "~/lib/chartColors";
-import { cn } from "~/lib/utils";
-import { mbpsParts } from "../../../../core/format";
+import { LivePanel } from "~/features/devices/LiveThroughput";
+import { networkClock } from "../../../../core/format";
 import type { Device } from "../../../../core/model";
 
-export function DeviceNow({ device: d, muted = false }: { device: Device; muted?: boolean }) {
-  const online = d.connected && !d.blocked;
-  useLiveRates(online && !d.paused);
-  const [liveOn] = useLiveMode();
-  const live = liveOn && online && !d.paused && d.rates;
-
-  let note = "Current rates while the device is active";
-  if (d.blocked) note = "Blocked, no internet";
-  else if (!d.connected) note = "Rates appear when the device is online";
-  else if (d.paused) note = "Paused, no internet";
-  else if (!liveOn) note = "Turn on Live to see current rates";
-
+export function DeviceNow({ device: d, timezone }: { device: Device; timezone: string | null | undefined }) {
+  useLiveRates(d.connected && !d.blocked && !d.paused);
+  const unavailable = d.blocked ? "Device blocked" : !d.connected ? "Device offline" : d.paused ? "Device paused" : null;
+  const { timeSeconds } = networkClock(timezone ?? "UTC");
   return (
-    <div className={cn("w-[260px] rounded-xl border bg-background/60 px-4 py-3.5", muted && "opacity-60")}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5 font-semibold text-3xs text-muted-foreground uppercase tracking-widest">
-          <StatusDot tone={live ? "success" : "muted"} />
-          Now
-        </span>
-        <LiveToggle size="xs" />
-      </div>
-      <div className="mt-2.5 flex gap-6">
-        <Rate icon={<ArrowDown className="size-[13px]" style={{ color: seriesColors.download }} />} label="Download" mbps={live ? d.rates?.downMbps : null} />
-        <Rate icon={<ArrowUp className="size-[13px]" style={{ color: seriesColors.upload }} />} label="Upload" mbps={live ? d.rates?.upMbps : null} />
-      </div>
-      <div className="mt-2.5 text-3xs text-muted-foreground">{note}</div>
-    </div>
-  );
-}
-
-function Rate({ icon, label, mbps }: { icon: ReactNode; label: string; mbps: number | null | undefined }) {
-  const p = mbpsParts(mbps);
-  return (
-    <div>
-      <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-0.5 font-semibold text-2xl tabular-nums tracking-tight">
-        {p.value}
-        {p.unit && <small className="ms-1 font-medium text-muted-foreground text-xs">{p.unit}</small>}
-      </div>
-    </div>
+    <LivePanel
+      id={`device:${d.id}`}
+      rates={d.rates}
+      timezone={timezone}
+      unavailable={unavailable}
+      className="w-96"
+      ariaLabel={`Current download and upload for ${d.name}, since Live was turned on`}
+      footer={(r) => (r ? `Last reading ${timeSeconds(r.at)}` : "No live rates yet")}
+    />
   );
 }

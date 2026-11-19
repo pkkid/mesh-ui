@@ -96,7 +96,7 @@ export const TTL: Record<Topic, number> = {
 };
 
 /** Usage cache lifetime by range: day 4 min, week 15 min. */
-export const USAGE_TTL = { day: 4 * MIN, week: 15 * MIN } as const;
+export const USAGE_TTL = { day: 4 * MIN, week: 15 * MIN, month: 30 * MIN } as const;
 
 /** eero allows one burst reporter per minute per network. */
 export const BURST_COOLDOWN_SEC = 60;

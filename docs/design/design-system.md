@@ -292,7 +292,7 @@ CSS variables on `:root` in `index.css`.
 | Section heading to card | **15px from the subtitle to the card**; 12px when a section has no subtitle | `gap-[15px]`; `gap-3`. `Section` still defaults to `gap-5` (20px) with a description: Overview passes `gap-[15px]`, other pages move over page by page |
 | Section header tools gap | 8px | `gap-2` |
 | Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
-| Page header (hero) | flat: no side padding, 24px above, 40px below to a 1px rule, 28px after the rule; 28px between columns | `pt-6 pb-10 mb-7 border-b`, `gap-7` (see [Page header](#page-header-hero)) |
+| Page header (hero) | flat: no side padding, 24px above, 40px below to a 1px rule, 28px after the rule; 28px between columns (Devices: 56px, so its By type bar and Live chart do not crowd) | `pt-6 pb-10 mb-7 border-b`, `gap-7` (see [Page header](#page-header-hero)) |
 | List row (`Row`) | 12px 16px, min height 58px, 14px gap | `min-h-[58px] px-4 py-3 gap-3.5` |
 | Settings row | 12px 16px, 32px to the control | `px-4 py-3`, `gap-8` |
 | Table cell | 8px 12px | `px-3 py-2` |
@@ -456,7 +456,7 @@ beside the 116px code. `PageHeader` and `QrBlock` set their size once through
 leave `size` off; a size given at the call site would break the match.
 Dialogs opened from a header reset it, so their buttons keep their own sizes.
 
-**Moving pages to the flat hero.** Only Overview passes `flat` today;
+**Moving pages to the flat hero.** Overview and Devices pass `flat` today;
 the other pages still draw the older carded header (`bg-card/40`, 1px
 `border-border/60`, 12px radius, `px-6 py-[22px]`). New pages use `flat`,
 and the rest move over page by page. Once every page is flat, `flat` becomes
@@ -543,7 +543,7 @@ off, like the page header. A shared button that also appears outside a header
 | Section header tools | 28px (`tool`) |
 | Page header (hero) actions | 28px (`hero`, 13px text) |
 | Segmented outside a header (forms, settings) | 30px (`sm`, the default) |
-| Toolbars (Devices filter row) | 32px (`md` Segmented, `h-8` inputs and buttons) |
+| Toolbars (Devices filter row) | 32px (`h-8` inputs, buttons and dropdowns) |
 
 A fully flat layout, with sections directly on the page background, was tried
 in the mockups and rejected: on the warm Gruvbox surfaces sections blurred
@@ -564,7 +564,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Component | Look |
 | --- | --- |
 | Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
-| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons, such as the Devices status filter |
+| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons |
 | Switch | 36 x 20 (`h-5 w-9`), full radius, `bg-primary` when on, `bg-muted` with a border when off, dashed border when eero does not report the value |
 | Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`). Focus, as T3 Code: `border-ring` and a 3px glow inside the border (`ring-[3px] ring-inset ring-ring/24`), never outside. Text fields use `components/ui/input.tsx`, with no decorative icon (no pencil); an optional 16px leading icon only when it says what to type (search); selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
 | Chip | 24px (`h-6`), full radius, 1px border, `bg-card`, `text-xs text-foreground/80`, for filters; selected chip gets a stronger border, not colour |
@@ -611,8 +611,8 @@ ellipsis character (`…`, U+2026, not three dots): "Restart network…",
 "Rename…", "Add a reservation…". A button that does its job on click has
 none, even when its result shows in a sheet or dialog: Share Wi-Fi opens
 the QR sheet, and that sheet is the action, so it is "Share Wi-Fi". The
-same goes for menu items and command palette entries. Overview follows
-this; other pages move over page by page.
+same goes for menu items and command palette entries. Overview, Devices
+and device detail follow this; other pages move over page by page.
 
 **Hover colour fades.** Anything that changes colour on hover (dim to
 bright text, a row or card background) eases with `transition-colors`
@@ -666,6 +666,10 @@ page.
   title or a value (bright links were tried and stood out too much). The
   arrow, the hover and the pointer cursor mark it as clickable. Colour stays
   neutral: no blue or accent links.
+- **Links that leave the app** (they open the user's browser, such as
+  device detail's "Look up online") look the same as section header links
+  but end with a 14px `ExternalLink` icon instead of the arrow, so it is
+  clear they open outside Mesh UI.
 - **Navigation links start with "View".** Name the destination after the
   verb: "View topology", "View all devices", "View all activity", "View
   history". Never a bare "All" or a lone noun.
@@ -687,9 +691,11 @@ page by page.
 List pages filter with one pattern, `components/ui/filter-bar.tsx`, used by
 Devices and Activity. Do not build another.
 
-- A bare toolbar (no card), 32px controls: `FilterSearch` (search icon, `/`
-  hint; `useSlashFocus` wires the key, Esc clears) and a `FiltersButton` on
-  the left, page-specific segments beside them (Devices' status).
+- A bare toolbar (no card), 32px controls, every one the same height
+  (`FilterSearch` included: its field is 32px outside, border and all):
+  `FilterSearch` (search icon, `/` hint; `useSlashFocus` wires the key, Esc
+  clears) first, then page-specific filters as `FilterDropdown`s (Devices'
+  Status), not segmented pills, then the `FiltersButton`.
 - `FiltersButton`: outline button with a muted count badge, a popover of
   `FilterRow`s (label column plus control: `SelectPicker`, `FilterToggle`
   chips, a Segmented) and a footer "N filters set" with **Clear all**.
@@ -778,7 +784,11 @@ Every write control uses the same pieces (M4.3):
   given a name), `ConfirmHost`, mounted once by the shell, and
   `WriteConfirmDialog` for a nested write.
 - **Sheet** (`ui/sheet.tsx`): `Sheet` and `SheetField`, as in
-  [overview.md](../ux/overview.md#sheets).
+  [overview.md](../ux/overview.md#sheets). **No divider lines:** like the
+  confirm dialog, a sheet has no rule under its header or above its footer
+  (`Sheet clean`); spacing alone separates them. The device icon sheet
+  follows this; other sheets move over page by page, and once all do,
+  `clean` becomes the only style.
 
 ```tsx
 const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });

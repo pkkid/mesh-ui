@@ -33,7 +33,7 @@ describe("notifications.list (demo)", () => {
     const maple = await ok(engine.execute<M.NotificationPage>("notifications.list", { networkId: MAPLE }));
     expect(maple.unread).toBe(true);
     expect(unreadCount(maple)).toBe(3);
-    expect(maple.notifications).toHaveLength(6);
+    expect(maple.notifications).toHaveLength(7);
     expect(maple.nextCursor).toBeNull();
     const times = maple.notifications.map((n) => n.at);
     expect(times).toEqual([...times].sort().reverse());

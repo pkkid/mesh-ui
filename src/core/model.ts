@@ -41,7 +41,8 @@ export const INVERSE_PORT_ACTION: Readonly<Record<PortAction, PortAction | null>
   DISABLE_POE: "ENABLE_POE",
   RESTART_POWER: null,
 };
-export type UsageRange = "day" | "week";
+/** day: the last 24 hours; week: the last 7 days; month: this calendar month so far (from the 1st, network time). */
+export type UsageRange = "day" | "week" | "month";
 export type UsageCadence = "hourly" | "daily";
 
 // ---------------------------------------------------------------------------
@@ -378,6 +379,7 @@ export type Device = {
   ipv6LinkLocal: string | null;
   connected: boolean;
   lastActive: Iso | null;
+  /** eero's `first_active`: when the device's current stretch of activity began (it restarts when the device rejoins after a while away, or the eeros restart), not when it first ever joined. */
   firstSeen: Iso | null;
   ssid: "main" | "guest" | null;
   /** Which eero it is on. */
@@ -420,7 +422,10 @@ export type DeviceSummary = {
   byProfile: { profileId: Id | null; count: number }[];
   /** By manufacturer (null: unknown). Largest first; sums to total. */
   byManufacturer: { manufacturer: string | null; count: number }[];
+  /** Devices eero announced as new (its New Device notification, `device.new`) in the last 7 days, newest first. */
   newThisWeek: Id[];
+  /** When the newest of those was announced; null when there are none. */
+  newestAt: Iso | null;
   rates: DeviceRateTotals | null;
 };
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isLive, LIVE_AUTO_OFF_MIN, setLive } from "./useLiveMode";
+import { enterLivePage, isLive, LIVE_AUTO_OFF_MIN, leaveLivePage, setLive } from "./useLiveMode";
 
 afterEach(() => {
   setLive(false);
@@ -27,5 +27,20 @@ describe("Live switch (#319)", () => {
     setLive(true);
     vi.advanceTimersByTime(LIVE_AUTO_OFF_MIN * 60_000 - 1);
     expect(isLive()).toBe(true);
+  });
+
+  it("stays on moving between live pages and turns off leaving them", () => {
+    vi.useFakeTimers();
+    enterLivePage(); // Devices
+    setLive(true);
+    // Devices to a device: the new page mounts in the same navigation.
+    leaveLivePage();
+    enterLivePage();
+    vi.advanceTimersByTime(1);
+    expect(isLive()).toBe(true);
+    // The device page to Overview: no live page left.
+    leaveLivePage();
+    vi.advanceTimersByTime(1);
+    expect(isLive()).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import { createEeroBackend } from "../eero/backend";
 import { createEngine } from "../engine";
 import { BackendError } from "../errors";
 import type * as M from "../model";
-import { finishSeries, hourlyAverages, quietHours, USAGE_MAX_DAYS, usageWindow, windowAverage } from "./usage";
+import { finishSeries, hourlyAverages, monthStart, quietHours, USAGE_MAX_DAYS, usageWindow, windowAverage } from "./usage";
 
 // Thursday Nov 12 2026, 2:41 PM in Los Angeles, as in the mockups.
 const NOW = Date.parse("2026-11-12T22:41:00Z");
@@ -37,6 +37,15 @@ describe("usageWindow and the 7-day limit", () => {
     expect(week).toEqual({ from: dayStart(NOW - 6 * DAY, TZ), to: NOW, cadence: "daily" });
     expect(iso(week.from)).toBe("2026-11-06T08:00:00.000Z"); // Friday midnight in Los Angeles
     expect(usageWindow("week", "hourly", NOW, TZ).cadence).toBe("hourly");
+  });
+
+  it("starts the month window on the 1st at local midnight, per day", () => {
+    const month = usageWindow("month", undefined, NOW, TZ);
+    expect(month.cadence).toBe("daily");
+    expect(month.to).toBe(NOW);
+    expect(new Date(month.from + 0).toISOString()).toBe(new Date(monthStart(NOW, TZ)).toISOString());
+    // The 1st, local midnight in Los Angeles (UTC-7 until DST ends Nov 1, so 07:00Z).
+    expect(iso(month.from)).toBe("2026-11-01T07:00:00.000Z");
   });
 
   it("clamps the week to 7 days when a DST change makes 7 local days longer", () => {
@@ -209,7 +218,7 @@ describe("usage.get on the demo backend", () => {
       const r = await engine.execute("usage.get", params);
       expect(r).toMatchObject({ ok: false, error: { code: "bad_params" } });
     };
-    await bad({ range: "month" });
+    await bad({ range: "year" });
     await bad({ scope: "planet" });
     await bad({ cadence: "minutely" });
     await bad({ scope: "device" });
@@ -290,7 +299,7 @@ describe("usage.breakdown on the demo backend", () => {
 
   it("rejects bad params", async () => {
     const { engine } = demoEngine();
-    for (const params of [{ by: "room" }, { range: "month" }, { by: "eero", profile: "Leo" }, { profile: "Nobody" }, { format: "xml" }, { top: 0 }, { top: 1.5 }, { top: 101 }, { top: "5" }]) {
+    for (const params of [{ by: "room" }, { range: "year" }, { by: "eero", profile: "Leo" }, { profile: "Nobody" }, { format: "xml" }, { top: 0 }, { top: 1.5 }, { top: 101 }, { top: "5" }]) {
       expect(await engine.execute("usage.breakdown", params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
     }
   });

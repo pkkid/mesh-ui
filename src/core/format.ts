@@ -102,6 +102,16 @@ export function formatDuration(seconds: Num): string {
   return h ? `${d}d ${h}h` : `${d}d`;
 }
 
+/** Time left on a countdown, to the second: "7m 12s", "7m", "45s", "-". */
+export function formatCountdown(seconds: Num): string {
+  if (!isNum(seconds) || seconds < 0) return MISSING;
+  const s = Math.ceil(seconds);
+  if (s < MINUTE) return `${s}s`;
+  const m = Math.floor(s / MINUTE);
+  const rest = s % MINUTE;
+  return rest ? `${m}m ${rest}s` : `${m}m`;
+}
+
 /**
  * Time relative to `now` (epoch ms): "just now", "5m ago", "3h ago",
  * "2d ago", "in 5m", and a short date ("Nov 3") beyond a week.
@@ -128,6 +138,8 @@ export function formatRelative(iso: string | null | undefined, now: number, time
 export type Clock = {
   /** "9:41 AM" */
   time: (at: At) => string;
+  /** "9:41:07 AM", for live readings a few seconds apart. */
+  timeSeconds: (at: At) => string;
   /** "Oct 20, 9:41 AM" */
   dateTime: (at: At) => string;
   /** "Sat Nov 8" */
@@ -171,6 +183,7 @@ function makeClock(timeZone: string): Clock {
   const toMs = (at: At) => (typeof at === "number" ? at : Date.parse(at));
   return {
     time: fmt({ hour: "numeric", minute: "2-digit" }),
+    timeSeconds: fmt({ hour: "numeric", minute: "2-digit", second: "2-digit" }),
     dateTime: fmt({ month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
     day: (at) => {
       const ms = toMs(at);

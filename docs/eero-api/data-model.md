@@ -200,7 +200,7 @@ There is no `neighbor` on a connections port; `poe_status` was absent.
 | `connectivity.packet_stats` | `{rx_packets, tx_packets, rx_drops, tx_retries, tx_retransmit_ppm, tx_fail_ppm, rx_drop_ppm}` | | Health diagnostics |
 | `connectivity.ethernet_status` | `{has_carrier, interface_number, speed, is_wan_port, port_name}` | | Wired port |
 | `usage` | `{down_mbps, up_mbps}` or null | | **Live bandwidth** (refresh via `burst_reporters`) |
-| `last_active`, `first_active`, `first_seen` | datetime | | "Last seen" |
+| `last_active`, `first_active`, `first_seen` | datetime | | "Last seen". `first_active` is not when the device first joined: a read-only check on a real network (2026-11-19) found it 0 to 34 minutes before `last_active` on devices that come and go, no device older than 26 days, and a cluster right after an eeroOS update. For "new device" use the `device.new` notification instead. |
 | `paused` | bool | | **Pause switch** |
 | `blocked` / `blacklisted` | bool | | Block button |
 | `profile` | `{url, name, paused}` or null | | **Profile chip** |

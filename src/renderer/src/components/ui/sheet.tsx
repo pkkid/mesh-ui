@@ -39,6 +39,12 @@ type SheetProps = {
   error?: ReactNode;
   children: ReactNode;
   className?: string;
+  /**
+   * No divider lines under the header or above the footer, like the confirm
+   * dialog (design-system.md, Components: Sheet). Sheets move over to it page
+   * by page; the device icon sheet is the first.
+   */
+  clean?: boolean;
 };
 
 function Sheet({
@@ -55,6 +61,7 @@ function Sheet({
   error,
   children,
   className,
+  clean = false,
 }: SheetProps) {
   const [saving, setSaving] = useState(false);
   const [discarding, setDiscarding] = useState(false);
@@ -89,7 +96,7 @@ function Sheet({
             if (dirty && valid && !saving) void save();
           }}
         >
-          <div className="flex items-start gap-3 border-b px-5 py-4">
+          <div className={cn("flex items-start gap-3 px-5 py-4", !clean && "border-b")}>
             {icon && (
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground [&_svg]:size-4">
                 {icon}
@@ -107,7 +114,7 @@ function Sheet({
           <div className="flex flex-col gap-4 px-5 py-4">{children}</div>
           {error && <div className="px-5 pb-3 text-destructive-foreground text-xs">{error}</div>}
 
-          <div className="flex items-center gap-2 border-t px-5 py-3">
+          <div className={cn("flex items-center gap-2 px-5 py-3", !clean && "border-t")}>
             {discarding ? (
               <>
                 <span className="me-auto text-foreground/80 text-xs">Discard changes?</span>
