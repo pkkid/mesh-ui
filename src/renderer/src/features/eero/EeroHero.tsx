@@ -2,12 +2,18 @@
  * The eero detail hero, flat like every page header: a 64px product tile
  * (the device hero's size) with a small LED bar, name with "Gateway", status
  * line (status, uptime), facts (Model, Radios, Devices, Data 24h), and the
- * Uplink card on the right. The LED bar pulses while Blink light blinks the eero. docs/ux/pages/eero-detail.md (Layout 1).
+ * Uplink card on the right. The LED bar pulses while Blink light blinks the eero.
+ * Actions: Rename… first (the rename sheet, `eero.rename` with Undo), Blink
+ * light, and Restart eero… last. docs/ux/pages/eero-detail.md (Layout 1).
  */
-import { Lightbulb, RotateCcw } from "lucide-react";
+import { Lightbulb, Pencil, RotateCcw } from "lucide-react";
+import { useState } from "react";
+
+import { useWrite } from "~/app/useWrite";
 
 import { GatewayLabel } from "~/components/ui/badge";
-import { GatedButton } from "~/components/ui/page";
+import { GatedButton, useGate } from "~/components/ui/page";
+import { RenameSheet } from "~/components/ui/rename-sheet";
 import { Metric, PageHeader } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
 import { eeroIcon } from "~/lib/deviceIcons";
@@ -39,6 +45,11 @@ export type EeroHeroProps = {
 
 export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage, internet, networkName, fading = false }: EeroHeroProps) {
   const restart = useEeroRestart(eero, eeros, networkName, offline);
+  const [renaming, setRenaming] = useState(false);
+  const rename = useWrite<{ eero: string; location: string }, Eero>("eero.rename", { form: true });
+  const roleGate = useGate({ area: "eeros" });
+  // Renaming needs the eero online, as its other settings do.
+  const renameGate = !eero ? { allowed: false, reason: null } : offline ? { allowed: false, reason: `${eero.location} is offline` } : roleGate;
   const status = offline ? networkStatus("offline") : networkStatus(eero?.status);
   const badge = eero ? radioBadge(eero) : null;
   const wired = eero?.clients.wired ?? null;
@@ -46,6 +57,7 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
   const bytes = usage ? usage.down + usage.up : null;
 
   return (
+    <>
     <PageHeader
       flat
       className={cn("transition-opacity", fading && "opacity-40")}
@@ -97,6 +109,11 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
       actions={
         eero ? (
           <>
+            {/* First in every detail hero; it opens the rename sheet, so it ends in an ellipsis. */}
+            <GatedButton variant="outline" className={DIM_ICON} gate={renameGate} onClick={() => setRenaming(true)}>
+              <Pencil />
+              Rename{"\u2026"}
+            </GatedButton>
             {restart.blocked ? (
               <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate}>
                 <Lightbulb />
@@ -119,6 +136,24 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
       }
       aside={eero ? <EeroUplink eero={eero} eeros={eeros} internet={internet} networkOffline={networkOffline} /> : null}
     />
+    {eero && (
+      <RenameSheet
+        open={renaming}
+        onClose={() => setRenaming(false)}
+        title={`Rename ${eero.location}`}
+        subtitle="The name shown everywhere for this eero, like Office, Den or Kitchen"
+        label="Location"
+        value={eero.location}
+        error={rename.error?.code === "bad_params" ? rename.error.message : null}
+        onSave={(location) =>
+          rename.run(
+            { eero: eero.id, location },
+            { success: `Renamed ${eero.location} to ${location}`, undo: { id: "eero.rename", params: { eero: eero.id, location: eero.location } } },
+          )
+        }
+      />
+    )}
+    </>
   );
 }
 

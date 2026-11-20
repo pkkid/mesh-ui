@@ -5,7 +5,7 @@
  * pause in the warning colour, and a Now line across every lane. With no
  * schedules anywhere and nothing paused today it collapses to one line and
  * an Add a schedule picker (a profile opens the schedule sheet, Unassigned
- * opens its page). docs/ux/pages/profiles.md (Layout 2, States), mockup 07.
+ * opens its page). docs/ux/pages/profiles.md (Layout 3, States), mockup 07.
  */
 import { Popover } from "@base-ui/react/popover";
 import { Plus } from "lucide-react";
@@ -22,7 +22,7 @@ import { networkClock } from "../../../../core/format";
 import type { PauseSegment, Profile, ProfileList } from "../../../../core/model";
 import { ScheduleSheet } from "../profile/ScheduleSheet";
 
-import { Avatar, PROFILE_GATE } from "./ProfileCards";
+import { Avatar, nextLine, PROFILE_GATE } from "./ProfileCards";
 import type { ProfileColor } from "./ProfilesPage";
 
 const TICKS = ["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"];
@@ -63,12 +63,16 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
   const minute = minuteIn(now, tz);
   const names = new Map((data?.profiles ?? []).map((p) => [p.id, p.name]));
   const lanes = data?.today.lanes ?? [];
+  // "3 scheduled, 1 manual, Pacific Time": today's pauses by kind (zero counts left out), then the zone they are in.
+  const segments = lanes.flatMap((l) => l.segments);
+  const kinds = (["scheduled", "manual"] as const).map((k) => [k, segments.filter((x) => x.kind === k).length] as const).filter(([, n]) => n > 0);
+  const description = known ? [...kinds.map(([k, n]) => `${n} ${k}`), zoneName(tz)].join(", ") : "-";
 
   // Nothing scheduled anywhere and nothing paused today: one line, not a chart of empty lanes.
   // Only once the list has answered, so the empty form never flashes while it loads.
   if (data && !profiles.error && !hasPauses(data)) {
     return (
-      <Section title="Today's pauses" tools={<AddSchedule profiles={data.profiles} colorOf={colorOf} />}>
+      <Section title="Today's pauses" className="gap-[15px]" description="None scheduled" tools={<AddSchedule profiles={data.profiles} colorOf={colorOf} />}>
         <Card className="px-[18px] py-3 text-[13px] text-muted-foreground">
           No scheduled pauses. Schedules pause a profile's internet at set times, like bedtime.
         </Card>
@@ -79,7 +83,8 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
   return (
     <Section
       title="Today's pauses"
-      subtitle={known ? `${clock.longDate(now)} · scheduled and manual, network time zone (${zoneName(tz)})` : "Scheduled and manual, network time zone"}
+      className="gap-[15px]"
+      description={description}
       tools={
         <div className="flex items-center gap-3 text-muted-foreground text-xs" aria-hidden>
           <Swatch className="bg-muted-foreground/40" label="Scheduled" />
@@ -99,6 +104,9 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
           >
             {(data ? lanes : [{ profileId: null, segments: [] }]).map((lane, i) => {
               const name = lane.profileId === null ? "Unassigned" : (names.get(lane.profileId) ?? "Profile");
+              // A profile whose schedules do not run today says when the next one does.
+              const profile = data?.profiles.find((p) => p.id === lane.profileId);
+              const next = profile && profile.schedules.length > 0 ? nextLine(profile, tz) : null;
               return (
                 <Lane
                   key={lane.profileId ?? "unassigned"}
@@ -109,13 +117,14 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
                   nowLabel={i === 0 ? clock.time(now) : null}
                   onOpen={lane.profileId === null ? undefined : () => navigate(pathFor("profile", { profileId: lane.profileId! }))}
                   loading={!data}
+                  emptyText={next ? `No pauses today, ${next}` : "No pauses today"}
                 />
               );
             })}
           </div>
           <div className="mt-1.5 grid grid-cols-[8rem_minmax(0,1fr)]" aria-hidden>
             <span />
-            <div className="flex justify-between text-3xs text-muted-foreground uppercase tracking-wide">
+            <div className="flex justify-between text-3xs text-muted-foreground tabular-nums">
               {TICKS.map((t, i) => (
                 <span key={i}>{t}</span>
               ))}
@@ -201,21 +210,22 @@ type LaneProps = {
   nowLabel: string | null;
   onOpen?: () => void;
   loading: boolean;
+  emptyText: string;
 };
 
-function Lane({ name, color, segments, minute, nowLabel, onOpen, loading }: LaneProps) {
+function Lane({ name, color, segments, minute, nowLabel, onOpen, loading, emptyText }: LaneProps) {
   return (
     <>
       <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
         {loading ? null : <Avatar name={name} color={color} className="size-5 text-2xs" />}
         <span className="truncate">{loading ? "" : name}</span>
       </div>
-      <div className="relative h-6 rounded-[7px] bg-muted/40 shadow-[inset_0_0_0_1px_var(--color-border)]">
+      <div className="relative h-6 rounded-[7px] bg-muted">
         {segments.map((s) => (
           <Segment key={`${s.kind}-${s.start}`} segment={s} minute={minute ?? 0} onOpen={onOpen} />
         ))}
         {!loading && segments.length === 0 ? (
-          <span className="absolute inset-y-0 left-2.5 flex items-center text-2xs text-muted-foreground/70">No pauses today</span>
+          <span className="absolute inset-y-0 left-2.5 flex items-center text-2xs text-muted-foreground/70">{emptyText}</span>
         ) : null}
         {minute === null ? null : (
           <span className="absolute -inset-y-1 z-10 w-0.5 -translate-x-1/2 rounded-full bg-foreground" style={{ left: pct(minute) }} aria-hidden>

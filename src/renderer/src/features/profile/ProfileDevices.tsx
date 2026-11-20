@@ -1,5 +1,5 @@
 /**
- * Profile detail "Devices" (docs/ux/pages/profile-detail.md, Layout 3): the
+ * Profile detail "Devices" (docs/ux/pages/profile-detail.md, Layout 4): the
  * profile's devices with status, where they connect (or when they were last
  * seen), their data in the last 24 hours (eero's device usage is a rolling
  * 24 h, never "today") and their share of the profile's total. From
@@ -16,6 +16,7 @@ import { Button } from "~/components/ui/button";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
+import { DIM_ICON } from "~/features/device/DeviceHero";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 import { Status } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
@@ -51,16 +52,19 @@ export function ProfileDevices({ profileId, profile, color, timezone, onEdit }: 
   const all = devices.data?.devices;
   const rows = all ? deviceRows(all, usage.data?.rows) : undefined;
   const online = all?.filter((d) => d.connected).length ?? 0;
-  const subtitle = all && all.length > 0 ? `${formatCount(online)} of ${formatCount(all.length)} online · data in the last 24 hours` : "Data in the last 24 hours";
+  // "4 devices, 3 online": the count, then how many are online (the data columns are the last 24 hours, said in their headers).
+  const description = !all ? "-" : all.length === 0 ? "None yet" : `${formatCount(all.length)} ${all.length === 1 ? "device" : "devices"}, ${formatCount(online)} online`;
 
   return (
     <Section
       title="Devices"
-      subtitle={subtitle}
+      description={description}
+      className="gap-[15px]"
       tools={
-        <GatedButton gate={gate} variant="outline" disabled={!profile} onClick={onEdit}>
+        // Opens the devices picker sheet, so it ends in an ellipsis.
+        <GatedButton gate={gate} variant="outline" className={DIM_ICON} disabled={!profile} onClick={onEdit}>
           <Plus />
-          Add a device
+          Add a device{"\u2026"}
         </GatedButton>
       }
     >
@@ -99,8 +103,8 @@ export function ProfileDevices({ profileId, profile, color, timezone, onEdit }: 
                   </Status>
                 ),
               },
-              { header: "Down", cell: (r) => formatBytes(r.down) },
-              { header: "Up", cell: (r) => formatBytes(r.up), muted: true },
+              { header: "Down 24h", cell: (r) => formatBytes(r.down) },
+              { header: "Up 24h", cell: (r) => formatBytes(r.up), muted: true },
               { header: "Share", cell: (r) => (r.share === null ? "-" : formatPercent(r.share)), muted: true },
               {
                 header: "",

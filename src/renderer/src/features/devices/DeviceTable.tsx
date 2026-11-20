@@ -50,7 +50,7 @@ import type { Device, DeviceCategory } from "../../../../core/model";
 
 import { blockRequest, menuClasses, pauseRequest, type ProfileOption, ProfileItems, profileRequest } from "./BulkBar";
 import { COLUMN_LABELS, type ColumnKey, type GroupBy } from "./DeviceFilters";
-import type { SortOrder } from "./DevicesPage";
+import type { SortOrder } from "./deviceSort";
 
 // ---------------------------------------------------------------------------
 // States and labels

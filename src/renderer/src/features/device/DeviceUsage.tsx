@@ -29,8 +29,8 @@ const RANGES = [
 
 /** The range in the description and the chart's label. */
 const RANGE_TEXT: Record<UsageRange, { lead: string; aria: string }> = {
-  day: { lead: "Last 24 hours", aria: "per hour, last 24 hours" },
-  week: { lead: "Last 7 days", aria: "per day, last 7 days" },
+  day: { lead: "24 hours", aria: "per hour, last 24 hours" },
+  week: { lead: "7 days", aria: "per day, last 7 days" },
   month: { lead: "This month", aria: "per day, this month" },
 };
 
@@ -53,12 +53,13 @@ export function DeviceUsage({ view, id }: { view: DeviceView; id: string }) {
   const tooltipLabels = points.map((p) => (day ? `${weekday(p.at)} ${hour(p.at)} to ${hour(Date.parse(p.at) + HOUR_MS)}` : longDate(p.at)));
 
   const busiest = s?.busiest && hasData ? s.busiest : null;
-  // "Last 24 hours, busiest hour 7 AM · 39.7 MB": the range, then its busiest bucket.
+  // "24 hours, busiest hour 7 AM, 39.7 MB": the bare window, then its busiest bucket (design-system.md, Subtitles carry data).
   const description = [
     RANGE_TEXT[range].lead,
     busiest
-      ? `busiest ${day ? `hour ${hour(busiest.at)}` : month ? `day ${dayLabel(busiest.at)}` : `day ${longWeekday(busiest.at)}`} · ${formatBytes(busiest.down + busiest.up)}`
+      ? `busiest ${day ? `hour ${hour(busiest.at)}` : month ? `day ${dayLabel(busiest.at)}` : `day ${longWeekday(busiest.at)}`}`
       : null,
+    busiest ? formatBytes(busiest.down + busiest.up) : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -111,7 +112,7 @@ export function DeviceUsage({ view, id }: { view: DeviceView; id: string }) {
             tooltipLabels={tooltipLabels}
             format={formatBytes}
             loading={usage.loading && (!s || usage.fading)}
-            heightClassName="h-52"
+            heightClassName="h-56"
             ariaLabel={`${view.device?.name ?? "Device"} data used ${RANGE_TEXT[range].aria}, download and upload`}
           />
         </div>

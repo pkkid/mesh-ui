@@ -7,17 +7,18 @@
  * docs/ux/pages/profile-detail.md and docs/mockups/08-profile-detail.html.
  * `[` and `]` move between profiles.
  */
-import { Pencil, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
+import { useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
-import { Card, Empty, Section } from "~/components/ui/card";
-import { GatedButton, SectionError, useGate } from "~/components/ui/page";
-import { PROFILE_GATE, ProfileSheet, type SheetMode, useDeleteProfile } from "~/features/profiles/ProfileCards";
-import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
+import { Card, Empty } from "~/components/ui/card";
+import { SectionError } from "~/components/ui/page";
+import { RenameSheet } from "~/components/ui/rename-sheet";
+import { ProfileSheet, type SheetMode, useDeleteProfile } from "~/features/profiles/ProfileCards";
+import { TopBarTitle } from "~/features/shell/TopBar";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import type { Network, ProfileDetail, ProfileList } from "../../../../core/model";
 
@@ -25,6 +26,7 @@ import { neighbour } from "./helpers";
 import { ProfileDevices } from "./ProfileDevices";
 import { ProfileHero } from "./ProfileHero";
 import { ProfileSchedules } from "./ProfileSchedules";
+import { ProfileSettings } from "./ProfileSettings";
 import { ProfileUsage } from "./ProfileUsage";
 import { UnassignedPage } from "./UnassignedPage";
 
@@ -39,8 +41,8 @@ export const UNASSIGNED = "unassigned";
 function OneProfile({ params }: PageProps) {
   const id = params.profileId ?? "";
   const [sheet, setSheet] = useState<SheetMode | null>(null);
-  const gate = useGate(PROFILE_GATE);
-  const deleteGate = useGate({ ...PROFILE_GATE, op: "delete" });
+  const [renaming, setRenaming] = useState(false);
+  const rename = useWrite<{ profile: string; name: string }, ProfileDetail>("profile.rename", { form: true });
   const del = useDeleteProfile(() => navigate(pathFor("profiles")));
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const bridged = network.data?.connectionMode === "bridged" || network.data?.connectionMode === "ipPassthrough";
@@ -89,31 +91,38 @@ function OneProfile({ params }: PageProps) {
   return (
     <>
       <TopBarTitle>{name}</TopBarTitle>
-      <TopBarActions>
-        <GatedButton gate={gate} size="sm" variant="outline" disabled={!data} onClick={() => data && setSheet({ kind: "rename", profile: data })}>
-          <Pencil />
-          Rename
-        </GatedButton>
-      </TopBarActions>
       <ProfileSheet mode={sheet} onClose={() => setSheet(null)} />
 
-      <ProfileHero profile={data} color={color} timezone={timezone} fading={profile.fading} />
-      <ProfileSchedules profile={data} timezone={timezone} fading={profile.fading} />
-
-      <ProfileUsage profileId={id} profile={data} timezone={timezone} />
-      <ProfileDevices profileId={id} profile={data} color={color} timezone={timezone} onEdit={() => data && setSheet({ kind: "devices", profile: data })} />
-
-      <Section title={<span className="text-destructive">Delete profile</span>}>
-        <Card padded className="flex flex-wrap items-center gap-4">
-          <p className="min-w-0 flex-1 text-muted-foreground text-xs">
-            {name ? `${name}'s` : "Its"} devices move to Unassigned, the schedules are removed and any pause is lifted. Usage history stays with the devices.
-          </p>
-          <GatedButton gate={deleteGate} size="sm" variant="destructive" disabled={!data || del.running} onClick={() => data && void del.run(data)}>
-            <Trash2 />
-            Delete profile
-          </GatedButton>
-        </Card>
-      </Section>
+      <ProfileHero profile={data} color={color} timezone={timezone} fading={profile.fading} onRename={() => setRenaming(true)} />
+      {data && (
+        // The same Rename sheet as device and eero detail.
+        <RenameSheet
+          open={renaming}
+          onClose={() => setRenaming(false)}
+          title={`Rename ${data.name}`}
+          subtitle="Shown everywhere in Mesh UI and the eero app"
+          value={data.name}
+          error={rename.error?.code === "bad_params" ? rename.error.message : null}
+          onSave={(next) =>
+            rename.run(
+              { profile: data.id, name: next },
+              { success: `Renamed ${data.name} to ${next}`, undo: { id: "profile.rename", params: { profile: data.id, name: data.name } } },
+            )
+          }
+        />
+      )}
+      {/* 56px between sections, the same as from the hero's rule to the first (design-system.md, Shape and spacing). */}
+      <div className="flex flex-col gap-14">
+        <ProfileSchedules profile={data} timezone={timezone} fading={profile.fading} />
+        <ProfileUsage profileId={id} profile={data} timezone={timezone} />
+        <ProfileDevices profileId={id} profile={data} color={color} timezone={timezone} onEdit={() => data && setSheet({ kind: "devices", profile: data })} />
+        {/* Delete as the last settings row at the bottom, as eero detail's Remove eero. */}
+        <ProfileSettings
+          profile={data}
+          onDelete={() => data && void del.run(data)}
+          deleting={del.running}
+        />
+      </div>
     </>
   );
 }

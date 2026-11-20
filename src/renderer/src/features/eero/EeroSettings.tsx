@@ -1,6 +1,6 @@
 /**
  * eero detail, two sections. "eero settings": T3-style settings rows in one
- * card (Location `eero.rename`: Enter or blur, preset chips, Undo; Status
+ * card (the name is changed from the hero's Rename…; Status
  * light `eero.led.set`: switch, brightness on release; Nightlight, Beacon
  * only, `eero.nightlight.set`: mode, brightness, times; then Remove eero).
  * "Device information": Software (`updates.get` plus
@@ -9,7 +9,7 @@
  * eeros. docs/ux/pages/eero-detail.md (Layout 4, Actions).
  */
 import { Check, Copy, Cpu, Download, type LucideIcon, Network } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
@@ -17,7 +17,6 @@ import { type Gate, useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
-import { Input } from "~/components/ui/input";
 import { useGate } from "~/components/ui/page";
 import { KvList } from "~/components/ui/kv-list";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
@@ -56,7 +55,6 @@ export function EeroSettings({ eero, remove }: { eero: Eero | null; remove: Reac
   return (
     <Section title="eero settings" description={description} className="gap-[15px]">
       <Card className="divide-y divide-border/50">
-        <LocationRow eero={eero} />
         <StatusLightRow eero={eero} />
         <NightlightRow eero={eero} />
         {remove}
@@ -95,61 +93,6 @@ function SettingsCard({ icon, title, sub, side, children }: { icon: LucideIcon; 
       </div>
       {children}
     </Card>
-  );
-}
-
-function LocationRow({ eero }: { eero: Eero | null }) {
-  const name = eero?.location ?? null;
-  const gate = useEeroGate(eero);
-  const rename = useWrite<{ eero: string; location: string }, Eero>("eero.rename", { form: true });
-  const [draft, setDraft] = useState(name ?? "");
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => setDraft(name ?? ""), [name]);
-
-  const save = async (next: string) => {
-    const location = next.trim();
-    if (!eero || !gate.allowed || !location || location === eero.location) {
-      setDraft(name ?? "");
-      return;
-    }
-    const was = eero.location;
-    const r = await rename.run(
-      { eero: eero.id, location },
-      { success: `Renamed ${was} to ${location}`, undo: { id: "eero.rename", params: { eero: eero.id, location: was } } },
-    );
-    if (!r?.ok) setDraft(name ?? "");
-  };
-  const error = rename.error?.code === "bad_params" ? rename.error.message : null;
-
-  return (
-    <SettingsRow
-      title="Location"
-      description="The name shown everywhere for this eero, for example Office, Den, Bedroom, Kitchen or Basement."
-      control={
-      // The shared text field (T3 Code's: the focus glow sits inside the border); no pencil icon.
-      <span title={gate.reason ?? undefined} className="inline-flex w-56">
-        <Input
-          ref={input}
-          aria-label="Location"
-          value={gate.allowed ? draft : (name ?? MISSING)}
-          disabled={!gate.allowed || rename.running}
-          maxLength={32}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => void save(draft)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") {
-              setDraft(name ?? "");
-              requestAnimationFrame(() => input.current?.blur());
-            }
-          }}
-          className="truncate disabled:cursor-not-allowed"
-        />
-      </span>
-      }
-    >
-      {error && <div className="text-destructive-foreground text-xs">{error}</div>}
-    </SettingsRow>
   );
 }
 

@@ -26,6 +26,8 @@ export function configPaths(configDir: string) {
     configDir,
     session: path.join(configDir, "session.json"),
     settings: path.join(configDir, "settings.json"),
+    /** Main window size, position and maximized state (src/main/window-state.ts). */
+    windowState: path.join(configDir, "window-state.json"),
     audit: path.join(configDir, "audit.jsonl"),
     logs: path.join(configDir, "logs"),
     /** Chromium profile data for the headless CLI, so it never fights the app's. */

@@ -42,15 +42,13 @@
         <div><div style="font-size:28px;font-weight:650;letter-spacing:-0.02em">Alex's MacBook Pro</div>
           <div class="row-12 mt-8"><span class="pill ok">Online</span><span class="xs muted">Laptop</span></div></div>
         <div class="row wrap" style="gap:10px 24px;margin-top:4px">
-          <div class="metric"><div class="l">Profile</div><div class="v row-6" style="font-size:14px"><span class="avatar" style="--c:var(--s-orange);width:20px;height:20px;font-size:10px">A</span>Alex</div></div>
-          <div class="metric"><div class="l">Connected to</div><div class="v row-6" style="font-size:14px">Office</div></div>
-          <div class="metric"><div class="l">Signal</div><div class="v row-6" style="font-size:14px"><span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span>-52 dBm</div></div>
+          <div class="metric"><div class="l">Profile</div><div class="v row-6"><span class="avatar" style="--c:var(--s-orange);width:20px;height:20px;font-size:10px">A</span>Alex</div></div>
+          <div class="metric"><div class="l">Connected to</div><div class="v row-6">Office</div></div>
+          <div class="metric"><div class="l">Signal</div><div class="v row-6"><span class="bars" data-n="4"><i></i><i></i><i></i><i></i></span>-52 dBm</div></div>
         </div>
         <div class="row gap-8 mt-4">
-          <button class="btn primary"><i data-lucide="pause"></i>Pause device</button>
-          <button class="btn" data-sheet><i data-lucide="pencil"></i>Appearance</button>
-          <button class="btn"><i data-lucide="user-round"></i>Change profile</button>
-          <button class="btn danger"><i data-lucide="ban"></i>Block</button>
+          <button class="btn"><i data-lucide="pause" style="color:var(--muted)"></i>Pause device…</button>
+          <button class="btn danger"><i data-lucide="ban"></i>Block…</button>
         </div>
       </div>
       <div class="livebox">
@@ -65,67 +63,69 @@
   </div>
 
 
-  <div class="grid g-main-side" style="gap:28px;align-items:start">
-    <!-- Left column -->
-    <div class="col" style="gap:28px">
-      <section class="section">
-        <div class="section-h"><h2>Data usage</h2><span class="sub">Last 24 hours</span><div class="tools"><div class="seg"><span class="on">Day</span><span>Week</span></div></div></div>
-        <div class="card pad">
-          <div class="row" style="gap:28px;align-items:flex-end;margin-bottom:12px">
-            <div><div class="big">83.3<small>GB</small></div><div class="xs muted mt-4">busiest hour 10 AM · 8.6 GB · #2 on the network</div></div>
-            <div class="legend ml-auto"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>61.7 GB</b></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>21.7 GB</b></span></div>
+  <!-- Addresses and ports on the left (narrow), Data usage on the right; Device information spans both. -->
+  <div class="grid" style="grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:28px;align-items:start">
+    <!-- Block confirms in the centred confirm dialog (docs/ux/overview.md#confirmations):
+         "Block Alex's MacBook Pro?" It will be disconnected from every eero and can't rejoin
+         Maple Street until you unblock it from Devices > Blocked. [Cancel] [Block device] -->
+    <section class="section">
+      <div class="section-h" style="align-items:flex-end"><div><h2>Addresses and ports</h2><div class="sub">Reserved, 2 open, 1 off</div></div><div class="tools"><a class="xs muted row-6" href="14-reservations-ports.html">Reservations &amp; ports<i data-lucide="arrow-right" style="width:14px;height:14px"></i></a></div></div>
+      <div class="card divide">
+        <div class="row between" style="padding:12px 16px"><div><div class="row-6"><span class="mono" style="font-size:13px">192.168.4.23</span><i data-lucide="copy" style="width:12px;height:12px;color:var(--muted)"></i></div><div class="xs muted">IPv4, reserved: it never changes</div></div><button class="btn sm"><i data-lucide="pencil" style="color:var(--muted)"></i>Edit…</button></div>
+        <div style="padding:12px 16px"><div class="mono" style="font-size:13px">2001:db8:4a1c:7e00::17</div><div class="xs muted">Link-local <span class="mono">fe80::4d:55ff:fe10:1</span></div></div>
+        <div style="padding:12px 16px">
+          <div class="row between"><div><div class="m">Port forwarding</div><div class="xs muted">2 open, 1 off</div></div><button class="btn sm"><i data-lucide="plus" style="color:var(--muted)"></i>Open a port…</button></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:0 12px;align-items:center;font-size:13px;margin-top:8px">
+            <span class="trunc">Web dev server</span><span class="mono tnum xs">8080</span><span class="badge">TCP</span><span class="row-6"><span class="switch on"></span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></span>
+            <span class="trunc">Syncthing</span><span class="mono tnum xs">22000</span><span class="badge">TCP+UDP</span><span class="row-6"><span class="switch on"></span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></span>
+            <span class="trunc muted">Game server (off)</span><span class="mono tnum xs muted">27015-27030</span><span class="badge">UDP</span><span class="row-6"><span class="switch"></span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></span>
           </div>
-          <div id="ch-use"></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="section">
-        <div class="section-h"><h2>Device information</h2></div>
-        <div class="card pad">
-          <dl class="kv" style="margin:0">
-            <dt>Manufacturer</dt><dd>Apple</dd>
-            <dt>Model</dt><dd>MacBook Pro 14 (M4 Pro)</dd>
-            <dt>Hostname</dt><dd class="mono" style="font-size:12px">Alexs-MacBook-Pro</dd>
-            <dt>MAC address</dt><dd class="mono" style="font-size:12px">02:4d:55:10:00:01</dd>
-            <dt>Security</dt><dd class="row-6"><i data-lucide="shield-check" style="width:14px;height:14px;color:var(--success-fg)"></i>WPA3 Personal (SAE)</dd>
-            <dt>Wi-Fi standard</dt><dd>Wi-Fi 6E · 802.11ax</dd>
-            <dt>Channel</dt><dd>69 · 160 MHz · 6 GHz</dd>
-            <dt>Link rate</dt><dd>2401 Mbps rx · 2161 Mbps tx</dd>
-            <dt>SNR</dt><dd>40 dB · 0.2% retries</dd>
-            <dt>Active since</dt><dd>Nov 18, 9:41 PM</dd>
-          </dl>
+    <section class="section">
+      <div class="section-h" style="align-items:flex-end"><div><h2>Data usage</h2><div class="sub">24 hours, busiest hour 10 AM, 8.6 GB</div></div><div class="tools"><span class="input select" style="width:140px;height:28px;font-size:12px">Last 24 hours</span></div></div>
+      <div>
+        <div class="row" style="gap:28px;align-items:flex-end;margin-bottom:12px">
+          <div class="big">83.3<small>GB</small></div>
+          <div class="legend ml-auto"><span><i class="sw" style="--c:var(--c-down)"></i>Download <b>61.7 GB</b> <span class="muted">(74%)</span></span><span><i class="sw" style="--c:var(--c-up)"></i>Upload <b>21.7 GB</b> <span class="muted">(26%)</span></span></div>
         </div>
-      </section>
-    </div>
-
-    <!-- Right column -->
-    <div class="col" style="gap:28px">
-      <!-- Block confirms in the centred confirm dialog (docs/ux/overview.md#confirmations):
-           "Block Alex's MacBook Pro?" It will be disconnected from every eero and can't rejoin
-           Maple Street until you unblock it from Devices > Blocked. [Cancel] [Block device] -->
-      <section class="section">
-        <div class="section-h"><h2>IP addresses</h2></div>
-        <div class="card pad">
-          <dl class="kv" style="margin:0">
-            <dt>IPv4</dt><dd class="row-6"><span class="mono" style="font-size:12px">192.168.4.23</span><span class="badge"><i data-lucide="lock"></i>Reserved</span><a class="xs info" href="14-reservations-ports.html">Edit</a></dd>
-            <dt>IPv6</dt><dd class="mono" style="font-size:12px">2001:db8:4a1c:7e00::17</dd>
-            <dt>Link-local</dt><dd class="mono muted" style="font-size:12px">fe80::4d:55ff:fe10:1</dd>
-          </dl>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-h"><h2>Port forwarding</h2><div class="tools"><a class="btn sm ghost" href="14-reservations-ports.html">All<i data-lucide="arrow-right"></i></a></div></div>
-        <div class="card pad" style="padding-top:14px;padding-bottom:10px">
-          <div class="port xs muted" style="padding-bottom:4px"><span>Port forward</span><span>Port</span><span>Protocol</span><span></span></div>
-          <div class="port"><span class="m">Web dev server</span><span class="mono tnum">8080</span><span class="badge">TCP</span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></div>
-          <div class="port"><span class="m">Syncthing</span><span class="mono tnum">22000</span><span class="badge">TCP+UDP</span><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--muted)"></i></div>
-          <div class="port"><span class="m muted">Game server</span><span class="mono tnum muted">27015-27030</span><span class="badge">UDP</span><span class="switch" style="transform:scale(0.75);margin-left:-8px" title="Disabled"></span></div>
-          <button class="btn sm mt-8" style="margin-bottom:6px"><i data-lucide="plus"></i>Open a port</button>
-        </div>
-      </section>
-    </div>
+        <div id="ch-use"></div>
+      </div>
+    </section>
   </div>
+
+  <section class="section">
+    <div class="section-h" style="align-items:flex-end"><div><h2>Device information</h2><div class="sub">Wi-Fi 6E on 6 GHz</div></div><div class="tools"><a class="xs muted row-6" href="#">Look up online<i data-lucide="external-link" style="width:14px;height:14px"></i></a></div></div>
+    <!-- One card split down the middle: the device on the left, the connection on the right. -->
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr">
+      <dl class="kv" style="margin:0;padding:18px 20px;grid-template-columns:max-content 1fr">
+        <dt>Manufacturer</dt><dd class="right">Apple</dd>
+        <dt>Model</dt><dd class="right">MacBook Pro 14 (M4 Pro)</dd>
+        <dt>Hostname</dt><dd class="right mono" style="font-size:12px">Alexs-MacBook-Pro</dd>
+        <dt>MAC address</dt><dd class="right mono" style="font-size:12px">02:4d:55:10:00:01</dd>
+        <dt>Active since</dt><dd class="right">Nov 18, 9:41 PM</dd>
+      </dl>
+      <dl class="kv" style="margin:0;padding:18px 20px;grid-template-columns:max-content 1fr;border-left:1px solid var(--border)">
+        <dt>Security</dt><dd class="row-6" style="justify-content:flex-end"><i data-lucide="shield-check" style="width:14px;height:14px;color:var(--success-fg)"></i>WPA3 Personal (SAE)</dd>
+        <dt>Wi-Fi standard</dt><dd class="right">Wi-Fi 6E · 802.11ax</dd>
+        <dt>Channel</dt><dd class="right">69 · 160 MHz · 6 GHz</dd>
+        <dt>Link rate</dt><dd class="right">2401 Mbps rx · 2161 Mbps tx</dd>
+        <dt>SNR</dt><dd class="right">40 dB · 0.2% retries</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-h"><div><h2>Device settings</h2><div class="sub">Named Alex's MacBook Pro, laptop, in Alex</div></div></div>
+    <div class="card divide">
+      <div class="row between" style="padding:12px 16px;gap:32px"><div><div class="m">Appearance</div><div class="xs muted">The name and icon shown for this device everywhere in Mesh UI and the eero app. Leave the name empty to use the device's own.</div></div>
+        <div class="row-6"><button class="iconbtn" data-sheet title="Change icon…"><i data-lucide="laptop"></i></button><div class="input" style="width:224px">Alex's MacBook Pro</div></div></div>
+      <div class="row between" style="padding:12px 16px;gap:32px"><div><div class="m">Profile</div><div class="xs muted">Pauses, schedules and usage for this device follow its profile.</div></div>
+        <button class="btn"><i data-lucide="user-round" style="color:var(--muted)"></i>Alex<i data-lucide="chevron-down" style="color:var(--muted)"></i></button></div>
+    </div>
+  </section>
 </div>
 
 <!-- Appearance sheet: opens from the Appearance button (or ?sheet=1) -->

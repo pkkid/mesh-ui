@@ -8,7 +8,8 @@
  *
  * Filters, search and sort are `device.list` params, applied in core; this
  * page only keeps what the user picked (per network, for the session) and
- * groups the rows it gets back. Clicking a table header sets the sort. Live rates come from `device.rates.refresh`
+ * groups the rows it gets back. Clicking a table header sets the sort, which
+ * is remembered across launches (./deviceSort.ts). Live rates come from `device.rates.refresh`
  * once a minute while the page is visible and the Live switch in the top bar
  * is on (#319); the engine enforces the limit.
  */
@@ -34,20 +35,21 @@ import {
   UNASSIGNED,
   WEEK_MS,
 } from "./DeviceFilters";
+import { readSort, saveSort, type SortOrder } from "./deviceSort";
 import { BulkBar, type ProfileOption } from "./BulkBar";
 import { DevicesHero } from "./DeviceSummary";
 import { LiveThroughput } from "./LiveThroughput";
 import { DeviceTable, type ProfileInfo, visibleDevices } from "./DeviceTable";
 
-export type SortOrder = "asc" | "desc";
 type ViewState = { filters: DeviceFilterState; sort: DeviceSortKey; order: SortOrder; groupBy: GroupBy };
 
-const DEFAULT_VIEW: ViewState = { filters: EMPTY_FILTERS, sort: "name", order: "asc", groupBy: "none" };
+const COLUMNS_KEY = "mesh-ui:devices:columns:v1";
+
+/** A fresh view: no filters, ungrouped, and the remembered sort. */
+const defaultView = (): ViewState => ({ filters: EMPTY_FILTERS, ...readSort(), groupBy: "none" });
 
 /** Filter state per network, kept while the app runs (docs: "filter state kept per network"). */
 const views = new Map<string, ViewState>();
-
-const COLUMNS_KEY = "mesh-ui:devices:columns:v1";
 
 function readHidden(): Set<ColumnKey> {
   try {
@@ -88,7 +90,7 @@ export function DevicesPage() {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const netId = network.data?.id ?? "";
 
-  const [view, setView] = useState<ViewState>(() => views.get(netId) ?? DEFAULT_VIEW);
+  const [view, setView] = useState<ViewState>(() => views.get(netId) ?? defaultView());
   const [searchText, setSearchText] = useState(view.filters.search);
   const [hidden, setHidden] = useState<Set<ColumnKey>>(readHidden);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -101,7 +103,7 @@ export function DevicesPage() {
   useEffect(() => {
     if (shownNet.current === netId) return;
     shownNet.current = netId;
-    const next = views.get(netId) ?? DEFAULT_VIEW;
+    const next = views.get(netId) ?? defaultView();
     setView(next);
     setSearchText(next.filters.search);
     setSelectedIds(new Set());
@@ -109,6 +111,9 @@ export function DevicesPage() {
   useEffect(() => {
     if (netId) views.set(netId, view);
   }, [netId, view]);
+
+  // The sort is the one choice kept across launches, for every network.
+  useEffect(() => saveSort({ sort: view.sort, order: view.order }), [view.sort, view.order]);
 
   const patchFilters = (patch: Partial<DeviceFilterState>) => setView((v) => ({ ...v, filters: { ...v.filters, ...patch } }));
 

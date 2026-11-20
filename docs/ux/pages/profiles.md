@@ -12,58 +12,104 @@ count: number of profiles, not counting Unassigned.
 
 ## Layout
 
-1. **Profiles** section. Sub "Group devices by person to pause them together
-   and see their usage". Tools: **+ Add a profile**, **Pause all** and a
-   Cards / List toggle, in that order (shown once there is a profile; with
-   none, the empty card has its own Add a profile).
-   A 4-column grid of profile cards. Each card:
-   - Avatar initial in the profile colour, name, "6 devices · 6 online".
-   - A stacked row of device-type icons (offline devices greyed) and the
-     status (Active, Scheduled, Paused).
-   - "Today" with the usage figure ("96 GB") and a 24 h sparkline in the
-     profile colour.
-   - A full-width **Pause** button (or primary **Resume** when paused) and a
-     `...` menu button.
-   - The whole card opens profile detail (a clickable card, see the design
-     system): hover brightens the background and border, and the name is
-     the keyboard focus target.
-   - List view: one row per profile with the same fields in columns.
-2. **Today's pauses** section. Sub "Thursday, Nov 12 · scheduled and manual,
-   network time zone (Pacific)". Legend on the right: Scheduled (muted
-   fill), Manual pause (warning fill), Upcoming (hatched). Card with one lane
-   per profile plus Unassigned, 12 AM to 12 AM:
+1. **Hero** (flat `PageHeader`, as Devices; `ProfilesHero.tsx`).
+   - Title: the profile count ("4 profiles").
+   - Status line: a status dot with "2 active", then "1 paused · 1 in a
+     scheduled pause" (zero counts left out).
+   - Facts: **In a profile** ("18 of 36 devices", Unassigned counted in the
+     total), **Next change** (the soonest scheduled start or end across
+     profiles not paused by hand: "Mia · Homework ends 6:00 PM", or "None
+     scheduled"), **Most data today** ("Alex · 141 GB").
+   - A share bar of devices by profile in the profile colours, Unassigned in
+     the neutral series last, with its legend.
+   - Actions: **+ Add a profile…**, **Pause all…** and, while any profile is
+     paused, **Resume all** (no confirm, one Undo). Hidden with no profiles;
+     the empty card has its own Add a profile.
+   - **Right-hand column: Usage by profile** (`ProfilesUsage.tsx`), built
+     like Devices' Live throughput panel, 28rem wide and 56px from the
+     facts. Title "Usage by profile" (`text-base font-semibold`) with the
+     subtitle under it, "About 247 GB a day" (or "an hour"); a Last 24 hours
+     / Last 7 days dropdown on the title's row. The total as the compact
+     hero figure ("1.7" in `text-2xl`, "TB in 7 days" muted), a 96px
+     stacked column chart with no y labels (one segment per profile in its
+     colour, tooltip per bucket with a Total), and a chip per profile with
+     its total ("Alex 1.2 TB"). Profiles only: Unassigned is left out (it
+     is in the devices bar, and its traffic would flatten the profiles).
+   - Sections after the hero sit 56px apart (`gap-14`).
+2. **Your profiles** section: the profiles and the unassigned devices in
+   one place, so assigning is dragging a device onto its person. Description
+   "18 devices in profiles, 18 unassigned". Tools, in order: a Card view /
+   List view dropdown, **Add a profile…** (with unassigned devices selected
+   it reads **Add profile from selection (2)…** and opens the sheet with
+   them picked) and a **View unassigned profile →** text link to the
+   Unassigned page, where Unassigned is paused and scheduled like any
+   profile.
+   - **Profile cards**, a 4-column grid. Each card:
+     - Avatar initial in the profile colour, name, "6 devices, 6 online".
+     - A stacked row of device-type icons, online first, up to six and then
+       "+N" styled like the last icon shown. Offline: fill, outline and icon
+       each mixed 50% into the window background, never transparent. An icon
+       that arrives from a drop falls into the stack with a small bounce.
+     - The status (Active, Scheduled, Paused).
+     - The next change: "Homework ends 6:00 PM", "Bedtime starts 9:00 PM",
+       "Paused until resumed" or "No schedules".
+     - "Today" with the usage figure ("96 GB") and a 24 h sparkline in the
+       profile colour.
+     - No buttons: pausing, schedules, rename and delete are on the
+       profile's own page, one click away.
+     - The whole card opens profile detail (a clickable card, see the
+       design system): hover brightens the background, and the name is the
+       keyboard focus target.
+     - List view: one row per profile with the same fields in columns.
+   - **Drop targets.** While unassigned devices are selected, or one is being
+     dragged, every card (or list row) turns into a drop target: a 2px
+     dotted outline in the theme's border colour (`outline-border`) (an outline, so nothing moves), and the one under a drag
+     takes a muted fill and a darker outline; it does not grow. In List view the
+     table's border, background and row rules turn transparent meanwhile, so
+     only the rows' dotted outlines show. Nothing moves or resizes;
+     neighbouring outlines touch. Dropping moves the devices there;
+     clicking a card with a selection does the same instead of opening the
+     profile.
+   - **Unassigned**, under the cards: a quiet line "Unassigned 18 devices, 16
+     online" with a hint on the line under it ("Drag a device onto a profile, or
+     select several. New and private-MAC devices land here."; with a
+     selection: "2 selected: drag them onto a profile, or click one. Clear").
+     With none: "Every device is in a profile."
+   - A 3-column grid of device tiles with no outline and no background until
+     hovered (`bg-muted/60`; selected: `bg-muted` with a 2px inset ring; the
+     drag ghost, and every card in a dragged stack, looks selected): icon,
+     name, "Online, 142 GB in 24h", "Offline, 3 days ago" or "Blocked"
+     (destructive text); offline tiles at reduced opacity.
+   - **Drag and drop** (`useTileDrag.tsx`): a press that moves 5px lifts the
+     tile. The ghost follows the pointer and wobbles like GNOME's wobbly
+     windows: an underdamped spring shears it around the grab point, so
+     the far edges lag a move (at most 4 degrees) and jiggle back into
+     shape when the pointer stops. The source tile fades in place. Dropping
+     on a card shrinks the ghost into it and the card gives a small bounce;
+     anywhere else the ghost springs back. Esc cancels. Dragging a selected
+     tile carries the whole selection as a fanned stack with a count.
+     Reduced motion drops the wobble and the animations.
+   - **Keyboard and click path:** select tiles (click or Space), then click a
+     profile card to move them there.
+3. **Today's pauses** section. Description "3 scheduled, 1 manual, Pacific
+   Time" (today's pauses by kind, zero counts left out, then the network
+   time zone). Legend on the right: Scheduled (muted fill), Manual pause
+   (warning fill), Upcoming (hatched). Card with one lane per profile plus
+   Unassigned, 12 AM to 12 AM, each lane a plain `bg-muted` track:
    - Segments with a label ("Bedtime", "Homework", "Paused until resumed").
      Past scheduled segments are solid muted, upcoming ones hatched, a manual
      pause is warning-filled.
    - A vertical now line across all lanes with the time above the first lane
      ("2:05 PM").
    - Empty lanes say "No pauses today".
-   - Tick labels: 12 AM, 6 AM, 12 PM, 6 PM, 12 AM.
+   - Tick labels in normal case: 12 AM, 6 AM, 12 PM, 6 PM, 12 AM.
    - Collapsed when there is nothing to show: no profile or Unassigned has a
-     schedule and nothing is paused today. The lanes, legend and sub give way
-     to one muted line in a small card, "No scheduled pauses. Schedules pause
+     schedule and nothing is paused today. Description "None scheduled", one
+     muted line in a small card, "No scheduled pauses. Schedules pause
      a profile's internet at set times, like bedtime.", and the tool **+ Add
      a schedule** opens a picker of profiles (opens that profile's schedule
      sheet) and Unassigned (opens the Unassigned page). A manual pause with
      no schedules keeps the full chart.
-3. **Usage by profile** section. Sub "Data used per day, last 7 days". Tools:
-   segmented Profiles / Profiles + Unassigned, and Day / Week.
-   - Side column: hero figure "2.71 TB" "in 7 days", then one row per
-     profile: colour dot, name, total on the right, and "57% of traffic ·
-     220 GB a day" under it.
-   - Main: stacked columns per day, one segment per profile in its colour,
-     tooltip per day with each profile and a Total.
-4. **Unassigned devices** section. Sub "20 devices not in a profile · click an
-   avatar to assign". Tool: **Pause unassigned**.
-   - Info note: "New devices and devices with private (randomized) MAC
-     addresses land here. Pausing Unassigned asks for confirmation, since it
-     includes the TV, printer and smart home gear."
-   - A 4-column grid of device tiles: icon, name, "Online · 142 GB in 24h",
-     "Offline · 3 days ago" or "Blocked" (destructive text); offline tiles at
-     reduced opacity. On the right of each tile, a row of faint profile
-     avatars (A, J, M, L) that brighten on hover; clicking one assigns the
-     device to that profile.
-   - Last tile, dashed: **New profile from selection**.
 
 ## Data
 
@@ -73,7 +119,7 @@ count: number of profiles, not counting Unassigned.
 | Device type icons on cards | `device.list` (all devices, shared with Unassigned) | 30 s |
 | Today's usage per profile and sparklines | `usage.get {scope: "profile", range: "day"}` (no `id`: one series per profile) | 5 min |
 | Today's pauses lanes | `profile.list` (`today` segments per profile, computed in core from schedules and manual pause state, in the network time zone) | 60 s; the now line moves every minute |
-| Usage by profile (totals, shares, per day bars) | `usage.get {scope: "profile", range}` (includes the Unassigned series; the toggle hides it in the view) | 5 min |
+| Usage by profile in the hero (total, per-profile totals, per day or hour bars) | `usage.get {scope: "profile", range}` (the Unassigned series is left out in the view) | 5 min |
 | Unassigned device tiles | `device.list` (devices with no profile, blocked ones included, guests left out) | 30 s |
 | "142 GB in 24h" on a tile (the breakdown's day is the last 24 hours, so the mockup's "today" would overstate it) | `usage.breakdown {range: "day", by: "device"}` | 5 min |
 | Avatar row on tiles | `profile.list` | 60 s |
@@ -82,39 +128,34 @@ count: number of profiles, not counting Unassigned.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| + Add a profile | `profile.create {name, devices}` | write | No | Sheet: name, device picker (unassigned first, then others with their current profile shown); Save creates and opens the profile |
-| Pause all | `profile.pause {profile}` once per profile (Unassigned not included) | disruptive | Yes, one dialog for all ("Pause Alex, Jamie, Mia and Leo? 18 devices lose internet until you resume them.") | All cards Paused; toast with Undo |
-| Cards / List | - (view state) | - | No | Layout |
+| + Add a profile (hero) | `profile.create {name, devices}` | write | No | Sheet: name, device picker (unassigned first, then others with their current profile shown); Save creates and opens the profile |
+| Pause all… (hero) | `profile.pause {profile}` once per profile (Unassigned not included) | disruptive | Yes, one dialog for all ("Pause Alex, Jamie, Mia and Leo? 18 devices lose internet until you resume them.") | All cards Paused; toast with Undo |
+| Resume all (hero, while any profile is paused) | `profile.resume {profile}` once per paused profile | write | No | Cards Active or Scheduled; one toast with Undo that pauses them again |
+| Card view / List view | - (view state) | - | No | Layout |
+| View unassigned profile | - | - | No | The Unassigned page (pause, schedules) |
 | Card (click outside buttons) | - | - | No | Profile detail |
-| Pause (card) | `profile.pause {profile}` | disruptive | Yes, dialog ("Pause Mia? All 4 of Mia's devices lose internet until resumed.") | Card Paused, button becomes Resume; a manual segment appears in Today's pauses; toast with Undo |
-| Resume (card) | `profile.resume {profile}` | write | No | Card Active (or Scheduled); during a scheduled pause, stays online until the next scheduled start |
-| `...` menu: Rename | `profile.rename {profile, name}` | write | No | Rename sheet (name only); toast with Undo |
-| `...` menu: Add a scheduled pause | `profile.schedule.add {profile, ...}` | write | Only when the window covers now | Opens the schedule sheet from [profile-detail.md](profile-detail.md) |
-| `...` menu: Delete profile... | `profile.delete {profile, confirm: true}` | destructive | Yes, type-to-confirm dialog | Devices move to Unassigned |
 | Lane segment | - | - | No | Tooltip "Bedtime · 9:00 PM to 7:00 AM"; click opens the profile |
-| Profiles / Profiles + Unassigned, Day / Week | - (re-queries `usage.get`) | - | No | Chart and list update |
-| Avatar on an unassigned tile | `device.profile.set {devices: [device], profile}` | write | Only when the target profile is paused or in a scheduled pause now | Tile leaves the grid; toast "Moved Living Room TV to Alex" with Undo |
-| Tile click | - (view state: toggles selection) | - | No | Selected tiles get the selected surface; enables New profile from selection |
+| Last 24 hours / Last 7 days (hero) | - (re-queries `usage.get`) | - | No | Chart and list update |
+| Drop a tile (or the selection) on a profile bucket, or click a bucket with tiles selected | `device.profile.set {devices, profile}` | write | Only when the target profile is paused or in a scheduled pause now | Tile leaves the grid; toast "Moved Living Room TV to Alex" with Undo |
+| Tile click | - (view state: toggles selection) | - | No | Selected tiles get the selected surface; the cards become drop targets and Add a profile… becomes Add profile from selection… |
 | Tile double-click | - | - | No | Device detail |
-| New profile from selection | `profile.create {name, devices}` | write | No | Name sheet prefilled with the selection |
-| Pause unassigned | `profile.unassigned.pause {}` | disruptive | Yes, dialog ("Pause 20 unassigned devices? This includes Living Room TV, HP LaserJet and smart home gear like Ring Doorbell.") | Unassigned lane shows a manual pause; button becomes Resume unassigned |
+| Add profile from selection… (section tools, with a selection) | `profile.create {name, devices}` | write | No | Add a profile sheet with the selection picked |
 
 Built in M4.5: Add a profile (sheet with name and a device picker:
 unassigned first, then others with "Moves from Alex"; Save opens the new
 profile), Pause all (dialog; one toast with Undo that resumes them all; off
-with "Every profile is paused" when there is nothing to pause), Pause and
-Resume per card with Undo, the `...` menu (Rename sheet, Add a scheduled pause, which opens the
-schedule sheet from [profile-detail.md](profile-detail.md), and Delete
-profile...), and Pause unassigned (confirm dialog naming up to three
-devices, online first; the button becomes Resume unassigned). Unassigned
-devices has an **Open** link to the Unassigned page
-(`#/profiles/unassigned`, see [profile-detail.md](profile-detail.md)).
+with "Every profile is paused" when there is nothing to pause) and Resume
+all. Per-profile pause, resume, rename, schedules and delete, and Pause
+unassigned, live on the profile pages ([profile-detail.md](profile-detail.md));
+the cards and the **View unassigned profile** link
+(`#/profiles/unassigned`) open them.
 Every write control dims by the `profiles` permission and bridge mode.
 
-Avatars on unassigned tiles run `device.profile.set` (M4.4) with an Undo
-toast, dimmed by the `devices` permission and bridge mode. A tile click
-(or Space) toggles its selection; **New profile from selection** is enabled
-once a tile is selected and opens the Add a profile sheet with the selection
+Dropping on a profile card runs `device.profile.set` (M4.4) with an Undo
+toast; dragging and the drop targets are off without the `devices` permission
+or in bridge mode. A tile click
+(or Space) toggles its selection; **Add a profile…** in the section header becomes
+**Add profile from selection…** once a tile is selected and opens the Add a profile sheet with the selection
 picked (`profile.create {name, devices}`, M5.11), dimmed by the
 `profile.create` gate. Card clicks, lane segments and tile double-clicks
 navigate as described.
@@ -127,10 +168,10 @@ navigate as described.
 - **Empty: no profiles.** The Profiles section shows "No profiles yet. Group
   devices by person to pause them together." with **Add a profile**. Today's
   pauses shows the collapsed one-line form (only Unassigned in its picker),
-  or only the Unassigned lane when Unassigned has a pause. Usage by profile shows Unassigned
-  only (or the empty sentence when Profiles is selected).
-- **Empty: no unassigned devices.** "Every device is in a profile." and the
-  section tools hide.
+  or only the Unassigned lane when Unassigned has a pause. The hero's Usage by profile shows
+  `-` and the chart's empty sentence.
+- **Empty: no unassigned devices.** The Unassigned line says "Every device
+  is in a profile." and no tiles show.
 - **Error.** Per section note with Retry.
 - **Offline (this computer).** Shell banner; pause, resume and assignment
   disabled.
@@ -139,8 +180,7 @@ navigate as described.
 - **No permission.** Admins can manage profiles and schedules. Denied
   `profiles` permissions disable the controls with the reason.
 - **Capability missing.** Firmware before the Unassigned profile (eeroOS
-  7.12.4): the Unassigned lane and Pause unassigned are hidden; Unassigned
-  devices still list.
+  7.12.4): the Unassigned lane is hidden; Unassigned devices still list.
 - **Bridge mode.** Page not reachable: the sidebar item is hidden and a
   direct link shows the bridge note with a link to Advanced networking.
 

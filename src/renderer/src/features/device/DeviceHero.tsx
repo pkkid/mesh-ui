@@ -1,25 +1,30 @@
 /**
  * Device detail hero (docs/ux/pages/device-detail.md, Layout 1): the flat page
  * header with the type icon, name with the GUEST tag, status line, Profile /
- * Connected to / Signal, the action row (Pause or Resume, then Block, all
- * outline) and Live throughput on the right (DeviceNow). Pause, Resume and
- * Unblock run at once with an Undo toast; Block asks first through the page's
- * confirm dialog (`onBlock`). Appearance and the profile are settings rows at
- * the bottom of the page (DeviceSettings). Controls dim by permission.
+ * Connected to / Signal, the action row (Rename… first, then Pause or
+ * Resume, then Block, all outline) and Live throughput on the right (DeviceNow). Pause,
+ * Resume and Unblock run at once with an Undo toast; Block asks first
+ * through the page's confirm dialog (`onBlock`). Rename… opens the rename
+ * sheet (`device.rename`, Undo; an empty name follows the device's own), and
+ * the icon itself is a button that opens the icon sheet (`device.type.set`).
+ * The profile is a settings row at the bottom (DeviceSettings). Controls dim
+ * by permission.
  * States: offline ("last seen 2h ago on Upstairs Hall"), paused (Resume
  * device), blocked (only Unblock), guest (no Pause), wired (Signal `-`) and
  * bridge mode (no Pause, Block or Live throughput).
  */
-import { Ban, CircleCheck, Pause, Play } from "lucide-react";
+import { Ban, CircleCheck, Pause, Pencil, Play } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
-import { fieldErrors, performWrite, type WriteOutcome } from "~/app/useWrite";
-import { Metric, PageHeader } from "~/components/ui/hero";
+import { fieldErrors, performWrite, useWrite, type WriteOutcome } from "~/app/useWrite";
+import { IconTile, Metric, PageHeader } from "~/components/ui/hero";
+import { RenameSheet } from "~/components/ui/rename-sheet";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Sheet } from "~/components/ui/sheet";
 import { blockRequest, pauseRequest } from "~/features/devices/BulkBar";
 import { Status, type StatusTone } from "~/components/ui/status";
+import { Avatar } from "~/features/profiles/ProfileCards";
 import { entityColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
@@ -29,6 +34,9 @@ import type { Device, Eero, ProfileList } from "../../../../core/model";
 
 import type { DeviceView } from "./DevicePage";
 import { DeviceNow } from "./DeviceNow";
+
+/** Icons inside buttons are dim (design-system.md, Buttons and links). */
+export const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 type State = "online" | "paused" | "offline" | "blocked";
 
@@ -64,6 +72,11 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   const now = useNow();
   const gate = useGate({ area: "devices", bridgeOff: true });
   const blockGate = useGate({ area: "devices", bridgeOff: true, capability: "device_blacklist" });
+  // Rename and the icon change what Mesh UI and the eero app show; they work in bridge mode too.
+  const editGate = useGate({ area: "devices" });
+  const [renaming, setRenaming] = useState(false);
+  const [iconOpen, setIconOpen] = useState(false);
+  const rename = useWrite<{ device: string; nickname: string }, Device>("device.rename", { form: true });
 
   // While device.get loads, the name and icon come from the list cache.
   const d = view.device ?? fallback;
@@ -85,10 +98,19 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   // Actions need the full device (device.get), not the list fallback.
   const ready = view.device;
   const actions: ReactNode[] = [];
+  if (ready) {
+    actions.push(
+      // First in every detail hero; it opens the rename sheet, so it ends in an ellipsis.
+      <GatedButton key="rename" gate={editGate} variant="outline" className={DIM_ICON} onClick={() => setRenaming(true)}>
+        <Pencil />
+        Rename{"\u2026"}
+      </GatedButton>,
+    );
+  }
   if (ready && state === "blocked") {
     if (!view.bridged)
       actions.push(
-        <GatedButton key="unblock" gate={blockGate} variant="outline" onClick={() => void performWrite(blockRequest([ready], false))}>
+        <GatedButton key="unblock" gate={blockGate} variant="outline" className={DIM_ICON} onClick={() => void performWrite(blockRequest([ready], false))}>
           <CircleCheck />
           Unblock
         </GatedButton>,
@@ -96,7 +118,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   } else if (ready) {
     if (!view.bridged && !view.guest)
       actions.push(
-        <GatedButton key="pause" gate={gate} variant="outline" onClick={() => void performWrite(pauseRequest([ready], !ready.paused))}>
+        <GatedButton key="pause" gate={gate} variant="outline" className={DIM_ICON} onClick={() => void performWrite(pauseRequest([ready], !ready.paused))}>
           {ready.paused ? <Play /> : <Pause />}
           {ready.paused ? "Resume device" : "Pause device…"}
         </GatedButton>,
@@ -112,14 +134,30 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   }
 
   return (
+    <>
     <PageHeader
       flat
-      icon={deviceIcon(d)}
+      icon={
+        // The icon is the way to change it: a click opens the icon sheet.
+        ready && editGate.allowed ? (
+          <button
+            type="button"
+            aria-label="Change icon…"
+            title="Change icon…"
+            onClick={() => setIconOpen(true)}
+            className="shrink-0 cursor-pointer rounded-(--hero-radius) outline-none transition-[filter] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring dark:hover:brightness-125"
+          >
+            <IconTile icon={deviceIcon(d)} size="xl" />
+          </button>
+        ) : (
+          deviceIcon(d)
+        )
+      }
       title={
         <span className="flex min-w-0 items-center gap-2.5">
           <span className="truncate">{d?.name ?? "-"}</span>
           {view.guest && (
-            <span className="shrink-0 rounded-[4px] border bg-muted px-1.5 py-px font-bold text-2xs text-muted-foreground tracking-[0.08em]">
+            <span className="shrink-0 rounded-sm border bg-muted px-1.5 py-px font-bold text-2xs text-muted-foreground tracking-widest">
               GUEST
             </span>
           )}
@@ -140,28 +178,22 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
               label="Profile"
               value={
                 !d ? null : profile ? (
-                  <span className="flex items-center gap-1.5 text-sm">
-                    <span
-                      aria-hidden
-                      className="grid size-5 shrink-0 place-items-center rounded-full font-semibold text-[10px] text-background"
-                      style={{ background: color }}
-                    >
-                      {profile.name.slice(0, 1).toUpperCase()}
-                    </span>
+                  <span className="flex items-center gap-1.5">
+                    <Avatar name={profile.name} color={color ?? "var(--color-muted)"} className="size-5 text-3xs" />
                     {profile.name}
                   </span>
                 ) : d.profileId ? null : (
-                  <span className="text-muted-foreground text-sm">Unassigned</span>
+                  <span className="text-muted-foreground">Unassigned</span>
                 )
               }
             />
           )}
-          <Metric label="Connected to" value={d && live ? <span className="text-sm">{eeroName(d.eeroId)}</span> : null} />
+          <Metric label="Connected to" value={d && live ? eeroName(d.eeroId) : null} />
           <Metric
             label="Signal"
             value={
               d && live && !wired && d.signal ? (
-                <span className="flex items-center gap-1.5 text-sm">
+                <span className="flex items-center gap-1.5">
                   <SignalBars bars={d.signal.bars ?? 0} />
                   {d.signal.dbm === null ? null : `${d.signal.dbm} dBm`}
                 </span>
@@ -173,12 +205,38 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
       actions={actions.length ? <>{actions}</> : undefined}
       aside={view.bridged || !d ? undefined : <DeviceNow device={d} timezone={view.network?.timezone} />}
     />
+    {ready && (
+      <>
+        <IconSheet key={`${ready.id}:${iconOpen}`} device={ready} open={iconOpen} onClose={() => setIconOpen(false)} />
+        <RenameSheet
+          open={renaming}
+          onClose={() => setRenaming(false)}
+          title={`Rename ${ready.name}`}
+          subtitle="Shown everywhere in Mesh UI and the eero app"
+          value={ready.nickname ?? ""}
+          placeholder={ready.hostname ?? ready.name}
+          allowEmpty
+          helper={(name) => (name ? `${name.length} / 32` : "Empty: the device's own name")}
+          error={rename.error?.code === "bad_params" ? rename.error.message : null}
+          onSave={(next) =>
+            rename.run(
+              { device: ready.id, nickname: next },
+              {
+                success: next ? `Renamed to ${next}` : `${ready.name} follows its own name again`,
+                undo: { id: "device.rename", params: { device: ready.id, nickname: ready.nickname ?? "" } },
+              },
+            )
+          }
+        />
+      </>
+    )}
+    </>
   );
 }
 
 /**
- * The icon sheet (device-detail.md, Layout 4), from the icon button on Device
- * settings' Appearance row: only the device type grid. Save runs
+ * The icon sheet (device-detail.md, Layout 5), from the icon in the hero:
+ * only the device type grid. Save runs
  * `device.type.set`, with Undo.
  */
 export function IconSheet({ device: d, open, onClose }: { device: Device; open: boolean; onClose: () => void }) {

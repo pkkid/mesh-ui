@@ -393,6 +393,11 @@ respects `--titlebar-inset-left/right`. See
 
 **The titlebar holds navigation and global tools only**: breadcrumbs,
 search, Refresh, notifications, theme, and Prev / Next on detail pages.
+**Rename lives in the hero.** Detail pages (device, eero, profile) put
+**Rename…** first in the hero's action row, opening the shared Rename sheet
+(`components/ui/rename-sheet.tsx`), never as a name field in a settings
+row. A device's icon is changed by clicking the icon in its hero.
+
 **Page actions live in the page**, in the hero actions or a section's tools
 (Add a profile sits in the Profiles section header beside Pause all). Pages
 that still use the titlebar actions slot for page actions are tracked in
@@ -786,9 +791,15 @@ Every write control uses the same pieces (M4.3):
 - **Sheet** (`ui/sheet.tsx`): `Sheet` and `SheetField`, as in
   [overview.md](../ux/overview.md#sheets). **No divider lines:** like the
   confirm dialog, a sheet has no rule under its header or above its footer
-  (`Sheet clean`); spacing alone separates them. The device icon sheet
-  follows this; other sheets move over page by page, and once all do,
-  `clean` becomes the only style.
+  (`Sheet clean`); spacing alone separates them, so every modal reads as
+  one clean panel, not three stacked sections. The same holds for any new
+  dialog. The device icon sheet, the port forward sheet and the schedule
+  sheet follow this;
+  other sheets move over page by page, and once all do, `clean` becomes the
+  only style. Choices inside a sheet are dropdowns (`Select`, full width or
+  sharing a row with related fields), never Segmented, and on/off is the
+  standard 36x20 switch. Shortcuts that fill a field (the schedule sheet's
+  day presets) are plain text links, not pills or chips.
 
 ```tsx
 const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });

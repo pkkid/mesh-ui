@@ -25,6 +25,7 @@ the folder is lowercase on every OS.
 | Config dir | `~/Library/Application Support/mesh-ui/` | `%APPDATA%\mesh-ui\` | `~/.config/mesh-ui/` (honours `XDG_CONFIG_HOME`) |
 | Session | `session.json` | `session.json` | `session.json` |
 | Settings (shared with the CLI) | `settings.json` | `settings.json` | `settings.json` |
+| Window size and position | `window-state.json` | `window-state.json` | `window-state.json` |
 | Audit log | `audit.jsonl` | `audit.jsonl` | `audit.jsonl` |
 | eero request log | `eero-requests.jsonl` (+ `.1`) | `eero-requests.jsonl` (+ `.1`) | `eero-requests.jsonl` (+ `.1`) |
 | Logs | `logs/main.log` | `logs\main.log` | `logs/main.log` |
@@ -75,7 +76,15 @@ Never hard-code a separator; use `path.join`.
   (`--ozone-platform-hint=auto`, the default in current Electron). If a
   compositor does not support window controls overlay, fall back to a frame
   with native decorations; check GNOME and KDE.
-- Minimum window size 760 x 480. Window bounds are restored per display.
+- Default window size 1200 x 780, minimum 760 x 480.
+- The window reopens at its last size, position and maximized state
+  (`src/main/window-state.ts`, saved to `window-state.json` on close and
+  shortly after each move or resize). On launch the saved bounds are fitted
+  to the displays present: a size bigger than the display's work area
+  shrinks to it, and if the titlebar would not be on any display the window
+  centres on the primary one instead. Minimized and full screen states are
+  not saved. Headless runs (`ui:shot`) ignore the file and always use the
+  default size.
 
 ## Menus and shortcuts
 

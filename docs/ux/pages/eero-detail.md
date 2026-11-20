@@ -80,9 +80,6 @@ eeros stays active. `[` and `]` move to the previous and next eero.
    nightlight ambient"). One card of settings rows split by faint dividers,
    as T3 Code's settings groups (title over a muted description, the
    control on the right, anything more under it):
-   - **Location**, "The name shown everywhere for this eero, for example
-     Office, Den, Bedroom, Kitchen or Basement.": the shared text field on
-     the right (no pencil, no preset chips).
    - **Status light**, "The LED on the front. Solid white means all is
      well; it returns to full brightness while offline, restarting or
      resetting.": on/off switch, then a brightness dropdown to its right
@@ -130,7 +127,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Upstream or downstream eero in Uplink | - | - | No | That eero's detail |
 | Device row, All devices → | - | - | No | Device detail; Devices filtered to this eero |
 | Disable port N / Enable port N, Restart PoE, PoE and data on or off (whichever the port lists) | `eero.port.action {eero, port, action}` | disruptive | Yes, in the confirm dialog (the engine's message names everything plugged in: "Turns off port 3 on Living Room. Living Room TV and Hue Bridge lose their wired connection.") | Port tile shows Disabled and "Turned off"; toast "Port 3 disabled on Living Room" with Undo (opposite action, also confirmed) |
-| Location input (Enter or blur), preset chip, + Custom | `eero.rename {eero, location}` | write | No | Name updates everywhere; toast with Undo |
+| Rename… (hero, first, before Blink light and Restart eero…) | `eero.rename {eero, location}` from the shared Rename sheet ("Location" field, required) | write | No | Name updates everywhere; toast with Undo |
 | Status light switch | `eero.led.set {eero, on}` | write | No | LED bar in hero follows |
 | Brightness slider (on release) | `eero.led.set {eero, brightness}` | write | No | Same |
 | Nightlight mode, brightness, times (Beacon only) | `eero.nightlight.set {eero, mode, brightness, on?, off?}` | write | No | Toast |
@@ -218,9 +215,9 @@ eeros stays active. `[` and `]` move to the previous and next eero.
   nightlight. Only eero Beacon has one."), before any request. Its write
   shape is from the open source clients (every captured eero has
   `nightlight: null`).
-- MANUAL: rename an eero and back | eero detail, Location, type a new name,
+- MANUAL: rename an eero and back | eero detail, Rename…, type a new name,
   Enter, then Undo in the toast | the eero app shows the new name, then the
   old one | risk: none.
-- MANUAL: rename one eero and turn its LED off and on | eero detail, edit
-  Location, toggle Status light | name and LED change in the eero app too |
+- MANUAL: rename one eero and turn its LED off and on | eero detail, Rename…,
+  toggle Status light | name and LED change in the eero app too |
   risk: none.

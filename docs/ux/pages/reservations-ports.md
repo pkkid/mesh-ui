@@ -17,7 +17,7 @@ Breadcrumb `Settings / Reservations & ports`, nothing after it. The connection m
 
 Side panel **Good to know** (below the sections on windows narrower than 1536 px, so the forwards table never scrolls sideways): a forward needs a reservation and picking a device without one creates it; hairpin NAT is always on; forwards and reservations are off in bridge mode; these changes apply instantly with no restart.
 
-**Add port forward sheet** (opens from the button): Device select (shows the IP and "Has a reservation, address will not change"), Nickname, External port and Internal port (single or range, internal defaults to same as external), Protocol segmented **TCP** / **UDP** / **TCP + UDP**, Enabled switch, a flow diagram (Internet with public IP and port, gateway eero, device with internal IP and port), validation lines ("No conflict with existing port forwards", "Applies instantly, no restart"), footer **Cancel** and **Save port forward**.
+**Add port forward sheet** (opens from the button; a clean sheet, no divider lines): Device dropdown (the app's `Select`: name in the trigger, each option with its IP on the right; helper "192.168.4.23, reserved: it never changes" or "..., not reserved yet: saving reserves it"), Nickname, then one row of External port ("One port or a range"), Internal port ("Same as external if empty") and a Protocol dropdown **TCP** / **UDP** / **TCP + UDP**, an Enabled row with the standard switch ("Off keeps the rule but closes the port"), validation lines ("No conflict with existing port forwards", "Applies instantly, no restart"), footer **Cancel** and **Save port forward**. The reservation and IPv6 rule sheets still have dividers, the native device select and the Protocol Segmented; they move over next.
 
 ## Data
 

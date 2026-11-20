@@ -1,11 +1,16 @@
 /**
  * The schedule sheet on profile detail (docs/ux/pages/profile-detail.md,
- * Layout 4; mockup 08 "Edit schedule"): Schedule on, name, start and end
+ * Layout 6; mockup 08 "Edit schedule"): Schedule on, name, start and end
  * (end says "next day" when it wraps past midnight), Repeats on with day
  * toggles and presets, and an Each day preview with the hours paused. Save
  * runs `profile.schedule.add` or `profile.schedule.update`; Delete schedule
  * asks inline, then runs `profile.schedule.remove` with an Undo that adds it
  * back. Validation is the command's (bad_params lands under the field).
+ *
+ * Follows the sheet rules (design-system.md, Components: Sheet): a clean
+ * panel with no divider lines, the standard 36x20 switch, neutral day
+ * buttons (a picked day gets a stronger outline, not a colour) and the
+ * presets as plain text links, not pills.
  */
 import { CalendarPlus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -16,11 +21,12 @@ import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { formatMinute, MINUTES_PER_DAY } from "~/components/ui/timeline";
+import { WriteSwitch } from "~/features/advanced/SettingsGroups";
 import { cn } from "~/lib/utils";
 import type { Day, Profile, Schedule, ScheduleInput } from "../../../../core/model";
 
 import { minutesOf, spanMinutes } from "./helpers";
-import { ScheduleIcon, Toggle } from "./ProfileSchedules";
+import { ScheduleIcon } from "./ProfileSchedules";
 
 export type ScheduleSheetMode = { kind: "add" } | { kind: "edit"; schedule: Schedule };
 
@@ -39,11 +45,11 @@ export const NEW_SCHEDULE: ScheduleInput = { name: "New schedule", days: ["SUN",
 
 const sameDays = (a: ReadonlyArray<Day>, b: ReadonlyArray<Day>) => a.length === b.length && a.every((d) => b.includes(d));
 
-/** "10h paused · 50h a week" (minutes rounded to a tenth of an hour). */
+/** "10h paused, 50h a week" (minutes rounded to a tenth of an hour). */
 export function pausedLine(input: Pick<ScheduleInput, "start" | "end" | "days">): string {
   const hours = (m: number) => `${Math.round((m / 60) * 10) / 10}h`;
   const day = input.start === input.end ? 0 : spanMinutes(input);
-  return `${hours(day)} paused · ${hours(day * new Set(input.days).size)} a week`;
+  return `${hours(day)} paused, ${hours(day * new Set(input.days).size)} a week`;
 }
 
 /** The paused spans within one day for the preview bar: one, or two when it wraps past midnight. */
@@ -57,6 +63,9 @@ export function daySpans(start: string, end: string): { from: number; to: number
     { from: s, to: MINUTES_PER_DAY },
   ];
 }
+
+/** The sheet's switch is form state, not a write: always usable. */
+const FORM_GATE = { allowed: true, reason: null };
 
 type Props = { profile: Profile; mode: ScheduleSheetMode | null; onClose: () => void };
 
@@ -133,17 +142,18 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
       onClose={onClose}
       icon={mode.kind === "add" ? <CalendarPlus /> : <ScheduleIcon name={trimmed || initial.name} />}
       title={mode.kind === "add" ? "Add a scheduled pause" : "Edit schedule"}
-      subtitle={`${p.name} · pauses ${devices === 1 ? "its device" : `all ${devices} devices`} automatically`}
+      subtitle={`${p.name}, pauses ${devices === 1 ? "its device" : `all ${devices} devices`} automatically`}
       dirty={dirty}
       valid={valid}
       onSave={save}
       saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
       error={errors._form}
+      clean
       footerStart={
         mode.kind === "edit" ? (
           <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" disabled={remove.running} onClick={() => void del()}>
             <Trash2 />
-            Delete schedule
+            Delete schedule{"\u2026"}
           </Button>
         ) : null
       }
@@ -159,7 +169,7 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
           </div>
           <div className="text-muted-foreground text-xs">Turn off to keep it without pausing</div>
         </div>
-        <Toggle checked={enabled} onChange={setEnabled} labelledBy="schedule-sheet-on" />
+        <WriteSwitch on={enabled} label="Schedule on" gate={FORM_GATE} onToggle={setEnabled} />
       </div>
 
       <SheetField label="Schedule name" htmlFor="schedule-sheet-name" error={trimmed.length > 32 ? "Use 32 characters or fewer." : errors.name} helper={`${trimmed.length} / 32`}>
@@ -195,8 +205,8 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
                 aria-pressed={on}
                 onClick={() => toggleDay(d)}
                 className={cn(
-                  "h-7 flex-1 rounded-[var(--control-radius)] font-medium text-xs transition-colors",
-                  on ? "bg-foreground/80 text-background" : "bg-muted text-muted-foreground hover:text-foreground",
+                  "h-7 flex-1 cursor-pointer rounded-[var(--control-radius)] border font-medium text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  on ? "border-foreground/45 bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground",
                 )}
               >
                 {d.charAt(0) + d.slice(1).toLowerCase()}
@@ -204,7 +214,7 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
             );
           })}
         </div>
-        <div className="mt-1 flex flex-wrap gap-1.5">
+        <div className="mt-1 flex flex-wrap gap-x-3.5 gap-y-1">
           {PRESETS.map((preset) => {
             const on = sameDays(days, preset.days);
             return (
@@ -213,9 +223,10 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
                 type="button"
                 aria-pressed={on}
                 onClick={() => setDays(preset.days)}
+                // A plain text link; the preset that matches the days reads in the foreground colour.
                 className={cn(
-                  "h-6 rounded-full border px-2.5 text-2xs transition-colors",
-                  on ? "border-foreground/40 bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+                  "cursor-pointer rounded-sm text-xs underline-offset-2 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring",
+                  on ? "font-medium text-foreground" : "text-muted-foreground",
                 )}
               >
                 {preset.label}
@@ -233,17 +244,17 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
         <div
           role="img"
           aria-label={sameTimes || !start || !end ? "No pause" : `Paused ${formatMinute(minutesOf(start))} to ${formatMinute(minutesOf(end))}${wraps ? " the next day" : ""}`}
-          className={cn("relative h-5 overflow-hidden rounded-md border bg-muted/40", !enabled && "opacity-60")}
+          className={cn("relative h-5 overflow-hidden rounded-md bg-muted", !enabled && "opacity-60")}
         >
           {daySpans(start, end).map((s) => (
             <i
               key={s.from}
-              className={cn("absolute inset-y-0", enabled ? "bg-foreground/60" : "border-[1.5px] border-muted-foreground/70 border-dashed")}
+              className={cn("absolute inset-y-0", enabled ? "bg-muted-foreground/45" : "border-[1.5px] border-muted-foreground/70 border-dashed")}
               style={{ left: `${(s.from / MINUTES_PER_DAY) * 100}%`, width: `${((s.to - s.from) / MINUTES_PER_DAY) * 100}%` }}
             />
           ))}
         </div>
-        <div className="flex justify-between text-3xs text-muted-foreground uppercase tracking-wide" aria-hidden>
+        <div className="flex justify-between text-3xs text-muted-foreground tabular-nums" aria-hidden>
           {["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"].map((t, i) => (
             <span key={i}>{t}</span>
           ))}

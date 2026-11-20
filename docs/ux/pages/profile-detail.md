@@ -7,23 +7,27 @@ Mockup: [../../mockups/08-profile-detail.html](../../mockups/08-profile-detail.h
 (shows "Mia"; open the schedule sheet with `?sheet=1`).
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: crumbs "Profiles / Mia", page action **Rename**. Sidebar item
-Profiles stays active.
+Topbar: crumbs "Profiles / Mia", no page actions (Rename is in the hero).
+Sidebar item Profiles stays active.
 
 ## Layout
 
-1. **Hero** (card), three columns:
-   - Left: 88 px avatar with the initial in the profile colour.
-   - Middle: name with a small dashed pencil button; status line with Active
-     and Scheduled and the next event ("Homework pause starts at 4:00 PM, in
-     1h 55m"); metrics: Last 7 days ("104 GB"), Scheduled off-time ("60 h /
-     week").
-   - Right: a large **Pause profile** button ("Stops internet on Mia's 4
-     devices now") and under it "Resuming during a scheduled pause keeps Mia
-     online until the next scheduled pause."
+1. **Hero**, the flat page header as on device detail (no card; a rule
+   under it):
+   - A 64 px avatar with the initial in the profile colour.
+   - Name; status line with Active, Scheduled or Paused and the next event
+     ("Bedtime pause starts at 9:00 PM, in 2h 20m").
+   - Facts: Devices ("4 · 3 online"), Last 7 days ("119 GB"), Scheduled
+     off-time ("60 h / week").
+   - Action row at the bottom: **Rename…** first (the shared Rename sheet),
+     then **Pause profile…** (asks first) or **Resume profile**, outline with
+     dimmed icons, never filled. Delete is the row in Profile settings at
+     the bottom of the page.
+   - Sections after the hero sit 56px apart (`gap-14`); every section has
+     its subtitle under the title, built from the data.
 2. Two columns (one full-width **Schedules** line when there is nothing to
    show, see States):
-   - **Scheduled pauses**. Sub "This week · network time zone (Pacific)".
+   - **Scheduled pauses**. Description "60h paused a week, Pacific Time".
      Legend: one colour per schedule (Bedtime, Homework) and a dashed "Off"
      swatch. Card with a lane per day, Mon to Sun:
      - Hour gridlines inside each lane; segments in the schedule's colour
@@ -33,44 +37,53 @@ Profiles stays active.
        12 AM to 7 AM next day).
      - Today's label and lane are emphasised; a "Now" line marks the time.
      - Tick labels 12 AM, 6 AM, 12 PM, 6 PM, 12 AM.
-   - **Schedules**. Tool: **+ Add a scheduled pause**. One row per schedule:
-     icon, name, time range ("9:00 PM to 7:00 AM", with a note for disabled
-     ones: "off, kept for summer"), seven day chips (S M T W T F S, active
-     ones highlighted), an enable switch and a pencil. Disabled rows at
-     reduced opacity. Clicking a row opens the editor.
+   - **Schedules**. Description "3 schedules, 2 on" (the on count only when
+     some are off). Tool: **+ Add a scheduled pause…**. One row per
+     schedule: colour square and name with the time range beside it ("9:00
+     PM to 7:00 AM"), then seven day chips (S M T W T F S; neutral, a picked
+     day has an outline and the foreground text, not a fill), the standard
+     switch and a pencil. No icon tile. Disabled rows at reduced opacity
+     with a dashed square. Clicking a row opens the editor.
 3. Two columns:
-   - Left:
-     - **Data usage**. Sub "All of Mia's devices, per hour · markers show
-       scheduled pauses". Day / Week toggle. Hero figure "18 GB", "busiest
-       hour 7 PM · near zero during Bedtime", legend with totals, and an area
-       chart with dashed vertical markers in each schedule's colour where a
-       pause started or ended.
-     - **Devices**, sub "Data today", tool **+ Add a device**. Table: Device
-       (icon, name, status dot, connection line with bars, eero and band, or
-       "Offline · last seen 2h ago on Upstairs Hall", and a 2px bar in the
-       profile colour), Down, Up, Share, 7 days sparkline, and a remove (x)
-       button "Remove from profile".
-   - Right:
-     - **Recent activity**, link "All →". Events with icon, text and a muted
-       line: "Bedtime ended, Mia back online · Today, 7:00 AM · scheduled",
-       "Mia resumed during Homework · overrides until Bedtime", "Mia's
-       Chromebook added to Mia".
-     - **Delete profile** (heading in destructive colour). Card: "Mia's 4
-       devices move to Unassigned, her 3 schedules are removed and any pause
-       is lifted. Usage history stays with the devices." Input `Type "Mia" to
-       confirm` and a **Delete profile** danger button.
-4. **Schedule sheet** ("Edit schedule", or "Add a scheduled pause" when new;
-   "Mia · pauses all 4 devices automatically"):
-   - **Schedule on** switch ("Turn off to keep it without pausing").
+   - **Data usage**, laid out like device detail's. Description "24 hours,
+     busiest hour 7 PM, 2.9 GB". Tool: a Last 24 hours / Last 7 days
+     dropdown. Hero figure "16.6 GB" with the Download and Upload legend and
+     shares on the right ("15.6 GB (94%)"), and the area chart (`h-56`, on
+     the section background, no card) with dashed vertical markers in each
+     schedule's colour where a pause started or ended.
+   - **Top devices**. Description "24 hours, 4 devices, 65% from Mia's
+     iPad". Ranked table: device, data.
+4. **Devices**, full width. Description "4 devices, 3 online". Tool **+ Add a
+   device…**. Table: Device (icon, name, connection line or "Offline · last
+   seen 2h ago on Upstairs Hall", and a 2px bar in the profile colour),
+   Status, Down 24h, Up 24h, Share, and a remove (x) button "Remove from
+   profile".
+5. **Profile settings**, at the bottom of the page, like device detail's
+   Device settings and eero detail's eero settings. Description "4 devices,
+   3 schedules". One card with the settings row:
+   - **Delete profile**: "Mia's devices move to Unassigned, the schedules
+     are removed and any pause is lifted. Usage history stays with the
+     devices." with **Delete profile…**, an outline button in the
+     destructive colour that opens the type-the-name dialog (as Remove
+     eero…).
+6. **Schedule sheet** ("Edit schedule", or "Add a scheduled pause" when new;
+   "Mia, pauses all 4 devices automatically"), a clean sheet with no divider
+   lines:
+   - **Schedule on**, the standard 36x20 switch ("Turn off to keep it
+     without pausing").
    - Schedule name input.
    - Start time and End time pickers (hour : minute, AM or PM); End shows
      "next day" when it wraps past midnight.
-   - **Repeats on**: seven day toggles (Sun to Sat) and preset chips (School
-     nights, Weekdays, Weekends, Every day).
-   - **Each day** preview: a 24 h bar with the paused span(s), "10h paused ·
-     50h a week", and tick labels.
-   - Footer: **Delete schedule** (danger, left; opens the confirm dialog over the sheet),
-     **Cancel**, **Save**.
+   - **Repeats on**: seven day buttons (Sun to Sat), neutral: a picked day
+     has a stronger outline and the foreground text, not a fill colour.
+     Under them the presets as plain text links (School nights, Weekdays,
+     Weekends, Every day), the one matching the days in the foreground
+     colour.
+   - **Each day** preview: a 24 h `bg-muted` bar with the paused span(s) in
+     the muted scheduled fill (as Today's pauses), "10h paused, 50h a
+     week", and tick labels in normal case.
+   - Footer: **Delete schedule…** (danger, left; opens the confirm dialog
+     over the sheet), **Cancel**, **Save**.
 
 ## Data
 
@@ -91,22 +104,22 @@ Profiles stays active.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Rename (topbar) | `profile.rename {profile, name}` | write | No | Rename sheet (name, 32 characters, a taken name shows under the field); toast with Undo |
-| Pause profile | `profile.pause {profile}` | disruptive | Yes, dialog | Status Paused; button becomes **Resume profile**; a manual segment appears on today's lane |
+| Rename… (hero) | `profile.rename {profile, name}` | write | No | Rename sheet (name, 32 characters, a taken name shows under the field); toast with Undo |
+| Pause profile… (hero) | `profile.pause {profile}` | disruptive | Yes, dialog | Status Paused; button becomes **Resume profile**; a manual segment appears on today's lane |
 | Resume profile | `profile.resume {profile}` | write | No | Active; during a scheduled pause Mia stays online until the next scheduled start (hero line says so) |
-| + Add a scheduled pause | - | - | No | Opens the sheet empty (name "New schedule", 9:00 PM to 7:00 AM, School nights) |
+| + Add a scheduled pause… | - | - | No | Opens the sheet empty (name "New schedule", 9:00 PM to 7:00 AM, School nights) |
 | Schedule row, pencil, lane segment | - | - | No | Opens the sheet for that schedule |
 | Schedule row switch | `profile.schedule.update {profile, schedule, enabled}` | write | Only when turning it on during its window would pause online devices now | Row and lanes update; toast with Undo |
 | Sheet: Schedule on, name, times, days, presets | - (form state) | - | No | Preview bar and hours update live |
 | Sheet: Save (new) | `profile.schedule.add {profile, name, start, end, days, enabled}` | write | Only when the window covers now ("Pause devices now?", over the sheet) | Sheet closes; row and lanes added |
 | Sheet: Save (existing) | `profile.schedule.update {profile, schedule, ...}` | write | Only when the new window covers now | Sheet closes; row and lanes update |
 | Sheet: Delete schedule | `profile.schedule.remove {profile, schedule}` | write | Yes, UI inline ("Delete Bedtime? Mia's devices stop pausing at 9:00 PM.") | Sheet closes; toast with Undo (re-adds it) |
-| Day / Week (usage) | - (re-queries `usage.get`) | - | No | Chart and figure switch |
-| + Add a device | `profile.devices.set {profile, devices}` | write | Only when the profile is paused or in a scheduled pause now | Picker of devices (unassigned first; moving one from another profile says "Moves from Alex"); table updates |
+| Last 24 hours / Last 7 days (usage) | - (re-queries `usage.get`) | - | No | Chart and figure switch |
+| + Add a device… | `profile.devices.set {profile, devices}` | write | Only when the profile is paused or in a scheduled pause now | Picker of devices (unassigned first; moving one from another profile says "Moves from Alex"); table updates |
 | Remove (x) on a device | `profile.devices.set {profile, devices}` (without that device) | write | Only when Unassigned is paused | Device goes to Unassigned; toast with Undo |
 | Device row | - | - | No | Device detail |
 | All → (activity), event row | - | - | No | Activity filtered to Mia; the event's target |
-| Delete profile | `profile.delete {profile, confirm: true}` | destructive | Yes, type the name | Toast "Deleted Mia"; navigates to Profiles |
+| Delete profile… (Profile settings) | `profile.delete {profile, confirm: true}` | destructive | Yes, type the name | Toast "Deleted Mia"; navigates to Profiles |
 
 ## States
 

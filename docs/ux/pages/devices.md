@@ -131,6 +131,8 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
      header is in the text colour with a small muted up or down arrow and
      `aria-sort`. Missing values (`-`, Unassigned) sort last either way, and
      ties sort by name. With Group by on, rows are sorted within each group.
+     The chosen column and direction are remembered across launches (renderer
+     localStorage, the same for every network); filters are not.
    - Rows are a flat list by default. They can be grouped (Group by:
      Category, Status, eero or Profile). Grouped rows have header rows with
      a chevron, an icon, the group name and a count. Collapsed groups show

@@ -11,8 +11,8 @@
  * - IPv6: the addresses, with the link-local address under them.
  * - Port forwarding: how many are open and off, Open a port… (the port forward
  *   sheet with this device picked), and the forwards listed under the row
- *   (`forward.list {device}`): name, port, protocol, and a trash button, or an
- *   off switch for a disabled one.
+ *   (`forward.list {device}`): name, port, protocol, an on/off switch and a
+ *   trash button.
  * The header links to Reservations & ports, which holds both. Bridge mode has
  * no reservations or forwards; guests have no forwards.
  */
@@ -26,12 +26,13 @@ import { Badge } from "~/components/ui/badge";
 import { Card, Section } from "~/components/ui/card";
 import { CopyButton } from "~/components/ui/kv-list";
 import { GatedButton, SectionLink, useGate } from "~/components/ui/page";
-import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
+import { Row as SettingsRow, WriteSwitch } from "~/features/advanced/SettingsGroups";
 import { ForwardSheet, type ForwardSheetMode, removeForward, ReservationSheet, type ReservationSheetMode, setForwardEnabled } from "~/features/ports/RuleSheet";
 import { cn } from "~/lib/utils";
 import type { ForwardList, ReservationList } from "../../../../core/commands/routing";
 import type { Forward, Protocol } from "../../../../core/model";
 
+import { DIM_ICON } from "./DeviceHero";
 import type { DeviceView } from "./DevicePage";
 
 const PROTOCOL: Record<Protocol, string> = { tcp: "TCP", udp: "UDP", both: "TCP+UDP" };
@@ -69,7 +70,7 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
       title={ports ? "Addresses and ports" : "Addresses"}
       description={description}
       className="gap-[15px]"
-      tools={view.bridged ? undefined : <SectionLink to={pathFor("ports")}>View in Reservations &amp; ports</SectionLink>}
+      tools={view.bridged ? undefined : <SectionLink to={pathFor("ports")}>Reservations &amp; ports</SectionLink>}
     >
       <ReservationSheet mode={reservationSheet} onClose={() => setReservationSheet(null)} removable />
       <ForwardSheet mode={forwardSheet} onClose={() => setForwardSheet(null)} />
@@ -92,6 +93,7 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
                 gate={reserveGate}
                 variant="outline"
                 size="sm"
+                className={DIM_ICON}
                 title={reserved ? "Edit this device's address reservation" : "Always give this device the same IPv4 address"}
                 onClick={() => {
                   if (!d) return;
@@ -138,7 +140,7 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
             }
             control={
               d && !d.blocked ? (
-                <GatedButton gate={addGate} variant="outline" size="sm" onClick={() => setForwardSheet({ kind: "add", deviceId: id })}>
+                <GatedButton gate={addGate} variant="outline" size="sm" className={DIM_ICON} onClick={() => setForwardSheet({ kind: "add", deviceId: id })}>
                   <Plus />
                   Open a port{"…"}
                 </GatedButton>
@@ -146,7 +148,12 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
             }
           >
             {rows && rows.length > 0 && (
-              <div role="table" aria-label="Port forwards" className={cn("text-[13px]", forwards.fading && "opacity-40")}>
+              // One grid for every row (each row a subgrid), so the columns line up and the name gets what is left.
+              <div
+                role="table"
+                aria-label="Port forwards"
+                className={cn("grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 text-[13px]", forwards.fading && "opacity-40")}
+              >
                 {rows.map((f) => (
                   <ForwardRow key={f.id} forward={f} editGate={editGate} removeGate={removeGate} />
                 ))}
@@ -159,49 +166,35 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
   );
 }
 
-/** One forward under the Port forwarding row: name, port or range, protocol, then trash (on) or an off switch (off). */
+/** One forward under the Port forwarding row: name, port or range, protocol, its on/off switch and trash. */
 function ForwardRow({ forward: f, editGate, removeGate }: { forward: Forward; editGate: Gate; removeGate: Gate }) {
   const port = f.externalPort === f.internalPort ? f.externalPort : `${f.externalPort} → ${f.internalPort}`;
+  const name = f.name || "Port forward";
   return (
-    <div role="row" className="grid min-h-8 grid-cols-[minmax(0,1fr)_7rem_4.5rem_1.75rem] items-center gap-3 border-border/50 border-t first:border-t-0">
+    <div role="row" className="col-span-4 grid min-h-8 grid-cols-subgrid items-center border-border/50 border-t first:border-t-0">
       <span role="cell" className={cn("truncate", !f.enabled && "text-muted-foreground")}>
-        {f.name || "Port forward"}
+        {name}
         {!f.enabled && <span className="text-muted-foreground"> (off)</span>}
       </span>
       <span role="cell" className={cn("truncate font-mono text-xs tabular-nums", !f.enabled && "text-muted-foreground")}>
         {port}
       </span>
       <span role="cell">
-        <Badge variant="outline" className="text-2xs">
-          {PROTOCOL[f.protocol]}
-        </Badge>
+        {/* The band badge's neutral box (muted fill, border), so it shows on the card in both themes. */}
+        <Badge className="border bg-muted text-foreground/80">{PROTOCOL[f.protocol]}</Badge>
       </span>
-      <span role="cell" className="flex justify-end">
-        {f.enabled ? (
-          <button
-            type="button"
-            disabled={!removeGate.allowed}
-            title={removeGate.allowed ? `Remove ${f.name || "port forward"}…` : (removeGate.reason ?? undefined)}
-            aria-label={`Remove ${f.name || "port forward"}…`}
-            onClick={() => void removeForward(f)}
-            className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={false}
-            aria-label={`${f.name} is off`}
-            disabled={!editGate.allowed}
-            title={editGate.allowed ? "Off. Turn it on" : (editGate.reason ?? undefined)}
-            onClick={() => void setForwardEnabled(f, true)}
-            className="inline-flex h-3.5 w-6 cursor-pointer items-center rounded-full bg-muted p-0.5 shadow-[inset_0_0_0_1px_var(--color-border)] disabled:cursor-not-allowed"
-          >
-            <span className="size-2.5 rounded-full bg-muted-foreground/60" />
-          </button>
-        )}
+      <span role="cell" className="flex items-center justify-end gap-1.5">
+        <WriteSwitch on={f.enabled} label={`${name} on`} gate={editGate} onToggle={(next) => void setForwardEnabled(f, next)} />
+        <button
+          type="button"
+          disabled={!removeGate.allowed}
+          title={removeGate.allowed ? `Remove ${name}…` : (removeGate.reason ?? undefined)}
+          aria-label={`Remove ${name}…`}
+          onClick={() => void removeForward(f)}
+          className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
       </span>
     </div>
   );

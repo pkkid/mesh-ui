@@ -22,16 +22,13 @@
   .proto { display: inline-flex; height: 19px; padding: 0 6px; border-radius: 5px; font-size: 10.5px; font-weight: 650; align-items: center; letter-spacing: 0.04em; }
   .proto { color: var(--fg-2); background: var(--card-2); border: 1px solid var(--border); }
   .sheet { position: fixed; top: 0; right: 0; bottom: 0; width: 460px; background: var(--popover); border-left: 1px solid var(--border-2); box-shadow: -30px 0 60px -20px rgb(0 0 0 / 60%); display: flex; flex-direction: column; z-index: 20; }
-  .sheet-h { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .sheet-h { display: flex; align-items: center; gap: 12px; padding: 16px 20px; }
   .sheet-b { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
-  .sheet-f { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
+  .sheet-f { display: flex; gap: 8px; padding: 14px 20px; }
   .fl { font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
   .sheet-backdrop { z-index: 19; }
   #overlay { display: none; }
   #overlay.open { display: block; }
-  .flow { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--border); }
-  .flow .nodebox { flex: 1; text-align: center; }
-  .flow .arrow { color: var(--muted); }
 </style>
 </head>
 <body data-page="ports" data-crumbs="Settings / Reservations & ports" data-subtitle="NAT mode">
@@ -126,21 +123,14 @@
     <div class="sheet-b">
       <div><div class="fl">Device</div>
         <div class="input select" style="height:42px"><div class="ico sm" style="--c:var(--s-purple)"><i data-lucide="laptop"></i></div><div class="grow"><div class="sm m">Alex's MacBook Pro</div></div><span class="mono xs muted">192.168.4.23</span></div>
-        <div class="xxs muted mt-4 row-6"><i data-lucide="bookmark-check" style="width:12px;height:12px;color:var(--success)"></i>Has a reservation, address will not change</div></div>
+        <div class="xxs muted mt-4">192.168.4.23, reserved: it never changes</div></div>
       <div><div class="fl">Nickname</div><div class="input">Valheim server</div></div>
-      <div class="grid g2" style="gap:12px">
-        <div><div class="fl">External port</div><div class="input mono">2456-2458</div><div class="xxs muted mt-4">Single port or range</div></div>
-        <div><div class="fl">Internal port</div><div class="input mono">2456-2458</div><div class="xxs muted mt-4">Same as external</div></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr 96px;gap:12px">
+        <div><div class="fl">External port</div><div class="input mono">2456-2458</div><div class="xxs muted mt-4">One port or a range</div></div>
+        <div><div class="fl">Internal port</div><div class="input mono muted">2456-2458</div><div class="xxs muted mt-4">Same as external if empty</div></div>
+        <div><div class="fl">Protocol</div><div class="input select">UDP</div></div>
       </div>
-      <div><div class="fl">Protocol</div><div class="seg" style="width:100%"><span style="flex:1;justify-content:center">TCP</span><span class="on" style="flex:1;justify-content:center">UDP</span><span style="flex:1;justify-content:center">TCP + UDP</span></div></div>
-      <div class="row-12"><div class="grow"><div class="sm m">Enabled</div><div class="xxs muted">Turn off later without deleting it</div></div><span class="switch on"></span></div>
-      <div class="flow">
-        <div class="nodebox"><div class="ico" style="--c:var(--s-aqua);margin:0 auto"><i data-lucide="globe"></i></div><div class="xs m mt-4">Internet</div><div class="mono xxs muted">203.0.113.48:2456</div></div>
-        <i data-lucide="arrow-right" class="arrow"></i>
-        <div class="nodebox"><div class="ico" style="--c:var(--s-blue);margin:0 auto"><i data-lucide="router"></i></div><div class="xs m mt-4">Living Room</div><div class="xxs muted">gateway</div></div>
-        <i data-lucide="arrow-right" class="arrow"></i>
-        <div class="nodebox"><div class="ico" style="--c:var(--s-purple);margin:0 auto"><i data-lucide="laptop"></i></div><div class="xs m mt-4">MacBook Pro</div><div class="mono xxs muted">.4.23:2456</div></div>
-      </div>
+      <div class="row-12"><div class="grow"><div class="sm m">Enabled</div><div class="xxs muted">Off keeps the rule but closes the port</div></div><span class="switch on"></span></div>
       <div class="col gap-4 xs">
         <div class="row-6 success"><i data-lucide="circle-check" style="width:14px;height:14px"></i>No conflict with existing port forwards</div>
         <div class="row-6 muted"><i data-lucide="info" style="width:14px;height:14px"></i>Applies instantly, no restart</div>

@@ -1,6 +1,10 @@
 /**
  * Device detail "Device information" (docs/ux/pages/device-detail.md,
- * Layout 2): maker, model, hostname, MAC, then the connection. Wi-Fi devices
+ * Layout 3): one full-width card split down the middle. The first half is
+ * the device (maker, model, hostname, MAC, active since: five, six with a
+ * private MAC), the second the connection (five on Wi-Fi, two wired); one column with a rule between them on narrow windows. The
+ * subtitle says how it connects ("Wi-Fi 6E on 6 GHz", "Wired, port 3 on
+ * Office", "Not connected"). Wi-Fi devices
  * show security, standard, channel, link rate and SNR; wired devices show
  * the eero port and its negotiated speed instead. Anything eero does not
  * report, or that only applies while connected, shows `-`.
@@ -34,6 +38,21 @@ export function DeviceInfo({ view }: { view: DeviceView }) {
   const d = view.device;
   const wired = d?.band === "wired" || (!!d?.wiredPort && !d.band);
 
+  const port = d?.wiredPort;
+  const portEero = port ? eeros.data?.find((e) => e.id === port.eeroId)?.location : null;
+  const portText = port ? `Port ${port.port}${portEero ? ` on ${portEero}` : ""}` : null;
+  // "Wi-Fi 6E on 6 GHz", "Wired, port 3 on Office": how it connects now; the rows have the detail.
+  const description = !d
+    ? "-"
+    : !d.connected
+      ? "Not connected"
+      : wired
+        ? port
+          ? `Wired, port ${port.port}${portEero ? ` on ${portEero}` : ""}`
+          : "Wired"
+        : [d.link?.standard?.split(" · ")[0], bandText(d)].filter(Boolean).join(" on ") || "Wi-Fi";
+
+  // Left half: the device itself.
   const items: KvItem[] = [
     { label: "Manufacturer", value: d?.manufacturer },
     { label: "Model", value: d?.model && d.model.toLowerCase() !== "unknown" ? d.model : null },
@@ -41,12 +60,13 @@ export function DeviceInfo({ view }: { view: DeviceView }) {
     { label: "MAC address", value: d?.mac, mono: true, copy: true },
   ];
   if (d?.privateMac) items.push({ label: "MAC type", value: "Private (random)" });
+  items.push({ label: "Active since", value: d ? activeSince(d.firstSeen, view.network?.timezone) : null });
+  const deviceCount = items.length;
+  // Right half: the connection.
 
   if (wired) {
-    const port = d?.wiredPort;
-    const on = port ? eeros.data?.find((e) => e.id === port.eeroId)?.location : null;
     items.push(
-      { label: "eero port", value: port ? join([`Port ${port.port}`, on ? `on ${on}` : null]) : null },
+      { label: "eero port", value: portText },
       { label: "Speed", value: port?.speedMbps ? formatMbps(port.speedMbps) : null },
     );
   } else {
@@ -73,12 +93,15 @@ export function DeviceInfo({ view }: { view: DeviceView }) {
       },
     );
   }
-  items.push({ label: "Active since", value: d ? activeSince(d.firstSeen, view.network?.timezone) : null });
+
+  const columns = [items.slice(0, deviceCount), items.slice(deviceCount)];
 
   return (
-    <Section title="Device information" tools={d ? <LookUpOnline device={d} /> : null}>
-      <Card padded>
-        <KvList items={items} />
+    <Section title="Device information" description={description} className="gap-[15px]" tools={d ? <LookUpOnline device={d} /> : null}>
+      <Card className="grid divide-y divide-border/50 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        {columns.map((col, i) => (
+          <KvList key={i} items={col} className="content-start px-5 py-[18px]" />
+        ))}
       </Card>
     </Section>
   );

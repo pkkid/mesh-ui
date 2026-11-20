@@ -1,44 +1,50 @@
 /**
- * Profiles section: one card per profile (or one row in List view) with its
+ * "Your profiles": one card per profile (or one row in List view) with its
  * initial in the profile colour, devices and how many are online, device
  * type icons, state, the next scheduled change, and today's usage with a
- * 24 h sparkline. Add a profile and Pause all in the header, Pause and
- * Resume per card, and a menu with Rename, Add a scheduled pause (the
- * schedule sheet from profile detail) and Delete. docs/ux/pages/profiles.md (Layout 1, Actions).
+ * 24 h sparkline; under them, the unassigned devices (UnassignedCard.tsx).
+ * While unassigned devices are selected or one is being dragged, the cards
+ * turn into dotted drop targets: drop on one, or click it, to move the
+ * devices there, and the new icons bounce into its stack. Tools: Card view /
+ * List view, "Add a profile…" (which becomes "Add profile from selection…"
+ * while unassigned devices are selected) and "View unassigned profile".
+ * Cards carry no buttons: pausing,
+ * schedules, rename and delete happen on the profile's own page, one click
+ * away. Add a profile, Pause all and Resume all live in the page hero
+ * (ProfilesHero.tsx).
+ * docs/ux/pages/profiles.md (Layout 2, Actions).
  *
  * Also the profile write pieces shared with profile detail and Overview:
  * ProfilePauseButton, ProfileSheet (add, rename, devices) and
  * useDeleteProfile.
  */
-import { Popover } from "@base-ui/react/popover";
-import { CalendarPlus, Ellipsis, LayoutGrid, List, Pause, Pencil, Play, Plus, Trash2, UserRoundPlus } from "lucide-react";
-import { useState } from "react";
+import { Pause, Pencil, Play, Plus, UserRoundPlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import { affectedBy, execute, invalidate, type QueryState, useQuery } from "~/app/useCommand";
 import { askInDialog, errorText, fieldErrors, useWrite } from "~/app/useWrite";
 import { Sparkline } from "~/components/charts/Sparkline";
-import { Button } from "~/components/ui/button";
 import { Card, CardLink, Empty, Section } from "~/components/ui/card";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
-import { GatedButton, SectionError, useGate } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { GatedButton, SectionError, SectionLink, useGate } from "~/components/ui/page";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { toast } from "~/components/ui/toast";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { bytesParts, formatBytes, MISSING, networkClock } from "../../../../core/format";
-import type { Device, DeviceList, Profile, ProfileList, UsageSeries } from "../../../../core/model";
+import type { Device, DeviceList, Profile, ProfileList, UsageBreakdown, UsageSeries } from "../../../../core/model";
 import { nameList, pauseAllMessage, pickerRows } from "../profile/helpers";
-import { ScheduleSheet } from "../profile/ScheduleSheet";
 
 import type { ProfileColor } from "./ProfilesPage";
+import { type Assign, UnassignedPool, useAssign } from "./UnassignedCard";
 
 const VIEWS = [
-  { value: "cards", label: "Cards", icon: LayoutGrid },
-  { value: "list", label: "List", icon: List },
+  { value: "cards", label: "Card view" },
+  { value: "list", label: "List view" },
 ] as const;
 
 export const PROFILE_STATE: Record<Profile["state"], { tone: StatusTone; label: string }> = {
@@ -49,7 +55,7 @@ export const PROFILE_STATE: Record<Profile["state"], { tone: StatusTone; label: 
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** "Pauses 4:00 PM · Homework", "Resumes Fri 7:00 AM", or null. Times in the network time zone. */
+/** "Homework starts 4:00 PM", "Bedtime ends Fri 7:00 AM", "Resumes 6:00 PM", or null. Times in the network time zone. */
 export function nextLine(p: Profile, timezone: string | null, now = Date.now()): string | null {
   if (p.paused) return "Paused until resumed";
   const next = p.nextChange;
@@ -58,7 +64,8 @@ export function nextLine(p: Profile, timezone: string | null, now = Date.now()):
   const sameDay = clock.day(next.at) === clock.day(now);
   const when = sameDay ? clock.time(next.at) : `${clock.weekday(next.at)} ${clock.time(next.at)}`;
   const name = p.schedules.find((s) => s.id === next.scheduleId)?.name;
-  return `${next.to === "paused" ? "Pauses" : "Resumes"} ${when}${name ? ` · ${name}` : ""}`;
+  if (name) return `${name} ${next.to === "paused" ? "starts" : "ends"} ${when}`;
+  return `${next.to === "paused" ? "Pauses" : "Resumes"} ${when}`;
 }
 
 /** The profile's initial in its colour. */
@@ -76,22 +83,24 @@ export function Avatar({ name, color, className }: { name: string; color: string
 
 type Props = {
   profiles: QueryState<ProfileList>;
-  devices: ReadonlyArray<Device> | undefined;
+  devices: QueryState<DeviceList>;
   usage: ReadonlyArray<UsageSeries> | undefined;
+  /** Per-device data over 24 hours, for the unassigned tiles. */
+  deviceUsage: UsageBreakdown | undefined;
   colorOf: ProfileColor;
   timezone: string | null;
+  /** Opens the page's profile sheet (add, rename). */
+  setSheet: (mode: SheetMode) => void;
 };
 
-export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Props) {
+export function ProfileCards({ profiles, devices, usage, deviceUsage, colorOf, timezone, setSheet }: Props) {
   const [view, setView] = useState<"cards" | "list">("cards");
-  const [sheet, setSheet] = useState<SheetMode | null>(null);
-  const [scheduleFor, setScheduleFor] = useState<string | null>(null);
   const createGate = useGate({ ...PROFILE_GATE, op: "create" });
   const list = profiles.data?.profiles ?? [];
-  const byId = new Map((devices ?? []).map((d) => [d.id, d]));
+  const byId = new Map((devices.data?.devices ?? []).map((d) => [d.id, d]));
+  const assign = useAssign(profiles.data, devices);
   const series = new Map((usage ?? []).map((s) => [s.id, s]));
   const loading = !profiles.data;
-  const scheduleProfile = list.find((p) => p.id === scheduleFor);
 
   const items = (loading ? PLACEHOLDERS : list).map((p) => ({
     profile: p,
@@ -99,19 +108,44 @@ export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Pr
     usage: series.get(p.id),
   }));
 
+  const deviceCount = list.reduce((n, p) => n + p.deviceIds.length, 0);
+  const unassigned = assign.list;
+
   return (
     <Section
-      title="Profiles"
-      subtitle="Group devices by person to pause them together and see their usage"
+      title="Your profiles"
+      className="gap-[15px]"
+      // "18 devices in profiles, 18 unassigned": where the network's devices sit right now.
+      description={assign.loaded ? `${plural(deviceCount, "device")} in profiles, ${unassigned.length} unassigned` : "-"}
       tools={
-        list.length > 0 ? (
+        assign.loaded ? (
           <>
-            <GatedButton gate={createGate} variant="outline" onClick={() => setSheet({ kind: "create" })}>
-              <Plus />
-              Add a profile
+            {list.length > 0 && (
+              <Select items={VIEWS} value={view} onValueChange={(v) => v && setView(v)}>
+                <SelectTrigger size="tool" aria-label="Profile layout">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectPopup>
+                  {VIEWS.map((v) => (
+                    <SelectItem key={v.value} value={v.value}>
+                      {v.label}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+            )}
+            {/* Opens the Add a profile sheet, so it ends in an ellipsis; with a selection, those devices come picked. */}
+            <GatedButton
+              gate={createGate}
+              variant="outline"
+              className="[&_svg]:text-muted-foreground"
+              onClick={() => setSheet({ kind: "create", deviceIds: assign.picked.map((d) => d.id) })}
+            >
+              <UserRoundPlus />
+              {assign.picked.length > 0 ? `Add profile from selection (${assign.picked.length})\u2026` : "Add a profile\u2026"}
             </GatedButton>
-            <PauseAllButton profiles={list} />
-            <Segmented aria-label="Profile layout" value={view} onValueChange={setView} options={VIEWS} />
+            {/* Unassigned is paused, scheduled and inspected on its own page, like any profile. */}
+            <SectionLink to={pathFor("profile", { profileId: "unassigned" })}>View unassigned profile</SectionLink>
           </>
         ) : null
       }
@@ -134,23 +168,29 @@ export function ProfileCards({ profiles, devices, usage, colorOf, timezone }: Pr
             <ProfileCard
               key={x.profile.id}
               {...x}
+              assign={assign}
               placeholder={loading}
               color={colorOf(x.profile.id)}
               timezone={timezone}
-              onRename={() => setSheet({ kind: "rename", profile: x.profile })}
-              onSchedule={() => setScheduleFor(x.profile.id)}
             />
           ))}
         </div>
       ) : (
-        <Card className={cn("divide-y divide-border/50", profiles.fading && "opacity-40 transition-opacity")}>
+        <Card
+          className={cn(
+            "divide-y divide-border/50 transition-colors",
+            // While rows are drop targets, the table's border and row rules go clear so they don't fight the dotted outlines.
+            // Nothing moves or resizes: neighbouring rows' outlines may touch, and the edge rows' outlines are not clipped.
+            assign.dropMode && "divide-transparent overflow-visible border-transparent bg-transparent shadow-none",
+            profiles.fading && "opacity-40 transition-opacity",
+          )}
+        >
           {items.map((x) => (
-            <ProfileRow key={x.profile.id} {...x} color={colorOf(x.profile.id)} timezone={timezone} />
+            <ProfileRow key={x.profile.id} {...x} assign={assign} color={colorOf(x.profile.id)} timezone={timezone} />
           ))}
         </Card>
       )}
-      <ProfileSheet mode={sheet} onClose={() => setSheet(null)} />
-      {scheduleProfile && <ScheduleSheet profile={scheduleProfile} mode={{ kind: "add" }} onClose={() => setScheduleFor(null)} />}
+      <UnassignedPool assign={assign} devices={devices} usage={deviceUsage} timezone={timezone} />
     </Section>
   );
 }
@@ -167,32 +207,107 @@ const PLACEHOLDERS: Profile[] = Array.from({ length: 4 }, (_, i) => ({
   nextChange: null,
 }));
 
-type CardProps = { profile: Profile; devices: Device[]; usage: UsageSeries | undefined; color: string; timezone: string | null };
+type CardProps = { profile: Profile; devices: Device[]; usage: UsageSeries | undefined; color: string; timezone: string | null; assign: Assign };
 
+/**
+ * What a card or row needs to be a drop target while unassigned devices are
+ * selected or dragged: the zone id, a dotted outline (an outline, so nothing
+ * shifts), a darker fill and outline while a drag hovers it, and a click that moves the
+ * selection there instead of opening the profile.
+ */
+function dropTarget(p: Profile, a: Assign, placeholder: boolean) {
+  const on = a.dropMode && !placeholder;
+  const hot = on && a.drag.over === p.id;
+  return {
+    on,
+    props: on
+      ? {
+          "data-drop-zone": p.id,
+          role: "button",
+          "aria-label": a.picked.length > 0 ? `Move ${a.picked.length} selected to ${p.name}` : `${p.name}, drop devices here`,
+          onClick: (e: React.MouseEvent) => {
+            // The card's own buttons (Pause, the menu) still do their job.
+            if ((e.target as Element).closest("[data-card-ignore], button, a")) return;
+            e.preventDefault();
+            a.moveSelection(p);
+          },
+        }
+      : {},
+    className: cn(
+      on &&
+        "cursor-copy border-transparent outline-2 outline-dotted -outline-offset-1 transition-[background-color,outline-color] duration-150",
+      // The card under a drag only darkens its fill and outline; it never grows (growing felt unwieldy).
+      // Resting outline: the theme's border colour, as the cards' own 1px border.
+      on && (hot ? "bg-muted/60 outline-foreground/60" : "outline-border hover:bg-muted/30"),
+    ),
+  };
+}
+
+/**
+ * A device icon tile in a stack or pile. Offline is the online tile mixed
+ * halfway into the window background (fill, outline and icon), so it reads
+ * dimmed but stays solid: see-through tiles stacked on each other read as a
+ * mess.
+ */
+export const iconTone = (online: boolean) =>
+  online
+    ? "bg-muted text-muted-foreground ring-1 ring-border ring-inset"
+    : "bg-[color-mix(in_srgb,var(--color-muted)_50%,var(--color-background))] text-[color-mix(in_srgb,var(--color-muted-foreground)_50%,var(--color-background))] ring-1 ring-[color-mix(in_srgb,var(--color-border)_50%,var(--color-background))] ring-inset";
+
+/**
+ * The profile's device icons, online first, up to six and then "+N" (styled
+ * like the last icon shown). Icons that arrive after the stack first drew (a
+ * drop) fall in with a small bounce.
+ */
 function DeviceStack({ devices }: { devices: Device[] }) {
   const shown = [...devices].sort((a, b) => Number(b.connected) - Number(a.connected)).slice(0, 6);
+  const extra = devices.length - shown.length;
+  const seen = useRef<Set<string> | null>(null);
+  const fresh = seen.current ? new Set(devices.filter((d) => !seen.current!.has(d.id)).map((d) => d.id)) : new Set<string>();
+  useEffect(() => {
+    seen.current = new Set(devices.map((d) => d.id));
+  });
   return (
     <div className="flex min-h-7" aria-hidden>
-      {shown.map((d) => {
-        const Icon = deviceIcon(d);
-        return (
-          <span
-            key={d.id}
-            title={d.name}
-            className={cn(
-              "-me-1.5 grid size-[26px] place-items-center rounded-lg bg-muted text-muted-foreground shadow-[0_0_0_2px_var(--color-card),inset_0_0_0_1px_var(--color-border)]",
-              !d.connected && "opacity-50",
-            )}
-          >
-            <Icon className="size-3.5" />
-          </span>
-        );
-      })}
+      {shown.map((d) => (
+        <StackIcon key={d.id} device={d} fresh={fresh.has(d.id)} />
+      ))}
+      {extra > 0 && (
+        <span
+          className={cn(
+            "-me-1.5 grid h-[26px] min-w-[26px] place-items-center rounded-lg px-1 text-2xs tabular-nums shadow-[0_0_0_2px_var(--color-card)]",
+            iconTone(shown.at(-1)?.connected ?? true),
+          )}
+        >
+          +{extra}
+        </span>
+      )}
     </div>
   );
 }
 
-const deviceLine = (p: Profile) => `${plural(p.deviceIds.length, "device")} · ${p.devicesOnline} online`;
+function StackIcon({ device: d, fresh }: { device: Device; fresh: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!fresh || !ref.current || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    ref.current.animate(
+      [
+        { transform: "translateY(-14px) scale(0.6)", opacity: 0 },
+        { transform: "translateY(2px) scale(1.12)", opacity: 1, offset: 0.6 },
+        { transform: "translateY(0) scale(1)" },
+      ],
+      { duration: 420, delay: 180, easing: "ease-out", fill: "backwards" },
+    );
+  }, [fresh]);
+  const Icon = deviceIcon(d);
+  return (
+    <span ref={ref} title={d.name} className={cn("-me-1.5 grid size-[26px] place-items-center rounded-lg shadow-[0_0_0_2px_var(--color-card)]", iconTone(d.connected))}>
+      <Icon className="size-3.5" />
+    </span>
+  );
+}
+
+const deviceLine = (p: Profile) => `${plural(p.deviceIds.length, "device")}, ${p.devicesOnline} online`;
 
 function Today({ usage }: { usage: UsageSeries | undefined }) {
   const today = bytesParts(usage?.todaySoFar);
@@ -204,19 +319,22 @@ function Today({ usage }: { usage: UsageSeries | undefined }) {
   );
 }
 
-function PauseButton({ profile, className }: { profile: Profile; className?: string }) {
-  return <ProfilePauseButton profile={profile} variant={profile.paused ? "default" : "outline"} className={cn("w-full", className)} />;
-}
-
-function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder, onRename, onSchedule }: CardProps & { placeholder: boolean; onRename: () => void; onSchedule: () => void }) {
+function ProfileCard({ profile: p, devices, usage, color, timezone, assign, placeholder }: CardProps & { placeholder: boolean }) {
   const to = pathFor("profile", { profileId: p.id });
   const state = PROFILE_STATE[p.state];
   const next = placeholder ? null : nextLine(p, timezone);
+  const drop = dropTarget(p, assign, placeholder);
   return (
     <Card
       padded
-      to={placeholder ? undefined : to}
-      className={cn("flex flex-col gap-3.5", p.paused && "border-muted-foreground/40 hover:border-muted-foreground/60", placeholder && "pointer-events-none")}
+      to={placeholder || drop.on ? undefined : to}
+      {...drop.props}
+      className={cn(
+        "flex flex-col gap-3.5",
+        p.paused && "border-muted-foreground/40 hover:border-muted-foreground/60",
+        placeholder && "pointer-events-none",
+        drop.className,
+      )}
     >
       <div className="flex items-center gap-3">
         <Avatar name={placeholder ? "" : p.name} color={placeholder ? "var(--color-muted)" : color} />
@@ -235,7 +353,7 @@ function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder,
         <DeviceStack devices={devices} />
         {!placeholder && <Status tone={state.tone}>{state.label}</Status>}
       </div>
-      <div className="min-h-4 truncate text-muted-foreground text-xs">{placeholder ? "" : (next ?? "No schedules")}</div>
+      <div className="min-h-4 truncate text-muted-foreground text-xs">{placeholder ? "" : scheduleText(p, next)}</div>
       <div>
         <div className="flex items-baseline justify-between">
           <span className="text-muted-foreground text-xs">Today</span>
@@ -248,20 +366,21 @@ function ProfileCard({ profile: p, devices, usage, color, timezone, placeholder,
           ariaLabel={`Data used by ${p.name} per hour today`}
         />
       </div>
-      <div data-card-ignore className="flex gap-2">
-        <div className="min-w-0 flex-1 [&>span]:flex">{!placeholder && <PauseButton profile={p} />}</div>
-        {!placeholder && <ProfileMenu profile={p} onRename={onRename} onSchedule={onSchedule} />}
-      </div>
     </Card>
   );
 }
 
-function ProfileRow({ profile: p, devices, usage, color, timezone }: CardProps) {
+/** The card's schedule line: the next change, "2 schedules, all off", or "No schedules". */
+const scheduleText = (p: Profile, next: string | null) =>
+  next ?? (p.schedules.length > 0 ? `${plural(p.schedules.length, "schedule")}, all off` : "No schedules");
+
+function ProfileRow({ profile: p, devices, usage, color, timezone, assign }: CardProps) {
   const to = pathFor("profile", { profileId: p.id });
   const state = PROFILE_STATE[p.state];
   const placeholder = p.id.startsWith("placeholder-");
+  const drop = dropTarget(p, assign, placeholder);
   return (
-    <div className="flex min-h-[58px] items-center gap-4 px-[18px] py-2.5">
+    <div {...drop.props} className={cn("flex min-h-[58px] items-center gap-4 px-[18px] py-2.5", drop.on && "rounded-lg", drop.className)}>
       <Avatar name={p.name} color={placeholder ? "var(--color-muted)" : color} className="size-7 text-xs" />
       <div className="w-40 min-w-0">
         {placeholder ? (
@@ -277,11 +396,10 @@ function ProfileRow({ profile: p, devices, usage, color, timezone }: CardProps) 
         <DeviceStack devices={devices} />
       </div>
       <div className="w-24">{!placeholder && <Status tone={state.tone}>{state.label}</Status>}</div>
-      <div className="hidden min-w-0 flex-1 truncate text-muted-foreground text-xs md:block">{placeholder ? "" : (nextLine(p, timezone) ?? "No schedules")}</div>
+      <div className="hidden min-w-0 flex-1 truncate text-muted-foreground text-xs md:block">{placeholder ? "" : scheduleText(p, nextLine(p, timezone))}</div>
       <div className="w-20 text-right text-sm tabular-nums" title="Today">
         {formatBytes(usage?.todaySoFar)}
       </div>
-      <div className="w-28 [&>span]:flex">{!placeholder && <PauseButton profile={p} />}</div>
     </div>
   );
 }
@@ -316,15 +434,23 @@ export function ProfilePauseButton({
     undo: { id: p.paused ? "profile.pause" : "profile.resume", params: { profile: p.id }, confirm: p.paused ? confirm : undefined, success: `${p.paused ? "Paused" : "Resumed"} ${p.name}` },
   });
   return (
-    <GatedButton gate={gate} size={hero ? undefined : "sm"} variant={variant} className={className} disabled={write.running} onClick={() => void write.run({ profile: p.id })}>
+    <GatedButton
+      gate={gate}
+      // Outside a header: the card size used across the app (24px, 12px text, as the eero cards' Blink light), icon dimmed.
+      size={hero ? undefined : "xs"}
+      variant={variant}
+      className={cn("[&_svg]:text-muted-foreground", className)}
+      disabled={write.running}
+      onClick={() => void write.run({ profile: p.id })}
+    >
       {p.paused ? <Play /> : <Pause />}
-      {hero ? (p.paused ? "Resume profile" : "Pause profile") : p.paused ? "Resume" : "Pause"}
+      {hero ? (p.paused ? "Resume profile" : "Pause profile\u2026") : p.paused ? "Resume" : "Pause\u2026"}
     </GatedButton>
   );
 }
 
 /** Pause all: every profile not yet paused (Unassigned not included), after a confirm, with one Undo. */
-function PauseAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
+export function PauseAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
   const gate = useGate(PROFILE_GATE);
   const [running, setRunning] = useState(false);
   const targets = profiles.filter((p) => !p.paused);
@@ -347,7 +473,29 @@ function PauseAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
       onClick={() => void run()}
     >
       <Pause />
-      Pause all
+      Pause all{"\u2026"}
+    </GatedButton>
+  );
+}
+
+/** Resume all: every paused profile, no confirm (resuming takes nothing offline), with one Undo that pauses them again. */
+export function ResumeAllButton({ profiles }: { profiles: ReadonlyArray<Profile> }) {
+  const gate = useGate(PROFILE_GATE);
+  const [running, setRunning] = useState(false);
+  const targets = profiles.filter((p) => p.paused);
+  const run = async () => {
+    setRunning(true);
+    const done = await runEach("profile.resume", targets);
+    setRunning(false);
+    if (done.length === 0) return;
+    toast.success(`Resumed ${nameList(done.map((p) => p.name))}`, {
+      action: { label: "Undo", run: async () => (await runEach("profile.pause", done)).length > 0 && toast.success("Undone") },
+    });
+  };
+  return (
+    <GatedButton gate={gate} variant="outline" disabled={running || targets.length === 0} onClick={() => void run()}>
+      <Play />
+      Resume all
     </GatedButton>
   );
 }
@@ -390,68 +538,6 @@ export function useDeleteProfile(onDeleted?: () => void) {
       return res;
     },
   };
-}
-
-/** The `...` menu on a card: Rename, Add a scheduled pause and Delete. */
-function ProfileMenu({ profile: p, onRename, onSchedule }: { profile: Profile; onRename: () => void; onSchedule: () => void }) {
-  const gate = useGate(PROFILE_GATE);
-  const [open, setOpen] = useState(false);
-  const del = useDeleteProfile();
-  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted [&_svg]:size-3.5 [&_svg]:text-muted-foreground";
-  if (!gate.allowed) {
-    return (
-      <GatedButton gate={gate} size="icon-sm" variant="outline" aria-label="More actions">
-        <Ellipsis />
-      </GatedButton>
-    );
-  }
-  return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger render={<Button size="icon-sm" variant="outline" aria-label={`More actions for ${p.name}`} />}>
-        <Ellipsis />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-          <Popover.Popup className="w-48 rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
-            <button
-              type="button"
-              className={item}
-              onClick={() => {
-                setOpen(false);
-                onRename();
-              }}
-            >
-              <Pencil />
-              Rename
-            </button>
-            <button
-              type="button"
-              className={item}
-              onClick={() => {
-                setOpen(false);
-                onSchedule();
-              }}
-            >
-              <CalendarPlus />
-              Add a scheduled pause
-            </button>
-            <button
-              type="button"
-              className={cn(item, "text-destructive-foreground")}
-              disabled={del.running}
-              onClick={() => {
-                setOpen(false);
-                void del.run(p);
-              }}
-            >
-              <Trash2 />
-              Delete profile...
-            </button>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
 }
 
 export type SheetMode = { kind: "create"; deviceIds?: string[] } | { kind: "rename"; profile: Profile } | { kind: "devices"; profile: Profile };

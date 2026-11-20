@@ -6,7 +6,8 @@
  *
  * `[` and `]` step to the previous and next device in the Devices table's
  * order, which is view state the table remembers; opened without it (a
- * restart, a deep link) they follow `device.list`'s default order, A to Z.
+ * restart, a deep link) they follow `device.list` in the Devices table's
+ * remembered sort (features/devices/deviceSort.ts), with no filters.
  */
 import { useEffect, useMemo } from "react";
 
@@ -22,6 +23,8 @@ import { SectionError } from "~/components/ui/page";
 import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
 import { blockRequest } from "~/features/devices/BulkBar";
 import { devicesOrder } from "~/features/devices/DeviceTable";
+import { readSort } from "~/features/devices/deviceSort";
+import { SORT_DEFAULT_ORDER } from "../../../../core/commands/device";
 import type { Device, DeviceList, Network } from "../../../../core/model";
 
 import { DeviceHero } from "./DeviceHero";
@@ -43,9 +46,15 @@ export function DevicePage({ params }: PageProps) {
   const id = params.deviceId ?? "";
   const network = useQuery<Network>("network.get", undefined, { poll: true });
   const device = useQuery<Device>("device.get", { device: id }, { poll: true, enabled: id !== "" });
-  const all = useQuery<DeviceList>("device.list", {}, { poll: true });
+  // Read once per page: the sort the Devices table would open with, defaults left out as Devices sends them.
+  const listParams = useMemo(() => {
+    const { sort, order } = readSort();
+    return { ...(sort === "name" ? {} : { sort }), ...(order === SORT_DEFAULT_ORDER[sort] ? {} : { order }) };
+  }, []);
+  const all = useQuery<DeviceList>("device.list", listParams, { poll: true });
 
   const d = device.data;
+  const listed = (all.data?.devices ?? []).find((x) => x.id === id);
   const n = network.data;
   // A device eero no longer knows: the ref matches nothing, or eero says 404.
   const gone = !d && !!device.error && (device.error.code === "bad_params" || device.error.detail?.status === 404);
@@ -56,7 +65,7 @@ export function DevicePage({ params }: PageProps) {
     guest: d?.ssid === "guest",
   };
 
-  // `[` and `]` step to the previous and next device: the Devices table's order when it has one with this device, else A to Z.
+  // `[` and `]` step to the previous and next device: the Devices table's order when it has one with this device, else its remembered sort.
   const order = useMemo(() => {
     const shown = devicesOrder();
     if (shown.includes(id)) return shown;
@@ -84,7 +93,8 @@ export function DevicePage({ params }: PageProps) {
 
   return (
     <>
-      {d && <TopBarTitle>{d.name}</TopBarTitle>}
+      {/* Same name source as the hero: device.get, or the list's copy while it loads, so the crumb never lags the page. */}
+      {(d ?? listed) && <TopBarTitle>{(d ?? listed)?.name}</TopBarTitle>}
       <TopBarActions>
         <LiveToggle size="tool" />
       </TopBarActions>
@@ -111,15 +121,16 @@ export function DevicePage({ params }: PageProps) {
           )}
           {/* 56px between sections, the same as from the hero's rule to the first (design-system.md, Shape and spacing). */}
           <div className="flex flex-col gap-14">
-            <div className="grid items-start gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-              <div className="flex min-w-0 flex-col gap-14">
-                <DeviceUsage view={view} id={id} />
-                <DeviceInfo view={view} />
-              </div>
-              <div className="flex min-w-0 flex-col gap-14">
+            {/* Addresses and ports on the left (narrow), Data usage on the right; Device information spans both below. */}
+            <div className="grid items-start gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+              <div className="min-w-0">
                 <DeviceNetwork view={view} id={id} />
               </div>
+              <div className="min-w-0">
+                <DeviceUsage view={view} id={id} />
+              </div>
             </div>
+            <DeviceInfo view={view} />
             <DeviceSettings view={view} />
           </div>
         </>

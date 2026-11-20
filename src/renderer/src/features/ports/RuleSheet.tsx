@@ -10,7 +10,7 @@
  * Undo) refreshes all of them and device detail's reservation (`RELATED` in
  * useCommand). Removals ask first in the app's confirm dialog.
  */
-import { ArrowRight, Bookmark, BookmarkPlus, Check, CircleAlert, Globe, Plus, Router, ShieldPlus, Trash2 } from "lucide-react";
+import { Bookmark, BookmarkPlus, Check, CircleAlert, Plus, ShieldPlus, Trash2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
@@ -18,8 +18,9 @@ import { fieldErrors, performWrite, useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetField } from "~/components/ui/sheet";
-import { Toggle } from "~/features/profile/ProfileSchedules";
+import { WriteSwitch } from "~/features/advanced/SettingsGroups";
 import { cn } from "~/lib/utils";
 import type { ForwardAdded, ForwardCheck, ForwardRemoved, PinholeRemoved, ReservationRemoved } from "../../../../core/commands/routing";
 import type { Device, DeviceList, Forward, Internet, Pinhole, Protocol, Reservation } from "../../../../core/model";
@@ -52,6 +53,52 @@ function DeviceSelect({ id, value, devices, onChange, disabled }: { id: string; 
     </select>
   );
 }
+
+/**
+ * The port forward sheet's device dropdown: the app's styled Select, the
+ * device's name in the trigger and its address beside each option. The
+ * reservation and IPv6 rule sheets still use the native one, page by page.
+ */
+function DevicePicker({ id, value, devices, onChange }: { id: string; value: string; devices: Device[]; onChange: (id: string) => void }) {
+  const items = devices.map((d) => ({ value: d.id, label: d.name }));
+  return (
+    <Select items={items} value={value || null} onValueChange={(v) => v !== null && onChange(v)}>
+      <SelectTrigger id={id} className="w-full min-w-0">
+        <SelectValue placeholder="Pick a device" />
+      </SelectTrigger>
+      <SelectPopup align="start" className="text-sm">
+        {devices.map((d) => (
+          <SelectItem key={d.id} value={d.id}>
+            <span className="flex items-center justify-between gap-6">
+              <span className="truncate">{d.name}</span>
+              {d.ipv4 && <span className="font-mono text-muted-foreground text-xs">{d.ipv4}</span>}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
+  );
+}
+
+/** Protocol as a dropdown (design-system.md: dropdowns, not pill toggles). */
+function ProtocolPicker({ id, value, onChange }: { id: string; value: Protocol; onChange: (p: Protocol) => void }) {
+  return (
+    <Select items={PROTOCOLS} value={value} onValueChange={(v) => v && onChange(v as Protocol)}>
+      <SelectTrigger id={id} className="w-full min-w-0">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectPopup align="start" className="text-sm">
+        {PROTOCOLS.map((p) => (
+          <SelectItem key={p.value} value={p.value}>
+            {p.label}
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
+  );
+}
+
+const ALWAYS: { allowed: boolean; reason: string | null } = { allowed: true, reason: null };
 
 /** A state line under the fields: a check or a warning, with its text. */
 function CheckLine({ ok, children }: { ok: boolean; children: React.ReactNode }) {
@@ -228,7 +275,7 @@ function useSettled<T>(value: T, ms = 300): T {
 function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () => void }) {
   const devices = useDevices();
   const internet = useQuery<Internet>("internet.get");
-  const ids = { device: useId(), name: useId(), ext: useId(), int: useId(), enabled: useId() };
+  const ids = { device: useId(), name: useId(), ext: useId(), int: useId(), protocol: useId() };
   const f = mode.kind === "edit" ? mode.forward : null;
   const [deviceId, setDeviceId] = useState(mode.kind === "add" ? (mode.deviceId ?? "") : (f?.deviceId ?? ""));
   const [name, setName] = useState(f?.name ?? "");
@@ -288,6 +335,7 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
       onSave={save}
       saveLabel={mode.kind === "add" ? "Save port forward" : "Save"}
       error={errors._form}
+      clean
     >
       <SheetField
         label="Device"
@@ -296,34 +344,34 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
         helper={
           device
             ? reserved === false
-              ? `${device.ipv4 ?? "No address"} · no reservation yet, saving reserves this address`
-              : `${device.ipv4 ?? "-"} · has a reservation, the address will not change`
+              ? `${device.ipv4 ?? "No address"}, not reserved yet: saving reserves it`
+              : `${device.ipv4 ?? "-"}, reserved: it never changes`
             : undefined
         }
       >
-        <DeviceSelect id={ids.device} value={deviceId} devices={devices} onChange={setDeviceId} />
+        <DevicePicker id={ids.device} value={deviceId} devices={devices} onChange={setDeviceId} />
       </SheetField>
       <SheetField label="Nickname" htmlFor={ids.name} error={errors.description}>
         <Input id={ids.name} maxLength={64} placeholder="Media server" value={name} onChange={(e) => setName(e.currentTarget.value)} />
       </SheetField>
-      <div className="grid grid-cols-2 gap-3">
-        <SheetField label="External port" htmlFor={ids.ext} error={errors.externalPort} helper="A port or a range (27015-27030)">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem] gap-3">
+        <SheetField label="External port" htmlFor={ids.ext} error={errors.externalPort} helper="One port or a range">
           <Input id={ids.ext} className="font-mono" inputMode="numeric" placeholder="8080" value={ext} onChange={(e) => setExt(e.currentTarget.value)} />
         </SheetField>
-        <SheetField label="Internal port" htmlFor={ids.int} error={errors.internalPort} helper="Same as external when empty">
+        <SheetField label="Internal port" htmlFor={ids.int} error={errors.internalPort} helper="Same as external if empty">
           <Input id={ids.int} className="font-mono" inputMode="numeric" placeholder={ext || "8080"} value={int} onChange={(e) => setInt(e.currentTarget.value)} />
         </SheetField>
+        <SheetField label="Protocol" htmlFor={ids.protocol}>
+          <ProtocolPicker id={ids.protocol} value={protocol} onChange={setProtocol} />
+        </SheetField>
       </div>
-      <SheetField label="Protocol">
-        <Segmented aria-label="Protocol" value={protocol} onValueChange={setProtocol} options={PROTOCOLS} />
-      </SheetField>
       <div className="flex items-center justify-between gap-3">
-        <span id={ids.enabled} className="font-medium text-xs">
-          Enabled
-        </span>
-        <Toggle checked={enabled} onChange={setEnabled} labelledBy={ids.enabled} />
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-xs">Enabled</span>
+          <span className="text-muted-foreground text-xs">Off keeps the rule but closes the port</span>
+        </div>
+        <WriteSwitch on={enabled} label="Enabled" gate={ALWAYS} onToggle={setEnabled} />
       </div>
-      <Flow publicIp={publicIp} ext={ext.trim()} ip={device?.ipv4 ?? null} name={device?.name ?? null} int={int.trim() || ext.trim()} />
       {ready && check.data && (
         <div className={cn("flex flex-col gap-1.5 transition-opacity", check.fading && "opacity-40")}>
           <CheckLine ok={!issues.externalPort}>{issues.externalPort ? "Conflicts with an existing port forward" : "No conflict with existing port forwards"}</CheckLine>
@@ -331,27 +379,6 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
         </div>
       )}
     </Sheet>
-  );
-}
-
-/** Internet (public IP and port) to the gateway eero to the device (internal IP and port). */
-function Flow({ publicIp, ext, ip, name, int }: { publicIp: string | null; ext: string; ip: string | null; name: string | null; int: string }) {
-  const node = (icon: React.ReactNode, title: string, detail: string) => (
-    <div className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
-      <span className="grid size-7 place-items-center rounded-lg bg-muted text-muted-foreground [&_svg]:size-3.5">{icon}</span>
-      <span className="truncate font-medium text-xs">{title}</span>
-      <span className="truncate font-mono text-2xs text-muted-foreground">{detail}</span>
-    </div>
-  );
-  const arrow = <ArrowRight aria-hidden className="mt-2 size-3.5 shrink-0 text-muted-foreground" />;
-  return (
-    <div className="flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-3" aria-label="How traffic flows">
-      {node(<Globe />, "Internet", `${publicIp ?? "public IP"}:${ext || "port"}`)}
-      {arrow}
-      {node(<Router />, "Gateway eero", "forwards")}
-      {arrow}
-      {node(<Check />, name ?? "Device", `${ip ?? "-"}:${int || "port"}`)}
-    </div>
   );
 }
 

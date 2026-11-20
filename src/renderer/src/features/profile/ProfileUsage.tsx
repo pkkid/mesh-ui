@@ -4,6 +4,9 @@
  * (Week), with dashed markers where a scheduled pause started or ended, the
  * total and busiest bucket, and the top devices for the same window. From
  * `usage.get {scope: profile}` and `usage.breakdown {by: device, profile}`.
+ * Laid out like device detail's Data usage: a range dropdown, the subtitle
+ * built from the data under the title, and the chart on the section
+ * background at the main chart height.
  */
 import { useState } from "react";
 
@@ -13,18 +16,18 @@ import { AreaChart } from "~/components/charts/AreaChart";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { formatBytes, networkClock } from "../../../../core/format";
+import { bytesParts, formatBytes, formatCount, formatPercent, networkClock } from "../../../../core/format";
 import type { Profile, UsageBreakdown, UsageBreakdownRow, UsageRange, UsageSeries } from "../../../../core/model";
 
 import { usageMarkers } from "./helpers";
 import { scheduleColors } from "./ProfileSchedules";
 
 const RANGES = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
+  { value: "day", label: "Last 24 hours" },
+  { value: "week", label: "Last 7 days" },
 ] as const;
 
 type Props = { profileId: string; profile: Profile | null; timezone: string | null };
@@ -49,36 +52,60 @@ export function ProfileUsage({ profileId, profile, timezone }: Props) {
   const name = profile?.name ?? "this profile";
   const rows = top.data?.rows.filter((r) => r.down + r.up > 0).slice(0, 5);
   const span = day ? "last 24 hours" : "last 7 days";
+  const lead = day ? "24 hours" : "7 days";
+  // "24 hours, busiest hour 7 PM, 3.1 GB": the bare window, then its busiest bucket (design-system.md, Subtitles carry data).
+  const description = [lead, busiest ? `busiest ${day ? `hour ${hour(busiest.at)}` : `day ${longWeekday(busiest.at)}`}` : null, busiest ? formatBytes(busiest.down + busiest.up) : null]
+    .filter(Boolean)
+    .join(", ");
+  const active = top.data?.rows.filter((r) => r.down + r.up > 0) ?? [];
+  const topShare = hasData && total && active[0] ? (active[0].down + active[0].up) / total : null;
+  // "24 hours, 4 devices, 65% from Mia's iPad".
+  const topDescription = top.data
+    ? [lead, `${formatCount(active.length)} ${active.length === 1 ? "device" : "devices"}`, topShare !== null ? `${formatPercent(topShare * 100)} from ${active[0]?.name}` : null]
+        .filter(Boolean)
+        .join(", ")
+    : lead;
+  const hero = bytesParts(hasData ? total : null);
+  const fade = usage.fading ? "opacity-40" : undefined;
 
   return (
     <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <Section
         title="Data usage"
-        subtitle={day ? `All of ${name}'s devices, per hour, ${span}${markers.length ? " · markers show scheduled pauses" : ""}` : `All of ${name}'s devices, per day, ${span}`}
-        tools={<Segmented aria-label="Range" value={range} onValueChange={setRange} options={RANGES} />}
+        description={description}
+        className="gap-[15px]"
+        tools={
+          // A dropdown, not a Segmented toggle (design-system.md, Dropdowns, not pill toggles).
+          <Select items={RANGES} value={range} onValueChange={(v) => v && setRange(v)}>
+            <SelectTrigger size="tool" aria-label="Range">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {RANGES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        }
       >
         {usage.error && !s ? (
           <SectionError what="data usage" error={usage.error} onRetry={() => void usage.refetch()} />
-        ) : s && !hasData ? (
-          <Card>
-            <Empty>No activity in this window.</Empty>
-          </Card>
         ) : (
-          <Card padded>
-            <div className={cn("mb-3 flex flex-wrap items-end gap-x-6 gap-y-2 transition-opacity", usage.fading && "opacity-40")}>
-              <div>
-                <div className="font-semibold text-4xl tabular-nums">{formatBytes(hasData ? total : null)}</div>
-                <div className="text-muted-foreground text-xs">
-                  {busiest ? `Busiest ${day ? `hour ${hour(busiest.at)}` : `day ${longWeekday(busiest.at)}`}` : `In the ${span}`}
-                </div>
+          <div>
+            <div className={cn("mb-3 flex flex-wrap items-end gap-x-7 gap-y-2 transition-opacity", fade)}>
+              <div className="font-semibold text-4xl tabular-nums tracking-tight">
+                {hero.value}
+                {hero.unit && <small className="ms-1 font-medium text-base text-muted-foreground">{hero.unit}</small>}
               </div>
-              <div className="ms-auto flex flex-wrap gap-x-4 gap-y-1.5 text-muted-foreground text-xs">
-                <Legend color={seriesColors.download} label="Download" value={hasData ? s?.total.down : null} />
-                <Legend color={seriesColors.upload} label="Upload" value={hasData ? s?.total.up : null} />
+              <div className="ms-auto flex flex-wrap gap-4 text-xs">
+                <Legend color={seriesColors.download} label="Download" value={hasData ? s?.total.down : null} share={hasData && total ? (s?.total.down ?? 0) / total : null} />
+                <Legend color={seriesColors.upload} label="Upload" value={hasData ? s?.total.up : null} share={hasData && total ? (s?.total.up ?? 0) / total : null} />
               </div>
             </div>
             <AreaChart
-              heightClassName="h-[200px]"
+              heightClassName="h-56"
               series={[
                 { id: "down", label: "Download", color: seriesColors.download, values: points.map((p) => p.down) },
                 { id: "up", label: "Upload", color: seriesColors.upload, values: points.map((p) => p.up) },
@@ -89,13 +116,13 @@ export function ProfileUsage({ profileId, profile, timezone }: Props) {
               total
               markers={markers}
               loading={usage.loading && (!s || usage.fading)}
-              ariaLabel={`Data usage of ${name}'s devices per ${day ? "hour" : "day"}, ${span}, download and upload`}
+              ariaLabel={`Data usage of ${name}'s devices per ${day ? "hour" : "day"}, ${span}, download and upload${markers.length ? ", with markers where scheduled pauses start and end" : ""}`}
             />
-          </Card>
+          </div>
         )}
       </Section>
 
-      <Section title="Top devices" subtitle={day ? "Last 24 hours" : "Last 7 days"}>
+      <Section title="Top devices" description={topDescription} className="gap-[15px]">
         {top.error && !top.data ? (
           <SectionError what="top devices" error={top.error} onRetry={() => void top.refetch()} />
         ) : rows && rows.length === 0 ? (
@@ -124,12 +151,14 @@ export function ProfileUsage({ profileId, profile, timezone }: Props) {
   );
 }
 
-function Legend({ color, label, value }: { color: string; label: string; value: number | null | undefined }) {
+/** "Download 14.3 GB (94%)": colour square, muted label, value, and its share of the total in muted text. */
+function Legend({ color, label, value, share }: { color: string; label: string; value: number | null | undefined; share: number | null }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <i aria-hidden className="size-2 rounded-[2px]" style={{ background: color }} />
+    <span className="flex items-center gap-1.5 text-muted-foreground">
+      <span aria-hidden className="size-2 rounded-[2px]" style={{ background: color }} />
       {label}
-      <b className="font-medium text-foreground tabular-nums">{formatBytes(value)}</b>
+      <span className="font-medium text-foreground tabular-nums">{formatBytes(value)}</span>
+      {share !== null && <span className="tabular-nums">({formatPercent(share * 100)})</span>}
     </span>
   );
 }

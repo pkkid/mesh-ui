@@ -31,7 +31,7 @@ import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, dialog, ipcMain, Notification, nativeTheme, safeStorage, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Notification, nativeTheme, safeStorage, screen, session, shell } from "electron";
 import { version as appVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
@@ -51,6 +51,7 @@ import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 import { previewUpdate } from "./updater";
+import { fitWindowState, readWindowState, trackWindowState, writeWindowState } from "./window-state";
 import { isAmazonAllowedNavigation } from "../core/eero/amazonNative";
 
 /** Matches --titlebar-height in the renderer's index.css. */
@@ -265,11 +266,19 @@ function electronCliHost(): CliHost {
 function createWindow(): BrowserWindow {
   const dark = nativeTheme.shouldUseDarkColors;
   const isMac = process.platform === "darwin";
+  // Headless runs (ui:shot) always use the default size, so screenshots match.
+  const limits = { width: 1200, height: 780, minWidth: 760, minHeight: 480 };
+  const bounds = fitWindowState(
+    isHeadless ? null : readWindowState(paths.windowState),
+    [screen.getPrimaryDisplay(), ...screen.getAllDisplays()].map((d) => d.workArea),
+    limits,
+  );
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 780,
-    minWidth: 760,
-    minHeight: 480,
+    width: bounds.width,
+    height: bounds.height,
+    ...(bounds.x !== undefined && bounds.y !== undefined ? { x: bounds.x, y: bounds.y } : {}),
+    minWidth: limits.minWidth,
+    minHeight: limits.minHeight,
     title: "Mesh UI",
     show: false,
     backgroundColor: dark ? "#000000" : "#fcfcfc",
@@ -304,7 +313,13 @@ function createWindow(): BrowserWindow {
     win.webContents.send(IPC.refresh);
   });
 
-  if (!isHeadless) mainWindow.once("ready-to-show", () => mainWindow?.show());
+  if (!isHeadless) {
+    trackWindowState(win, (state) => writeWindowState(paths.windowState, state));
+    win.once("ready-to-show", () => {
+      if (bounds.maximized) win.maximize();
+      win.show();
+    });
+  }
   mainWindow.on("closed", () => (mainWindow = null));
 
   if (process.env.ELECTRON_RENDERER_URL) {

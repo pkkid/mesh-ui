@@ -9,6 +9,11 @@
  * (ScheduleSheet.tsx); the row switch runs `profile.schedule.update
  * {enabled}` with Undo. With no schedules and no manual pause the week
  * timeline hides and only a one-line "Schedules" card shows (States).
+ *
+ * Styled to the design rules: subtitles under the titles, built from the
+ * data ("60h paused a week, Pacific Time", "3 schedules, 2 on"); neutral day
+ * chips (a picked day has an outline and the foreground text, not a fill);
+ * the standard 36x20 switch on each row.
  */
 import { BookOpen, CalendarClock, Moon, Pencil, Plus, Utensils } from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
@@ -18,12 +23,14 @@ import { Button } from "~/components/ui/button";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
+import { WriteSwitch } from "~/features/advanced/SettingsGroups";
+import { DIM_ICON } from "~/features/device/DeviceHero";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 import { entityColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import type { Profile, ProfileDetail, Schedule } from "../../../../core/model";
 
-import { dayChips, scheduleIcon, timeRange, todayIn, weekInput, zoneName } from "./helpers";
+import { dayChips, scheduledHoursPerWeek, scheduleIcon, timeRange, todayIn, weekInput, zoneName } from "./helpers";
 import { ScheduleSheet, type ScheduleSheetMode } from "./ScheduleSheet";
 
 const ICONS = { moon: Moon, book: BookOpen, utensils: Utensils, "calendar-clock": CalendarClock } as const;
@@ -60,19 +67,30 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
     ...manual.map((x) => ({ id: `manual-${x.start}`, label: "Paused", color: MANUAL_COLOR, days: [today.lane], start: x.start, end: x.end, inert: true })),
   ];
   const name = p?.name ?? "this profile";
+  // Opens the schedule sheet, so it ends in an ellipsis.
   const addButton = (
-    <GatedButton gate={gate} variant="outline" disabled={!p} onClick={() => setSheet({ kind: "add" })}>
+    <GatedButton gate={gate} variant="outline" className={DIM_ICON} disabled={!p} onClick={() => setSheet({ kind: "add" })}>
       <Plus />
-      Add a scheduled pause
+      Add a scheduled pause{"\u2026"}
     </GatedButton>
   );
+  const hours = scheduledHoursPerWeek(schedules);
+  // "60h paused a week, Pacific Time": the week's total off-time, then the zone the lanes are drawn in.
+  const weekDescription = [hours > 0 ? `${hours}h paused a week` : "No time paused", zoneName(timezone, now)].join(", ");
+  const on = schedules.filter((x) => x.enabled).length;
+  // "3 schedules, 2 on" (the on count only when some are off).
+  const listDescription = !p
+    ? "-"
+    : schedules.length === 0
+      ? "None yet"
+      : `${schedules.length} ${schedules.length === 1 ? "schedule" : "schedules"}${on === schedules.length ? "" : `, ${on} on`}`;
   const sheetEl = p ? <ScheduleSheet profile={p} mode={sheet} onClose={() => setSheet(null)} /> : null;
 
   // Nothing to draw: one line instead of an empty week. Only once the profile has answered, so it never flashes while loading.
   if (p && schedules.length === 0 && manual.length === 0) {
     return (
       <>
-        <Section title="Schedules" tools={addButton}>
+        <Section title="Schedules" description="None yet" className="gap-[15px]" tools={addButton}>
           <Card className={cn("px-[18px] py-3 text-[13px] text-muted-foreground transition-opacity", fading && "opacity-40")}>
             No scheduled pauses yet. Add one to pause {p.name}'s devices automatically, like at bedtime.
           </Card>
@@ -86,7 +104,8 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
     <div className="grid gap-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <Section
         title="Scheduled pauses"
-        subtitle={`This week · network time zone (${zoneName(timezone, now)})`}
+        description={weekDescription}
+        className="gap-[15px]"
         tools={
           schedules.length > 0 || manual.length > 0 ? (
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs" aria-hidden>
@@ -117,7 +136,7 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
         </Card>
       </Section>
 
-      <Section title="Schedules" tools={addButton}>
+      <Section title="Schedules" description={listDescription} className="gap-[15px]" tools={addButton}>
         <Card className={cn("divide-y divide-border/50 transition-opacity", fading && "opacity-40")}>
           {!p ? (
             <div className="h-[58px]" />
@@ -155,12 +174,7 @@ function ScheduleRow({ profile: p, schedule: s, color, allowed, reason, onOpen }
       onClick={allowed ? onOpen : undefined}
     >
       <div className={cn("flex min-w-0 flex-1 items-center gap-3", !s.enabled && "opacity-60")}>
-        <span
-          aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--color-border)] [&_svg]:size-4"
-        >
-          <ScheduleIcon name={s.name} />
-        </span>
+        {/* No icon tile: the colour square by the name says which schedule it is, and the days and times need the width. */}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="flex min-w-0 items-center gap-1.5 font-medium text-[13px]">
@@ -168,8 +182,8 @@ function ScheduleRow({ profile: p, schedule: s, color, allowed, reason, onOpen }
               <span className="truncate">{s.name}</span>
             </span>
             <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+              {/* Off already shows in the switch, the dashed square and the faded row. */}
               {timeRange(s)}
-              {s.enabled ? "" : " · off"}
             </span>
           </div>
           <div className="flex gap-0.5" role="img" aria-label={`Repeats on ${s.days.map((d) => d.charAt(0) + d.slice(1).toLowerCase()).join(", ") || "no days"}`}>
@@ -177,9 +191,10 @@ function ScheduleRow({ profile: p, schedule: s, color, allowed, reason, onOpen }
               <span
                 key={c.day}
                 aria-hidden
+                // Neutral, as the sheet's day buttons: a picked day has an outline and the foreground text.
                 className={cn(
-                  "grid size-5 place-items-center rounded-[5px] font-semibold text-3xs",
-                  c.on ? "bg-foreground/80 text-background" : "bg-muted text-muted-foreground/70",
+                  "grid size-5 place-items-center rounded-[5px] border font-semibold text-3xs",
+                  c.on ? "border-foreground/40 bg-muted text-foreground" : "border-transparent text-muted-foreground/60",
                 )}
               >
                 {c.letter}
@@ -190,9 +205,7 @@ function ScheduleRow({ profile: p, schedule: s, color, allowed, reason, onOpen }
       </div>
       {/* The controls do their own thing; a click there does not open the sheet. */}
       <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-        <span title={reason ?? undefined}>
-          <Toggle checked={s.enabled} onChange={flip} label={`${s.name} ${s.enabled ? "on" : "off"}`} disabled={!allowed || toggle.running} />
-        </span>
+        <WriteSwitch on={s.enabled} label={`${s.name} on`} gate={{ allowed, reason }} busy={toggle.running} onToggle={flip} />
         <Button size="icon-xs" variant="ghost-muted" aria-label={`Edit ${s.name}`} title={reason ?? `Edit ${s.name}`} disabled={!allowed} onClick={onOpen}>
           <Pencil />
         </Button>
