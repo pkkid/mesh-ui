@@ -141,7 +141,7 @@ Left to right (mockup `.topbar`):
 
 | Element | What it shows | Notes |
 | --- | --- | --- |
-| Crumbs | The selected network, then the page: "Maple Street / Overview", "Maple Street / eeros / Office", "Maple Street / Devices / Alex's MacBook Pro". The page is the `h1`. Settings and Account, which are not about a network, show only their title | As T3 Code's breadcrumb: `text-sm font-medium`, 12px apart; earlier crumbs in `text-muted-foreground` and links (the network goes to Overview), turning `text-foreground` on hover; the `/` in `text-icon-muted`; the page in `text-foreground`. Nothing follows the page. |
+| Crumbs | The selected network, then the page: "Maple Street / Overview", "Maple Street / eeros / Office", "Maple Street / Devices / Alex's MacBook Pro". The page is the `h1`. Settings and Account, which are not about a network, show only their title. A detail page (a device, eero or profile) leaves its last crumb empty until its name loads, never a generic "Device" first | As T3 Code's breadcrumb: `text-sm font-medium`, 12px apart; earlier crumbs in `text-muted-foreground` and links (the network goes to Overview), turning `text-foreground` on hover; the `/` in `text-icon-muted`; the page in `text-foreground`. Nothing follows the page. |
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
 | Page navigation | Small buttons a page puts in the topbar slot: Prev and Next (Device detail) | Optional per page. Navigation and global tools only; page actions (Add a profile, Export CSV, Rename) live in the page, in hero actions or section tools. Share Wi-Fi (Devices), Live (Devices), Export CSV (Activity), Check for updates (Updates) and Rename (Profile detail) still sit here until #323 moves them. |
 | Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
@@ -289,6 +289,7 @@ the ones that run commands go through `execute` like any button.
 | `Ctrl+,` | Settings | Global |
 | `Alt+←` / `Alt+→` (`⌘[` / `⌘]`) | Back / forward | Global |
 | `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |
+| `F12` | Open or close the dev tools panel (eero requests), as in browsers. Its DevTools button opens Electron's developer tools docked to the right | Global, sign-in included. Not shown anywhere in the UI. See [devtools.md](../architecture/devtools.md) |
 | `Ctrl+B` | Hide or show the sidebar | Global |
 | `/` | Focus the list search field | Devices, Activity |
 | `Shift+click` | Select a range of rows | Devices table |

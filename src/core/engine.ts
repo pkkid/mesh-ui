@@ -25,6 +25,7 @@ import {
   type SettingsStore,
   type Surface,
 } from "./spec";
+import { withCommand } from "./eero/inspect";
 
 export type EngineOptions = {
   backend: Backend;
@@ -395,7 +396,8 @@ export function createEngine(opts: EngineOptions): Engine {
     }
 
     try {
-      const result = (await runCommand(cmd, parsed.data as Record<string, unknown>, fresh)) as R;
+      // While the dev tools panel inspects, its requests show this command id (a no-op otherwise).
+      const result = (await withCommand(id, () => runCommand(cmd, parsed.data as Record<string, unknown>, fresh))) as R;
       return { ok: true, result };
     } catch (err) {
       const error = toExecuteError(err);

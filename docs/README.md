@@ -25,6 +25,7 @@ Open questions from every doc are gathered in [open-questions.md](open-questions
 | [data-model.md](architecture/data-model.md) | Mesh UI's own types and how each maps from eero responses |
 | [security.md](architecture/security.md) | Threat model, token storage, process boundaries, window lockdown, audit log |
 | [ui.md](architecture/ui.md) | Renderer structure, data hooks, the IPC bridge, components and charts |
+| [devtools.md](architecture/devtools.md) | The F12 dev tools panel: eero requests, what is captured and redacted, off means off |
 | [cli.md](architecture/cli.md) | The `mesh-ui` CLI: commands, flags, output formats, exit codes, scripts |
 | [mcp.md](architecture/mcp.md) | The MCP server for AI agents: tools, hints, confirmation, setup |
 

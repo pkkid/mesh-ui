@@ -37,6 +37,7 @@ import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
 import { createEeroBackend } from "../core/eero/backend";
 import { fileRequestLog, requestLogPath } from "../core/eero/requestLog";
+import { setInspector } from "../core/eero/inspect";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
 import type { HostActions, SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
@@ -306,7 +307,13 @@ function createWindow(): BrowserWindow {
   });
 
   // Ctrl+R / Cmd+R and F5 refresh the page's data instead of reloading the window.
+  // (F12 opens the app's own dev tools panel; the renderer handles it.)
   const win = mainWindow;
+  // A reload or a closed window ends any dev tools recording; the new page starts with it off.
+  // did-navigate fires for loads and reloads only, not the in-page hash changes between pages.
+  win.webContents.on("did-navigate", () => setInspector(null));
+  win.webContents.on("render-process-gone", () => setInspector(null));
+  win.on("closed", () => setInspector(null));
   win.webContents.on("before-input-event", (event, input) => {
     if (!isRefreshKey(input, process.platform)) return;
     event.preventDefault();
@@ -442,6 +449,7 @@ if (isCli) {
       saveFile: saveFileHost,
       ...(isHeadless ? {} : { notify: notifyHost }),
       themes: createOpenVsx((url, init) => fetch(url, init)),
+      devtools: { available: !isDemo, openElectron: () => mainWindow?.webContents.openDevTools({ mode: "right" }) },
     });
     createWindow();
     app.on("activate", () => {

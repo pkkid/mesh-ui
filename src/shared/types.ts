@@ -9,6 +9,7 @@ import type { ExecuteOptions } from "../core/engine";
 import type { ExecuteError, ExecuteResult } from "../core/errors";
 import type { HostEvent, SessionStorageKind } from "../core/model";
 import type { CommandInfo } from "../core/registry";
+import type { InspectRecord } from "../core/eero/inspect";
 
 export type { CommandInfo, ExecuteError, ExecuteOptions, ExecuteResult, HostEvent };
 
@@ -24,6 +25,9 @@ export const IPC = {
   refresh: "mesh:refresh",
   themeSearch: "mesh:theme-search",
   themeDownload: "mesh:theme-download",
+  devtoolsCapture: "mesh:devtools-capture",
+  devtoolsRecord: "mesh:devtools-record",
+  devtoolsOpen: "mesh:devtools-open",
 } as const;
 
 /**
@@ -116,4 +120,17 @@ export type MeshApi = {
   searchThemes(query: string, sort: ThemeSearchSort): Promise<ThemeSearchResult>;
   /** Downloads, verifies and unpacks one Open VSX theme extension. Never throws. */
   downloadThemes(extensionId: string): Promise<ThemeDownloadResult>;
+  /**
+   * The F12 dev tools panel (docs/architecture/devtools.md). Not a command,
+   * so the CLI and MCP cannot reach it. `capture(true)` starts recording eero
+   * requests (redacted: never the session token) and `capture(false)` stops
+   * it; `available` is false where there are no eero requests (demo mode).
+   */
+  devtools: {
+    capture(on: boolean): Promise<{ available: boolean }>;
+    /** One request, sent when it starts and again as it completes (same id). Returns an unsubscribe. */
+    onRecord(listener: (record: InspectRecord) => void): () => void;
+    /** Opens Electron's own developer tools, docked to the right of the window. */
+    openElectron(): void;
+  };
 };

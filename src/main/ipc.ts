@@ -13,6 +13,8 @@
  * No Electron values are imported here, so tests can drive both halves.
  */
 
+import type { InspectRecord } from "../core/eero/inspect";
+import { setInspector } from "../core/eero/inspect";
 import type { Engine, ExecuteOptions } from "../core/engine";
 import type { ExecuteResult } from "../core/errors";
 import type { HostEvent } from "../core/model";
@@ -29,7 +31,11 @@ import { type NotifyHost, registerNotify } from "./notify";
 // ---------------------------------------------------------------------------
 // Main side
 
-export type SenderEvent = { senderFrame?: { url: string } | null };
+export type SenderEvent = {
+  senderFrame?: { url: string } | null;
+  /** The window that asked; the dev tools panel's records go back to it. */
+  sender?: { send(channel: string, ...args: unknown[]): void; isDestroyed?(): boolean };
+};
 
 /** The parts of Electron's `ipcMain` used here. */
 export interface IpcMainLike {
@@ -52,6 +58,12 @@ export type IpcOptions = {
   notify?: NotifyHost;
   /** Open VSX theme search and download (src/main/open-vsx.ts); without it the channels answer "unavailable". */
   themes?: ThemeHost;
+  /**
+   * The F12 dev tools panel: whether there are eero requests to show (not
+   * in demo mode) and how to open Electron's own developer tools. Without it
+   * the panel says recording is unavailable.
+   */
+  devtools?: { available: boolean; openElectron(): void };
 };
 
 /** What the host provides for `window.mesh.searchThemes` and `downloadThemes`. */
@@ -167,6 +179,25 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
 
   const unregisterNotify = opts.notify ? registerNotify(ipcMain, trusted, opts.notify) : null;
 
+  // Dev tools: recording runs only between capture(true) and capture(false) (or the window going away).
+  ipcMain.handle(IPC.devtoolsCapture, (e, on) => {
+    if (!trusted(e)) return { available: false };
+    const available = opts.devtools?.available === true;
+    const sender = e.sender;
+    if (on === true && available && sender) {
+      setInspector((record) => {
+        if (sender.isDestroyed?.()) return setInspector(null);
+        sender.send(IPC.devtoolsRecord, record);
+      });
+    } else {
+      setInspector(null);
+    }
+    return { available };
+  });
+  ipcMain.on(IPC.devtoolsOpen, (e) => {
+    if (trusted(e)) opts.devtools?.openElectron();
+  });
+
   const unsubscribe = opts.engine.onEvent((event) => opts.broadcast(IPC.event, event));
 
   return () => {
@@ -176,6 +207,9 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
     if (saver) ipcMain.removeHandler(IPC.saveFile);
     ipcMain.removeHandler(IPC.themeSearch);
     ipcMain.removeHandler(IPC.themeDownload);
+    ipcMain.removeHandler(IPC.devtoolsCapture);
+    ipcMain.removeAllListeners(IPC.devtoolsOpen);
+    setInspector(null);
     ipcMain.removeAllListeners(IPC.titlebar);
     unregisterNotify?.();
   };
@@ -269,6 +303,23 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
       const wrapped = () => listener();
       ipc.on(IPC.refresh, wrapped);
       return () => void ipc.removeListener(IPC.refresh, wrapped);
+    },
+    devtools: {
+      capture: async (on) => {
+        try {
+          return (await ipc.invoke(IPC.devtoolsCapture, on === true)) as { available: boolean };
+        } catch {
+          return { available: false };
+        }
+      },
+      onRecord(listener) {
+        const wrapped = (_e: unknown, record: unknown) => {
+          if (record && typeof record === "object") listener(record as InspectRecord);
+        };
+        ipc.on(IPC.devtoolsRecord, wrapped);
+        return () => void ipc.removeListener(IPC.devtoolsRecord, wrapped);
+      },
+      openElectron: () => ipc.send(IPC.devtoolsOpen),
     },
     onNotificationClick(listener) {
       const wrapped = (_e: unknown, click: unknown) => {

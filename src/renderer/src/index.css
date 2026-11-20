@@ -262,3 +262,97 @@ html.dark[data-theme-id="rose"] [data-app-sidebar] {
     transform: scaleX(1);
   }
 }
+
+/*
+ * The dev tools panel's JSON view (features/devtools/JsonTree.tsx), ported
+ * from the JSON Formatter extension (Callum Locke, BSD-3-Clause). Syntax
+ * colours come from the theme's series palette, so they follow every theme
+ * in light and dark: strings green, numbers, booleans and null blue. This
+ * developer view is the one place outside charts and status that uses them.
+ */
+.json-tree {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  padding-left: 20px;
+  color: var(--color-muted-foreground);
+  user-select: text;
+}
+.json-tree span {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.json-tree .entry {
+  display: block;
+  position: relative;
+  padding-left: 20px;
+  margin-left: -20px;
+  content-visibility: auto;
+}
+.json-tree .e {
+  position: absolute;
+  left: 0;
+  top: 1px;
+  z-index: 1;
+  display: flex;
+  width: 20px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-foreground);
+  opacity: 0.3;
+}
+.json-tree .e::after {
+  content: "";
+  display: block;
+  border-style: solid;
+  border-width: 4px 0 4px 6.9px;
+  border-color: transparent transparent transparent currentColor;
+  transform: rotate(90deg) translateY(1px);
+}
+.json-tree .e:hover {
+  opacity: 0.6;
+}
+.json-tree .collapsed > .e::after {
+  transform: none;
+}
+.json-tree .collapsed {
+  white-space: nowrap;
+}
+.json-tree .collapsed > .blockInner {
+  display: none;
+}
+.json-tree .collapsed > .ell::after {
+  content: "\2026";
+  font-weight: bold;
+}
+.json-tree .collapsed > .ell {
+  margin: 0 4px;
+}
+.json-tree .collapsed::after {
+  content: attr(data-size);
+  opacity: 0.6;
+}
+.json-tree .blockInner {
+  display: block;
+  margin-left: 2px;
+  padding-left: 22px;
+  border-left: 1px dotted var(--color-border);
+}
+.json-tree .k {
+  color: var(--color-foreground);
+}
+.json-tree .s {
+  color: var(--series-green, var(--color-emerald-600));
+}
+.json-tree .n,
+.json-tree .bl,
+.json-tree .nl {
+  color: var(--series-blue, var(--color-blue-600));
+}
+.json-tree .raw {
+  display: block;
+  margin-left: -20px;
+  color: var(--color-foreground);
+}

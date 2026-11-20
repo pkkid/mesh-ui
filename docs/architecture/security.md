@@ -227,6 +227,14 @@ line each, so a user can attach it to a bug report:
 - **Show request log** (under a sign-in error, and in Settings, About)
   runs `app.log.show`, which shows the file in the system file manager.
 
+## Dev tools panel
+
+The F12 panel shows eero requests with headers and response bodies, in the
+app window only and only while it records. The session and pending tokens,
+cookie values and token-named body keys are scrubbed in main before a record
+crosses IPC; records stay in memory and are not a command, so the CLI and
+MCP cannot read them. See [devtools.md](devtools.md).
+
 ## Logging
 
 - Main and CLI logs go to stderr and, for the app, `logs/main.log` in the

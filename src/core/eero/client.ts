@@ -12,6 +12,7 @@
 
 import type { AuthState, SecretStore } from "../backend";
 import { BackendError, type BackendErrorCode } from "../errors";
+import { beginCapture, type Capture } from "./inspect";
 import { parseRetryAfter, RateLimiter, rateLimited } from "./ratelimit";
 import type { RawEnvelope, RawLoginResponse, RawVerifyResponse } from "./raw";
 import { type ApiVersion, checkOrigin, EERO_ORIGIN, redactPath, resolveUrl } from "./urls";
@@ -110,6 +111,9 @@ export type EeroClientOptions = {
 };
 
 type Exchange<T> = { data: T; cookieToken: string | null };
+
+/** Where an attempt hands its dev tools capture back to the caller (null while not inspecting). */
+type CaptureSlot = { attempt: number; capture: Capture | null };
 
 type SharedRead = { promise: Promise<Exchange<unknown>>; expires: number };
 
@@ -431,15 +435,19 @@ export class EeroClient {
     let retries = 0;
     let refreshed = false;
     let reread = false;
+    let attemptNo = 0;
     for (;;) {
       const token = await this.tokenFor(auth);
       const started = Date.now();
+      const slot: CaptureSlot = { attempt: attemptNo++, capture: null };
+      const log = (status: number | null, eeroError: string | null, outcome: RequestLogEntry["outcome"], err?: unknown): void =>
+        this.log(spec, status, eeroError, started, outcome, err, slot.capture);
       let res: Attempt;
       try {
-        res = await this.attempt(spec, token);
+        res = await this.attempt(spec, token, slot);
       } catch (err) {
         const canRetry = effect === "query" && retries < RETRY_BACKOFF_MS.length && err instanceof BackendError && err.code === "network_error";
-        this.log(spec, null, null, started, canRetry ? "retry" : "error", err);
+        log(null, null, canRetry ? "retry" : "error", err);
         if (!canRetry) throw err;
         await sleep(RETRY_BACKOFF_MS[retries++] ?? 0);
         continue;
@@ -453,7 +461,7 @@ export class EeroClient {
 
       if (eeroError === "error.too.many.resends") {
         const err = new BackendError("rate_limited", "eero only sends a new code once a minute. Wait and try again.", { retryAfterSec: 60, status, eeroError });
-        this.log(spec, status, eeroError, started, "error", err);
+        log(status, eeroError, "error", err);
         throw err;
       }
 
@@ -462,7 +470,7 @@ export class EeroClient {
         this.limiter.pause(waitMs);
         const canRetry = effect === "query" && retries < RETRY_BACKOFF_MS.length && waitMs <= this.limiter.maxWaitMs;
         const err = rateLimited(Math.ceil(waitMs / 1000));
-        this.log(spec, status, eeroError, started, canRetry ? "retry" : "error", err);
+        log(status, eeroError, canRetry ? "retry" : "error", err);
         if (!canRetry) throw err;
         retries++;
         continue;
@@ -472,26 +480,26 @@ export class EeroClient {
       if (auth === "session" && (status === 401 || status === 419) && token && !reread) {
         reread = true;
         if (await this.adoptStored(token)) {
-          this.log(spec, status, eeroError, started, "retry");
+          log(status, eeroError, "retry");
           continue;
         }
       }
 
       if (auth === "session" && status === 401 && eeroError && REFRESH_ERRORS.has(eeroError) && !refreshed && token) {
-        this.log(spec, status, eeroError, started, "refresh");
+        log(status, eeroError, "refresh");
         refreshed = true;
         await this.refresh(token);
         continue;
       }
 
       if (effect === "query" && status >= 500 && retries < RETRY_BACKOFF_MS.length) {
-        this.log(spec, status, eeroError, started, "retry");
+        log(status, eeroError, "retry");
         await sleep(RETRY_BACKOFF_MS[retries++] ?? 0);
         continue;
       }
 
       if (isOk(status)) {
-        this.log(spec, status, eeroError, started, "ok");
+        log(status, eeroError, "ok");
         return { data: (res.envelope?.data ?? null) as T, cookieToken: res.cookieToken };
       }
 
@@ -501,14 +509,18 @@ export class EeroClient {
         err = signInRefused(err);
         if (auth === "pending") this.pendingToken = null;
       }
-      this.log(spec, status, eeroError, started, "error", err);
+      log(status, eeroError, "error", err);
       if (err.code === "not_signed_in") await this.endSession();
       throw err;
     }
   }
 
-  /** One HTTP attempt: limiter slot, headers, body, timeout, envelope. */
-  private async attempt(spec: RequestSpec, token: string | null): Promise<Attempt> {
+  /**
+   * One HTTP attempt: limiter slot, headers, body, timeout, envelope. While
+   * the dev tools panel inspects (inspect.ts), the attempt is captured into
+   * `slot.capture` for the caller to settle; otherwise nothing extra runs.
+   */
+  private async attempt(spec: RequestSpec, token: string | null, slot?: CaptureSlot): Promise<Attempt> {
     const url = requestUrl(spec, this.origin);
 
     const encoding = spec.encoding ?? (spec.method === "GET" ? "none" : spec.body ? "json" : "empty");
@@ -535,7 +547,13 @@ export class EeroClient {
       body = '""';
     }
 
+    const capture = beginCapture(spec.method, url.href, headers, body, slot?.attempt ?? 0, [token, this.token, this.pendingToken]);
+    if (slot) slot.capture = capture;
+    const queuedAt = capture ? Date.now() : 0;
+
     const release = await this.limiter.acquire();
+    const sentAt = capture ? Date.now() : 0;
+    let headersAt = 0;
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -546,16 +564,23 @@ export class EeroClient {
     let text: string;
     try {
       response = await this.fetchFn(url.href, { method: spec.method, headers, body, redirect: "error", signal: controller.signal });
+      if (capture) headersAt = Date.now();
       text = await readBody(response);
     } catch (err) {
-      if (err instanceof BackendError) throw err;
-      throw timedOut
-        ? new BackendError("network_error", `eero did not answer within ${Math.round(this.timeoutMs / 1000)} s.`)
-        : new BackendError("network_error", "Could not reach eero. Check your internet connection.");
+      const e =
+        err instanceof BackendError
+          ? err
+          : timedOut
+            ? new BackendError("network_error", `eero did not answer within ${Math.round(this.timeoutMs / 1000)} s.`)
+            : new BackendError("network_error", "Could not reach eero. Check your internet connection.");
+      capture?.fail(e.message);
+      throw e;
     } finally {
       clearTimeout(timer);
       release();
     }
+
+    capture?.response(response.status, response.headers, text, { queuedMs: sentAt - queuedAt, waitMs: headersAt - sentAt, downloadMs: Date.now() - headersAt });
 
     let envelope: RawEnvelope | null = null;
     if (text.trim()) {
@@ -582,21 +607,22 @@ export class EeroClient {
   private async runRefresh(token: string): Promise<void> {
     const spec: RequestSpec = { method: "POST", path: "/2.2/login/refresh", encoding: "empty" };
     const started = Date.now();
+    const slot: CaptureSlot = { attempt: 0, capture: null };
     let res: Attempt;
     try {
-      res = await this.attempt(spec, token);
+      res = await this.attempt(spec, token, slot);
     } catch (err) {
-      this.log(spec, null, null, started, "error", err);
+      this.log(spec, null, null, started, "error", err, slot.capture);
       throw err;
     }
     const eeroError = res.envelope?.meta?.error ?? null;
     if (!isOk(res.status)) {
       const err = new BackendError("not_signed_in", "Your eero session has ended. Sign in again.", { status: res.status, ...(eeroError ? { eeroError } : {}) });
-      this.log(spec, res.status, eeroError, started, "error", err);
+      this.log(spec, res.status, eeroError, started, "error", err, slot.capture);
       await this.endSession();
       throw err;
     }
-    this.log(spec, res.status, eeroError, started, "ok");
+    this.log(spec, res.status, eeroError, started, "ok", undefined, slot.capture);
     const data = res.envelope?.data as RawLoginResponse | null | undefined;
     const next = res.cookieToken ?? data?.user_token ?? null;
     if (next) await this.adopt(next);
@@ -665,7 +691,16 @@ export class EeroClient {
     this.onLog?.({ method, path: redactPath(path), status: null, eeroError: null, ms: 0, outcome: "note", rates });
   }
 
-  private log(spec: RequestSpec, status: number | null, eeroError: string | null, started: number, outcome: RequestLogEntry["outcome"], err?: unknown): void {
+  private log(
+    spec: RequestSpec,
+    status: number | null,
+    eeroError: string | null,
+    started: number,
+    outcome: RequestLogEntry["outcome"],
+    err?: unknown,
+    capture?: Capture | null,
+  ): void {
+    if (capture && outcome !== "note") capture.settle(outcome, eeroError, err instanceof BackendError ? err.message : undefined);
     if (!this.onLog) return;
     const entry: RequestLogEntry = { method: spec.method, path: redactPath(spec.path), status, eeroError, ms: Date.now() - started, outcome };
     if (err instanceof BackendError) {

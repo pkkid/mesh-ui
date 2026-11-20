@@ -12,6 +12,8 @@ import { RouterOutlet, useNavigationShortcuts } from "~/app/router";
 import { followHostEvents, onSessionEnded, useQuery } from "~/app/useCommand";
 import { ConfirmHost } from "~/components/ui/confirm";
 import { Toaster } from "~/components/ui/toast";
+import { DevToolsPanel } from "~/features/devtools/DevToolsPanel";
+import { useDevToolsOpen, useDevToolsShortcut } from "~/features/devtools/devtools";
 import { CommandPalette } from "~/features/palette/CommandPalette";
 import { errorCode } from "~/features/sign-in/errorCode";
 import { SignInView } from "~/features/sign-in/SignInView";
@@ -19,7 +21,25 @@ import { Sidebar } from "~/features/shell/Sidebar";
 import { TopBar, TopBarProvider } from "~/features/shell/TopBar";
 import type { AuthStatus } from "../../core/model";
 
+/**
+ * The whole window: the app (sign-in or the shell) above, and the F12 dev
+ * tools panel docked across the bottom while it is open
+ * (docs/architecture/devtools.md).
+ */
 export function App() {
+  useDevToolsShortcut();
+  const devtools = useDevToolsOpen();
+  return (
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1">
+        <AppContent />
+      </div>
+      {devtools && <DevToolsPanel />}
+    </div>
+  );
+}
+
+function AppContent() {
   const auth = useQuery<AuthStatus>("auth.status");
   /** Set when the session ends in this run; `expired` is false for the user's own sign-out. */
   const [sessionEnded, setSessionEnded] = useState<{ expired: boolean; code: string | null } | null>(null);

@@ -16,7 +16,8 @@ import { BackendError } from "../core/errors";
 import type { HostEvent } from "../core/model";
 import { defineCommand } from "../core/spec";
 import { IPC } from "../shared/types";
-import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, isRefreshKey, type KeyInput, registerIpc, SAVE_MAX_CHARS, type SaveFileHost } from "./ipc";
+import { inspecting } from "../core/eero/inspect";
+import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, isRefreshKey, type KeyInput, registerIpc, SAVE_MAX_CHARS, type SaveFileHost, type SenderEvent } from "./ipc";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName, type SafeStorageLike, storageKind } from "./secret-store";
 
@@ -399,7 +400,7 @@ describe("window.mesh bridge", () => {
   it("exposes execute, commands, on and setTitlebarColors over the mesh: channels", async () => {
     const { mesh, ipc } = await bridgeSetup();
     expect(mesh.platform).toBe("linux");
-    expect([...ipc.handlers.keys()].sort()).toEqual([IPC.commands, IPC.execute, IPC.themeDownload, IPC.themeSearch].sort());
+    expect([...ipc.handlers.keys()].sort()).toEqual([IPC.commands, IPC.devtoolsCapture, IPC.execute, IPC.themeDownload, IPC.themeSearch].sort());
 
     const info = await mesh.execute<{ host: { configDir: string } }>("app.info");
     expect(info.ok && info.result.host.configDir).toBe(dir);
@@ -519,6 +520,57 @@ describe("isRefreshKey", () => {
     expect(isRefreshKey(key("r"), "linux")).toBe(false);
     expect(isRefreshKey(key("t", { control: true }), "linux")).toBe(false);
     expect(isRefreshKey({ ...key("r", { control: true }), type: "keyUp" }, "linux")).toBe(false);
+  });
+});
+
+describe("dev tools capture channel", () => {
+  /** registerIpc with only the dev tools channels exercised: handlers, and a sender that collects records. */
+  async function devtoolsSetup(available: boolean) {
+    const handlers = new Map<string, (e: SenderEvent, ...a: unknown[]) => unknown>();
+    const listeners = new Map<string, (e: SenderEvent, ...a: unknown[]) => void>();
+    const main: IpcMainLike = {
+      handle: (c, fn) => void handlers.set(c, fn),
+      on: (c, fn) => void listeners.set(c, fn),
+      removeHandler: (c) => void handlers.delete(c),
+      removeAllListeners: (c) => void listeners.delete(c),
+    };
+    const sent: unknown[] = [];
+    let opened = 0;
+    const engine = createEngine({ backend: composeBackend("eero", {}), host: { configDir: dir, keychainName: null } });
+    const off = registerIpc(main, {
+      engine,
+      isAppUrl: (u) => u === APP_URL,
+      broadcast: () => {},
+      setTitlebarColors: () => {},
+      devtools: { available, openElectron: () => void opened++ },
+    });
+    const event = (url = APP_URL): SenderEvent => ({ senderFrame: { url }, sender: { send: (_c, r) => void sent.push(r) } });
+    const capture = (on: boolean, url?: string) => handlers.get(IPC.devtoolsCapture)?.(event(url), on);
+    return { capture, sent, off, open: (url?: string) => listeners.get(IPC.devtoolsOpen)?.(event(url)), opened: () => opened };
+  }
+
+  it("records only between capture(true) and capture(false), and only for the app window", async () => {
+    const d = await devtoolsSetup(true);
+    expect(inspecting()).toBe(false);
+    expect(await d.capture(true, "https://evil.example/")).toEqual({ available: false });
+    expect(inspecting()).toBe(false);
+    expect(await d.capture(true)).toEqual({ available: true });
+    expect(inspecting()).toBe(true);
+    expect(await d.capture(false)).toEqual({ available: true });
+    expect(inspecting()).toBe(false);
+    await d.capture(true);
+    d.off();
+    expect(inspecting()).toBe(false);
+  });
+
+  it("never records in demo mode, and opens Electron's tools only for the app window", async () => {
+    const d = await devtoolsSetup(false);
+    expect(await d.capture(true)).toEqual({ available: false });
+    expect(inspecting()).toBe(false);
+    d.open("https://evil.example/");
+    d.open();
+    expect(d.opened()).toBe(1);
+    d.off();
   });
 });
 
