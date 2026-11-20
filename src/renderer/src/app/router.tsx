@@ -3,9 +3,12 @@
  * the browser history, and the last route remembered in localStorage. It is
  * view state, never a command. See docs/ux/overview.md#navigation.
  */
-import { type AnchorHTMLAttributes, type MouseEvent, Suspense, useEffect, useSyncExternalStore } from "react";
+import { type AnchorHTMLAttributes, type MouseEvent, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ComingSoon } from "~/features/shell/ComingSoon";
+import { PageLoading } from "~/features/shell/PageLoading";
+import { cn } from "~/lib/utils";
+import { HoldPage, PageLoad, PageLoadContext } from "./pageLoad";
 import { DEFAULT_ROUTE, PAGES, ROUTES, type RouteDef, routeById } from "./routes";
 
 export type Location = {
@@ -168,21 +171,134 @@ export function scrollToSection(id: string): void {
   column.scrollTo({ top: Math.max(0, top - 22) });
 }
 
-/** The scrolling content column with the current page in it. */
+/** Page transition timings (docs/architecture/ui.md#page-transitions). */
+const FADE_OUT_MS = 150;
+/** A page shows after this even if a query is still loading; its sections fade their own placeholders. */
+const MAX_WAIT_MS = 3000;
+
+/** `wait`: the page is mounted but hidden until its data lands. `in`: it fades in. */
+type Phase = "wait" | "in";
+
+/**
+ * Fades the outgoing page out as a still copy of its DOM laid over the page
+ * area, so the next page can mount (and start loading) at once instead of
+ * after the fade. The copy is inert: no React, no ids, no pointer events.
+ * Calls `done` when the fade ends.
+ */
+function fadeOutCopy(host: HTMLElement, scroller: HTMLElement, page: HTMLElement, done: () => void): () => void {
+  const copy = page.cloneNode(true) as HTMLElement;
+  for (const el of copy.querySelectorAll("[id]")) el.removeAttribute("id");
+  copy.removeAttribute("aria-busy");
+  copy.style.transform = `translateY(${-scroller.scrollTop}px)`;
+  const ghost = document.createElement("div");
+  ghost.setAttribute("aria-hidden", "true");
+  ghost.inert = true;
+  // Same box as the scroll column, less its scrollbar lane, so the copy sits exactly where the page was.
+  ghost.className = "topbar-scroll-fade pointer-events-none absolute inset-y-0 left-0 overflow-hidden";
+  ghost.style.right = `${scroller.offsetWidth - scroller.clientWidth}px`;
+  ghost.style.transition = `opacity ${FADE_OUT_MS}ms ease-out`;
+  ghost.appendChild(copy);
+  host.appendChild(ghost);
+  void ghost.offsetWidth; // start the transition from full opacity
+  ghost.style.opacity = "0";
+  const t = setTimeout(() => {
+    ghost.remove();
+    done();
+  }, FADE_OUT_MS);
+  return () => {
+    clearTimeout(t);
+    ghost.remove();
+  };
+}
+
+/**
+ * The scrolling content column with the current page in it. Switching pages
+ * mounts the new page at once, hidden, so its queries start on the click,
+ * while a still copy of the old page fades out over it. The new page fades
+ * in once its first loads land (pageLoad.ts) and the fade out is over, so a
+ * page never shows its empty template first. The loading mark fades in
+ * slowly meanwhile, so quick switches never show it.
+ */
 export function RouterOutlet() {
-  const { route, params, path } = useLocation();
-  const Page = PAGES[route.id];
+  const location = useLocation();
+  const [shown, setShown] = useState(location);
+  const [phase, setPhase] = useState<Phase>("wait");
+  const [fadingOut, setFadingOut] = useState(false);
+  const wrapper = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const stopFade = useRef<(() => void) | null>(null);
+  // One PageLoad per mounted page: a new page gets a new one.
+  const load = useMemo(() => new PageLoad(), [shown.path]);
+  const pending = useSyncExternalStore(
+    (l) => load.subscribe(l),
+    () => load.pending,
+  );
+
+  // A new location: copy the old page for its fade out, then swap pages in the same tick.
+  // A layout effect, so the copy is taken before anything paints and the old DOM is still there.
+  useLayoutEffect(() => {
+    if (location.path === shown.path) return;
+    stopFade.current?.();
+    stopFade.current = null;
+    if (wrapper.current && scroller.current && page.current && phase === "in") {
+      stopFade.current = fadeOutCopy(wrapper.current, scroller.current, page.current, () => {
+        stopFade.current = null;
+        setFadingOut(false);
+      });
+      setFadingOut(true);
+    }
+    scroller.current?.scrollTo({ top: 0 });
+    setShown(location);
+    setPhase("wait");
+  }, [location, shown.path, phase]);
+
+  useEffect(() => () => stopFade.current?.(), []);
+
+  // Ready once nothing has held the page for a frame (a query can start when an earlier one lands)
+  // and the old page has faded out.
+  useEffect(() => {
+    if (phase !== "wait" || pending > 0 || fadingOut) return;
+    const frame = requestAnimationFrame(() => {
+      if (load.pending === 0) setPhase("in");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [phase, pending, load, fadingOut]);
+
+  useEffect(() => {
+    if (phase !== "wait") return;
+    const t = setTimeout(() => setPhase("in"), MAX_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [phase, load]);
+
+  const switching = phase !== "in";
+
+  const Page = PAGES[shown.route.id];
   return (
-    <div data-page-scroll className="topbar-scroll-fade min-h-0 flex-1 overflow-y-auto">
-      <div key={path} className="mx-auto flex max-w-[1056px] flex-col gap-7 px-7 pt-[22px] pb-[100px]">
-        {Page ? (
-          <Suspense fallback={null}>
-            <Page params={params} />
-          </Suspense>
-        ) : (
-          <ComingSoon route={route} params={params} />
-        )}
+    <div ref={wrapper} className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={scroller} data-page-scroll className="topbar-scroll-fade min-h-0 flex-1 overflow-y-auto">
+        <div
+          key={shown.path}
+          ref={page}
+          aria-busy={switching}
+          className={cn(
+            "mx-auto flex max-w-[1056px] flex-col gap-7 px-7 pt-[22px] pb-[100px] transition-opacity",
+            // In over 300 ms easing both ends (ease-out alone reads as a pop). The fade out is the copy's.
+            phase === "in" ? "opacity-100 duration-300 ease-in-out" : "pointer-events-none opacity-0 duration-0",
+          )}
+        >
+          <PageLoadContext.Provider value={load}>
+            {Page ? (
+              <Suspense fallback={<HoldPage />}>
+                <Page params={shown.params} />
+              </Suspense>
+            ) : (
+              <ComingSoon route={shown.route} params={shown.params} />
+            )}
+          </PageLoadContext.Provider>
+        </div>
       </div>
+      <PageLoading visible={switching} />
     </div>
   );
 }

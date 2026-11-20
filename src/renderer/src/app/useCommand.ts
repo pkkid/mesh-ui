@@ -26,6 +26,7 @@ import type { ExecuteError, ExecuteResult } from "../../../core/errors";
 import type { HostEvent } from "../../../core/model";
 import { pollDelayMs } from "../../../core/poll";
 import type { CommandInfo } from "../../../core/registry";
+import { useHoldPage } from "./pageLoad";
 
 // ---------------------------------------------------------------------------
 // Bridge
@@ -488,6 +489,9 @@ export function useQuery<R = unknown>(id: string, params?: unknown, options: Que
     };
     // `params` is covered by `key`.
   }, [key, enabled, intervalSec]);
+
+  // The page transition waits for first loads of the page's own queries.
+  useHoldPage(enabled && snapshot.data === undefined && snapshot.error === null);
 
   const fading = useFade(snapshot.loading && snapshot.data === undefined);
   const refetch = useCallback((options?: { fresh?: boolean }) => {

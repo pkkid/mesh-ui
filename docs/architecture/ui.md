@@ -317,10 +317,37 @@ turns into a confirm in place.
 | App settings the CLI also needs (User-Agent, desktop notifications on or off, update channel) | `settings.json` via `app.settings.get` / `app.settings.set` |
 | eero data | `useQuery` cache in memory only |
 
+## Page transitions
+
+`RouterOutlet` (`app/router.tsx`) never shows a page's empty template. On a
+route change the new page mounts at once, hidden, with the scroll column at
+the top, so its queries start on the click. The old page fades out (150 ms)
+as a still copy of its DOM laid over the page area (inert, ids stripped), so
+the fade never delays the new page's loads. The new page fades in (300 ms,
+easing both ends) once its first loads have landed and the fade out is over.
+Meanwhile the loading mark starts fading in at the click but takes 1.5 s,
+easing in, so it never pops in and quick switches end before it shows. The
+mark (`features/shell/PageLoading.tsx`) is the app icon alone without its
+tile, in the solid `watermark` colour a shade off the background (no
+transparency), as the "Live throughput off" icon, centred in the page area
+("Loading…" is for screen readers only). Only the page area changes; the
+sidebar and topbar stay put.
+
+What the page waits for comes from `app/pageLoad.ts`: each page gets a
+`PageLoad`, and every `useQuery` inside it holds it while that query has no
+data and no error yet (a disabled query does not count). A lazy page holds it
+while its code loads. The page shows once nothing has held it for a frame, so
+a query that starts when an earlier one lands still counts, or after 3 s at
+most, when slower sections fall back to their own placeholders. Queries
+outside the page (sidebar, topbar) never delay it, and background refetches
+never hide a page already on screen.
+
 ## States every page handles
 
-- **Loading**: keep the layout; on a first load fade placeholders to
-  `opacity-40` after 150 ms (`fading`). A background refresh with data on
+- **Loading**: switching pages waits for the new page's data (see
+  [Page transitions](#page-transitions)); a section that loads later keeps
+  the layout and fades its placeholders to `opacity-40` after 150 ms
+  (`fading`). A background refresh with data on
   screen does not dim it; the topbar Refresh icon spins instead
   (`useUpdating`, no spin with reduced motion). No spinners in content (a
   spinner only inside a button that is running).

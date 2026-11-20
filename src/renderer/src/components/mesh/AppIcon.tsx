@@ -20,14 +20,15 @@ const NODES = [
   { cx: 128, cy: 146.58, r: 16.12 },
 ];
 
-export function AppIcon({ className }: { className?: string }) {
+/** `tile={false}` draws the node graph alone (the page loading mark). */
+export function AppIcon({ className, tile = true }: { className?: string; tile?: boolean }) {
   return (
     <svg
       aria-hidden
       viewBox="6 4 244 244"
       className={cn("inline-block shrink-0 text-app-icon-foreground", className)}
     >
-      <path d={TILE} className="fill-app-icon" />
+      {tile && <path d={TILE} className="fill-app-icon" />}
       <path d={EDGES} fill="none" stroke="currentColor" strokeWidth="11.16" strokeLinecap="round" strokeLinejoin="round" />
       {NODES.map((n) => (
         <circle key={n.cx * 1000 + n.cy} cx={n.cx} cy={n.cy} r={n.r} fill="currentColor" />

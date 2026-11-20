@@ -46,6 +46,10 @@
      colour, so it sits on every theme without standing out. */
   --color-app-icon: color-mix(in oklab, var(--theme-text) 10%, var(--theme-canvas));
   --color-app-icon-foreground: color-mix(in oklab, var(--theme-text) 80%, var(--theme-canvas));
+  /* A watermark that sits almost in the page (the page loading mark): the
+     text colour mixed solid into the background, never transparency, at the
+     strength of the "Live throughput off" icon (7%). */
+  --color-watermark: color-mix(in oklab, var(--theme-text) 7%, var(--theme-canvas));
   --color-brand-foreground: var(--theme-accent-foreground);
   --color-border: var(--theme-border);
   --color-input: var(--theme-input);
