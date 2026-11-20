@@ -113,7 +113,9 @@ export function TopBar() {
           <li aria-current="page" className="flex min-w-0 items-center text-foreground">
             <h1 className="flex min-w-0 font-medium text-sm">
               <span ref={refs.title} className="peer truncate empty:hidden" />
-              <span className="truncate peer-[:not(:empty)]:hidden">{route.title}</span>
+              {/* Detail pages (a device, eero or profile) show nothing until the page names
+                  itself, rather than flashing the generic "Device" first. */}
+              {!parent && <span className="truncate peer-[:not(:empty)]:hidden">{route.title}</span>}
             </h1>
           </li>
         </ol>
