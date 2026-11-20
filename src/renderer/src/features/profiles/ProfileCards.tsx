@@ -239,6 +239,8 @@ function dropTarget(p: Profile, a: Assign, placeholder: boolean) {
       // The card under a drag only darkens its fill and outline; it never grows (growing felt unwieldy).
       // Resting outline: the theme's border colour, as the cards' own 1px border.
       on && (hot ? "bg-muted/60 outline-foreground/60" : "outline-border hover:bg-muted/30"),
+      // Lift the hovered target, so its outline draws over its neighbours' where list rows touch.
+      hot && "relative z-10",
     ),
   };
 }
