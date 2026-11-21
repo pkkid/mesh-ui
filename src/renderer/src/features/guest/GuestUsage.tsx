@@ -5,11 +5,12 @@
  * share of all network traffic. docs/ux/pages/guest.md (Layout 2). Figures
  * come from `usage.get` (guest scope, and network scope for the share).
  */
+import { ChartArea } from "lucide-react";
 import { useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { AreaChart } from "~/components/charts/AreaChart";
-import { Card, Empty, Section } from "~/components/ui/card";
+import { Card, Section } from "~/components/ui/card";
 import { Legend, Stat } from "~/features/internet/InternetUsage";
 import { SectionError } from "~/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
@@ -74,8 +75,22 @@ export function GuestUsage({ timezone }: { timezone: string | null }) {
       {usage.error && !s ? (
         <SectionError what="guest usage" error={usage.error} onRetry={() => void usage.refetch()} />
       ) : s && !hasData ? (
-        <Card>
-          <Empty>No guest activity in this window.</Empty>
+        // No guest traffic: the card keeps the chart card's height (the same legend, chart and stats rows, hidden), with
+        // the dim watermark Devices shows while Live throughput is off centred over it.
+        <Card padded className="relative flex flex-1 flex-col gap-3" data-empty>
+          <div aria-hidden className="invisible flex flex-1 flex-col gap-3">
+            <Legend down={null} up={null} />
+            <div className="min-h-40 flex-1" />
+            <div className="h-px" />
+            <div className="flex gap-[50px]">
+              <Stat label="Busiest hour" bytes={null} />
+            </div>
+          </div>
+          <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center gap-3.5">
+            <ChartArea className="size-12 text-foreground/7" strokeWidth={1.6} />
+            <span className="whitespace-nowrap font-semibold text-foreground/13 text-xl">No guest network activity</span>
+          </div>
+          <span className="sr-only">No guest network activity in this window.</span>
         </Card>
       ) : (
         // The Internet page's Per hour card: legend with bold totals, the chart filling the card, stats under a rule.

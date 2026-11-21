@@ -1,33 +1,38 @@
 /**
- * Account side panel, Sign out and delete (docs/ux/pages/account.md,
- * Side panel 2).
+ * Account settings (docs/ux/pages/account.md, Layout 3): a full-width
+ * section at the foot of the page, settings rows in one card: Stay up to
+ * date (when eero reports it) and Notifications (AccountHero.tsx EmailRows),
+ * then Sign out and Delete account and data, last since they end the session
+ * or the account.
  *
  * - **Sign out** (`auth.logout`): the text says where the session is kept,
  *   from `auth.status` (keychain or memory) and `app.info` (keychain name).
  *   In demo mode the panel says so and offers **Leave demo mode**
  *   (`app.demo.set {enabled: false}`, which relaunches Mesh UI without
  *   `--demo`).
- * - **Delete account and data** (`account.delete`, destructive): a quiet
- *   collapsed row with a chevron, so reaching it takes a deliberate click. It
- *   always starts collapsed (view state, not remembered) and collapses again
- *   after a cancelled confirm. Expanded: the checkbox, then the app's confirm dialog with core's message and type the
+ * - **Delete account and data** (`account.delete`, destructive): a row whose
+ *   **Delete account…** button only opens the steps under it, so reaching the
+ *   delete takes a deliberate click. It always starts closed (view state, not
+ *   remembered) and closes again after a cancelled confirm. Expanded: the checkbox, then the app's confirm dialog with core's message and type the
  *   account's email (or name), sending `acknowledge: true` and, after the
  *   dialog, `confirm: true`. Disabled with the reason while the account owns
  *   a network; a network with no known role counts as owned, as core's
  *   refusal does. Core signs out afterwards, so the app returns to sign in.
  */
-import { ChevronDown, ChevronRight, FlaskConical, LogOut, Trash2 } from "lucide-react";
+import { FlaskConical, LogOut, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
 import { useCommand, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
-import { Card } from "~/components/ui/card";
+import { Card, Section } from "~/components/ui/card";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { GatedButton } from "~/components/ui/page";
 import type { Account, AppInfo, AuthStatus, NetworkSummary } from "../../../../core/model";
+import { EmailRows } from "./AccountHero";
 import { deletePlan, sessionText } from "./sessionAndNetworks";
 
-export function SignOutDelete({ id }: { id?: string }) {
+export function SignOutDelete({ id, emailId, notificationsId }: { id?: string; emailId?: string; notificationsId?: string }) {
   const auth = useQuery<AuthStatus>("auth.status");
   const info = useQuery<AppInfo>("app.info", undefined, { poll: true });
   const account = useQuery<Account>("account.get", undefined, { poll: true });
@@ -36,36 +41,42 @@ export function SignOutDelete({ id }: { id?: string }) {
   const leaveDemo = useCommand<{ enabled: boolean }, { demo: boolean; restarting: boolean }>("app.demo.set");
   const demo = auth.data?.backend === "demo";
 
+  const description = !auth.data ? "-" : demo ? "Demo mode" : account.data?.email?.value ? `Signed in as ${account.data.email.value}` : "Signed in";
+
   return (
-    <Card padded id={id} className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 font-medium text-sm">
-        <LogOut className="size-4 text-muted-foreground" />
-        Sign out and delete
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <p className="text-muted-foreground text-xs">{sessionText(auth.data, info.data) ?? "-"}</p>
-        <div className="flex flex-wrap gap-2">
-          {demo && (
-            <Button size="sm" variant="outline" disabled={leaveDemo.running || leaveDemo.result?.restarting} onClick={() => void leaveDemo.run({ enabled: false })}>
-              <FlaskConical />
-              {leaveDemo.result?.restarting ? "Restarting..." : "Leave demo mode"}
-            </Button>
-          )}
-          <Button size="sm" variant="outline" disabled={logout.running || !auth.data} onClick={() => void logout.run({})}>
-            <LogOut />
-            Sign out
-          </Button>
-        </div>
-        {(logout.error ?? leaveDemo.error) && <div className="text-destructive-foreground text-xs">{(logout.error ?? leaveDemo.error)?.message}</div>}
-      </div>
-
-      <div className="border-t" />
-
-      <DeleteAccount account={account.data} networks={networks.data} />
-    </Card>
+    <Section id={id} title="Account settings" description={description} className="gap-[15px]">
+      <Card className="divide-y divide-border/50">
+        <EmailRows emailId={emailId} notificationsId={notificationsId} />
+        <SettingsRow
+          title={demo ? "Leave demo mode or sign out" : "Sign out"}
+          description={
+            <>
+              {sessionText(auth.data, info.data) ?? "-"}
+              {(logout.error ?? leaveDemo.error) && <span className="block text-destructive-foreground">{(logout.error ?? leaveDemo.error)?.message}</span>}
+            </>
+          }
+          control={
+            <>
+              {demo && (
+                <Button variant="outline" className={DIM_ICON} disabled={leaveDemo.running || leaveDemo.result?.restarting} onClick={() => void leaveDemo.run({ enabled: false })}>
+                  <FlaskConical />
+                  {leaveDemo.result?.restarting ? "Restarting..." : "Leave demo mode"}
+                </Button>
+              )}
+              <Button variant="outline" className={DIM_ICON} disabled={logout.running || !auth.data} onClick={() => void logout.run({})}>
+                <LogOut />
+                Sign out
+              </Button>
+            </>
+          }
+        />
+        <DeleteAccount account={account.data} networks={networks.data} />
+      </Card>
+    </Section>
   );
 }
+
+const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 function DeleteAccount({ account, networks }: { account: Account | undefined; networks: NetworkSummary[] | undefined }) {
   const [open, setOpen] = useState(false);
@@ -83,7 +94,6 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
   const reason = owns ? `You own ${plan.owned.length === 1 ? "a network" : `${plan.owned.length} networks`}. Transfer or delete ${plan.owned.length === 1 ? "it" : "them"} first` : null;
   const gate = { allowed: Boolean(networks) && !owns && checked, reason: reason ?? (checked ? null : "Tick the box first") };
 
-  const Chevron = open ? ChevronDown : ChevronRight;
   const toggle = () => {
     setOpen(!open);
     setChecked(false);
@@ -97,20 +107,18 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={bodyId}
-        onClick={toggle}
-        className="-mx-1 flex cursor-pointer items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-start text-foreground/80 text-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Chevron className="size-3.5 text-muted-foreground" />
-        Delete account and data
-      </button>
+    <SettingsRow
+      title="Delete account and data"
+      description="Closes your eero account and deletes your personal data. It cannot be undone."
+      control={
+        <Button variant="outline" className={DIM_ICON} aria-expanded={open} aria-controls={bodyId} onClick={toggle}>
+          {open ? "Cancel" : "Delete account\u2026"}
+        </Button>
+      }
+    >
       {open && (
-        <div id={bodyId} className="flex flex-col gap-2 ps-5">
-          <p className="text-muted-foreground text-xs">{networks ? plan.text : "Closes your eero account and deletes your personal data."}</p>
+        <div id={bodyId} className="flex flex-col gap-2">
+          {networks && (plan.owned.length > 0 || plan.shared.length > 0) && <p className="text-muted-foreground text-xs">{plan.text.replace(/^Closes your eero account and deletes your personal data\. /, "")}</p>}
           <label htmlFor={checkId} className="flex cursor-pointer items-start gap-2 text-xs">
             <input
               id={checkId}
@@ -131,6 +139,6 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
           {reason && <div className="text-muted-foreground text-xs">{reason}.</div>}
         </div>
       )}
-    </div>
+    </SettingsRow>
   );
 }

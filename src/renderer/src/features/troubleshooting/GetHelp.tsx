@@ -101,7 +101,12 @@ export function GetHelp({ query }: { query: QueryState<SupportInfo> }) {
                 <InlineCopy text={email} what="email address" />
               </Line>
             )}
-            {phone && <Line label={`Call ${who}`}>{value(formatPhone(phone))}</Line>}
+            {phone && (
+              <Line label={`Call ${who}`}>
+                {value(formatPhone(phone))}
+                <InlineCopy text={formatPhone(phone)} what="phone number" />
+              </Line>
+            )}
             <Line label="Support ID">
               {value(s?.supportId ?? "-", true)}
               {s?.supportId && <InlineCopy text={s.supportId} what="Support ID" />}
@@ -114,7 +119,10 @@ export function GetHelp({ query }: { query: QueryState<SupportInfo> }) {
               <CopyCommandButton load={loadReport} idle="Copy report" done="Report copied" icon={<ClipboardCopy />} className="[&_svg]:text-muted-foreground" />
             </Line>
           </Card>
-          <Footnote>The diagnostics report shows only the last four characters of names, serials, MAC and IP addresses.</Footnote>
+          <Footnote>
+            The support center, email and phone number come from eero's API for your network. The diagnostics report shows only the last four characters of names, serials, MAC and IP
+            addresses.
+          </Footnote>
         </>
       )}
     </Section>

@@ -1,6 +1,7 @@
 /**
- * Account: the signed-in eero account, its notification choices, the
- * networks on it, and sign out and account deletion. Opened from the
+ * Account: the signed-in eero account (the flat hero, no avatar), the
+ * networks on it, then Account settings (email and alert choices, sign out
+ * and account deletion), in one full-width column. Opened from the
  * signed-in name in the sidebar footer. Layout, data and states:
  * docs/ux/pages/account.md. App settings (CLI and agents, theme, About) are
  * on the Settings page (SettingsPage.tsx).
@@ -18,13 +19,13 @@ import type { PageProps } from "~/app/routes";
 import { openNotificationSettings } from "~/features/notifications/NotificationSettings";
 import { TopBarTitle } from "~/features/shell/TopBar";
 
-import { AccountHero, EmailPreferences } from "./AccountHero";
+import { AccountHero } from "./AccountHero";
 import { NetworksTable } from "./NetworksTable";
 import { SETTINGS_SECTIONS } from "./SettingsPage";
 import { SignOutDelete } from "./SignOutDelete";
 
 /** Deep-link names, in page order. */
-export const ACCOUNT_SECTIONS = ["profile", "email", "notifications", "networks", "sign-out"] as const;
+export const ACCOUNT_SECTIONS = ["profile", "networks", "email", "notifications", "sign-out"] as const;
 export type AccountSection = (typeof ACCOUNT_SECTIONS)[number];
 
 const sectionId = (s: AccountSection) => `account-${s}`;
@@ -45,15 +46,10 @@ export function AccountPage({ params }: PageProps) {
   return (
     <>
       <TopBarTitle>Account</TopBarTitle>
-      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <AccountHero id={sectionId("profile")} />
-          <EmailPreferences id={sectionId("email")} notificationsId={sectionId("notifications")} />
-          <NetworksTable id={sectionId("networks")} />
-        </div>
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-0">
-          <SignOutDelete id={sectionId("sign-out")} />
-        </aside>
+      <AccountHero id={sectionId("profile")} />
+      <div className="flex flex-col gap-14">
+        <NetworksTable id={sectionId("networks")} />
+        <SignOutDelete id={sectionId("sign-out")} emailId={sectionId("email")} notificationsId={sectionId("notifications")} />
       </div>
     </>
   );

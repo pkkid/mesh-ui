@@ -53,7 +53,7 @@ Shared patterns (hero, section cards, QR block, confirm dialogs, tables) are des
 
 - **Loading:** hero title and status placeholders; QR box shows an empty frame; chart keeps its height and fades.
 - **Guest network off:** the hero keeps the name, status "Off" and its one action, the filled **Turn on guest network** (no QR block). Usage, Isolation & security and Guest devices give way to an off watermark (no card, [design system](../../design/design-system.md#buttons-and-links)): a large dim power glyph and "Guest network off", centred in a `h-40` band, decoration only. Name & password stays under it, editable, so they can be set before turning on. While `guest.get` is still loading, the on layout shows its placeholders.
-- **Empty usage:** "No guest activity in this window."
+- **Empty usage:** the Guest usage card keeps the chart card's full height (its legend, chart and stats rows laid out but hidden) and shows the dim watermark Devices uses while Live throughput is off, centred: a `ChartArea` glyph (`size-12`, `text-foreground/7`) beside "No guest network activity" (`font-semibold text-xl text-foreground/13`). Screen readers get "No guest network activity in this window."
 - **No guests:** table shows "No guests in the last 7 days."
 - **Error:** inline note in the failing section with **Retry**; a failed write keeps the edited values and shows the eero error.
 - **No permission:** admins can do everything here. If `network.permissions` denies `settings` updates, the power button and Edit name and password are dimmed with the reason.

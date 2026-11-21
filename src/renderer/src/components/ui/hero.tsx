@@ -1,6 +1,6 @@
 // The page header (hero) every page opens with, from
 // docs/design/design-system.md (Layout, Page header) and mockups 01 to 08:
-// icon or avatar top-aligned with the title, a status line, key facts, then
+// icon top-aligned with the title (never an avatar), a status line, key facts, then
 // the actions in a row at the bottom. Big figures, gauges or a QR block sit
 // on the right (`aside`). Both columns are pinned to the top, never centred
 // against each other, so a tall aside does not push the title down.
@@ -13,7 +13,7 @@ import { ButtonSizeContext, HERO_BUTTON_SIZE } from "./button";
 
 type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   title: React.ReactNode;
-  /** A lucide icon for a neutral 64px tile, or any node (an avatar). */
+  /** A lucide icon for a neutral 64px tile, or any node (the app icon on Settings). Never an avatar (design-system.md). */
   icon?: LucideIcon | React.ReactNode;
   /** The line under the title: usually a <Status> then muted context. */
   status?: React.ReactNode;

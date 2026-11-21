@@ -7,9 +7,11 @@
  * has not, and the PATH line when the launcher's folder is not on PATH.
  * Right: this week's CLI and agent commands from the audit log
  * (`app.audit.list`): a count, a sparkline per day and the latest ids.
- * Header: "MCP used <age>" or "MCP not used yet".
+ * Subtitle from the data: this week's command count and when an agent last
+ * used MCP ("12 commands this week, MCP used 5m ago"). The safety line is a
+ * footnote under the card.
  */
-import { Check, Copy, ShieldCheck, Terminal } from "lucide-react";
+import { Check, Copy, Terminal } from "lucide-react";
 import type * as React from "react";
 import { useState } from "react";
 
@@ -17,7 +19,7 @@ import { useCommand, useQuery } from "~/app/useCommand";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { Status } from "~/components/ui/status";
+import { Footnote } from "~/components/ui/page";
 import { toast } from "~/components/ui/toast";
 import { seriesColors } from "~/lib/chartColors";
 import { copyText } from "~/lib/clipboard";
@@ -157,29 +159,27 @@ export function CliAgents({ id }: { id?: string }) {
   const cli = info.data?.cli ?? null;
   const mcpLast = audit.data?.mcpLastAt ?? null;
   const offerInstall = cli !== null && cli.canInstall && (!cli.installed || cli.reinstall);
+  const week = audit.data?.weekTotal ?? 0;
+  const description = !audit.data
+    ? "-"
+    : [week ? `${week.toLocaleString("en-US")} ${week === 1 ? "command" : "commands"} this week` : "No commands this week", mcpLast ? `MCP used ${formatRelative(mcpLast, now)}` : "MCP not used yet"].join(", ");
 
   return (
     <Section
       id={id}
       title="Command line and agents"
-      subtitle="Everything in this window is also a command"
-      tools={
-        audit.data &&
-        (mcpLast ? <Status tone="success">MCP used {formatRelative(mcpLast, now)}</Status> : <Status tone="muted">MCP not used yet</Status>)
-      }
+      description={description}
+      className="gap-[15px]"
     >
-      <Card padded className="flex flex-col gap-5">
+      <Card padded>
         <div className={cn("grid items-start gap-7 md:grid-cols-2", audit.loading && !audit.data && "opacity-40")}>
           {offerInstall ? <InstallCli cli={cli} /> : <CommandLines cli={cli} />}
           <ThisWeek audit={audit.data} now={now} />
         </div>
-        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-          <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
-          <span>
-            Agents never see your session token. Commands that restart eeros or can't be undone only run with <span className="font-mono">--confirm</span>.
-          </span>
-        </div>
       </Card>
+      <Footnote>
+        Everything in this window is also a command. Agents never see your session token, and commands that restart eeros or can't be undone only run with <span className="font-mono">--confirm</span>.
+      </Footnote>
     </Section>
   );
 }

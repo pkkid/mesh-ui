@@ -44,8 +44,15 @@ export function NetworksTable({ id }: { id?: string }) {
     void select.run({ network: n.id });
   };
 
+  // "3 networks, 1 offline, 1 shared with you": what needs attention first, zero counts left out.
+  const offline = rows?.filter((n) => n.status === "offline").length ?? 0;
+  const shared = rows?.filter((n) => n.role === "admin").length ?? 0;
+  const description = !rows
+    ? "-"
+    : [`${rows.length} ${rows.length === 1 ? "network" : "networks"}`, offline > 0 && `${offline} offline`, shared > 0 && `${shared} shared with you`].filter(Boolean).join(", ");
+
   return (
-    <Section id={id} title="Networks on this account" subtitle="Every network you own or help run">
+    <Section id={id} title="Networks on this account" description={description} className="gap-[15px]">
       {list.error && !rows ? (
         <SectionError what="networks" error={list.error} onRetry={() => void list.refetch()} />
       ) : rows && rows.length === 0 ? (

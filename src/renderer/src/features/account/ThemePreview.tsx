@@ -1,5 +1,5 @@
 /**
- * Theme previews for the Application Theme picker, ported from T3 Code
+ * Theme previews for the Application theme picker, ported from T3 Code
  * (apps/web/src/components/settings/ThemePreviewCircles.tsx and
  * ThemeWireframe.tsx, MIT). A circle is a soft blend of a theme's canvas,
  * accent and action colours; a wireframe is a tiny Mesh UI window. Both draw

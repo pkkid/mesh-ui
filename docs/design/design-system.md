@@ -99,7 +99,7 @@ colour theme into a palette:
   canvas, at least 3:1; orange is halfway between red and yellow; gray is
   bright black. Themes without ANSI colours use the T3-style mid-tones.
 
-**Picker** (Settings, Application Theme, from T3 Code's
+**Picker** (Settings, Application theme, from T3 Code's
 `ThemeSettings.tsx`): System / Light / Dark tiles with a small wireframe of the
 window in the picked themes, then a card per theme or collection with a light
 and a dark circle. The circle in use has a ring and a sun or moon badge. A
@@ -435,8 +435,10 @@ set their own margins or padding on the header.
 
 **Content, top to bottom on the left:**
 
-- optional icon tile (`IconTile size="xl"`: 64px, 12px radius) or avatar on
-  the left, **top-aligned with the title** (Overview has none);
+- optional icon tile (`IconTile size="xl"`: 64px, 12px radius) on the
+  left, **top-aligned with the title** (Overview has none). **No avatars**:
+  a person's hero (Account) is their name alone, without an initials
+  circle;
 - title on the top row;
 - status line under it: status dot plus plain text, then muted context
   ("Online · Gateway up 23 days, 4 hours");

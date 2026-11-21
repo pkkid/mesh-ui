@@ -1,5 +1,5 @@
 /**
- * Settings, Application Theme (docs/ux/pages/settings.md),
+ * Settings, Application theme (docs/ux/pages/settings.md),
  * modelled on T3 Code's theme settings (ThemeSettings.tsx): System / Light /
  * Dark tiles, then a card per theme or collection with a light and a dark
  * circle. Light and dark are picked separately; a collection's circles fan
@@ -7,10 +7,11 @@
  * renderer view state in localStorage, not a command.
  */
 import { Moon, Plus, Sun, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { Footnote } from "~/components/ui/page";
 import { isBuiltInTheme, groupThemes, removeThemes, useAllThemes } from "~/lib/themeLibrary";
 import { getThemeModes, type ThemeAppearance, type ThemeDefinition } from "~/lib/themePalettes";
 import {
@@ -40,13 +41,35 @@ export function ThemePicker({ id }: { id?: string }) {
   const settings = useThemeSettings();
   const themes = useAllThemes();
   const [importOpen, setImportOpen] = useState(false);
+  // The mode tiles take the width of one theme card column, centred above the cards, so they do not stretch
+  // across the full-width section. Measured from the cards' grid as it resizes; until then, three equal columns.
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const [column, setColumn] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = cardsRef.current;
+    if (!el) return;
+    const measure = () => {
+      const first = Number.parseFloat(getComputedStyle(el).gridTemplateColumns.split(" ")[0] ?? "");
+      setColumn(Number.isFinite(first) && first > 0 ? first : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const pane = (mode: ThemeAppearance) => previewColors(themeFor(settings, mode), mode);
+  // "Dark mode, Classic", or "System mode, Grove light and Ocean dark": what is picked, from the settings.
+  const light = themeFor(settings, "light").label;
+  const dark = themeFor(settings, "dark").label;
+  const modeWord = MODE_TILES.find((t) => t.mode === settings.mode)?.label ?? "System";
+  const description = `${modeWord} mode, ${light === dark ? light : `${light} light and ${dark} dark`}`;
 
   return (
     <Section
       id={id}
-      title="Application Theme"
-      subtitle="Pick a light and a dark look · stored on this computer only"
+      title="Application theme"
+      description={description}
+      className="gap-[15px]"
       tools={
         <Button variant="outline" onClick={() => setImportOpen(true)}>
           <Plus />
@@ -55,7 +78,7 @@ export function ThemePicker({ id }: { id?: string }) {
       }
     >
       <Card padded className="flex flex-col gap-4">
-        <div role="group" aria-label="Appearance mode" className="grid grid-cols-3 gap-3">
+        <div role="group" aria-label="Appearance mode" className={cn("gap-2", column ? "flex justify-center" : "grid grid-cols-3")}>
           {MODE_TILES.map(({ mode, label, aria }) => {
             const active = settings.mode === mode;
             return (
@@ -65,6 +88,7 @@ export function ThemePicker({ id }: { id?: string }) {
                 aria-label={aria}
                 aria-pressed={active}
                 onClick={() => setThemeSettings({ mode: mode as AppearanceMode })}
+                style={column ? { width: column } : undefined}
                 className={cn(
                   "flex cursor-pointer flex-col gap-1.5 rounded-xl border p-2 outline-none transition-colors focus-visible:outline-2 focus-visible:-outline-offset-7 focus-visible:outline-foreground/60",
                   active
@@ -91,12 +115,13 @@ export function ThemePicker({ id }: { id?: string }) {
           })}
         </div>
 
-        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 13rem), 1fr))" }}>
+        <div ref={cardsRef} className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 13rem), 1fr))" }}>
           {groupThemes(themes).map((group) => (
             <ThemeCard key={group[0]!.collection?.id ?? group[0]!.id} themes={group} settings={settings} />
           ))}
         </div>
       </Card>
+      <Footnote>Pick a light and a dark look. Themes are stored on this computer only.</Footnote>
       <ThemeImportDialog open={importOpen} onOpenChange={setImportOpen}>
         <ThemeSearch onInstalled={() => setImportOpen(false)} />
       </ThemeImportDialog>

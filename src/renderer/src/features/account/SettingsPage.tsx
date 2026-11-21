@@ -1,7 +1,8 @@
 /**
  * Settings: this copy of Mesh UI, as opposed to the eero account (Account
- * page). The CLI and MCP hookup, the application theme, and About (version,
- * updates, links). Layout, data and states: docs/ux/pages/settings.md.
+ * page). The flat hero is the app itself (version, updates, links; it was the
+ * About side panel), then the application theme and the CLI and MCP hookup in
+ * one full-width column. Layout, data and states: docs/ux/pages/settings.md.
  *
  * Each section has a stable id for deep links: `#/settings/<section>` opens
  * the page scrolled to `settings-<section>` (SETTINGS_SECTIONS), e.g. the
@@ -13,12 +14,14 @@ import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { TopBarTitle } from "~/features/shell/TopBar";
 
-import { AboutPanel } from "./AboutPanel";
+import { Footnote } from "~/components/ui/page";
+
 import { CliAgents } from "./CliAgents";
+import { SettingsHero } from "./SettingsHero";
 import { ThemePicker } from "./ThemePicker";
 
 /** Deep-link names, in page order. */
-export const SETTINGS_SECTIONS = ["cli", "theme", "about"] as const;
+export const SETTINGS_SECTIONS = ["about", "theme", "cli"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 const sectionId = (s: SettingsSection) => `settings-${s}`;
@@ -33,14 +36,11 @@ export function SettingsPage({ params }: PageProps) {
   return (
     <>
       <TopBarTitle>Settings</TopBarTitle>
-      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <CliAgents id={sectionId("cli")} />
-          <ThemePicker id={sectionId("theme")} />
-        </div>
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-0">
-          <AboutPanel id={sectionId("about")} />
-        </aside>
+      <SettingsHero id={sectionId("about")} />
+      <div className="flex flex-col gap-14">
+        <ThemePicker id={sectionId("theme")} />
+        <CliAgents id={sectionId("cli")} />
+        <Footnote>Mesh UI is an independent app and is not made by eero or Amazon.</Footnote>
       </div>
     </>
   );
