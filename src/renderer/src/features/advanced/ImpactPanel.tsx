@@ -7,11 +7,9 @@
  * and sentence comes from core. docs/ux/pages/advanced-networking.md (Side
  * panel and confirm bar).
  */
-import { RotateCcw } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
-import { Card } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
 import { formatCount, MISSING } from "../../../../core/format";
 import type { SettingsImpact } from "../../../../core/model";
@@ -100,27 +98,27 @@ export function usePendingImpact(key: string, id: string, what: string, active: 
   }, [api, key, id, what, active]);
 }
 
-/** The side panel: the pending change's impact, or how changes apply when nothing waits. */
+/**
+ * The hero's right-hand column: how changes apply, or the pending change's impact while one waits on its confirm.
+ * Flat in the header (no card), under a title like Signal's Signal spread.
+ */
 export function PendingPanel({ offline, bridged }: { offline: boolean; bridged: boolean }) {
   const list = useContext(PendingList);
   const last = list.at(-1);
   return (
-    <Card padded className="flex flex-col gap-3 text-xs">
+    <div data-slot="pending-panel" className="flex w-72 flex-col gap-2 text-xs">
       {last ? (
-        <ImpactPanel ids={last.ids} title="Pending change" what={last.what} className="border-0 bg-transparent p-0" />
+        <ImpactPanel ids={last.ids} title="Pending change" what={last.what} />
       ) : (
         <>
-          <div className="flex items-center gap-2 font-medium text-sm [&_svg]:size-4 [&_svg]:text-muted-foreground">
-            <RotateCcw />
-            How changes apply
-          </div>
+          <h2 className="font-semibold text-base text-foreground leading-7">How changes apply</h2>
           <p className="text-muted-foreground">
-            Settings marked <b className="font-medium text-foreground">Restarts eeros</b> restart every eero when saved. Before you confirm, this panel shows how long the network is down and how many devices lose internet.
+            Settings marked <span className="text-warning-foreground">Restarts eeros</span> restart every eero when saved. Before you confirm, the confirm and this panel say how long the network is down and how many devices lose internet.
           </p>
         </>
       )}
       {offline && <p className="text-warning-foreground">Your network is offline, changes cannot reach the eeros.</p>}
       {bridged && <p className="text-muted-foreground">This network is in bridge mode: another router handles addressing, DNS and port forwarding.</p>}
-    </Card>
+    </div>
   );
 }

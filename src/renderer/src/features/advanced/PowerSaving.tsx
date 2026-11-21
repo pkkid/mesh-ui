@@ -110,6 +110,10 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
       { success: `${what} turned ${on ? "on" : "off"}`, undo: { id: "settings.power_saving.set", params: { [key]: !on }, success: `${what} turned ${on ? "off" : "on"}` } },
     );
 
+  // Not on this hardware (eero reports power saving not capable) or not reported at all: both rows are left out,
+  // as eero's app hides the section. Schedules left from older hardware can still be removed from the CLI.
+  if (unsupported || incapable) return null;
+
   return (
     <>
       <Row

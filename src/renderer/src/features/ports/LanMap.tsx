@@ -4,11 +4,11 @@
  * Everything comes from reservation.list (LAN map, reservations and the
  * leased addresses core counted); the renderer only lays it out.
  */
-import { Info } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import type { QueryState } from "~/app/useCommand";
 import { Card, Section } from "~/components/ui/card";
-import { SectionError } from "~/components/ui/page";
+import { Footnote, SectionError } from "~/components/ui/page";
 import { lanColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import type { ReservationList } from "../../../../core/commands/routing";
@@ -29,6 +29,10 @@ const LEGEND: [Exclude<Kind, "none">, string][] = [
 const PER_ROW = 64;
 /** Larger subnets show the range bar only: a square per address stops being readable. */
 const MAX_SQUARES = 4096;
+/** The grid shows at most this many rows (a /22, eero's default) before it scrolls. */
+const MAX_ROWS = 16;
+/** The 2px (`gap-0.5`) between rows. */
+const ROW_GAP = 2;
 
 const toNum = (ip: string): number => ip.split(".").reduce((a, n) => a * 256 + Number(n), 0);
 const toIp = (n: number) => [Math.floor(n / 16777216) % 256, Math.floor(n / 65536) % 256, Math.floor(n / 256) % 256, n % 256].join(".");
@@ -51,20 +55,15 @@ function kinds(lan: Lan, reserved: ReadonlyArray<string>, leases: ReadonlyArray<
   });
 }
 
-/** `mode` is the network's connection mode ("NAT mode"), first in the subtitle. */
-export function LanMap({ query, mode = null }: { query: QueryState<ReservationList>; mode?: string | null }) {
+export function LanMap({ query }: { query: QueryState<ReservationList> }) {
   const lan = query.data?.lan ?? null;
-  const range = lan ? `${lan.subnet} · ${formatCount(lan.size)} addresses` : null;
-  const subtitle =
-    mode || range ? (
-      <>
-        {mode}
-        {mode && range && " · "}
-        {range && <span className="font-mono">{range}</span>}
-      </>
-    ) : undefined;
-  const legend = (
-    <div className="hidden items-center gap-3 text-muted-foreground text-xs xl:flex">
+  // "192.168.4.0/22, 1,024 addresses, 8 reserved, 22 leased": the range, then how it is used (the mode is in the hero).
+  const description = lan
+    ? [lan.subnet, `${formatCount(lan.size)} addresses`, `${formatCount(query.data?.reservations.length ?? 0)} reserved`, `${formatCount(lan.pool.leased)} leased`].join(", ")
+    : "-";
+  // On wide windows the legend sits on the right of the header; narrower, it moves under the subtitle instead of vanishing.
+  const legend = (className: string) => (
+    <div className={cn("items-center gap-x-3 gap-y-1 text-muted-foreground text-xs", className)}>
       {LEGEND.map(([k, label]) => (
         <span key={k} className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span aria-hidden className="size-2 rounded-[2px]" style={{ background: lanColors[k] }} />
@@ -75,24 +74,47 @@ export function LanMap({ query, mode = null }: { query: QueryState<ReservationLi
   );
 
   return (
-    <Section title="LAN address map" subtitle={subtitle} tools={legend}>
+    <Section title="LAN address map" description={description} tools={legend("hidden xl:flex")} className="gap-[15px]">
+      {legend("-mt-2 flex flex-wrap xl:hidden")}
       {query.error && !query.data ? (
         <SectionError what="the address map" error={query.error} onRetry={() => void query.refetch()} />
       ) : (
-        <Card padded className={cn("flex flex-col gap-4 transition-opacity", query.fading && "opacity-40")}>
-          {lan ? <Body lan={lan} reserved={query.data?.reservations.map((r) => r.ip) ?? []} leases={query.data?.leases ?? []} /> : <div className="h-[220px]" />}
-        </Card>
+        <>
+          <Card padded className={cn("flex flex-col gap-4 transition-opacity", query.fading && "opacity-40")}>
+            {lan ? <Body lan={lan} reserved={query.data?.reservations.map((r) => r.ip) ?? []} leases={query.data?.leases ?? []} /> : <div className="h-[220px]" />}
+          </Card>
+          <Footnote>
+            Reservations sit in the static range so they never collide with DHCP leases.{lan && lan.size <= MAX_SQUARES ? " Hover a square for its address." : ""}
+          </Footnote>
+        </>
       )}
     </Section>
   );
 }
 
 function Body({ lan, reserved, leases }: { lan: Lan; reserved: string[]; leases: string[] }) {
+  // Taller than MAX_ROWS rows (a range bigger than eero's default /22): cap the grid at that height and let it scroll.
+  // The squares follow the card's width, so the cap is measured from a row as the card resizes.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [maxHeight, setMaxHeight] = useState<number | null>(null);
   const staticSize = Math.max(0, toNum(lan.staticRange.end) - toNum(lan.staticRange.start) + 1);
   const all = lan.size <= MAX_SQUARES ? kinds(lan, reserved, leases) : null;
   const base = toNum(lan.subnet.split("/")[0] ?? "");
   const rows = all ? Math.ceil(all.length / PER_ROW) : 0;
   const leased = `${formatCount(lan.pool.leased)} leased`;
+  const tall = rows > MAX_ROWS;
+  useLayoutEffect(() => {
+    const el = gridRef.current;
+    if (!el || !tall) return setMaxHeight(null);
+    const measure = () => {
+      const row = el.firstElementChild as HTMLElement | null;
+      if (row) setMaxHeight(MAX_ROWS * row.offsetHeight + (MAX_ROWS - 1) * ROW_GAP);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tall]);
 
   return (
     <>
@@ -111,13 +133,23 @@ function Body({ lan, reserved, leases }: { lan: Lan; reserved: string[]; leases:
       </div>
 
       {all && (
-        <div className="flex flex-col gap-0.5" role="img" aria-label={`One square per address: ${reserved.length} reserved, ${lan.pool.leased} leased`}>
+        <div
+          ref={gridRef}
+          className={cn("flex flex-col gap-0.5", tall && "overflow-y-auto pe-1")}
+          style={tall && maxHeight ? { maxHeight } : undefined}
+          role="img"
+          aria-label={`One square per address: ${reserved.length} reserved, ${lan.pool.leased} leased`}
+        >
           {Array.from({ length: rows }, (_, row) => {
             const first = row * PER_ROW;
             const label = (base + first) % 256 === 0 ? toIp(base + first) : "";
             return (
-              <div key={row} className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-2">
-                <span className="font-mono text-3xs text-muted-foreground tabular-nums">{label}</span>
+              <div key={row} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
+                {/* The label takes no height of its own, so every row of squares is the same height (no gaps where a
+                    label sits); its top lines up with the top of its row and the text may run past it. */}
+                <span className="relative">
+                  <span className="absolute top-0 left-0 whitespace-nowrap font-mono text-3xs text-muted-foreground leading-none tabular-nums">{label}</span>
+                </span>
                 <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${PER_ROW}, minmax(0, 1fr))` }}>
                   {all.slice(first, first + PER_ROW).map((k, i) => (
                     <span key={i} className="aspect-square rounded-[1.5px]" style={{ background: lanColors[k] }} title={toIp(base + first + i)} />
@@ -128,11 +160,6 @@ function Body({ lan, reserved, leases }: { lan: Lan; reserved: string[]; leases:
           })}
         </div>
       )}
-
-      <div className="flex items-center gap-2 text-muted-foreground text-xs">
-        <Info className="size-3.5 shrink-0" />
-        Reservations sit in the static range so they never collide with DHCP leases.{all ? " Hover a square for its address." : ""}
-      </div>
     </>
   );
 }

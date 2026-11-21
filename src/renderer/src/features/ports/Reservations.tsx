@@ -111,9 +111,9 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
   const editGate = useGate("reservation.update");
   const removeGate = useGate("reservation.remove");
   const actions = (r: Reservation, name: string): RowAction[] => [
-    { label: "Edit...", icon: Pencil, gate: editGate, onClick: () => setSheet({ kind: "edit", reservation: r }) },
+    { label: "Edit\u2026", icon: Pencil, gate: editGate, onClick: () => setSheet({ kind: "edit", reservation: r }) },
     ...(r.deviceId ? [{ label: "Open device", icon: ExternalLink, onClick: () => navigate(pathFor("device", { deviceId: r.deviceId ?? "" })) }] : []),
-    { label: r.forwards > 0 ? "Remove with its forwards..." : "Remove", icon: Trash2, gate: removeGate, destructive: true, onClick: () => void removeReservation(r, name) },
+    { label: r.forwards > 0 ? "Remove with its forwards\u2026" : "Remove", icon: Trash2, gate: removeGate, destructive: true, onClick: () => void removeReservation(r, name) },
   ];
   const rows = query.data?.reservations;
   const q = filter.trim().toLowerCase();
@@ -136,15 +136,15 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
           onChange={(e) => setFilter(e.currentTarget.value)}
         />
       )}
-      <GatedButton gate={addGate} variant="outline" onClick={() => setSheet({ kind: "add" })}>
+      <GatedButton gate={addGate} variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => setSheet({ kind: "add" })}>
         <BookmarkPlus />
-        Add a reservation
+        Add a reservation{"\u2026"}
       </GatedButton>
     </>
   );
 
   return (
-    <Section title="IPv4 reservations" subtitle="Devices that always get the same address" tools={tools}>
+    <Section title="IPv4 reservations" description={reservationsLine(rows)} tools={tools} className="gap-[15px]">
       <ReservationSheet mode={sheet} onClose={() => setSheet(null)} />
       {query.error && !query.data ? (
         <SectionError what="reservations" error={query.error} onRetry={() => void query.refetch()} />
@@ -214,4 +214,12 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
       )}
     </Section>
   );
+}
+
+/** "8 devices, 3 with port forwards": how many reservations, then how many carry forwards. */
+function reservationsLine(rows: ReadonlyArray<{ forwards: number }> | undefined): string {
+  if (!rows) return "-";
+  if (rows.length === 0) return "No devices with a fixed address";
+  const withPorts = rows.filter((r) => r.forwards > 0).length;
+  return [`${rows.length} ${rows.length === 1 ? "device" : "devices"} with a fixed address`, withPorts > 0 && `${withPorts} with port forwards`].filter(Boolean).join(", ");
 }

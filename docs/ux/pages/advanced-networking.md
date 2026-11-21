@@ -4,7 +4,7 @@ Network wide settings for the internet connection, addressing, DNS, radios, Thre
 
 Mockup: [../../mockups/13-advanced-networking.html](../../mockups/13-advanced-networking.html)
 
-Shared patterns (settings rows, restart badges, side panel, confirm bar, danger zone) are described in [../overview.md](../overview.md).
+Shared patterns (flat hero, settings rows, the Restarts eeros note, confirm bar, danger zone) are described in [../overview.md](../overview.md).
 
 ## Built in M5.3 (Wireless, power saving, Thread, danger zone)
 
@@ -45,45 +45,51 @@ The page showed every group read only: values, switches and segmented choices re
 
 ## Layout
 
-Breadcrumb `Settings / Advanced networking`, nothing after it. Settings column on the left, side panel on the right. Rows that restart eeros carry a **Restarts eeros** badge next to their title.
+Breadcrumb `Settings / Advanced networking`, nothing after it. One full-width column, sections `gap-14` apart (the side panel moved into the hero on 2026-11-21). Rows that restart eeros say **Restarts eeros** after their title, as plain warning-coloured `text-xs` at normal weight (no icon, outline or fill; it was an outlined badge with an icon until 2026-11-21). Rows with a sub panel under them (IPv6, ISP settings, DHCP and NAT, DNS, Power saving schedule, Thread) fold it away: a chevron in front of the title (which moves right 24px to make room) opens and closes it, closed by default, each row's state remembered on this computer (`ExpandableRows` and `Row` in `SettingsGroups.tsx`, localStorage `mesh-ui:expand:advanced:<title>`). Rows with nothing under them have no chevron. **Unsupported rows are hidden, not dimmed** (2026-11-21): a switch eero does not report (null once loaded), NAT port mode or Local DNS caching when unreported, Eco efficiency and Power saving schedule when the gateway is not power saving capable (`capabilities.power_saving` false, as eero's app hides them; old schedules can still be removed from the CLI), Thread with no border router, and any integration eero reports as unavailable (Apple HomeKit, Smart Home Hub on many networks). Integrations' subtitle counts only the ones shown. Every section has a data-driven subtitle under its title; choices between values are dropdowns (`ChoiceSelect` in `SettingsGroups.tsx`, which took Segmented's props); in DHCP and NAT, NAT port mode, DNS and Multi-link operation every option but the current one ends in an ellipsis in the open list (`Bridge…`, `Custom DNS…`), since picking it opens a confirm or a sheet first, while the closed dropdown shows the plain name, and links to other pages are dim text links (`SectionLink`).
 
-### Internet ("How the gateway eero talks to Ziply Fiber")
+### Hero
+
+The flat page header (`AdvancedHero.tsx`). Title: `Advanced networking`. Status line: the network status and the ISP, then on its own line under them which of eero's connection modes the network runs in (`connectionMode`): "Your eeros are running in router mode: they hand out addresses and handle NAT." (`nat`), or bridge mode / IP passthrough mode with what that turns off (profiles, reservations and port forwards). eero's app shows the mode only inside DHCP & NAT (Automatic, Manual, Bridge). Facts: **WAN IP** (mono), **DHCP** (`Automatic`, `Manual range`, `Off (bridge)`), **DNS** (`ISP default`, the custom servers in mono, `Off (bridge)`), **IPv6** (`On`, `Off`). Right-hand column (`PendingPanel`, flat, `w-72`): **How changes apply** (settings marked Restarts eeros restart every eero when saved; the confirm and this panel say how long the network is down and how many devices lose internet), or, while a restarting change waits on its confirm, that change's impact (**Pending change**). The offline and bridge notes sit under it.
+
+### Internet (subtitle `203.0.113.48 on Ziply Fiber, IPv6 on`, plus `double NAT` when behind another router)
 
 - **WAN IP address**: public IP (mono) with copy icon; hint says whether the gateway is behind another router (double NAT).
 - **IPv6** (Restarts eeros): `Active` status and a switch. Sub panel: delegated prefix, WAN IPv6, LAN prefix, devices with IPv6 (`24 of 31`), IPv6 DNS, firewall rules link (`2 pinholes`) to [Reservations & ports](reservations-ports.md).
-- **ISP settings**: segmented **DHCP** / **Static IP** / **PPPoE**, warning hint that wrong values take the network offline. Sub panel: **Uplink VLAN tag** (ID input 1 to 4094 plus switch, eero 6 or newer), **Multicast IPTV** (ID input plus switch), then Static IP fields (IP address, subnet mask, router IP) and PPPoE fields (username, password with reveal), dimmed unless that mode is selected. Footer: "DHCP lease from Ziply renewed 6h ago" and **Save settings** (disabled until edited).
+- **ISP settings**: the current type (`DHCP`) and **Edit…**, which opens the sheet with a **DHCP** / **Static IP** / **PPPoE** dropdown, warning hint that wrong values take the network offline. Sub panel: **Uplink VLAN tag** (ID input 1 to 4094 plus switch, eero 6 or newer), **Multicast IPTV** (ID input plus switch), then Static IP fields (IP address, subnet mask, router IP) and PPPoE fields (username, password with reveal), dimmed unless that mode is selected. Footer: "DHCP lease from Ziply renewed 6h ago" and **Save settings** (disabled until edited).
 
-### Network services ("Addressing, DNS and traffic handling")
+### Network services (subtitle `DHCP automatic, ISP DNS, UPnP on`; `Bridge mode, another router handles addressing` in bridge mode, with a footnote under the card)
 
 - **eero Simple Setup**: switch. Auto adds wired eero 6 or newer units.
-- **DHCP and NAT** (Restarts eeros): segmented **Automatic** / **Manual** / **Bridge**. Sub panel fields (read only unless Manual): IP address prefix, subnet IP, subnet mask, gateway, starting IP, ending IP. Hint about Manual, Bridge consequences and that hairpin NAT is always on. **NAT port mode** (Restarts eeros): **Direct** / **Randomized**.
-- **Reservations and port forwarding**: link row with counts (`8 reservations · 5 port forwards (4 on)`), **Manage** opens [Reservations & ports](reservations-ports.md).
-- **DNS** (Restarts eeros): **ISP default** / **Custom DNS**. Sub panel: IPv4 nameserver 1 and 2, optional IPv6 nameserver; edited fields marked. Info line names the current ISP servers and warns when a custom server is a device on the LAN (here the NAS with a reserved IP).
+- **DHCP and NAT** (Restarts eeros): a dropdown, **Automatic** / **Manual** / **Bridge**. Sub panel fields (read only unless Manual): IP address prefix, subnet IP, subnet mask, gateway, starting IP, ending IP. Hint about Manual, Bridge consequences and that hairpin NAT is always on. **NAT port mode** (Restarts eeros): **Direct** / **Randomized**.
+- **Reservations and port forwarding**: link row with counts (`8 reservations · 5 port forwards (4 on)`), **View reservations and ports** (a dim text link) opens [Reservations & ports](reservations-ports.md); in bridge mode it reads "Not available in bridge mode".
+- **DNS** (Restarts eeros): a dropdown, **ISP default** / **Custom DNS**. Sub panel: IPv4 nameserver 1 and 2, optional IPv6 nameserver; edited fields marked. Info line names the current ISP servers and warns when a custom server is a device on the LAN (here the NAS with a reserved IP).
 - **Local DNS caching** (Restarts eeros): switch. Written through `settings.dns.set {caching}`.
 - **UPnP**: switch.
 - **Optimize for conferencing and gaming (SQM)**: switch; not available in bridge mode.
 - **Eco efficiency**: **Power saving schedule** switch with a note that Wi-Fi blips up to 5 seconds when it starts; schedule list (`Overnight · Every day · 1:00 AM to 6:00 AM`) with a 24 hour strip and **Add schedule**.
 
-### Wireless ("Radio features across all eeros")
+### Wireless (subtitle naming what is on: `Client steering, fast roaming and Thread on`)
 
-- **Multi-link operation** (`Wi-Fi 7` badge): switch; restarts the network (estimate from `settings.impact`, about 2 to 3 minutes) and may turn on WPA3.
+- **Multi-link operation** (`Wi-Fi 7` badge): a dropdown, **Off** / **Single link** / **Multi-link**; restarts the network (estimate from `settings.impact`, about 2 to 3 minutes) and may turn on WPA3.
 - **Client steering**: switch.
 - **Thread** (`Border router` status): switch, Thread device count. Sub panel: network name, channel, PAN ID, extended PAN ID, network key (masked, **Reveal**), border agent address. **Share credentials with phone keychain** switch. **Copy dataset** and **Regenerate credentials** (danger) with the note that regenerating disconnects every Thread device.
-- **WPA3**: link row to [Wi-Fi network](wifi.md).
+- **WPA3**: **View Wi-Fi network** (a dim text link) to [Wi-Fi network](wifi.md).
 
-### Integrations ("Smart home platforms")
+### Integrations (subtitle `3 of 5 on`)
 
 - **Apple HomeKit**: dimmed, `Unavailable` status, explains which models support it.
 - **Amazon Connected Home** (`Linked` status, owner only): **Unlink Amazon** (danger). Sub panel: **eero Built-in** switch (one, network-wide); **Smart Home Hub** with **Discover Zigbee devices**; **Frustration-Free Setup** switch.
 
-### Danger zone
+### Danger zone (subtitle `Restart or delete Maple Street`)
 
-- **Restart network** (`Disruptive` badge): restarts every eero; **Restart network** button.
-- **Delete network** (`Destructive · owner` badge): factory resets every eero and removes the network, profiles, history and admins; solid danger **Delete network** button.
+No badges: the ellipsis on each button and its confirm say it asks first.
 
-### Side panel and confirm bar
+- **Restart network**: restarts every eero; **Restart network…** (outline, dim icon).
+- **Delete network**: factory resets every eero and removes the network, profiles, history and admins ("Owner only." ends the description); solid danger **Delete network…**.
 
-- **Pending change**: what changes (`DNS ISP default -> Custom`), "What happens" numbered steps (saved to every eero, eeros restart gateway first with the outage length, devices rejoin) with the restart warning.
+### Pending change and confirm bar
+
+- **Pending change** (the hero's right-hand column): what changes (`DNS ISP default -> Custom`), "What happens" numbered steps (saved to every eero, eeros restart gateway first with the outage length, devices rejoin) with the restart warning.
 - **Confirm bar** (sticky): `1 pending change · DNS to custom servers`, **Discard**, **Apply and restart** (primary). Changes apply now only; there is no scheduled apply.
 
 ## Data
@@ -121,7 +127,7 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 | DHCP and NAT Automatic / Manual | `settings.dhcp.set` `{mode, subnetIp?, subnetMask?, startIp?, endIp?}` | disruptive | confirm bar | |
 | DHCP and NAT Bridge | `settings.connection_mode.set` `{mode: "bridged"}` | disruptive | dialog listing what turns off (profiles, forwards, reservations, SQM, guest isolation) | |
 | NAT port mode | `settings.nat_randomization.set` `{randomized}` | disruptive | confirm bar | |
-| Manage (reservations) | none (navigation) | | | [Reservations & ports](reservations-ports.md) |
+| View reservations and ports | none (navigation) | | | [Reservations & ports](reservations-ports.md) |
 | DNS mode and nameservers | `settings.dns.set` `{mode, servers, ipv6Servers?}` | disruptive | confirm bar | |
 | Local DNS caching | `settings.dns.set` `{caching}` | disruptive | confirm bar | |
 | UPnP | `settings.upnp.set` `{enabled}` | write | no | |

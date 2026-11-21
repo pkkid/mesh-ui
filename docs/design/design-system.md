@@ -537,13 +537,20 @@ now. A fixed label is about a tenth as useful.
   can be said. If a subtitle would only repeat the title, leave it out.
 
 **Header tools are 28px.** Every control in the tools slot (buttons,
-`HeaderLink`, Segmented toggles, selects) is 28px tall, the height of the
+`HeaderLink`, Segmented toggles, selects, and inputs such as a filter box) is 28px tall, the height of the
 title's line, so their top and bottom edges line up: buttons are the `tool`
 size (`h-7`, 12px text, 14px icons) and Segmented its `tool` size (border,
 `p-0.5`, 22px items). `Section` sets both once through `ButtonSizeContext`
 and `SegmentedSizeContext`, so call sites inside the tools slot leave `size`
 off, like the page header. A shared button that also appears outside a header
 (`CopyCommandButton`) reads the context and falls back to its own size.
+`Input` reads the same context: in the tools slot it is 28px outside with
+12px text and a 14px icon (elsewhere 32px, like default buttons and selects).
+Heights are measured outside the 1px border: the field's border sits around
+the input, so the input itself is 26px (30px by default), as the Devices
+filter does it, so a filter box and the button beside it
+(Reservations & ports: Filter and Add a reservation…) always line up. Never
+size an input in a header by hand.
 
 | Control row | Height |
 | --- | --- |

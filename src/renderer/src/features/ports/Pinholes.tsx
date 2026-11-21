@@ -8,7 +8,6 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { Link, pathFor } from "~/app/router";
 import { type QueryState, useQuery } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
@@ -26,26 +25,25 @@ export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lo
   const ipv6Off = settings.data?.ipv6.enabled === false;
   const addGate = useGate("pinhole.add");
   const removeGate = useGate("pinhole.remove");
-  const tools = ipv6Off ? null : (
-    <GatedButton gate={addGate} variant="outline" onClick={() => setAdding(true)}>
+  const tools = (
+    <GatedButton gate={addGate} variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => setAdding(true)}>
       <Plus />
-      Add
+      Add a rule{"\u2026"}
     </GatedButton>
   );
 
+  // With IPv6 off there is nothing to open: the whole section is left out (Advanced networking turns IPv6 on).
+  if (ipv6Off) return null;
+
   return (
-    <Section title="IPv6 firewall rules" subtitle="Pinholes to one device" tools={tools}>
+    <Section
+      title="IPv6 firewall rules"
+      description={rows ? (rows.length === 0 ? "No pinholes open" : `${rows.length} ${rows.length === 1 ? "pinhole" : "pinholes"} open to one device each`) : "-"}
+      tools={tools}
+      className="gap-[15px]"
+    >
       <PinholeSheet open={adding} onClose={() => setAdding(false)} />
-      {ipv6Off ? (
-        <Card>
-          <Empty className="flex flex-col items-center gap-2">
-            <span>Turn on IPv6 to add firewall rules.</span>
-            <Link to={pathFor("advanced")} className="text-foreground text-xs underline-offset-2 hover:underline">
-              Advanced networking
-            </Link>
-          </Empty>
-        </Card>
-      ) : query.error && !query.data ? (
+      {query.error && !query.data ? (
         <SectionError what="IPv6 firewall rules" error={query.error} onRetry={() => void query.refetch()} />
       ) : !rows ? (
         <PlaceholderRows count={2} />

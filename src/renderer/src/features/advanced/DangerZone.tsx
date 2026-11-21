@@ -10,7 +10,6 @@ import { RotateCcw, Trash2 } from "lucide-react";
 
 import { navigate, pathFor } from "~/app/router";
 import { useWrite } from "~/app/useWrite";
-import { Badge } from "~/components/ui/badge";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
 import { RESTART_ESTIMATE } from "../../../../core/commands/network";
@@ -37,26 +36,24 @@ export function DangerZone({ networkName }: { owner: boolean; networkName: strin
   };
 
   return (
-    <Group title="Danger zone" subtitle="Cannot be undone from here">
+    <Group title="Danger zone" description={`Restart or delete ${name}`}>
       <Row
         title="Restart network"
-        badge={<Badge variant="warning">Disruptive</Badge>}
         description={`Restarts every eero. Every device loses internet for ${RESTART_ESTIMATE.network}.`}
         control={
-          <GatedButton size="sm" variant="outline" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
+          <GatedButton variant="outline" className="[&_svg]:text-muted-foreground" gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
             <RotateCcw />
-            Restart network
+            Restart network{"\u2026"}
           </GatedButton>
         }
       />
       <Row
         title="Delete network"
-        badge={<Badge variant="error">Destructive · owner</Badge>}
-        description={`Factory-resets every eero and removes ${name}, its profiles, history and admins. Cannot be undone.`}
+        description={`Factory-resets every eero and removes ${name}, its profiles, history and admins. Cannot be undone. Owner only.`}
         control={
-          <GatedButton size="sm" variant="destructive" gate={gate} disabled={remove.running} onClick={() => void runDelete()}>
+          <GatedButton variant="destructive" gate={gate} disabled={remove.running} onClick={() => void runDelete()}>
             <Trash2 />
-            Delete network
+            Delete network{"\u2026"}
           </GatedButton>
         }
       />

@@ -17,8 +17,8 @@
  * zone lives in DangerZone.tsx. Layout: docs/ux/pages/advanced-networking.md,
  * mockup 13.
  */
-import { Cable, Network, Pencil, RotateCcw, Server } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { Cable, ChevronRight, Network, Pencil, Server } from "lucide-react";
+import { Children, createContext, type ReactNode, use, useEffect, useId, useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
 import { type ConfirmIn, fieldErrors, type Gate, useWrite, type WriteOptions, type WriteState } from "~/app/useWrite";
@@ -27,8 +27,9 @@ import { Card, Section } from "~/components/ui/card";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { useQuery } from "~/app/useCommand";
-import { GatedButton, useGate } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Footnote, GatedButton, SectionLink, useGate } from "~/components/ui/page";
+import { type SegmentedOption } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { cn } from "~/lib/utils";
 import { dhcpProblem, IMPACT, isIpv4, isIpv6, wanStaticProblem } from "../../../../core/commands/settings";
@@ -42,13 +43,36 @@ export { DangerZone } from "./DangerZone";
 // ---------------------------------------------------------------------------
 // Row pieces
 
+/** "Restarts eeros" after a row's title: plain warning-coloured text, normal weight, no icon or outline. */
 export function RestartBadge() {
-  return (
-    <Badge variant="outline" className="text-warning-foreground">
-      <RotateCcw />
-      Restarts eeros
-    </Badge>
-  );
+  return <span className="font-normal text-warning-foreground text-xs">Restarts eeros</span>;
+}
+
+/**
+ * Rows inside this provider (Advanced networking) fold their sub panel away: a chevron in front of the title opens and
+ * closes it, closed by default, each row's state remembered on this computer (localStorage, `mesh-ui:expand:<page>:<title>`).
+ * Rows with nothing under them get no chevron. Elsewhere rows always show their sub panel.
+ */
+const ExpandScope = createContext<string | null>(null);
+export function ExpandableRows({ page, children }: { page: string; children: ReactNode }) {
+  return <ExpandScope value={page}>{children}</ExpandScope>;
+}
+
+function readOpen(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeOpen(key: string, open: boolean) {
+  try {
+    if (open) localStorage.setItem(key, "1");
+    else localStorage.removeItem(key);
+  } catch {
+    // Storage blocked: the row still opens and closes, it just is not remembered.
+  }
 }
 
 /** One settings row: title (with badges), muted description, control on the right, optional sub panel below. */
@@ -59,6 +83,7 @@ export function Row({
   control,
   children,
   dim = false,
+  expandKey,
 }: {
   title: ReactNode;
   badge?: ReactNode;
@@ -66,11 +91,39 @@ export function Row({
   control?: ReactNode;
   children?: ReactNode;
   dim?: boolean;
+  /** The name this row's open state is remembered under; defaults to the title when it is text. */
+  expandKey?: string;
 }) {
+  const scope = use(ExpandScope);
+  const hasBody = Children.toArray(children).length > 0;
+  const name = expandKey ?? (typeof title === "string" ? title : null);
+  const key = scope && name ? `mesh-ui:expand:${scope}:${name}` : null;
+  const foldable = key !== null && hasBody;
+  const [open, setOpen] = useState(() => (key ? readOpen(key) : false));
+  const bodyId = useId();
+  const toggle = () => {
+    if (!key) return;
+    writeOpen(key, !open);
+    setOpen(!open);
+  };
   return (
     // T3 Code's SettingsRow: px-4 py-3, title over a muted description, control 32px away.
     <div className="flex flex-col gap-3 px-4 py-3">
       <div className={cn("flex items-center gap-8", dim && "opacity-50")}>
+        {foldable && (
+          // The chevron sits in front of the title; the title and description move right to make room for it.
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={bodyId}
+            aria-label={`${open ? "Hide" : "Show"} ${name} details`}
+            title={open ? "Hide details" : "Show details"}
+            onClick={toggle}
+            className="-me-6 -ms-1 grid size-5 shrink-0 cursor-pointer place-items-center self-start rounded-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronRight className={cn("size-4 transition-transform", open && "rotate-90")} />
+          </button>
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-h-5 flex-wrap items-center gap-2 font-medium text-foreground text-sm">
             {title}
@@ -80,7 +133,15 @@ export function Row({
         </div>
         {control && <div className="ms-auto flex shrink-0 items-center gap-2.5">{control}</div>}
       </div>
-      {children}
+      {foldable ? (
+        open && (
+          <div id={bodyId} className="ps-6">
+            {children}
+          </div>
+        )
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -103,13 +164,55 @@ export function Fields({ items, mono = true, cols = 2 }: { items: ReadonlyArray<
   );
 }
 
-/** A group: section heading with its subtitle, rows in one card with faint dividers. */
-export function Group({ title, subtitle, children, hint }: { title: string; subtitle: string; children: ReactNode; hint?: ReactNode }) {
+/**
+ * A group: section heading with its data-driven description under it, rows in one card with faint dividers, and an
+ * optional footnote under the card (design-system.md, Sections and Footnotes).
+ */
+export function Group({ id, title, description, children, note }: { id?: string; title: string; description: string; children: ReactNode; note?: ReactNode }) {
   return (
-    <Section title={title} subtitle={subtitle}>
-      {hint && <div className="text-muted-foreground text-xs">{hint}</div>}
+    <Section id={id} title={title} description={description} className="gap-[15px]">
       <Card className="divide-y divide-border/50">{children}</Card>
+      {note && <Footnote>{note}</Footnote>}
     </Section>
+  );
+}
+
+/**
+ * A choice between a few settings values as a dropdown (design-system.md, Buttons and links: dropdowns, not pill
+ * toggles). Takes the same props Segmented did, so each option can be disabled with its own tooltip. With `asks`,
+ * picking an option opens a confirm or a sheet before anything changes, so each option in the list ends in an
+ * ellipsis ("Bridge…"; design-system.md, an ellipsis means "asks first"); the closed dropdown shows the plain name.
+ */
+export function ChoiceSelect<T extends string>({
+  value,
+  onValueChange,
+  options,
+  asks = false,
+  className,
+  ...props
+}: {
+  value: T;
+  onValueChange: (v: T) => void;
+  options: ReadonlyArray<SegmentedOption<T>>;
+  asks?: boolean;
+  className?: string;
+  "aria-label": string;
+}) {
+  const known = options.some((o) => o.value === value);
+  return (
+    <Select items={options.map((o) => ({ value: o.value, label: o.label }))} value={known ? value : null} onValueChange={(v) => v && onValueChange(v as T)}>
+      <SelectTrigger className={cn("w-40", className)} aria-label={props["aria-label"]} disabled={options.every((o) => o.disabled || o.value === value)}>
+        <SelectValue placeholder={MISSING} />
+      </SelectTrigger>
+      <SelectPopup>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value} disabled={o.disabled} title={o.title}>
+            {/* The current value does nothing when picked again, so it needs no ellipsis. */}
+            {asks && o.value !== value ? `${o.label}\u2026` : o.label}
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
   );
 }
 
@@ -205,6 +308,8 @@ export function ToggleRow({
         undo: restarts ? undefined : { id, params: { enabled: !enabled }, ...ask(!enabled), success: `${what} turned ${enabled ? "off" : "on"}` },
       },
     );
+  // eero does not report this setting on this network (null once loaded): the row is left out, not shown dashed.
+  if (value === null) return null;
   return (
     <Row title={title} badge={badge} description={description} control={<WriteSwitch on={value} label={title} gate={gate} busy={write.running} onToggle={toggle} />}>
       {children}
@@ -241,7 +346,7 @@ export function InternetGroup({ settings, internet, bridged, offline = false }: 
   const wanGate = useGate("settings.wan.set");
   const gate = wanGate.allowed && offline ? { allowed: false, reason: OFFLINE } : wanGate;
   return (
-    <Group title="Internet" subtitle={isp ? `How the gateway eero talks to ${isp}` : "How the gateway eero talks to your ISP"}>
+    <Group title="Internet" description={internetLine(s, internet, isp)}>
       <Row
         title="WAN IP address"
         description={internet?.doubleNat === true ? "Behind another router (double NAT). Some games and port forwards may not work." : internet?.doubleNat === false ? "Public address, not behind another router (no double NAT)" : "Public address of the gateway eero"}
@@ -276,9 +381,9 @@ export function InternetGroup({ settings, internet, bridged, offline = false }: 
         control={
           <>
             {s && <span className="text-muted-foreground text-xs">{WAN_OPTIONS.find((o) => o.value === s.wan.mode)?.label}</span>}
-            <GatedButton size="xs" variant="outline" gate={gate} disabled={!s} onClick={() => setEditing(true)}>
+            <GatedButton variant="outline" className="[&_svg]:text-muted-foreground" gate={gate} disabled={!s} onClick={() => setEditing(true)}>
               <Pencil />
-              Edit
+              Edit{"\u2026"}
             </GatedButton>
           </>
         }
@@ -359,7 +464,7 @@ function WanSheet({ open, onClose, settings, isp, offline }: { open: boolean; on
       error={errors._form ?? errors.static ?? errors.pppoe}
     >
       <SheetField label="Connection type">
-        <Segmented<WanMode> aria-label="ISP connection type" value={mode} onValueChange={setMode} options={WAN_OPTIONS} />
+        <ChoiceSelect<WanMode> aria-label="ISP connection type" value={mode} onValueChange={setMode} options={WAN_OPTIONS} />
       </SheetField>
       {mode === "static" && (
         <div className="grid gap-3 sm:grid-cols-3">
@@ -448,8 +553,8 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
   return (
     <Group
       title="Network services"
-      subtitle="Addressing, DNS and traffic handling"
-      hint={bridged ? "In bridge mode another router handles addressing, so NAT, DNS, UPnP, SQM and reservations are off here." : undefined}
+      description={servicesLine(s, bridged)}
+      note={bridged ? "In bridge mode another router handles addressing, so NAT, DNS, UPnP, SQM and reservations are off here." : undefined}
     >
       <ToggleRow
         id="settings.simple_setup.set"
@@ -472,7 +577,7 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
               </GatedButton>
             )}
             <span title={dhcpReason ?? undefined}>
-              <Segmented<DhcpMode> aria-label="DHCP mode" value={(d?.mode ?? "") as DhcpMode} onValueChange={chooseDhcp} options={dhcpOptions} />
+              <ChoiceSelect<DhcpMode> asks aria-label="DHCP mode" value={(d?.mode ?? "") as DhcpMode} onValueChange={chooseDhcp} options={dhcpOptions} />
             </span>
           </>
         }
@@ -493,7 +598,8 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
           </SubPanel>
         )}
       </Row>
-      {!bridged && (
+      {/* Hidden where eero does not report it (null once loaded). */}
+      {!bridged && !(s && nat === null) && (
         <Row
           title="NAT port mode"
           badge={<RestartBadge />}
@@ -505,7 +611,8 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
               </span>
             ) : (
               <span title={natWrite.gate.reason ?? undefined}>
-                <Segmented
+                <ChoiceSelect
+                  asks
                   aria-label="NAT port mode"
                   value={nat}
                   onValueChange={(v) => v !== nat && void natWrite.write.run({ randomized: v === "randomized" }, { success: `NAT port mode set to ${v}` })}
@@ -523,13 +630,9 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
         dim={bridged}
         control={
           bridged ? (
-            <GatedButton size="xs" variant="outline" gate={{ allowed: false, reason: "Not available in bridge mode" }}>
-              Manage
-            </GatedButton>
+            <span className="text-muted-foreground text-xs">Not available in bridge mode</span>
           ) : (
-            <Link to={pathFor("ports")} className="rounded-(--control-radius) border px-2 py-1 font-medium text-xs hover:bg-muted/50">
-              Manage
-            </Link>
+            <SectionLink to={pathFor("ports")}>View reservations and ports</SectionLink>
           )
         }
       />
@@ -548,7 +651,8 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
                   </GatedButton>
                 )}
                 <span title={dnsAuto.gate.reason ?? undefined}>
-                  <Segmented
+                  <ChoiceSelect
+                    asks
                     aria-label="DNS mode"
                     value={s?.dns.mode ?? ("" as "automatic")}
                     onValueChange={(v) => {
@@ -580,6 +684,7 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
               </SubPanel>
             )}
           </Row>
+          {s?.dns.caching !== null && (
           <Row
             title="Local DNS caching"
             badge={<RestartBadge />}
@@ -587,6 +692,7 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
             control={<WriteSwitch on={s?.dns.caching} label="Local DNS caching" gate={caching.gate} busy={caching.write.running} onToggle={(on) => void caching.write.run({ caching: on }, { success: `DNS caching turned ${on ? "on" : "off"}` })} />}
           >
           </Row>
+          )}
           <ToggleRow id="settings.upnp.set" value={s?.upnp} title="UPnP" what="UPnP" description="Lets consoles and apps open ports on their own" offline={offline} />
           <ToggleRow
             id="settings.sqm.set"
@@ -708,7 +814,7 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
   const offline = useOffline();
   const mlo = useSettingsWrite<{ mode: MloMode }>("settings.mlo.set", "multi-link operation", offline);
   return (
-    <Group title="Wireless" subtitle="Radio features across all eeros">
+    <Group title="Wireless" description={wirelessLine(s)}>
       {s?.mlo !== null && (
         <Row
           title="Multi-link operation"
@@ -721,7 +827,8 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
           description="Wi-Fi 7 devices use several bands at once. Changing it restarts the network and may turn on WPA3."
           control={
             <span title={mlo.gate.reason ?? undefined}>
-              <Segmented<MloMode>
+              <ChoiceSelect<MloMode>
+                asks
                 aria-label="Multi-link operation"
                 value={(s?.mlo ?? "") as MloMode}
                 onValueChange={(v) => s && v !== s.mlo && void mlo.write.run({ mode: v }, { success: `Multi-link operation set to ${MLO_OPTIONS.find((o) => o.value === v)?.label.toLowerCase()}` })}
@@ -753,15 +860,36 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
       <ThreadCard settings={s} offline={offline} />
       <Row
         title="WPA3"
-        description="Set per band on the Wi-Fi page"
-        control={
-          <Link to={pathFor("wifi")} className="rounded-(--control-radius) border px-2 py-1 font-medium text-xs hover:bg-muted/50">
-            Wi-Fi network
-          </Link>
-        }
+        description="Set per band on the Wi-Fi network page"
+        control={<SectionLink to={pathFor("wifi")}>View Wi-Fi network</SectionLink>}
       />
     </Group>
   );
+}
+
+/** "203.0.113.48 on Ziply Fiber, IPv6 on": the address and ISP, then IPv6. */
+function internetLine(s: NetworkSettings | undefined, internet: Internet | undefined, isp: string | null): string {
+  if (!s && !internet) return "-";
+  const where = [internet?.publicIpv4, isp && `on ${isp}`].filter(Boolean).join(" ");
+  return [where || null, s ? `IPv6 ${s.ipv6.enabled ? "on" : "off"}` : null, internet?.doubleNat ? "double NAT" : null].filter(Boolean).join(", ") || "-";
+}
+
+/** "DHCP automatic, ISP DNS, UPnP on": how addressing and name servers are handed out right now. */
+function servicesLine(s: NetworkSettings | undefined, bridged: boolean): string {
+  if (!s) return "-";
+  if (bridged) return "Bridge mode, another router handles addressing";
+  const dhcp = s.dhcp.mode === "custom" ? "DHCP manual range" : "DHCP automatic";
+  const dns = s.dns.mode === "custom" ? `custom DNS (${s.dns.servers.length})` : "ISP DNS";
+  return [dhcp, dns, s.upnp === null ? null : `UPnP ${s.upnp ? "on" : "off"}`].filter(Boolean).join(", ");
+}
+
+/** "Client steering on, Thread on": the radio features that are on. */
+function wirelessLine(s: NetworkSettings | undefined): string {
+  if (!s) return "-";
+  const on = [s.bandSteering && "client steering", s.fastTransition && "fast roaming", s.legacyMode && "legacy device mode", s.thread?.enabled && "Thread"].filter(Boolean) as string[];
+  if (on.length === 0) return "Every radio feature off";
+  const list = on.length > 1 ? `${on.slice(0, -1).join(", ")} and ${on.at(-1)}` : on[0]!;
+  return `${list[0]!.toUpperCase()}${list.slice(1)} on`;
 }
 
 export { onOff };

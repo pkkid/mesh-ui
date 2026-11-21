@@ -27,14 +27,14 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
   const editGate = useGate("forward.update");
   const removeGate = useGate("forward.remove");
   const tools = (
-    <GatedButton gate={addGate} variant="outline" onClick={() => setSheet({ kind: "add" })}>
+    <GatedButton gate={addGate} variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => setSheet({ kind: "add" })}>
       <Plus />
-      Add port forward
+      Add port forward{"\u2026"}
     </GatedButton>
   );
 
   return (
-    <Section title="Port forwards" subtitle={publicIp ? `Open to the internet on ${publicIp}` : "Open to the internet"} tools={tools}>
+    <Section title="Port forwards" description={forwardsLine(rows, publicIp)} tools={tools} className="gap-[15px]">
       <ForwardSheet mode={sheet} onClose={() => setSheet(null)} />
       {query.error && !query.data ? (
         <SectionError what="port forwards" error={query.error} onRetry={() => void query.refetch()} />
@@ -88,7 +88,7 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
                           <RowMenu
                             label={`Options for ${f.name || "forward"}`}
                             actions={[
-                              { label: "Edit...", icon: Pencil, gate: editGate, onClick: () => setSheet({ kind: "edit", forward: f }) },
+                              { label: "Edit\u2026", icon: Pencil, gate: editGate, onClick: () => setSheet({ kind: "edit", forward: f }) },
                               { label: "Remove", icon: Trash2, gate: removeGate, destructive: true, onClick: () => void removeForward(f) },
                             ]}
                           />
@@ -107,4 +107,12 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
       )}
     </Section>
   );
+}
+
+/** "5 forwards, 4 on, open on 203.0.113.48": the count, how many are on, and the address they open. */
+function forwardsLine(rows: ReadonlyArray<{ enabled: boolean }> | undefined, publicIp: string | null): string {
+  if (!rows) return "-";
+  if (rows.length === 0) return "Nothing open to the internet";
+  const on = rows.filter((r) => r.enabled).length;
+  return [`${rows.length} ${rows.length === 1 ? "forward" : "forwards"}`, `${on} on`, publicIp && `open on ${publicIp}`].filter(Boolean).join(", ");
 }

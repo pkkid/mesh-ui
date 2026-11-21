@@ -58,9 +58,8 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
   // A network switch or a reset drops anything revealed.
   useEffect(() => setRevealed(null), [network.data?.id]);
 
-  if (settings && !t) {
-    return <Row title="Thread" description="This network does not report a Thread border router" dim control={<Status tone="muted">Unavailable</Status>} />;
-  }
+  // No Thread border router on this network: the row is left out (unsupported rows are hidden on this page).
+  if (settings && !t) return null;
 
   const read = async (): Promise<ThreadCredentials | null> => {
     setReading(true);

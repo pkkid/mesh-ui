@@ -128,13 +128,22 @@ function UnlinkAmazon() {
   );
 }
 
+/** "2 of 5 on, Amazon linked": how many smart home platforms are on, from the data. */
+function integrationsLine(data: IntegrationsData | undefined): string {
+  if (!data) return "-";
+  const available = ORDER.filter((id) => data[id]?.available);
+  const on = available.filter((id) => data[id]?.enabled === true).length;
+  return available.length === 0 ? "None available on this network" : `${on} of ${available.length} on`;
+}
+
 /** `owner` is kept for AdvancedPage; Unlink Amazon reads the owner rule from its gate. */
 export function Integrations({ query }: { query: QueryState<IntegrationsData>; owner: boolean }) {
   const data = query.data;
   if (query.error && !data) return <SectionError what="integrations" error={query.error} onRetry={() => void query.refetch()} />;
   return (
-    <Group title="Integrations" subtitle="Smart home platforms">
-      {ORDER.map((id) => {
+    <Group title="Integrations" description={integrationsLine(data)}>
+      {/* A platform eero reports as unavailable on this network is left out. */}
+      {ORDER.filter((id) => data?.[id]?.available !== false).map((id) => {
         const i = data?.[id];
         const unavailable = i !== undefined && !i.available;
         let control = null;

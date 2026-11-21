@@ -1,9 +1,9 @@
 /**
  * Advanced networking: every network-wide setting, power saving schedules on
  * the shared week timeline, Thread without its secrets, integrations and the
- * danger zone. Internet, Network services, Wireless and the danger zone are
- * live (M5.2, M5.3); the side panel shows the impact of the change waiting
- * on its confirm (`settings.impact`).
+ * danger zone, under a flat hero (routing mode, WAN, DHCP, DNS, IPv6) whose
+ * right column says how changes apply and shows the impact of the change
+ * waiting on its confirm (`settings.impact`). One full-width column.
  * Layout, data and states: docs/ux/pages/advanced-networking.md and
  * docs/mockups/13-advanced-networking.html.
  */
@@ -15,10 +15,11 @@ import { TopBarTitle } from "~/features/shell/TopBar";
 import { ownerOnly } from "../../../../core/spec";
 import type { Integrations as IntegrationsData, Internet, Network, NetworkSettings } from "../../../../core/model";
 
-import { PendingImpactProvider, PendingPanel } from "./ImpactPanel";
+import { AdvancedHero } from "./AdvancedHero";
+import { PendingImpactProvider } from "./ImpactPanel";
 import { Integrations } from "./Integrations";
 import { PowerSaving } from "./PowerSaving";
-import { DangerZone, InternetGroup, ServicesGroup, WirelessGroup } from "./SettingsGroups";
+import { DangerZone, ExpandableRows, InternetGroup, ServicesGroup, WirelessGroup } from "./SettingsGroups";
 
 export function AdvancedPage(_: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -37,8 +38,11 @@ export function AdvancedPage(_: PageProps) {
   return (
     <PendingImpactProvider>
       <TopBarTitle>Advanced networking</TopBarTitle>
-      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className={cn("flex min-w-0 flex-col gap-6 transition-opacity", settings.fading && "opacity-40")}>
+      <AdvancedHero network={network.data} internet={internet.data} settings={s} fading={settings.fading && !s} offline={offline} bridged={bridged} />
+      {/* Rows with a sub panel (ISP settings, DHCP and NAT, DNS, the schedule, Thread...) fold it away behind a chevron. */}
+      <ExpandableRows page="advanced">
+      <div className="flex flex-col gap-14">
+        <div className={cn("flex min-w-0 flex-col gap-14 transition-opacity", settings.fading && "opacity-40")}>
           {settings.error && !s ? (
             <SectionError what="network settings" error={settings.error} onRetry={() => void settings.refetch()} />
           ) : (
@@ -50,13 +54,11 @@ export function AdvancedPage(_: PageProps) {
               <WirelessGroup settings={s} />
             </>
           )}
-          <Integrations query={integrations} owner={owner} />
-          <DangerZone owner={owner} networkName={network.data?.name ?? null} />
         </div>
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-0">
-          <PendingPanel offline={offline} bridged={bridged} />
-        </aside>
+        <Integrations query={integrations} owner={owner} />
+        <DangerZone owner={owner} networkName={network.data?.name ?? null} />
       </div>
+      </ExpandableRows>
     </PendingImpactProvider>
   );
 }
