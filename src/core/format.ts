@@ -30,10 +30,13 @@ export function mbpsParts(mbps: Num): Parts {
     if (Math.abs(kbps) < 0.05) return { value: "<0.1", unit: "kbps" };
     return { value: round(kbps, 10), unit: "kbps" };
   }
+  // A gigabit and up reads in Gbps ("2.4 Gbps"), as eero's app shows multi-gig links and plans.
+  // A whole gigabit drops its ".0" ("1 Gbps plan"); anything else keeps one decimal below 10 ("2.4 Gbps").
+  if (Math.abs(mbps) >= 999.5) return { value: round(mbps / 1000, 10).replace(/\.0$/, ""), unit: "Gbps" };
   return { value: round(mbps, 10), unit: "Mbps" };
 }
 
-/** "186 Mbps", "4.2 Mbps", "2,500 Mbps", "320 kbps", "0 Mbps", "-". */
+/** "186 Mbps", "4.2 Mbps", "2.5 Gbps", "320 kbps", "0 Mbps", "-". */
 export function formatMbps(mbps: Num): string {
   const p = mbpsParts(mbps);
   return p.unit ? `${p.value} ${p.unit}` : p.value;

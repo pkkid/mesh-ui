@@ -72,7 +72,7 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
   // Only once the list has answered, so the empty form never flashes while it loads.
   if (data && !profiles.error && !hasPauses(data)) {
     return (
-      <Section title="Today's pauses" className="gap-[15px]" description="None scheduled" tools={<AddSchedule profiles={data.profiles} colorOf={colorOf} />}>
+      <Section title="Today's pauses" when="nat" className="gap-[15px]" description="None scheduled" tools={<AddSchedule profiles={data.profiles} colorOf={colorOf} />}>
         <Card className="px-[18px] py-3 text-[13px] text-muted-foreground">
           No scheduled pauses. Schedules pause a profile's internet at set times, like bedtime.
         </Card>
@@ -82,7 +82,7 @@ export function ScheduleOverview({ profiles, colorOf, timezone }: Props) {
 
   return (
     <Section
-      title="Today's pauses"
+      title="Today's pauses" when="nat"
       className="gap-[15px]"
       description={description}
       tools={

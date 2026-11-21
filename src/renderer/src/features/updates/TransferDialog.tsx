@@ -40,7 +40,7 @@ export function TransferNetwork({ network }: { network: Network }) {
 
   return (
     <Section
-      title="Transfer network"
+      title="Transfer network" when="owner"
       description={`Hand ${name} to someone else; owner only`}
       className="gap-[15px]"
     >

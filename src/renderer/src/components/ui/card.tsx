@@ -1,4 +1,6 @@
 // Section cards from docs/design/design-system.md (Layout, Sections).
+import type { PlaceRule } from "~/features/palette/placeRules";
+import { placeAnchor } from "~/lib/places";
 import type * as React from "react";
 
 import { Link, navigate } from "~/app/router";
@@ -63,6 +65,11 @@ function CardLink({ className, ...props }: React.ComponentProps<typeof Link>) {
 
 type SectionProps = Omit<React.ComponentProps<"section">, "title"> & {
   title: React.ReactNode;
+  /**
+   * The show-if rule when the page renders this section only sometimes (features/palette/placeRules.ts); the
+   * search palette's Places offers it under the same rule. Not used at runtime.
+   */
+  when?: PlaceRule;
   /** Muted line beside the title ("Last 24 hours for all devices"). */
   subtitle?: React.ReactNode;
   /** Muted line under the title ("Showing all 38 devices"). */
@@ -83,9 +90,10 @@ type SectionProps = Omit<React.ComponentProps<"section">, "title"> & {
  * the title's line: buttons take `SECTION_TOOL_SIZE` and Segmented its `tool`
  * size from context, so callers leave `size` off.
  */
-function Section({ title, subtitle, description, tools, className, children, ...props }: SectionProps) {
+function Section({ title, subtitle, description, tools, className, children, when: _when, ...props }: SectionProps) {
   return (
-    <section data-slot="section" className={cn("flex flex-col", description ? "gap-5" : "gap-3", className)} {...props}>
+    // `data-place`: the anchor Places jumps to (lib/places.ts), from the title.
+    <section data-slot="section" data-place={placeAnchor(title)} className={cn("flex flex-col", description ? "gap-5" : "gap-3", className)} {...props}>
       <div className={cn("flex min-h-7 min-w-0 gap-2.5", description ? "items-end" : "items-baseline")}>
         {description ? (
           <div className="flex min-w-0 flex-col">

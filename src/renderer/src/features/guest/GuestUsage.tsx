@@ -54,7 +54,7 @@ export function GuestUsage({ timezone }: { timezone: string | null }) {
 
   return (
     <Section
-      title="Guest usage"
+      title="Guest usage" when="guestOn"
       description={description}
       className="gap-[15px]"
       tools={

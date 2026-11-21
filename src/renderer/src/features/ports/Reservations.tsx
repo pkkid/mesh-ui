@@ -144,7 +144,7 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
   );
 
   return (
-    <Section title="IPv4 reservations" description={reservationsLine(rows)} tools={tools} className="gap-[15px]">
+    <Section title="IPv4 reservations" when="nat" description={reservationsLine(rows)} tools={tools} className="gap-[15px]">
       <ReservationSheet mode={sheet} onClose={() => setSheet(null)} />
       {query.error && !query.data ? (
         <SectionError what="reservations" error={query.error} onRetry={() => void query.refetch()} />

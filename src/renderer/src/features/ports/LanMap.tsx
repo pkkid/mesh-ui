@@ -74,7 +74,7 @@ export function LanMap({ query }: { query: QueryState<ReservationList> }) {
   );
 
   return (
-    <Section title="LAN address map" description={description} tools={legend("hidden xl:flex")} className="gap-[15px]">
+    <Section title="LAN address map" when="nat" description={description} tools={legend("hidden xl:flex")} className="gap-[15px]">
       {legend("-mt-2 flex flex-wrap xl:hidden")}
       {query.error && !query.data ? (
         <SectionError what="the address map" error={query.error} onRetry={() => void query.refetch()} />

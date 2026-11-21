@@ -31,7 +31,20 @@ export type CommandItem = {
   unavailable: string | null;
 };
 
-export type PageItem = { kind: "page"; key: string; label: string; path: string; routeId: string };
+/**
+ * A place: a page, or a section or settings row on one (Places). `anchor` is the section's or row's `data-place`
+ * (lib/places.ts); `context` names the page it is on.
+ */
+export type PageItem = {
+  kind: "page";
+  key: string;
+  label: string;
+  path: string;
+  routeId: string;
+  anchor?: string;
+  context?: string;
+  place?: "page" | "section" | "setting";
+};
 
 export type DeviceItem = {
   kind: "device";
@@ -169,7 +182,28 @@ export function pageItems(routes: ReadonlyArray<{ id: string; path: string; titl
   // Detail routes need an id; the palette reaches them through eero, device and profile rows.
   return routes
     .filter((r) => !r.path.includes(":"))
-    .map((r) => ({ kind: "page", key: `page:${r.id}`, label: r.title, path: r.path, routeId: r.id }));
+    .map((r) => ({ kind: "page", key: `page:${r.id}`, label: r.title, path: r.path, routeId: r.id, place: "page" }));
+}
+
+export type PlaceEntry = { route: string; title: string; kind: "section" | "setting"; anchor: string; when: string | null };
+
+/**
+ * The sections and settings rows Places offers: each on its page (`context`), with the anchor it jumps to. `shown`
+ * leaves out the ones the page would not show now (their show-if rule, features/palette/placeRules.ts).
+ */
+export function placeItems(
+  places: ReadonlyArray<PlaceEntry>,
+  routes: ReadonlyArray<{ id: string; path: string; title: string }>,
+  shown: (rule: string | null) => boolean,
+): PageItem[] {
+  const pageOf = new Map(routes.filter((r) => !r.path.includes(":")).map((r) => [r.id, r] as const));
+  const out: PageItem[] = [];
+  for (const p of places) {
+    const page = pageOf.get(p.route);
+    if (!page || !shown(p.when)) continue;
+    out.push({ kind: "page", key: `place:${p.route}:${p.anchor}`, label: p.title, path: page.path, routeId: page.id, anchor: p.anchor, context: page.title, place: p.kind });
+  }
+  return out;
 }
 
 export function eeroItems(eeros: ReadonlyArray<Eero> | null): EeroItem[] {
@@ -319,7 +353,7 @@ export type SearchResult = {
 };
 
 /** Most rows a group shows under "All"; its own scope shows every match. */
-export const GROUP_LIMIT: Record<Kind, number> = { command: 50, page: 6, eero: 5, device: 5, profile: 5 };
+export const GROUP_LIMIT: Record<Kind, number> = { command: 50, page: 8, eero: 5, device: 5, profile: 5 };
 
 function rank(hits: Hit[]): Hit[] {
   return hits.sort((a, b) => b.score - a.score || a.item.label.localeCompare(b.item.label));
@@ -352,7 +386,8 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
     };
     byKind.command = sources.commands.map((item) => ({ item, score: order(item.key), ranges: [], idRanges: [] }));
     byKind.command.sort((a, b) => b.score - a.score);
-    byKind.page = sources.pages.map((item) => ({ item, score: 0, ranges: [], idRanges: [] }));
+    // With nothing typed, Places lists the pages only, not every section and setting.
+    byKind.page = sources.pages.filter((item) => item.kind === "page" && !item.anchor).map((item) => ({ item, score: 0, ranges: [], idRanges: [] }));
   } else {
     const add = (kind: Kind, items: ReadonlyArray<Item>, extra?: (item: Item) => string | null) => {
       for (const item of items) {
@@ -366,7 +401,8 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
       rank(byKind[kind]);
     };
     add("command", sources.commands);
-    add("page", sources.pages);
+    // A place matches its title, then (ranked lower) the page it is on: "advanced" lists Advanced networking first.
+    add("page", sources.pages, (i) => (i.kind === "page" ? (i.context ?? null) : null));
     // An eero matches its location, then (ranked lower) its model.
     add("eero", sources.eeros ?? [], (i) => (i.kind === "eero" ? i.eero.model : null));
     add("device", sources.devices, (i) => (i.kind === "device" ? i.context : null));

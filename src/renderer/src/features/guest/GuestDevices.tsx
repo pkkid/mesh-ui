@@ -61,7 +61,7 @@ export function GuestDevices({ timezone }: { timezone: string | null }) {
 
   return (
     <Section
-      title="Guest devices"
+      title="Guest devices" when="guestOn"
       description={description}
       className="gap-[15px]"
       tools={

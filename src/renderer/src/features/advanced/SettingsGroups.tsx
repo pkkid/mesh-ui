@@ -35,6 +35,8 @@ import { cn } from "~/lib/utils";
 import { dhcpProblem, IMPACT, isIpv4, isIpv6, wanStaticProblem } from "../../../../core/commands/settings";
 import { MISSING } from "../../../../core/format";
 import type { Internet, Network as NetworkData, NetworkSettings } from "../../../../core/model";
+import type { PlaceRule } from "~/features/palette/placeRules";
+import { placeAnchor } from "~/lib/places";
 import { ImpactPanel, usePendingImpact } from "./ImpactPanel";
 import { ThreadCard } from "./ThreadCard";
 
@@ -84,6 +86,7 @@ export function Row({
   children,
   dim = false,
   expandKey,
+  when: _when,
 }: {
   title: ReactNode;
   badge?: ReactNode;
@@ -93,6 +96,8 @@ export function Row({
   dim?: boolean;
   /** The name this row's open state is remembered under; defaults to the title when it is text. */
   expandKey?: string;
+  /** The show-if rule when the page renders this row only sometimes (features/palette/placeRules.ts). Not used at runtime. */
+  when?: PlaceRule;
 }) {
   const scope = use(ExpandScope);
   const hasBody = Children.toArray(children).length > 0;
@@ -107,8 +112,9 @@ export function Row({
     setOpen(!open);
   };
   return (
-    // T3 Code's SettingsRow: px-4 py-3, title over a muted description, control 32px away.
-    <div className="flex flex-col gap-3 px-4 py-3">
+    // T3 Code's SettingsRow: px-4 py-3, title over a muted description, control 32px away. `data-place` is the anchor
+    // the search palette's Places jumps to (lib/places.ts).
+    <div className="flex flex-col gap-3 px-4 py-3" data-place={placeAnchor(title)}>
       <div className={cn("flex items-center gap-8", dim && "opacity-50")}>
         {foldable && (
           // The chevron sits in front of the title; the title and description move right to make room for it.
@@ -168,9 +174,9 @@ export function Fields({ items, mono = true, cols = 2 }: { items: ReadonlyArray<
  * A group: section heading with its data-driven description under it, rows in one card with faint dividers, and an
  * optional footnote under the card (design-system.md, Sections and Footnotes).
  */
-export function Group({ id, title, description, children, note }: { id?: string; title: string; description: string; children: ReactNode; note?: ReactNode }) {
+export function Group({ id, title, description, children, note, when }: { id?: string; title: string; description: string; children: ReactNode; note?: ReactNode; when?: PlaceRule }) {
   return (
-    <Section id={id} title={title} description={description} className="gap-[15px]">
+    <Section id={id} title={title} description={description} className="gap-[15px]" when={when}>
       <Card className="divide-y divide-border/50">{children}</Card>
       {note && <Footnote>{note}</Footnote>}
     </Section>
@@ -284,10 +290,13 @@ export function ToggleRow({
   offline,
   badge,
   children,
+  when: _when,
 }: {
   id: string;
   value: boolean | null | undefined;
   title: string;
+  /** The show-if rule (features/palette/placeRules.ts): this row hides itself while eero does not report the value. */
+  when?: PlaceRule;
   /** Names the change in toasts and the pending panel: "UPnP". */
   what: string;
   description: ReactNode;
@@ -601,7 +610,7 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
       {/* Hidden where eero does not report it (null once loaded). */}
       {!bridged && !(s && nat === null) && (
         <Row
-          title="NAT port mode"
+          title="NAT port mode" when="natPortMode"
           badge={<RestartBadge />}
           description="Randomized picks unpredictable outbound ports; Direct suits most games"
           control={
@@ -639,7 +648,7 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
       {!bridged && (
         <>
           <Row
-            title="DNS"
+            title="DNS" when="nat"
             badge={<RestartBadge />}
             description="Name servers handed to every device"
             control={
@@ -686,18 +695,18 @@ export function ServicesGroup({ settings, bridged, offline = false, children }: 
           </Row>
           {s?.dns.caching !== null && (
           <Row
-            title="Local DNS caching"
+            title="Local DNS caching" when="dnsCaching"
             badge={<RestartBadge />}
             description="eeros remember lookups for faster browsing"
             control={<WriteSwitch on={s?.dns.caching} label="Local DNS caching" gate={caching.gate} busy={caching.write.running} onToggle={(on) => void caching.write.run({ caching: on }, { success: `DNS caching turned ${on ? "on" : "off"}` })} />}
           >
           </Row>
           )}
-          <ToggleRow id="settings.upnp.set" value={s?.upnp} title="UPnP" what="UPnP" description="Lets consoles and apps open ports on their own" offline={offline} />
+          <ToggleRow id="settings.upnp.set" value={s?.upnp} title="UPnP" when="upnp" what="UPnP" description="Lets consoles and apps open ports on their own" offline={offline} />
           <ToggleRow
             id="settings.sqm.set"
             value={s?.sqm}
-            title="Optimize for conferencing and gaming (SQM)"
+            title="Optimize for conferencing and gaming (SQM)" when="sqm"
             what="SQM"
             description="Smart queue management keeps calls smooth while others download. Not available in bridge mode."
             offline={offline}
@@ -817,7 +826,7 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
     <Group title="Wireless" description={wirelessLine(s)}>
       {s?.mlo !== null && (
         <Row
-          title="Multi-link operation"
+          title="Multi-link operation" when="mlo"
           badge={
             <>
               <Badge variant="outline">Wi-Fi 7</Badge>

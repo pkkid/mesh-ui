@@ -134,7 +134,7 @@ export function TopBar() {
         >
           <Search />
           <span>Search or run a command</span>
-          <kbd className="ms-auto rounded-[5px] border border-input px-1.5 font-mono text-[10.5px]">
+          <kbd className="ms-auto inline-flex h-5 items-center rounded-[5px] border border-input px-1.5 font-kbd text-[10.5px] leading-none">
             {isMac ? "⌘K" : "Ctrl K"}
           </kbd>
         </button>

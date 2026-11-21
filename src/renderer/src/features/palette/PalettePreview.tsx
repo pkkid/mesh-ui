@@ -5,17 +5,17 @@
  * its result JSON shows under the MCP call. Confirms open in a dialog over
  * the palette (CommandPalette).
  */
-import { AppWindow, Bot, Check, Copy, FileJson, Play, SquareTerminal, Terminal } from "lucide-react";
+import { Check, Copy, Play, Terminal } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Button } from "~/components/ui/button";
-import { IconTile } from "~/components/ui/hero";
 import { Status } from "~/components/ui/status";
+import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import type { ExecuteResult } from "../../../../core/errors";
-import { EeroBadges, EffectTag, itemIcon, Keys } from "./PaletteResults";
+import { EeroBadges, EffectTag } from "./PaletteResults";
 import { type EntityOptions, ParamsForm } from "./ParamsForm";
-import { cliLine, type Item, mcpCall, mcpHints, needsConfirm, type ParamField, toolName } from "./search";
+import { cliLine, type Item, mcpCall, needsConfirm, type ParamField } from "./search";
 
 export type RunState = { running: boolean; result: ExecuteResult | null };
 
@@ -43,7 +43,8 @@ type Props = {
 export function PalettePreview(props: Props) {
   const { item } = props;
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-card">
+    // The panel's own background and corners come from its frame in CommandPalette (the sidebar colour).
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-5 py-4">
         {item.kind === "command" ? (
           <CommandPreview {...props} item={item} />
@@ -51,34 +52,75 @@ export function PalettePreview(props: Props) {
           <EntityPreview item={item} onAction={props.onAction} running={props.actionRunning} />
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3">
+      <div className="flex shrink-0 items-center gap-2 px-5 py-3">
         <span title={props.blocked ?? undefined} className="inline-flex">
-          <Button size="sm" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
+          {/* Outline: the palette has no call to action, so nothing in it is a filled button. */}
+          <Button size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
             <Play />
             {props.runLabel}
-            <Keys keys={["↵"]} className="ms-1 opacity-70 [&_kbd]:border-current/35 [&_kbd]:bg-transparent [&_kbd]:text-current [&_kbd]:shadow-none" />
           </Button>
         </span>
-        {item.kind === "command" && (
-          <span title="Coming soon" className="inline-flex">
-            <Button size="sm" variant="outline" disabled>
-              <FileJson />
-              Add to script.jsonl
-            </Button>
-          </span>
-        )}
         {props.blocked && <span className="truncate text-muted-foreground text-xs">{props.blocked}</span>}
       </div>
     </div>
   );
 }
 
+/**
+ * The details read for an eero, device or profile (`eero.get`, `device.get`, `profile.get`) as the CLI line and the
+ * MCP tool call, so an agent or script can fetch the same thing the page shows.
+ */
+function DetailsCall({ item }: { item: Exclude<Item, { kind: "command" }> }) {
+  const [copied, setCopied] = useState(false);
+  if (item.kind === "page") return null;
+  const id = `${item.kind}.get`;
+  const params = { [item.kind]: item.id };
+  const line = cliLine(id, params, "query");
+  return (
+    <>
+      <div>
+        <Label right={
+            // The app's plain copy icon (as Get help's and the CLI codes on Settings): no label, a check once copied.
+            <Button
+              size="icon-xs"
+              variant="ghost-muted"
+              aria-label="Copy the CLI command"
+              title="Copy the CLI command"
+              onClick={async () => {
+                if (await copyText(line, { toast: false })) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
+              }}
+            >
+              {copied ? <Check /> : <Copy />}
+            </Button>
+          }
+        >
+          CLI
+        </Label>
+        <Code>
+          <span className="select-none text-muted-foreground/70">$ </span>
+          {line}
+        </Code>
+      </div>
+      <div>
+        <Label>
+          MCP tool
+        </Label>
+        <Code>{JSON.stringify(mcpCall(id, params, "query"))}</Code>
+      </div>
+    </>
+  );
+}
+
 function Label({ icon: Icon, children, right }: { icon?: typeof Terminal; children: ReactNode; right?: ReactNode }) {
   return (
-    <div className="mb-1.5 flex min-h-5 items-center gap-2 font-semibold text-[10.5px] text-muted-foreground/80 uppercase tracking-widest">
+    // A sub heading in the panel: normal case in the text colour, as section titles are (never uppercase).
+    <div className="mb-1.5 flex min-h-5 items-center gap-2 font-medium text-[13px] text-foreground">
       {Icon && <Icon className="size-3" />}
       {children}
-      {right && <span className="ms-auto flex items-center gap-1.5 font-medium normal-case tracking-normal">{right}</span>}
+      {right && <span className="ms-auto flex items-center gap-1.5 font-normal text-muted-foreground text-xs">{right}</span>}
     </div>
   );
 }
@@ -88,7 +130,8 @@ function Code({ children, className }: { children: ReactNode; className?: string
     <pre
       data-selectable
       className={cn(
-        "m-0 whitespace-pre-wrap break-words rounded-[10px] border bg-muted px-3 py-2.5 font-mono text-[11.5px] text-foreground/85 leading-[1.55]",
+        // Code reads dimmer than the headings above it, on a plain background (no border).
+        "m-0 whitespace-pre-wrap break-words rounded-[10px] bg-muted px-3 py-2.5 font-mono text-[11.5px] text-muted-foreground leading-[1.55]",
         className,
       )}
     >
@@ -110,7 +153,6 @@ function CommandPreview({
 }: Props & { item: Extract<Item, { kind: "command" }> }) {
   const { info } = item;
   const [copied, setCopied] = useState(false);
-  const hints = mcpHints(info.id, info.effect);
   const call = mcpCall(info.id, chosen, info.effect);
   const confirmNote = needsConfirm(info.effect)
     ? "Needs confirm: true on every surface."
@@ -121,34 +163,35 @@ function CommandPreview({
   return (
     <>
       <div className="flex items-start gap-3">
-        <IconTile icon={itemIcon(item)} size="lg" />
         <div className="min-w-0 grow">
+          {/* The effect tag on the right of the title line. */}
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-semibold text-base">{item.label}</span>
-            <EffectTag effect={info.effect} />
+            <span className="min-w-0 truncate font-semibold text-base">{item.label}</span>
+            <EffectTag effect={info.effect} className="ms-auto" />
           </div>
           <div className="mt-1 truncate font-mono text-muted-foreground text-xs">{info.id}</div>
         </div>
       </div>
-      <p className="-mt-1 text-[13px] text-foreground/85">
+      {/* What it does reads as secondary text, all of it muted (the confirm note was already). */}
+      <p className="-mt-1 text-[13px] text-muted-foreground">
         {info.description ? `${info.description} ` : ""}
         <span className="text-muted-foreground">{confirmNote}</span>
         {item.unavailable && <span className="text-muted-foreground"> Can't run here: {item.unavailable}.</span>}
       </p>
 
       <div data-params>
-        <Label right={<span className="text-[10px] text-muted-foreground">JSON Schema · Tab to edit</span>}>Params</Label>
+        <Label>Params</Label>
         <ParamsForm key={item.key} fields={fields} values={values} onChange={onValuesChange} errors={errors} entities={entities} />
       </div>
 
       <div>
-        <Label
-          icon={Terminal}
-          right={
+        <Label right={
+            // The app's plain copy icon (as Get help's and the CLI codes on Settings): no label, a check once copied.
             <Button
-              size="xs"
+              size="icon-xs"
               variant="ghost-muted"
-              className="h-5"
+              aria-label="Copy the CLI command"
+              title="Copy the CLI command"
               onClick={async () => {
                 if (await onCopy()) {
                   setCopied(true);
@@ -157,7 +200,6 @@ function CommandPreview({
               }}
             >
               {copied ? <Check /> : <Copy />}
-              {copied ? "Copied" : "Copy"}
             </Button>
           }
         >
@@ -170,16 +212,8 @@ function CommandPreview({
       </div>
 
       <div>
-        <Label
-          icon={Bot}
-          right={
-            <>
-              <HintBadge>readOnly: {String(hints.readOnlyHint)}</HintBadge>
-              <HintBadge>destructive: {String(hints.destructiveHint)}</HintBadge>
-            </>
-          }
-        >
-          MCP tool <span className="font-mono text-foreground/80 normal-case tracking-normal">{toolName(info.id)}</span>
+        <Label>
+          MCP tool
         </Label>
         <Code>{JSON.stringify(call)}</Code>
         {run.running && <p className="mt-1.5 text-muted-foreground text-xs">Running...</p>}
@@ -192,32 +226,7 @@ function CommandPreview({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5">
-        <Surface icon={AppWindow} name="UI" detail="window.mesh" />
-        <Surface icon={SquareTerminal} name="CLI" detail="mesh-ui run" />
-        <Surface icon={Bot} name="MCP" detail="mesh-ui mcp" />
-      </div>
-      <p className="-mt-1.5 text-[11px] text-muted-foreground">
-        One registry, one <span className="font-mono">engine.execute(id, params)</span>. Disruptive and destructive commands
-        need <span className="font-mono">confirm: true</span> on every surface.
-      </p>
     </>
-  );
-}
-
-function HintBadge({ children }: { children: ReactNode }) {
-  return <span className="rounded-sm border bg-muted px-1.5 font-mono text-[10.5px] text-foreground/80">{children}</span>;
-}
-
-function Surface({ icon: Icon, name, detail }: { icon: typeof Terminal; name: string; detail: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-[10px] border bg-muted px-2.5 py-2 text-xs">
-      <Icon className="size-[15px] shrink-0 text-muted-foreground" />
-      <span className="min-w-0">
-        {name}
-        <span className="block truncate font-mono text-[10.5px] text-muted-foreground">{detail}</span>
-      </span>
-    </div>
   );
 }
 
@@ -230,11 +239,11 @@ function EntityPreview({
   onAction: () => void;
   running: boolean;
 }) {
-  const what = item.kind === "page" ? "Page" : item.kind === "eero" ? "eero" : item.kind === "device" ? "Device" : "Profile";
+  const what =
+    item.kind === "page" ? (item.place === "section" ? "Section" : item.place === "setting" ? "Setting" : "Page") : item.kind === "eero" ? "eero" : item.kind === "device" ? "Device" : "Profile";
   return (
     <>
       <div className="flex items-start gap-3">
-        <IconTile icon={itemIcon(item)} size="lg" />
         <div className="min-w-0 grow">
           <div className="flex items-center gap-2">
           <span className="truncate font-semibold text-base">{item.label}</span>
@@ -246,13 +255,18 @@ function EntityPreview({
           <div className="mt-1 truncate text-muted-foreground text-xs">
             {what}
             {"context" in item && item.context ? ` · ${item.context}` : ""}
-            {item.kind === "page" ? ` · ${item.path}` : ""}
+            {item.kind === "page" && !item.anchor ? ` · ${item.path}` : ""}
           </div>
         </div>
       </div>
-      <p className="text-[13px] text-foreground/85">
-        {item.kind === "page" ? `Opens the ${item.label} page.` : `Opens ${item.label} in its ${what.toLowerCase()} page.`}
+      <p className="text-[13px] text-muted-foreground">
+        {item.kind === "page"
+          ? item.anchor
+            ? `Opens ${item.context} at ${item.label}.`
+            : `Opens the ${item.label} page.`
+          : `Opens ${item.label} in its ${what.toLowerCase()} page.`}
       </p>
+      <DetailsCall item={item} />
       {(item.kind === "device" || item.kind === "profile") && (
         <div>
           <Label>Actions</Label>

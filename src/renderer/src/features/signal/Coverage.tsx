@@ -16,7 +16,7 @@ import { useWrite } from "~/app/useWrite";
 import { ShareBar } from "~/components/charts/ShareBar";
 import { Button } from "~/components/ui/button";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
+import { Footnote, GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { wifiGenerationColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
@@ -28,7 +28,8 @@ type Rating = NonNullable<PlacementResult["rating"]>;
 const RATING: Record<Rating, { label: string; tone: StatusTone; fill: string }> = {
   poor: { label: "Poor", tone: "destructive", fill: "bg-destructive" },
   fair: { label: "Fair", tone: "warning", fill: "bg-warning" },
-  good: { label: "Good", tone: "success", fill: "bg-success" },
+  // Good and Strong are both fine, but each legend item needs its own marker: Good is the success colour softened.
+  good: { label: "Good", tone: "success", fill: "bg-success/55" },
   strong: { label: "Strong", tone: "success", fill: "bg-success" },
 };
 
@@ -113,11 +114,12 @@ export function CoverageSection({ eeros }: { eeros: Eero[] | undefined }) {
     ? "Scanning..."
     : !scan?.rooms.length
       ? "Link quality between eeros, per room"
-      : [`${formatCount(scan.rooms.length)} rooms`, weak > 0 ? `${formatCount(weak)} poor` : "none poor", scan.scannedAt && `scanned ${formatRelative(scan.scannedAt, now)}`].filter(Boolean).join(", ");
+      : // Zero counts are left out ("4 rooms, 1 poor, ..."), as every subtitle does.
+        [`${formatCount(scan.rooms.length)} rooms`, weak > 0 && `${formatCount(weak)} poor`, scan.scannedAt && `scanned ${formatRelative(scan.scannedAt, now)}`].filter(Boolean).join(", ");
 
   return (
     <Section
-      title="Coverage"
+      title="Coverage" when="coverage"
       description={description}
       className="gap-[15px]"
       tools={
@@ -202,7 +204,7 @@ export function UpgradeSection({ eeros, className }: { eeros: Eero[] | undefined
   const nameOf = (id: string) => eeros?.find((e) => e.id === id)?.location ?? "An eero";
   const description = !report ? "-" : total === 0 ? "No wireless devices scanned" : `${formatPercent((modern / total) * 100)} support Wi-Fi 6 or newer`;
   return (
-    <Section title="Upgrade report" description={description} className={cn("gap-[15px]", className)}>
+    <Section title="Upgrade report" when="upgradeReport" description={description} className={cn("gap-[15px]", className)}>
       {query.error && !report ? (
         <SectionError what="the upgrade report" error={query.error} onRetry={() => void query.refetch()} />
       ) : (
@@ -215,22 +217,20 @@ export function UpgradeSection({ eeros, className }: { eeros: Eero[] | undefined
               segments={(report?.byGeneration ?? []).map((g) => ({ label: GEN_LABEL[g.generation], value: g.devices, color: wifiGenerationColors[g.generation] }))}
             />
           )}
-          {report && (report.limitingEeros.length > 0 || report.notes.length > 0) && (
+          {/* The eeros that hold devices back are data, so they stay in the card. */}
+          {report && report.limitingEeros.length > 0 && (
             <ul className="flex flex-col gap-1 border-border/50 border-t pt-3 text-xs">
               {report.limitingEeros.map((e) => (
                 <li key={e.eeroId}>
                   <span className="font-medium">{nameOf(e.eeroId)}</span> <span className="text-muted-foreground">· {e.reason}</span>
                 </li>
               ))}
-              {report.notes.map((n) => (
-                <li key={n} className="text-muted-foreground">
-                  {n}
-                </li>
-              ))}
             </ul>
           )}
         </Card>
       )}
+      {/* eero's notes explain the figures, so they go under the card (design-system.md, Footnotes). */}
+      {report && report.notes.length > 0 && <Footnote>{report.notes.join(" ")}</Footnote>}
     </Section>
   );
 }

@@ -28,6 +28,11 @@
   line-gap-override: 0%;
 }
 
+/* Key hints (components/ui/kbd.tsx): the same metric-corrected mono, so a key's label sits in the middle of its cap. */
+@utility font-kbd {
+  font-family: "Mesh Mono Field", "Liberation Mono", ui-monospace, monospace;
+}
+
 [data-slot="input-control"].font-mono {
   font-family: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Mesh Mono Field", "Liberation Mono", monospace;
 }
@@ -248,14 +253,19 @@ html[data-theme-id="rose"] {
  * ([data-app-sidebar] in its index.css): not the theme's sidebarBorder role
  * but a hairline of the sidebar's text colour, 10% in light and 8% in dark,
  * so it never stands out. Rose (T3's T3 Chat) keeps its tinted divider in dark.
+ * `[data-sidebar-surface]` gives the same edge to a panel drawn in the sidebar's
+ * surface (the search palette's command panel).
  */
-[data-app-sidebar] {
+[data-app-sidebar],
+[data-sidebar-surface] {
   border-color: color-mix(in srgb, var(--color-sidebar-foreground) 10%, transparent);
 }
-.dark [data-app-sidebar] {
+.dark [data-app-sidebar],
+.dark [data-sidebar-surface] {
   border-color: color-mix(in srgb, var(--color-sidebar-foreground) 8%, transparent);
 }
-html.dark[data-theme-id="rose"] [data-app-sidebar] {
+html.dark[data-theme-id="rose"] [data-app-sidebar],
+html.dark[data-theme-id="rose"] [data-sidebar-surface] {
   border-color: var(--color-sidebar-border);
 }
 
@@ -271,6 +281,27 @@ html.dark[data-theme-id="rose"] [data-app-sidebar] {
 .no-transitions,
 .no-transitions * {
   transition-duration: 0s !important;
+}
+
+/* Places: the section or settings row the search palette jumped to brightens its background, then fades back (lib/places.ts). No outline. */
+@keyframes place-flash {
+  0%,
+  35% {
+    background-color: color-mix(in srgb, var(--color-foreground) 9%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+[data-place-flash] {
+  border-radius: var(--radius-lg, 8px);
+  animation: place-flash 1.8s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-place-flash] {
+    animation: none;
+    background-color: color-mix(in srgb, var(--color-foreground) 9%, transparent);
+  }
 }
 
 /* Troubleshooting's Status light colors: a blinking light's dot fades out and back, about as fast as an eero blinks. */

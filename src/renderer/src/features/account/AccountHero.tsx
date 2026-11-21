@@ -161,7 +161,7 @@ export function EmailRows({ emailId, notificationsId }: { emailId?: string; noti
       {typeof on === "boolean" && (
         <div id={emailId}>
           <SettingsRow
-            title="Stay up to date"
+            title="Stay up to date" when="marketingEmails"
             description="Product news and tips from eero by email."
             control={
               <WriteSwitch

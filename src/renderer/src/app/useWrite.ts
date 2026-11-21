@@ -49,6 +49,8 @@ export type ConfirmAsk = {
   confirmLabel: string;
   /** Destructive actions on a named thing: the person types this to enable the button. */
   typeToConfirm?: string;
+  /** A plain, reversible change asked about only to be sure (the search palette's writes): no warning icon or red. */
+  calm?: boolean;
 };
 
 export type AskFn = (ask: ConfirmAsk) => Promise<boolean>;
@@ -100,7 +102,7 @@ export type WriteRequest<P = Record<string, unknown>, R = unknown> = {
   /** Muted line under the progress toast: "About 2 to 3 minutes". */
   progressDetail?: string;
   /** Confirm copy. `message` overrides the engine's needs_confirm text. */
-  confirm?: Partial<Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm">>;
+  confirm?: Partial<Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "calm">>;
   /** A `write` the UI confirms on its own (block a device): ask first, never send `confirm`. */
   askFirst?: boolean;
   /** From a form: `bad_params` goes to the fields, not a toast. */
@@ -153,6 +155,7 @@ export async function performWrite<P, R>(
       message: req.confirm?.message ?? message,
       confirmLabel: req.confirm?.confirmLabel ?? label,
       typeToConfirm: req.confirm?.typeToConfirm,
+      calm: req.confirm?.calm,
     });
 
   if (req.askFirst && !confirmed) {

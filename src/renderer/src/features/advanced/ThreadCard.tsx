@@ -96,7 +96,7 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
 
   return (
     <Row
-      title="Thread"
+      title="Thread" when="thread"
       badge={t?.enabled ? <Status tone="success">Border router</Status> : undefined}
       description="Low-power mesh for Matter and smart home accessories"
       control={<WriteSwitch on={t?.enabled} label="Thread" gate={toggle.gate} busy={toggle.write.running} onToggle={turn} />}

@@ -205,21 +205,62 @@ be found and run here, with the same params and confirm rules as the CLI and
 MCP.
 
 **Open and close.** `Ctrl+K` (`⌘K`), the topbar search field, or `>` typed
-anywhere outside an input. `Esc` closes. Opens centred over the main pane on
+anywhere outside an input. `Esc`, a click outside it, or the close button
+(an X at the right of the input row) close it. Opens centred over the main pane on
 a dimmed, slightly blurred backdrop.
 
-**Input row.** Search icon, query text, a result count ("10 results"), scope
-chips with counts (All, Commands, Devices, Profiles; eeros appear as a scope
-when they match) and an `Esc` key hint.
+**Input row.** Search icon, query text, a result count ("10 results"), a
+**Search in** dropdown (`tool` size; All, Commands, Pages, eeros, Devices,
+Profiles, each with its icon and count in the list, the trigger showing the
+picked name; it replaced a row of scope pills on 2026-11-21 to calm the
+header; Tab reaches it from the input, and picking a scope or Esc on its
+list puts focus back in the search box) and a close X (ghost icon button, tooltip "Close (Esc)").
 
-**Results list** (left), grouped with uppercase group headers and counts:
+**Results list** (left), grouped with uppercase group headers and counts: the selected row (arrow keys or hover) is a plain background, as in the
+sidebar, with no outline or side bar;
 
 - **Commands.** Icon, label with the match highlighted ("Pause profile..."),
-  the command id in mono under it (`profile.pause`), an effect chip on the
-  right (`query`, `write`, `disruptive`, `destructive`, each with a small
-  dot) and a shortcut if one exists (`Ctrl ⇧ P`). Labels ending in "..." take
+  the command id in mono under it (`profile.pause`), an effect tag on the
+  right (`query`, `write`, `disruptive`, `destructive`: a plain background
+  tag, no border or dot, normal weight; `disruptive` in the warning colour,
+  `destructive` in the destructive colour, the others in the text colour) and a shortcut if one exists (`Ctrl ⇧ P`). Labels ending in "..." take
   params. A row can be a command with preset params, shown after the id
   (`device.list {"paused":true}`).
+- **Places.** Every page, plus every section and settings row on them
+  ("DNS · Advanced networking", "IPv6 firewall rules · Reservations &
+  ports"): the label, then the page muted. With nothing typed only the
+  pages show; a place matches its title, then (ranked lower) its page.
+  Choosing one opens the page, scrolls its column to the section: a
+  section, or the section a setting sits in, starts at the top of the view
+  (22px down). Only the place itself is highlighted: its background
+  brightens for a moment and fades back (no outline). A setting so far down
+  a long section that it would land below the view goes a third of the way
+  down instead
+  (`revealPlace` in `lib/places.ts`, the `data-place` anchor every
+  `Section`, `Group` and settings `Row` renders from its title). The preview
+  says what it is ("Section · Reservations & ports") and "Opens
+  Reservations & ports at IPv6 firewall rules." It replaced the Pages group
+  on 2026-11-21.
+  - **Built from the source.** `scripts/places.ts` reads the feature files
+    with Vite's parser and keeps every `Section`, `Group`, settings `Row`
+    and `ToggleRow` with a plain-text title; the build serves it as
+    `virtual:places` (`electron.vite.config.ts`), rebuilt on every build and
+    dev reload, so nothing is kept by hand. Titles built at runtime are not
+    places.
+  - **Show-if rules.** A place its page shows only sometimes names a rule
+    with a `when` prop (`<Section title="IPv6 firewall rules"
+    when="ipv6Rules">`), from `features/palette/placeRules.ts`; Places
+    offers it only while the rule passes, and an unknown answer (data not
+    loaded) hides it. The rules read `network.get`, `settings.get`,
+    `account.get`, `guest.get` and `wifi.get` (cached and shared with the
+    pages: read once when the palette opens if cold, never per keystroke)
+    and the two coverage scans from the cache only.
+  - **Safety net.** `places.test.ts` fails, naming the place, when a
+    section or row is under a condition in its component (`&&`, `?:`, after
+    an early return, or a component its page renders only sometimes, load
+    error branches aside) and has no `when`, or names a rule that does not
+    exist. Conditions two components up are not seen (2.4 GHz only names its
+    rule by hand).
 - **Devices / Profiles / eeros.** Entities that match, with status and a
   context line ("Leo · Upstairs Hall", "Bedtime 9 PM to 7 AM"), and on the
   right the most likely action for that entity in its current state
@@ -234,31 +275,64 @@ Schema) plus entity names from the queries already loaded (`device.list`,
 `profile.list`, `eero.list`). Ranking: exact id, label prefix, entity name,
 then fuzzy match; recently run commands rank higher for an empty query.
 
-**Preview pane** (right) for the selected row:
+**Preview pane** (right) for the selected row: its own panel in exactly
+the navigation sidebar's surface (`bg-sidebar surface-grain`) with the 1px
+edge the sidebar has on its right, the same rule (`[data-sidebar-surface]`
+in `index.css`: the sidebar's text colour at 8% in dark, 10% in light), on the
+palette's background, which is exactly the main content's
+(`bg-background surface-grain`), so the two differ as the sidebar and page
+do, with rounded corners, inset 10px from the
+results list's scrollbar and the palette's right and bottom edges. The palette has no dividers between the
+input row, the list and the preview (only the footer keeps its top
+border). The footer lists the keys (Navigate, Run, Edit params, Copy as CLI) and nothing else; the effects legend it once had is gone, since every row shows its own effect.
 
-- Icon, label, effect chip, and the id plus source file in mono
+For an eero, device or profile it shows what it is, that Enter opens its
+page, then the details read as a **CLI** line with Copy (`mesh-ui run
+device.get --params '{"device":"..."}'`) and the **MCP tool** call
+(`device_get`, read only), so a script or agent gets what the page shows,
+then the row action (Pause, Resume) under **Actions**.
+
+For a command:
+
+- Label with its effect tag at the right of the line, and the id plus source file in mono (no icon tile:
+  the panel carries no decorative icons)
   (`profile.pause · src/core/commands/profile.ts`).
 - A one-line description from the command spec, ending with its confirm rule
   ("Reversible, no confirm needed.").
+- Colours: the title in the text colour; the description, ids and code in
+  the muted colour; sub headings (Params, CLI, MCP tool, Actions) in normal
+  case, `text-[13px] font-medium` in the text colour (never small caps);
+  code blocks on a plain `bg-muted`, no border.
 - **Params**, a form generated from the zod JSON Schema: required fields
-  marked `*`, entity pickers for ids (profile, device, eero), segmented
-  controls for small enums (`range`: Day, Week). Inline hints from the
+  marked `*`, entity pickers for ids (profile, device, eero) and dropdowns
+  for enums and true/false, all the app's `Select` at its compact `tool`
+  size (28px, 12px text; this technical form fits more than other forms),
+  and text fields to match. Each field's help (its `.describe()` text from the command
+  definition) is a tooltip on its name and its control, not a line under it;
+  only a validation error shows under a field (`range`: Day, Week), never
+  pill toggles. Inline hints from the
   current state ("scheduled, Bedtime at 9 PM"). `Tab` moves
   into the form.
 - **CLI**: the exact `mesh-ui run <id> --params '{...}'` line, with Copy. Adds
   `--confirm` for disruptive and destructive commands.
-- **MCP tool**: the tool name (`profile_pause`), its hints (`readOnly`,
-  `destructive`) and the call and result JSON, noting it is the same result
+- **MCP tool**: the call and result JSON (the tool name is in the call, so
+  the heading does not repeat it) (no readOnly or destructive badges: the effect chip in the header
+  already says it), noting it is the same result
   the UI and CLI get.
-- Surfaces strip: UI (`window.mesh`), CLI (`mesh-ui run`), MCP
-  (`mesh-ui mcp`) and a note that disruptive and destructive commands need
-  `confirm: true` on every surface.
-- **Buttons:** primary Run, labelled with what will happen ("Pause Mia ↵"), and "Add to script.jsonl" (appends `{ "id", "params" }` to a
-  script buffer the user can save; local, no command).
+- **Buttons:** Run (outline: nothing in the palette is a filled call to
+  action; `Run…` with an ellipsis for a write, disruptive or destructive
+  command, since it asks first; no Enter key hint on it, the footer has it), labelled with what will happen ("Pause Mia ↵"), . ("Add to script.jsonl", a never-built script buffer, was removed on
+  2026-11-21.)
 
 **Running.** `query` commands show their result in the preview pane as
 formatted JSON with a "Copy" button and, where a page exists, "Open page".
-`write` commands run on Enter and close the palette with a toast. For
+`query` commands run on Enter with no confirm. Every change asks first, in
+the app's confirm dialog over the palette: a `write` (and a device or
+profile row action that is a write) in a calm confirm (title, what it does,
+Cancel and an outline button repeating the action; no warning icon or red,
+`calm` on the ask), sending no `confirm`; `disruptive` and `destructive` in
+the usual red confirm, sending `confirm: true`. A write then shows its toast
+with Undo. For
 `disruptive` and `destructive` commands the Run button becomes a two-step
 confirm in the preview pane (consequence text, then a danger button "Yes,
 restart network"), and only then passes `confirm: true`. A `bad_params` error

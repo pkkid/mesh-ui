@@ -21,13 +21,13 @@ import { eeroIcon } from "~/lib/deviceIcons";
 import { GatewayLabel } from "~/components/ui/badge";
 import { IconTile } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
-import { effectColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
+import { Kbd } from "~/components/ui/kbd";
 import { cn } from "~/lib/utils";
 import type { Effect } from "../../../../core/model";
 import { type Hit, highlightParts, type Item, type Kind, type Range } from "./search";
 
-export const KIND_LABEL: Record<Kind, string> = { command: "Commands", page: "Pages", eero: "eeros", device: "Devices", profile: "Profiles" };
+export const KIND_LABEL: Record<Kind, string> = { command: "Commands", page: "Places", eero: "eeros", device: "Devices", profile: "Profiles" };
 export const KIND_ICON: Record<Kind, LucideIcon> = {
   command: Terminal,
   page: FileText,
@@ -90,11 +90,13 @@ export function EffectTag({ effect, className }: { effect: Effect; className?: s
   return (
     <span
       className={cn(
-        "inline-flex h-5 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border bg-muted px-1.5 font-mono font-semibold text-[10.5px] text-foreground/80",
+        // A plain tag: a background, no border or dot, normal weight; only the ones that ask first are coloured
+        // (disruptive in the warning colour, destructive in the destructive one). `font-kbd` centres mono text.
+        "inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-md bg-muted px-1.5 font-kbd text-[10.5px] leading-none",
+        effect === "destructive" ? "text-destructive-foreground" : effect === "disruptive" ? "text-warning-foreground" : "text-foreground/80",
         className,
       )}
     >
-      <span aria-hidden className="size-[5px] rounded-full" style={{ background: effectColors[effect] }} />
       {effect}
     </span>
   );
@@ -124,12 +126,7 @@ export function Keys({ keys, className }: { keys: ReadonlyArray<string>; classNa
   return (
     <span className={cn("inline-flex gap-[3px]", className)}>
       {keys.map((k) => (
-        <kbd
-          key={k}
-          className="inline-grid h-5 min-w-5 place-items-center rounded-[5px] border border-input bg-muted px-1.5 font-mono text-[10.5px] text-muted-foreground shadow-[0_1px_0_var(--color-input)]"
-        >
-          {k}
-        </kbd>
+        <Kbd key={k}>{k}</Kbd>
       ))}
     </span>
   );
@@ -161,7 +158,7 @@ export function PaletteResults({ groups, counts, selectedKey, onSelect, onRun, l
   const loadingKinds = showLoading ? (["eero", "device", "profile"] as const).filter((k) => loading[k]) : [];
 
   return (
-    <div ref={listRef} role="listbox" aria-label="Results" className="min-h-0 overflow-y-auto border-e px-2 pt-1.5 pb-2">
+    <div ref={listRef} role="listbox" aria-label="Results" className="min-h-0 overflow-y-auto px-2 pt-1.5 pb-2">
       {empty && (
         <p className="px-2.5 pt-6 pb-2 text-center text-muted-foreground text-sm">No commands, eeros, devices or profiles match.</p>
       )}
@@ -217,8 +214,8 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
       onClick={onRun}
       className={cn(
         "relative flex cursor-pointer items-center gap-3 rounded-[10px] px-2.5 py-[7px]",
-        selected ? "bg-muted shadow-[inset_0_0_0_1px_var(--color-input)]" : "hover:bg-muted/50",
-        selected && "before:-start-2 before:absolute before:inset-y-[9px] before:w-[3px] before:rounded-e-[3px] before:bg-muted-foreground",
+        // Selected is a background only, as in the sidebar: no outline and no side bar.
+        selected ? "bg-muted" : "hover:bg-muted/50",
       )}
     >
       {item.kind === "profile" ? (
@@ -256,7 +253,7 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
           {"context" in item && item.context && (
             <span className="truncate text-[11.5px] text-muted-foreground">· {item.context}</span>
           )}
-          {item.kind === "page" && <span className="truncate font-mono text-[11px] text-muted-foreground">{item.path}</span>}
+          {item.kind === "page" && !item.anchor && <span className="truncate font-mono text-[11px] text-muted-foreground">{item.path}</span>}
         </div>
       )}
 

@@ -37,7 +37,7 @@ export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lo
 
   return (
     <Section
-      title="IPv6 firewall rules"
+      title="IPv6 firewall rules" when="ipv6Rules"
       description={rows ? (rows.length === 0 ? "No pinholes open" : `${rows.length} ${rows.length === 1 ? "pinhole" : "pinholes"} open to one device each`) : "-"}
       tools={tools}
       className="gap-[15px]"

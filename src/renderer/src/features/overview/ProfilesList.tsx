@@ -64,7 +64,7 @@ export function ProfilesList() {
   return (
     <Section
       className="gap-[15px]"
-      title="Top profiles"
+      title="Top profiles" when="nat"
       description={description}
       tools={<SectionLink to={pathFor("profiles")}>View all profiles</SectionLink>}
     >

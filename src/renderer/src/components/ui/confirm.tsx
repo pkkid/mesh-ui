@@ -16,6 +16,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { answerDialog, type ConfirmAsk, useDialogAsk, type WriteState } from "~/app/useWrite";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
+import { cn } from "~/lib/utils";
 import { Button } from "./button";
 
 function TypeToConfirm({
@@ -51,7 +52,7 @@ function TypeToConfirm({
 
 type ConfirmDialogProps = {
   /** The confirm to show, or null when closed. */
-  ask: Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm"> | null;
+  ask: Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "calm"> | null;
   onAnswer: (ok: boolean) => void;
 };
 
@@ -71,13 +72,15 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
   const current = shown.current;
   useEffect(() => setTyped(""), [ask]);
   const matches = current?.typeToConfirm === undefined || typed === current.typeToConfirm;
+  // A plain write asked about only to be sure (the search palette) is not a danger: no warning icon, no red, an outline button.
+  const calm = current?.calm === true;
 
   return (
     <Dialog open={ask !== null} onOpenChange={(open) => !open && onAnswer(false)}>
       <DialogPopup showCloseButton={false} className="max-w-md" initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}>
         <div className="flex flex-col gap-1.5 px-5 pt-5">
-          <DialogTitle className="flex items-center gap-2 text-base text-destructive-foreground">
-            <TriangleAlert className="size-4 shrink-0" />
+          <DialogTitle className={cn("flex items-center gap-2 text-base", !calm && "text-destructive-foreground")}>
+            {!calm && <TriangleAlert className="size-4 shrink-0" />}
             {current?.title}
           </DialogTitle>
           {current?.message && <DialogDescription className="text-foreground/80">{current.message}</DialogDescription>}
@@ -89,7 +92,7 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
           <Button ref={cancelRef} size="sm" variant="ghost" onClick={() => onAnswer(false)}>
             Cancel
           </Button>
-          <Button size="sm" variant="destructive" disabled={!matches} onClick={() => onAnswer(true)}>
+          <Button size="sm" variant={calm ? "outline" : "destructive"} disabled={!matches} onClick={() => onAnswer(true)}>
             {current?.confirmLabel}
           </Button>
         </div>

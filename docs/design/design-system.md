@@ -934,7 +934,11 @@ Other chart kinds in the mockups, same rules for colour and labels:
   values take the status foreground colour. Tiles sit in one card split by 1px
   borders.
 
+**Key hints** (`Kbd`, `components/ui/kbd.tsx`): a 20px cap with the label centred, set in "Mesh Mono Field" (`font-kbd`), whose metrics are corrected so mono glyphs do not ride high. Every key hint uses it or the same `font-kbd` and `leading-none`.
+
 ## Numbers and copy
+
+Speeds come from `formatMbps` / `mbpsParts` in `src/core/format.ts`: kbps below 1 Mbps, Mbps below a gigabit, then Gbps (`2.4 Gbps`; a whole gigabit drops its `.0`, `1 Gbps`), so a multi-gig link or plan never reads `2,401 Mbps`.
 
 - Shared formatters in `src/core/format.ts` (re-exported to the renderer)
   for Mbps and Gbps (kbps below 1 Mbps, so a trickle never shows as 0), MB, GB and TB, percent, ms, relative time ("2h ago",

@@ -113,7 +113,7 @@ export function ProfileCards({ profiles, devices, usage, deviceUsage, colorOf, t
 
   return (
     <Section
-      title="Your profiles"
+      title="Your profiles" when="nat"
       className="gap-[15px]"
       // "18 devices in profiles, 18 unassigned": where the network's devices sit right now.
       description={assign.loaded ? `${plural(deviceCount, "device")} in profiles, ${unassigned.length} unassigned` : "-"}

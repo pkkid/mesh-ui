@@ -13,7 +13,7 @@
  * write with an inverse in the registry toasts with Undo (`withUndo`), and
  * the preview shows "Running..." only once a confirm is answered.
  */
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { navigate, pathFor } from "~/app/router";
@@ -21,10 +21,11 @@ import { ROUTES } from "~/app/routes";
 import { execute, useCommands, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
+import { Button } from "~/components/ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
-import { cn } from "~/lib/utils";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import type { AuthStatus, DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
-import { EffectTag, KIND_ICON, KIND_LABEL, Keys, PaletteResults, useCommandIcons } from "./PaletteResults";
+import { KIND_ICON, KIND_LABEL, Keys, PaletteResults, useCommandIcons } from "./PaletteResults";
 import type { EntityOptions } from "./ParamsForm";
 import { PalettePreview, type RunState } from "./PalettePreview";
 import {
@@ -38,6 +39,7 @@ import {
   type Item,
   KINDS,
   pageItems,
+  placeItems,
   paramFields,
   profileItems,
   type Scope,
@@ -48,6 +50,10 @@ import {
   writeRequest,
 } from "./search";
 import { withUndo } from "./undo";
+import { placeShown, usePlaceContext } from "./placeRules";
+import PLACES from "virtual:places";
+import { revealPlace } from "~/lib/places";
+import { copyText } from "~/lib/clipboard";
 
 // ---------------------------------------------------------------------------
 // Open state, shared with the titlebar button
@@ -97,7 +103,8 @@ export function CommandPalette() {
         align="top"
         showCloseButton={false}
         aria-label="Command palette"
-        className="h-[min(780px,calc(100vh-80px))] w-[min(1080px,calc(100vw-48px))] overflow-hidden"
+        // Exactly the main content's surface (the page colour with the app's grain, as body has it).
+        className="h-[min(780px,calc(100vh-80px))] w-[min(1080px,calc(100vw-48px))] overflow-hidden bg-background surface-grain"
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <PaletteBody close={() => setOpen(false)} />
@@ -133,18 +140,22 @@ function PaletteBody({ close }: { close: () => void }) {
     // Only on open.
   }, []);
 
+  // What the show-if rules read: cached reads the pages share; a cold one is read once on open, never per keystroke.
+  const placeCtx = usePlaceContext(signedIn);
+
   const sources = useMemo(() => {
     const ctx = { signedIn, permissions: permissions.data ?? null, network: network.data ?? null };
     const cmds = registry ?? [];
     return {
       commands: commandItems(cmds, ctx),
-      pages: signedIn ? pageItems(ROUTES) : [],
+      // Places: the pages, then every section and settings row the page would show now (placeRules.ts).
+      pages: signedIn ? [...pageItems(ROUTES), ...placeItems(PLACES, ROUTES, (rule) => placeShown(rule, placeCtx))] : [],
       eeros: signedIn ? eeroItems(eeros.data ?? null) : [],
       devices: signedIn ? withActions(deviceItems(devices.data?.devices ?? [], profiles.data ?? null, eeros.data ?? null), cmds, ctx) : [],
       profiles: signedIn ? withActions(profileItems(profiles.data ?? null), cmds, ctx) : [],
       recent,
     };
-  }, [registry, signedIn, permissions.data, network.data, devices.data, profiles.data, eeros.data]);
+  }, [registry, signedIn, permissions.data, network.data, devices.data, profiles.data, eeros.data, placeCtx]);
 
   const result = useMemo(() => search(query, sources, scope), [query, sources, scope]);
   const hit = result.flat.find((h) => h.item.key === selected) ?? result.flat[0] ?? null;
@@ -196,7 +207,8 @@ function PaletteBody({ close }: { close: () => void }) {
         : (item.unavailable ??
           (missing.length > 0 ? `Set ${missing.join(", ")} first` : Object.keys(errors).length > 0 ? "Fix the params first" : null));
 
-  const runLabel = !item || item.kind === "command" ? "Run" : `Open ${item.label}`;
+  // A change asks first (a confirm), so its button ends in an ellipsis; a query runs at once.
+  const runLabel = !item || item.kind === "command" ? (item && item.info.effect !== "query" ? "Run\u2026" : "Run") : `Open ${item.label}`;
 
   // Writes: one useWrite for whatever is selected. Its confirm is a dialog
   // nested over the palette, so focus and Esc stay with it.
@@ -215,7 +227,13 @@ function PaletteBody({ close }: { close: () => void }) {
 
   const runItem = async (target: Item | null) => {
     if (!target) return;
-    if (target.kind === "page") return void (close(), navigate(target.path));
+    if (target.kind === "page") {
+      close();
+      navigate(target.path);
+      // A section or setting: scroll to it once its page draws it, and ring it briefly.
+      if (target.anchor) revealPlace(target.anchor);
+      return;
+    }
     if (target.kind === "eero") return void (close(), navigate(pathFor("eero", { eeroId: target.id })));
     if (target.kind === "device") return void (close(), navigate(pathFor("device", { deviceId: target.id })));
     if (target.kind === "profile") return void (close(), navigate(pathFor("profile", { profileId: target.id })));
@@ -228,27 +246,39 @@ function PaletteBody({ close }: { close: () => void }) {
     } else {
       askedFor.current = key;
       const { id: _id, params, ...options } = withUndo(writeRequest(target.info, target.label, chosen, fields), target.info, registry ?? [], network.data?.id ?? null);
-      res = await write.run(params, options);
+      // Every change from the palette asks first: disruptive and destructive through the engine's confirm, a plain
+      // write through the same dialog (askFirst; it sends no `confirm`). Only queries run straight away.
+      res = await write.run(params, target.info.effect === "write" ? { ...options, ...askWrite(target.label, target.info.description) } : options);
       inputRef.current?.focus(); // the confirm had focus; keep the keyboard on the palette
     }
     if (res) remember(key);
     setRun((r) => (r.key === key ? { key, state: { running: false, result: res } } : r));
   };
 
+  /** The ask-first confirm for a plain write: its label as the title, what it does as the message. */
+  const askWrite = (label: string, description: string | null | undefined) => ({
+    askFirst: true,
+    confirm: {
+      title: `${label.replace(/\u2026$|\.\.\.$/, "")}?`,
+      message: description || "This changes your network. You can undo it from the toast afterwards.",
+      confirmLabel: label.replace(/\u2026$|\.\.\.$/, ""),
+      calm: true,
+    },
+  });
+
   /** The row action (Pause, Resume) of the selected device or profile. */
   const runAction = async () => {
     if (!item || (item.kind !== "device" && item.kind !== "profile") || !action || item.actionBlocked || busy) return;
     askedFor.current = item.key;
     const { id: _id, params, ...options } = action;
-    await write.run(params, options);
+    await write.run(params, item.actionEffect === "write" ? { ...options, ...askWrite(`${item.action} ${item.label}`, null) } : options);
     inputRef.current?.focus();
   };
 
   const copyCli = async (): Promise<boolean> => {
     if (item?.kind !== "command") return false;
     try {
-      await navigator.clipboard.writeText(cliLine(item.info.id, chosen, item.info.effect));
-      return true;
+      return await copyText(cliLine(item.info.id, chosen, item.info.effect), { toast: "Copied the CLI command" });
     } catch {
       return false;
     }
@@ -271,20 +301,30 @@ function PaletteBody({ close }: { close: () => void }) {
       void runItem(item);
     } else if (e.key === "Tab" && !e.shiftKey) {
       const first = previewRef.current?.querySelector<HTMLElement>(
-        "[data-params] :is(input, select, [role=radio][tabindex='0']):not(:disabled)",
+        "[data-params] :is(input, select, button, [role=combobox]):not(:disabled)",
       );
       if (first) {
         e.preventDefault();
         first.focus();
       }
-    } else if ((isMac() ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "c") {
-      // Copy as CLI, unless the user is copying text from the input.
-      const el = e.currentTarget;
-      if (el.selectionStart === el.selectionEnd) {
-        e.preventDefault();
-        void copyCli();
-      }
     }
+  };
+
+  /**
+   * Ctrl+C (Cmd+C) anywhere in the palette copies the selected command as a CLI line, unless real text is selected:
+   * part of the query, or text in the preview. The query's own select-all on focus does not count.
+   */
+  const onPaletteKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!((isMac() ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "c")) return;
+    if (item?.kind !== "command") return;
+    const t = e.target as HTMLElement;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) {
+      const { selectionStart: a, selectionEnd: b, value } = t;
+      const partial = a !== null && b !== null && a !== b && !(a === 0 && b === value.length && t === inputRef.current);
+      if (partial) return;
+    } else if ((window.getSelection()?.toString() ?? "") !== "") return;
+    e.preventDefault();
+    void copyCli();
   };
 
   // Enter in a params field runs too (not on buttons, which have their own Enter).
@@ -297,13 +337,16 @@ function PaletteBody({ close }: { close: () => void }) {
   };
 
   const chips: { scope: Scope; label: string; count: number | null }[] = [
-    { scope: "all", label: "All", count: null },
+    { scope: "all", label: "All", count: result.total },
     ...KINDS.filter((k) => result.mode === "text" || k === "command").map((k) => ({
       scope: k as Scope,
       label: KIND_LABEL[k],
       count: result.counts[k],
     })),
   ];
+
+  // An id search ("device.") shows commands only; "All" then reads as the active scope unless Commands is picked.
+  const activeScope: Scope = result.mode === "id" && scope !== "command" ? "all" : scope;
 
   const listLoading = {
     eero: signedIn && eeros.data === undefined,
@@ -312,8 +355,8 @@ function PaletteBody({ close }: { close: () => void }) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-[58px] shrink-0 items-center gap-3 border-b px-[18px]">
+    <div className="flex h-full min-h-0 flex-col" onKeyDown={onPaletteKey}>
+      <div className="flex h-[58px] shrink-0 items-center gap-3 px-[18px]">
         <Search className="size-[18px] shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
@@ -325,7 +368,7 @@ function PaletteBody({ close }: { close: () => void }) {
             setSelected(null);
           }}
           onKeyDown={onInputKey}
-          placeholder="Search commands, pages, eeros, devices and profiles"
+          placeholder="Search commands, places, eeros, devices and profiles"
           aria-label="Search or run a command"
           role="combobox"
           aria-expanded
@@ -336,35 +379,43 @@ function PaletteBody({ close }: { close: () => void }) {
         <span className="shrink-0 text-[13px] text-muted-foreground tabular-nums">
           {result.total} {result.total === 1 ? "result" : "results"}
         </span>
-        <div className="flex shrink-0 gap-1.5" role="radiogroup" aria-label="Scope">
-          {chips.map((c) => {
-            const Icon = c.scope === "all" ? null : KIND_ICON[c.scope];
-            const on = scope === c.scope || (c.scope === "all" && result.mode === "id" && scope !== "command");
-            return (
-              <button
-                key={c.scope}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                tabIndex={-1}
-                onClick={() => {
-                  setScope(c.scope);
-                  setSelected(null);
-                  inputRef.current?.focus();
-                }}
-                className={cn(
-                  "inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-xs outline-none",
-                  on ? "border-input bg-muted font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {Icon && <Icon className="size-3" />}
-                {c.label}
-                {c.count !== null && <span className="text-muted-foreground tabular-nums">{c.count}</span>}
-              </button>
-            );
-          })}
-        </div>
-        <Keys keys={["Esc"]} />
+        {/* What to search: a dropdown (two clicks, but a much calmer header than a row of pills), each kind with its count. */}
+        <Select
+          items={chips.map((c) => ({ value: c.scope, label: c.label }))}
+          value={activeScope}
+          onValueChange={(v) => {
+            if (!v) return;
+            setScope(v as Scope);
+            setSelected(null);
+          }}
+          // Picking a scope or Esc closes the list: typing goes on in the search box. The dropdown hands focus back to
+          // its trigger as it closes, so this waits a frame and takes it after.
+          onOpenChange={(open) => {
+            if (!open) requestAnimationFrame(() => inputRef.current?.focus());
+          }}
+        >
+          <SelectTrigger size="tool" className="w-36 shrink-0" aria-label="Search in">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {chips.map((c) => {
+              const Icon = c.scope === "all" ? null : KIND_ICON[c.scope];
+              return (
+                <SelectItem key={c.scope} value={c.scope}>
+                  <span className="flex w-full items-center gap-2">
+                    {Icon ? <Icon className="size-3.5 text-muted-foreground" /> : <span className="size-3.5" />}
+                    <span className="flex-1">{c.label}</span>
+                    {c.count !== null && <span className="text-muted-foreground tabular-nums">{c.count}</span>}
+                  </span>
+                </SelectItem>
+              );
+            })}
+          </SelectPopup>
+        </Select>
+        {/* Close: Esc and a click outside close it too, so the button needs no key hint. */}
+        <Button size="icon-sm" variant="ghost-muted" aria-label="Close" title="Close (Esc)" onClick={close}>
+          <X />
+        </Button>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_440px]" id="palette-results">
@@ -383,7 +434,13 @@ function PaletteBody({ close }: { close: () => void }) {
           commandCount={registry?.length ?? 0}
           empty={result.total === 0 && registry !== null}
         />
-        <div ref={previewRef} onKeyDown={onPreviewKey} className="flex min-h-0 flex-col">
+        {/* The preview is its own panel, rounded and inset, in exactly the navigation sidebar's surface and its 1px border colour. */}
+        <div
+          ref={previewRef}
+          onKeyDown={onPreviewKey}
+          data-sidebar-surface=""
+          className="ms-2.5 me-2.5 mb-2.5 flex min-h-0 flex-col overflow-hidden rounded-xl border bg-sidebar surface-grain"
+        >
           {item ? (
             <PalettePreview
               item={item}
@@ -402,7 +459,7 @@ function PaletteBody({ close }: { close: () => void }) {
               actionRunning={write.running}
             />
           ) : (
-            <div className="grid flex-1 place-items-center bg-card px-6 text-center text-muted-foreground text-sm">
+            <div className="grid flex-1 place-items-center px-6 text-center text-muted-foreground text-sm">
               {registry === null ? "Loading commands..." : "Nothing to preview."}
             </div>
           )}
@@ -428,11 +485,6 @@ function PaletteBody({ close }: { close: () => void }) {
           <Keys keys={isMac() ? ["⌘", "C"] : ["Ctrl", "C"]} />
           Copy as CLI
         </span>
-        <span className="ms-auto">Effects</span>
-        <EffectTag effect="query" />
-        <EffectTag effect="write" />
-        <EffectTag effect="disruptive" />
-        <EffectTag effect="destructive" />
       </div>
     </div>
   );

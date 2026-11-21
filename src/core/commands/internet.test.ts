@@ -161,7 +161,7 @@ describe("internet verdict", () => {
     expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(942, 918) }, NOW)).toEqual({
       kind: "steady",
       title: "Ziply Fiber",
-      detail: "Last test 2h ago hit 79% of your 1,200 Mbps plan",
+      detail: "Last test 2h ago hit 79% of your 1.2 Gbps plan",
     });
   });
 
@@ -169,7 +169,7 @@ describe("internet verdict", () => {
     expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(702, 846) }, NOW)).toMatchObject({
       kind: "slow",
       title: "Ziply Fiber",
-      detail: "Last test 2h ago hit 59% of your 1,200 Mbps plan",
+      detail: "Last test 2h ago hit 59% of your 1.2 Gbps plan",
     });
     expect(internetVerdict({ ...base, planMbps: plan, lastSpeedTest: test(300, 900) }, NOW).kind).toBe("slow");
   });
@@ -282,7 +282,7 @@ describe("internet commands (fake eero server)", () => {
       gateway: { eeroId: "500001", location: "Living Room", model: "eero Max 7", wanPortSpeedMbps: 2500 },
       planMbps: { down: 1000, up: 50 },
       lastSpeedTest: { at: "2026-11-12T03:00:00.000Z", downMbps: 912.4, upMbps: 40.2, rating: "great" },
-      verdict: { kind: "steady", title: "Example Fiber", detail: "Last test 20h ago hit 91% of your 1,000 Mbps plan" },
+      verdict: { kind: "steady", title: "Example Fiber", detail: "Last test 20h ago hit 91% of your 1 Gbps plan" },
     });
   });
 

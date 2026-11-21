@@ -188,6 +188,8 @@ type Phase = "wait" | "in";
 function fadeOutCopy(host: HTMLElement, scroller: HTMLElement, page: HTMLElement, done: () => void): () => void {
   const copy = page.cloneNode(true) as HTMLElement;
   for (const el of copy.querySelectorAll("[id]")) el.removeAttribute("id");
+  // Nor Places anchors: a jump must land on the new page, not on its fading copy.
+  for (const el of copy.querySelectorAll("[data-place]")) el.removeAttribute("data-place");
   copy.removeAttribute("aria-busy");
   copy.style.transform = `translateY(${-scroller.scrollTop}px)`;
   const ghost = document.createElement("div");

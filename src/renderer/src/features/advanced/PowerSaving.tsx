@@ -117,13 +117,13 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   return (
     <>
       <Row
-        title="Eco efficiency"
+        title="Eco efficiency" when="powerSaving"
         description={incapable ? NO_POWER_SAVING : "Use less power when nobody needs full speed"}
         dim={unsupported || incapable}
         control={<WriteSwitch on={ps?.enabled} label="Eco efficiency" gate={eco.gate} busy={eco.write.running} onToggle={flip(eco, "enabled", "Eco efficiency")} />}
       />
       <Row
-        title="Power saving schedule"
+        title="Power saving schedule" when="powerSaving"
         description={incapable ? "Schedules do nothing on this hardware. You can still delete them." : "Radios drop to 1x1 and LEDs turn green. Wi-Fi blips for up to 5 seconds when it starts."}
         dim={unsupported || incapable}
         control={<WriteSwitch on={ps?.scheduleEnabled} label="Power saving schedule" gate={sched.gate} busy={sched.write.running} onToggle={flip(sched, "scheduleEnabled", "The power saving schedule")} />}

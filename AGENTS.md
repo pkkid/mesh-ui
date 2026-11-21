@@ -299,6 +299,11 @@ building a new chart; port from them rather than inventing a style.
   Skip this only for changes with no visible effect.
 - See "Testing" for the sandbox rule and "Milestone runs" for how work is
   planned and reviewed.
+- Section and settings row titles are plain text (`title="DNS"`, or a fragment
+  that starts with text) so the search palette's Places can index them, and a
+  section or row a page shows only sometimes names its show-if rule with
+  `when` (`features/palette/placeRules.ts`); `places.test.ts` fails otherwise.
+  See `docs/ux/overview.md`, Places.
 - Keep changes small and the model simple. Prefer one clear file over layers of
   abstraction.
 - Do not commit secrets, tokens, or real network data (device names, MACs, IPs).

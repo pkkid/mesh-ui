@@ -370,7 +370,7 @@ export function DeviceTable(props: DeviceTableProps) {
         <Info className="size-3.5 shrink-0" />
         Offline devices drop off the list after 7 days. Paused devices stay connected but have no internet.
         <span className="ms-auto flex shrink-0 items-center gap-1.5">
-          <kbd className="rounded-[5px] border px-1.5 font-mono text-2xs">Shift</kbd>click to select a range
+          <kbd className="inline-flex h-4 items-center rounded-[5px] border px-1.5 font-kbd text-2xs leading-none">Shift</kbd>click to select a range
         </span>
       </div>
     </Card>

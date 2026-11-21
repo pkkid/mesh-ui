@@ -34,7 +34,7 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
   );
 
   return (
-    <Section title="Port forwards" description={forwardsLine(rows, publicIp)} tools={tools} className="gap-[15px]">
+    <Section title="Port forwards" when="nat" description={forwardsLine(rows, publicIp)} tools={tools} className="gap-[15px]">
       <ForwardSheet mode={sheet} onClose={() => setSheet(null)} />
       {query.error && !query.data ? (
         <SectionError what="port forwards" error={query.error} onRetry={() => void query.refetch()} />

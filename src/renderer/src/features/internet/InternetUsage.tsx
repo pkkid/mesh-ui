@@ -241,7 +241,7 @@ function ByDevice({ range }: { range: UsageRange }) {
 
   return (
     <Section
-      title="By device"
+      title="By device" when="nat"
       description={description}
       className="gap-[15px]"
       tools={<SectionLink to={pathFor("devices")}>View all devices</SectionLink>}
@@ -306,7 +306,7 @@ function ByProfile({ range }: { range: UsageRange }) {
 
   return (
     <Section
-      title="By profile"
+      title="By profile" when="nat"
       description={description}
       className="gap-[15px]"
       tools={<SectionLink to={pathFor("profiles")}>View all profiles</SectionLink>}

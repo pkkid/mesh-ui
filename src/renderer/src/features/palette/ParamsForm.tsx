@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { cn } from "~/lib/utils";
 import type { ParamField, RefKind } from "./search";
 
@@ -25,7 +25,7 @@ type Props = {
 };
 
 const CONTROL =
-  "h-[30px] w-full min-w-0 rounded-[var(--control-radius)] border border-input bg-background px-2.5 text-[12.5px] text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 disabled:opacity-64 aria-invalid:border-destructive/50 dark:bg-input/32";
+  "h-7 w-full min-w-0 rounded-md border border-input bg-background px-2.5 text-xs text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 disabled:opacity-64 aria-invalid:border-destructive/50 dark:bg-input/32";
 
 /** Optional fields shown before "N more params"; required and filled-in fields always show. */
 const FIRST_OPTIONAL = 4;
@@ -54,17 +54,18 @@ export function ParamsForm({ fields, values, onChange, errors, entities, disable
   };
 
   return (
-    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 text-[12.5px]">
+    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 text-xs">
       {visible.map((f) => {
         const id = `palette-param-${f.name}`;
         const error = errors[f.name];
         return (
           <div key={f.name} className="contents">
-            <label htmlFor={id} title={f.description ?? undefined} className="truncate pt-[7px] font-mono text-[11.5px] text-foreground/80">
+            <label htmlFor={id} title={f.description ?? undefined} className="truncate pt-[6px] font-mono text-[11px] text-foreground/80">
               {f.name}
               {f.required && <span className="text-destructive-foreground">*</span>}
             </label>
-            <div className="flex min-w-0 flex-col gap-1">
+            {/* The field's help (its `.describe()` text) is a tooltip on its name and its control, not a line under it. */}
+            <div className="flex min-w-0 flex-col gap-1" title={f.description ?? undefined}>
               <FieldControl
                 id={id}
                 field={f}
@@ -74,12 +75,7 @@ export function ParamsForm({ fields, values, onChange, errors, entities, disable
                 invalid={!!error}
                 disabled={disabled}
               />
-              {error ? (
-                <span className="text-[11px] text-destructive-foreground">{error}</span>
-              ) : (
-                f.kind !== "ref" &&
-                f.description && <span className="truncate text-[11px] text-muted-foreground">{f.description}</span>
-              )}
+              {error && <span className="text-[11px] text-destructive-foreground">{error}</span>}
             </div>
           </div>
         );
@@ -94,6 +90,43 @@ export function ParamsForm({ fields, values, onChange, errors, entities, disable
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Every choice in the form is the app's dropdown (components/ui/select) at its compact `tool` size (28px, 12px text),
+ * so the technical form fits more; text fields match it.
+ */
+function Choice({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  invalid,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  invalid: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <Select items={options} value={value} onValueChange={(v) => v !== null && onChange(v)} disabled={disabled}>
+      <SelectTrigger id={id} size="tool" className="w-full min-w-0" aria-label={label} aria-invalid={invalid || undefined}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectPopup className="max-h-[min(300px,var(--available-height))]">
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectPopup>
+    </Select>
   );
 }
 
@@ -122,67 +155,56 @@ function FieldControl({ id, field: f, value, onChange, entities, invalid, disabl
     const extra = typeof value === "string" && !options.some((o) => o.value === value) ? value : null;
     return (
       <div className="flex min-w-0 items-center gap-2">
-        <select
-          {...common}
+        <Choice
+          id={id}
+          invalid={invalid}
+          disabled={disabled}
+          label={f.name}
           value={current}
-          onChange={(e) => onChange(e.target.value === UNSET ? undefined : e.target.value === NULL ? null : e.target.value)}
-          className={cn(CONTROL, "cursor-pointer")}
-        >
-          <option value={UNSET}>{f.required ? `Choose ${article(f.refKind ?? "value")}` : "-"}</option>
-          {f.nullable && <option value={NULL}>None (null)</option>}
-          {extra && <option value={extra}>{extra}</option>}
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onChange(v === UNSET ? undefined : v === NULL ? null : v)}
+          options={[
+            { value: UNSET, label: f.required ? `Choose ${article(f.refKind ?? "value")}` : "-" },
+            ...(f.nullable ? [{ value: NULL, label: "None (null)" }] : []),
+            ...(extra ? [{ value: extra, label: extra }] : []),
+            ...options.map((o) => ({ value: o.value, label: o.label })),
+          ]}
+        />
         {hint && <span className="max-w-[45%] shrink-0 truncate text-[11px] text-muted-foreground">{hint}</span>}
       </div>
     );
   }
 
-  if (f.kind === "enum" && f.segmented) {
-    const opts = [...(f.required || f.default !== undefined ? [] : [{ value: UNSET, label: "Any" }]), ...f.options.map((o) => ({ value: o, label: o }))];
+  // Choices are dropdowns (design-system.md, Buttons and links: dropdowns, not pill toggles).
+  if ((f.kind === "enum" && f.segmented) || f.kind === "boolean") {
+    const opts =
+      f.kind === "boolean"
+        ? [...(f.required ? [] : [{ value: UNSET, label: "Any" }]), { value: "true", label: "true" }, { value: "false", label: "false" }]
+        : [...(f.required || f.default !== undefined ? [] : [{ value: UNSET, label: "Any" }]), ...f.options.map((o) => ({ value: o, label: o }))];
+    const current = f.kind === "boolean" ? (value === true ? "true" : value === false ? "false" : UNSET) : typeof value === "string" ? value : UNSET;
     return (
-      <Segmented
-        aria-label={f.name}
-        value={typeof value === "string" ? value : UNSET}
-        onValueChange={(v) => onChange(v === UNSET ? undefined : v)}
-        options={opts.map((o) => ({ ...o, disabled }))}
-        className="max-w-full self-start overflow-x-auto"
-      />
-    );
-  }
-
-  if (f.kind === "boolean") {
-    const opts = [...(f.required ? [] : [{ value: UNSET, label: "Any" }]), { value: "true", label: "true" }, { value: "false", label: "false" }];
-    return (
-      <Segmented
-        aria-label={f.name}
-        value={value === true ? "true" : value === false ? "false" : UNSET}
-        onValueChange={(v) => onChange(v === UNSET ? undefined : v === "true")}
-        options={opts.map((o) => ({ ...o, disabled }))}
-        className="self-start"
+      <Choice
+        id={id}
+        invalid={invalid}
+        disabled={disabled}
+        label={f.name}
+        value={current}
+        onChange={(v) => onChange(v === UNSET ? undefined : f.kind === "boolean" ? v === "true" : v)}
+        options={opts}
       />
     );
   }
 
   if (f.kind === "enum") {
     return (
-      <select
-        {...common}
+      <Choice
+        id={id}
+        invalid={invalid}
+        disabled={disabled}
+        label={f.name}
         value={typeof value === "string" ? value : UNSET}
-        onChange={(e) => onChange(e.target.value === UNSET ? undefined : e.target.value)}
-        className={cn(CONTROL, "cursor-pointer")}
-      >
-        {!f.required && <option value={UNSET}>-</option>}
-        {f.options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onChange(v === UNSET ? undefined : v)}
+        options={[...(f.required ? [] : [{ value: UNSET, label: "-" }]), ...f.options.map((o) => ({ value: o, label: o }))]}
+      />
     );
   }
 

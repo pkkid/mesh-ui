@@ -150,6 +150,7 @@ export function Hide5gRow({ wifi, offline }: { wifi: WifiSettings; offline: bool
 
   return (
     <SettingsRow
+      when="twoFourBand"
       title={
         <>
           2.4 GHz only

@@ -25,7 +25,12 @@ describe("formatters", () => {
     expect(formatMbps(186.4)).toBe("186 Mbps");
     expect(formatMbps(4.25)).toBe("4.3 Mbps");
     expect(formatMbps(0)).toBe("0 Mbps");
-    expect(formatMbps(2500)).toBe("2,500 Mbps");
+    expect(formatMbps(2500)).toBe("2.5 Gbps");
+    expect(formatMbps(2401)).toBe("2.4 Gbps");
+    expect(formatMbps(999.4)).toBe("999 Mbps");
+    expect(formatMbps(999.6)).toBe("1 Gbps");
+    expect(formatMbps(1000)).toBe("1 Gbps");
+    expect(formatMbps(12000)).toBe("12 Gbps");
   });
 
   it("scales a trickle below 1 Mbps to kbps, so it never reads as zero (#254)", () => {

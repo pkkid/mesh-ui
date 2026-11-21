@@ -102,7 +102,7 @@ function Isolation({ guest, networkName }: { guest: GuestNetwork | undefined; ne
   // "Internet only, same encryption as Maple Street": what guests can reach, then how they are protected.
   const description = guest === undefined ? "-" : open ? "Internet only, open with no password" : `Internet only, same encryption as ${networkName ?? "your network"}`;
   return (
-    <Section title="Isolation & security" description={description} className="gap-[15px]">
+    <Section title="Isolation & security" when="guestOn" description={description} className="gap-[15px]">
       <Card padded className="flex flex-1 flex-col gap-4">
         <div className="flex flex-col gap-3">
           <Path from={<Node icon={<Ticket />} label="Guests" />} to={<Node icon={<Globe />} label="Internet" detail="Allowed" />} allowed />

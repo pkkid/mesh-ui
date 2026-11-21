@@ -311,7 +311,7 @@ function LinkSpeedSection({ health: h, className }: SectionArgs) {
           </thead>
           <tbody>
             {(h?.bands ?? []).map((b) => (
-              <tr key={b.band} className="border-border/50 border-b last:border-b-0">
+              <tr key={b.band} className="border-border/50 border-b transition-colors last:border-b-0 hover:bg-muted/50">
                 <td className={TD}>
                   <span className="flex items-center gap-2">
                     <Square color={bandColor(b.band)} />
@@ -380,7 +380,7 @@ function RadiosSection({ health: h, className }: SectionArgs) {
           </thead>
           <tbody>
             {(h?.radios ?? []).map((row) => (
-              <tr key={row.eeroId} className="border-border/50 border-b last:border-b-0">
+              <tr key={row.eeroId} className="border-border/50 border-b transition-colors last:border-b-0 hover:bg-muted/50">
                 <td className={cn(TD, "align-top")}>
                   <div className="font-medium">{row.eero}</div>
                   <div className="text-muted-foreground text-xs">{row.model ?? MISSING}</div>
