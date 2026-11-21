@@ -14,7 +14,6 @@ import { scrollToSection } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { TopBarTitle } from "~/features/shell/TopBar";
 
-import { Footnote } from "~/components/ui/page";
 
 import { CliAgents } from "./CliAgents";
 import { SettingsHero } from "./SettingsHero";
@@ -40,7 +39,6 @@ export function SettingsPage({ params }: PageProps) {
       <div className="flex flex-col gap-14">
         <ThemePicker id={sectionId("theme")} />
         <CliAgents id={sectionId("cli")} />
-        <Footnote>Mesh UI is an independent app and is not made by eero or Amazon.</Footnote>
       </div>
     </>
   );

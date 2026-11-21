@@ -9,7 +9,9 @@
  * notifications and the light/dark toggle. Pages fill the slots with
  * <TopBarTitle> and <TopBarActions>, which portal into the bar, and report
  * how fresh their data is with `useTopBarUpdated(at)`, which Refresh's
- * tooltip shows ("Refresh (Ctrl+R) · Updated 2m ago").
+ * tooltip shows ("Refresh (Ctrl+R) · Updated 2m ago"), and on a second line
+ * how often the page updates on its own ("Updates every minute"; a page whose
+ * main data polls slower says so with `useTopBarPollEvery(seconds)`).
  */
 import { Moon, RefreshCw, Search, Sun } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -159,6 +161,36 @@ const setUpdatedAt = (at: number | null) => {
  * Reports when the page's data was last fetched; Refresh's tooltip says
  * "Updated 2m ago". Cleared when the page unmounts.
  */
+/** How often the page's main data updates on its own, in seconds; most poll every minute (src/core/poll.ts). */
+const DEFAULT_POLL_SEC = 60;
+let pollEvery = DEFAULT_POLL_SEC;
+const pollListeners = new Set<() => void>();
+function setPollEvery(sec: number) {
+  pollEvery = sec;
+  for (const l of pollListeners) l();
+}
+
+/** A page whose main data polls slower than every minute (Updates & admins, every 15 minutes) says so for Refresh's tooltip. */
+export function useTopBarPollEvery(seconds: number): void {
+  useEffect(() => {
+    setPollEvery(seconds);
+    return () => setPollEvery(DEFAULT_POLL_SEC);
+  }, [seconds]);
+}
+
+function usePollEvery(): number {
+  return useSyncExternalStore(
+    (l) => (pollListeners.add(l), () => pollListeners.delete(l)),
+    () => pollEvery,
+  );
+}
+
+/** "Updates every minute"; any other interval short, "Updates every 15m". */
+const everyLine = (sec: number) => {
+  const min = Math.round(sec / 60);
+  return min <= 1 ? "Updates every minute" : `Updates every ${min}m`;
+};
+
 export function useTopBarUpdated(at: number | null): void {
   useEffect(() => {
     setUpdatedAt(at);
@@ -194,7 +226,9 @@ function RefreshButton({ isMac }: { isMac: boolean }) {
   const at = useUpdatedAt();
   const now = useNow(15_000);
   const shortcut = `Refresh (${isMac ? "⌘R" : "Ctrl+R"})`;
-  const title = at === null ? shortcut : `${shortcut} · Updated ${formatRelative(new Date(at).toISOString(), now)}`;
+  const every = usePollEvery();
+  // Two lines (the shared tooltip keeps line breaks): the shortcut and freshness, then how often it updates on its own.
+  const title = `${at === null ? shortcut : `${shortcut} · Updated ${formatRelative(new Date(at).toISOString(), now)}`}\n${everyLine(every)}`;
   return (
     <button
       type="button"

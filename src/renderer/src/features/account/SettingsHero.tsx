@@ -99,6 +99,10 @@ export function SettingsHero({ id }: { id?: string }) {
           <>
             <Status tone={line.tone}>{line.label}</Status>
             {error && <span className="text-destructive-foreground">{error.message}</span>}
+            {/* Its own line under the update status, in that line's colour but not bold. */}
+            <span className={cn("basis-full", line.tone === "muted" ? "text-muted-foreground" : "text-foreground/80")}>
+              Mesh UI is an independent app and is not made by eero or Amazon.
+            </span>
           </>
         ) : null
       }

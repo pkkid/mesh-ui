@@ -219,7 +219,6 @@ export function ActivityPage(_props: PageProps) {
           error={streamError}
           footer={footer}
           note={note}
-          networkName={network.data?.name ?? null}
         />
       </Section>
     </>

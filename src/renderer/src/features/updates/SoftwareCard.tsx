@@ -1,25 +1,26 @@
 /**
- * Updates & admins hero: the target (or current) eeroOS, its status, the
- * release notes ("What's new") and, when an install is scheduled, the
- * "Installs automatically" countdown. Install now runs `updates.install`
+ * Updates & admins hero, the flat page header: the eeroOS every eero runs
+ * now, its status with the update's version ("Update available · 7.13.0") (and, when an install is scheduled, when it installs on
+ * its own), facts for the countdown, every eero's version and the last
+ * update, then Check for updates and Install now with "Restarts every eero"
+ * after it. "What's new" (the release notes) is the right-hand column. Install now runs `updates.install`
  * (disruptive) with core's confirm, then a progress toast and per-eero
  * progress stay until every eero is back. docs/ux/pages/updates-admins.md
  * (Layout 1) and docs/mockups/15-updates-admins.html.
  */
-import { CalendarClock, Download, RotateCcw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { execute, invalidate, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
-import { Badge } from "~/components/ui/badge";
-import { Card } from "~/components/ui/card";
-import { PageHeader } from "~/components/ui/hero";
+import { Button } from "~/components/ui/button";
+import { Metric, PageHeader } from "~/components/ui/hero";
 import { Meter } from "~/components/ui/meter";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { toast } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
-import { formatRelative, networkClock } from "../../../../core/format";
+import { networkClock } from "../../../../core/format";
 import type { Eero, ReleaseNotes, Updates } from "../../../../core/model";
 
 /** How often the install watcher reads the eeros and the update state. */
@@ -64,14 +65,14 @@ export function watchInstall(networkId: string, version: string, onDone: () => v
   setTimeout(() => void tick(), 1_000);
 }
 
-const HOUR = 3_600_000;
 
 /** eeroOS versions read the same with or without eero's leading "v". */
 export const osVersion = (v: string | null | undefined): string | null => (v ? v.replace(/^v/i, "") : null);
 
 function statusOf(u: Updates, installing: boolean): { tone: StatusTone; label: string } {
   if (installing || u.status === "installing") return { tone: "info", label: "Installing" };
-  if (u.required && u.status !== "up_to_date") return { tone: "warning", label: "Update required" };
+  // A required update reads as available too; the line under the status says when it installs on its own.
+  if (u.required && u.status !== "up_to_date") return { tone: "info", label: "Update available" };
   if (u.status === "scheduled") return { tone: "info", label: "Update scheduled" };
   if (u.status === "available") return { tone: "info", label: "Update available" };
   return { tone: "success", label: "Up to date" };
@@ -92,8 +93,9 @@ export function SoftwareCard({
   now,
   canInstall,
   networkId,
-  checkedAt,
   fading,
+  onCheck,
+  checking,
 }: {
   updates: Updates | undefined;
   notes: ReleaseNotes | null | undefined;
@@ -103,9 +105,10 @@ export function SoftwareCard({
   canInstall: boolean;
   /** The network the page shows, so the watcher keeps reading it if another one is selected. */
   networkId: string | null;
-  /** When `updates.get` last answered, for "Checked 11m ago" in the status line. */
-  checkedAt: number | null;
   fading: boolean;
+  /** Check for updates: reads `updates.get` past the engine cache. */
+  onCheck: () => void;
+  checking: boolean;
 }) {
   const gate = useGate("updates.install");
   const [watching, setWatching] = useState(false);
@@ -120,7 +123,9 @@ export function SoftwareCard({
   const clock = networkClock(timezone);
   const u = updates;
   const pending = u !== undefined && u.status !== "up_to_date" && u.target !== null;
+  // `version` is the one an install would put on (Install now, the toast); the title is what runs now.
   const version = osVersion(pending ? u.target : (u?.current ?? null));
+  const installed = osVersion(u?.current ?? null);
   const installing = watching || u?.status === "installing";
   const st = u ? statusOf(u, installing) : null;
   const releasedAt = notes?.releasedAt ?? null;
@@ -134,65 +139,73 @@ export function SoftwareCard({
     watchInstall(networkId, version, () => mounted.current && setWatching(false));
   };
 
+  // Every eero's version (eero updates them together) and anything stuck from the last update.
+  const versions = [...new Set((u?.eeros ?? []).map((e) => osVersion(e.firmware)).filter((v): v is string => v !== null))];
+  const stuck = u?.stuckEeros.length ?? 0;
+  const autoAt = scheduled !== null && u?.status === "scheduled" ? scheduled : null;
+
   const statusLine = st ? (
     <>
       <Status tone={st.tone}>{st.label}</Status>
-      {pending && u?.current && <span className="font-mono">from {osVersion(u.current)}</span>}
-      {releasedAt && <span>Released {clock.day(releasedAt).replace(/^\w+ /, "")}</span>}
-      {!pending && !installing && u?.lastUpdatedAt && <span>Last updated {clock.day(u.lastUpdatedAt).replace(/^\w+ /, "")}</span>}
-      {checkedAt !== null && <span>Checked {formatRelative(new Date(checkedAt).toISOString(), now, timezone ?? "UTC")}</span>}
+      {/* One run of text, so the version and the date sit on one baseline: "7.12.1 · Released Nov 10". */}
+      {(pending && version) || releasedAt ? (
+        <span>{[pending ? version : null, releasedAt ? `Released ${clock.day(releasedAt).replace(/^\w+ /, "")}` : null].filter(Boolean).join(" · ")}</span>
+      ) : null}
+      {/* Its own line: when eero installs it without you, and eero's reminders. */}
+      {autoAt !== null && (
+        <span className="basis-full">
+          {u?.required ? "Required: installs at the next update window." : `Installs automatically ${clock.longDate(autoAt)} at ${clock.time(autoAt)}.`} eero sends reminders 12 hours and 15
+          minutes before; turn them on or off in Account.
+        </span>
+      )}
+      {/* eero updates every eero together, so their versions are only worth a word when they differ. */}
+      {versions.length > 1 && <span className="basis-full text-warning-foreground">Your eeros are on different versions: {versions.join(", ")}.</span>}
+      {stuck > 0 && <span className="basis-full text-warning-foreground">{stuck === 1 ? "1 eero" : `${stuck} eeros`} did not finish the last update.</span>}
     </>
   ) : null;
 
   return (
     <PageHeader
-      className={cn("transition-opacity", fading && "opacity-40")}
-      icon={Download}
-      title={version ? `eeroOS ${version}` : u ? "eeroOS" : ""}
+      flat
+      data-slot="updates-hero"
+      className={cn("transition-opacity", fading && !u && "opacity-40")}
+      // The version every eero runs now; the status line names the update ("Update available · 7.13.0").
+      title={installed ? `eeroOS ${installed}` : u ? "eeroOS" : "Updates & admins"}
       status={statusLine}
       facts={
-        <>
-          {installing && <InstallProgress />}
-          <WhatsNew notes={notes} />
-        </>
+        installing ? (
+          <InstallProgress />
+        ) : u ? (
+          <>
+            {autoAt !== null && <Metric label="Installs in" value={countdown(autoAt - now)} />}
+            <Metric label="Last updated" value={u.lastUpdatedAt ? clock.day(u.lastUpdatedAt).replace(/^\w+ /, "") : "-"} />
+          </>
+        ) : null
       }
       actions={
-        pending && !installing && canInstall && u?.canUpdateNow ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <GatedButton gate={gate} disabled={install.running} onClick={() => void runInstall()}>
-              <Download />
-              Install now
-            </GatedButton>
-            <Badge variant="warning">
-              <RotateCcw />
-              Disruptive · all eeros restart
-            </Badge>
-          </div>
-        ) : undefined
+        <>
+          <Button variant="outline" className={DIM_ICON} disabled={checking || installing} onClick={onCheck}>
+            <RefreshCw className={cn(checking && "animate-spin motion-reduce:animate-none")} />
+            Check for updates
+          </Button>
+          {pending && !installing && canInstall && u?.canUpdateNow && (
+            <>
+              {/* The page's call to action: the one filled button in the hero. */}
+              <GatedButton gate={gate} disabled={install.running} onClick={() => void runInstall()}>
+                <Download />
+                Install now{"\u2026"}
+              </GatedButton>
+            </>
+          )}
+        </>
       }
-      aside={
-        scheduled !== null && u?.status === "scheduled" ? (
-          <Card padded className="flex w-72 flex-col gap-3 bg-muted/30">
-            <div className="flex items-center gap-2.5">
-              <CalendarClock className="size-4 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="font-medium text-sm">Installs automatically</div>
-                <div className="text-2xs text-muted-foreground">
-                  {u.required ? "At the next update window, required" : `${clock.longDate(scheduled)} at ${clock.time(scheduled)}`}
-                </div>
-              </div>
-            </div>
-            <div className="font-semibold text-2xl tabular-nums">
-              {countdown(scheduled - now)} <span className="font-normal text-muted-foreground text-xs">to go</span>
-            </div>
-            <Meter value={Math.max(0, 24 * HOUR - (scheduled - now))} max={24 * HOUR} label="Time until the update window" />
-            <div className="text-2xs text-muted-foreground">eero sends reminders 12 hours and 15 minutes before. Turn them on or off in Account.</div>
-          </Card>
-        ) : undefined
-      }
+      asideFit="w-[388px]"
+      aside={<WhatsNew notes={notes} />}
     />
   );
 }
+
+const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 /** Each eero while the install runs: restarting or back, with a meter of how many are back. */
 function InstallProgress() {
@@ -220,17 +233,24 @@ function InstallProgress() {
   );
 }
 
+/**
+ * The hero's right-hand column: eero's release notes under a title, as Advanced networking's How changes apply.
+ * The title names the version the notes are for ("What's new in 7.13.0"). It fills the column the header gives it (as tall as the left side) and scrolls
+ * when eero lists more than fits, so the header never grows.
+ */
 function WhatsNew({ notes }: { notes: ReleaseNotes | null | undefined }) {
-  if (notes === undefined) return <div className="h-5" />;
-  if (notes === null || notes.features.length === 0) return <div className="text-muted-foreground text-xs">No release notes from eero for this version.</div>;
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="font-medium text-xs">What's new</div>
-      <ul className="list-disc space-y-0.5 ps-4 text-foreground/80 text-sm">
-        {notes.features.map((f) => (
-          <li key={f}>{f}</li>
-        ))}
-      </ul>
+    <div data-slot="whats-new" className="flex h-full flex-col gap-2 text-xs">
+      <h2 className="shrink-0 font-semibold text-base text-foreground leading-7">{notes ? `What's new in ${osVersion(notes.version)}` : "What's new"}</h2>
+      {notes === undefined ? null : notes === null || notes.features.length === 0 ? (
+        <p className="text-muted-foreground">No release notes from eero for this version.</p>
+      ) : (
+        <ul className="flex min-h-0 flex-1 list-disc flex-col gap-1 overflow-y-auto ps-4 pe-1 text-muted-foreground">
+          {notes.features.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

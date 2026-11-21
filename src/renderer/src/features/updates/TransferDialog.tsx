@@ -13,7 +13,6 @@ import { ArrowRightLeft, TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
 
 import { defaultDeps, fieldErrors, performWrite } from "~/app/useWrite";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
@@ -42,13 +41,8 @@ export function TransferNetwork({ network }: { network: Network }) {
   return (
     <Section
       title="Transfer network"
-      subtitle={`Hand ${name} to someone else`}
-      tools={
-        <Badge variant="error">
-          <TriangleAlert />
-          Destructive · owner only
-        </Badge>
-      }
+      description={`Hand ${name} to someone else; owner only`}
+      className="gap-[15px]"
     >
       <Card padded className="flex flex-col gap-4">
         <ol className="grid gap-3 sm:grid-cols-4">
@@ -72,16 +66,16 @@ export function TransferNetwork({ network }: { network: Network }) {
           </div>
         ) : gate.allowed ? (
           <div>
-            <Button size="sm" variant="destructive" onClick={() => setOpen(true)}>
+            <Button variant="destructive" onClick={() => setOpen(true)}>
               <ArrowRightLeft />
-              Start transfer
+              Start transfer{"\u2026"}
             </Button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <GatedButton gate={gate} size="sm" variant="destructive">
+            <GatedButton gate={gate} variant="destructive">
               <ArrowRightLeft />
-              Start transfer
+              Start transfer{"\u2026"}
             </GatedButton>
             <span className="text-muted-foreground text-xs">{gate.reason}</span>
           </div>

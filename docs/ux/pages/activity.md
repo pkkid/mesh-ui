@@ -23,19 +23,18 @@ Titlebar: breadcrumbs only (no page actions), then the global search, Refresh an
      - No Range dropdown: the stream is live, so there is no older window to pick.
      - Under the bar, while any is set: one chip per popover filter ("Type: Devices, Firmware", or "Type: 3 types" past two; "Device: Alex's iPhone", "eero: Living Room", "Profile: Alex") with an x to remove it, then **Clear all**, which clears them (search stays).
    - Day bars (group header rows: `text-3xs` uppercase label on `bg-muted`): `Today`, `Yesterday`, then weekday names (only while the app stays open that long). Within the last 24 hours each shows the date, that day's event count in the window and a small per hour sparkline strip; an older day shows the date alone.
-   - Event rows: time (mono, right aligned), icon, title, a muted detail line (band, channel, MAC, IP, profile), and a right side slot holding a contextual action and either the row menu (device rows) or a dim `View ...` text link to where the row leads.
+   - Event rows: time (mono, right aligned), icon, title, a muted detail line (band, channel, MAC, IP, profile), and a right side slot holding a contextual action and a dim `View ...` text link to where the row leads.
    - Rows carry no unread dots or counts: eero keeps no read flag per event or notification, only one `has_unread` for the whole network.
    - Grouped rows (e.g. "Garage mesh link dropped to 2 bars", no count badge) show an indented sub list of the underlying events with their times.
    - Footer row inside the card: **Load older events** button while there is an older page, nothing else. At the end, a footnote under the card (the page kit's `Footnote`, not a row in it): "eero shares only its last 15 minutes; newer events are added while Mesh UI is open." With no events: "No events yet. New ones show up here as they happen."
    - Row actions: **Assign profile** (profile menu) on a new device that is still Unassigned, **Resume** on a profile pause while the profile is paused, **Unblock** on a block while the device is blocked. Core sets `action` on the newest such row per device or profile; the button shows only while the target still needs it, so Resume goes away once the profile runs again. Each runs the M4 command through the write kit with its success toast and Undo, and a closed gate (the command's own gate) hides it.
-   - Links: device rows reach their device through the row menu's **Device details** only (no separate link); rows with other refs end in **View profile** or **View eero**; firmware rows in **View updates** and grouped eero rows in **View troubleshooting**. These are text links (they only navigate), never buttons. The real stream carries no refs (M5.1 capture: 5 of 5 rows had only `hash`, `timestamp_ms`, `description`, `category`), so core links a row by name only where it is unambiguous: exactly one device, eero or profile whose name stands alone in the description (not inside a longer word or a possessive, the longest name wins so "Living Room TV" is the device and not the Living Room eero). A name two things share, or two devices named in one row, links nothing; such a row keeps only its page link, if any, and offers no action.
-   - Row menu (M6.10): every row linked to a device ends in a `...` menu with **Rename device…** (a small dialog with the nickname; empty uses the device's own name), **Block device…** (the block confirm; **Unblock device** while the device is blocked) and **Device details**. Each item names what it acts on. Rename and Block need the device in the device list, so a device eero no longer lists keeps only Device details. A closed gate (`device.rename`, `device.block` or `device.unblock`) disables the item with its reason, as on Devices.
+   - Links: every row that leads somewhere ends in one dim text link (`SectionLink`): **View device** for a device, **View profile**, **View eero**, **View updates** for firmware, **View troubleshooting** for a grouped eero problem. No `...` menu (removed 2026-11-21, it had Rename device…, Block device… and Device details): renaming and blocking happen on the device page.
 
 Row actions shown in the mockup:
 
 | Event | Right side |
 | --- | --- |
-| New device joined | **Assign profile** button, row menu |
+| New device joined | **Assign profile** button, **View device** |
 | Profile paused | **Resume** button |
 | Update available | **View updates** link |
 | Speed test | status "Fast" |
@@ -72,9 +71,7 @@ Row actions shown in the mockup:
 | Mark notifications read | `notifications.mark_read` | write | no | Unread notifications status, the button itself and the bell dot clear; "Marked all read" toast, no Undo |
 | Notification settings… | none (opens the sheet) | | | The Notification settings sheet, over Activity |
 | Assign profile | `device.profile.set` `{devices: [device], profile}` | write | only when the profile is paused or in a scheduled pause now | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
-| Row menu: Rename device | `device.rename` `{device, nickname}` | write | no | Dialog; "Renamed to X" toast with Undo; field errors stay in the dialog |
-| Row menu: Block device, Unblock device | `device.block` / `device.unblock` `{devices: [device]}` | disruptive (Block) / write | Block: confirm dialog | "Blocked X" toast with Undo |
-| Row menu: Device details | none (navigation) | | | Opens the device page |
+| View device | none (navigation) | | | Opens the device page |
 | Resume | `profile.resume` `{profile}` | write | no | "Resumed Leo" toast with Undo (`profile.pause`, which asks first); the button goes; a "resumed" event appears on a later poll |
 | Unblock | `device.unblock` `{devices: [device]}` | write | no | "Unblocked X" toast with Undo (`device.block`); the button goes |
 | View updates, View troubleshooting, View profile / eero | none (navigation) | | | [Updates & admins](updates-admins.md), [Troubleshooting](troubleshooting.md) |

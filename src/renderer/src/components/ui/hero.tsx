@@ -23,6 +23,12 @@ type PageHeaderProps = Omit<React.ComponentProps<"div">, "title"> & {
   actions?: React.ReactNode;
   /** Right-hand column: hero figures, gauges, QR block. */
   aside?: React.ReactNode;
+  /**
+   * The right-hand column never makes the header taller than its left side: it takes this fixed width
+   * (`w-[388px]`), stretches to the left side's height, and its content fills it (`absolute inset-0`), so a long
+   * aside scrolls inside (Updates & admins' What's new).
+   */
+  asideFit?: string;
   /** No card: the header sits on the page, divided from what follows by a bottom rule. */
   flat?: boolean;
 };
@@ -32,7 +38,7 @@ function isIcon(icon: unknown): icon is LucideIcon {
   return typeof icon === "function" || (typeof icon === "object" && icon !== null && "render" in icon);
 }
 
-function PageHeader({ title, icon, status, facts, actions, aside, flat = false, className, ...props }: PageHeaderProps) {
+function PageHeader({ title, icon, status, facts, actions, aside, asideFit, flat = false, className, ...props }: PageHeaderProps) {
   const Icon = isIcon(icon) ? icon : null;
   return (
     <ButtonSizeContext value={HERO_BUTTON_SIZE}>
@@ -57,7 +63,14 @@ function PageHeader({ title, icon, status, facts, actions, aside, flat = false, 
               )}
             </div>
           </div>
-          {aside && <div className="flex shrink-0 items-center gap-7">{aside}</div>}
+          {aside &&
+            (asideFit ? (
+              <div className={cn("relative shrink-0 self-stretch", asideFit)}>
+                <div className="absolute inset-0">{aside}</div>
+              </div>
+            ) : (
+              <div className="flex shrink-0 items-center gap-7">{aside}</div>
+            ))}
         </div>
       </div>
     </ButtonSizeContext>

@@ -14,6 +14,7 @@ import { useWrite } from "~/app/useWrite";
 import { BarChart } from "~/components/charts/BarChart";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { SectionError, useGate } from "~/components/ui/page";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
@@ -27,8 +28,7 @@ const clockLabel = (h: number): string => hourLabel(h).replace(" ", ":00 ");
 /** Plot left edge: the Y label gutter (w-14) plus the gap-2 beside it. */
 const GUTTER = "4rem";
 
-const selectClass =
-  "h-7 rounded-[var(--control-radius)] border border-input bg-card px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60";
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
 /** "2:00 AM to 5:00 AM", the window eero installs in. */
 export const windowLabel = (start: number, len = 3): string => `${clockLabel(start)} to ${clockLabel((start + len) % 24)}`;
@@ -47,6 +47,11 @@ export function QuietHours({ preferredHour, canChange }: { preferredHour: number
   // The window as one or two bands (it can wrap past midnight).
   const bands = start === undefined ? [] : start + len <= 24 ? [[start, len]] : [[start, 24 - start], [0, start + len - 24]];
   const editable = canChange && gate.allowed && preferredHour !== undefined;
+  // "2:00 AM to 5:00 AM, the quietest window" or "2:00 AM to 5:00 AM, quietest 3:00 AM to 6:00 AM": the window, then how it compares.
+  const description =
+    start === undefined
+      ? "-"
+      : [windowLabel(start, len), d?.quietest ? (isQuietest ? "the quietest window" : `quietest ${windowLabel(d.quietest.start, len)}`) : null].filter(Boolean).join(", ");
 
   const choose = (hour: number) => {
     if (hour === start) return;
@@ -64,28 +69,28 @@ export function QuietHours({ preferredHour, canChange }: { preferredHour: number
   return (
     <Section
       title="Preferred update time"
-      subtitle="Average data per hour, last 7 days"
+      description={description}
+      className="gap-[15px]"
       tools={
         <span className="inline-flex items-center gap-2" title={canChange && !gate.allowed ? (gate.reason ?? undefined) : undefined}>
           {editable && d?.quietest && d.quietest.start !== start && (
-            <Button variant="ghost" disabled={setHour.running} onClick={() => d.quietest && choose(d.quietest.start)}>
+            <Button variant="outline" disabled={setHour.running} onClick={() => d.quietest && choose(d.quietest.start)}>
               Use quietest
             </Button>
           )}
-          <select
-            aria-label="Preferred update time"
-            className={selectClass}
-            value={start ?? ""}
-            disabled={!editable || setHour.running}
-            onChange={(e) => choose(Number(e.target.value))}
-          >
-            {start === undefined && <option value="">Not set</option>}
-            {Array.from({ length: 24 }, (_, h) => (
-              <option key={h} value={h}>
-                {windowLabel(h, len)}
-              </option>
-            ))}
-          </select>
+          <Select items={HOURS.map((h) => ({ value: String(h), label: windowLabel(h, len) }))} value={start === undefined ? null : String(start)} onValueChange={(v) => v !== null && choose(Number(v))}>
+            <SelectTrigger size="tool" aria-label="Preferred update time" disabled={!editable || setHour.running}>
+              <SelectValue placeholder="Not set" />
+            </SelectTrigger>
+            {/* 24 windows: the list stops at 300px (or less where the window is short) and scrolls. */}
+            <SelectPopup className="max-h-[min(300px,var(--available-height))]">
+              {HOURS.map((h) => (
+                <SelectItem key={h} value={String(h)}>
+                  {windowLabel(h, len)}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
         </span>
       }
     >

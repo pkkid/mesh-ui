@@ -1,6 +1,7 @@
 /**
- * Updates & admins: software status with the release notes, every eero's
- * version, the preferred update time with the quiet-hours chart, then the
+ * Updates & admins: the flat hero is eeroOS (status, every eero's version,
+ * Check for updates and Install now, the release notes on the right), then,
+ * in one full-width column, the preferred update time with the quiet-hours chart, then the
  * admins and invites, and Transfer network (owner only). Install now, the
  * preferred hour, invites, removing admins and the transfer are writes
  * through the write kit. Owner and admin views follow `admin.list` (who
@@ -8,20 +9,18 @@
  * Layout, data and states: docs/ux/pages/updates-admins.md and
  * docs/mockups/15-updates-admins.html.
  */
-import { RefreshCw, Router } from "lucide-react";
+import { useState } from "react";
 
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
-import { Button } from "~/components/ui/button";
-import { IconTile } from "~/components/ui/hero";
-import { Row, RowList, SectionError, useNow } from "~/components/ui/page";
-import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
-import { networkClock } from "../../../../core/format";
+import { SectionError, useNow } from "~/components/ui/page";
+import { TopBarTitle, useTopBarPollEvery } from "~/features/shell/TopBar";
+import { POLL } from "../../../../core/poll";
 import type { AdminList, Network, ReleaseNotes, Updates } from "../../../../core/model";
 
 import { Admins } from "./Admins";
 import { QuietHours } from "./QuietHours";
-import { osVersion, SoftwareCard } from "./SoftwareCard";
+import { SoftwareCard } from "./SoftwareCard";
 import { TransferNetwork } from "./TransferDialog";
 
 export function UpdatesPage(_: PageProps) {
@@ -30,60 +29,43 @@ export function UpdatesPage(_: PageProps) {
   const notes = useQuery<ReleaseNotes | null>("updates.notes");
   const admins = useQuery<AdminList>("admin.list");
   const now = useNow(60_000);
+  const [checking, setChecking] = useState(false);
+  // The page's main data, eero's update state, polls every 15 minutes: Refresh's tooltip says so.
+  useTopBarPollEvery(POLL.updates);
 
   const timezone = network.data?.timezone ?? null;
   const u = updates.data;
   const myRole = admins.data?.admins.find((a) => a.isYou)?.role ?? network.data?.role ?? null;
+  // Check for updates (in the hero, beside Install now): `updates.get` past the engine cache.
+  const check = () => {
+    if (checking) return;
+    setChecking(true);
+    void updates.refetch({ fresh: true }).then(() => setChecking(false));
+  };
 
   return (
     <>
       <TopBarTitle>Updates &amp; admins</TopBarTitle>
-      <TopBarActions>
-        <Button size="xs" variant="outline" className="no-drag" onClick={() => void updates.refetch({ fresh: true })} disabled={updates.loading}>
-          <RefreshCw />
-          Check for updates
-        </Button>
-      </TopBarActions>
-
       {updates.error && !u ? (
         <SectionError what="software updates" error={updates.error} onRetry={() => void updates.refetch()} />
       ) : (
-        <SoftwareCard updates={u} notes={notes.error ? null : notes.data} timezone={timezone} now={now} canInstall={myRole === "owner"} networkId={network.data?.id ?? null} checkedAt={updates.fetchedAt} fading={updates.fading} />
+        <SoftwareCard
+          updates={u}
+          notes={notes.error ? null : notes.data}
+          timezone={timezone}
+          now={now}
+          canInstall={myRole === "owner"}
+          networkId={network.data?.id ?? null}
+          fading={updates.fading}
+          onCheck={check}
+          checking={checking}
+        />
       )}
-
-      <EveryEero updates={u} timezone={timezone} />
-      <QuietHours preferredHour={u ? u.preferredHour : undefined} canChange={myRole === "owner"} />
-      <Admins list={admins} timezone={timezone} myRole={myRole} />
-      {myRole === "owner" && network.data && <TransferNetwork network={network.data} />}
+      <div className="flex flex-col gap-14">
+        <QuietHours preferredHour={u ? u.preferredHour : undefined} canChange={myRole === "owner"} />
+        <Admins list={admins} timezone={timezone} myRole={myRole} />
+        {myRole === "owner" && network.data && <TransferNetwork network={network.data} />}
+      </div>
     </>
-  );
-}
-
-/** "Living Room, Office and Garage": a plain list for a sentence. */
-function listOf(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
-function EveryEero({ updates, timezone }: { updates: Updates | undefined; timezone: string | null }) {
-  const clock = networkClock(timezone);
-  if (!updates) return <div className="h-[58px]" />;
-  const names = updates.eeros.map((e) => e.location);
-  const versions = [...new Set(updates.eeros.map((e) => osVersion(e.firmware)).filter((v): v is string => v !== null))];
-  const last = updates.lastUpdatedAt;
-  return (
-    <RowList>
-      <Row>
-        <IconTile icon={Router} />
-        <div className="min-w-0 flex-1">
-          <div className="font-medium text-sm">Every eero updates together</div>
-          <div className="text-muted-foreground text-xs">
-            {names.length === 0 ? "No eeros on this network." : `${listOf(names)} ${names.length === 1 ? "was" : "were"} last updated ${last ? `on ${clock.dateTime(last).replace(",", " at")}` : "at an unknown time"}`}
-            {versions.length > 1 ? `. Versions differ: ${versions.join(", ")}` : versions.length === 1 ? `, all on eeroOS ${versions[0]}` : ""}
-            {updates.stuckEeros.length > 0 ? `. ${updates.stuckEeros.length} did not finish the last update` : ""}
-          </div>
-        </div>
-      </Row>
-    </RowList>
   );
 }

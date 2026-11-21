@@ -10,7 +10,7 @@
  * read only, without invites or the invite card.
  * docs/ux/pages/updates-admins.md (Layout 4 and 5).
  */
-import { Crown, Mail, RefreshCw, UserMinus, UserPlus } from "lucide-react";
+import { Check, Crown, Mail, RefreshCw, User, UserMinus, UserPlus, X } from "lucide-react";
 import { useId, useState } from "react";
 
 import type { QueryState } from "~/app/useCommand";
@@ -19,7 +19,6 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
-import { IconTile } from "~/components/ui/hero";
 import { Input } from "~/components/ui/input";
 import { GatedButton, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
 import { QrBlock } from "~/components/ui/qr";
@@ -30,30 +29,16 @@ import type { InviteCreated } from "../../../../core/backend";
 import { networkClock } from "../../../../core/format";
 import type { Admin, AdminList, Invite, Role } from "../../../../core/model";
 
-const initials = (name: string | null): string =>
-  (name ?? "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "?";
 
-function Avatar({ name, pending = false }: { name: string | null; pending?: boolean }) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "grid size-8 shrink-0 place-items-center rounded-full font-medium text-muted-foreground text-xs",
-        pending ? "border-[1.5px] border-muted-foreground/50 border-dashed" : "bg-muted shadow-[inset_0_0_0_1px_var(--color-border)]",
-      )}
-    >
-      {pending ? <Mail className="size-3.5" /> : initials(name)}
-    </div>
-  );
+/** A row's leading mark: a small plain icon, no circle or border (the app does not use avatars; design-system.md). */
+function RowIcon({ icon: Icon }: { icon: typeof User }) {
+  return <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />;
 }
 
 /** Invite nicknames, as core checks them. */
 const NICKNAME_MAX = 32;
+
+const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>; timezone: string | null; myRole: Role | null }) {
   const d = list.data;
@@ -94,7 +79,13 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
 
   return (
     <>
-      <Section title="User permissions" subtitle={d ? `${d.seatsUsed} of ${d.seatsMax} admin seats used` : null}>
+      {/* User permissions (with the invite as its last row) beside the roles reference. */}
+      <div className="grid items-start gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <Section
+        title="User permissions"
+        description={d ? [`${d.seatsUsed} of ${d.seatsMax} admin seats used`, d.invites.length > 0 && `${d.invites.length} ${d.invites.length === 1 ? "invite" : "invites"} pending`].filter(Boolean).join(", ") : "-"}
+        className="gap-[15px]"
+      >
         {list.error && !d ? (
           <SectionError what="admins" error={list.error} onRetry={() => void list.refetch()} />
         ) : !d ? (
@@ -103,7 +94,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
           <RowList className={cn("transition-opacity", list.fading && "opacity-40")}>
             {d.admins.map((a) => (
               <Row key={a.id}>
-                <Avatar name={a.name} />
+                <RowIcon icon={User} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-1.5 truncate font-medium text-sm">
                     {a.name ?? "Unnamed"}
@@ -116,16 +107,16 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                   {a.role === "owner" ? "Owner" : "Admin"}
                 </Badge>
                 {owner && a.role !== "owner" && (
-                  <GatedButton gate={removeGate} size="xs" variant="ghost" disabled={remove.running} onClick={() => removeAdmin(a)} aria-label={`Remove ${a.name ?? "admin"}`}>
+                  <GatedButton gate={removeGate} size="xs" variant="outline" className={DIM_ICON} disabled={remove.running} onClick={() => removeAdmin(a)} aria-label={`Remove ${a.name ?? "admin"}`}>
                     <UserMinus />
-                    Remove
+                    Remove{"\u2026"}
                   </GatedButton>
                 )}
               </Row>
             ))}
             {d.invites.map((i) => (
               <Row key={i.id} className="bg-muted/30">
-                <Avatar name={null} pending />
+                <RowIcon icon={Mail} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-sm">{i.nickname ?? "Admin invite"}</div>
                   <div className="truncate text-muted-foreground text-xs">Invite pending{i.expiresAt ? ` · expires ${clock.dateTime(i.expiresAt)}` : ""}</div>
@@ -133,7 +124,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                 <Status tone="warning">Pending</Status>
                 {owner && (
                   <>
-                    <GatedButton gate={inviteGate} size="xs" variant="ghost" disabled={create.running || cancel.running} onClick={() => void resend(i)}>
+                    <GatedButton gate={inviteGate} size="xs" variant="outline" className={DIM_ICON} disabled={create.running || cancel.running} onClick={() => void resend(i)}>
                       <RefreshCw />
                       Resend
                     </GatedButton>
@@ -144,31 +135,28 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                 )}
               </Row>
             ))}
+            {owner && (
+              // Inviting is the list's last row: who could be added next, with Create invite… on the right.
+              <Row>
+                <RowIcon icon={UserPlus} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium text-sm">Invite an admin</div>
+                  <div className="text-muted-foreground text-xs">
+                    {full ? "Every admin seat is in use. Remove an admin or cancel an invite to make room." : `${d.seatsMax - d.seatsUsed} of ${d.seatsMax} seats free. Share a QR code or link; it is accepted in the eero app within 48 hours.`}
+                  </div>
+                </div>
+                <GatedButton gate={full ? { allowed: false, reason: "All admin seats are in use" } : inviteGate} size="xs" variant="outline" className={DIM_ICON} onClick={() => setSheet({ created: null, nickname: "" })}>
+                  <UserPlus />
+                  Create invite{"\u2026"}
+                </GatedButton>
+              </Row>
+            )}
           </RowList>
         )}
       </Section>
-
-      <div className={cn("grid items-start gap-4", owner && "lg:grid-cols-2")}>
-        {owner && (
-          <Card padded className="flex flex-col gap-3">
-            <div className="flex items-center gap-2.5">
-              <IconTile icon={UserPlus} size="sm" />
-              <span className="font-medium text-sm">Invite an admin</span>
-            </div>
-            <p className="text-muted-foreground text-xs">
-              {full
-                ? "All admin seats are in use."
-                : "Make a single-use invite with a nickname, then share its QR code or link. The invitee accepts it in the eero app within 48 hours."}
-            </p>
-            <div>
-              <GatedButton gate={full ? { allowed: false, reason: "All admin seats are in use" } : inviteGate} size="sm" onClick={() => setSheet({ created: null, nickname: "" })}>
-                <UserPlus />
-                Create invite
-              </GatedButton>
-            </div>
-          </Card>
-        )}
-        <RolesTable />
+        <Section title="What each role can do" description="Admins cannot install updates or manage admins" className="gap-[15px]">
+          <RolesTable />
+        </Section>
       </div>
 
       {sheet && <InviteSheet initial={sheet} onClose={() => setSheet(null)} />}
@@ -263,24 +251,34 @@ const ROLES: [string, boolean, boolean][] = [
   ["Amazon, transfer or delete the network", true, false],
 ];
 
+/** Yes or no as a green check or a red cross, with the word for screen readers. */
+function Can({ yes }: { yes: boolean }) {
+  const Icon = yes ? Check : X;
+  return <Icon className={cn("mx-auto size-4", yes ? "text-success-foreground" : "text-destructive-foreground")} strokeWidth={2.5} aria-label={yes ? "Yes" : "No"} />;
+}
+
+/** One card with the table inside and no lines between its rows: only the card's own border. */
 function RolesTable() {
   return (
-    <Card>
-      <table className="w-full text-sm">
-        <caption className="px-5 pt-4 pb-2 text-start font-medium text-sm">What each role can do</caption>
+    <Card padded>
+      <table className="w-full text-sm" aria-label="What each role can do">
         <thead>
-          <tr className="border-border/50 border-b text-muted-foreground text-xs">
-            <th className="px-5 py-2 text-start font-normal">Capability</th>
-            <th className="w-20 py-2 text-center font-normal">Owner</th>
-            <th className="w-20 py-2 pe-3 text-center font-normal">Admin</th>
+          <tr className="text-muted-foreground text-xs">
+            <th className="pb-2 text-start font-normal">Capability</th>
+            <th className="w-14 pb-2 text-center font-normal">Owner</th>
+            <th className="w-14 pb-2 text-center font-normal">Admin</th>
           </tr>
         </thead>
         <tbody>
           {ROLES.map(([label, o, a]) => (
-            <tr key={label} className="border-border/50 border-b last:border-0">
-              <td className="px-5 py-2 text-foreground/80 text-xs">{label}</td>
-              <td className="py-2 text-center text-xs">{o ? "Yes" : "No"}</td>
-              <td className="py-2 pe-3 text-center text-muted-foreground text-xs">{a ? "Yes" : "No"}</td>
+            <tr key={label}>
+              <td className="py-1.5 text-foreground/80 text-xs">{label}</td>
+              <td className="py-1.5 text-center">
+                <Can yes={o} />
+              </td>
+              <td className="py-1.5 text-center">
+                <Can yes={a} />
+              </td>
             </tr>
           ))}
         </tbody>
