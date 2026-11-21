@@ -1,5 +1,4 @@
-import { Info } from "lucide-react";
-
+import { Footnote } from "~/components/ui/page";
 import type { Eero } from "../../../../core/model";
 
 /**
@@ -13,12 +12,9 @@ import type { Eero } from "../../../../core/model";
 export function WiredBackhaulNote({ eeros, wiredOnGateway }: { eeros: ReadonlyArray<Eero>; wiredOnGateway: number }) {
   if (wiredOnGateway === 0 || !eeros.some((e) => !e.isGateway && e.backhaul === "wired")) return null;
   return (
-    <div className="flex gap-2 px-1 text-muted-foreground/50 text-xs">
-      <Info className="mt-px size-3.5 shrink-0" />
-      <span>
-        Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet
-        ports straight through to the cable, so eero sees them arrive at the gateway's port.
-      </span>
-    </div>
+    <Footnote>
+      Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet ports
+      straight through to the cable, so eero sees them arrive at the gateway's port.
+    </Footnote>
   );
 }

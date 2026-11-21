@@ -91,9 +91,10 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 | Network | eeros | `router` | eero count | [pages/eeros.md](pages/eeros.md), [pages/eero-detail.md](pages/eero-detail.md) | 03, 04 |
 | Network | Devices | `monitor-smartphone` | device count | [pages/devices.md](pages/devices.md), [pages/device-detail.md](pages/device-detail.md) | 05, 06 |
 | Network | Profiles | `users` | profile count | [pages/profiles.md](pages/profiles.md), [pages/profile-detail.md](pages/profile-detail.md) | 07, 08 |
+| Network | Signal | `signal` | - | [pages/signal.md](pages/signal.md) | - |
 | Network | Activity | `activity` | - (unread lives on the bell) | [pages/activity.md](pages/activity.md) | 10 |
-| Network | Guest network | `ticket` | - | [pages/guest.md](pages/guest.md) | 11 |
-| Settings | Wi-Fi | `wifi` | - | [pages/wifi.md](pages/wifi.md) | 12 |
+| Settings | Wi-Fi network | `wifi` | - | [pages/wifi.md](pages/wifi.md) | 12 |
+| Settings | Guest network | `ticket` | - | [pages/guest.md](pages/guest.md) | 11 |
 | Settings | Advanced networking | `sliders-horizontal` | - | [pages/advanced-networking.md](pages/advanced-networking.md) | 13 |
 | Settings | Reservations & ports | `arrow-left-right` | - | [pages/reservations-ports.md](pages/reservations-ports.md) | 14 |
 | Settings | Updates & admins | `download` | - | [pages/updates-admins.md](pages/updates-admins.md) | 15 |
@@ -118,7 +119,7 @@ A popover anchored under the sidebar network row.
 - **Rows** match the sidebar row they open from: status dot, network name,
   and one muted line, "status · ISP" ("Online · Ziply Fiber"), or
   "Offline · last seen 2 days ago" for an offline network. When the network
-  has a nickname (set on the Wi-Fi page), the nickname is the name and the
+  has a nickname (set on the Wi-Fi network page), the nickname is the name and the
   Wi-Fi name leads the muted line in place of the ISP ("Kim Home · Online"). No role badge and
   no eero or device counts. The popover is the same width as the sidebar
   row and drawn on the sidebar surface (`bg-sidebar`), so the current
@@ -285,7 +286,7 @@ the ones that run commands go through `execute` like any button.
 | `Ctrl+Shift+P` | Pause profile... (palette with `profile.pause`) | Global |
 | `Ctrl+Shift+D` | Pause device... (palette with `device.pause`) | Global |
 | `Ctrl+Shift+N` | Open network switcher | Global |
-| `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Activity, Guest network | Global |
+| `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Signal, Activity (the Network group, in order) | Global |
 | `Ctrl+,` | Settings | Global |
 | `Alt+←` / `Alt+→` (`⌘[` / `⌘]`) | Back / forward | Global |
 | `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |

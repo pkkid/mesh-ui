@@ -246,10 +246,10 @@ describe("diagnostics (fake eero server)", () => {
     expect(info.eero).toEqual({
       name: "eero",
       phone: "+18775550123",
-      email: null,
+      email: "support@example.com",
       helpUrl: "https://support.example.com/help",
       contactUrl: "https://support.example.com/contact",
-      emailFormUrl: "https://support.example.com/email",
+      emailFormUrl: "mailto:support@example.com?subject=eero%20support",
     });
     expect(info.isp?.phone).toBeNull();
     expect(s.fake.log.map((l) => l.path)).toContain("/2.2/networks/100001/support");
@@ -363,6 +363,11 @@ describe("diagnostics mapping", () => {
       issueArea: "mesh",
       results: [{ name: "Mesh", status: "warning", detail: "weak" }],
     });
+  });
+
+  it("reads an issue area of none as no area, so the summary does not name one", () => {
+    for (const none of ["none", "NONE", "no_issue", "no_issues"]) expect(mapDiagnostics({ status: "completed", issue_area: none }).issueArea).toBeNull();
+    expect(mapDiagnostics({ status: "completed", issue_area: "internet" }).issueArea).toBe("internet");
   });
 
   it("maps the 2.2 support object with no ISP", () => {

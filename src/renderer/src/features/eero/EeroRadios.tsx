@@ -1,6 +1,6 @@
 /**
  * eero detail "Radios": one card with a row per band (channel, width, tx
- * power, clients and utilisation now), rows split by faint dividers like a
+ * power, devices and utilisation now), rows split by faint dividers like a
  * settings group (no card per band: no nested boxes). Missing figures show "-"; an offline eero
  * shows "-" throughout. docs/ux/pages/eero-detail.md (Layout 2).
  */
@@ -64,7 +64,7 @@ function RadioRow({ radio: r, offline }: { radio: Radio; offline: boolean }) {
           </span>
         )}
         <span className="ms-auto text-xs">
-          <b className="font-medium tabular-nums">{formatCount(clients)}</b> <span className="text-muted-foreground">clients</span>
+          <b className="font-medium tabular-nums">{formatCount(clients)}</b> <span className="text-muted-foreground">{clients === 1 ? "device" : "devices"}</span>
         </span>
       </div>
       <div className="mt-2">

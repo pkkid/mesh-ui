@@ -15,7 +15,7 @@ Every control on the page is now live. Each runs through useWrite with its comma
 - **Wireless:** Multi-link operation is a segmented Off / Single link / Multi-link (shown only when eero reports it) that confirms in the dialog with core's `settings.impact` summary and shows the pending change; Client steering is a switch with Undo; Fast roaming (some older devices may not connect with it on) and Legacy device mode (Restarts eeros) confirm in the dialog.
 - **Thread** (`ThreadCard.tsx`): the switch asks before turning Thread off ("Thread accessories lose their border router while Thread is off"). **Reveal** reads `settings.thread.credentials` on each click and shows the key until **Hide**; nothing is cached. **Copy dataset** copies eero's dataset, or, when eero sends none (a real network sends none), the network name, channel, PAN IDs, network key and PSKc as lines. **Share credentials with phone keychain** is a switch with Undo. **Regenerate credentials** opens the confirm dialog with type-the-name (the Thread network name).
 - **Danger zone** (`DangerZone.tsx`): **Restart network** confirms in the dialog and starts the restart watcher, as on the eeros page. **Delete network** opens the confirm dialog with core's message and type-the-name (the network name); after it, core selects another network and the page goes to Overview. Admins see it disabled with "Owner only"; a network that reports no role (common on real networks) leaves the check to eero.
-- **Time zone** (`settings.timezone.set`) has no row here; it is a command for the CLI, MCP and palette until the Wi-Fi page gets its row.
+- **Time zone** (`settings.timezone.set`) has no row here; it is a command for the CLI, MCP and palette until the Wi-Fi network page gets its row.
 
 ## Built in M5.2 (Internet and Network services)
 
@@ -69,7 +69,7 @@ Breadcrumb `Settings / Advanced networking`, nothing after it. Settings column o
 - **Multi-link operation** (`Wi-Fi 7` badge): switch; restarts the network (estimate from `settings.impact`, about 2 to 3 minutes) and may turn on WPA3.
 - **Client steering**: switch.
 - **Thread** (`Border router` status): switch, Thread device count. Sub panel: network name, channel, PAN ID, extended PAN ID, network key (masked, **Reveal**), border agent address. **Share credentials with phone keychain** switch. **Copy dataset** and **Regenerate credentials** (danger) with the note that regenerating disconnects every Thread device.
-- **WPA3**: link row to [Wi-Fi](wifi.md).
+- **WPA3**: link row to [Wi-Fi network](wifi.md).
 
 ### Integrations ("Smart home platforms")
 
@@ -136,7 +136,7 @@ Writes marked "confirm bar" are staged and applied together from the confirm bar
 | Share credentials with phone keychain | `settings.thread.set` `{credentialSync}` | disruptive | yes, dialog ("Nothing goes offline") | |
 | Reveal network key, Copy dataset | `settings.thread.credentials` | query | no | Shows or copies the secret |
 | Regenerate credentials | `settings.thread.reset` | destructive | dialog: every Thread device must be re-paired | |
-| WPA3 row | none (navigation) | | | [Wi-Fi](wifi.md) |
+| WPA3 row | none (navigation) | | | [Wi-Fi network](wifi.md) |
 | Unlink Amazon | `integrations.amazon.unlink` | destructive | dialog | Amazon linked features turn off |
 | eero Built-in switch | `integrations.builtin.set` `{enabled}` | disruptive | yes, dialog (off drops devices connected through an Echo) | |
 | Discover Zigbee devices | `integrations.zigbee.discover` | write | no | Note: pairing finishes in the Alexa app |

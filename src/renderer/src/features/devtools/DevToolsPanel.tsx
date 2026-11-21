@@ -4,7 +4,7 @@
  * not paused; closing it stops recording in main and drops every record.
  * Records arrive redacted from main: never the session token.
  */
-import { ExternalLink, Pause, Play, Search, X } from "lucide-react";
+import { Ban, ExternalLink, Pause, Play, Search, X } from "lucide-react";
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { InspectRecord } from "../../../../core/eero/inspect";
@@ -127,7 +127,8 @@ export function DevToolsPanel() {
   };
 
   return (
-    <section aria-label="Dev tools: eero requests" style={{ height: sizes.height }} className="relative flex shrink-0 flex-col border-t bg-card text-xs">
+    // A 2px top edge (1px everywhere else in the app) sets the panel apart as a developer view, not part of the app.
+    <section aria-label="Dev tools: eero requests" style={{ height: sizes.height }} className="relative flex shrink-0 flex-col border-t-2 bg-card text-xs">
       <div role="separator" aria-orientation="horizontal" aria-label="Resize dev tools" onPointerDown={resizeHeight} className="absolute inset-x-0 -top-1 z-10 h-2 cursor-ns-resize" />
       <div className="flex shrink-0 items-center gap-2 border-border/60 border-b px-3 py-1.5">
         <span className="flex items-center gap-2 whitespace-nowrap font-semibold">
@@ -143,27 +144,37 @@ export function DevToolsPanel() {
           icon={<Search />}
           className="ms-1 h-7 max-w-64 text-xs [&_input]:h-7"
         />
-        <Button size="xs" variant="outline" aria-pressed={errorsOnly} data-pressed={errorsOnly ? "" : undefined} onClick={() => setErrorsOnly((v) => !v)} className="data-pressed:bg-accent">
-          Errors only
+        {/* The label says what a click does: show only errors, or show every request again. */}
+        <Button size="xs" variant="outline" onClick={() => setErrorsOnly((v) => !v)}>
+          {errorsOnly ? "Show all" : "Show errors only"}
         </Button>
-        <span className="whitespace-nowrap text-muted-foreground tabular-nums">
-          {shown.length === records.length ? `${records.length} ${records.length === 1 ? "request" : "requests"}` : `${shown.length} of ${records.length}`} · {formatBytes(total)}
-        </span>
-        <span className="flex-1" />
-        <Button size="xs" variant="outline" onClick={() => setPaused((p) => !p)} disabled={available === false}>
+        {/* Pause and Clear as icons beside the filters, since they act on the same list. */}
+        <Button
+          size="icon-xs"
+          variant="outline"
+          onClick={() => setPaused((p) => !p)}
+          disabled={available === false}
+          aria-label={paused ? "Record requests" : "Pause recording"}
+          title={paused ? "Record" : "Pause"}
+        >
           {paused ? <Play /> : <Pause />}
-          {paused ? "Record" : "Pause"}
         </Button>
         <Button
-          size="xs"
+          size="icon-xs"
           variant="outline"
+          aria-label="Clear requests"
+          title="Clear"
           onClick={() => {
             setRecords([]);
             setSelected(null);
           }}
         >
-          Clear
+          <Ban />
         </Button>
+        <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+          {shown.length === records.length ? `${records.length} ${records.length === 1 ? "request" : "requests"}` : `${shown.length} of ${records.length}`} · {formatBytes(total)}
+        </span>
+        <span className="flex-1" />
         <Button size="xs" variant="outline" onClick={() => mesh?.openElectron()} title="Electron's developer tools, docked to the right">
           DevTools
           <ExternalLink />

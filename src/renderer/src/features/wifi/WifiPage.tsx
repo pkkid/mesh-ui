@@ -1,6 +1,6 @@
 /**
  * Wi-Fi: the main network's name, password (revealed only on request), QR
- * block, security per band, bands and their clients, nickname and time zone.
+ * block, security per band, bands and their devices, nickname and time zone.
  * Name, password, security and 2.4 GHz only change through the write kit
  * (M4.7); the nickname changes in NicknameSheet (`network.nickname.set`,
  * M6.9) and the time zone in TimezoneSheet (`settings.timezone.set`, M5).
@@ -9,25 +9,25 @@
  * Layout, data and
  * states: docs/ux/pages/wifi.md and docs/mockups/12-wifi-settings.html.
  *
- * The password comes from `wifi.password.get` (reveal or copy) and the QR
- * payload from `wifi.share` ("Show code"), each run with `execute` only when
- * asked, held only in this page's state and dropped on a network switch or
+ * The password comes from `wifi.password.get` (reveal or copy), run only
+ * when asked. The QR payload comes from `wifi.share`, read in the background
+ * when the page opens so "Show code" is instant (as Guest network's hero
+ * does). Both are held only in this page's state and dropped on a network switch or
  * when the page unmounts. They never enter the query
  * store, so nothing polls them. A name or password change drops them too, so
  * the next reveal reads the new ones (with M4.2's credential bypass).
  */
-import { CalendarClock, Clock, Pencil, Tag } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { PageProps } from "~/app/routes";
 import { bridge, execute, useQuery } from "~/app/useCommand";
 import { fieldErrors, type Gate, useWrite } from "~/app/useWrite";
 import { Card, Section } from "~/components/ui/card";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { Input } from "~/components/ui/input";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
-import { Sheet, SheetField } from "~/components/ui/sheet";
 import { useTopBarUpdated } from "~/features/shell/TopBar";
-import { networkClock } from "../../../../core/format";
+import { formatCount, MISSING, networkClock } from "../../../../core/format";
 import { NICKNAME_MAX } from "../../../../core/commands/network";
 import type { WifiPassword } from "../../../../core/commands/wifi";
 import type { AppInfo, DeviceList, Network, NetworkHealth, NetworkSummary, WifiSettings, WifiShare } from "../../../../core/model";
@@ -35,7 +35,7 @@ import type { AppInfo, DeviceList, Network, NetworkHealth, NetworkSummary, WifiS
 import { WifiBands } from "./WifiBands";
 import { TimezoneSheet } from "./TimezoneSheet";
 import { WifiHero } from "./WifiHero";
-import { ReadField, WifiNamePassword, WifiSecurity } from "./WifiSecurity";
+import { EditNamePasswordButton, NamePasswordRows, SecurityFootnote, SecurityRows } from "./WifiSecurity";
 
 /** A credential read on demand: `wifi.password.get` for the password field, `wifi.share` for the QR block. */
 export type Secret<R> = {
@@ -97,39 +97,67 @@ export function WifiPage(_props: PageProps) {
   const networkId = network.data?.id ?? null;
   const password = useSecret<WifiPassword>("wifi.password.get", networkId);
   const share = useSecret<WifiShare>("wifi.share", networkId);
+  // Read the QR payload in the background once the Wi-Fi settings have loaded, so Show code only reveals it. The
+  // live backend answers it from wifi.get's own GET {net} (src/core/eero/backend/wifi.ts), so it costs no request.
+  // It lives only in this page's state and is never polled; read again after a network switch or a name or password
+  // change clears it; not again after a failure, until asked.
+  const shareLoad = share.load;
+  const ready = wifi.data !== undefined;
+  useEffect(() => {
+    if (ready && networkId && !share.value && !share.loading && !share.error) void shareLoad();
+  }, [ready, networkId, share.value, share.loading, share.error]);
 
   const offline = health.data?.status === "offline" || network.data?.status === "offline";
   const data = wifi.data ?? null;
+  const [editing, setEditing] = useState(false);
+  // "27 devices rejoin after a name or password change, 3 on WPA2 only": what a change costs, then who WPA3 would drop.
+  const wpa2 = data?.wpa2OnlyDevices.length ?? 0;
+  const settingsLine = !data
+    ? "-"
+    : [
+        data.hasPassword
+          ? `${formatCount(data.wirelessClients)} ${data.wirelessClients === 1 ? "device rejoins" : "devices rejoin"} after a name or password change`
+          : "Open network, anyone nearby can join",
+        wpa2 > 0 && `${formatCount(wpa2)} on WPA2 only`,
+      ]
+        .filter(Boolean)
+        .join(", ");
 
   return (
     <>
-
       <WifiHero wifi={data} network={network.data ?? null} offline={offline} share={share} password={password} fading={wifi.fading} />
 
-      {wifi.error && !data ? (
-        <SectionError what="Wi-Fi settings" error={wifi.error} onRetry={() => void wifi.refetch()} />
-      ) : (
-        <>
-          {/* Name and password beside Encryption once the page is wide enough; stacked below that (#268). */}
-          <div className="@container">
-            <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-2">
-              <WifiNamePassword
-                wifi={data}
-                password={password}
-                offline={offline}
-                onSaved={() => {
-                  password.clear();
-                  share.clear();
-                }}
-              />
-              <WifiSecurity wifi={data} devices={devices.data?.devices ?? null} offline={offline} />
-            </div>
-          </div>
-          <WifiBands wifi={data} offline={offline} fading={wifi.fading} />
-        </>
-      )}
-
-      <Nickname network={network.data ?? null} offline={offline} />
+      <div className="flex flex-col gap-14">
+        {wifi.error && !data ? (
+          <SectionError what="Wi-Fi settings" error={wifi.error} onRetry={() => void wifi.refetch()} />
+        ) : (
+          <>
+            <WifiBands wifi={data} offline={offline} fading={wifi.fading} />
+            <Section
+              title="Wi-Fi network settings"
+              description={settingsLine}
+              className="gap-[15px]"
+              tools={<EditNamePasswordButton wifi={data} offline={offline} onClick={() => setEditing(true)} />}
+            >
+              <Card className="divide-y divide-border/50">
+                <NamePasswordRows
+                  wifi={data}
+                  password={password}
+                  editing={editing}
+                  onEditDone={() => setEditing(false)}
+                  onSaved={() => {
+                    password.clear();
+                    share.clear();
+                  }}
+                />
+                <SecurityRows wifi={data} devices={devices.data?.devices ?? null} offline={offline} />
+                <NicknameRows network={network.data ?? null} offline={offline} />
+              </Card>
+              <SecurityFootnote wifi={data} />
+            </Section>
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -143,90 +171,102 @@ const OFFLINE: Gate = { allowed: false, reason: "The network is offline" };
 export const NICKNAME_HINT = "A name for this network in Mesh UI and the eero app, handy if you manage more than one. Your Wi-Fi name doesn't change.";
 
 /**
- * Network nickname (Edit opens NicknameSheet) and time zone, with the local
- * time there (Edit opens TimezoneSheet). The nickname comes from
- * `network.list`, which reads the account's network refs as well as
- * `GET {net}`, so it matches the network switcher (#270).
+ * The nickname and time zone rows of the Wi-Fi settings: the network nickname (Change…
+ * opens NicknameSheet) and the time zone with the local time there (Change…
+ * opens TimezoneSheet). The nickname comes from `network.list`, which reads
+ * the account's network refs as well as `GET {net}`, so it matches the
+ * network switcher (#270).
  */
-function Nickname({ network, offline }: { network: Network | null; offline: boolean }) {
+function NicknameRows({ network, offline }: { network: Network | null; offline: boolean }) {
   const now = useNow(30_000);
   const networks = useQuery<NetworkSummary[]>("network.list", undefined, { poll: 60 });
   const summary = networks.data?.find((n) => n.id === network?.id) ?? null;
   const nickname = summary ? summary.nickname : (network?.nickname ?? null);
-  const [editing, setEditing] = useState<"nickname" | "timezone" | null>(null);
+  const [editing, setEditing] = useState<"timezone" | null>(null);
   const nicknameGate = useGate("network.nickname.set");
   const tzGate = useGate("settings.timezone.set");
   const app = useQuery<AppInfo>("app.info");
   const live = app.data?.backend === "eero";
   const tz = network?.timezone ?? null;
   const local = tz ? networkClock(tz).time(now) : null;
-  const edit = (what: "nickname" | "timezone", gate: Gate, label: string) => (
-    <GatedButton size="icon-xs" variant="ghost" aria-label={label} title={label} gate={offline ? OFFLINE : gate} disabled={!network} onClick={() => setEditing(what)}>
-      <Pencil />
+  const change = (what: "timezone", gate: Gate, label: string) => (
+    <GatedButton variant="outline" size="sm" aria-label={label} gate={offline ? OFFLINE : gate} disabled={!network} onClick={() => setEditing(what)}>
+      Change{"\u2026"}
     </GatedButton>
   );
   return (
-    <Section title="Nickname and location" subtitle="The nickname names this network in the network switcher">
-      <Card padded className="flex flex-col gap-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <ReadField icon={Tag} label="Network nickname" value={nickname} hint={NICKNAME_HINT} actions={edit("nickname", nicknameGate, "Edit nickname")} />
-          <ReadField
-            icon={Clock}
-            label="Time zone"
-            value={tz}
-            hint={local ? `Local time ${local}` : null}
-            actions={edit("timezone", live ? { allowed: false, reason: TIMEZONE_LIVE_REASON } : tzGate, "Edit time zone")}
-          />
-        </div>
-        <div className="flex items-center gap-3 text-[13px]">
-          <CalendarClock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 text-muted-foreground">
-            Profile schedules, power saving and updates follow this time zone.{live && " Change it in the eero app."}
+    <>
+      <SettingsRow
+        title="Network nickname"
+        description={NICKNAME_HINT}
+        control={<NicknameInput current={nickname} gate={offline ? OFFLINE : nicknameGate} disabled={!network} />}
+      />
+      <SettingsRow
+        title="Time zone"
+        description={`${local ? `Local time ${local}. ` : ""}Profile schedules, power saving and updates follow this time zone.${live ? " Change it in the eero app." : ""}`}
+        control={
+          <span className="flex items-center gap-3">
+            <span className="max-w-56 truncate text-sm">{tz ?? MISSING}</span>
+            {change("timezone", live ? { allowed: false, reason: TIMEZONE_LIVE_REASON } : tzGate, "Change time zone")}
           </span>
-        </div>
-      </Card>
-      <NicknameSheet open={editing === "nickname"} onClose={() => setEditing(null)} current={nickname} />
+        }
+      />
       <TimezoneSheet open={editing === "timezone"} onClose={() => setEditing(null)} current={tz} />
-    </Section>
+    </>
   );
 }
 
 const NICKNAME_ID = "network.nickname.set";
 
-/** The nickname sheet: one field, empty clears it. Save runs `network.nickname.set` (a `write`); the toast's Undo sets the old one back. */
-function NicknameSheet({ open, onClose, current }: { open: boolean; onClose: () => void; current: string | null }) {
+/**
+ * The nickname as an inline input in its settings row. It saves on Enter or
+ * when the field loses focus, only if the value changed (empty clears it):
+ * `network.nickname.set`, a `write` with no confirm, then a toast with Undo
+ * that sets the old one back. Esc puts the saved nickname back. A failed save
+ * keeps the typed value and shows the reason under the field.
+ */
+function NicknameInput({ current, gate, disabled }: { current: string | null; gate: Gate; disabled: boolean }) {
   const [value, setValue] = useState(current ?? "");
+  const [focused, setFocused] = useState(false);
+  // Follow the saved nickname (a poll, an Undo, a network switch) while the field is not being edited.
   useEffect(() => {
-    if (open) setValue(current ?? "");
-  }, [open]);
-  const next = value.trim();
+    if (!focused) setValue(current ?? "");
+  }, [current, focused]);
   const save = useWrite<{ nickname: string }, { nickname: string | null }>(NICKNAME_ID, {
     success: (r) => (r.nickname ? `Nickname set to ${r.nickname}` : "Nickname cleared"),
     undo: { id: NICKNAME_ID, params: { nickname: current ?? "" }, success: current ? `Nickname set back to ${current}` : "Nickname cleared" },
     form: true,
   });
-  const errors = fieldErrors(save.error);
-  const tooLong = next.length > NICKNAME_MAX;
+  const error = fieldErrors(save.error).nickname ?? fieldErrors(save.error)._form;
+  const commit = () => {
+    const next = value.trim();
+    if (next !== (current ?? "")) void save.run({ nickname: next });
+  };
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      icon={<Tag />}
-      title="Network nickname"
-      subtitle={NICKNAME_HINT}
-      dirty={next !== (current ?? "") && !tooLong}
-      onSave={() => save.run({ nickname: next })}
-      error={errors._form}
-    >
-      <SheetField
-        label="Nickname"
-        htmlFor="nickname-sheet-value"
-        error={errors.nickname ?? (tooLong ? `Use ${NICKNAME_MAX} characters or fewer.` : undefined)}
-        helper={`${next.length} of ${NICKNAME_MAX} characters. Leave empty to clear it.`}
-      >
-        <Input id="nickname-sheet-value" value={value} placeholder="Add a nickname" onChange={(e) => setValue(e.target.value)} />
-      </SheetField>
-    </Sheet>
+    <span className="flex flex-col items-end gap-1" title={gate.allowed ? undefined : (gate.reason ?? undefined)}>
+      <Input
+        className="w-56"
+        aria-label="Network nickname"
+        value={value}
+        maxLength={NICKNAME_MAX}
+        placeholder="Add a nickname"
+        disabled={disabled || !gate.allowed || save.running}
+        aria-invalid={error ? true : undefined}
+        onFocus={() => setFocused(true)}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => {
+          setFocused(false);
+          commit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setValue(current ?? "");
+            requestAnimationFrame(() => (e.target as HTMLInputElement).blur());
+          }
+        }}
+      />
+      {error && <span className="max-w-56 text-destructive-foreground text-xs">{error}</span>}
+    </span>
   );
 }
-

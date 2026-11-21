@@ -10,6 +10,14 @@
  * inherits, or it would start in demo again. A packaged AppImage relaunches
  * the `.AppImage` file (`APPIMAGE`), not the binary inside its mount, which
  * goes away when this process exits.
+ *
+ * Under the dev server (`pnpm dev`, which sets `ELECTRON_RENDERER_URL`) a
+ * relaunch cannot work: electron-vite exits the moment its Electron child
+ * does, taking the dev server with it, so the new window loads a dead URL
+ * and stays white. There the switch hands off instead (`handOff`): it starts
+ * the new instance as its own child, closes its windows and waits, exiting
+ * with the child's code once the new instance quits. `pnpm dev` and its
+ * server stay up the whole time.
  */
 
 import type { HostActions } from "../core/spec";
@@ -28,6 +36,12 @@ export type DemoSwitchDeps = {
   env: Record<string, string | undefined>;
   /** Runs `exit` a moment later, so the command's answer reaches the window first. */
   defer?: (fn: () => void) => void;
+  /**
+   * Dev server only: start a new instance with these arguments as a child,
+   * close this one's windows without quitting, and exit with the child's code
+   * when it exits. Used instead of relaunch while `ELECTRON_RENDERER_URL` is set.
+   */
+  handOff?: (args: string[]) => void;
 };
 
 export const DEMO_FLAG = "--demo";
@@ -43,6 +57,11 @@ export function createDemoSwitch(d: DemoSwitchDeps): NonNullable<HostActions["re
   return {
     demo: async (enabled) => {
       if (!enabled) delete d.env.MESH_UI_DEMO;
+      if (d.env.ELECTRON_RENDERER_URL && d.handOff) {
+        const handOff = d.handOff;
+        defer(() => handOff(relaunchArgs(d.argv, enabled)));
+        return;
+      }
       const execPath = d.env.APPIMAGE || undefined;
       d.app.relaunch({ args: relaunchArgs(d.argv, enabled), ...(execPath ? { execPath } : {}) });
       defer(() => d.app.exit(0));

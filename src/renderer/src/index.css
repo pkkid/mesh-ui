@@ -11,6 +11,27 @@
   --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
+/*
+ * Mono text in an input field. An input centres the font's whole line box
+ * (ascent plus descent), and Liberation Mono, the mono font Linux gets from
+ * the stack above, has a short ascent and a long descent, so its glyphs ride
+ * about 2px high in a 32px field next to Inter. This alias re-centres it by
+ * moving 9% of an em from the descent to the ascent (same line height,
+ * measured to within half a pixel of the field's centre). Fonts that already
+ * centre (SF Mono, Menlo) come first and are untouched.
+ */
+@font-face {
+  font-family: "Mesh Mono Field";
+  src: local("Liberation Mono"), local("LiberationMono-Regular");
+  ascent-override: 92%;
+  descent-override: 21%;
+  line-gap-override: 0%;
+}
+
+[data-slot="input-control"].font-mono {
+  font-family: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Mesh Mono Field", "Liberation Mono", monospace;
+}
+
 @theme inline {
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(1 / 0.6875);
@@ -250,6 +271,17 @@ html.dark[data-theme-id="rose"] [data-app-sidebar] {
 .no-transitions,
 .no-transitions * {
   transition-duration: 0s !important;
+}
+
+/* Troubleshooting's Status light colors: a blinking light's dot fades out and back, about as fast as an eero blinks. */
+@keyframes light-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
 }
 
 /* Devices Live throughput: a quiet bar that fills, slower and slower, while waiting for the next live reading.

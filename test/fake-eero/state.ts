@@ -580,7 +580,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     },
     // Maple has a past run; a real network that has not run diagnostics sends only `status: "not_started"`.
     diagnostics: { status: maple ? "completed" : "not_started" },
-    support: { support_phone: "+18775550123", contact_url: "https://support.example.com/contact", help_url: "https://support.example.com/help", email_web_form_url: "https://support.example.com/email", name: "eero" },
+    support: { support_phone: "+18775550123", contact_url: "https://support.example.com/contact", help_url: "https://support.example.com/help", email_web_form_url: "mailto:support@example.com?subject=eero%20support", name: "eero" },
     members: maple
       ? [
           { user_id: 1001, user_role: "owner", user_name: "Alex Kim", user_tags: [] },

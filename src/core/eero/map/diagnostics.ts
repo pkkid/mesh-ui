@@ -12,11 +12,18 @@ import { idFromUrl } from "../urls";
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
 
+/**
+ * eero's `issue_area` when it found no problem area: a real run of "My
+ * connection drops" answered `none` (2026-11-21), so those words mean no area.
+ */
+const NO_AREA = /^(none|no_?issues?|no_?problems?|null|n\/a|ok|good)$/i;
+
 export function mapDiagnostics(raw: RawDiagnostics | null | undefined): M.DiagnosticsResult {
   const results = Array.isArray(raw?.results) ? raw.results : [];
+  const area = str(raw?.issue_area);
   return {
     status: str(raw?.status),
-    issueArea: str(raw?.issue_area),
+    issueArea: area && !NO_AREA.test(area) ? area : null,
     results: results.flatMap((r) => {
       const name = str(r?.name);
       return name ? [{ name, status: str(r.status) ?? "unknown", detail: str(r.detail) }] : [];
@@ -28,13 +35,23 @@ export function mapDiagnostics(raw: RawDiagnostics | null | undefined): M.Diagno
 export const diagnosticsPending = (raw: RawDiagnostics | null | undefined): boolean =>
   /^(not_started|running|in_progress|pending|started|queued|scheduled|diagnosing)$/i.test(str(raw?.status) ?? "");
 
-/** eero's 2.2 support object has no ISP contacts, so `isp` is null; core may name the ISP. */
+/** The address in a `mailto:` link ("mailto:help@x.com?subject=..." to "help@x.com"); null for any other link. */
+export function mailtoAddress(url: string | null): string | null {
+  const m = url ? /^mailto:([^?]+)/i.exec(url) : null;
+  return m?.[1] ? decodeURIComponent(m[1]).trim() || null : null;
+}
+
+/**
+ * eero's 2.2 support object has no ISP contacts, so `isp` is null; core may
+ * name the ISP. `email_web_form_url` is a `mailto:` link on real networks
+ * (read-only check 2026-11-21), so `email` is its address.
+ */
 export function mapSupport(raw: RawSupport | null | undefined): Omit<M.SupportInfo, "supportId"> {
   return {
     eero: {
       name: str(raw?.name),
       phone: str(raw?.support_phone),
-      email: null,
+      email: mailtoAddress(str(raw?.email_web_form_url)),
       helpUrl: str(raw?.help_url),
       contactUrl: str(raw?.contact_url),
       emailFormUrl: str(raw?.email_web_form_url),

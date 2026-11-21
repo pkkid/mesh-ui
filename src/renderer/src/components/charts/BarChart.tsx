@@ -27,6 +27,10 @@ export type BarChartProps = {
    */
   fill?: boolean;
   hideYLabels?: boolean;
+  /** No gridlines: a bare row of columns, for small charts in a page header. */
+  hideGrid?: boolean;
+  /** Draw a 2px stub for a zero column, so empty slots still read as slots. */
+  zeroStubs?: boolean;
   className?: string;
 };
 
@@ -43,6 +47,8 @@ export function BarChart({
   heightClassName = "h-44",
   fill = false,
   hideYLabels = false,
+  hideGrid = false,
+  zeroStubs = false,
   className,
 }: BarChartProps) {
   const plotHeight = fill ? cn("h-full", heightClassName) : heightClassName;
@@ -96,7 +102,7 @@ export function BarChart({
             preserveAspectRatio="none"
             aria-hidden
           >
-            {scale.ticks.map((tick) => (
+            {(hideGrid ? [] : scale.ticks).map((tick) => (
               <line
                 key={tick}
                 x1={0}
@@ -120,8 +126,11 @@ export function BarChart({
                     "flex min-w-0 flex-1 flex-col-reverse gap-px transition-opacity",
                     highlight !== undefined && highlight !== i && "opacity-55",
                   )}
-                  style={{ height: `${share(columnTotal) * 100}%` }}
+                  style={{ height: columnTotal > 0 || !zeroStubs ? `${share(columnTotal) * 100}%` : undefined }}
                 >
+                  {zeroStubs && columnTotal <= 0 && series[0] ? (
+                    <div className="h-0.5 rounded-[1px]" style={{ backgroundColor: series[0].color }} />
+                  ) : null}
                   {series.map((s, k) => {
                     const v = values[k]![i] ?? 0;
                     if (v <= 0) return null;

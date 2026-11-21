@@ -6,7 +6,7 @@
  * docs/ux/pages/internet.md (Layout 3). Tests, ratings and averages come
  * from `speedtest.history`.
  */
-import { ArrowDown, ArrowUp, Check, Download, Info } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Download } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { execute, useQuery } from "~/app/useCommand";
@@ -14,7 +14,7 @@ import { Button } from "~/components/ui/button";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { Section } from "~/components/ui/card";
 import { Meter } from "~/components/ui/meter";
-import { SectionError } from "~/components/ui/page";
+import { Footnote, SectionError } from "~/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { seriesColors } from "~/lib/chartColors";
 import { datedName, saveTextFile } from "~/lib/saveFile";
@@ -106,13 +106,9 @@ export function SpeedHistory({ id }: { id?: string }) {
               />
             </div>
             <div className="h-px bg-border" />
-            <div className="flex gap-2 text-muted-foreground/50 text-xs">
-              <Info className="mt-px size-3.5 shrink-0" />
-              <span>
-                Values show 7d average. Tests run from the gateway to your ISP, so they show what {isp} delivers, not Wi-Fi speed in a
-                room.
-              </span>
-            </div>
+            <Footnote>
+              Values show 7d average. Tests run from the gateway to your ISP, so they show what {isp} delivers, not Wi-Fi speed in a room.
+            </Footnote>
           </div>
           <AreaChart
             series={[

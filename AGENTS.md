@@ -240,7 +240,7 @@ building a new chart; port from them rather than inventing a style.
   `18rem` column lists each series: colour dot, icon, label, value on the
   right in `font-medium` with its share after it in muted `text-xs`
   ("254 GB (83%)"), one line per series. **Compact hero**
-  (Activity, where the summary shares a row with a table): the figure is
+  (where the summary shares a row with a table): the figure is
   `text-2xl` with its muted line beside it and a share bar filling the rest
   of the line, and the series legend is wrapping chips (`size-2` square,
   muted label, value) under it, so the chart below gets the card's height.

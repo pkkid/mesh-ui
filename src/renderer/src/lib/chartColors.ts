@@ -101,4 +101,18 @@ export const wifiGenerationColors = {
   wifi6: hue("blue"),
   wifi5: hue("orange"),
   wifi4: hue("yellow"),
+  /** A device that does not say which (Signal page). */
+  unknown: seriesColors.neutral,
+} as const;
+
+/**
+ * Signal quality buckets (Signal page). Excellent and good stay neutral, two
+ * strengths of the text colour; fair and weak are status (warning, danger), so
+ * only the problems carry colour.
+ */
+export const signalQualityColors = {
+  excellent: "color-mix(in srgb, var(--color-foreground) 75%, var(--color-background))",
+  good: "color-mix(in srgb, var(--color-foreground) 40%, var(--color-background))",
+  fair: "var(--color-warning)",
+  weak: "var(--color-destructive)",
 } as const;

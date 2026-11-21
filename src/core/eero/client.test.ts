@@ -422,10 +422,13 @@ describe("credential reads", () => {
     await eero.wifi.get(net.id);
     await eero.wifi.get(net.id);
     expect(reads()).toBe(1);
+    // The first credential read takes get's own GET {net} (Show code costs no request), once.
     const before = await eero.wifi.credentials(net.id);
+    expect(reads()).toBe(1);
     net.network.password = "changed-elsewhere-01";
+    // Every later one bypasses the shared answer and reads eero afresh.
     const after = await eero.wifi.credentials(net.id);
-    expect(reads()).toBe(3);
+    expect(reads()).toBe(2);
     expect(before.password).not.toBe("changed-elsewhere-01");
     expect(after.password).toBe("changed-elsewhere-01");
   });

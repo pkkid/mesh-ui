@@ -72,4 +72,29 @@ describe("demo switch", () => {
     expect(relaunchArgs(["exe", "--demo"], false)).toEqual([]);
     expect(relaunchArgs(["exe", "--demo=x", "--fake"], false)).toEqual(["--demo=x", "--fake"]);
   });
+
+  it("under the dev server hands off to a child instead of relaunching, so pnpm dev keeps its server", async () => {
+    const handed: string[][] = [];
+    const s = stub(["/repo/node_modules/electron/dist/electron", "/repo/out/main/index.js", "--demo"], { ELECTRON_RENDERER_URL: "http://localhost:5173", MESH_UI_DEMO: "1" });
+    const sw = createDemoSwitch({ ...s.deps, handOff: (args) => handed.push(args) });
+    await sw.demo(false);
+    // Waits, like exit, so the command's answer reaches the window first.
+    expect(handed).toEqual([]);
+    s.flush();
+    expect(handed).toEqual([["/repo/out/main/index.js"]]);
+    expect(s.calls.relaunch).toEqual([]);
+    expect(s.calls.exit).toEqual([]);
+    expect(s.env.MESH_UI_DEMO).toBeUndefined();
+  });
+
+  it("a packaged build relaunches even when a hand-off is wired", async () => {
+    const handed: string[][] = [];
+    const s = stub(["/opt/Mesh UI/mesh-ui"], {});
+    const sw = createDemoSwitch({ ...s.deps, handOff: (args) => handed.push(args) });
+    await sw.demo(true);
+    s.flush();
+    expect(handed).toEqual([]);
+    expect(s.calls.relaunch).toEqual([{ args: ["--demo"] }]);
+    expect(s.calls.exit).toEqual([0]);
+  });
 });

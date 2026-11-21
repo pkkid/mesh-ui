@@ -15,11 +15,11 @@ import type { Band, DeviceSummary } from "../../../../core/model";
 
 const BANDS: ReadonlyArray<Band> = ["2.4", "5", "6", "wired"];
 
-/** "Most on 2.4 GHz", "Most wired"; "-" until loaded, "No clients" when empty. */
+/** "Most on 2.4 GHz", "Most wired"; "-" until loaded, "No devices" when empty. */
 function busiestBand(counts: Partial<Record<Band, number>> | undefined): string {
   if (!counts) return "-";
   const top = [...BANDS].sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0))[0];
-  if (!top || (counts[top] ?? 0) === 0) return "No clients";
+  if (!top || (counts[top] ?? 0) === 0) return "No devices";
   return top === "wired" ? "Most wired" : `Most on ${bandLabel(top)}`;
 }
 
@@ -29,19 +29,19 @@ export function ClientsByBand({ summary, fading = false }: { summary: DeviceSumm
   const [active, setActive] = useState<string | null>(null);
   return (
     // "Most on 2.4 GHz": the busiest band, so the subtitle says something the donut does not lead with.
-    <Section title="Clients by band" description={busiestBand(counts)} className="gap-[15px]">
+    <Section title="Devices by band" description={busiestBand(counts)} className="gap-[15px]">
       <Card padded className={cn("flex items-center gap-6 transition-opacity", fading && "opacity-40")}>
         <Donut
           size={120}
-          ariaLabel="Connected clients by band"
+          ariaLabel="Connected devices by band"
           active={active}
           onActiveChange={setActive}
-          format={(v) => `${formatCount(v)} ${v === 1 ? "client" : "clients"}`}
+          format={(v) => `${formatCount(v)} ${v === 1 ? "device" : "devices"}`}
           segments={BANDS.map((b) => ({ label: bandLabel(b), value: counts?.[b] ?? 0, color: bandColor(b) }))}
         >
           <div className="text-center">
             <div className="font-semibold text-xl tabular-nums">{formatCount(total)}</div>
-            <div className="text-2xs text-muted-foreground">{total === 1 ? "client" : "clients"}</div>
+            <div className="text-2xs text-muted-foreground">{total === 1 ? "device" : "devices"}</div>
           </div>
         </Donut>
         <div className="flex min-w-0 flex-1 flex-col gap-2">

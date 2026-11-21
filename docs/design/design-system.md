@@ -288,7 +288,7 @@ CSS variables on `:root` in `index.css`.
 | Sidebar width | 15rem (240px; the mockups use 236px) | `--sidebar-width` |
 | Sidebar padding | nav `px-2`, items `h-8 px-2.5`, gap 9px to the icon | `features/shell/Sidebar.tsx` |
 | Page column | max 1056px (1000px of content), padding 22px 28px 100px | `max-w-[1056px] px-7 pt-[22px] pb-[100px]` in `RouterOutlet` |
-| Gap between sections | **56px**, the same as from the hero's rule to the first section, so every section on a page starts the same distance below the one before | Pages wrap the sections after the hero in `flex flex-col gap-14` (grids of side-by-side sections: `gap-x-7 gap-y-14`); the page column itself stays `gap-7`. Overview, Internet, eeros and eero detail follow this; other pages move over page by page, so check it whenever a page is updated |
+| Gap between sections | **56px**, the same as from the hero's rule to the first section, so every section on a page starts the same distance below the one before | Pages wrap the sections after the hero in `flex flex-col gap-14` (grids of side-by-side sections: `gap-x-7 gap-y-14`); the page column itself stays `gap-7`. Overview, Internet, eeros, eero detail and Activity follow this; other pages move over page by page, so check it whenever a page is updated |
 | Section heading to card | **15px from the subtitle to the card**; 12px when a section has no subtitle | `gap-[15px]`; `gap-3`. `Section` still defaults to `gap-5` (20px) with a description: Overview passes `gap-[15px]`, other pages move over page by page |
 | Section header tools gap | 8px | `gap-2` |
 | Card padding | 18px 20px | `Card padded`: `px-5 py-[18px]` |
@@ -589,11 +589,13 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | eero icon | `lib/deviceIcons.ts` `eeroIcon(eero)`: the only map from an eero to its product glyph, by `modelNumber`, then the model name, then the puck. See [Product icons](#product-icons) |
 | Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-md` (6px), `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
 | Dialog and sheet | `bg-popover`, 1px border, 16px radius (sheets 18px, max 540px wide), dialog `max-w-lg`, backdrop `bg-background/60` with a 2px blur |
-| QR block | `qr.tsx`. `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then page actions like Print a card), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog, and the printed card (`GuestCard.tsx`) draws the code black on white. Encoder: `uqr` (MIT, pinned) |
+| QR block | `qr.tsx`. **Plain** (`QrCode plain`, the Guest network and Wi-Fi network heroes): the code at error correction level L with no tile or glyph, so a guest `WIFI:` payload is 29 x 29 modules instead of 41 x 41, drawn as round dots (radius 0.46 of a module, so scanners still read them) with the three finder patterns as rounded squares, in the full text colour on screen (a 60% dim was tried and dropped). Both heroes frame it in a 1px rounded border with 15px of padding and no buttons beside it; their share actions are hero buttons (**Copy invite**, **Copy password**). Wi-Fi network keeps the frame empty, with **Show code** centred in it, until clicked. Standard: `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then any page actions), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog. (The printed guest card was dropped on 2026-11-20 with Print a card.) Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
 
 **Buttons.** Primary (filled) is only for the submit button of a sheet,
-dialog or form (Save, Create, Send) and the sign-in flow. Hero actions are
+dialog or form (Save, Create, Send), the sign-in flow, and the one action
+that switches on a page whose feature is off (Guest network's **Turn on
+guest network**): there the whole page is waiting on that one step. Hero actions are
 never filled, not even the main one (Run speed test, Pause): every button in
 a hero is `outline`. Everything in section headers, the topbar and toolbars
 is `outline` or `ghost` (Add a reservation, Add port forward, Add a
@@ -634,10 +636,26 @@ self-start`), the title's line height.
 actions (Restart network, Danger zone) is its own full-width section at the
 bottom of the page, never tucked beside read-only content.
 
+**Off watermarks.** When a feature is off and its content has nothing to
+show (Live throughput off on Devices, the guest network off), the space
+holds a watermark instead of an empty card: a lucide glyph at `size-12`,
+`strokeWidth={1.6}`, in `text-foreground/7`, beside the words in
+`font-semibold text-xl text-foreground/13` ("Live throughput off", "Guest
+network off"), centred in an `h-40` band with no border or background. It
+is decoration (`aria-hidden`); the status and the way to turn it on live in
+the hero.
+
 **Footnotes are extra dim.** An info line under a card (the speed test
-note, the eeroOS line, the wired backhaul note) is `flex gap-2 text-xs
-text-muted-foreground/50` with a 14px icon (`mt-px size-3.5 shrink-0`), half
-as strong as normal muted text, so it never competes with the content. A
+note, the eeroOS line, the wired backhaul note, Activity's note on how far
+eero's events reach) is plain `text-xs text-muted-foreground/50`, half as
+strong as normal muted text, so it never competes with the content.
+**Footnotes have no icon**: no Info, check or arrow glyph in front, just the
+text. Use
+`Footnote` from the page kit. **Explanations go in a footnote, not in the
+card**: a line that explains the data (where it comes from, why it stops)
+sits under the card, never as a footer row or a last row inside a table or
+list. A card's footer row is only for a control on its rows (Load older
+events). A
 link inside one is dimmed the same way (`text-foreground/50`, underline
 `decoration-foreground/25`, `hover:text-foreground/70`), so only the
 underline marks it.
@@ -733,8 +751,9 @@ Devices and Activity. Do not build another.
 (58px rows split by 1px borders, a link when given `to`),
 `PlaceholderRows` (blank rows at normal height while loading), `SectionLink` (text link in a section header, see [Buttons and links](#buttons-and-links)), `HeaderLink`
 (small outline button in a section header, optional arrow),
-`ComingSoonButton` (disabled, "Coming soon" tooltip, for writes in a later
-milestone), `SectionError` (what failed, eero's message, Retry; other
+`Footnote` (the dim info line under a card, see [Buttons and
+links](#buttons-and-links)), `ComingSoonButton` (disabled, "Coming soon"
+tooltip, for writes in a later milestone), `SectionError` (what failed, eero's message, Retry; other
 sections keep working) and `useNow` (a ticking clock for relative times).
 
 **Clickable cards.** A large card that opens a detail page (an eero card,
@@ -843,7 +862,10 @@ toggle switches appearance). Headless: `pnpm ui:shot --fake --route
   as points come and go; values above it still fit.
 - **Chrome.** Horizontal gridlines only, 1px `text-border`, at nice ticks
   (steps of 1, 2 or 5 times a power of ten, about 4 ticks). No axis lines,
-  vertical gridlines, border or background.
+  vertical gridlines, border or background. A small chart in a page header
+  (Activity's Events over time) drops even the gridlines and Y labels
+  (`BarChart hideGrid hideYLabels`) and draws a 2px stub for each empty
+  column (`zeroStubs`), so empty slots still read as slots.
 - **Labels.** Y labels in a `w-14` gutter, right-aligned,
   `text-3xs text-muted-foreground tabular-nums`, zero shown as `0`. X labels
   only at start, middle and end, `text-3xs`, in normal case ("Fri Oct 31",
@@ -891,7 +913,7 @@ Other chart kinds in the mockups, same rules for colour and labels:
   `text-xs text-muted-foreground` line under it. Beside a main chart, an
   18rem column lists each series: dot, icon, label, value right in
   `font-medium` with its share after it in muted `text-xs` ("254 GB
-  (83%)"), one line per series, 8px apart. Compact hero (Activity): `text-2xl`
+  (83%)"), one line per series, 8px apart. Compact hero (a summary sharing a row with a table): `text-2xl`
   figure with its muted line beside it and a share bar filling the line,
   the legend as wrapping chips under it, and the chart filling the card's
   leftover height (`BarChart fill`).
@@ -920,6 +942,7 @@ Other chart kinds in the mockups, same rules for colour and labels:
   `hour` chart labels ("9 AM"), weekdays and `parts` for day-by-hour grids.
   Do not build an `Intl.DateTimeFormat` in a component.
 - Show `-` for a missing value, never `0` or blank.
+- Connected things are **devices**, never "clients" (Wireless devices, Devices by band, "27 devices"), so one word means one thing across the app. eero's own feature names keep their words (Client steering).
 - No emdashes in UI copy or docs. Use a comma, colon or a new sentence.
 - Example data is invented: Maple Street, Alex Kim, `192.168.4.x`.
 - Mesh UI never shows eero Plus features, upsells or lock badges.

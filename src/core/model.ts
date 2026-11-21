@@ -545,6 +545,43 @@ export type WifiSettings = {
 
 export type WifiShare = { ssid: string; password: string | null; security: "WPA" | "nopass"; qr: string };
 
+/** Signal quality buckets on the Signal page, from each device's dBm (see SIGNAL_DBM in commands/wifi.ts). */
+export type SignalQuality = "excellent" | "good" | "fair" | "weak";
+/** Wi-Fi generations as the health page counts them; `unknown` when a device does not say. */
+export type WifiGeneration = "wifi7" | "wifi6e" | "wifi6" | "wifi5" | "wifi4" | "unknown";
+
+/**
+ * `wifi.health`: signal, link speed, Wi-Fi generations and radio airtime of the
+ * connected wireless devices and eeros right now, worked out in core from the
+ * device and eero lists (no history: eero keeps that for eero Plus only).
+ */
+export type WifiHealth = {
+  /** Connected wireless devices that report a signal. */
+  devices: number;
+  medianDbm: number | null;
+  /** Devices per quality bucket, the whole network. */
+  quality: Record<SignalQuality, number>;
+  /** Devices per 5 dBm, from -90 (and below) to -40 (and above), weakest first: the spread of signal. */
+  histogram: { dbm: number; devices: number }[];
+  bands: {
+    band: WirelessBand;
+    devices: number;
+    medianDbm: number | null;
+    quality: Record<SignalQuality, number>;
+    /** Link speed (download, eero to device), median and best. */
+    medianMbps: number | null;
+    bestMbps: number | null;
+  }[];
+  /** The weakest connected wireless devices, weakest first (at most 5). */
+  weakest: { deviceId: Id; name: string; band: WirelessBand; eeroId: Id | null; eero: string | null; dbm: number; bars: number | null }[];
+  /** Every generation once, newest first, then unknown. */
+  generations: { generation: WifiGeneration; devices: number }[];
+  /** One row per eero (its model and connected devices), then one entry per radio, by band: 5 GHz low and high are two entries. */
+  radios: { eeroId: Id; eero: string; model: string | null; devices: number | null; bands: { band: WirelessBand; channel: number | null; widthMhz: number | null; utilization: number | null; txPowerDbm: number | null; devices: number | null }[] }[];
+  /** The radio with the highest channel utilisation now, if any reports one. */
+  busiest: { eeroId: Id; eero: string; band: WirelessBand; utilization: number } | null;
+};
+
 // ---------------------------------------------------------------------------
 // Settings and routing
 

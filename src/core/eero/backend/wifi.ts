@@ -5,6 +5,13 @@
  * takes the name and password from `GET {net}`, which sends the password in
  * the clear (real capture, 2026-11-13); core builds the `WIFI:` payload.
  *
+ * `get` already reads `GET {net}`, so it keeps that read's name and password
+ * (in this process only, never in a result) for CREDENTIALS_FRESH_MS, and the
+ * next `credentials` call takes them instead of asking eero again: the Wi-Fi
+ * page's Show code costs no request (eero answers `GET {net}` in 1 to 3 s).
+ * They are taken once, so every later reveal reads eero afresh, and a name or
+ * password write drops them first.
+ *
  * Writes (docs/eero-api/endpoints.md): name `PUT {net}/settings` form `name`;
  * password `PUT {net}/password` form `password`; security
  * `PUT {net}/wpa3_per_band` JSON with only the bands given (6 GHz is always
@@ -23,7 +30,19 @@ import type { EeroArea } from "./index";
 
 const isMissing = (err: unknown) => err instanceof BackendError && err.code === "eero_error" && (err.detail?.status === 404 || err.detail?.status === 405);
 
+/** How long `get`'s name and password stay usable by the next `credentials` call: the wifi topic's TTL. */
+export const CREDENTIALS_FRESH_MS = 30_000;
+
+type Kept = { ssid: string; password: string | null; at: number };
+
+const credentialsOf = (raw: RawNetwork): Omit<Kept, "at"> => ({
+  ssid: typeof raw.name === "string" ? raw.name : "",
+  password: typeof raw.password === "string" && raw.password !== "" ? raw.password : null,
+});
+
 export const wifi: EeroArea<"wifi"> = ({ client }) => {
+  /** Per network: the name and password from `get`'s last `GET {net}`, taken by the next `credentials` call. */
+  const kept = new Map<string, Kept>();
   // share false: a credential read never takes a finished shared GET {net}, so a reveal never shows an old password.
   const network = async (net: string, share = true): Promise<RawNetwork> => {
     const raw = await client.request<RawNetwork | null>({ method: "GET", path: networkPath(net), share });
@@ -42,6 +61,7 @@ export const wifi: EeroArea<"wifi"> = ({ client }) => {
       client.request({ method: "GET", path: networkPath(net, "eeros") }).then((d) => asList<RawEeroFull>(d, "eeros")),
       client.request({ method: "GET", path: networkPath(net, "devices") }).then((d) => asList<RawDeviceFull>(d, "devices")),
     ]);
+    kept.set(net, { ...credentialsOf(raw), at: Date.now() });
     return mapWifi(raw, wpa3, eeros, devices.map((d) => mapDevice(d)));
   };
 
@@ -51,17 +71,21 @@ export const wifi: EeroArea<"wifi"> = ({ client }) => {
     get,
 
     async credentials(net) {
-      const raw = await network(net, false);
-      const password = typeof raw.password === "string" && raw.password !== "" ? raw.password : null;
-      return { ssid: typeof raw.name === "string" ? raw.name : "", password };
+      // Take get's read once, while fresh; otherwise (and every time after) ask eero.
+      const k = kept.get(net);
+      kept.delete(net);
+      if (k && Date.now() - k.at < CREDENTIALS_FRESH_MS) return { ssid: k.ssid, password: k.password };
+      return credentialsOf(await network(net, false));
     },
 
     async setName(net, ssid) {
+      kept.delete(net);
       await client.request({ method: "PUT", path: networkPath(net, "settings"), body: { name: ssid }, encoding: "form" });
       return get(net);
     },
 
     async setPassword(net, password) {
+      kept.delete(net);
       const body: RawPasswordWrite = { password };
       await client.request({ method: "PUT", path: networkPath(net, "password"), body, encoding: "form" });
       return get(net);

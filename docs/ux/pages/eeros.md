@@ -6,7 +6,7 @@ where the traffic goes, and network-wide restart.
 Mockup: [../../mockups/03-eeros.html](../../mockups/03-eeros.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a muted line under the selected eero, to the right of the topology, with a check icon when up to date or an up arrow otherwise; the update part ("7.13.0 available", "7.13.0 scheduled") is a TextLink to Updates & admins. Under it, only when an eero other than the gateway has a wired backhaul and eero reports wired devices (not eeros) on the gateway, an info note: "Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet ports straight through to the cable, so eero sees them arrive at the gateway's port." Mesh UI shows the device's eero as eero reports it (see eero-api/data-model.md, Device).
+Topbar: title "eeros", nothing after it (freshness is in the Refresh tooltip). The network's eeroOS and update state ("eeroOS 7.12.1, up to date") is a footnote (no icon) under the selected eero, to the right of the topology; the update part ("7.13.0 available", "7.13.0 scheduled") is a TextLink to Updates & admins. Under it, only when an eero other than the gateway has a wired backhaul and eero reports wired devices (not eeros) on the gateway, a second footnote: "Devices plugged into an eero with a wired backhaul may show as wired to the gateway. That eero passes its Ethernet ports straight through to the cable, so eero sees them arrive at the gateway's port." Mesh UI shows the device's eero as eero reports it (see eero-api/data-model.md, Device).
 Sidebar count: number of eeros.
 
 ## Layout
@@ -22,7 +22,7 @@ Sidebar count: number of eeros.
      backhaul is dashed in the status colour of its quality with a label
      chip ("Excellent" 4 to 5 bars, "Good" 3, "Weak" 2, "Poor" 0 to 1) and mesh bars. A node with
      a weak link gets a dashed warning outline; the selected node a solid
-     muted outline. A small chip under the gateway summarises wired clients
+     muted outline. A small chip under the gateway summarises wired devices
      ("3 wired: NAS, PS5, Hue Bridge"). Legend bottom left (Wired, Good 3 to 5
      bars, Weak, Poor) and "Dashed lines are wireless backhaul" bottom right.
      The drawing is centred in the card. Zoom and pan: small **-**, **+**
@@ -40,13 +40,13 @@ Sidebar count: number of eeros.
        mesh.", three suggestions with icons (move it 1 or 2 rooms closer, in
        line of sight; run Ethernet for wired backhaul; add an eero halfway),
        and buttons **Test placement** and **Scan coverage**, both outline with
-       dim icons (Scan coverage opens Troubleshooting but reads as an
+       dim icons (Scan coverage opens Signal but reads as an
        action, so it stays a button, like the Internet hero's Troubleshoot).
      - Selected eero card: icon, name, "Selected · uplink to Living Room",
        a clickable card (a click anywhere opens the eero; no View link); key values Backhaul (Wireless), Mesh quality ("4 of 4
        bars"), Downstream (Garage).
-2. **Your eeros**. Description under the title: connected clients across
-   the mesh, then any busy radio ("31 clients", "31 clients, 1 busy radio";
+2. **Your eeros**. Description under the title: connected devices across
+   the mesh, then any busy radio ("31 devices", "31 devices, 1 busy radio";
    busy is utilisation at 65% or more). Tool: a view dropdown, "Grid view"
    or "List view". Grid of cards, two per row. Each card:
    - Header: icon, name with "Gateway" in plain dim text, "eero Max 7 · 192.168.4.1 · up
@@ -57,7 +57,7 @@ Sidebar count: number of eeros.
    - Body: a band table with columns Band (badge "2.4 GHz", "5 GHz", "6
      GHz"), Channel ("ch 149"), Width ("160 MHz"), Utilisation (meter in the
      band colour, warning colour and text at 65% or more, percent on the
-     right), Cl. (clients); headers in normal case. A Wired row with the wired
+     right), Devices; headers in normal case. A Wired row with the wired
      client count, when there are any, is the last row of the same table
      (same dashed divider), and the note for dual-band models ("eero 7 is
      dual band, no 6 GHz radio") sits under the whole table. The header's
@@ -71,9 +71,9 @@ Sidebar count: number of eeros.
      dropdown "Last 24 hours" or "Last 7 days". Legend with each eero's
      total in its series colour, then a stacked area chart with a Total row
      in the tooltip.
-   - **Clients by band**. Description: the busiest band ("Most on 2.4 GHz",
-     "Most wired", "No clients"). Donut with the client total in the middle
-     ("31 clients") and a list: 5 GHz 14, 2.4 GHz 9, 6 GHz 4, Wired 4, each
+   - **Devices by band**. Description: the busiest band ("Most on 2.4 GHz",
+     "Most wired", "No devices"). Donut with the device total in the middle
+     ("31 devices") and a list: 5 GHz 14, 2.4 GHz 9, 6 GHz 4, Wired 4, each
      with its band colour square. Hovering a segment or a row highlights
      both and shows the band, count and percent in a tooltip; the total in
      the middle stays.
@@ -93,13 +93,13 @@ Sidebar count: number of eeros.
 | Subtitle firmware line ("eeroOS 7.12.1, 7.13.0 scheduled") | `updates.get` | 15 min (`POLL.updates`) |
 | Topology nodes and links (upstream, backhaul, mesh bars, wired link speed) | `eero.list` (each eero has `upstreamId`, `backhaul`, `meshBars`, `hop`) | 60 s |
 | Internet node label (ISP, ONT) | `internet.get` | 10 min |
-| Wired clients chip | `device.list {eero: gateway, band: "wired"}` (names from summary) | 30 s |
+| Wired devices chip | `device.list {eero: gateway, band: "wired"}` (names from summary) | 30 s |
 | Weak link note and suggestions | `network.health` issues: the most serious one shows (`network_offline`, then `eero_offline`, then `weak_link`), with its eero, upstream and affected devices | 60 s |
 | Selected eero card | `eero.list` (view state picks the eero; default the first with an issue, else the first non-gateway) | 60 s |
-| eero cards: header fields, bands, channel, width, utilisation, clients | `eero.list` | 60 s |
+| eero cards: header fields, bands, channel, width, utilisation, devices | `eero.list` | 60 s |
 | Blink light state ("Blinking · 24s") | Result of `eero.find` (`until` timestamp); countdown in the renderer | - |
 | Data usage by eero | `usage.get {scope: "eero", range}` (all eeros) | 5 min |
-| Clients by band | `device.list` summary (`byBand`) | 30 s |
+| Devices by band | `device.list` summary (`byBand`) | 30 s |
 
 ## Actions
 
@@ -109,7 +109,7 @@ Sidebar count: number of eeros.
 | Click a node | - (view state) | - | No | Selects it; right card updates |
 | Double-click a node, Open → | - | - | No | eero detail |
 | Test placement | `eero.placement.test {eero}` | write | No | Note shows "Testing placement..." then the rating ("Good spot", "Move closer to Office") with the measured bars |
-| Scan coverage | - | - | No | Troubleshooting, coverage section, which runs `coverage.scan` |
+| Scan coverage | - | - | No | Signal, Coverage section, which runs `coverage.scan` |
 | Grid / List | - (view state) | - | No | Switches card layout |
 | Blink light | `eero.find {eero}` | write | No | LED flashes blue and white for 30 s; toast "Blinking Office"; the button reads "Blinking · 30s" counting down. The same label on eero detail and Troubleshooting; its `aria-label` names the eero ("Blink Office's light") |
 | Stop (while blinking) | not built: no stop call is known | - | - | Hidden; the countdown runs out |
@@ -147,10 +147,10 @@ Sidebar count: number of eeros.
 
 - Blink light (`eero.find`) and Restart network (`network.restart`) work (M4.8).
   Test placement runs `eero.placement.test` (M5) with the same hook and
-  rating as Troubleshooting's coverage table (`usePlacementTest`,
-  `PlacementRating` in `troubleshooting/Coverage.tsx`): "Testing
+  rating as the Signal page's coverage table (`usePlacementTest`,
+  `PlacementRating` in `signal/Coverage.tsx`): "Testing
   placement..." while it runs, then the rating and eero's advice under the
-  suggestions, and **Test again**. Scan coverage links to Troubleshooting. Stop
+  suggestions, and **Test again**. Scan coverage links to Signal. Stop
   is hidden until a stop call is verified.
 - The restart watcher (`watchRestart` in `NetworkActions.tsx`) is shared by
   the eeros page, the Overview hero and eero detail. It reads `eero.list`

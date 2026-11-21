@@ -741,7 +741,7 @@ function Tag({ muted = false, children }: { muted?: boolean; children: ReactNode
 }
 
 /** Four bars: one red, two yellow, three or four in the text colour (design-system.md). */
-function SignalBars({ bars }: { bars: number }) {
+export function SignalBars({ bars }: { bars: number }) {
   const n = Math.max(0, Math.min(4, Math.round(bars)));
   const on = n === 1 ? "bg-destructive" : n === 2 ? "bg-warning" : "bg-foreground/80";
   return (

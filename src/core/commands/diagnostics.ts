@@ -316,14 +316,14 @@ export const resultGood = (status: string): boolean => /^(good|ok|pass|passed|su
 const AREA_STEP: Record<string, string> = {
   internet: "Restart your modem, wait a minute, then restart the gateway eero. If the internet stays down, call your ISP.",
   mesh: "Move the eero with the weak link closer to the one it connects through, or connect it with a cable. A coverage scan shows which rooms are weak.",
-  eeros: "Check that the offline eero has power and its light is on, then restart it from Fixes.",
+  eeros: "Check that the offline eero has power and its light is on, then restart it from Troubleshooting's Restart section.",
   dns: "Switch DNS back to your ISP's servers on Advanced networking, or try another provider.",
 };
 
 const SYMPTOM_STEP: Record<DiagnosticsSymptom, string> = {
   connection_drops: "Run a coverage scan: devices drop most often in rooms with weak coverage.",
   internet_slow: "Run a speed test and compare it with your plan. Slow results with every eero healthy point to your ISP.",
-  internet_offline: "Restart the network from Fixes. If it is still offline, check the cable from the gateway eero to your modem.",
+  internet_offline: "Restart the network from Troubleshooting's Restart section. If it is still offline, check the cable from the gateway eero to your modem.",
   eeros_red: "A red light means that eero has no internet. Check the cable from the gateway eero to your modem, then restart it.",
 };
 
@@ -361,9 +361,9 @@ export const commands: AnyCommand[] = [
     id: "health.check",
     label: "Network health check",
     description:
-      "Checks internet, DNS, each eero, mesh links and firmware, each good, warning, problem or unknown with a one-line detail, plus an overall status and a 0 to 100 score. Built from the app's normal reads; runs no active probes. refresh: true skips the cached report (Run again).",
+      "Checks internet, DNS, each eero, mesh links and firmware, each good, warning, problem or unknown with a one-line detail, plus an overall status and a 0 to 100 score. Built from the app's normal reads; runs no active probes. refresh: true skips the cached report (Run checks again).",
     icon: "stethoscope",
-    params: z.object({ refresh: z.boolean().optional().describe("Skip the cached report and read again (Run again).") }),
+    params: z.object({ refresh: z.boolean().optional().describe("Skip the cached report and read again (Run checks again).") }),
     effect: "query",
     topic: "network",
     poll: POLL.network,

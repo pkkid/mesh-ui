@@ -83,7 +83,8 @@ export function InternetUsage() {
   );
 }
 
-function Legend({ down, up }: { down: number | null; up: number | null }) {
+/** Download and upload totals with their arrows and bold figures, over a usage chart (Internet, Guest network). */
+export function Legend({ down, up }: { down: number | null; up: number | null }) {
   return (
     <div className="flex items-center gap-4 text-muted-foreground text-xs">
       <span className="flex items-center gap-1.5">
@@ -161,7 +162,7 @@ function PerHour({ range, network }: { range: UsageRange; network: Network | und
  * Every stat in both cards uses it, left aligned 50px apart, so labels and
  * figures line up.
  */
-function Stat({ label, bytes, prefix }: { label: string; bytes: number | null | undefined; prefix?: string }) {
+export function Stat({ label, bytes, prefix }: { label: string; bytes: number | null | undefined; prefix?: string }) {
   const v = bytesParts(bytes);
   return (
     <div>

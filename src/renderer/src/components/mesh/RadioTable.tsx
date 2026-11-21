@@ -1,5 +1,5 @@
 /**
- * One eero's radios: band, channel, width, utilisation and clients, plus a
+ * One eero's radios: band, channel, width, utilisation and devices, plus a
  * dual-band note and a Wired row. Used by the eero cards on the eeros page
  * and by eero detail. docs/ux/pages/eeros.md (Layout 2).
  */
@@ -14,7 +14,7 @@ export const BUSY_AT = 0.65;
 
 const ORDER: Record<string, number> = { "2.4": 0, "5": 1, "6": 2 };
 
-const COLS = "grid grid-cols-[62px_64px_58px_minmax(0,1fr)_34px] items-center gap-2";
+const COLS = "grid grid-cols-[62px_64px_58px_minmax(0,1fr)_48px] items-center gap-2";
 
 /** Wireless radios in band order. */
 export const wirelessRadios = (e: Pick<Eero, "radios">): Radio[] =>
@@ -34,7 +34,7 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
         <span role="columnheader">Width</span>
         <span role="columnheader">Utilisation</span>
         <span role="columnheader" className="text-right">
-          Cl.
+          Devices
         </span>
       </div>
       {radios.length === 0 && <div className="py-1.5 text-muted-foreground">No radio details reported.</div>}

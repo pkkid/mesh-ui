@@ -3,7 +3,7 @@
  * words. Network not reporting, then an eero offline, then a weak link with
  * suggestions and Test placement / Scan coverage. Nothing when the mesh is
  * fine. Test placement runs `eero.placement.test` through the same hook and
- * rating display as Troubleshooting's coverage table (usePlacementTest).
+ * rating display as the Signal page's coverage table (usePlacementTest).
  * docs/ux/pages/eeros.md (Layout 1, States).
  */
 import { Cable, CirclePlus, Crosshair, Move, TriangleAlert, Unplug, WifiOff } from "lucide-react";
@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 import { Link, pathFor } from "~/app/router";
 import { Button } from "~/components/ui/button";
 import { GatedButton } from "~/components/ui/page";
-import { PlacementRating, usePlacementTest } from "~/features/troubleshooting/Coverage";
+import { PlacementRating, usePlacementTest } from "~/features/signal/Coverage";
 import { cn } from "~/lib/utils";
 import type { Eero, HealthIssue } from "../../../../core/model";
 
@@ -97,7 +97,7 @@ function WeakLink({ eero, upstream, gateway, deviceCount: n }: { eero: Eero | un
             )
           )}
           {/* Same variant as Test placement beside it; like Troubleshoot, it reads as an action, so it stays a button. */}
-          <Button size="xs" variant="outline" render={<Link to={pathFor("troubleshooting")} />}>
+          <Button size="xs" variant="outline" render={<Link to={pathFor("signal")} />}>
             Scan coverage
           </Button>
         </>

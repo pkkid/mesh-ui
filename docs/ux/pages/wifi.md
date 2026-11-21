@@ -1,4 +1,4 @@
-# Wi-Fi
+# Wi-Fi network
 
 The main network's name, password, per band security, band summary, nickname and timezone, with a clear picture of who drops when you save.
 
@@ -38,7 +38,7 @@ Name, password, security and 2.4 GHz only now change through the write kit; ever
 - **Nickname and location** has one pencil per field, inside the field like the copy icons above. Each dims with the gate's reason, and while the network is offline. The bottom row keeps the "follow this time zone" line; the separate Edit button is gone.
 - **Nickname sheet** (`NicknameSheet` in `WifiPage.tsx`): one text field with a live "n of 32 characters" count; empty clears it. **Save** runs `network.nickname.set` (a `write`, no confirm, gate `network`), then a toast "Nickname set to ..." (or "Nickname cleared") with **Undo**, which sets the old nickname back. The command reads the nickname back from `network.list` (the account's network refs as well as `GET {net}`); if eero keeps the old nickname it fails with that reason (an error toast with Retry). `network.list` is refetched too, so the network switcher follows. The request is `PUT {net}/label?labelType=specialMarket` form `label`, which Eeronaut sends quoting eero's Android client. Clearing sends an empty `label`; no client clears it, so that is a MANUAL check.
 - **What the nickname is for (#270).** It names the network in the sidebar switcher and the Networks table (the Wi-Fi name moves to the muted line), and in eero's app network list. The field is always shown, as in eero's app (Settings > Nickname & location). The field and the sheet say: "A name for this network in Mesh UI and the eero app, handy if you manage more than one. Your Wi-Fi name doesn't change." The page reads the nickname from `network.list`, like the switcher.
-- **Print a card** (hero, beside Copy password and Save QR): reads `wifi.share`, the same read as **Show code** (it runs it first if the code is not shown yet), and prints the guest card layout (`GuestCard.tsx`) titled "Wi-Fi": the QR code, the network name and the password, black on white. No new command.
+- **Print a card** (hero, beside Copy password and Save QR): reads `wifi.share`, the same read as **Show code** (it runs it first if the code is not shown yet), and prints the guest card layout (`GuestCard.tsx`) titled "Wi-Fi": the QR code, the network name and the password, black on white. No new command. (Dropped on 2026-11-20 with Save QR; the history above stays for reference.)
 - **Time zone on a live network is read only.** The eero backend has no time zone write, so `settings.timezone.set` answers "not available yet" there and sends nothing. The only request any client sends, `PUT {net}/settings` JSON `{timezone: {value}}`, answered 200 on a real network and kept the old zone (M5.R-fix4, M5 review). No client has tested a time zone write live (endpoints.md section 20). On the eero backend (`app.info` `backend: eero`, the fake server included) the time zone pencil dims with "Change the time zone in the eero app: eero keeps the old zone when Mesh UI sends it", and the line under the fields adds "Change it in the eero app." Demo still applies it through the M5 sheet. If a working request turns up, add `setTimezone` back to the eero backend and drop the gate.
 
 ## Name and password beside Encryption (#268)
@@ -50,17 +50,19 @@ Name, password, security and 2.4 GHz only now change through the write kit; ever
 
 ## Layout
 
-Breadcrumb: `Settings / Wi-Fi`.
+Page title (sidebar and breadcrumb): **Wi-Fi network** (renamed from "Wi-Fi" on 2026-11-20, to sit beside Guest network). Breadcrumb: `Maple Street / Wi-Fi network`. Laid out like [Guest network](guest.md) (2026-11-20 guidelines pass): sections 56px apart, every subtitle under its title and built from the data, settings as rows (title, muted description, value or control on the right), choices as dropdowns, footnotes under cards.
 
-1. **Hero.** Wi-Fi icon top left. Title is the SSID (`Maple Street`), status line `Broadcasting` plus "One name on every band". Metric row: **Wireless clients** (`27 of 31 online`) and **Password changed** (`142 days ago`). QR block at the top right ("Wi-Fi Network") with **Copy password**, **Save QR**, **Print a card** to its left. Before reveal the frame is empty with **Show code** centred on it.
-2. Two columns: settings on the left, side panel on the right.
+1. **Hero** (the flat page header, no icon tile). Title is the SSID (`Maple Street`), status line `Broadcasting` plus "One name on every band", and a warning `2.4 GHz only on` while it is. Facts: **Wireless devices** (`27`), **Security** (the 2.4 and 5 GHz mode by eero's full name, `Hybrid (WPA2 + WPA3) · 3 on WPA2 only`; `Mixed` when they differ, `Open, no password` with none) and **Busiest band** (`2.4 GHz · 41% of devices`). One action, an outline hero button with a dim icon: **Copy password** (reads `wifi.password.get` on click). Bands on, Save QR and Print a card were dropped (2026-11-20). Right-hand column: the plain QR code (round dots, rounded corner markers, level L) at 130px in a 1px rounded frame with 15px of padding, as on Guest network; it stays empty until **Show code** (centred in the empty frame) is clicked. The payload is already read by then (`wifi.share` runs in the background as the page opens, as on Guest network), so the button fades out (150ms, ease-out) and the code fades in (300ms, ease-in-out) at once, the same timings as a page change. "Password changed" is not shown: no response carries that date.
+2. **Wi-Fi bands**, subtitle `All radios on, 27 devices`. A card per band with the eero cards' header (44px icon tile, the band in `text-sm font-medium` after its colour square, its hint in `text-xs` under it, On or Off level with the name), then under a rule: devices, Width, Channels, Share and **Security** (`WPA2 + WPA3`). Under the cards, **2.4 GHz only** as one settings row in a card: no Off or Disruptive labels (a warning `On` status and eero's countdown while on), one muted line (when you would want it, or what is happening while on), and a button that names what it does to the other bands: **Hide 5 and 6 GHz…** / **Show 5 and 6 GHz…** ("5 GHz" on a network without 6 GHz). Both ask first; the confirm says it is disruptive and how many devices move. Footnote: eero picks channels and widths on its own; every band shares one network name.
+3. **Wi-Fi network settings** (2026-11-20: name and password, encryption, nickname and time zone in one list, below Bands; the side by side Name and password / Encryption layout of #268 is gone). Subtitle `27 devices rejoin after a name or password change, 3 on WPA2 only` (or that the network is open). **Edit name and password…** on the right of the section title opens the sheet. One card of settings rows, in this order:
+   - **Name**: "12 of 32 bytes, shared by every band.", the SSID with a copy icon.
+   - **Password**: "Read from eero only when you reveal or copy it." (with the character count once revealed); dots with reveal and copy icons, or a warning `Open, no password`.
+   - **2.4 GHz security**, **5 GHz security**, **6 GHz security**: under each, the devices that joined it with WPA2 only ("HP LaserJet, Garage Door Opener and Flaky Plug joined with WPA2 only.", "No device joined with WPA2 only.", "Always WPA3." for 6 GHz); a dropdown of eero's full mode names on the right (6 GHz fixed). A changed band shows `edited`, then the impact panel, **Discard** and **Save and restart…** (confirm dialog) inside the card.
+   - **Network nickname**: what it is for, and an inline input (w-56, "Add a nickname", 32 characters). It saves on Enter or when the field loses focus, only if the value changed (empty clears it), with the "Nickname set to …" toast and Undo; Esc puts the saved one back; a failed save keeps the typed value and shows the reason under the field. No Change button or sheet (2026-11-20).
+   - **Time zone**: local time and what follows it, the zone, **Change…** (dimmed on the live eero backend).
+   Footnote under the card: 6 GHz always uses WPA3, and moving a band to WPA3 drops its WPA2 only devices and restarts the eeros. The name and password and time zone sheets are clean sheets (no divider lines).
 
-Left column:
-
-1. **Network name and password** (beside Encryption on wide pages, #268). Two fields, stacked beside Encryption and side by side full width. Name with copy icon and a character count (`12 of 32 characters`). Password (mono) with hide, copy and generate icons; an `edited` marker when it differs from the saved value; a 4 step strength bar ("Strong · 25 chars").
-2. **Encryption** ("WPA3 support per band"). Header switch **WPA3** (master on or off). Table: Band, Security mode (segmented **WPA2** / **Hybrid** / **WPA3**, full names in tooltips), and "WPA2 only" devices count. 6 GHz is fixed to Enhanced, other options disabled. Info note: 6 GHz always uses WPA3; choosing Enhanced on 2.4 or 5 GHz asks to confirm and names the WPA2 only devices (HP LaserJet, Ring Doorbell, Nest Thermostat); the section is hidden while Compatibility Mode is on.
-3. **Bands** ("All three radios on, managed by eero"). Three band cards (2.4, 5, 6 GHz): icon, label, hint, `On` status, client count, Width, Channels, Share of clients. Footnote: eero picks channels automatically, no per band SSID, and which eero lacks a 6 GHz radio.
-4. **Nickname and location.** Network nickname field (hint: helps tell networks apart). Timezone select with a `saved` marker and a hint with the local time. A row listing schedules that follow this timezone (profile bedtime, power saving, updates) and a **Save** button.
+The mockup's side panel and sticky confirm bar were never built (the impact panel sits with each control); they are kept below for reference.
 
 Side panel:
 
@@ -75,10 +77,10 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | --- | --- | --- |
 | SSID, broadcasting state, bands, security per band, password changed date | `wifi.get` | on load, after writes |
 | Password for reveal or copy | `wifi.password.get` | on demand only |
-| QR payload | `wifi.share` | on demand only |
-| Wireless clients metric | `device.list` `{connected: true}` | every 60 s |
+| QR payload | `wifi.share` | read in the background once `wifi.get` has loaded, so Show code is instant. On the live backend it costs no request: `wifi.get`'s own `GET {net}` carries the password, and the backend keeps that read's name and password (main process only, 30 s) for the next credential read, once; every later reveal reads eero again. Read again after a network switch or a name or password change; never polled or put in the query cache |
+| Wireless devices metric | `device.list` `{connected: true}` | every 60 s |
 | WPA2 only device counts and names | `wifi.impact` `{change: "security", band24?, band5?}` | when the selection changes |
-| Band cards (width, channels, clients, share) | `wifi.get` (bands) with `eero.list` (radio stats) | every 60 s |
+| Band cards (width, channels, devices, share) | `wifi.get` (bands) with `eero.list` (radio stats) | every 60 s |
 | Nickname | `network.get` | on load |
 | Timezone and local time | `settings.get` | on load |
 | Schedules that use the timezone | `profile.list`, `settings.get` (power saving), `updates.get` | on load |
@@ -88,14 +90,14 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Copy password, Save QR, Print a card | `wifi.share` | query | no | Clipboard, PNG save dialog, print dialog |
+| Copy password (hero) | `wifi.password.get` | query | no | Clipboard, "Copied password" toast |
 | Name copy icon | none | | | Copies the SSID |
 | Password hide, copy | `wifi.password.get` | query | no | |
 | Password generate | `wifi.password.generate` | query | no | Fills the field; marks it edited |
 | WPA3 master switch | stages `wifi.security.set` for all bands | disruptive | confirm bar | |
 | Band security segment | stages `wifi.security.set` `{band24?, band5?}` | disruptive | confirm dialog naming the WPA2 only devices that can not rejoin | |
 | 2.4 GHz only Turn on / Turn off | `wifi.hide5g.set` `{enabled}` | disruptive | confirm dialog with the impact | Countdown to `hide5g.expiresAt` |
-| Nickname pencil, sheet Save | `network.nickname.set` `{nickname}` (empty clears) | write | no | Toast with Undo (sets the old nickname back); network switcher updates |
+| Nickname input (Enter or leaving the field) | `network.nickname.set` `{nickname}` (empty clears) | write | no | Toast with Undo (sets the old nickname back); network switcher updates |
 | Time zone pencil, sheet Save | `settings.timezone.set` `{timezone}` | write | only when the new zone starts a scheduled pause now (dialog over the sheet) | Toast with Undo (sets the old zone back). Demo only: dimmed on the eero backend (M6.9) |
 | Confirm bar Discard | none | | | Reverts staged edits |
 | Save and reconnect | `wifi.name.set`, `wifi.password.set`, `wifi.security.set` in that order, each with `confirm: true` | disruptive | the confirm bar plus impact panel is the confirm | Wireless clients drop and rejoin; hero updates |

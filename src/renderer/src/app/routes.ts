@@ -16,6 +16,7 @@ import {
   MonitorSmartphone,
   Router,
   Settings,
+  Signal,
   SlidersHorizontal,
   Stethoscope,
   Ticket,
@@ -36,6 +37,7 @@ export type RouteId =
   | "profile"
   | "activity"
   | "guest"
+  | "signal"
   | "wifi"
   | "advanced"
   | "ports"
@@ -78,9 +80,10 @@ export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "device", path: "/devices/:deviceId", title: "Device", icon: MonitorSmartphone, parent: "devices", doc: "device-detail.md" },
   { id: "profiles", path: "/profiles", title: "Profiles", icon: Users, nav: "network", count: "profiles", natOnly: true, doc: "profiles.md" },
   { id: "profile", path: "/profiles/:profileId", title: "Profile", icon: Users, parent: "profiles", natOnly: true, doc: "profile-detail.md" },
+  { id: "signal", path: "/signal", title: "Signal", icon: Signal, nav: "network", doc: "signal.md" },
   { id: "activity", path: "/activity", title: "Activity", icon: Activity, nav: "network", doc: "activity.md" },
-  { id: "guest", path: "/guest", title: "Guest network", icon: Ticket, nav: "network", doc: "guest.md" },
-  { id: "wifi", path: "/settings/wifi", title: "Wi-Fi", icon: Wifi, nav: "settings", doc: "wifi.md" },
+  { id: "wifi", path: "/settings/wifi", title: "Wi-Fi network", icon: Wifi, nav: "settings", doc: "wifi.md" },
+  { id: "guest", path: "/guest", title: "Guest network", icon: Ticket, nav: "settings", doc: "guest.md" },
   { id: "advanced", path: "/settings/advanced", title: "Advanced networking", icon: SlidersHorizontal, nav: "settings", doc: "advanced-networking.md" },
   { id: "ports", path: "/settings/ports", title: "Reservations & ports", icon: ArrowLeftRight, nav: "settings", natOnly: true, doc: "reservations-ports.md" },
   { id: "updates", path: "/settings/updates", title: "Updates & admins", icon: Download, nav: "settings", doc: "updates-admins.md" },
@@ -113,6 +116,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   device: page(() => import("~/features/device/DevicePage"), "DevicePage"),
   eero: page(() => import("~/features/eero/EeroPage"), "EeroPage"),
   guest: page(() => import("~/features/guest/GuestPage"), "GuestPage"),
+  signal: page(() => import("~/features/signal/SignalPage"), "SignalPage"),
   advanced: page(() => import("~/features/advanced/AdvancedPage"), "AdvancedPage"),
   updates: page(() => import("~/features/updates/UpdatesPage"), "UpdatesPage"),
   profiles: page(() => import("~/features/profiles/ProfilesPage"), "ProfilesPage"),

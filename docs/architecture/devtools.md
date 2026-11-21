@@ -5,7 +5,9 @@ the window that lists the app's eero requests: method, path, the command
 that caused each one, status, size and time, with headers, the response
 body and a timing breakdown for the one selected. It works in every build
 and is not mentioned anywhere in the UI. Sign-in requests show too, since
-the panel sits above both the sign-in screen and the shell.
+the panel sits above both the sign-in screen and the shell. Its top edge
+is a 2px border (1px everywhere else in the app), to set it apart as a
+developer view.
 
 The request list stays scrolled to the bottom as new requests arrive, unless
 you have scrolled up. In the details, header labels are 140px wide (a longer
@@ -17,6 +19,11 @@ calls, not React elements, so a 256 KB body renders fast. Syntax colours come
 from the theme's series palette (strings green; numbers, booleans and null
 blue), the one place outside charts and status that uses them. A body that
 is not a JSON object or array, or was cut at 256 KB, shows as plain text.
+
+The toolbar, left to right: the title with its recording dot, the filter
+box, **Show errors only** (it reads **Show all** while the list shows only errors), Pause (Record while paused) and Clear as icon
+buttons with tooltips, the request count and total size, then **DevTools**
+(Electron's own tools) and Close on the right.
 
 Drag the panel's top edge to change its height and the details pane's left
 edge to change its width; both are remembered (view state in localStorage,

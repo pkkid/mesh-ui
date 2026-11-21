@@ -1,18 +1,20 @@
 /**
- * Name & password (docs/ux/pages/guest.md, Layout 4): the current name and
- * whether there is a password, and the Name & password sheet that changes
+ * Name & password (docs/ux/pages/guest.md, Layout 4): settings rows with the
+ * current name and whether there is a password, Edit name and password… in
+ * the section header, and the Name & password sheet that changes
  * them with `guest.rename` and `guest.password.set` (both disruptive).
  *
  * The sheet reads the current password with `guest.share` when it opens, so
  * the field can be revealed, copied or cleared; it is held only in the
  * sheet's state. Generate fills the field from `wifi.password.generate`
  * (nothing is saved until Save). Clearing the password makes the network
- * open, which the confirm says plainly. One confirm covers a save that
+ * open, which the confirm says plainly. A clean sheet (design-system.md,
+ * Write kit: no divider lines), icon buttons with tooltips. One confirm covers a save that
  * changes both: the password goes first (its confirm names an open
  * network), then the rename runs without asking again.
  */
-import { Copy, Eye, EyeOff, KeyRound, Pencil, TriangleAlert, Wand2, Wifi } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { Copy, Eye, EyeOff, Pencil, TriangleAlert, Wand2, Wifi } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useCommand } from "~/app/useCommand";
 import { askInDialog, defaultDeps, fieldErrors, performWrite, type WriteOutcome } from "~/app/useWrite";
@@ -22,7 +24,10 @@ import { Input } from "~/components/ui/input";
 import { Meter } from "~/components/ui/meter";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { Sheet, SheetField } from "~/components/ui/sheet";
+import { Status } from "~/components/ui/status";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { copyText } from "~/lib/clipboard";
+import { formatCount } from "../../../../core/format";
 import { GUEST_NAME_MAX, passwordStrength, WIFI_PASSWORD } from "../../../../core/commands/guest";
 import type { GuestNetwork, WifiShare } from "../../../../core/model";
 
@@ -37,21 +42,56 @@ type Props = {
 export function GuestSettings({ guest, networkName, onSaved }: Props) {
   const gate = useGate({ area: "settings" });
   const [open, setOpen] = useState(false);
+  const online = guest?.enabled ? guest.online : 0;
+  // What a save would do right now: the guests it drops, or that it drops no one.
+  const description = !guest
+    ? "-"
+    : !guest.enabled
+      ? "Off, so saving disconnects no one"
+      : online > 0
+        ? `Saving disconnects ${formatCount(online)} ${online === 1 ? "guest" : "guests"} now online`
+        : "No guests online, so saving disconnects no one";
   return (
-    <Section title="Name & password" subtitle="Saving disconnects current guests">
-      <Card padded className="grid gap-4 sm:grid-cols-2">
-        <Field label="Guest network name" icon={<Wifi />} hint={networkName ? `Must be different from your main network name, ${networkName}` : undefined}>
-          {guest ? (guest.name ?? "-") : ""}
-        </Field>
-        <Field label="Guest network password" icon={<KeyRound />} hint={guest && !guest.hasPassword ? "Anyone nearby can join an open network." : guest && !guest.enabled ? "Set it now; guests use it once the network is on." : "Copy it or share the QR code above."}>
-          {guest ? (guest.hasPassword ? <span className="tracking-[0.18em]">••••••••••</span> : "Open, no password") : ""}
-        </Field>
-        <div className="flex gap-2 sm:col-span-2">
-          <GatedButton gate={gate} size="sm" variant="outline" disabled={!guest} onClick={() => setOpen(true)}>
-            <Pencil />
-            Edit name and password
-          </GatedButton>
-        </div>
+    <Section
+      title="Name & password"
+      description={description}
+      className="gap-[15px]"
+      tools={
+        <GatedButton gate={gate} variant="outline" className="[&_svg]:text-muted-foreground" disabled={!guest} onClick={() => setOpen(true)}>
+          <Pencil />
+          Edit name and password{"\u2026"}
+        </GatedButton>
+      }
+    >
+      <Card className="divide-y divide-border/50">
+        <SettingsRow
+          title="Name"
+          description={networkName ? `Must be different from your main network name, ${networkName}.` : undefined}
+          control={<span className="text-sm">{guest ? (guest.name ?? "-") : "-"}</span>}
+        />
+        <SettingsRow
+          title="Password"
+          description={
+            !guest
+              ? undefined
+              : !guest.hasPassword
+                ? "Anyone nearby can join an open network."
+                : !guest.enabled
+                  ? "Set it now; guests use it once the network is on."
+                  : "Copy it or share the QR code above."
+          }
+          control={
+            !guest ? (
+              <span className="text-sm">-</span>
+            ) : guest.hasPassword ? (
+              <span className="text-sm tracking-[0.18em]" aria-label="Password set">
+                ••••••••••
+              </span>
+            ) : (
+              <Status tone="warning">Open, no password</Status>
+            )
+          }
+        />
       </Card>
       {guest && open && <NamePasswordSheet guest={guest} networkName={networkName} onClose={() => setOpen(false)} onSaved={onSaved} />}
     </Section>
@@ -167,12 +207,13 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
       valid={!local.name && !local.password && loaded}
       onSave={save}
       error={formError}
+      clean
     >
       <SheetField
         label="Guest network name"
         htmlFor="guest-name"
         error={errors.name}
-        helper={`${name.trim().length} / ${GUEST_NAME_MAX} · must be different from ${networkName ?? "your main network name"}`}
+        helper={`${name.trim().length} of ${GUEST_NAME_MAX} characters, must be different from ${networkName ?? "your main network name"}`}
       >
         <Input
           id="guest-name"
@@ -188,7 +229,7 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
         label="Guest network password"
         htmlFor="guest-password"
         error={errors.password}
-        helper={strength ? `${strength.label} · ${password.length} characters` : loaded ? "Empty: an open network anyone nearby can join" : share.error ? undefined : "Loading the current password"}
+        helper={strength ? `${strength.label}, ${password.length} characters` : loaded ? "Empty: an open network anyone nearby can join" : share.error ? undefined : "Loading the current password"}
       >
         <div className="flex items-center gap-1.5">
           <Input
@@ -206,10 +247,10 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
               setServerErrors(({ password: _p, ...rest }) => rest);
             }}
           />
-          <Button type="button" size="icon-sm" variant="ghost-muted" aria-label={reveal ? "Hide password" : "Show password"} disabled={!loaded} onClick={() => setReveal((r) => !r)}>
+          <Button type="button" size="icon-sm" variant="ghost-muted" aria-label={reveal ? "Hide password" : "Show password"} title={reveal ? "Hide password" : "Show password"} disabled={!loaded} onClick={() => setReveal((r) => !r)}>
             {reveal ? <EyeOff /> : <Eye />}
           </Button>
-          <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Copy password" disabled={!password} onClick={() => void copyText(password, { toast: "Copied password" })}>
+          <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Copy password" title="Copy password" disabled={!password} onClick={() => void copyText(password, { toast: "Copied password" })}>
             <Copy />
           </Button>
           <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Generate password" title="Generate a strong password" disabled={!loaded || generate.running} onClick={() => void fill()}>
@@ -233,18 +274,5 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
         </div>
       )}
     </Sheet>
-  );
-}
-
-function Field({ label, icon, hint, children }: { label: string; icon: ReactNode; hint?: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <div className="flex h-8 items-center gap-2 rounded-(--control-radius) border bg-muted/30 px-2.5 text-sm [&_svg]:size-4 [&_svg]:text-muted-foreground">
-        {icon}
-        <span className="truncate">{children}</span>
-      </div>
-      {hint && <span className="text-2xs text-muted-foreground">{hint}</span>}
-    </div>
   );
 }

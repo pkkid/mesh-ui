@@ -1,43 +1,64 @@
 /**
  * Activity (docs/ux/pages/activity.md, mockup 10): a live view. eero sends
  * only its last ~15 minutes of events, so the page shows those plus every
- * event read while the app is open: the kept events by type (compact hero,
- * chip legend that filters, a stacked chart sized to the span) beside the
- * most active devices, eeros and profiles (pick one to filter), the filter
- * bar (no range), and the event stream with grouped rows, day bars and paging. Export CSV saves the
- * filtered events through the native save dialog.
+ * event read while the app is open: the flat hero (kept events, Live, the
+ * busiest type, the most active name, page actions, and Events over time on
+ * the right), then the event stream: filter bar (no range), grouped rows, day
+ * bars and paging. Export CSV saves the filtered events through the native
+ * save dialog.
  *
  * Every figure, filter and group comes from `events.summary` and
- * `events.list`; this page keeps only view state (types shown, filters,
- * Grouped / Raw, pages loaded). The stream's "Unread"
- * marker is eero's one network-wide `has_unread` flag from `notifications.list`
- * (the bell's poll): eero keeps no read flag per event, so rows carry no dots.
+ * `events.list`; this page keeps only view state (filters, Show, pages
+ * loaded). The hero's "Unread notifications" status is eero's one
+ * network-wide `has_unread` flag from `notifications.list` (the bell's poll):
+ * eero keeps no read flag per event, so rows carry no dots.
  */
-import { Check, FileDown } from "lucide-react";
+import { Check, FileDown, Layers } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { PageProps } from "~/app/routes";
 import { execute, useQuery } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
-import { Card, Section } from "~/components/ui/card";
-import { useSlashFocus } from "~/components/ui/filter-bar";
-import { SectionError } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
-import { Status } from "~/components/ui/status";
+import { Section } from "~/components/ui/card";
+import { FilterDropdown, useSlashFocus } from "~/components/ui/filter-bar";
+import { Footnote, SectionError } from "~/components/ui/page";
 import { MarkAllReadButton } from "~/features/notifications/NotificationList";
 import { useNotificationPage } from "~/features/notifications/useDesktopAlerts";
-import { TopBarActions } from "~/features/shell/TopBar";
 import { datedName, saveTextFile } from "~/lib/saveFile";
-import { networkClock } from "../../../../core/format";
-import type { Device, DeviceList, Eero, EventCategory, EventPage, EventSummary, EventTopEntity, Network, NetworkEvent, ProfileList } from "../../../../core/model";
+import { formatCount, networkClock } from "../../../../core/format";
+import type { Device, DeviceList, Eero, EventPage, EventSummary, Network, NetworkEvent, ProfileList } from "../../../../core/model";
 
-import { ActivityChart, CATEGORY_ORDER, stepLabel } from "./ActivityChart";
-import { ActivityHero, sinceLine } from "./ActivityHero";
+import { ActivityHero } from "./ActivityHero";
 import { EMPTY_FILTERS, type EventFilterState, EventFilters } from "./EventFilters";
-import { EventStream, StreamSettingsButton } from "./EventStream";
-import { MostActive } from "./MostActive";
+import { EventStream, NotificationSettingsButton } from "./EventStream";
 
 type Mode = "grouped" | "raw";
+
+/** The stream's Show choice, remembered across launches (view state, shared by every network). */
+const MODE_KEY = "mesh-ui:activity:mode:v1";
+
+function readMode(): Mode {
+  try {
+    return localStorage.getItem(MODE_KEY) === "raw" ? "raw" : "grouped";
+  } catch {
+    return "grouped";
+  }
+}
+
+function saveMode(mode: Mode) {
+  try {
+    localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    // Storage unavailable: the choice resets next launch.
+  }
+}
+
+const MODE_OPTIONS = [
+  { value: "grouped", label: "Group repeats" },
+  { value: "raw", label: "Every event" },
+];
+
+const plural = (n: number, word: string) => `${formatCount(n)} ${word}${n === 1 ? "" : "s"}`;
 
 /** Whether the window is visible: the stream polls only then (useQuery pauses), and the Live dot says so. */
 function useVisible(): boolean {
@@ -59,8 +80,11 @@ export function ActivityPage(_props: PageProps) {
   const notifications = useNotificationPage();
   const unread = notifications.data?.unread === true;
 
-  const [mode, setMode] = useState<Mode>("grouped");
-  const [hidden, setHidden] = useState<ReadonlySet<EventCategory>>(new Set());
+  const [mode, setModeState] = useState<Mode>(readMode);
+  const setMode = (m: Mode) => {
+    setModeState(m);
+    saveMode(m);
+  };
   const [filters, setFilters] = useState<EventFilterState>(EMPTY_FILTERS);
   const [searchText, setSearchText] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -74,18 +98,15 @@ export function ActivityPage(_props: PageProps) {
   }, [searchText, filters.search]);
 
   const entity = { device: unset(filters.device), eero: unset(filters.eero), profile: unset(filters.profile) };
-  // Hero, chart, Most active and day bars: the kept events, every type (the legend hides types in view), entity filters applied.
+  // Hero, Events over time and the type counts: every kept event, whatever the filters.
+  const all = useQuery<EventSummary>("events.summary", { range: "kept" }, { poll: true });
+  // Day bars: the kept events with the Device, eero and Profile filters (with none set, the same query as `all`).
   const summary = useQuery<EventSummary>("events.summary", { range: "kept", ...entity }, { poll: true });
-  const selectedEntity = filters.device ? `device:${filters.device}` : filters.eero ? `eero:${filters.eero}` : filters.profile ? `profile:${filters.profile}` : null;
-  const pickEntity = (t: EventTopEntity) =>
-    setFilters((f) => ({ ...f, device: null, eero: null, profile: null, ...(selectedEntity === `${t.kind}:${t.id}` ? {} : { [t.kind]: t.id }) }));
-  const since = sinceLine(summary.data, clock);
 
-  const shownTypes = CATEGORY_ORDER.filter((c) => !hidden.has(c));
   const streamParams = {
     ...entity,
     search: filters.search.trim() || undefined,
-    type: hidden.size > 0 ? shownTypes : undefined,
+    type: filters.types.length > 0 ? filters.types : undefined,
   };
   const listParams = { ...streamParams, grouped: mode === "grouped" };
   const first = useQuery<EventPage>("events.list", listParams, { poll: true });
@@ -124,14 +145,7 @@ export function ActivityPage(_props: PageProps) {
   const eeroOptions = useMemo(() => (eeros.data ?? []).map((e) => ({ value: e.id, label: e.location ?? e.id })), [eeros.data]);
   const profileOptions = useMemo(() => (profiles.data?.profiles ?? []).map((p) => ({ value: p.id, label: p.name })), [profiles.data]);
 
-  const filtered = hidden.size > 0 || filters.search !== "" || searchText !== "" || filters.device !== null || filters.eero !== null || filters.profile !== null;
-  const toggle = (c: EventCategory) =>
-    setHidden((h) => {
-      const next = new Set(h);
-      if (next.has(c)) next.delete(c);
-      else if (next.size < CATEGORY_ORDER.length - 1) next.add(c);
-      return next;
-    });
+  const filtered = filters.types.length > 0 || filters.search !== "" || searchText !== "" || filters.device !== null || filters.eero !== null || filters.profile !== null;
 
   const streamError = first.error ? (
     <SectionError what="events" error={first.error} onRetry={() => void first.refetch()} />
@@ -139,64 +153,50 @@ export function ActivityPage(_props: PageProps) {
     <SectionError what="older events" error={{ code: "eero_error", message: older.error }} onRetry={() => void loadOlder()} />
   ) : null;
 
-  const footer =
-    // Also when a narrow filter found nothing in the pages read so far: older pages may still match.
-    rows && (rows.length > 0 || lastPage?.nextCursor) ? (
-      <div className="flex justify-center border-t px-4 py-3">
-        {lastPage?.nextCursor ? (
-          <Button size="xs" variant="outline" disabled={older.loading && older.key === paramsKey} onClick={() => void loadOlder()}>
-            {older.loading && older.key === paramsKey ? "Loading older events..." : "Load older events"}
-          </Button>
-        ) : (
-          <span className="text-muted-foreground text-xs">That's every event so far. eero shares only its last 15 minutes; newer ones are added while Mesh UI is open.</span>
-        )}
-      </div>
+  // Also when a narrow filter found nothing in the pages read so far: older pages may still match.
+  const footer = rows && lastPage?.nextCursor ? (
+    <div className="flex justify-center border-t px-4 py-3">
+      <Button size="xs" variant="outline" disabled={older.loading && older.key === paramsKey} onClick={() => void loadOlder()}>
+        {older.loading && older.key === paramsKey ? "Loading older events\u2026" : "Load older events"}
+      </Button>
+    </div>
+  ) : null;
+  const note =
+    rows && rows.length > 0 && !lastPage?.nextCursor ? (
+      <Footnote>eero shares only its last 15 minutes; newer events are added while Mesh UI is open.</Footnote>
     ) : null;
+
+  // "50 events loaded, newest first, filtered": what the stream holds now, then what narrows it.
+  const shownCount = rows?.reduce((n, e) => n + 1 + (e.grouped?.length ?? 0), 0);
+  const streamLine =
+    shownCount === undefined
+      ? "-"
+      : [
+          `${plural(shownCount, "event")}${lastPage?.nextCursor ? " loaded" : ""}`,
+          "newest first",
+          (filters.types.length > 0 || filters.device || filters.eero || filters.profile || filters.search) && "filtered",
+        ]
+          .filter(Boolean)
+          .join(", ");
 
   return (
     <>
-      <TopBarActions>
-        <ExportCsvButton params={streamParams} network={network.data?.name ?? null} />
-      </TopBarActions>
-
-      <Section
-        title="Events by type"
-        subtitle={[since, summary.data && `per ${stepLabel(summary.data.step)}`, "pick a type or a device to filter the stream"].filter(Boolean).join(" · ")}
-      >
-        {summary.error && !summary.data ? (
-          <SectionError what="the event summary" error={summary.error} onRetry={() => void summary.refetch()} />
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card padded className="flex flex-col gap-3">
-              <ActivityHero summary={summary.data} hidden={hidden} onToggle={toggle} loading={summary.fading} />
-              <ActivityChart summary={summary.data} hidden={hidden} timeZone={network.data?.timezone ?? "UTC"} loading={summary.fading || !summary.data} fill />
-            </Card>
-            <Card padded>
-              <MostActive
-                summary={summary.data}
-                timeZone={network.data?.timezone ?? "UTC"}
-                loading={summary.fading}
-                selected={selectedEntity}
-                onPick={pickEntity}
-              />
-            </Card>
-          </div>
-        )}
-      </Section>
-
-      <Section
-        title={
-          <span className="inline-flex items-center gap-3">
-            Event stream
-            {unread && (
-              <Status tone="info" title="eero says some notifications are unread">
-                Unread notifications
-              </Status>
-            )}
-          </span>
+      <ActivityHero
+        summary={all.data}
+        clock={clock}
+        live={visible}
+        unread={unread}
+        fading={all.fading && !all.data}
+        actions={
+          <>
+            <ExportCsvButton params={streamParams} network={network.data?.name ?? null} />
+            <MarkAllReadButton networkId={notifications.networkId} page={notifications.data} />
+            <NotificationSettingsButton />
+          </>
         }
-        subtitle="Newest first · polled every 60 s"
-      >
+      />
+
+      <Section title="Event stream" description={streamLine} className="gap-[15px]">
         <EventFilters
           value={filters}
           searchText={searchText}
@@ -206,24 +206,8 @@ export function ActivityPage(_props: PageProps) {
           devices={deviceOptions}
           eeros={eeroOptions}
           profiles={profileOptions}
-          hiddenTypes={hidden.size}
-          onShowAllTypes={() => setHidden(new Set())}
-          end={
-            <>
-              <Status tone={visible ? "success" : "muted"}>{visible ? "Live" : "Paused"}</Status>
-              <Segmented
-                aria-label="Stream grouping"
-                value={mode}
-                onValueChange={setMode}
-                options={[
-                  { value: "grouped", label: "Grouped" },
-                  { value: "raw", label: "Raw" },
-                ]}
-              />
-              <MarkAllReadButton networkId={notifications.networkId} page={notifications.data} />
-              <StreamSettingsButton />
-            </>
-          }
+          typeCounts={all.data?.counts}
+          end={<FilterDropdown label="Show" icon={Layers} value={mode} options={MODE_OPTIONS} onChange={(m) => m && setMode(m as Mode)} />}
         />
         <EventStream
           rows={rows}
@@ -234,6 +218,7 @@ export function ActivityPage(_props: PageProps) {
           emptyText={filtered ? "No events match these filters." : "No events yet. New ones show up here as they happen."}
           error={streamError}
           footer={footer}
+          note={note}
           networkName={network.data?.name ?? null}
         />
       </Section>
@@ -260,7 +245,6 @@ function ExportCsvButton({ params, network }: { params: Record<string, unknown>;
   };
   return (
     <Button
-      size="xs"
       variant="outline"
       disabled={state.kind === "busy"}
       title={state.kind === "saved" ? `Saved ${state.name}` : state.kind === "failed" ? state.message : undefined}

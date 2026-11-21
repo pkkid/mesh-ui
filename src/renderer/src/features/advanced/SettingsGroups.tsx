@@ -756,7 +756,7 @@ export function WirelessGroup({ settings }: { settings: NetworkSettings | undefi
         description="Set per band on the Wi-Fi page"
         control={
           <Link to={pathFor("wifi")} className="rounded-(--control-radius) border px-2 py-1 font-medium text-xs hover:bg-muted/50">
-            Wi-Fi
+            Wi-Fi network
           </Link>
         }
       />

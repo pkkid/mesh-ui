@@ -13,7 +13,7 @@ import { BandBadge } from "~/components/ui/band-badge";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { SectionError, useNow } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Status } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
@@ -25,9 +25,9 @@ type Filter = "all" | "online" | "recent";
 type Row = { device: Device; down: number | null; up: number | null };
 
 const FILTERS = [
-  { value: "all", label: "All" },
-  { value: "online", label: "Online" },
-  { value: "recent", label: "Recent" },
+  { value: "all", label: "All guests" },
+  { value: "online", label: "Online now" },
+  { value: "recent", label: "Left this week" },
 ] as const;
 
 export function GuestDevices({ timezone }: { timezone: string | null }) {
@@ -54,11 +54,31 @@ export function GuestDevices({ timezone }: { timezone: string | null }) {
         a.device.name.localeCompare(b.device.name),
     );
 
-  const subtitle = all && all.length > 0 ? `${formatCount(online)} online · ${formatCount(all.length - online)} more in the last 7 days` : null;
+  // "1 online, 1 more in 7 days": who is here, then who came by this week.
+  const left = (all?.length ?? 0) - online;
+  const description = !all ? "-" : all.length === 0 ? "None in 7 days" : [`${formatCount(online)} online`, left > 0 && `${formatCount(left)} more in 7 days`].filter(Boolean).join(", ");
   const emptyText = all?.length === 0 ? "No guests in the last 7 days." : filter === "online" ? "No guests are online right now." : "Every guest seen this week is online.";
 
   return (
-    <Section title="Guest devices" subtitle={subtitle} tools={<Segmented aria-label="Show" value={filter} onValueChange={setFilter} options={FILTERS} />}>
+    <Section
+      title="Guest devices"
+      description={description}
+      className="gap-[15px]"
+      tools={
+        <Select items={FILTERS} value={filter} onValueChange={(v) => v && setFilter(v as Filter)}>
+          <SelectTrigger size="tool" aria-label="Show">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectPopup>
+            {FILTERS.map((r) => (
+              <SelectItem key={r.value} value={r.value}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
+      }
+    >
       {devices.error && !all ? (
         <SectionError what="guest devices" error={devices.error} onRetry={() => void devices.refetch()} />
       ) : rows && rows.length === 0 ? (

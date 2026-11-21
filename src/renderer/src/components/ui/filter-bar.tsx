@@ -146,7 +146,7 @@ export function FiltersButton({ active, onClear, children }: { active: number; o
 /** A labelled row inside the Filters popover. */
 export function FilterRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[84px_1fr] items-center gap-2">
+    <div className="grid grid-cols-[84px_1fr] items-baseline gap-2">
       <span className="text-muted-foreground">{label}</span>
       <div className="min-w-0">{children}</div>
     </div>

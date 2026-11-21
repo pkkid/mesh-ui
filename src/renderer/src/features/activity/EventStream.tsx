@@ -9,24 +9,26 @@
  * command's own gate). Rows about a device also get a `...` menu: Rename (a
  * small dialog, `device.rename`), Block or Unblock (`device.block`,
  * disruptive: the confirm dialog first) and Device details, each gated by its command.
- * `StreamSettingsButton` is the header's settings icon, opening Account
- * at Notifications. docs/ux/pages/activity.md (Layout 3, Actions).
+ * Rows that only lead somewhere (their profile, eero, Updates,
+ * Troubleshooting) end in a dim "View ..." text link, never a button; device
+ * rows reach their device through the menu's Device details instead. `NotificationSettingsButton`
+ * is the hero action that opens the notification settings sheet.
+ * docs/ux/pages/activity.md (Layout 3, Actions).
  */
 import { Menu } from "@base-ui/react/menu";
-import { ArrowRight, Ban, ChevronDown, CircleCheck, Ellipsis, Info, Pencil, Play, Settings, UserRoundPlus } from "lucide-react";
+import { Ban, Bell, ChevronDown, CircleCheck, Ellipsis, Info, Pencil, Play, UserRoundPlus } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useMemo, useState } from "react";
 
-import { Link, navigate, pathFor } from "~/app/router";
+import { navigate, pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { fieldErrors, type Gate, performWrite, useWrite } from "~/app/useWrite";
 import { Sparkline } from "~/components/charts/Sparkline";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { IconTile } from "~/components/ui/hero";
 import { Input } from "~/components/ui/input";
-import { useGate } from "~/components/ui/page";
+import { SectionLink, useGate } from "~/components/ui/page";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import { openNotificationSettings } from "~/features/notifications/NotificationSettings";
 import { cn } from "~/lib/utils";
@@ -36,13 +38,13 @@ import { blockRequest, menuClasses, ProfileMenu, type ProfileOption, profileRequ
 
 import { CATEGORIES } from "./ActivityChart";
 
-/** Where a row's action goes: its device, eero or profile, Updates for firmware, Troubleshooting for a repeated eero problem. */
-function rowLink(e: NetworkEvent): { to: string; label: string } | null {
-  if (e.refs.deviceId) return { to: pathFor("device", { deviceId: e.refs.deviceId }), label: "Device" };
-  if (e.refs.profileId) return { to: pathFor("profile", { profileId: e.refs.profileId }), label: "Profile" };
-  if (e.category === "eero_status" && e.grouped?.length) return { to: pathFor("troubleshooting"), label: "Diagnose" };
-  if (e.refs.eeroId) return { to: pathFor("eero", { eeroId: e.refs.eeroId }), label: "eero" };
-  if (e.category === "firmware") return { to: pathFor("updates"), label: "Updates" };
+/** Where a row leads: its device, eero or profile, Updates for firmware, Troubleshooting for a repeated eero problem. */
+export function rowLink(e: NetworkEvent): { to: string; label: string } | null {
+  if (e.refs.deviceId) return { to: pathFor("device", { deviceId: e.refs.deviceId }), label: "View device" };
+  if (e.refs.profileId) return { to: pathFor("profile", { profileId: e.refs.profileId }), label: "View profile" };
+  if (e.category === "eero_status" && e.grouped?.length) return { to: pathFor("troubleshooting"), label: "View troubleshooting" };
+  if (e.refs.eeroId) return { to: pathFor("eero", { eeroId: e.refs.eeroId }), label: "View eero" };
+  if (e.category === "firmware") return { to: pathFor("updates"), label: "View updates" };
   return null;
 }
 
@@ -64,7 +66,7 @@ export function splitDays(rows: ReadonlyArray<NetworkEvent>, hours: EventSummary
       const label = key === today ? "Today" : key === yesterday ? "Yesterday" : clock.longWeekday(e.at);
       const buckets = (hours?.buckets ?? []).filter((b) => clock.day(b.at) === key);
       const total = buckets.reduce((n, b) => n + b.total, 0);
-      const sub = buckets.length ? `${key} · ${formatCount(total)} ${total === 1 ? "event" : "events"}` : key;
+      const sub = buckets.length ? `${key}, ${formatCount(total)} ${total === 1 ? "event" : "events"}` : key;
       day = { key, label, sub, strip: buckets.length > 1 ? buckets.map((b) => b.total) : null, rows: [] };
       out.push(day);
     }
@@ -214,7 +216,7 @@ function RowMenu({ deviceId, device, networkName }: { deviceId: string; device: 
               {device && (
                 <Menu.Item className={menuClasses.item} disabled={!renameGate.allowed} title={reasonOf(renameGate)} onClick={() => setRenaming(true)}>
                   <Pencil className="size-3.5" />
-                  Rename...
+                  Rename device{"\u2026"}
                 </Menu.Item>
               )}
               {device &&
@@ -226,7 +228,7 @@ function RowMenu({ deviceId, device, networkName }: { deviceId: string; device: 
                     onClick={() => void performWrite(blockRequest([device], false))}
                   >
                     <CircleCheck className="size-3.5" />
-                    Unblock
+                    Unblock device
                   </Menu.Item>
                 ) : (
                   <Menu.Item
@@ -236,7 +238,7 @@ function RowMenu({ deviceId, device, networkName }: { deviceId: string; device: 
                     onClick={() => void performWrite(blockRequest([device], true, { networkName }))}
                   >
                     <Ban className="size-3.5" />
-                    Block...
+                    Block device{"\u2026"}
                   </Menu.Item>
                 ))}
               {device && <Menu.Separator className="my-1 h-px bg-border" />}
@@ -315,11 +317,12 @@ function RenameDialog({ device: d, onClose }: { device: Device; onClose: () => v
   );
 }
 
-/** The Event stream header's settings icon: opens the notification settings sheet here, over Activity. */
-export function StreamSettingsButton() {
+/** The hero's Notification settings action: opens the notification settings sheet here, over Activity. */
+export function NotificationSettingsButton() {
   return (
-    <Button size="icon-sm" variant="ghost" aria-label="Notification settings" title="Notification settings" onClick={openNotificationSettings}>
-      <Settings />
+    <Button variant="outline" onClick={openNotificationSettings}>
+      <Bell />
+      Notification settings{"\u2026"}
     </Button>
   );
 }
@@ -328,39 +331,41 @@ function EventRow({ e, clock, ctx, networkName }: { e: NetworkEvent; clock: Cloc
   const meta = CATEGORIES[e.category];
   const link = rowLink(e);
   const extra = e.grouped?.length ?? 0;
+  // A single event centres time, icon, text and actions on the row. A grouped row is taller (its sub list), so time,
+  // icon and actions sit on the title's 18px line instead, each centred in a box of that height.
+  const line = extra > 0 ? "flex h-[18px] items-center" : "flex items-center";
   return (
-    <div className="grid grid-cols-[62px_32px_minmax(0,1fr)_auto] items-start gap-x-3.5 px-[18px] py-[11px] hover:bg-muted/50">
-      <div className="pt-[7px] text-right font-mono text-[11.5px] text-muted-foreground tabular-nums">{clock.time(e.at)}</div>
-      <IconTile icon={meta.icon} size="sm" />
+    <div
+      className={cn(
+        "grid grid-cols-[62px_32px_minmax(0,1fr)_auto] gap-x-3.5 px-[18px] py-[11px] hover:bg-muted/50",
+        extra > 0 ? "items-start" : "items-center",
+      )}
+    >
+      {/* Mono digits have no descenders, so they sit high in their line box; 3px of top padding moves them down 1.5px,
+          centring their ink on the title and detail lines. */}
+      <div className={cn(line, "justify-end font-mono text-2xs text-muted-foreground tabular-nums", extra === 0 && "pt-[3px]")}>
+        {clock.time(e.at)}
+      </div>
+      <div className={line}>
+        <IconTile icon={meta.icon} size="sm" />
+      </div>
       <div className="min-w-0">
-        <div className="text-[13px] leading-snug">
-          {e.title}
-          {extra > 0 && (
-            <Badge variant="outline" className="ms-2 align-middle">
-              {extra + 1} events
-            </Badge>
-          )}
-        </div>
+        <div className="text-[13px] leading-[18px]">{e.title}</div>
         {e.detail && <div className="mt-0.5 text-muted-foreground text-xs">{e.detail}</div>}
         {extra > 0 && (
-          <div className="mt-2 flex flex-col gap-1 border-l-2 ps-2.5">
+          <div className="mt-2 flex flex-col gap-1 border-l ps-2.5">
             {[e, ...(e.grouped ?? [])].map((g) => (
               <div key={g.id} className="text-muted-foreground text-xs">
-                <span className="me-2 font-mono text-[11.5px] text-foreground/80 tabular-nums">{clock.time(g.at)}</span>
+                <span className="me-2 font-mono text-2xs text-foreground/80 tabular-nums">{clock.time(g.at)}</span>
                 {g.detail ?? g.title}
               </div>
             ))}
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1.5 pt-[3px]">
+      <div className={cn(line, "gap-3")}>
         {e.action && <RowAction e={e} ctx={ctx} />}
-        {link && (
-          <Button size="xs" variant="outline" render={<Link to={link.to} />}>
-            {link.label}
-            <ArrowRight />
-          </Button>
-        )}
+        {link && !e.refs.deviceId && <SectionLink to={link.to}>{link.label}</SectionLink>}
         {e.refs.deviceId && <RowMenu deviceId={e.refs.deviceId} device={ctx.devices.get(e.refs.deviceId)} networkName={networkName} />}
       </div>
     </div>
@@ -376,6 +381,7 @@ export function EventStream({
   emptyText,
   error,
   footer,
+  note,
   networkName = null,
 }: {
   /** undefined while the first page loads. */
@@ -389,6 +395,8 @@ export function EventStream({
   /** The inline error note above the stream (rows already shown stay). */
   error: ReactNode;
   footer: ReactNode;
+  /** A footnote under the card (`Footnote`), outside it. */
+  note?: ReactNode;
   /** For the block confirm ("can't rejoin <network>"). */
   networkName?: string | null;
 }) {
@@ -416,9 +424,9 @@ export function EventStream({
         ) : (
           split.map((d) => (
             <div key={d.key}>
-              <div className="flex items-center gap-3 border-b bg-muted/40 px-[18px] py-3 [&:not(:first-child)]:border-t">
-                <h3 className="font-semibold text-xs uppercase tracking-wider">{d.label}</h3>
-                <span className="text-muted-foreground text-xs tabular-nums">{d.sub}</span>
+              <div className="flex items-center gap-3 border-border/50 border-b bg-muted px-[18px] py-2">
+                <h3 className="font-semibold text-3xs text-muted-foreground uppercase tracking-widest">{d.label}</h3>
+                <span className="text-muted-foreground/70 text-xs tabular-nums">{d.sub}</span>
                 {d.strip && d.strip.some((v) => v > 0) && (
                   <Sparkline
                     values={d.strip}
@@ -439,6 +447,7 @@ export function EventStream({
         )}
         {footer}
       </Card>
+      {note}
     </div>
   );
 }

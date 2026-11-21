@@ -6,7 +6,7 @@
  * Activity's event stream offers the same write as "Mark notifications read"
  * (MarkAllReadButton), shown only while something is unread.
  */
-import { Bell, Globe, MonitorSmartphone, Router, Settings, Users } from "lucide-react";
+import { Bell, CheckCheck, Globe, MonitorSmartphone, Router, Settings, Users } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { Link } from "~/app/router";
@@ -50,7 +50,8 @@ export function MarkAllReadButton({ networkId, page }: { networkId: string | nul
   const mark = useMarkAllRead(networkId, page);
   if (!networkId || page?.unread !== true) return null;
   return (
-    <GatedButton gate={mark.gate} variant="outline" className="px-2 font-normal text-[13px]" disabled={mark.disabled} onClick={() => void mark.run()}>
+    <GatedButton gate={mark.gate} variant="outline" disabled={mark.disabled} onClick={() => void mark.run()}>
+      <CheckCheck />
       Mark notifications read
     </GatedButton>
   );

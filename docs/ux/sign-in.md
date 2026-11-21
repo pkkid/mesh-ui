@@ -93,7 +93,7 @@ real storage state (see States).
 | Email / Phone toggle | - (view state) | - | No | Switches field type |
 | Send code | `auth.login.start {login}` | write | No | Moves to step 2; starts the 60 s resend timer |
 | Sign in with Amazon | `auth.login.amazon` | write | No | Host-only: private Amazon window, then eero session; opens the dashboard like verify |
-| Try demo mode | `app.demo.set {enabled: true}` | write (app local) | No | Relaunches Mesh UI with `--demo` (same user data dir, settings kept in memory, the saved session untouched); demo networks appear |
+| Try demo mode | `app.demo.set {enabled: true}` | write (app local) | No | Relaunches Mesh UI with `--demo` (same user data dir, settings kept in memory, the saved session untouched; under `pnpm dev` the new instance starts as a child of the old one instead, so electron-vite and its dev server stay up, see `src/main/demo-switch.ts`); demo networks appear |
 | Leave demo mode (in demo) | `app.demo.set {enabled: false}` | write (app local) | No | Relaunches without `--demo` (and without `MESH_UI_DEMO`); the real sign-in page or account returns |
 | Back | - | - | No | Back to step 1, pending login discarded |
 | Verify (or sixth digit) | `auth.login.verify {code}` | write | No | `ok`: selects the last used or first network and opens the dashboard (step 3). Error: wrong-code state |

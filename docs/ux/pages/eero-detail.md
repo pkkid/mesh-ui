@@ -109,7 +109,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Data 24h and share of network | `usage.get {scope: "eero", id: eero, range: "day"}` (with `shareOfNetwork`) | 5 min |
 | Uplink card (upstream, downstream, link quality) | `eero.list` (graph) | 60 s |
 | Data usage chart | `usage.get {scope: "eero", id: eero, range}` | 5 min |
-| Radios (channel, width, tx power, clients, utilisation, auto channel) | `eero.get` | 60 s |
+| Radios (channel, width, tx power, devices, utilisation, auto channel) | `eero.get` | 60 s |
 | Connected devices | `device.list {eero}` | 30 s |
 | Ethernet ports (status, speeds, attached devices, MACs, allowed actions) | `eero.ports.get {eero}` | 60 s |
 | Location presets | Static list in core (eero's room names) | - |

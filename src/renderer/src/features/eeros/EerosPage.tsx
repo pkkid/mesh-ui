@@ -1,11 +1,10 @@
 /**
  * eeros: the mesh itself. Topology (Map or Tree) with the issue note and the
  * selected eero, a card per eero with its radios, data usage by eero,
- * clients by band and network actions. Layout, data and states:
+ * devices by band and network actions. Layout, data and states:
  * docs/ux/pages/eeros.md and docs/mockups/03-eeros.html. Every figure comes
  * from a query command; the page only arranges and words it.
  */
-import { CircleArrowUp, CircleCheck } from "lucide-react";
 import { useState } from "react";
 
 import { navigate, pathFor } from "~/app/router";
@@ -19,7 +18,7 @@ import { TopologyTree } from "~/components/mesh/TopologyTree";
 import { Card, CardLink, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { KvList } from "~/components/ui/kv-list";
-import { SectionError } from "~/components/ui/page";
+import { Footnote, SectionError } from "~/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { TextLink } from "~/components/ui/text-link";
 import { networkStatus } from "~/components/ui/status";
@@ -100,11 +99,11 @@ export function EerosPage(_props: PageProps) {
         .join(", ")
     : "-";
 
-  // "37 clients, 1 busy radio": who is connected across the mesh, then any radio over the busy line.
+  // "37 devices, 1 busy radio": who is connected across the mesh, then any radio over the busy line.
   const clientCount = list.reduce((sum, e) => sum + (e.clients.total ?? 0), 0);
   const busyRadios = list.flatMap((e) => wirelessRadios(e)).filter((r) => r.utilization !== null && r.utilization / 100 >= BUSY_AT).length; // utilization is 0 to 100
   const eerosDescription = eeros.data
-    ? [`${formatCount(clientCount)} ${clientCount === 1 ? "client" : "clients"}`, busyRadios > 0 ? `${busyRadios} busy ${busyRadios === 1 ? "radio" : "radios"}` : null]
+    ? [`${formatCount(clientCount)} ${clientCount === 1 ? "device" : "devices"}`, busyRadios > 0 ? `${busyRadios} busy ${busyRadios === 1 ? "radio" : "radios"}` : null]
         .filter(Boolean)
         .join(", ")
     : "-";
@@ -200,8 +199,8 @@ export function EerosPage(_props: PageProps) {
       <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <EeroUsage eeros={eeros.data} timezone={network.data?.timezone ?? null} />
         {devices.error && !devices.data ? (
-          <Section title="Clients by band">
-            <SectionError what="clients" error={devices.error} onRetry={() => void devices.refetch()} />
+          <Section title="Devices by band">
+            <SectionError what="devices" error={devices.error} onRetry={() => void devices.refetch()} />
           </Section>
         ) : (
           <ClientsByBand summary={devices.data?.summary} fading={devices.fading} />
@@ -235,15 +234,10 @@ function FirmwareLine({ updates }: { updates: Updates | undefined }) {
         {text}
       </TextLink>
     );
-  // An icon like the note below, so the two lines' text lines up: a check when up to date, an up arrow otherwise.
-  const Icon = updates.status === "up_to_date" ? CircleCheck : CircleArrowUp;
   return (
-    <p className="flex gap-2 px-1 text-muted-foreground/50 text-xs">
-      <Icon className="mt-px size-3.5 shrink-0" />
-      <span>
-        eeroOS {updates.current}, {state}
-      </span>
-    </p>
+    <Footnote>
+      eeroOS {updates.current}, {state}
+    </Footnote>
   );
 }
 

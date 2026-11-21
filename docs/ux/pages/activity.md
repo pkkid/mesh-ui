@@ -1,6 +1,6 @@
 # Activity
 
-A live stream of the network's events and notification inbox, with a 24 hour chart of events by type. eero's API sends only its last ~15 minutes of events (#263), so Activity shows those plus every event read while the app is open; it offers no way to look further back.
+A live stream of the network's events and notification inbox, under a hero with a chart of events over time. eero's API sends only its last ~15 minutes of events (#263), so Activity shows those plus every event read while the app is open; it offers no way to look further back.
 
 Mockup: [../../mockups/10-activity.html](../../mockups/10-activity.html)
 
@@ -8,35 +8,38 @@ Shared patterns (shell, section cards, status dots, charts, confirms, polling) a
 
 ## Layout
 
-Titlebar: title "Activity", **Export CSV** button on the right of the titlebar actions, then the global search and bell.
+Titlebar: breadcrumbs only (no page actions), then the global search, Refresh and bell.
 
-1. **Events by type** (section, sub line `Since 9:41 AM · per 5 minutes · pick a type or a device to filter the stream`, no header controls). Two cards side by side, 50/50 (stacked on narrow windows), the same height:
-   - Left card, compact hero ([design system](../../design/design-system.md)): `58` (`text-2xl`) with `events · last 58 min` beside it, then a share bar of the types filling the rest of the line. Under it the type legend as wrapping chips (colour square, label, count): usually one line, two with all 8 types. The chips double as the type filter: clicking one toggles that type in the chart and the stream (struck through while hidden). Labels are short (Devices, Paused / blocked, Schedules, eero status, Speed tests, Firmware, Admin actions, Ports & temp).
-   - Under the legend, the stacked bar chart fills the card's leftover height (at least `h-32`), so a one-line legend gives a taller chart. It covers only the kept events: from the oldest kept event (at least 15 minutes back, at most 24 hours) to now, in about 12 bars whose step fits that span (1, 2, 5, 10, 15 or 30 minutes, 1 or 2 hours). Hover shows the slice (`10:15 to 10:20 AM`) with one row per type and a total. One segment colour per type (`eventCategoryColors` in `lib/chartColors.ts`, hues from the theme series palette; see [design system](../../design/design-system.md#series-colours)).
-   - Right card, **Most active**: a breakdown table of the 4 devices, eeros and profiles with the most kept events (name, with `eero` or `profile` after it; a 2px bar in the colour of its main event type, scaled to the top row; event count; last event, relative), then `+ 20 more` when others have events. Clicking a row filters the stream (and the summary) to it, as the Filters popover would; clicking it again clears that filter. Events are matched to names the way stream rows are linked (below).
-2. **Event stream** (section, right under Events by type). Header: title, an **Unread notifications** status marker (info dot plus "Unread notifications") while eero's network-wide `has_unread` is set, and the sub line `Newest first · polled every 60 s`; no header tools.
-   - **Filter bar** first, the shared list-page filter bar ([design system](../../design/design-system.md#filter-bar)), no card, as on Devices. On its row, right aligned and vertically centred with the search: a live dot ("Live"), segmented toggle **Grouped** / **Raw**, **Mark notifications read** button (`notifications.mark_read`; shown only while the flag is set, and hidden rather than greyed out while it is clear, since events themselves have no read state) and a settings icon button that opens the Notification settings sheet over Activity ([overview.md](../overview.md#notifications-bell)).
-     - Left: search ("Filter events", `/` focuses it, Esc clears it) and a **Filters** button with a count of the popover filters that are set. Its popover has a row each for **Device**, **eero** and **Profile** (each "Any" by default), and a footer "2 filters set" with **Clear all**. The Device list is long, so its picker has a type-ahead field (Enter picks the first match).
+1. **Hero** (the flat page header, [design system](../../design/design-system.md#page-header-hero)), from `events.summary {range: "kept"}` with no filters, so it always covers every kept event:
+   - Title: the kept event count (`64 events`; `Activity` while loading).
+   - Status line: a **Live** dot (muted **Paused** while the window is hidden and the poll stops), `Kept since 9:41 AM` (with the date on an earlier day), and an **Unread notifications** info dot while eero's network-wide `has_unread` is set.
+   - Facts: **Busiest type** (`Devices · 36%`) and **Most active** (`Living Room · 11 events`, the device, eero or profile with the most kept events). No share bar.
+   - Actions, all outline hero buttons: **Export CSV**, **Mark notifications read** (`notifications.mark_read`; shown only while the flag is set, and hidden rather than greyed out while it is clear, since events themselves have no read state), **Notification settings…** (opens the Notification settings sheet over Activity, [overview.md](../overview.md#notifications-bell)).
+   - Right-hand column, **Events over time** (`w-[28rem]`, as Profiles' Usage by profile): title, subtitle `2h bars, busiest 8 AM to 10 AM`, then plain columns (`BarChart`, `h-28`, no Y labels, no gridlines, a 2px stub for an empty slot) of every kept event in the neutral series colour (`seriesColors.neutral`), so it informs without competing with the title. It covers only the kept events: from the oldest kept event (at least 15 minutes back, at most 24 hours) to now, in about 12 bars whose step fits that span (1, 2, 5, 10, 15 or 30 minutes, 1 or 2 hours), so even eero's first 15 minutes draw a full row of slots. Hover shows the slot (`3:40 to 3:42 PM`) and its count. Before any event: "No events yet."
+2. **Event stream** (section), subtitle from the rows on screen: `50 events loaded, newest first` (`loaded` while older pages remain), then `filtered` while any filter is set. No header tools.
+   - **Filter bar** first, the shared list-page filter bar ([design system](../../design/design-system.md#filter-bar)), no card, as on Devices.
+     - Left: search ("Filter events", `/` focuses it, Esc clears it) and a **Filters** button with a count of the popover filters that are set. Its popover has an **Event type** row of toggles (one per type with kept events, with its count; picking some shows only those, none picked shows every type), then a row each for **Device**, **eero** and **Profile** (each "Any" by default), and a footer "2 filters set" with **Clear all**. The Device list is long, so its picker has a type-ahead field (Enter picks the first match). Labels in the popover sit on the first line of their control (`FilterRow`, baseline aligned).
+     - Right: a **Show** dropdown, **Group repeats** (default) or **Every event**, remembered across launches (localStorage `mesh-ui:activity:mode:v1`, on this computer, for every network).
      - No Range dropdown: the stream is live, so there is no older window to pick.
-     - Under the bar, while any is set: one chip per popover filter ("Device: Alex's iPhone", "eero: Living Room", "Profile: Alex") with an x to remove it, a "2 types hidden" chip while the legend hides types (its x shows them all), then **Clear all**, which clears those filters and types (search stays).
-   - Day bars: `Today`, `Yesterday`, then weekday names (only while the app stays open that long). Within the last 24 hours each shows the date, that day's event count in the window and a small per hour sparkline strip; an older day shows the date alone.
-   - Event rows: time (mono, right aligned), icon, title with bold entities, a muted detail line (entity chip, band, channel, MAC, IP, profile), and a right side slot holding a contextual action or a status.
+     - Under the bar, while any is set: one chip per popover filter ("Type: Devices, Firmware", or "Type: 3 types" past two; "Device: Alex's iPhone", "eero: Living Room", "Profile: Alex") with an x to remove it, then **Clear all**, which clears them (search stays).
+   - Day bars (group header rows: `text-3xs` uppercase label on `bg-muted`): `Today`, `Yesterday`, then weekday names (only while the app stays open that long). Within the last 24 hours each shows the date, that day's event count in the window and a small per hour sparkline strip; an older day shows the date alone.
+   - Event rows: time (mono, right aligned), icon, title, a muted detail line (band, channel, MAC, IP, profile), and a right side slot holding a contextual action and either the row menu (device rows) or a dim `View ...` text link to where the row leads.
    - Rows carry no unread dots or counts: eero keeps no read flag per event or notification, only one `has_unread` for the whole network.
-   - Grouped rows (e.g. "Garage mesh link dropped to 2 bars", `2 events` badge) show an indented sub list of the underlying events with their times.
-   - Footer: **Load older events** button while there is an older page; at the end, "That's every event so far. eero shares only its last 15 minutes; newer ones are added while Mesh UI is open." With no events: "No events yet. New ones show up here as they happen."
+   - Grouped rows (e.g. "Garage mesh link dropped to 2 bars", no count badge) show an indented sub list of the underlying events with their times.
+   - Footer row inside the card: **Load older events** button while there is an older page, nothing else. At the end, a footnote under the card (the page kit's `Footnote`, not a row in it): "eero shares only its last 15 minutes; newer events are added while Mesh UI is open." With no events: "No events yet. New ones show up here as they happen."
    - Row actions: **Assign profile** (profile menu) on a new device that is still Unassigned, **Resume** on a profile pause while the profile is paused, **Unblock** on a block while the device is blocked. Core sets `action` on the newest such row per device or profile; the button shows only while the target still needs it, so Resume goes away once the profile runs again. Each runs the M4 command through the write kit with its success toast and Undo, and a closed gate (the command's own gate) hides it.
-   - Links: rows with refs link to their device, profile or eero; firmware rows link to Updates and grouped eero rows to Troubleshooting. The real stream carries no refs (M5.1 capture: 5 of 5 rows had only `hash`, `timestamp_ms`, `description`, `category`), so core links a row by name only where it is unambiguous: exactly one device, eero or profile whose name stands alone in the description (not inside a longer word or a possessive, the longest name wins so "Living Room TV" is the device and not the Living Room eero). A name two things share, or two devices named in one row, links nothing; such a row keeps only its page link, if any, and offers no action.
-   - Row menu (M6.10): every row linked to a device ends in a `...` menu with **Rename...** (a small dialog with the nickname; empty uses the device's own name), **Block...** (the block confirm; **Unblock** while the device is blocked) and **Device details**. Rename and Block need the device in the device list, so a device eero no longer lists keeps only Device details. A closed gate (`device.rename`, `device.block` or `device.unblock`) disables the item with its reason, as on Devices.
+   - Links: device rows reach their device through the row menu's **Device details** only (no separate link); rows with other refs end in **View profile** or **View eero**; firmware rows in **View updates** and grouped eero rows in **View troubleshooting**. These are text links (they only navigate), never buttons. The real stream carries no refs (M5.1 capture: 5 of 5 rows had only `hash`, `timestamp_ms`, `description`, `category`), so core links a row by name only where it is unambiguous: exactly one device, eero or profile whose name stands alone in the description (not inside a longer word or a possessive, the longest name wins so "Living Room TV" is the device and not the Living Room eero). A name two things share, or two devices named in one row, links nothing; such a row keeps only its page link, if any, and offers no action.
+   - Row menu (M6.10): every row linked to a device ends in a `...` menu with **Rename device…** (a small dialog with the nickname; empty uses the device's own name), **Block device…** (the block confirm; **Unblock device** while the device is blocked) and **Device details**. Each item names what it acts on. Rename and Block need the device in the device list, so a device eero no longer lists keeps only Device details. A closed gate (`device.rename`, `device.block` or `device.unblock`) disables the item with its reason, as on Devices.
 
 Row actions shown in the mockup:
 
 | Event | Right side |
 | --- | --- |
-| New device joined | **Assign profile** button, overflow menu |
+| New device joined | **Assign profile** button, row menu |
 | Profile paused | **Resume** button |
-| Update available | **Updates** link button |
+| Update available | **View updates** link |
 | Speed test | status "Fast" |
-| Mesh link dropped (grouped) | **Diagnose** link button |
+| Mesh link dropped (grouped) | **View troubleshooting** link |
 | Admin invited | status "Pending" |
 | Device blocked | **Unblock** button |
 | Firmware installed | status "Installed" |
@@ -47,13 +50,12 @@ Row actions shown in the mockup:
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Hero total, span and "since" sub line | `events.summary` `{range: "kept", device?, eero?, profile?}` (`total`, `earliest`, `step`) | on load, then with the stream poll |
-| Share bar and legend chips | `events.summary` (same call, `counts`) | same |
-| Events by type chart | the same call (`buckets`) | same |
-| Most active | the same call (`top`, `topMore`) | same |
-| Day bar counts and strip | the same call's buckets on that day | same |
+| Hero title, Kept since and facts | `events.summary` `{range: "kept"}` (`total`, `earliest`, `counts`, `buckets`, `top`) | on load, then with the stream poll |
+| Events over time | the same unfiltered call (`buckets`, `step`) | same |
+| Event type toggle counts | the same unfiltered call (`counts`) | same |
+| Day bar counts and strip | `events.summary` `{range: "kept", device?, eero?, profile?}` buckets on that day | same |
 | Event stream rows | `events.list` `{cursor?, type?, device?, eero?, profile?, search?, grouped}` | every 60 s while the page is visible |
-| Unread marker | `notifications.list` (`unread`, network-wide; the bell's poll) | every 60 s |
+| Unread notifications (hero) | `notifications.list` (`unread`, network-wide; the bell's poll) | every 60 s |
 | Device, eero, profile filter options | `device.list`, `eero.list`, `profile.list` | on open of the page |
 
 `events.summary` and the filter params on `events.list` are in the [catalogue](../../architecture/commands.md#activity-commandsactivityts). Grouping is done in `src/core` so the CLI and MCP get the same groups as the window.
@@ -63,29 +65,29 @@ Row actions shown in the mockup:
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Export CSV | `events.list` `{format: "csv", limit: 1000, ...current filters}` | query | no | Save dialog; the file is built in core, every event in the filtered range (up to 1,000) |
-| Type legend row | none (view state) | | | Toggles the type in chart and stream |
+| Filters: Event type | none (view state, passed to `events.list` as `type`) | | | Shows only the picked types in the stream |
 | Filter text, Filters (Device, eero, Profile) | none (view state, passed to `events.list`) | | | Refetches the stream |
-| Filter chip x, Clear all | none | | | Clears that filter (or the hidden types); Clear all clears every chip |
-| Grouped / Raw | none (passed as `grouped`) | | | Regroups the stream |
-| Mark notifications read | `notifications.mark_read` | write | no | Unread notifications marker, the button itself and the bell dot clear; "Marked all read" toast, no Undo |
-| Settings icon | none (opens the sheet) | | | The Notification settings sheet, over Activity |
+| Filter chip x, Clear all | none | | | Clears that filter; Clear all clears every chip |
+| Show: Group repeats / Every event | none (passed as `grouped`) | | | Regroups the stream |
+| Mark notifications read | `notifications.mark_read` | write | no | Unread notifications status, the button itself and the bell dot clear; "Marked all read" toast, no Undo |
+| Notification settings… | none (opens the sheet) | | | The Notification settings sheet, over Activity |
 | Assign profile | `device.profile.set` `{devices: [device], profile}` | write | only when the profile is paused or in a scheduled pause now | Profile menu; "Moved X to Y" toast with Undo; the button goes once the device has a profile |
-| Row menu: Rename | `device.rename` `{device, nickname}` | write | no | Dialog; "Renamed to X" toast with Undo; field errors stay in the dialog |
-| Row menu: Block, Unblock | `device.block` / `device.unblock` `{devices: [device]}` | disruptive (Block) / write | Block: confirm dialog | "Blocked X" toast with Undo |
+| Row menu: Rename device | `device.rename` `{device, nickname}` | write | no | Dialog; "Renamed to X" toast with Undo; field errors stay in the dialog |
+| Row menu: Block device, Unblock device | `device.block` / `device.unblock` `{devices: [device]}` | disruptive (Block) / write | Block: confirm dialog | "Blocked X" toast with Undo |
 | Row menu: Device details | none (navigation) | | | Opens the device page |
 | Resume | `profile.resume` `{profile}` | write | no | "Resumed Leo" toast with Undo (`profile.pause`, which asks first); the button goes; a "resumed" event appears on a later poll |
 | Unblock | `device.unblock` `{devices: [device]}` | write | no | "Unblocked X" toast with Undo (`device.block`); the button goes |
-| Updates, Diagnose | none (navigation) | | | [Updates & admins](updates-admins.md), [Troubleshooting](troubleshooting.md) |
+| View updates, View troubleshooting, View profile / eero | none (navigation) | | | [Updates & admins](updates-admins.md), [Troubleshooting](troubleshooting.md) |
 | Load older events | `events.list` `{cursor}` | query | no | Appends the next page |
 
 ## States
 
-- **Loading:** keep the layout; on a first load or a range switch, chart and figures fade to `opacity-40` after 150 ms; stream shows placeholder rows of the right height. Background refreshes do not dim them (the topbar Refresh icon spins).
-- **Empty:** for a filter with no matches, the stream shows one centred muted sentence ("No events match these filters.") and the chart shows "No activity in this window.".
+- **Loading:** keep the layout; on a first load, the hero chart and figures fade to `opacity-40` after 150 ms; stream shows placeholder rows of the right height. Background refreshes do not dim them (the topbar Refresh icon spins).
+- **Empty:** for a filter with no matches, the stream shows one centred muted sentence ("No events match these filters."); the hero chart ignores filters, so it only shows "No events yet." before any event is kept.
 - **Error:** inline note above the stream with the error message and a **Retry** button; cached rows stay visible.
 - **Offline (network down):** the stream still loads from eero's cloud; the hero status elsewhere shows the outage. Poll keeps running.
 - **No permission:** admins see everything here. Row actions the user cannot perform (per `network.permissions`) are hidden, not disabled.
-- **Live paused:** when the window is hidden the poll stops and the Live dot turns muted; it resumes and refetches on focus.
+- **Live paused:** when the window is hidden the poll stops and the hero's Live dot turns a muted "Paused"; it resumes and refetches on focus.
 
 ## Notes
 

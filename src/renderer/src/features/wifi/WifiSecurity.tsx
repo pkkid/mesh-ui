@@ -8,18 +8,19 @@
  * before `wifi.security.set`. 6 GHz is always WPA3.
  * docs/ux/pages/wifi.md (Layout, left column 1 and 2).
  */
-import { Check, Copy, Dices, Eye, EyeOff, Info, KeyRound, type LucideIcon, Pencil, Wifi } from "lucide-react";
+import { Check, Copy, Dices, Eye, EyeOff, Pencil, Wifi } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { execute } from "~/app/useCommand";
 import { fieldErrors, useWrite } from "~/app/useWrite";
 import { bandLabel } from "~/components/ui/band-badge";
 import { Button } from "~/components/ui/button";
-import { Card, Section } from "~/components/ui/card";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
-import { GatedButton, useGate } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Footnote, GatedButton, useGate } from "~/components/ui/page";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { Status } from "~/components/ui/status";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
@@ -27,45 +28,12 @@ import { formatCount, MISSING } from "../../../../core/format";
 import type { Device, Security, WifiSettings, WirelessBand } from "../../../../core/model";
 import { type GeneratedPassword, SSID_MAX_BYTES, ssidBytes as bytes, WIFI_PASSWORD, type WifiPassword } from "../../../../core/commands/wifi";
 import { WifiImpact } from "./WifiImpact";
+import { SECURITY_LABEL } from "./WifiHero";
 import type { Secret } from "./WifiPage";
 
 /** Wi-Fi writes need the `settings` update permission (same table as the palette). */
 const GATE = { area: "settings" } as const;
 const PRINTABLE = /^[\x20-\x7E]*$/;
-
-/** A labelled read-only value in an input-like box, with small icon buttons on the right. */
-export function ReadField({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  mono = false,
-  actions,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: ReactNode;
-  hint?: ReactNode;
-  mono?: boolean;
-  actions?: ReactNode;
-}) {
-  const missing = value === null || value === undefined || value === "";
-  return (
-    <div className="min-w-0">
-      <div className="mb-1.5 flex items-center gap-1.5 text-muted-foreground text-xs">
-        <Icon aria-hidden className="size-3.5" />
-        {label}
-      </div>
-      <div className="flex h-8 items-center gap-2 rounded-lg border border-input bg-background ps-3 pe-1 text-sm dark:bg-input/32">
-        <span className={cn("min-w-0 flex-1 truncate", mono && "font-mono text-[13px]", missing && "text-muted-foreground")} aria-label={label}>
-          {missing ? MISSING : value}
-        </span>
-        {actions && <span className="flex shrink-0 items-center gap-0.5">{actions}</span>}
-      </div>
-      {hint && <div className="mt-1 text-2xs text-muted-foreground">{hint}</div>}
-    </div>
-  );
-}
 
 function IconButton({ label, onClick, disabled, children }: { label: string; onClick?: () => void; disabled?: boolean; children: ReactNode }) {
   return (
@@ -106,21 +74,36 @@ function CopyIcon({ label, text, disabled }: { label: string; text: () => Promis
   );
 }
 
-export function WifiNamePassword({
+/** The Wi-Fi settings' Edit name and password… button (section header): needs `settings` updates and an online network. */
+export function EditNamePasswordButton({ wifi, offline, onClick }: { wifi: WifiSettings | null; offline: boolean; onClick: () => void }) {
+  const gate = useGate(GATE);
+  return (
+    <GatedButton variant="outline" className="[&_svg]:text-muted-foreground" gate={gate} disabled={!wifi || offline} onClick={onClick}>
+      <Pencil />
+      Edit name and password{"\u2026"}
+    </GatedButton>
+  );
+}
+
+/**
+ * The Name and Password rows of the Wi-Fi settings, and the name and password
+ * sheet while `editing` (the page's Edit name and password… opens it).
+ */
+export function NamePasswordRows({
   wifi,
   password: secret,
-  offline = false,
+  editing,
+  onEditDone,
   onSaved,
 }: {
   wifi: WifiSettings | null;
   password: Secret<WifiPassword>;
-  offline?: boolean;
+  editing: boolean;
+  onEditDone: () => void;
   /** After a name or password change: drop revealed credentials so the next reveal reads the new ones. */
   onSaved?: () => void;
 }) {
   const [shown, setShown] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const gate = useGate(GATE);
   const password = secret.value?.password ?? null;
   // A network switch drops the revealed password; hide again so the next one is not read unasked.
   useEffect(() => {
@@ -129,53 +112,53 @@ export function WifiNamePassword({
   const ssid = wifi?.ssid ?? null;
   const open = wifi !== null && !wifi.hasPassword;
 
-  const passwordValue = !wifi ? null : open ? "No password (open network)" : shown && password ? password : "••••••••••••";
+  const passwordValue = !wifi ? MISSING : shown && password ? password : "••••••••••";
   const toggle = async () => {
     if (shown) return setShown(false);
     if (await secret.load()) setShown(true);
   };
 
   return (
-    <Section
-      title="Network name and password"
-      subtitle="For the main network"
-      tools={
-        <GatedButton variant="outline" gate={gate} disabled={!wifi || offline} onClick={() => setEditing(true)}>
-          <Pencil />
-          Change
-        </GatedButton>
-      }
-    >
-      <Card padded className="flex-1">
-        {/* Side by side when the section is full width; stacked once it sits beside Encryption (WifiPage). */}
-        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @3xl:grid-cols-1">
-          <ReadField
-            icon={Wifi}
-            label="Wi-Fi network name"
-            value={ssid}
-            actions={<CopyIcon label="Copy network name" text={() => ssid} disabled={!ssid} />}
-          />
-          <ReadField
-            icon={KeyRound}
-            label="Wi-Fi password"
-            mono={shown}
-            value={passwordValue}
-            hint={secret.error ? <span className="text-destructive-foreground">{secret.error}</span> : null}
-            actions={
-              open ? null : (
-                <>
-                  <IconButton label={shown ? "Hide password" : "Reveal password"} disabled={!wifi || secret.loading} onClick={() => void toggle()}>
-                    {shown ? <EyeOff /> : <Eye />}
-                  </IconButton>
-                  <CopyIcon label="Copy password" disabled={!wifi} text={async () => (await secret.load())?.password ?? null} />
-                </>
-              )
-            }
-          />
-        </div>
-      </Card>
-      {wifi && <NamePasswordSheet open={editing} onClose={() => setEditing(false)} wifi={wifi} onSaved={onSaved} />}
-    </Section>
+    <>
+      <SettingsRow
+        title="Name"
+        description={ssid ? `${formatCount(bytes(ssid))} of ${SSID_MAX_BYTES} bytes, shared by every band.` : "Shared by every band."}
+        control={
+          <span className="flex items-center gap-1.5">
+            <span className="max-w-56 truncate text-sm">{ssid ?? MISSING}</span>
+            <CopyIcon label="Copy network name" text={() => ssid} disabled={!ssid} />
+          </span>
+        }
+      />
+      <SettingsRow
+        title="Password"
+        description={
+          secret.error ? (
+            <span className="text-destructive-foreground">{secret.error}</span>
+          ) : !wifi ? undefined : open ? (
+            "Anyone nearby can join an open network."
+          ) : shown && password ? (
+            `${formatCount(password.length)} characters. Read from eero only when you reveal or copy it.`
+          ) : (
+            "Read from eero only when you reveal or copy it."
+          )
+        }
+        control={
+          open ? (
+            <Status tone="warning">Open, no password</Status>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className={cn("max-w-56 truncate text-sm", shown && password ? "font-mono" : "tracking-[0.18em]")}>{passwordValue}</span>
+              <IconButton label={shown ? "Hide password" : "Reveal password"} disabled={!wifi || secret.loading} onClick={() => void toggle()}>
+                {shown ? <EyeOff /> : <Eye />}
+              </IconButton>
+              <CopyIcon label="Copy password" disabled={!wifi} text={async () => (await secret.load())?.password ?? null} />
+            </span>
+          )
+        }
+      />
+      {wifi && <NamePasswordSheet open={editing} onClose={onEditDone} wifi={wifi} onSaved={onSaved} />}
+    </>
   );
 }
 
@@ -263,12 +246,13 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
       onClose={onClose}
       icon={<Wifi />}
       title="Network name and password"
-      subtitle={`${wifi.ssid} · every wireless device rejoins after a change`}
+      subtitle={`${wifi.ssid}, every wireless device rejoins after a change`}
       dirty={nameDirty || pwDirty}
       valid={!nameProblem(name) && !passwordProblem(pw)}
       onSave={save}
       saveLabel="Save and reconnect"
       error={formError}
+      clean
     >
       <SheetField label="Wi-Fi network name" htmlFor="wifi-sheet-name" error={nameError} helper={`${formatCount(bytes(name))} of ${SSID_MAX_BYTES} bytes`}>
         <Input id="wifi-sheet-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" spellCheck={false} aria-invalid={nameError ? true : undefined} />
@@ -306,26 +290,26 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
   );
 }
 
-/** Short labels so the control fits beside Name and password; the full eero name is each option's tooltip. */
-const MODES: { value: Security; label: string; title: string }[] = [
-  { value: "WPA2", label: "WPA2", title: "Standard (WPA2)" },
-  { value: "WPA2_WPA3", label: "Hybrid", title: "Hybrid (WPA2 + WPA3)" },
-  { value: "WPA3", label: "WPA3", title: "Enhanced (WPA3)" },
-];
+/** The modes in each band's dropdown, with eero's full names. */
+const MODES: { value: Security; label: string }[] = (["WPA2", "WPA2_WPA3", "WPA3"] as const).map((value) => ({ value, label: SECURITY_LABEL[value] }));
 
 const PLACEHOLDER_BANDS: WirelessBand[] = ["2.4", "5"];
 
 type Staged = Partial<Record<"2.4" | "5", Security>>;
 const PARAM: Record<"2.4" | "5", "band24" | "band5"> = { "2.4": "band24", "5": "band5" };
 
-export function WifiSecurity({ wifi, devices, offline }: { wifi: WifiSettings | null; devices: Device[] | null; offline: boolean }) {
+/**
+ * The security rows of the Wi-Fi settings: one per band with its mode in a dropdown (6 GHz is
+ * fixed to WPA3), and under each band's title the devices that joined it with
+ * WPA2 only. A change is staged (`edited`), then the impact and Save and
+ * restart… (confirm dialog) before `wifi.security.set`.
+ */
+export function SecurityRows({ wifi, devices, offline }: { wifi: WifiSettings | null; devices: Device[] | null; offline: boolean }) {
   const bands: WirelessBand[] = wifi ? wifi.bands.map((b) => b.band) : PLACEHOLDER_BANDS;
   const byId = new Map((devices ?? []).map((d) => [d.id, d]));
   const wpa2Only = (wifi?.wpa2OnlyDevices ?? []).map((id) => byId.get(id)).filter((d): d is Device => d !== undefined);
   // Only a hybrid band tells WPA2 only devices apart, and only while they are connected.
-  const perBand = (band: WirelessBand) => (devices && !offline && wifi?.security[band] === "WPA2_WPA3" ? wpa2Only.filter((d) => d.band === band).length : null);
-  const names = wpa2Only.map((d) => d.name);
-  const has6 = bands.includes("6");
+  const onBand = (band: WirelessBand) => (devices && !offline && wifi?.security[band] === "WPA2_WPA3" ? wpa2Only.filter((d) => d.band === band) : null);
 
   const gate = useGate(GATE);
   const [staged, setStaged] = useState<Staged>({});
@@ -352,85 +336,84 @@ export function WifiSecurity({ wifi, devices, offline }: { wifi: WifiSettings | 
   const params = Object.fromEntries(changes.map(([band, mode]) => [PARAM[band], mode]));
 
   return (
-    <Section title="Encryption" subtitle="WPA3 is stronger; Hybrid adds WPA2 for older devices">
-      <Card className="flex-1">
-        <div className="grid grid-cols-[6rem_minmax(0,1fr)_auto] items-center gap-4 border-b bg-muted/40 px-[18px] py-2 font-semibold text-3xs text-muted-foreground uppercase tracking-widest">
-          <span>Band</span>
-          <span>Security mode</span>
-          <span className="text-right">WPA2 only</span>
-        </div>
-        {bands.map((band) => {
-          const saved = wifi?.security[band] ?? null;
-          const value = band === "6" ? saved : ((staged as Record<string, Security>)[band] ?? saved);
-          const count = perBand(band);
-          const fixed = band === "6";
-          const title = fixed ? "6 GHz always uses WPA3" : !editable ? (gate.reason ?? (offline ? "The network is offline" : undefined)) : undefined;
-          return (
-            <div key={band} className="grid grid-cols-[6rem_minmax(0,1fr)_auto] items-center gap-4 border-b border-border/50 px-[18px] py-3 last:border-b-0">
-              <span className="font-medium text-[13px]">
-                {bandLabel(band)}
-                {!fixed && value !== saved && <span className="ms-1.5 font-normal text-muted-foreground text-2xs">edited</span>}
-              </span>
-              <div className="min-w-0">
-                {value ? (
-                  <span title={title} className="inline-flex">
-                    <Segmented<Security>
-                      aria-label={`${bandLabel(band)} security mode`}
-                      value={value}
-                      onValueChange={(mode) => stage(band, mode)}
-                      // 6 GHz and a locked control keep only the current mode selectable so it reads at full contrast.
-                      options={MODES.map((m) => ({ ...m, disabled: (fixed || !editable || save.running) && m.value !== value }))}
-                    />
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground text-xs">{wifi ? "Unknown" : MISSING}</span>
-                )}
-              </div>
-              <span className="text-right text-xs tabular-nums">
-                {count === null ? (
-                  <span className="text-muted-foreground">{MISSING}</span>
-                ) : (
-                  <>
-                    <b className="font-medium">{formatCount(count)}</b> <span className="text-muted-foreground">{count === 1 ? "device" : "devices"}</span>
-                  </>
-                )}
-              </span>
-            </div>
-          );
-        })}
-        {changes.length > 0 && (
-          <div className="flex flex-col gap-3 border-t px-[18px] py-3">
-            <WifiImpact params={{ change: "security", ...params }} />
-            <div className="mt-3 flex items-center justify-end gap-2">
-              <span className="me-auto text-muted-foreground text-xs">
-                {formatCount(changes.length)} unsaved {changes.length === 1 ? "change" : "changes"}
-              </span>
-              <Button size="sm" variant="ghost" disabled={save.running} onClick={() => setStaged({})}>
-                Discard
-              </Button>
-              <Button size="sm" disabled={save.running} onClick={() => void save.run(params)}>
-                Save and restart
-              </Button>
-            </div>
-          </div>
-        )}
-        <div className="flex items-start gap-2 border-t px-[18px] py-3 text-muted-foreground text-xs">
-          <Info aria-hidden className="mt-px size-3.5 shrink-0" />
-          <span>
-            {has6 ? "6 GHz always uses WPA3. " : ""}
-            {names.length > 0 ? (
+    <>
+      {bands.map((band) => {
+        const saved = wifi?.security[band] ?? null;
+        const value = band === "6" ? saved : ((staged as Record<string, Security>)[band] ?? saved);
+        const these = onBand(band);
+        const fixed = band === "6";
+        const title = fixed ? "6 GHz always uses WPA3" : !editable ? (gate.reason ?? (offline ? "The network is offline" : undefined)) : undefined;
+        return (
+          <SettingsRow
+            key={band}
+            title={
               <>
-                <b className="font-medium text-foreground">{listNames(names)}</b> joined with WPA2 only and would drop off if their band moved to WPA3.
+                {bandLabel(band)} security
+                {!fixed && value !== saved && <span className="font-normal text-muted-foreground text-2xs">edited</span>}
               </>
-            ) : wifi && bands.some((b) => wifi.security[b] === "WPA2_WPA3") ? (
-              "No device has joined with WPA2 only."
-            ) : (
-              "Devices that only speak WPA2 show here once the network offers WPA3 alongside it."
-            )}
-          </span>
+            }
+            description={
+              fixed
+                ? "Always WPA3."
+                : these === null
+                  ? wifi?.security[band] === "WPA2_WPA3"
+                    ? undefined
+                    : "Devices on WPA2 only show here while this band is Hybrid."
+                  : these.length === 0
+                    ? "No device joined with WPA2 only."
+                    : `${listNames(these.map((d) => d.name))} joined with WPA2 only.`
+            }
+            control={
+              value ? (
+                <span title={title} className="inline-flex">
+                  <Select items={MODES} value={value} onValueChange={(mode) => mode && stage(band, mode as Security)} disabled={fixed || !editable || save.running}>
+                    <SelectTrigger className="w-52" aria-label={`${bandLabel(band)} security mode`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectPopup>
+                      {MODES.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectPopup>
+                  </Select>
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-xs">{wifi ? "Unknown" : MISSING}</span>
+              )
+            }
+          />
+        );
+      })}
+      {changes.length > 0 && (
+        <div className="flex flex-col gap-3 px-4 py-3">
+          <WifiImpact params={{ change: "security", ...params }} />
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <span className="me-auto text-muted-foreground text-xs">
+              {formatCount(changes.length)} unsaved {changes.length === 1 ? "change" : "changes"}
+            </span>
+            <Button size="sm" variant="ghost" disabled={save.running} onClick={() => setStaged({})}>
+              Discard
+            </Button>
+            <Button size="sm" disabled={save.running} onClick={() => void save.run(params)}>
+              Save and restart{"\u2026"}
+            </Button>
+          </div>
         </div>
-      </Card>
-    </Section>
+      )}
+    </>
+  );
+}
+
+/** The footnote under the Wi-Fi settings: what the security rows mean. */
+export function SecurityFootnote({ wifi }: { wifi: WifiSettings | null }) {
+  const has6 = (wifi?.bands ?? []).some((b) => b.band === "6");
+  return (
+    <Footnote>
+      {has6 ? "6 GHz always uses WPA3. " : ""}
+      Moving a band to Enhanced (WPA3) drops the devices that joined it with WPA2 only; the eeros restart to apply any change.
+    </Footnote>
   );
 }
 

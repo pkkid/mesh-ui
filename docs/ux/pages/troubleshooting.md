@@ -1,6 +1,6 @@
 # Troubleshooting
 
-A health check, guided diagnostics by symptom, coverage and upgrade reports, radio state, and the fixes and restarts people reach for when something is wrong.
+A health check, guided diagnostics by symptom, tools, and the fixes and restarts people reach for when something is wrong. The coverage scan, upgrade report and radio channels moved to [Signal](signal.md) on 2026-11-21.
 
 Mockup: [../../mockups/16-troubleshooting.html](../../mockups/16-troubleshooting.html)
 
@@ -8,38 +8,40 @@ Shared patterns (hero, section cards, status, confirm dialogs) are described in 
 
 ## Layout
 
-Breadcrumb `Settings / Troubleshooting`, nothing after it. `Last health check 2m ago` leads the muted line under the health check title.
+Breadcrumb `Settings / Troubleshooting`, nothing after it. The page is one full-width column (the 1000px content column), with no side panel: Get help sat in a right-hand column until 2026-11-21 and squeezed the sections, so it moved to the foot of the page. Sections sit `gap-14` apart, each a `Section` with a data-driven description and settings rows (`Row` from `SettingsGroups`) in a card, as on Wi-Fi network and Guest network.
 
-1. **Health check hero.** Left: a score ring (`86`, "Health") with status summary under it (`Good`, `1 warning`). Right: title "Network health check", sub line "8 checks across internet, DNS, eeros, mesh links and firmware.", **Run again** (primary). A grid of checks, each with a pass or warning mark, icon, name and value: Internet (ISP up, last speeds), DNS resolution, one row per eero (gateway shows the WAN link), Mesh links (warning: "Garage 2 bars to Office"), Firmware (current version and next update). Under it, "Something specific?" chips: **My connection drops**, **My internet is slow**, **My internet is offline**, **My eero's light is red**.
-2. **Tools.** Rows: **Run speed test** ("Uses the WAN for about 30 s") with **History** link and **Run**; **Find an eero** with an eero select and **Blink light**.
-3. Two columns:
-   - **Coverage scan** ("Scanned today 1:05 PM"), **Scan again**, legend Poor / Fair / Good / Strong. Placement advice note when needed ("Adjust eero placement. Garage sits too far from Office..."). Table of rooms: room, link quality as 5 cells (1 to 5), device count, eero serving it.
-   - **Upgrade report** ("Wi-Fi generation scan"): donut of devices by Wi-Fi generation (7, 6E, 6, 5, 4 or older) with a legend of counts (hovering a segment or a row highlights both, the generation, count and percent in a tooltip; the total in the middle stays); findings (how many eeros are Wi-Fi 7, which eero limits which devices, 2.4 GHz only devices that are fine); an info note with the upgrade suggestion.
-4. **Radio channels** ("Current radio state per eero · auto channel selection"). Table: eero (name, model), 2.4 GHz, 5 GHz low, 5 GHz high, 6 GHz (each cell: channel, width, a busy meter and percent; `-` or "No 6 GHz radio" when absent), Clients. Footnote: channels are chosen by eero and read only.
-5. **Fixes** ("Temporary modes and restarts"), a grid of tool cards:
-   - **Connect 2.4 GHz only devices** (`Disruptive`): when you would want it ("Only needed while setting up an older or smart home device (plug, camera, bulb) that can't find your Wi-Fi. Leave it off otherwise.") and, muted, what it costs (5 and 6 GHz hidden for a while, phones and laptops on 2.4 GHz until eero ends it); **Start** has a tooltip with the same. The words are shared with the Wi-Fi page (`src/core/hide5g.ts`). eero picks the length and does not say it ahead of time; there is no duration choice. When active: countdown timer to eero's end time, progress meter, "5 and 6 GHz paused · 22 devices moved to 2.4 GHz · restores at 3:12 PM", a list "Joined during this window" (new devices with band, eero, time, `New`), a waiting row, **Restore now** and "Started 3m ago".
-   - **Connect devices that can't detect Wi-Fi 6**: switch, warning note (may reduce speeds, restarts the network for about 2 to 3 minutes), status and devices that may need it, **Turn on legacy mode**.
-   - **Status light colors**: reference list of LED states and meanings (solid white, blinking white, blinking blue, solid blue, solid green, solid red, off).
-   - **Restart a single eero**: one row per eero with **Restart**; the gateway row warns "takes network offline"; an eero with wireless children notes "Garage restarts too".
-   - **Restart network** (`Disruptive`): **Restart network** opens the confirm dialog: "Restart network? Maple Street will be offline for about 2 to 3 minutes. 31 devices will disconnect, including this computer if it is on Wi-Fi." **Cancel** and **Yes, restart network**; "Last restart Nov 11, 3:01 AM (firmware update)".
-   - **Get help**: Support center, Email support (external links), Call eero and ISP support numbers, **Support ID** with **Copy**, then **Network ID** (the selected network) with **Copy**, **Copy diagnostics report**.
+1. **Hero** (the flat page header, no icon tile).
+   - Title: what the check found (`1 warning`, `2 problems, 1 warning`; `All checks passed`; `Troubleshooting` while loading).
+   - Status line: the overall word as a status (`Good` in success or warning, `Needs attention` in destructive), then `From what eero last reported` muted.
+   - Facts: **Checks passed** (`7 of 8`), **Look at first** (the first problem, else the first warning: `Mesh links`; `Nothing`), **Last check** (`just now`).
+   - Action: **Run checks again** (outline, dim refresh icon that spins while it runs; `Checking...`).
+   - Right-hand column: the score ring (`86`, "Health"), in the overall status colour.
+2. **Checks**, subtitle `8 checks, 1 warning` (`all passed`). A two-column grid in one card: per check a dim icon, the name, eero's detail under it (in the warning or danger colour when failing), and on the right its status (a passing check: a green check mark and `Good`; unknown: a muted dot), or for a failing check a link to its fix: **View internet**, **View coverage** (Signal) for mesh links, **View updates** for firmware.
+3. **Diagnose a problem**, subtitle `eero tests the network for one symptom, up to a minute` (while one runs, `Testing: My internet is slow`; after, `My internet is slow: eero's diagnostics found nothing wrong`). One row per symptom (My connection drops, My internet is slow, My internet is offline, My eero's light is red), each with a one-line description and **Diagnose**. While it runs the row says eero is testing and the button `Testing...`; eero's findings and the next steps then open under that row, flat (no box of their own), set off like a quote by a 2px bar on the left in the theme's dim colour (`border-muted-foreground/30`): a muted `eero's answer` label over the summary in the warning colour (so the fresh answer stands out), eero's results, then a muted `Next steps` label over the numbered steps. While the network is offline, My internet is offline carries a `Network offline` status.
+4. **Tools**, subtitle `Last speed test 942 Mbps down, 2h ago` (`No speed test yet`), led by any mode that is on (`2.4 GHz only on, Last speed test ...`). One card of rows (Fixes was its own section until 2026-11-21; they are all tools):
+   - **Speed test** with **Run speed test** and, after it, a **View history** link.
+   - **Find an eero** with an eero dropdown and **Blink light** (counts down while it blinks).
+   - **2.4 GHz only**: the same row as on [Wi-Fi network](wifi.md) (`Hide5gRow`): when you would want it, **Hide 5 and 6 GHz…** or **Show 5 and 6 GHz…**, eero's countdown while it is on.
+   - **Legacy mode** (warning `On` status when on): what it does and what it costs, and **View advanced networking**, where the switch lives.
+5. **Restart**, subtitle `4 eeros` (with `1 offline` when one is). One row per eero (the gateway with a muted `Gateway` status and a warning that it takes the whole network offline; others say which devices and downstream eeros drop and for how long) with **Restart Garage…** (the eero's name in the button, so it is clear which one restarts), then **Restart network** with **Restart network…** in the destructive text colour. Both ask first. Disruptive, so it sits apart near the foot of the page.
+6. **Status light colors** (left) beside **Get help** (right), stacked on narrow windows. Neither has a subtitle; the titles say enough.
+   - Status light colors: one column, one 28px line per light: a dot the network switcher's size (`size-2`), the light and its meaning. White is the text colour (so it reads on light themes), blue, green and red the theme's series hues, Off a dim dot. The blinking ones fade in and out (`light-blink`, 1.2 s, opacity only; still for reduced motion). These are the eero's real light colours, so they are status, not decoration.
+   - Get help: one plain card of 28px label and value lines, no row dividers or descriptions. **Support center** (its address without `https://`, a dim link with the external-link icon that opens the browser), **Email support** (the address with a copy icon), **Call eero**, **Support ID** and **Network ID** (mono, each with a copy icon: a plain grey `ghost-muted` icon button right after the value, no label or outline, a check for a moment once copied), **Diagnostics report** with **Copy report** (outline, dim icon). A contact eero sends nothing for is left out. Every contact comes from eero's `{net}/support` (checked read-only on a real network 2026-11-21: name, phone, help and contact URLs and the `mailto:` email link all present). No ISP row: eero gives only the ISP's name, never its number or site. Footnote under the card: the report shows only the last four characters of names, serials, MAC and IP addresses.
+
+No `Disruptive` badges: the ellipsis on a button and its confirm dialog say it asks first (design-system.md, Buttons and links).
 
 ## Data
 
 | Element | Command | Refresh |
 | --- | --- | --- |
-| Score, status summary, checks grid | `health.check` | on load, on Run again; cached result shown with its age |
+| Hero, score ring, Checks | `health.check` | on load, on Run checks again; cached result shown with its age |
 | Symptom results | `diagnostics.run` `{symptom}` | on demand |
-| Find an eero select | `eero.list` | on load |
-| Coverage rooms and advice | `coverage.scan` | on load (last result), on Scan again |
-| Upgrade report | `coverage.upgrade_report` | on load |
-| Radio channels table | `eero.list` (radio stats per band; `Radio.autoChannel` is always null on eero, so Auto channel shows `-`) | every 60 s |
+| Find an eero dropdown, Restart rows | `eero.list` | every 60 s |
+| Tools subtitle (last speed test) | `internet.get` | shared cache |
 | 2.4 GHz mode state and countdown | `wifi.get` (`hide5g` with expiry) | every 15 s while active |
-| Joined during this window | `device.list` `{newSince}` (start of the window; devices eero announced as new) | every 15 s while active |
-| Legacy mode state, devices that may need it | `settings.get` (legacy mode), `coverage.upgrade_report` | on load |
-| Restart rows, downstream eeros, last restart | `eero.list`, `events.list` `{type: "eero_status"}` | on load |
+| Legacy mode state | `settings.get` (legacy mode) | every 60 s |
 | Device count in the restart confirm | `network.get` | on load |
-| Support contacts, ISP number, Support ID | `support.info` | on load |
+| Support contacts, Support ID | `support.info` | on load |
 | Network ID | `network.get` | on load |
 | Diagnostics report text | `support.report` | on demand |
 
@@ -47,33 +49,29 @@ Breadcrumb `Settings / Troubleshooting`, nothing after it. `Last health check 2m
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Run again | `health.check`, fetched with `{ fresh: true }` (the CLI and MCP pass `{refresh: true}`) | query | no | One run per click: the button is disabled and says "Checking..." with a spinning icon, the ring and grid fade, then checks refresh. Clicks while it runs are ignored; the fresh report replaces the cached one, so a later poll never shows an older one |
-| Symptom chip | `diagnostics.run` `{symptom: "connection_drops" or "internet_slow" or "internet_offline" or "eeros_red"}` | write | no | A panel under the chips says eero is testing (up to a minute), then shows eero's findings and the next steps from core |
-| Run (speed test) | `speedtest.run` | write | no | Row shows progress, then down and up Mbps |
-| History | none (navigation) | | | Internet page speed test history |
+| Run checks again | `health.check`, fetched with `{ fresh: true }` (the CLI and MCP pass `{refresh: true}`) | query | no | One run per click: the button is disabled and says "Checking..." with a spinning icon, the ring and grid fade, then checks refresh. Clicks while it runs are ignored; the fresh report replaces the cached one, so a later poll never shows an older one |
+| Diagnose (symptom row) | `diagnostics.run` `{symptom: "connection_drops" or "internet_slow" or "internet_offline" or "eeros_red"}` | write | no | The row says eero is testing (up to a minute), then eero's findings and the next steps from core open under it |
+| Run speed test | `speedtest.run` | write | no | Button says "Testing...", then the subtitle shows the new result |
+| View history | none (navigation) | | | Internet page speed test history |
 | Blink light | `eero.find` `{eero}` | write | no | LED cycles for 30 s |
-| Scan again | `coverage.scan` `{refresh: true}` | query | no | Subtitle and button say "Scanning...", the table fades, then table and advice update |
-| Test (coverage row) | `eero.placement.test` `{eero}` | write | no | Row says "Testing..." (up to a minute), then the rating as a status; advice in its tooltip. Not offered for the gateway |
-| Start 2.4 GHz mode | `wifi.hide5g.set` `{enabled: true}` | disruptive | confirm dialog with device count | Timer starts |
-| Restore now | `wifi.hide5g.set` `{enabled: false}` | disruptive | short confirm dialog ("Bring back 5 and 6 GHz now?") | 5 and 6 GHz come back |
-| Legacy mode switch, Turn on legacy mode | `settings.legacy_mode.set` `{enabled}` | disruptive | confirm dialog (outage from `settings.impact`, about 2 to 3 min) | Built so far: the card shows the state from `settings.get` and links to Advanced networking, where the switch lives (M5.3) |
-| Restart (single eero) | `eero.restart` `{eero}` | disruptive | confirm dialog; gateway confirm says the whole network goes offline | Row shows "Restarting" until the eero is back |
-| Restart network | `network.restart` | disruptive | confirm dialog | Network offline; page waits and refetches |
-| Support center, Email support | none | | | Opens eero support pages externally |
-| Support ID Copy | none | | | Copies the ID |
-| Network ID Copy | none | | | Copies the ID |
-| Copy diagnostics report | `support.report` | query | no | Report text on the clipboard |
+| Hide 5 and 6 GHz…, Show 5 and 6 GHz… | `wifi.hide5g.set` `{enabled}` | disruptive | confirm dialog with the devices it moves | Countdown starts, or the bands come back |
+| View advanced networking | none (navigation) | | | Advanced networking, where the legacy mode switch lives |
+| Restart Garage… (single eero) | `eero.restart` `{eero}` | disruptive | confirm dialog; gateway confirm says the whole network goes offline | Row shows "Restarting" until the eero is back |
+| Restart network… | `network.restart` | disruptive | confirm dialog | Network offline; page waits and refetches |
+| Support center address | none | | | Opens eero's support center in the browser |
+| Email support copy icon | none | | | Copies the support email address |
+| Support ID copy icon | none | | | Copies the ID |
+| Network ID copy icon | none | | | Copies the ID |
+| Copy report | `support.report` | query | no | Report text on the clipboard |
 
 ## States
 
 - **Loading:** score ring empty with `-`; checks show placeholders; cached last result shown faded with its age if available.
 - **All good:** score ring in the success colour, `Good`, no warning pill.
-- **Warnings or failures:** failing checks use the warning or danger foreground; the hero summary counts them; each failing check links to its fix (mesh link to coverage, firmware to [Updates & admins](updates-admins.md)).
-- **Network offline:** Internet check fails, score drops, the offline symptom chip is highlighted; restarts and blink still go through the cloud and may fail with `eero_error`.
-- **2.4 GHz mode active:** card shows the countdown; the Wi-Fi page and sidebar show a small "5 and 6 GHz paused" notice.
-- **Empty:** coverage never scanned shows "No scan yet" and **Scan now**.
+- **Warnings or failures:** failing checks use the warning or danger foreground; the hero summary counts them; each failing check links to its fix (mesh links to Signal's Coverage, firmware to [Updates & admins](updates-admins.md)).
+- **Network offline:** Internet check fails, score drops, My internet is offline carries a `Network offline` status; restarts and blink still go through the cloud and may fail with `eero_error`.
+- **2.4 GHz mode active:** card shows the countdown; the Wi-Fi network page and sidebar show a small "5 and 6 GHz paused" notice.
 - **Error:** inline note per card with **Retry**.
-- **Capability missing:** coverage and upgrade reports need the 2.4 API; if they fail with 404, hide those sections. 6 GHz columns show "No 6 GHz radio" per eero.
 - **Bridge mode:** everything here still applies.
 - **No permission:** restarts and modes hidden if `network.permissions` denies them.
 
@@ -82,11 +80,8 @@ Breadcrumb `Settings / Troubleshooting`, nothing after it. `Last health check 2m
 - `health.check` is composite and built in core from `network.health` (with its issues), `internet.get` (with the last speed test), `eero.list` and `updates.get`; it runs no active probes and does not post a diagnostics run. The score formula lives in core (100 minus 14 per warning, 30 per problem, 5 per unknown, so one warning gives 86) so the CLI and MCP get the same number. The hero word is "Good" for good or warning and "Needs attention" with any problem.
 - Built so far (M3.12): the health check hero and checks grid, Tools and restarts (all disabled, "Coming soon"), coverage scan and upgrade report placeholders (disabled, "No scan yet"; no fixtures until M5), and Get help with Copy diagnostics report. The symptom chips are disabled until `diagnostics.run`. Radio channels and the Fixes cards (2.4 GHz mode, legacy mode, status lights) come with their commands.
 - Built in M5.8: the symptom chips (`diagnostics.run`) and their panel, Find an eero (eero select and Blink light), the coverage scan with per-room placement tests, the upgrade report, radio channels and the Fixes cards (2.4 GHz mode, legacy mode state, status lights, restart a single eero, restart network). Coverage and upgrade report stack below the 2xl breakpoint so the coverage table keeps its columns.
-- `Radio.autoChannel`: eero has no auto-channel field. `{net}/radio_settings` is per eero `{eero_id, radio_settings{band_2_4GHz, band_5GHz_low, band_5GHz_high: {enabled}}}` with no channel or auto flag (M5.1 capture), and `radio_channel_stats` has none either, so the Auto channel column shows `-` on real networks (the demo fixtures set it).
-- The coverage scan and Wi-Fi generation scan shapes were captured read-only on 2026-11-14 (M5.R-fix5): both are instant reads that list devices, not rooms or counts, so core builds the rooms (one per eero, mean device link score) and the generation counts. The placement test response is still not captured (it is a write); its mapper reads the likely field names tolerantly and a MANUAL check confirms it.
+- The findings line is Mesh UI's wording, not eero's: "eero's diagnostics point to the internet." names eero's `issue_area`; with none (eero answers `none` when it found nothing, mapped to null in core) it says what the results show ("found nothing wrong", "found something to check", "returned no findings").
 - `diagnostics.run` posts to `{net}/diagnostics` with a symptom, then reads `GET {net}/diagnostics` every 3 s (first after one interval, so the previous run is not taken for this one) until it is no longer running, and fails `eero_error` after 2 minutes. The placement test waits the same way.
-- Coverage scan and upgrade report are `GET /2.4/networks/{id}/placement/...`; they read only but may take a while, so show progress.
-- Busy percent comes from `radio_channel_stats.channel_utilization` on each eero, a current value that free accounts get. Historical channel analytics (`channel_utilization` endpoint) is an eero Plus feature and is not used.
 - The 2.4 GHz mode uses the temporary `hide_5g` flag, which auto expires. `wifi.hide5g.set` is disruptive (it moves every 5 and 6 GHz client) and takes no duration: eero sets the end time itself (`temporary_flags.hide_5g.expires_on`, `hide5g.expiresAt` in the model), which drives the countdown, and the engine keeps no timer. Open question: whether the flag also hides 6 GHz (MANUAL check).
 - Legacy mode is `{net}/ac_compat`, command `settings.legacy_mode.set` d, separate from `settings.connection_mode.set` (NAT, bridged or IP passthrough).
 - Outage estimates come from core (`settings.impact`, see [commands.md](../../architecture/commands.md#restart-estimates)): about 2 to 3 minutes for a network restart and legacy mode, about 1 minute for a leaf eero, about 8 minutes for DNS, DHCP, WAN and connection mode writes on [Advanced networking](advanced-networking.md).

@@ -1,6 +1,6 @@
 /**
- * Wi-Fi "Bands": a card per band any eero offers, with its state, clients,
- * widths, channels and share of wireless clients, plus the 2.4 GHz only
+ * "Wi-Fi bands": a card per band any eero offers, with its state, devices,
+ * widths, channels, share of wireless devices and security mode, plus the 2.4 GHz only
  * switch (`wifi.hide5g.set`, confirm dialog, with its impact) with a countdown
  * to eero's own expiry. A band no eero has is
  * not shown, so a single-band network shows one card. Offline: figures show "-".
@@ -8,18 +8,19 @@
  */
 import { RadioTower } from "lucide-react";
 
-import { Badge } from "~/components/ui/badge";
 import { bandLabel } from "~/components/ui/band-badge";
 import { Card, Section } from "~/components/ui/card";
+import { IconTile } from "~/components/ui/hero";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { KvList } from "~/components/ui/kv-list";
 import { useWrite } from "~/app/useWrite";
-import { GatedButton, useGate, useNow } from "~/components/ui/page";
+import { Footnote, GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
 import { bandColor } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatCount, formatPercent } from "../../../../core/format";
 import { HIDE_5G } from "../../../../core/hide5g";
-import type { WifiSettings, WirelessBand } from "../../../../core/model";
+import type { Security, WifiSettings, WirelessBand } from "../../../../core/model";
 import { WifiImpact } from "./WifiImpact";
 
 const HINT: Record<WirelessBand, string> = {
@@ -30,65 +31,74 @@ const HINT: Record<WirelessBand, string> = {
 
 type BandRow = WifiSettings["bands"][number];
 
+/** A band's security mode in a card's short value column. */
+const SECURITY_SHORT: Record<Security, string> = { WPA2: "WPA2", WPA2_WPA3: "WPA2 + WPA3", WPA3: "WPA3" };
+
 const PLACEHOLDER: BandRow[] = (["2.4", "5"] as const).map((band) => ({ band, on: false, clients: 0, widthsMhz: [], channels: [] }));
 
 export function WifiBands({ wifi, offline, fading = false }: { wifi: WifiSettings | null; offline: boolean; fading?: boolean }) {
   const bands = wifi?.bands ?? PLACEHOLDER;
   const total = bands.reduce((n, b) => n + b.clients, 0);
   const on = bands.filter((b) => b.on).length;
+  // "All radios on, 27 devices": what runs, then who is on it.
   const subtitle = !wifi
-    ? null
+    ? "-"
     : offline
       ? "The network is offline"
       : bands.length === 1
         ? "One radio, managed by eero"
-        : on === bands.length
-          ? "All radios on, managed by eero"
-          : `${formatCount(on)} of ${formatCount(bands.length)} radios on`;
+        : `${on === bands.length ? "All radios on" : `${formatCount(on)} of ${formatCount(bands.length)} radios on`}, ${formatCount(total)} ${total === 1 ? "device" : "devices"}`;
 
   return (
-    <Section title="Bands" subtitle={subtitle}>
-      {wifi && bands.some((b) => b.band === "2.4") && <Hide5g wifi={wifi} offline={offline} />}
+    <Section title="Wi-Fi bands" description={subtitle} className="gap-[15px]">
       <div className={cn("grid gap-3 transition-opacity", bands.length >= 3 ? "md:grid-cols-3" : bands.length === 2 ? "md:grid-cols-2" : "", fading && "opacity-40")}>
         {bands.map((b) => (
-          <BandCard key={b.band} band={b} known={wifi !== null && !offline} share={total > 0 ? b.clients / total : null} />
+          <BandCard key={b.band} band={b} known={wifi !== null && !offline} share={total > 0 ? b.clients / total : null} security={wifi?.security[b.band] ?? null} />
         ))}
       </div>
-      <p className="text-muted-foreground text-xs">eero picks channels and widths on its own; every band shares one network name.</p>
+      {wifi && bands.some((b) => b.band === "2.4") && <Hide5g wifi={wifi} offline={offline} />}
+      <Footnote>eero picks channels and widths on its own; every band shares one network name.</Footnote>
     </Section>
   );
 }
 
-function BandCard({ band: b, known, share }: { band: BandRow; known: boolean; share: number | null }) {
+/** A band's card, with the eero cards' header (Eeros page): a 44px icon tile, the band in `text-sm font-medium`, its hint under it, the status level with the title; the figures under a rule. */
+function BandCard({ band: b, known, share, security }: { band: BandRow; known: boolean; share: number | null; security: Security | null }) {
   const width = b.widthsMhz.length ? `${b.widthsMhz.join(" / ")} MHz` : null;
   const channels = b.channels.length ? b.channels.join(", ") : null;
   return (
-    <Card className="px-[18px] py-4">
-      <div className="flex items-center gap-3">
-        <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-[9px] bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--color-border)] [&_svg]:size-4">
-          <RadioTower />
-        </span>
+    <Card>
+      <div className="flex items-center gap-3 px-[18px] pt-4 pb-3">
+        <IconTile icon={RadioTower} size="lg" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 font-medium text-[13px]">
-            <span aria-hidden className="size-2 shrink-0 rounded-[3px]" style={{ background: bandColor(b.band) }} />
+          <div className="flex items-center gap-2 font-medium text-sm">
+            <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: bandColor(b.band) }} />
             {bandLabel(b.band)}
           </div>
-          <div className="truncate text-2xs text-muted-foreground">{HINT[b.band]}</div>
+          <div className="truncate text-muted-foreground text-xs">{HINT[b.band]}</div>
         </div>
-        {known && <Status tone={b.on ? "success" : "muted"}>{b.on ? "On" : "Off"}</Status>}
+        {/* Level with the band name: top-aligned in a 20px box, the title's line height (as the eero cards). */}
+        {known && (
+          <div className="flex h-5 items-center self-start">
+            <Status tone={b.on ? "success" : "muted"}>{b.on ? "On" : "Off"}</Status>
+          </div>
+        )}
       </div>
-      <div className="mt-3 font-semibold text-2xl tabular-nums tracking-tight">
-        {known ? formatCount(b.clients) : "-"}
-        <small className="ms-1.5 font-normal text-muted-foreground text-xs">clients</small>
+      <div className="border-t px-[18px] pt-3 pb-3.5">
+        <div className="font-semibold text-2xl tabular-nums tracking-tight">
+          {known ? formatCount(b.clients) : "-"}
+          <small className="ms-1.5 font-normal text-muted-foreground text-xs">{b.clients === 1 ? "device" : "devices"}</small>
+        </div>
+        <KvList
+          className="mt-3 text-xs"
+          items={[
+            { label: "Width", value: known ? width : null },
+            { label: "Channels", value: known ? channels : null, mono: true },
+            { label: "Share", value: known && share !== null ? `${formatPercent(share * 100)} of devices` : null },
+            { label: "Security", value: security ? SECURITY_SHORT[security] : null },
+          ]}
+        />
       </div>
-      <KvList
-        className="mt-3 text-xs"
-        items={[
-          { label: "Width", value: known ? width : null },
-          { label: "Channels", value: known ? channels : null, mono: true },
-          { label: "Share", value: known && share !== null ? `${formatPercent(share * 100)} of clients` : null },
-        ]}
-      />
     </Card>
   );
 }
@@ -103,56 +113,70 @@ export function countdown(expiresAt: string, now: number): string | null {
   return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+/** "5 and 6 GHz", "5 GHz": the bands 2.4 GHz only hides on this network. */
+export function hiddenBands(wifi: WifiSettings): string {
+  const others = wifi.bands.map((b) => b.band).filter((b) => b !== "2.4");
+  const names = others.length ? others : (["5"] as WirelessBand[]);
+  return `${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0]} GHz`;
+}
+
 /**
- * The 2.4 GHz only switch: off, a button that asks first with the devices it
- * moves; on, the countdown to eero's expiry and Turn off.
+ * 2.4 GHz only, as one settings row: the title (with a warning On status and
+ * eero's countdown while it is on), when you would want it, and a button that
+ * says what it does to the other bands: Hide 5 and 6 GHz… or Show 5 and 6
+ * GHz…, each asking first (the confirm says it is disruptive, with the
+ * devices it moves).
  */
 function Hide5g({ wifi, offline }: { wifi: WifiSettings; offline: boolean }) {
+  return (
+    <Card>
+      <Hide5gRow wifi={wifi} offline={offline} />
+    </Card>
+  );
+}
+
+/** The 2.4 GHz only settings row on its own, for a card that holds other rows too (Troubleshooting's Fixes). */
+export function Hide5gRow({ wifi, offline }: { wifi: WifiSettings; offline: boolean }) {
   const { active, expiresAt } = wifi.hide5g;
+  const others = hiddenBands(wifi);
   const gate = useGate({ area: "settings" });
   const write = useWrite<{ enabled: boolean }, WifiSettings>("wifi.hide5g.set", {
-    success: (r) => (r.hide5g.active ? "2.4 GHz only is on" : "2.4 GHz only is off"),
-    progress: active ? "Turning 2.4 GHz only off..." : "Hiding 5 and 6 GHz...",
-    confirm: { confirmLabel: active ? "Turn off" : "Hide 5 and 6 GHz" },
+    success: (r) => (r.hide5g.active ? `${others} hidden` : `${others} back on`),
+    progress: active ? `Showing ${others}...` : `Hiding ${others}...`,
+    confirm: { confirmLabel: active ? `Show ${others}` : `Hide ${others}` },
   });
   const now = useNow(active ? 1000 : 60_000);
   const left = active && expiresAt ? countdown(expiresAt, now) : null;
 
   return (
-    <Card padded className="flex flex-col gap-3 text-[13px]">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 font-medium">
-            2.4 GHz only
-            {active ? <Status tone="warning">On</Status> : <Status tone="muted">Off</Status>}
-            <Badge variant="warning">Disruptive</Badge>
-          </div>
-          {active ? (
-            <div className="text-muted-foreground text-xs">{HIDE_5G.active}</div>
-          ) : (
-            <>
-              <div className="text-foreground/80 text-xs">{HIDE_5G.why}</div>
-              <div className="text-muted-foreground text-xs">{HIDE_5G.cost}</div>
-            </>
+    <SettingsRow
+      title={
+        <>
+          2.4 GHz only
+          {active && <Status tone="warning">On</Status>}
+        </>
+      }
+      description={active ? HIDE_5G.active : HIDE_5G.why}
+      control={
+        <span className="flex items-center gap-3">
+          {left && (
+            <span title="Time left" aria-label={`${left} left`} className="font-mono font-semibold text-base tabular-nums tracking-tighter">
+              {left}
+            </span>
           )}
-        </div>
-        {left && (
-          <span title="Time left" aria-label={`${left} left`} className="font-mono font-semibold text-lg tabular-nums tracking-tighter">
-            {left}
-          </span>
-        )}
-        <GatedButton
-          size="sm"
-          variant="outline"
-          gate={gate}
-          title={active ? undefined : HIDE_5G.action}
-          disabled={offline || write.running}
-          onClick={() => void write.run({ enabled: !active })}
-        >
-          {active ? "Turn off" : "Turn on"}
-        </GatedButton>
-      </div>
+          <GatedButton
+            variant="outline"
+            gate={gate}
+            title={active ? `Brings ${others} back now, before eero does` : HIDE_5G.action}
+            disabled={offline || write.running}
+            onClick={() => void write.run({ enabled: !active })}
+          >
+            {active ? `Show ${others}\u2026` : `Hide ${others}\u2026`}
+          </GatedButton>
+        </span>
+      }
+    >
       {write.asking && !active && <WifiImpact params={{ change: "hide5g" }} />}
-    </Card>
+    </SettingsRow>
   );
 }

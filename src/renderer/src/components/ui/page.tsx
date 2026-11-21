@@ -54,6 +54,15 @@ export function SectionLink({ to, children }: { to: string; children: ReactNode 
   );
 }
 
+/**
+ * A footnote under a card (docs/design/design-system.md, Footnotes are extra
+ * dim): plain `text-xs` at half the muted strength, no icon, so it never
+ * competes with the content above it.
+ */
+export function Footnote({ children, className }: { children: ReactNode; className?: string }) {
+  return <p className={cn("text-muted-foreground/50 text-xs", className)}>{children}</p>;
+}
+
 /** A button for an action whose write command lands in a later milestone: disabled, with a tooltip. */
 export function ComingSoonButton({ title = "Coming soon", ...props }: ButtonProps & { title?: string }) {
   return (

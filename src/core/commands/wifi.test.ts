@@ -8,7 +8,7 @@ import type { RawEeroFull } from "../eero/map/eero";
 import { mapHide5g, mapSecurity, mapWifi } from "../eero/map/wifi";
 import { createEngine } from "../engine";
 import type * as M from "../model";
-import { commands as wifiCommands, type GeneratedPassword, generatePassword, PASSWORD_ALPHABET, type WifiImpact, type WifiPassword } from "./wifi";
+import { commands as wifiCommands, type GeneratedPassword, generatePassword, generationOf, PASSWORD_ALPHABET, signalQuality, type WifiImpact, type WifiPassword, wifiHealth } from "./wifi";
 import { type CliHost, nodeHost, runCli } from "../../cli/index";
 import { memoryAudit } from "../audit";
 
@@ -25,6 +25,57 @@ async function ok<R>(p: Promise<Result<R>>): Promise<R> {
 const code = async (p: Promise<{ ok: boolean; error?: { code: string } }>) => (await p).error?.code;
 
 const demoEngine = (scenario?: "signed_out") => createEngine({ backend: createDemoBackend({ clock: () => NOW, scenario }), clock: () => NOW });
+
+describe("wifi.health (demo)", () => {
+  it("adds up signal, link speed, generations and radios from the device and eero lists", async () => {
+    const engine = demoEngine();
+    const h = await ok(engine.execute<M.WifiHealth>("wifi.health", { networkId: MAPLE }));
+    const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId: MAPLE }));
+    const wireless = devices.devices.filter((d) => d.connected && d.band && d.band !== "wired" && d.signal?.dbm != null);
+    expect(h.devices).toBe(wireless.length);
+    expect(Object.values(h.quality).reduce((a, b) => a + b, 0)).toBe(h.devices);
+    expect(h.histogram).toHaveLength(10);
+    expect(h.histogram.reduce((n, b) => n + b.devices, 0)).toBe(h.devices);
+    expect(h.bands.map((b) => b.band)).toEqual(["2.4", "5", "6"]);
+    expect(h.bands.reduce((n, b) => n + b.devices, 0)).toBe(h.devices);
+    for (const b of h.bands) if (b.medianMbps !== null) expect(b.bestMbps).toBeGreaterThanOrEqual(b.medianMbps);
+    // Weakest first, at most five.
+    expect(h.weakest.length).toBeLessThanOrEqual(5);
+    expect(h.weakest.map((w) => w.dbm)).toEqual([...h.weakest.map((w) => w.dbm)].sort((a, b) => a - b));
+    expect(h.weakest[0]?.eero).toBeTruthy();
+    // Every generation once, newest first.
+    expect(h.generations.map((g) => g.generation).slice(0, 5)).toEqual(["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4"]);
+    expect(h.generations.reduce((n, g) => n + g.devices, 0)).toBe(h.devices);
+    // One row per eero; the busiest radio is the highest utilisation of them.
+    expect(h.radios).toHaveLength(4);
+    const top = Math.max(...h.radios.flatMap((r) => r.bands.map((b) => b.utilization ?? -1)));
+    expect(h.busiest?.utilization).toBe(top);
+    expect(await code(engine.execute("wifi.health", { extra: 1 }))).toBe("bad_params");
+    expect(engine.commands().find((c) => c.id === "wifi.health")).toMatchObject({ effect: "query" });
+  });
+
+  it("buckets dBm at -55, -65 and -75, and reads the Wi-Fi generation from the link standard and band", () => {
+    expect([-50, -55, -56, -65, -66, -75, -76].map(signalQuality)).toEqual(["excellent", "excellent", "good", "good", "fair", "fair", "weak"]);
+    expect([generationOf("Wi-Fi 7", "5"), generationOf("Wi-Fi 6", "6"), generationOf("Wi-Fi 6", "5"), generationOf("Wi-Fi 6E", "6"), generationOf("Wi-Fi 5", "5"), generationOf("Wi-Fi 4", "2.4"), generationOf(null, "5")]).toEqual(["wifi7", "wifi6e", "wifi6", "wifi6e", "wifi5", "wifi4", "unknown"]);
+  });
+
+  it("keeps every radio, so an eero's 5 GHz low and high both show, with the eero's model and devices", async () => {
+    const eeros = await ok(demoEngine().execute<M.Eero[]>("eero.list", { networkId: MAPLE }));
+    const e = eeros[0] as M.Eero;
+    const five = e.radios.find((r) => r.band === "5") as M.Radio;
+    const split = { ...e, radios: [...e.radios, { ...five, channel: 149, utilization: 90 }] };
+    const row = wifiHealth([], [split]).radios[0];
+    expect(row).toMatchObject({ eeroId: e.id, model: e.model, devices: e.clients.total });
+    expect(row?.bands.filter((b) => b.band === "5").map((b) => b.channel)).toEqual([five.channel, 149]);
+    expect(wifiHealth([], [split]).busiest).toMatchObject({ eeroId: e.id, band: "5", utilization: 90 });
+  });
+
+  it("leaves out wired, offline and signal-less devices, and has nothing to say for an empty network", () => {
+    const empty = wifiHealth([], []);
+    expect(empty).toMatchObject({ devices: 0, medianDbm: null, weakest: [], busiest: null, bands: [] });
+    expect(empty.generations.map((g) => g.devices)).toEqual([0, 0, 0, 0, 0]);
+  });
+});
 
 describe("wifi.get (demo)", () => {
   it("returns the SSID, security per band and the bands with their clients, without a password", async () => {
@@ -157,6 +208,22 @@ describe("wifi.get (fake eero server)", () => {
     expect(share.qr).toBe("WIFI:T:WPA;S:Maple Street;P:fake-main-pass-01;;");
     expect(logs.length).toBeGreaterThan(0);
     expect(JSON.stringify(logs)).not.toContain("fake-main-pass-01");
+  });
+
+  it("Show code after wifi.get costs no request: the first reveal takes get's GET {net}, the next reads eero again", async () => {
+    // No shared reads, so only the backend's kept credentials could save a request.
+    const { engine, fake } = fakeEngine(undefined, 0);
+    const reads = () => fake.log.filter((l) => l.path === "/2.2/networks/100001").length;
+    await ok(engine.execute("wifi.get", { networkId: "100001" }));
+    const afterGet = reads();
+    const share = await ok(engine.execute<M.WifiShare>("wifi.share", { networkId: "100001" }));
+    expect(share.qr).toBe("WIFI:T:WPA;S:Maple Street;P:fake-main-pass-01;;");
+    expect(reads()).toBe(afterGet);
+    // Taken once: a password changed elsewhere shows on the next reveal.
+    fake.state.networks.get("100001")!.network.password = "fake-main-pass-02";
+    const pw = await ok(engine.execute<WifiPassword>("wifi.password.get", { networkId: "100001" }));
+    expect(reads()).toBe(afterGet + 1);
+    expect(pw.password).toBe("fake-main-pass-02");
   });
 
   it("never caches a sensitive result: each reveal reads eero again", async () => {

@@ -24,4 +24,15 @@ describe("QR logo hole", () => {
     // Modules outside the hole are still drawn (the top-left finder corner).
     expect(drawn.has("M0 0")).toBe(true);
   });
+
+  it("plain codes use level L with no glyph hole: about half the modules of the logo code", () => {
+    const payload = "WIFI:T:WPA;S:Maple Street Guest;P:lemon-harbor-42;;";
+    const logo = qrModules(payload);
+    const plain = qrModules(payload, true);
+    expect(logo?.length).toBe(41);
+    expect(plain?.length).toBe(29);
+    // Every dark module is drawn: nothing is cleared for a glyph.
+    const dark = plain!.flat().filter(Boolean).length;
+    expect(qrPath(plain!, 0, true).match(/M\d+ \d+/g)?.length).toBe(dark);
+  });
 });

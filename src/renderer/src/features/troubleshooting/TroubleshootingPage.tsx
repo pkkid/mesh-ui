@@ -1,22 +1,21 @@
 /**
- * Troubleshooting: the network health check (`health.check`, built in core
- * from cached reads, no active probes) with Diagnose by symptom
- * (`diagnostics.run`), tools, the coverage scan and upgrade report (`/2.4/`
- * reads) with placement tests, radio channels, the Fixes cards and Get help
- * (`support.info`, `support.report`).
- * Layout, data and states: docs/ux/pages/troubleshooting.md and
- * docs/mockups/16-troubleshooting.html.
+ * Troubleshooting: the flat hero from the network health check
+ * (`health.check`, built in core from cached reads, no active probes) with
+ * the score ring, then one full-width column of sections: Checks, Diagnose a
+ * problem (`diagnostics.run`), Tools, Restart, Status light
+ * colors and Get help (`support.info`, `support.report`). The coverage scan,
+ * upgrade report and radio channels moved to the Signal page.
+ * Layout, data and states: docs/ux/pages/troubleshooting.md.
  */
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { TopBarTitle } from "~/features/shell/TopBar";
 import type { Eero, Network, SupportInfo } from "../../../../core/model";
 
-import { CoverageScanCard, RadioChannels, UpgradeReportCard } from "./Coverage";
 import { Diagnose } from "./Diagnose";
-import { HealthChecks, useHealthCheck } from "./HealthChecks";
-import { SupportCard } from "./SupportCard";
-import { Fixes, Tools } from "./Tools";
+import { HealthChecks, HealthHero, useHealthCheck } from "./HealthChecks";
+import { GetHelp } from "./GetHelp";
+import { Restarts, StatusLights, Tools } from "./Tools";
 
 export function TroubleshootingPage(_: PageProps) {
   const network = useQuery<Network>("network.get", undefined, { poll: true });
@@ -29,20 +28,17 @@ export function TroubleshootingPage(_: PageProps) {
   return (
     <>
       <TopBarTitle>Troubleshooting</TopBarTitle>
-      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <HealthChecks health={health} symptoms={<Diagnose offline={offline} />} />
-          <Tools eeros={eeros.data} />
-          <div className="grid items-start gap-6 2xl:grid-cols-2">
-            <CoverageScanCard eeros={eeros.data} />
-            <UpgradeReportCard eeros={eeros.data} />
-          </div>
-          <RadioChannels query={eeros} />
-          <Fixes eeros={eeros.data} networkName={network.data?.name ?? "the network"} offline={offline} />
+      <HealthHero health={health} />
+      <div className="flex flex-col gap-14">
+        <HealthChecks health={health} />
+        <Diagnose offline={offline} />
+        <Tools eeros={eeros.data} offline={offline} />
+        <Restarts eeros={eeros.data} networkName={network.data?.name ?? "the network"} />
+        {/* Two quiet reference sections side by side. */}
+        <div className="grid gap-x-7 gap-y-14 lg:grid-cols-2">
+          <StatusLights />
+          <GetHelp query={support} />
         </div>
-        <aside className="flex flex-col gap-4 xl:sticky xl:top-0">
-          <SupportCard query={support} />
-        </aside>
       </div>
     </>
   );

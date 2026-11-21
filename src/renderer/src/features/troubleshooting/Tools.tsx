@@ -1,197 +1,160 @@
 /**
- * Tools and Fixes on Troubleshooting.
- * - Tools: Run speed test (the shared runner from the Internet hero) and
- *   Find an eero (an eero select and `eero.find`, counting down while it
- *   blinks).
- * - Fixes: Connect 2.4 GHz only devices (`wifi.hide5g.set`, confirm dialog,
- *   countdown to eero's expiry), Legacy mode (state from `settings.get`; the
- *   switch lives on Advanced networking), Status light colours (static
- *   reference), Restart a single eero (`eero.restart`) and Restart network
- *   (`network.restart`), both with the engine's confirm in the dialog and the
- *   shared restart watcher.
- * docs/ux/pages/troubleshooting.md (Tools, Fixes).
+ * Tools, Status light colors and Restart on Troubleshooting, as settings
+ * rows in section cards.
+ * - Tools: Run speed test (the shared runner from the Internet hero) with a
+ *   link to the history, Find an eero (an eero dropdown and `eero.find`,
+ *   counting down while it blinks), 2.4 GHz only (the same row as the Wi-Fi
+ *   network page, `wifi.hide5g.set`) and Legacy mode (state from
+ *   `settings.get`; the switch lives on Advanced networking).
+ * - Status light colors: static reference.
+ * - Restart: one row per eero (`eero.restart`) and Restart network
+ *   (`network.restart`), both asking first, with the shared restart watcher.
+ *   Disruptive, so it is its own section near the foot of the page.
+ * docs/ux/pages/troubleshooting.md (Tools, Fixes, Status light colors, Restart).
  */
-import { useState, type ReactNode } from "react";
+import { Gauge, LoaderCircle, RotateCcw } from "lucide-react";
+import { useState } from "react";
 
 import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
-import { Badge } from "~/components/ui/badge";
 import { Card, Section } from "~/components/ui/card";
-import { GatedButton, HeaderLink, useGate, useNow } from "~/components/ui/page";
+import { GatedButton, SectionLink, useGate, useNow } from "~/components/ui/page";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Status } from "~/components/ui/status";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { restartLine } from "~/features/eero/helpers";
 import { BlinkLightButton } from "~/features/eeros/EeroCards";
 import { useRestartNetwork, watchRestart } from "~/features/eeros/NetworkActions";
 import { useSpeedTest } from "~/features/internet/InternetHero";
+import { Hide5gRow } from "~/features/wifi/WifiBands";
+import { hue } from "~/lib/chartColors";
+import { cn } from "~/lib/utils";
 import type { RestartResult } from "../../../../core/commands/network";
-import { HIDE_5G } from "../../../../core/hide5g";
-import type { Eero, NetworkSettings, WifiSettings } from "../../../../core/model";
+import { formatCount, formatMbps, formatRelative } from "../../../../core/format";
+import type { Eero, Internet, NetworkSettings, WifiSettings } from "../../../../core/model";
 
-function ToolRow({ title, detail, children }: { title: string; detail: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-[58px] items-center gap-3.5 px-[18px] py-[13px]">
-      <div className="min-w-0 flex-1">
-        <div className="font-medium text-sm">{title}</div>
-        <div className="text-muted-foreground text-xs">{detail}</div>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
-    </div>
-  );
-}
+const DIM_ICON = "[&_svg]:text-muted-foreground";
 
-const selectClass =
-  "h-6 max-w-40 cursor-pointer truncate rounded-lg border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/32";
-
-export function Tools({ eeros }: { eeros: Eero[] | undefined }) {
+export function Tools({ eeros, offline }: { eeros: Eero[] | undefined; offline: boolean }) {
   const speedTest = useSpeedTest();
+  const wifi = useQuery<WifiSettings>("wifi.get", undefined, { poll: true });
+  const settings = useQuery<NetworkSettings>("settings.get", undefined, { poll: true });
+  const legacy = settings.data?.legacyMode ?? null;
+  // Modes that are on lead the subtitle: they change how the network behaves right now.
+  const on = [wifi.data?.hide5g.active && "2.4 GHz only on", legacy && "Legacy mode on"].filter(Boolean);
+  const last = useQuery<Internet>("internet.get").data?.lastSpeedTest ?? null;
+  const now = useNow();
   const [picked, setPicked] = useState<string | null>(null);
   const target = eeros?.find((e) => e.id === picked) ?? eeros?.[0] ?? null;
+  const description = [...on, last ? `Last speed test ${formatMbps(last.downMbps)} down, ${formatRelative(last.at, now)}` : "No speed test yet"].join(", ");
   return (
-    <Section title="Tools" subtitle="Speed test and find an eero">
+    <Section title="Tools" description={description} className="gap-[15px]">
       <Card className="divide-y divide-border/50">
-        <ToolRow title="Run speed test" detail="Uses the WAN for about 30 s">
-          <HeaderLink to={pathFor("internet")}>History</HeaderLink>
-          <GatedButton gate={speedTest.gate} size="xs" variant="outline" onClick={() => void speedTest.run()}>
-            {speedTest.testing ? "Testing..." : "Run"}
-          </GatedButton>
-        </ToolRow>
-        <ToolRow title="Find an eero" detail="Blinks its light blue and white for 30 s">
-          <select aria-label="eero to find" className={selectClass} value={target?.id ?? ""} onChange={(e) => setPicked(e.target.value)} disabled={!eeros?.length}>
-            {(eeros ?? []).map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.location}
-              </option>
-            ))}
-          </select>
-          {target ? (
-            <BlinkLightButton key={target.id} eero={target} />
-          ) : (
-            <GatedButton gate={{ allowed: false, reason: "No eeros yet" }} size="xs" variant="outline">
-              Blink light
-            </GatedButton>
-          )}
-        </ToolRow>
+        <SettingsRow
+          title="Speed test"
+          description="Measures your internet download and upload. Uses the connection for about 30 seconds."
+          control={
+            <>
+              <GatedButton gate={speedTest.gate} variant="outline" className={DIM_ICON} onClick={() => void speedTest.run()}>
+                {speedTest.testing ? <LoaderCircle className="animate-spin motion-reduce:animate-none" /> : <Gauge />}
+                {speedTest.label}
+              </GatedButton>
+              <SectionLink to={pathFor("internet")}>View history</SectionLink>
+            </>
+          }
+        />
+        <SettingsRow
+          title="Find an eero"
+          description="Blinks the eero's light blue and white for 30 seconds, so you can tell which one it is."
+          control={
+            <>
+              <Select items={(eeros ?? []).map((e) => ({ value: e.id, label: e.location }))} value={target?.id ?? null} onValueChange={(v) => v && setPicked(v)} disabled={!eeros?.length}>
+                <SelectTrigger className="w-44" aria-label="eero to find">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectPopup>
+                  {(eeros ?? []).map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.location}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+              {target ? (
+                <BlinkLightButton key={target.id} eero={target} size="context" />
+              ) : (
+                <GatedButton gate={{ allowed: false, reason: "No eeros yet" }} variant="outline">
+                  Blink light
+                </GatedButton>
+              )}
+            </>
+          }
+        />
+        {wifi.data && wifi.data.bands.some((b) => b.band === "2.4") && <Hide5gRow wifi={wifi.data} offline={offline} />}
+        <SettingsRow
+          title={
+            <>
+              Legacy mode
+              {legacy && <Status tone="warning">On</Status>}
+            </>
+          }
+          description="Helps older devices that can't detect Wi-Fi 6 see the network. It may reduce speeds, and turning it on or off restarts the network for about 2 to 3 minutes."
+          control={<SectionLink to={pathFor("advanced")}>View advanced networking</SectionLink>}
+        />
       </Card>
     </Section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Fixes
+// Status light colors
 
-function FixCard({ title, badge, children }: { title: string; badge?: ReactNode; children: ReactNode }) {
-  return (
-    <Card padded className="flex flex-col gap-3 text-[13px]">
-      <div className="flex items-center gap-2">
-        <h3 className="min-w-0 flex-1 font-medium text-sm">{title}</h3>
-        {badge}
-      </div>
-      {children}
-    </Card>
-  );
-}
-
-const disruptive = <Badge variant="warning">Disruptive</Badge>;
-
-/** "12:04" or "1h 05m" until `iso`. */
-function countdown(iso: string, now: number): string | null {
-  const left = Math.max(0, Math.round((Date.parse(iso) - now) / 1000));
-  if (!Number.isFinite(left)) return null;
-  const h = Math.floor(left / 3600);
-  const m = Math.floor((left % 3600) / 60);
-  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}:${String(left % 60).padStart(2, "0")}`;
-}
-
-function TwoFourOnly({ offline }: { offline: boolean }) {
-  const wifi = useQuery<WifiSettings>("wifi.get", undefined, { poll: true });
-  const active = wifi.data?.hide5g.active ?? false;
-  const expiresAt = wifi.data?.hide5g.expiresAt ?? null;
-  const gate = useGate("wifi.hide5g.set");
-  const write = useWrite<{ enabled: boolean }, WifiSettings>("wifi.hide5g.set", {
-    success: (r) => (r.hide5g.active ? "5 and 6 GHz paused" : "5 and 6 GHz are back"),
-    progress: active ? "Bringing back 5 and 6 GHz..." : "Pausing 5 and 6 GHz...",
-    confirm: active ? { title: "Bring back 5 and 6 GHz now?", confirmLabel: "Restore now" } : { confirmLabel: "Pause 5 and 6 GHz" },
-  });
-  const now = useNow(active ? 1000 : 60_000);
-  const left = active && expiresAt ? countdown(expiresAt, now) : null;
-  return (
-    <FixCard title="Connect 2.4 GHz only devices" badge={disruptive}>
-      <div className="flex items-center gap-3">
-        <div className="flex min-w-0 flex-1 flex-col text-xs">
-          {active ? (
-            <span className="text-muted-foreground">{HIDE_5G.active}</span>
-          ) : (
-            <>
-              <span className="text-foreground/80">{HIDE_5G.why}</span>
-              <span className="text-muted-foreground">{HIDE_5G.cost}</span>
-            </>
-          )}
-        </div>
-        {left && <span className="font-mono font-semibold text-lg tabular-nums tracking-tighter">{left}</span>}
-      </div>
-      <div className="flex items-center gap-2">
-        {active ? <Status tone="warning">5 and 6 GHz paused</Status> : <Status tone="muted">Off</Status>}
-        <span className="ms-auto" />
-        <GatedButton
-          gate={offline ? { allowed: false, reason: "The network is offline" } : gate}
-          size="xs"
-          variant="outline"
-          title={active ? undefined : HIDE_5G.action}
-          disabled={!wifi.data || write.running}
-          onClick={() => void write.run({ enabled: !active })}
-        >
-          {active ? "Restore now" : "Start"}
-        </GatedButton>
-      </div>
-    </FixCard>
-  );
-}
-
-function LegacyMode() {
-  const settings = useQuery<NetworkSettings>("settings.get", undefined, { poll: true });
-  const on = settings.data?.legacyMode ?? null;
-  return (
-    <FixCard title="Connect devices that can't detect Wi-Fi 6" badge={disruptive}>
-      <p className="text-muted-foreground text-xs">Legacy mode helps older devices see the network. It may reduce speeds, and turning it on or off restarts the network for about 2 to 3 minutes.</p>
-      <div className="flex items-center gap-2">
-        {on === null ? <Status tone="muted">-</Status> : on ? <Status tone="warning">Legacy mode on</Status> : <Status tone="muted">Off</Status>}
-        <span className="ms-auto">
-          <HeaderLink to={pathFor("advanced")} arrow>
-            Advanced networking
-          </HeaderLink>
-        </span>
-      </div>
-    </FixCard>
-  );
-}
-
-const LIGHTS: [string, string][] = [
-  ["Solid white", "Online and working"],
-  ["Blinking white", "Starting up or connecting"],
-  ["Blinking blue", "Ready for setup over Bluetooth"],
-  ["Solid blue", "Connected to the app during setup"],
-  ["Solid green", "Power saving schedule is on"],
-  ["Solid red", "No internet, check modem and cable"],
-  ["Off", "Light turned off in settings, or no power"],
+/**
+ * Each light with its dot: the colour from the theme (white is the text
+ * colour, so it shows on light themes too; blue, green and red the theme's
+ * series hues), blinking when the light blinks. Off is a dim dot, not a gap.
+ */
+const LIGHTS: { light: string; meaning: string; color: string; blink?: boolean }[] = [
+  { light: "Solid white", meaning: "Online and working", color: "var(--color-foreground)" },
+  { light: "Blinking white", meaning: "Starting up or connecting", color: "var(--color-foreground)", blink: true },
+  { light: "Blinking blue", meaning: "Ready for setup over Bluetooth", color: hue("blue"), blink: true },
+  { light: "Solid blue", meaning: "Connected to the app during setup", color: hue("blue") },
+  { light: "Solid green", meaning: "Power saving schedule is on", color: hue("green") },
+  { light: "Solid red", meaning: "No internet, check modem and cable", color: hue("red") },
+  { light: "Off", meaning: "Light turned off in settings, or no power", color: "color-mix(in srgb, var(--color-muted-foreground) 35%, transparent)" },
 ];
 
-function StatusLights() {
+export function StatusLights() {
   return (
-    <FixCard title="Status light colors">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-        {LIGHTS.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="font-medium">{k}</dt>
-            <dd className="text-muted-foreground">{v}</dd>
-          </div>
-        ))}
-      </dl>
-    </FixCard>
+    <Section title="Status light colors" className="gap-[15px]">
+      <Card padded>
+        <dl className="flex flex-col gap-1 text-[13px]">
+          {LIGHTS.map((l) => (
+            // 28px rows, the height of Get help's rows beside it, so the two cards line up.
+            <div key={l.light} className="grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3">
+              <dt className="flex items-center gap-2 font-medium">
+                {/* The network switcher's dot size (size-2). A blink is an opacity fade, and stops for reduced motion. */}
+                <span
+                  aria-hidden
+                  className={cn("size-2 shrink-0 rounded-full", l.blink && "animate-[light-blink_1.2s_ease-in-out_infinite] motion-reduce:animate-none")}
+                  style={{ background: l.color }}
+                />
+                {l.light}
+              </dt>
+              <dd className="text-muted-foreground">{l.meaning}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+    </Section>
   );
 }
 
-function RestartRow({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; networkName: string }) {
+// ---------------------------------------------------------------------------
+// Restart
+
+function RestartEero({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; networkName: string }) {
   const gate = useGate("eero.restart");
   const write = useWrite<{ eero: string }, RestartResult>("eero.restart", {
     confirm: { title: `Restart ${eero.location}?`, confirmLabel: `Yes, restart ${eero.location}` },
@@ -202,50 +165,48 @@ function RestartRow({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; n
     if (r?.ok) watchRestart(r.result, eero.isGateway ? networkName : eero.location);
   };
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <div className="min-w-0 flex-1">
-        <div className="font-medium text-xs">{eero.location}</div>
-        <div className={eero.isGateway ? "text-2xs text-warning-foreground" : "text-2xs text-muted-foreground"}>
-          {eero.isGateway ? "Gateway: takes the network offline" : restartLine(eero, eeros, networkName)}
-        </div>
-      </div>
-      <GatedButton gate={blocked ? { allowed: false, reason: blocked } : gate} size="xs" variant="outline" disabled={write.running} onClick={() => void run()}>
-        Restart
-      </GatedButton>
-    </div>
-  );
-}
-
-function RestartNetwork() {
-  const restart = useRestartNetwork();
-  return (
-    <FixCard title="Restart network" badge={disruptive}>
-      <p className="text-muted-foreground text-xs">Every eero restarts at once. Everyone loses internet for about 2 to 3 minutes.</p>
-      <div>
-        <GatedButton gate={restart.gate} size="xs" variant="outline" className="text-destructive-foreground" disabled={restart.write.running} onClick={() => void restart.run()}>
-          Restart network
+    <SettingsRow
+      title={
+        <>
+          {eero.location}
+          {eero.isGateway && <Status tone="muted">Gateway</Status>}
+        </>
+      }
+      description={eero.isGateway ? <span className="text-warning-foreground">Restarting the gateway takes the whole network offline.</span> : restartLine(eero, eeros, networkName)}
+      control={
+        <GatedButton gate={blocked ? { allowed: false, reason: blocked } : gate} variant="outline" className={DIM_ICON} disabled={write.running} onClick={() => void run()}>
+          <RotateCcw />
+          Restart {eero.location}…
         </GatedButton>
-      </div>
-    </FixCard>
+      }
+    />
   );
 }
 
-export function Fixes({ eeros, networkName, offline }: { eeros: Eero[] | undefined; networkName: string; offline: boolean }) {
+export function Restarts({ eeros, networkName }: { eeros: Eero[] | undefined; networkName: string }) {
+  const restart = useRestartNetwork();
+  const n = eeros?.length ?? 0;
+  const online = eeros?.filter((e) => e.status !== "offline").length ?? 0;
+  const description = !eeros ? "-" : `${plural(n, "eero")}${online < n ? `, ${formatCount(n - online)} offline` : ""}`;
   return (
-    <Section title="Fixes" subtitle="Temporary modes and restarts">
-      <div className="grid items-start gap-4 md:grid-cols-2 2xl:grid-cols-3">
-        <TwoFourOnly offline={offline} />
-        <LegacyMode />
-        <StatusLights />
-        <FixCard title="Restart a single eero">
-          <div className="flex flex-col divide-y divide-border/50">
-            {(eeros ?? []).map((e) => (
-              <RestartRow key={e.id} eero={e} eeros={eeros ?? []} networkName={networkName} />
-            ))}
-          </div>
-        </FixCard>
-        <RestartNetwork />
-      </div>
+    <Section title="Restart" description={description} className="gap-[15px]">
+      <Card className="divide-y divide-border/50">
+        {(eeros ?? []).map((e) => (
+          <RestartEero key={e.id} eero={e} eeros={eeros ?? []} networkName={networkName} />
+        ))}
+        <SettingsRow
+          title="Restart network"
+          description="Every eero restarts at once. Everyone loses internet for about 2 to 3 minutes."
+          control={
+            <GatedButton gate={restart.gate} variant="outline" className="text-destructive-foreground [&_svg]:text-destructive-foreground/70" disabled={restart.write.running} onClick={() => void restart.run()}>
+              <RotateCcw />
+              Restart network…
+            </GatedButton>
+          }
+        />
+      </Card>
     </Section>
   );
 }
+
+const plural = (n: number, one: string) => `${formatCount(n)} ${n === 1 ? one : `${one}s`}`;

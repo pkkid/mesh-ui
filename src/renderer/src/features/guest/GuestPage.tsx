@@ -1,26 +1,26 @@
 /**
  * Guest network: the hero with the power button and the QR block, guest
  * usage, isolation and security, name and password (with its edit sheet),
- * and the guest devices. While it is off, the hero has no QR block and one
- * empty state (with Turn on) replaces usage, isolation and devices; Name &
- * password stays so they can be set first. Layout, data and states: docs/ux/pages/guest.md
+ * and the guest devices. While it is off, the hero has no QR block and its
+ * action is Turn on; usage, isolation and devices give way to a dim "Guest
+ * network off" watermark, and Name & password stays so they can be set first. Layout, data and states: docs/ux/pages/guest.md
  * and docs/mockups/11-guest.html.
  */
-import { Check, Globe, House, Smartphone, Ticket, X } from "lucide-react";
+import { Check, Globe, House, Power, Smartphone, Ticket, X } from "lucide-react";
 import { type ReactNode, useReducer } from "react";
 
-import { Link, pathFor } from "~/app/router";
+import { pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Card, Empty, Section } from "~/components/ui/card";
-import { SectionError } from "~/components/ui/page";
+import { SectionError, SectionLink } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import { TopBarTitle } from "~/features/shell/TopBar";
 import type { GuestNetwork, Network, Security, WirelessBand } from "../../../../core/model";
 
 import { GuestDevices } from "./GuestDevices";
-import { GuestHero, PowerButton } from "./GuestHero";
+import { GuestHero } from "./GuestHero";
 import { GuestSettings } from "./GuestSettings";
 import { GuestUsage } from "./GuestUsage";
 
@@ -43,7 +43,7 @@ export function GuestPage(_: PageProps) {
       {guest.error && !g ? (
         <SectionError what="the guest network" error={guest.error} onRetry={() => void guest.refetch()} />
       ) : (
-        <GuestHero guest={g} networkName={network.data?.name ?? null} unavailable={bridged} offline={network.data?.status === "offline"} fading={guest.fading} shareVersion={shareVersion} />
+        <GuestHero guest={g} networkName={network.data?.name ?? null} unavailable={bridged} offline={network.data?.status === "offline"} fading={guest.fading} shareVersion={shareVersion} timezone={timezone} />
       )}
 
       {bridged ? (
@@ -51,37 +51,35 @@ export function GuestPage(_: PageProps) {
           <Empty>Guest network is not available in bridge mode. eero needs to route the network to keep guests apart.</Empty>
         </Card>
       ) : off ? (
-        <>
-          <OffState />
+        <div className="flex flex-col gap-14">
+          <OffWatermark />
           <GuestSettings guest={g} networkName={network.data?.name ?? null} onSaved={bumpShare} />
-        </>
+        </div>
       ) : (
-        <>
-          <div className="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-14">
+          <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <GuestUsage timezone={timezone} />
             <Isolation guest={g} networkName={network.data?.name ?? null} />
           </div>
           <GuestSettings guest={g} networkName={network.data?.name ?? null} onSaved={bumpShare} />
           <GuestDevices timezone={timezone} />
-        </>
+        </div>
       )}
     </>
   );
 }
 
-/** The one empty state while the guest network is off: what it is for and Turn on. */
-function OffState() {
+/**
+ * While the guest network is off: a large, very dim power glyph and "Guest
+ * network off", the same watermark Devices shows while Live throughput is
+ * off. Decoration only, so it gives the page some room; Turn on is in the hero.
+ */
+function OffWatermark() {
   return (
-    <Card padded className="flex flex-col items-center gap-3 py-12 text-center">
-      <div className="mb-1 grid size-16 place-items-center rounded-2xl border bg-muted/40 text-muted-foreground/70">
-        <Ticket className="size-8" strokeWidth={1.5} />
-      </div>
-      <h2 className="font-medium text-base text-foreground">The guest network is off</h2>
-      <p className="max-w-sm text-muted-foreground text-sm">Give visitors internet without access to your devices.</p>
-      <div className="mt-2">
-        <PowerButton on={false} />
-      </div>
-    </Card>
+    <div aria-hidden className="pointer-events-none flex h-40 items-center justify-center gap-3.5">
+      <Power className="size-12 text-foreground/7" strokeWidth={1.6} />
+      <span className="whitespace-nowrap font-semibold text-foreground/13 text-xl">Guest network off</span>
+    </div>
   );
 }
 
@@ -101,9 +99,11 @@ function Isolation({ guest, networkName }: { guest: GuestNetwork | undefined; ne
   const open = guest !== undefined && !guest.hasPassword;
   // Bands the network has: any band with a security mode (an open network shows the two every eero has).
   const bands = guest ? (open ? BANDS.filter((b) => b !== "6") : BANDS.filter((b) => guest.security[b] !== null)) : [];
+  // "Internet only, same encryption as Maple Street": what guests can reach, then how they are protected.
+  const description = guest === undefined ? "-" : open ? "Internet only, open with no password" : `Internet only, same encryption as ${networkName ?? "your network"}`;
   return (
-    <Section title="Isolation & security">
-      <Card padded className="flex flex-col gap-4">
+    <Section title="Isolation & security" description={description} className="gap-[15px]">
+      <Card padded className="flex flex-1 flex-col gap-4">
         <div className="flex flex-col gap-3">
           <Path from={<Node icon={<Ticket />} label="Guests" />} to={<Node icon={<Globe />} label="Internet" detail="Allowed" />} allowed />
           <Path from={<Node icon={<Ticket />} label="Guests" />} to={<Node icon={<House />} label={networkName ?? "Your network"} detail="Blocked" />} />
@@ -113,9 +113,7 @@ function Isolation({ guest, networkName }: { guest: GuestNetwork | undefined; ne
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="font-medium text-xs">Encryption</span>
-            <Link to={pathFor("wifi")} className="text-muted-foreground text-xs underline-offset-2 hover:text-foreground hover:underline">
-              Same as main network
-            </Link>
+            <SectionLink to={pathFor("wifi")}>View Wi-Fi network</SectionLink>
           </div>
           {guest === undefined ? (
             <div className="h-16" />

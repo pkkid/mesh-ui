@@ -26,6 +26,7 @@
  * Headless runs never show desktop alerts (`mesh:notify` is not registered).
  */
 
+import { spawn as spawnProcess } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -160,6 +161,25 @@ const installKind = updatePreview?.install ?? detectInstallKind({
   },
 });
 
+/**
+ * Set once this instance has handed the window over to a new one (demo
+ * switch under the dev server): closing its windows must not quit it.
+ */
+let handedOff = false;
+
+/**
+ * The demo switch under `pnpm dev` (src/main/demo-switch.ts): a relaunch would
+ * end electron-vite and its dev server, so start the new instance as a child
+ * instead, close this one's windows, and exit with the child.
+ */
+function devHandOff(args: string[]): void {
+  handedOff = true;
+  const child = spawnProcess(process.execPath, args, { stdio: "inherit", env: process.env });
+  child.on("exit", (code) => app.exit(code ?? 0));
+  child.on("error", () => app.exit(1));
+  for (const win of BrowserWindow.getAllWindows()) win.destroy();
+}
+
 /** The window's host actions (updater, CLI install, demo relaunch, request log, Amazon sign-in). The CLI host gets none. */
 function windowActions(settings: SettingsStore, dir: string): HostActions {
   return createHostActions({
@@ -171,7 +191,7 @@ function windowActions(settings: SettingsStore, dir: string): HostActions {
       for (const win of BrowserWindow.getAllWindows()) win.webContents.send(IPC.event, { type: "update.changed", status });
     },
     updatePreview: updatePreview?.status ?? null,
-    demoSwitch: { app, argv: process.argv, env: process.env },
+    demoSwitch: { app, argv: process.argv, env: process.env, handOff: devHandOff },
     requestLog: { path: requestLogPath(dir), shell },
     appVersion,
     platform: process.platform,
@@ -458,6 +478,6 @@ if (isCli) {
   });
 
   app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+    if (process.platform !== "darwin" && !handedOff) app.quit();
   });
 }

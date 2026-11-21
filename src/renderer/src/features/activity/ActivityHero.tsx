@@ -1,94 +1,89 @@
 /**
- * Activity hero (docs/ux/pages/activity.md, Layout 1): a compact event total
- * with how far back the kept events reach, a share bar of the types, and the
- * type legend as wrapping chips that double as the type filter (click one to
- * hide or show that type in the chart and the stream). Kept small so the
- * chart under it gets the card's height.
+ * The Activity page header (docs/ux/pages/activity.md, Layout 1): the flat
+ * hero every page opens with. Title is the number of kept events, the status
+ * line says whether the stream is live, how far back the kept events reach
+ * and whether eero has unread notifications. The facts name the busiest
+ * type and the most active device, eero or profile. Actions: Export CSV,
+ * Mark notifications read (while the flag is set) and Notification
+ * settings. The right-hand column is Events over time (ActivityChart.tsx).
+ * Every figure comes from `events.summary {range: "kept"}` with no filters,
+ * so the header always covers every kept event, as Devices' does.
  */
-import { ShareBar } from "~/components/charts/ShareBar";
+import type { ReactNode } from "react";
+
+import { Metric, PageHeader } from "~/components/ui/hero";
+import { Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
-import { type Clock, formatCount, MISSING } from "../../../../core/format";
-import type { EventCategory, EventSummary } from "../../../../core/model";
+import { type Clock, formatCount, formatPercent } from "../../../../core/format";
+import type { EventSummary } from "../../../../core/model";
 
-import { CATEGORIES, CATEGORY_ORDER } from "./ActivityChart";
+import { CATEGORIES, CATEGORY_ORDER, EventsOverTime } from "./ActivityChart";
 
-/** "last 58m", "last 3h 10m": how far back the kept events reach. */
-export function keptSpan(s: EventSummary): string {
-  const from = s.earliest ? Date.parse(s.earliest) : Date.parse(s.to);
-  const min = Math.max(1, Math.round((Date.parse(s.to) - from) / 60_000));
-  if (min < 60) return `last ${min} min`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `last ${h} h${m ? ` ${m} min` : ""}`;
-}
-
-/** "Since 9:41 AM" (with the date on an earlier day): the section's sub line. */
+/** "since 9:41 AM" (with the date on an earlier day): how far back the kept events reach. */
 export function sinceLine(s: EventSummary | undefined, clock: Clock): string | null {
   if (!s?.earliest) return null;
   const at = s.earliest;
-  return `Since ${clock.day(at) === clock.day(s.to) ? clock.time(at) : clock.dateTime(at)}`;
+  return `since ${clock.day(at) === clock.day(s.to) ? clock.time(at) : clock.dateTime(at)}`;
 }
 
+const muted = (text: string) => <span className="font-normal text-muted-foreground text-xs"> · {text}</span>;
+
 export function ActivityHero({
-  summary,
-  hidden,
-  onToggle,
-  loading,
+  summary: s,
+  clock,
+  live,
+  unread,
+  actions,
+  fading,
 }: {
+  /** events.summary {range: "kept"} with no filters. */
   summary: EventSummary | undefined;
-  hidden: ReadonlySet<EventCategory>;
-  onToggle: (c: EventCategory) => void;
-  loading: boolean;
+  clock: Clock;
+  /** The window is visible, so the stream polls. */
+  live: boolean;
+  /** eero's network-wide `has_unread`. */
+  unread: boolean;
+  actions: ReactNode;
+  fading: boolean;
 }) {
-  const total = summary?.total ?? null;
-  // Every type with events, plus any the user hid, so a hidden chip can be shown again.
-  const rows = CATEGORY_ORDER.filter((c) => (summary?.counts[c] ?? 0) > 0 || hidden.has(c));
+  const since = sinceLine(s, clock);
+  const busiestType = s && s.total > 0 ? CATEGORY_ORDER.reduce((a, b) => (s.counts[b] > s.counts[a] ? b : a)) : null;
+  const top = s?.top?.[0];
+
   return (
-    <div className={cn("flex flex-col gap-2 transition-opacity", loading && "opacity-40")}>
-      <div className="flex items-center gap-3">
-        <div className="flex shrink-0 items-baseline gap-1.5">
-          <span className="font-semibold text-2xl tabular-nums leading-none">{total === null ? MISSING : formatCount(total)}</span>
-          <span className="text-muted-foreground text-xs">
-            {total === 1 ? "event" : "events"}
-            {summary ? ` · ${keptSpan(summary)}` : ""}
-          </span>
-        </div>
-        <ShareBar
-          className="min-w-16 flex-1"
-          hideLegend
-          format={formatCount}
-          segments={CATEGORY_ORDER.filter((c) => !hidden.has(c)).map((c) => ({
-            label: CATEGORIES[c].label,
-            value: summary?.counts[c] ?? 0,
-            color: CATEGORIES[c].color,
-          }))}
-        />
-      </div>
-      {rows.length > 0 && (
-        <div className="flex flex-wrap gap-x-2.5 gap-y-0.5" role="group" aria-label="Event types shown">
-          {rows.map((c) => {
-            const meta = CATEGORIES[c];
-            const off = hidden.has(c);
-            return (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={!off}
-                title={off ? `Show ${meta.label}` : `Hide ${meta.label}`}
-                onClick={() => onToggle(c)}
-                className={cn(
-                  "-mx-1 inline-flex items-center gap-1 rounded px-1 text-2xs outline-none hover:bg-muted/50 focus-visible:bg-muted/50",
-                  off && "line-through opacity-45",
-                )}
-              >
-                <span className="size-2 rounded-[2px]" style={{ backgroundColor: meta.color }} />
-                <span className="text-muted-foreground">{meta.label}</span>
-                <span className="font-medium tabular-nums">{formatCount(summary?.counts[c] ?? 0)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <PageHeader
+      flat
+      data-slot="activity-hero"
+      // 56px between the facts and Events over time, as Devices and Profiles do beside their charts.
+      className={cn("transition-opacity [&>div:first-child]:gap-14", fading && "opacity-40")}
+      title={s ? `${formatCount(s.total)} ${s.total === 1 ? "event" : "events"}` : "Activity"}
+      status={
+        <>
+          <Status tone={live ? "success" : "muted"} title={live ? "New events are read every 60s" : "Paused while the window is hidden"}>
+            {live ? "Live" : "Paused"}
+          </Status>
+          {since && <span className="tabular-nums">Kept {since}</span>}
+          {unread && (
+            <Status tone="info" title="eero says some notifications are unread">
+              Unread notifications
+            </Status>
+          )}
+        </>
+      }
+      facts={
+        <>
+          <Metric
+            label="Busiest type"
+            value={s && busiestType ? <>{CATEGORIES[busiestType].label}{muted(formatPercent((s.counts[busiestType] / s.total) * 100))}</> : null}
+          />
+          <Metric
+            label="Most active"
+            value={top ? <>{top.name}{muted(`${formatCount(top.count)} ${top.count === 1 ? "event" : "events"}`)}</> : null}
+          />
+        </>
+      }
+      actions={actions}
+      aside={<EventsOverTime summary={s} clock={clock} loading={!s} />}
+    />
   );
 }

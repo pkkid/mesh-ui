@@ -283,7 +283,10 @@ function buildDevice(row: DeviceRow, n: number, now: number, lan: Lan): [M.Devic
   const wireless = row.band !== "wired";
   const radio = lan.eeroList.find((e) => e.id === lan.eeros[row.eero])?.radios.find((r) => r.band === row.band);
   const bars = row.bars ?? 4;
-  const dbm = [-90, -82, -74, -67, -60, -52][bars] ?? -60;
+  // A few dBm of spread per device (from its index), so medians and the weakest list read like a real network.
+  const dbm = ([-90, -82, -74, -67, -60, -52][bars] ?? -60) + ((n * 7) % 7) - 3;
+  // Link speed falls with signal; the standard follows the band, with a few older and newer devices mixed in.
+  const linkScale = [0.08, 0.15, 0.3, 0.5, 0.75, 1][bars] ?? 0.5;
   const live = connected && wireless;
   const ipv4 = row.blocked || row.ip === null ? null : `${lan.subnet}.${row.ip}`;
   const device: M.Device = {
@@ -311,10 +314,10 @@ function buildDevice(row: DeviceRow, n: number, now: number, lan: Lan): [M.Devic
     signal: live ? { dbm, bars } : null,
     link: live
       ? {
-          rxMbps: row.band === "6" ? 2401 : row.band === "5" ? 1201 : 144,
-          txMbps: row.band === "6" ? 2161 : row.band === "5" ? 1081 : 130,
+          rxMbps: Math.round((row.band === "6" ? 2401 : row.band === "5" ? 1201 : 144) * linkScale),
+          txMbps: Math.round((row.band === "6" ? 2161 : row.band === "5" ? 1081 : 130) * linkScale),
           widthMhz: radio?.widthMhz ?? null,
-          standard: row.band === "6" ? "Wi-Fi 6E" : row.band === "5" ? "Wi-Fi 6" : "Wi-Fi 4",
+          standard: row.band === "6" ? (n % 2 ? "Wi-Fi 6E" : "Wi-Fi 7") : row.band === "5" ? (n % 4 === 0 ? "Wi-Fi 5" : "Wi-Fi 6") : n % 3 === 0 ? "Wi-Fi 6" : "Wi-Fi 4",
           snr: 20 + bars * 4,
           retryPct: bars >= 4 ? 0.2 : 1.8,
         }
@@ -461,7 +464,8 @@ function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Rec
       band,
       channel: row.status === "offline" ? null : (row.radios[band]?.channel ?? null),
       widthMhz: row.status === "offline" ? null : (row.radios[band]?.width ?? null),
-      utilization: row.status === "offline" ? null : band === "2.4" ? 34 : band === "5" ? 21 : 9,
+      // A little different per eero (from its index), as real radios are.
+      utilization: row.status === "offline" ? null : (band === "2.4" ? 34 : band === "5" ? 21 : 9) - ((n * 5) % 13) + (band === "2.4" ? 0 : n % 3),
       clients: null,
       txPowerDbm: row.status === "offline" ? null : TX_POWER[band],
       autoChannel: !(row.manual ?? []).includes(band),
@@ -623,7 +627,7 @@ const EERO_SUPPORT: Omit<M.SupportInfo, "supportId">["eero"] = {
   email: "support@example.com",
   helpUrl: "https://support.example.com/eero",
   contactUrl: "https://support.example.com/eero/contact",
-  emailFormUrl: "https://support.example.com/eero/email",
+  emailFormUrl: "mailto:support@example.com",
 };
 
 const integration = (available: boolean, enabled: boolean | null, detail: string | null = null): M.Integration => ({ available, enabled: available ? enabled : null, detail });

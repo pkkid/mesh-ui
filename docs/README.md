@@ -54,7 +54,8 @@ Open questions from every doc are gathered in [open-questions.md](open-questions
 | [pages/profile-detail.md](ux/pages/profile-detail.md) | Profile detail |
 | [pages/activity.md](ux/pages/activity.md) | Activity |
 | [pages/guest.md](ux/pages/guest.md) | Guest network |
-| [pages/wifi.md](ux/pages/wifi.md) | Wi-Fi |
+| [pages/signal.md](ux/pages/signal.md) | Signal |
+| [pages/wifi.md](ux/pages/wifi.md) | Wi-Fi network |
 | [pages/advanced-networking.md](ux/pages/advanced-networking.md) | Advanced networking |
 | [pages/reservations-ports.md](ux/pages/reservations-ports.md) | Reservations & ports |
 | [pages/updates-admins.md](ux/pages/updates-admins.md) | Updates & admins |
