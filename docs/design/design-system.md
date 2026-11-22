@@ -458,7 +458,9 @@ set their own margins or padding on the header.
 - status line under it: status dot plus plain text, then muted context
   ("Online · Gateway up 23 days, 4 hours");
 - optional key facts as label-over-value pairs (ISP, Public IP, Last speed
-  test);
+  test) in a wrapping row, 40px apart (`gap-x-10`) with 12px (`gap-y-3`)
+  between wrapped lines, set once in `PageHeader` so no page sets its own
+  fact spacing;
 - **actions in a row at the bottom**, all `outline` buttons (never filled), the main action first, disruptive last.
 
 Everything in the header is **pinned to the top**. The left column (icon,

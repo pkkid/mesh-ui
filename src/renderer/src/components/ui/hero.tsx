@@ -55,7 +55,7 @@ function PageHeader({ title, icon, status, facts, actions, aside, asideFit, flat
                 <h2 className="truncate font-semibold text-[28px] leading-tight tracking-tight">{title}</h2>
                 {status && <div className="mt-2 flex flex-wrap items-center gap-3 text-muted-foreground text-xs">{status}</div>}
               </div>
-              {facts && <div className="flex flex-wrap gap-x-[22px] gap-y-2">{facts}</div>}
+              {facts && <div className="flex flex-wrap gap-x-10 gap-y-3">{facts}</div>}
               {actions && (
                 <div data-slot="hero-actions" className={cn("flex flex-wrap items-center gap-2", flat && "mt-3")}>
                   {actions}
