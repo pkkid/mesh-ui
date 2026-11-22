@@ -111,7 +111,7 @@ The user can turn them off in Settings (`app.settings.set`).
 
 ## System tray
 
-**Keep running in the tray** (Settings hero, `app.settings.set {runInTray}`,
+**Keep running in the tray** (Settings, Startup and tray; `app.settings.set {runInTray}`,
 off by default; `src/main/tray.ts`) keeps Mesh UI running after its window
 is closed, so desktop alerts keep arriving.
 
@@ -142,6 +142,25 @@ is closed, so desktop alerts keep arriving.
 
 Headless runs (ui:shot), the CLI and tests never create a tray; tests drive
 `createTrayMode` with a fake host.
+
+## Start at login
+
+**Start at login** (Settings, Startup and tray; `app.startup.set`,
+`src/main/startup.ts`) asks the OS to open Mesh UI when the user signs in.
+The OS keeps the truth, so turning it off in system settings shows in Mesh UI.
+
+| OS | How |
+| --- | --- |
+| macOS | A login item (`app.setLoginItemSettings`); a login launch is seen with `wasOpenedAtLogin` |
+| Windows | The Run key entry Electron writes for this exe, with `--hidden` (NSIS and the portable zip) |
+| Linux | `~/.config/autostart/mesh-ui.desktop` (or under `$XDG_CONFIG_HOME`), `Exec` the AppImage file or the installed binary with `--hidden`; an entry the desktop turned off (`Hidden=true`, `X-GNOME-Autostart-enabled=false`) reads as off |
+
+- A login launch starts in the tray without showing the window, but only
+  while Keep running in the tray is on and the tray icon is showing;
+  otherwise the window opens as usual. The demo relaunch drops `--hidden`.
+- Development builds cannot register one (it would start the bare Electron
+  binary): the switch is disabled.
+- Headless runs keep it in memory, so a screenshot never adds a real login item.
 
 ## Fonts and rendering
 

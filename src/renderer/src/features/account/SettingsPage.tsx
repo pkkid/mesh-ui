@@ -1,7 +1,7 @@
 /**
  * Settings: this copy of Mesh UI, as opposed to the eero account (Account
  * page). The flat hero is the app itself (version, updates, links; it was the
- * About side panel), then the application theme, the keyboard shortcuts and
+ * About side panel), then startup and tray, the application theme, the keyboard shortcuts and
  * the CLI and MCP hookup in one full-width column. Layout, data and states: docs/ux/pages/settings.md.
  *
  * Each section has a stable id for deep links: `#/settings/<section>` opens
@@ -18,10 +18,11 @@ import { TopBarTitle } from "~/features/shell/TopBar";
 import { CliAgents } from "./CliAgents";
 import { KeyboardShortcuts } from "./KeyboardShortcuts";
 import { SettingsHero } from "./SettingsHero";
+import { StartupTray } from "./StartupTray";
 import { ThemePicker } from "./ThemePicker";
 
 /** Deep-link names, in page order. */
-export const SETTINGS_SECTIONS = ["about", "theme", "shortcuts", "cli"] as const;
+export const SETTINGS_SECTIONS = ["about", "startup", "theme", "shortcuts", "cli"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 const sectionId = (s: SettingsSection) => `settings-${s}`;
@@ -38,6 +39,7 @@ export function SettingsPage({ params }: PageProps) {
       <TopBarTitle>Settings</TopBarTitle>
       <SettingsHero id={sectionId("about")} />
       <div className="flex flex-col gap-14">
+        <StartupTray id={sectionId("startup")} />
         <ThemePicker id={sectionId("theme")} />
         <KeyboardShortcuts id={sectionId("shortcuts")} />
         <CliAgents id={sectionId("cli")} />

@@ -46,9 +46,9 @@ export type DemoSwitchDeps = {
 
 export const DEMO_FLAG = "--demo";
 
-/** The arguments for the new process: the current ones without `--demo`, plus it once when entering. */
+/** The arguments for the new process: the current ones without `--demo` (or a login launch's `--hidden`), plus `--demo` once when entering. */
 export function relaunchArgs(argv: readonly string[], enabled: boolean): string[] {
-  const args = argv.slice(1).filter((a) => a !== DEMO_FLAG);
+  const args = argv.slice(1).filter((a) => a !== DEMO_FLAG && a !== "--hidden");
   return enabled ? [...args, DEMO_FLAG] : args;
 }
 

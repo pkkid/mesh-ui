@@ -969,7 +969,16 @@ export type AppInfo = {
    * tray). null where the host has no window (the CLI and MCP hosts, tests).
    */
   tray: boolean | null;
+  /** Start at login (`app.startup.set`). null where the host has no window (the CLI and MCP hosts, tests). */
+  startup: StartupStatus | null;
   configDir: string;
+};
+
+/** Whether Mesh UI opens when the user signs in to the computer, as the OS records it. */
+export type StartupStatus = {
+  /** false for a development build: it would register the bare Electron binary. */
+  supported: boolean;
+  enabled: boolean;
 };
 
 export type AppSettings = {

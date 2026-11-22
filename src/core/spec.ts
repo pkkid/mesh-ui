@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import type { Backend } from "./backend";
-import type { AppSettings, BackendKind, CliStatus, Effect, HostEvent, Id, InstallKind, Permission, Permissions, Role, UpdateStatus } from "./model";
+import type { AppSettings, BackendKind, CliStatus, Effect, HostEvent, Id, InstallKind, Permission, Permissions, Role, StartupStatus, UpdateStatus } from "./model";
 import type { Topic } from "./poll";
 
 export type { Effect } from "./model";
@@ -66,6 +66,12 @@ export type HostActions = {
     available(): Promise<boolean>;
     /** Shows or removes the tray icon for the `runInTray` setting. Resolves true when the icon is showing. */
     apply(on: boolean): Promise<boolean>;
+  };
+  startup?: {
+    /** Whether the OS opens Mesh UI at login now (macOS and Windows login items, a Linux XDG autostart entry). */
+    status(): Promise<StartupStatus>;
+    /** Adds or removes the login item, then answers the status. */
+    set(enabled: boolean): Promise<StartupStatus>;
   };
 };
 
