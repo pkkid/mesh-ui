@@ -109,7 +109,7 @@ function ShortcutRow({ action, recording, onRecord, onCancel }: { action: Shortc
                 type="button"
                 onClick={onRecord}
                 aria-label={`Edit shortcut for ${action.label}: ${combo ? comboText(combo, isMac()) : "Unassigned"}`}
-                className="-me-1.5 inline-flex h-7 cursor-pointer items-center rounded-md border border-transparent px-1.5 outline-none transition-colors hover:border-border/70 hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/24"
+                className="-me-1.5 inline-flex h-7 cursor-pointer items-center rounded-md border border-transparent px-1.5 outline-none transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/24"
               >
                 {combo ? <KeyCaps combo={combo} /> : <span className="text-muted-foreground text-sm">Unassigned</span>}
               </button>

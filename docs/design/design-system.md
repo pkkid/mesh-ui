@@ -720,6 +720,11 @@ bright text, a row or card background) eases with `transition-colors`
 (150ms), never a hard switch: section links, the titlebar search, rows and
 clickable cards all fade the same way.
 
+**Hover changes the background, never the border.** A hovered control, row
+or card fades in a background (`hover:bg-accent`, `hover:bg-muted/50`) and
+keeps its border exactly as it was: no `hover:border-*` that brightens,
+darkens or adds an outline. Keyboard focus still shows the focus ring.
+
 **Header actions sit on the title's line.** In a card or row header with an
 icon, a title and a subtitle under it, the status and buttons on the right
 (Online, Blink light, View eero) are level with the title, not centred on
