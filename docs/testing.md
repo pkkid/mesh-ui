@@ -309,13 +309,15 @@ fields (`out`, `route`, `theme`, `themeId`, `size`, `scale`, `scenario`,
 in light and dark: a confirm (Restart network on Troubleshooting), a
 type-to-confirm confirm (Delete network), a confirm nested over a sheet
 (Change time zone, then Save), sheets (Edit name and password on Wi-Fi
-network, Transfer network, and Change email at its code step), a popover (Filters on Devices), a
-menu (a device row's Actions, taken 1440px wide so the Actions column is on
-screen) and the command palette. It also takes the
+network, Transfer network, and Change email at its code step), popovers
+(Filters, Columns and the title switcher on Devices, notifications, Sign out,
+Add a schedule on Profiles with its schedules cleared first), menus (a device
+row's Actions and the bulk Assign profile, taken 1440px wide so the Actions
+column is on screen) and the command palette. It also takes the
 confirm and the sheet in a 700px-tall and a 1200px-tall window, whose top
 edges must line up (105px and 180px down). Run it whenever a change touches
-`components/ui/dialog.tsx`, `sheet.tsx`, `confirm.tsx`, `popover.tsx` or a
-menu, and look at the shots side by side so drift shows up in review:
+`components/ui/dialog.tsx`, `sheet.tsx`, `confirm.tsx`, `popover.tsx`,
+`menu.tsx` or a menu, and look at the shots side by side so drift shows up in review:
 
 ```sh
 pnpm ui:shot --shots test/ui-shots/overlays.json --out-dir shots/overlays/
