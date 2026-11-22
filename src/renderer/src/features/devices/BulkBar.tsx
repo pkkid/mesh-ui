@@ -278,7 +278,7 @@ function BulkBarContent({ selected, profiles, networkName, bridged, gate: writeG
   const showPause = !bridged && !guestsOnly && !allBlocked;
 
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border bg-muted/60 py-2 ps-3.5 pe-2.5" role="toolbar" aria-label="Selected devices">
+    <div className="flex items-center gap-2.5 rounded-xl bg-muted/60 py-2 ps-3.5 pe-2.5" role="toolbar" aria-label="Selected devices">
       <Checkbox aria-label="Clear selection" checked indeterminate onCheckedChange={() => onSelect([])} />
       <span className="shrink-0 font-medium text-[13px] tabular-nums">{selected.length} selected</span>
       <span className="min-w-0 truncate text-muted-foreground text-xs" title={names}>
