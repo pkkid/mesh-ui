@@ -1,6 +1,8 @@
 // Segmented toggle from docs/design/design-system.md (Components) and the
-// mockups' `.seg`: an inset track on `bg-muted` with the selected segment
-// raised on `bg-card`. Used for Day / Week, metric switches, Light / Dark.
+// mockups' `.seg`: a track on `bg-muted` with the selected segment on
+// `bg-card` in the foreground colour. No borders, outlines or shadows on the
+// track or the segment: only the fill and the text colour change
+// (design-system.md, Pills). Used for Light / Dark, Simple / Advanced.
 import type { LucideIcon } from "lucide-react";
 import { createContext, type KeyboardEvent, use, useRef } from "react";
 
@@ -16,7 +18,7 @@ export type SegmentedOption<T extends string> = {
 };
 
 /**
- * Heights (border plus `p-0.5` around the items): `tool` 28px (22px items)
+ * Heights (3px padding around the items, no border): `tool` 28px (22px items)
  * in a section header, level with the 28px buttons there; `sm` 30px (24px
  * items, the default) in forms and settings; `md` 32px (26px items) in
  * toolbars beside `h-8` inputs, buttons and selects. `Section` sets `tool`
@@ -62,7 +64,7 @@ function Segmented<T extends string>({ value, onValueChange, options, size: size
       aria-label={props["aria-label"]}
       data-slot="segmented"
       onKeyDown={onKeyDown}
-      className={cn("inline-flex shrink-0 rounded-[9px] border bg-muted p-0.5", className)}
+      className={cn("inline-flex shrink-0 rounded-[9px] bg-muted p-[3px]", className)}
     >
       {options.map((option, i) => {
         const selected = option.value === value;
@@ -85,7 +87,7 @@ function Segmented<T extends string>({ value, onValueChange, options, size: size
               "inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2.5 text-muted-foreground text-xs outline-none transition-colors",
               ITEM_HEIGHT[size],
               "hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-              "data-selected:bg-card data-selected:font-medium data-selected:text-foreground data-selected:shadow-[0_1px_2px_rgb(0_0_0/25%),inset_0_0_0_1px_var(--color-border)]",
+              "data-selected:bg-card data-selected:font-medium data-selected:text-foreground",
             )}
           >
             {Icon && <Icon className="size-3.5" />}

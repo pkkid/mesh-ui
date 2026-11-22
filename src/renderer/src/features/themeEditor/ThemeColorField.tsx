@@ -101,7 +101,7 @@ function PickerPanel({ label, value, committer, onChange }: { label: string; val
           <p className="truncate text-xs font-semibold text-foreground">{label}</p>
           <p className="text-2xs text-muted-foreground">Choose a color</p>
         </div>
-        <span className="size-6 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: current }} />
+        <span className="size-6 shrink-0 rounded-full border border-foreground/10" style={{ backgroundColor: current }} />
       </div>
       <div className="grid gap-3 p-3">
         <ColorSaturationValuePlane label={label} value={hsv} onChange={commitHsv} onInteractionEnd={committer.flush} />
@@ -180,7 +180,7 @@ function Swatch({ label, value, onChange, onEditStart, onEditCancel, onInteract 
             aria-label={`Choose ${label} color`}
             onFocus={onInteract}
             onPointerDown={onInteract}
-            className="relative size-6 shrink-0 cursor-pointer rounded-full border border-foreground/30 outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative size-6 shrink-0 cursor-pointer rounded-full border border-foreground/15 outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="absolute inset-0 rounded-full" style={{ backgroundColor: value }} />
           </button>

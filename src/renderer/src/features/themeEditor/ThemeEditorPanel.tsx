@@ -406,7 +406,7 @@ export function ThemeEditorPanel({
     ? "Select an element · Esc to cancel"
     : selected
       ? `${variableLabel(selected)} · ${usage ?? 0} ${usage === 1 ? "use" : "uses"}`
-      : "Select a color below";
+      : null;
 
   return (
     <div
@@ -433,7 +433,7 @@ export function ThemeEditorPanel({
       }}
     >
       <div
-        className="flex cursor-grab touch-none select-none items-center gap-1 border-b px-3 py-2 active:cursor-grabbing"
+        className="flex cursor-grab touch-none select-none items-center gap-1 px-3 py-2 active:cursor-grabbing"
         onPointerDown={onDragDown}
         onPointerMove={onDragMove}
         onPointerUp={() => (dragOffset.current = null)}
@@ -441,11 +441,13 @@ export function ThemeEditorPanel({
       >
         <div className="flex min-w-0 flex-1 items-baseline gap-2">
           <h2 className="shrink-0 font-medium text-sm text-foreground">{title}</h2>
-          {!minimized && <p className="truncate text-muted-foreground text-xs">{status}</p>}
+          {!minimized && status && <p className="truncate text-muted-foreground text-xs">{status}</p>}
         </div>
         <Button
           size="xs"
-          variant={inspecting ? "secondary" : "ghost"}
+          variant="outline"
+          // An outline button with the dim icon, as every other tool button.
+          className="me-1 [&_svg]:text-muted-foreground"
           aria-pressed={inspecting}
           title={inspecting ? "Cancel and clear the selection" : "Pick a color from the app"}
           onClick={() => (inspecting ? clearInspector() : setInspecting(true))}
@@ -531,12 +533,13 @@ export function ThemeEditorPanel({
             )}
             {advanced && groups.length === 0 && hues.length === 0 && <p className="text-muted-foreground text-xs">No matches.</p>}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t px-3 py-2">
-            <Button size="sm" variant="ghost" onClick={onClose}>
+          {/* The sheets' footer band (design-system.md#sheet): top border, muted fill, outline Cancel, filled action. */}
+          <div className="flex items-center justify-end gap-2 border-t bg-muted/72 px-3 py-3">
+            <Button size="sm" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button size="sm" disabled={!name.trim()} onClick={save}>
-              {isEditing ? "Save changes" : "Create theme"}
+              {isEditing ? "Save theme" : "Create theme"}
             </Button>
           </div>
           <div
