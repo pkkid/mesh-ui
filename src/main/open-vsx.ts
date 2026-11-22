@@ -8,6 +8,8 @@
  * - Only https://open-vsx.org is fetched; URLs from responses must point there.
  * - Only permissively licensed extensions (MIT, Apache-2.0, BSD, ...).
  * - Every response has a size cap and a timeout.
+ * - Icons are fetched here too (64 KB cap, PNG, JPEG, GIF, WebP or SVG by
+ *   their bytes) and cross IPC as `data:` URLs, never as remote URLs.
  * - The .vsix must match the sha256 Open VSX publishes for it.
  * - The zip is read with entry, size and ratio limits; theme paths may not
  *   leave the package; `include` chains are followed at most 8 deep.
@@ -35,6 +37,7 @@ const PAGE_SIZE = 16;
 const TIMEOUT_MS = 15_000;
 const MAX_SEARCH_BYTES = 512 * 1024;
 const MAX_JSON_BYTES = 256 * 1024;
+const MAX_ICON_BYTES = 64 * 1024;
 const MAX_VSIX_BYTES = 20 * 1024 * 1024;
 const MAX_THEMES = 40;
 const MAX_INCLUDE_DEPTH = 8;
@@ -118,7 +121,18 @@ function themeContributions(manifest: unknown): Array<Record<string, unknown>> {
 const appearanceOf = (uiTheme: unknown): ThemeFile["appearance"] =>
   uiTheme === "vs" || uiTheme === "hc-light" ? "light" : uiTheme === "vs-dark" || uiTheme === "hc-black" ? "dark" : null;
 
-type Detail = { extension: ThemeExtension; manifestUrl: string; vsixUrl: string; sha256Url: string };
+type Detail = { extension: ThemeExtension; manifestUrl: string; vsixUrl: string; sha256Url: string; iconUrl: string | null };
+
+/** An image's type from its first bytes (not the server's word); null for anything else. */
+export function imageType(bytes: Buffer): string | null {
+  if (bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (bytes.subarray(0, 4).toString("latin1") === "GIF8") return "image/gif";
+  if (bytes.subarray(0, 4).toString("latin1") === "RIFF" && bytes.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
+  // An SVG in an <img> runs no script, so markup is fine as long as it is an SVG.
+  if (/^\s*(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE[^>]*>\s*)?<svg[\s>]/i.test(bytes.subarray(0, 1024).toString("utf8"))) return "image/svg+xml";
+  return null;
+}
 
 export function createOpenVsx(fetchImpl: FetchLike) {
   const get = async (url: string, maxBytes: number, signal?: AbortSignal): Promise<Buffer> => {
@@ -147,6 +161,7 @@ export function createOpenVsx(fetchImpl: FetchLike) {
     const manifestUrl = trustedUrl(value.files.manifest);
     const vsixUrl = trustedUrl(value.files.download);
     const sha256Url = trustedUrl(value.files.sha256);
+    const iconUrl = trustedUrl(value.files.icon);
     const version = typeof value.version === "string" ? value.version.slice(0, 64) : "";
     if (!manifestUrl || !vsixUrl || !sha256Url || !version) throw new Error("Open VSX returned malformed details.");
     const text = (field: unknown, max: number) => (typeof field === "string" ? field.trim().slice(0, max) : "");
@@ -164,7 +179,20 @@ export function createOpenVsx(fetchImpl: FetchLike) {
       manifestUrl,
       vsixUrl,
       sha256Url,
+      iconUrl,
     };
+  };
+
+  /** The icon as a `data:` URL, or nothing: a missing, large or unknown icon just leaves the placeholder. */
+  const iconOf = async (url: string | null, signal?: AbortSignal): Promise<string | undefined> => {
+    if (!url) return undefined;
+    try {
+      const bytes = await get(url, MAX_ICON_BYTES, signal);
+      const type = imageType(bytes);
+      return type ? `data:${type};base64,${bytes.toString("base64")}` : undefined;
+    } catch {
+      return undefined;
+    }
   };
 
   async function search(query: unknown, sort: unknown, signal?: AbortSignal): Promise<ThemeSearchResult> {
@@ -192,7 +220,9 @@ export function createOpenVsx(fetchImpl: FetchLike) {
             const manifest = await getJson(d.manifestUrl, MAX_JSON_BYTES, "The manifest", signal);
             if (permissive(isRecord(manifest) ? manifest.license : null) !== d.extension.license) return null;
             const themeCount = themeContributions(manifest).length;
-            return themeCount > 0 ? { ...d.extension, themeCount } : null;
+            if (themeCount === 0) return null;
+            const icon = await iconOf(d.iconUrl, signal);
+            return { ...d.extension, themeCount, ...(icon ? { icon } : {}) };
           } catch {
             return null;
           }

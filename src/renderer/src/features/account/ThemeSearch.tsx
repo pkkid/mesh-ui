@@ -5,7 +5,7 @@
  * unzip (src/main/open-vsx.ts); this turns the themes it returns into a card
  * the same way a dropped file is.
  */
-import { Package, Search } from "lucide-react";
+import { Package, Palette, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { ThemeExtension, ThemeSearchSort } from "@shared/types";
@@ -124,16 +124,17 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
               key={extension.id}
               className="flex items-center gap-3 border-b border-border/50 px-3 py-2 last:border-b-0 hover:bg-muted/50"
             >
+              <ExtensionIcon extension={extension} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-foreground text-sm">{extension.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{extension.publisher}</p>
-                <p className="truncate text-xs text-muted-foreground" title={extension.description || undefined}>
-                  {extension.description || "-"}
+                <p className="truncate text-xs text-muted-foreground tabular-nums">
+                  {extension.publisher} · {formatCount(extension.downloadCount)} downloads
                 </p>
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {extension.themeCount} {extension.themeCount === 1 ? "theme" : "themes"} ·{" "}
-                  {formatCount(extension.downloadCount)} downloads · {extension.license}
-                </p>
+                {extension.description && (
+                  <p className="line-clamp-2 text-xs text-muted-foreground" title={extension.description}>
+                    {extension.description}
+                  </p>
+                )}
               </div>
               <Button
                 size="xs"
@@ -159,6 +160,18 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
       <p className="text-2xs text-muted-foreground">
         From open-vsx.org, permissively licensed themes only. The download is checked against its published checksum.
       </p>
+    </div>
+  );
+}
+
+/** The extension's icon (a data URL main fetched), or a neutral tile when it has none or it fails to draw. */
+function ExtensionIcon({ extension }: { extension: ThemeExtension }) {
+  const [failed, setFailed] = useState(false);
+  return extension.icon && !failed ? (
+    <img src={extension.icon} alt="" className="size-10 shrink-0 rounded-md object-contain" onError={() => setFailed(true)} />
+  ) : (
+    <div aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+      <Palette className="size-4" />
     </div>
   );
 }

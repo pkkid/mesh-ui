@@ -3,7 +3,7 @@ import { deflateRawSync } from "node:zlib";
 
 import { describe, expect, it } from "vitest";
 
-import { createOpenVsx, packagePath, trustedUrl, type FetchLike } from "./open-vsx";
+import { createOpenVsx, imageType, packagePath, trustedUrl, type FetchLike } from "./open-vsx";
 import { openZip } from "./zip";
 
 /** A plain zip (deflate) built by hand, enough for the reader. */
@@ -101,17 +101,21 @@ const vsix = makeZip({
   "extension/themes/dark.json": `// comment\n{ "include": "./base.json", "type": "dark", "colors": { "editor.background": "#141414", "x.unused": "#fff" }, }`,
 });
 
-function fakeRegistry(overrides: { license?: string; sha?: string; vsix?: Buffer; themes?: unknown[] } = {}) {
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+
+function fakeRegistry(overrides: { license?: string; sha?: string; vsix?: Buffer; themes?: unknown[]; icon?: Buffer } = {}) {
   const body = overrides.vsix ?? vsix;
   const files = {
     manifest: "https://open-vsx.org/api/sample/sample-theme/1.0.0/file/package.json",
     download: "https://open-vsx.org/api/sample/sample-theme/1.0.0/file/sample.vsix",
     sha256: "https://open-vsx.org/api/sample/sample-theme/1.0.0/file/sample.sha256",
+    icon: "https://open-vsx.org/api/sample/sample-theme/1.0.0/file/icon.png",
   };
   const requests: string[] = [];
   const routes: Record<string, string | Buffer> = {
     [files.manifest]: JSON.stringify({ ...manifest, license: overrides.license ?? "MIT", contributes: { themes: overrides.themes ?? manifest.contributes.themes } }),
     [files.download]: body,
+    [files.icon]: overrides.icon ?? PNG,
     [files.sha256]: overrides.sha ?? `${createHash("sha256").update(body).digest("hex")}  sample.vsix`,
     "https://open-vsx.org/api/sample/sample-theme": JSON.stringify({
       namespace: "sample",
@@ -146,6 +150,22 @@ describe("createOpenVsx", () => {
     const url = new URL(requests[0]!);
     expect(Object.fromEntries(url.searchParams)).toMatchObject({ query: "sample", category: "Themes", sortBy: "rating" });
     expect(requests.every((r) => r.startsWith("https://open-vsx.org/"))).toBe(true);
+  });
+
+  it("brings each result's icon as a data URL, and none when it is not an image", async () => {
+    const ok = await createOpenVsx(fakeRegistry().fetch).search("", "x");
+    expect(ok).toMatchObject({ ok: true, extensions: [{ icon: `data:image/png;base64,${PNG.toString("base64")}` }] });
+    const html = await createOpenVsx(fakeRegistry({ icon: Buffer.from("<html><script>x</script></html>") }).fetch).search("", "x");
+    expect(html.ok && html.extensions[0]).not.toHaveProperty("icon");
+    const big = await createOpenVsx(fakeRegistry({ icon: Buffer.concat([PNG, Buffer.alloc(70 * 1024)]) }).fetch).search("", "x");
+    expect(big.ok && big.extensions[0]).not.toHaveProperty("icon");
+  });
+
+  it("knows an image by its bytes", () => {
+    expect(imageType(PNG)).toBe("image/png");
+    expect(imageType(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe("image/jpeg");
+    expect(imageType(Buffer.from('<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>'))).toBe("image/svg+xml");
+    expect(imageType(Buffer.from("<html><svg></svg></html>"))).toBeNull();
   });
 
   it("drops extensions with other licences or no colour themes", async () => {
