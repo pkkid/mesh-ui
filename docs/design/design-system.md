@@ -1009,7 +1009,8 @@ Beside the icon, the name is the wordmark `AppWordmark`
 
 The sidebar header copies T3 Code's `SidebarChromeHeader`: icon and
 wordmark, then Back and Forward (`ArrowLeft` / `ArrowRight`, `size-3.5`, in
-`ghost` `icon-sm` buttons, `gap-1` after the brand, disabled at 64% when
+`ghost` `icon-sm` buttons in the nav icons' `--sidebar-icon-color`
+(full sidebar text on hover), `gap-1` after the brand, disabled at 64% when
 there is nowhere to go, tooltip "Go back (Alt+←)" or "(⌘[)" on macOS), then
 the Demo badge `ml-1`. The row is one `h-8` line that wraps with overflow
 hidden, so a badge that does not fit drops out of sight instead of crowding
