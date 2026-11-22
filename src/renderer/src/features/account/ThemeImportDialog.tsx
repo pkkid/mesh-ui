@@ -144,7 +144,7 @@ export function ThemeImportDialog({
       </div>
 
       {files.length <= 1 && (
-        <SheetField label="Or paste the theme JSON" htmlFor="theme-json">
+        <SheetField label="Theme JSON" htmlFor="theme-json">
           <textarea
             id="theme-json"
             rows={files.length === 1 ? 6 : 3}
