@@ -1128,7 +1128,9 @@ The running app's tray (Keep running in the tray) always uses the normal
 `mesh-ui-tray` glyph, never the color app icon: a template image in the
 macOS menu bar, and on Windows and Linux rendered in plain white for dark
 taskbars and panels and black for light ones (`build/tray/png/`,
-`pnpm icons --tray`), picked from the OS theme.
+`pnpm icons --tray`), picked from the OS theme. The rendered glyph is
+trimmed and scaled to the pack's median panel tray icon: it fills the 16px
+canvas (and the macOS template), and is 18px with 2px padding on 22px.
 
 ## Accessibility
 
