@@ -77,10 +77,12 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
    and its description, the toolbar, the active filter chips and the bulk
    bar stay put (CSS `sticky`, on the page's flat background, starting 24px higher so the heading clears the topbar's scroll fade),
    and the table's header row stays right under them; the rows scroll up
-   behind both. The header row is moved with a transform on scroll
-   (`usePinnedHead`) rather than `sticky`, because the table's box scrolls
-   sideways on narrow windows and would capture a sticky row; it stops at
-   the last row. While it is pinned, a cap under the frozen block redraws the
+   behind both. The header row is moved by a scroll-driven animation on
+   the page scroller's timeline (`pinned-head` in `index.css`, measured by
+   `usePinnedHead`) rather than `sticky`, because the table's box scrolls
+   sideways on narrow windows and would capture a sticky row. It runs on the
+   compositor in step with the scroll (a scroll listener lagged a frame and
+   let rows show above the header); it stops at the last row. While it is pinned, a cap under the frozen block redraws the
    card's rounded top edge (its 1px border at the card radius, with the page
    colour covering the card's straight sides at the corners), since the
    card's own top has scrolled away, and a fade the height of the topbar's

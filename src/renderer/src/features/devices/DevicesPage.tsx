@@ -242,7 +242,7 @@ export function DevicesPage() {
         <div
           ref={pinRef}
           data-slot="devices-sticky"
-          className="group/pin sticky top-0 z-20 -mx-2 -mt-6 flex flex-col gap-2.5 bg-background px-2 pt-6 pb-2.5"
+          className="sticky top-0 z-20 -mx-2 -mt-6 flex flex-col gap-2.5 bg-background px-2 pt-6 pb-2.5"
         >
           <div className="mb-2.5 flex min-w-0 flex-col">
             <h2 className="whitespace-nowrap font-semibold text-base text-foreground leading-7">All devices</h2>
@@ -282,13 +282,13 @@ export function DevicesPage() {
             onSelect={select}
           />
           {/*
-            While the table's header row is pinned (data-table-pinned, set by DeviceTable), the card's own rounded
+            While the table's header row is pinned (pinned-head-only, on the scroll timeline DeviceTable sets up), the card's own rounded
             top has scrolled away, so this cap redraws it just under the block: a rounded top border at the
             card's radius, with the page colour spread around it to cover the card's straight sides at the corners.
           */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-2 top-full hidden h-(--card-radius) overflow-hidden group-data-[table-pinned]/pin:block"
+            className="pinned-head-only pointer-events-none absolute inset-x-2 top-full h-(--card-radius) overflow-hidden"
           >
             <div className="h-[calc(var(--card-radius)*2)] rounded-t-(--card-radius) border border-border/60 shadow-[0_0_0_16px_var(--color-background)]" />
           </div>

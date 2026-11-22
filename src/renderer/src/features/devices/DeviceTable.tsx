@@ -327,11 +327,10 @@ export function DeviceTable(props: DeviceTableProps) {
             ref={headRef}
             // While pinned, the sticky block above draws the card's rounded top edge over this row (DevicesPage), and
             // a fade the height of the topbar's runs down from each header cell, so rows dissolve as they slide
-            // under it instead of being cut off. The fade itself comes in with the scroll (--head-fade, 0 to 1
-            // over the first HEAD_FADE_PX pinned), so it does not pop in.
+            // under it instead of being cut off. `pinned-head` (index.css) moves the row and brings the fade in.
             className={cn(
-              "relative z-10 [--head-bg:color-mix(in_srgb,var(--color-card)_40%,var(--color-background))] [&_th]:bg-(--head-bg)",
-              "data-pinned:[&_th]:relative data-pinned:[&_th]:after:pointer-events-none data-pinned:[&_th]:after:absolute data-pinned:[&_th]:after:inset-x-0 data-pinned:[&_th]:after:top-full data-pinned:[&_th]:after:h-(--topbar-scroll-fade-height) data-pinned:[&_th]:after:bg-linear-to-b data-pinned:[&_th]:after:from-(--head-bg) data-pinned:[&_th]:after:to-transparent data-pinned:[&_th]:after:opacity-(--head-fade) data-pinned:[&_th]:after:content-['']",
+              "pinned-head relative z-10 [--head-bg:color-mix(in_srgb,var(--color-card)_40%,var(--color-background))] [&_th]:bg-(--head-bg)",
+              "[&_th]:relative [&_th]:after:pointer-events-none [&_th]:after:absolute [&_th]:after:inset-x-0 [&_th]:after:top-full [&_th]:after:h-(--topbar-scroll-fade-height) [&_th]:after:bg-linear-to-b [&_th]:after:from-(--head-bg) [&_th]:after:to-transparent [&_th]:after:content-['']",
             )}
           >
             <tr className="border-b">
@@ -714,49 +713,46 @@ export function SignalBars({ bars }: { bars: number }) {
   );
 }
 
-/** Pixels scrolled past the pin point over which the fade under the header row comes in (about one row). */
-const HEAD_FADE_PX = 50;
-
 /**
  * Keeps the header row under the sticky block above the table while the page
  * scrolls, so rows slide up behind it. CSS `sticky` cannot do it here: the
  * table sits in a box that scrolls sideways on narrow windows, and that box
- * would capture a sticky header. So the row is moved with a transform instead,
- * once a frame at most, and stops at the last row.
+ * would capture a sticky header. A scroll listener moving it lags a frame
+ * behind the scroll, so the row jitters. Instead the page scroller gets a
+ * named scroll timeline and `pinned-head` (index.css) animates the row on it;
+ * this only measures where pinning starts and ends, whenever layout changes
+ * (the block, the table or the page resize), and never on scroll.
  */
 function usePinnedHead(head: RefObject<HTMLTableSectionElement | null>, pinUnder: RefObject<HTMLElement | null> | undefined) {
   useEffect(() => {
     const el = head.current;
     const block = pinUnder?.current;
     const scroller = el?.closest<HTMLElement>("[data-page-scroll]");
-    if (!el || !block || !scroller) return;
-    let frame = 0;
-    const place = () => {
-      frame = 0;
-      const table = el.parentElement;
-      if (!table) return;
-      const t = table.getBoundingClientRect();
-      const shift = Math.min(Math.max(0, block.getBoundingClientRect().bottom - t.top), Math.max(0, t.height - el.offsetHeight));
-      el.style.transform = shift > 0 ? `translateY(${shift}px)` : "";
-      el.toggleAttribute("data-pinned", shift > 0);
-      el.style.setProperty("--head-fade", String(Math.min(1, shift / HEAD_FADE_PX)));
-      block.toggleAttribute("data-table-pinned", shift > 0);
+    const table = el?.parentElement;
+    if (!el || !block || !scroller || !table) return;
+    scroller.style.setProperty("scroll-timeline", "--page-scroll y");
+    const set = (name: string, value: string) => {
+      for (const node of [el, block]) if (node.style.getPropertyValue(name) !== value) node.style.setProperty(name, value);
     };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(place);
+    const measure = () => {
+      // Where the block's bottom sits once it is stuck, and the scroll offset at which the table's top meets it.
+      const stuckBottom = scroller.getBoundingClientRect().top + (Number.parseFloat(getComputedStyle(block).top) || 0) + block.offsetHeight;
+      const start = Math.round(scroller.scrollTop + table.getBoundingClientRect().top - stuckBottom);
+      const travel = Math.max(1, table.offsetHeight - el.offsetHeight);
+      set("--pin-start", `${start}px`);
+      set("--pin-end", `${start + travel}px`);
+      set("--pin-travel", `${travel}px`);
     };
-    scroller.addEventListener("scroll", schedule, { passive: true });
-    const sizes = new ResizeObserver(schedule);
+    const sizes = new ResizeObserver(measure);
     sizes.observe(block);
-    sizes.observe(el.parentElement ?? el);
-    place();
+    sizes.observe(table);
+    sizes.observe(scroller);
+    for (const child of scroller.children) sizes.observe(child);
+    measure();
     return () => {
-      scroller.removeEventListener("scroll", schedule);
       sizes.disconnect();
-      cancelAnimationFrame(frame);
-      el.style.transform = "";
-      el.removeAttribute("data-pinned");
-      block.removeAttribute("data-table-pinned");
+      scroller.style.removeProperty("scroll-timeline");
+      for (const node of [el, block]) for (const name of ["--pin-start", "--pin-end", "--pin-travel"]) node.style.removeProperty(name);
     };
   }, [head, pinUnder]);
 }
