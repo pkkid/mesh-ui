@@ -117,7 +117,7 @@ export function NotificationList({ networkId, page, error, onClose }: Props) {
             type="button"
             disabled={mark.disabled || !mark.gate.allowed}
             onClick={() => void mark.run()}
-            className="rounded-lg px-2 py-1.5 text-muted-foreground text-xs hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:text-muted-foreground/60"
+            className="cursor-pointer rounded-lg px-2 py-1.5 text-muted-foreground text-xs hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:text-muted-foreground/60"
           >
             Mark all read
           </button>
@@ -137,7 +137,7 @@ export function NotificationList({ networkId, page, error, onClose }: Props) {
           }}
           title="Notification settings"
           aria-label="Notification settings"
-          className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground [&_svg]:size-3.5"
+          className="grid size-7 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground [&_svg]:size-3.5"
         >
           <Settings />
         </button>
