@@ -8,7 +8,8 @@
 import { Popover } from "@base-ui/react/popover";
 import { ArrowLeft, ArrowRight, LogOut } from "lucide-react";
 
-import { type HistoryDirection, historyShortcutLabel, Link, navigateHistory, useCanNavigateHistory, useLocation } from "~/app/router";
+import { type HistoryDirection, Link, navigateHistory, useCanNavigateHistory, useLocation } from "~/app/router";
+import { useShortcutText, withKeys } from "~/lib/shortcuts";
 import { ROUTES, type RouteDef, routeById } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
 import { AppIcon } from "~/components/mesh/AppIcon";
@@ -85,11 +86,12 @@ export function Sidebar() {
 function HistoryButton({ direction }: { direction: HistoryDirection }) {
   const enabled = useCanNavigateHistory(direction);
   const label = direction === "back" ? "Go back" : "Go forward";
+  const keys = useShortcutText(direction === "back" ? "nav.back" : "nav.forward");
   const Icon = direction === "back" ? ArrowLeft : ArrowRight;
   return (
     <Button
       aria-label={label}
-      title={`${label} (${historyShortcutLabel(direction)})`}
+      title={withKeys(label, keys)}
       // The nav icons' dimmer gray, not the ghost button's foreground; full sidebar text on hover.
       className="no-drag text-(--sidebar-icon-color) hover:text-sidebar-foreground"
       disabled={!enabled}

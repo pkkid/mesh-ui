@@ -4,7 +4,9 @@
  * All of it is renderer view state; the records come from main over
  * `window.mesh.devtools` only while the panel records.
  */
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+
+import { useShortcut } from "~/lib/shortcuts";
 
 import type { InspectRecord } from "../../../../core/eero/inspect";
 
@@ -29,17 +31,9 @@ export function useDevToolsOpen(): boolean {
   );
 }
 
-/** F12 opens and closes the panel, as in browsers. Not shown anywhere in the UI. */
+/** F12 by default (rebindable in Settings) opens and closes the panel, as in browsers. */
 export function useDevToolsShortcut(): void {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "F12" || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-      e.preventDefault();
-      toggleDevTools();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useShortcut("devtools.toggle", toggleDevTools);
 }
 
 // ---------------------------------------------------------------------------

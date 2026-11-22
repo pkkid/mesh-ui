@@ -3,7 +3,7 @@
  * search over every registry command, page, eero, device and profile, with a
  * preview that shows the same call as a CLI line and an MCP tool call.
  *
- * Opened by the titlebar search or Ctrl K / Cmd K (`openPalette`). It is a
+ * Opened by the titlebar search or its shortcut, F1 by default (`openPalette`). It is a
  * surface like the CLI: commands come from `window.mesh.commands()` and run
  * through `window.mesh.execute`; nothing here knows what a command does.
  * Pages, eeros, devices and profiles navigate. Queries run and show their result;
@@ -52,6 +52,7 @@ import { placeShown, usePlaceContext } from "./placeRules";
 import PLACES from "virtual:places";
 import { revealPlace } from "~/lib/places";
 import { copyText } from "~/lib/clipboard";
+import { useShortcut } from "~/lib/shortcuts";
 
 // ---------------------------------------------------------------------------
 // Open state, shared with the titlebar button
@@ -76,24 +77,14 @@ const recent: string[] = [];
 
 const isMac = () => navigator.platform.startsWith("Mac");
 
-/** Mounted once in the shell. Ctrl K / Cmd K toggles it. */
+/** Mounted once in the shell. Its shortcut (F1 by default, Settings > Keyboard shortcuts) toggles it. */
 export function CommandPalette() {
   const open = useSyncExternalStore(
     (l) => (listeners.add(l), () => listeners.delete(l)),
     () => isOpen,
   );
 
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      const mod = isMac() ? e.metaKey : e.ctrlKey;
-      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen(!isOpen);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useShortcut("palette.open", () => setOpen(!isOpen));
 
   return (
     // Only Esc and the close button close it, never a click outside. Esc with focus anywhere but the search box

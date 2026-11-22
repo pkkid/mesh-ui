@@ -8,7 +8,7 @@
  *   Opening a view whose polled data is older than its interval refetches.
  * - `useCommand(id)` runs a command on demand (writes, or a query the user
  *   triggers) and, after a successful write, refetches the queries it affects.
- * - `refreshAll()` (the header Refresh, Ctrl+R) refetches every mounted query
+ * - `refreshAll()` (the header Refresh and its shortcut, F5 by default) refetches every mounted query
  *   once with `{ fresh: true }`, so the engine reads eero instead of its
  *   cache. `useRefresh()` gives the button its running state.
  *
@@ -287,7 +287,7 @@ export function mountQuery(id: string, params: unknown): () => void {
 }
 
 // ---------------------------------------------------------------------------
-// Refresh (header button, Ctrl+R / Cmd+R / F5, palette)
+// Refresh (header button, its shortcut, palette)
 
 let refreshing: Promise<void> | null = null;
 const refreshListeners = new Set<() => void>();

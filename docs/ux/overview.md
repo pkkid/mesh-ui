@@ -56,8 +56,7 @@ Every action below is a command run through `engine.execute(id, params)` (see
   lights sit at the top left of the sidebar; the sidebar header pads by
   `--titlebar-inset-left` and the topbar drops its own window controls.
 - Minimum window size 1100 x 700. Below about 1280 wide, two-column page grids
-  stack into one column; the sidebar never collapses on its own but can be
-  hidden with `Ctrl+B` (view state, not a command).
+  stack into one column; the sidebar never collapses.
 
 ## Sidebar
 
@@ -145,8 +144,8 @@ Left to right (mockup `.topbar`):
 | Crumbs | The selected network, then the page: "Maple Street / Overview", "Maple Street / eeros / Office", "Maple Street / Devices / Alex's MacBook Pro". The page is the `h1`. Settings and Account, which are not about a network, show only their title. A detail page (a device, eero or profile) leaves its last crumb empty until its name loads, never a generic "Device" first | As T3 Code's breadcrumb: `text-sm font-medium`, 12px apart; earlier crumbs in `text-muted-foreground` and links (the network goes to Overview), turning `text-foreground` on hover; the `/` in `text-icon-muted`; the page in `text-foreground`. Nothing follows the page. |
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
 | Page navigation | Small buttons a page puts in the topbar slot: Prev and Next (Device detail) | Optional per page. Navigation and global tools only; page actions (Add a profile, Export CSV, Rename) live in the page, in hero actions or section tools. Share Wi-Fi (Devices), Live (Devices), Export CSV (Activity), Check for updates (Updates) and Rename (Profile detail) still sit here until #323 moves them. |
-| Search | "Search or run a command" field with the `Ctrl K` hint (`⌘K` on macOS) | Opens the [command palette](#command-palette); it is not a text field itself. |
-| Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (Ctrl+R)" ("Refresh (⌘R)" on macOS), with "· Updated 2m ago" where the page reports it, and on a second line how often the page updates on its own: "Updates every minute", or, for any other interval, the short form "Updates every 15m" (Updates & admins) (`useTopBarPollEvery`, from `POLL` in `src/core/poll.ts`) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. `Ctrl+R` / `Cmd+R` / `F5` do the same. See [Live refresh](#live-refresh). |
+| Search | "Search or run a command" field with the palette's current shortcut as its hint (`F1` by default) | Opens the [command palette](#command-palette); it is not a text field itself. |
+| Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (F5)" (the current shortcut), with "· Updated 2m ago" where the page reports it, and on a second line how often the page updates on its own: "Updates every minute", or, for any other interval, the short form "Updates every 15m" (Updates & admins) (`useTopBarPollEvery`, from `POLL` in `src/core/poll.ts`) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. Its shortcut (`F5` by default) does the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
 | Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The light and dark themes (Classic by default; also Rose, Grove, Ocean, Ember, Iris, and added VS Code themes such as Gruvbox) are picked in Settings. Stored in renderer `localStorage`, not a command. |
 | Window controls | Minimise, maximise, close | Windows and Linux only. |
@@ -204,7 +203,7 @@ It is the UI face of "everything is a command": anything in the registry can
 be found and run here, with the same params and confirm rules as the CLI and
 MCP.
 
-**Open and close.** `Ctrl+K` (`⌘K`), the topbar search field, or `>` typed
+**Open and close.** Its shortcut (`F1` by default), the topbar search field, or `>` typed
 anywhere outside an input. Only `Esc` or the close button
 (an X at the right of the input row) close it; a click outside does not.
 `Esc` with focus anywhere in the palette but the search box first moves
@@ -357,30 +356,37 @@ The mockup's "Pause 5 and 6 GHz for 2.4 GHz setup" row is `wifi.hide5g.set`
 `Ctrl` is `⌘` on macOS. Shortcuts are view state handled in the renderer;
 the ones that run commands go through `execute` like any button.
 
+Six global actions are rebindable in Settings, Keyboard shortcuts
+(`lib/shortcuts.ts`, per computer in localStorage). Each has one key
+combination, or none once removed, shown below with its Windows and Linux
+default. On macOS, Back
+and Forward default to `⌘[` / `⌘]` instead, since `Option+←` moves by a word
+in text fields. A new combination needs `Ctrl`, `⌘` or `Alt` (`Option`), or
+is a function key, and cannot be one another action has, one of the fixed
+shortcuts below, or a system key (copy, paste, undo, select all, close,
+quit, zoom, full screen). Everything else is fixed and not listed in
+Settings. `lib/shortcuts.test.ts` checks the rebindable rows against the
+registry.
+
 | Keys | Action | Where |
 | --- | --- | --- |
-| `Ctrl+K` | Open command palette | Global |
+| `F1` | Open command palette (closes it too) | Rebindable. Global |
+| `Ctrl+,` | Open Settings | Rebindable. Global |
+| `Alt+←` | Go back (same as the sidebar's arrow; the mouse back button always works too) | Rebindable. Global |
+| `Alt+→` | Go forward (same as the sidebar's arrow; the mouse forward button always works too) | Rebindable. Global |
+| `F5` | Refresh page data: the current page's queries now, past the engine cache (same as the topbar Refresh) | Rebindable. Global. Main catches `F5` and `Ctrl+R` / `Cmd+R` so they never reload the window, and hands them to the renderer to run whatever they are bound to. `Ctrl+Shift+R` still reloads |
+| `F12` | Toggle DevTools panel (eero requests), as in browsers. Its DevTools button opens Electron's developer tools docked to the right | Rebindable. Global, sign-in included. See [devtools.md](../architecture/devtools.md) |
 | `>` | Open palette in command-id mode | Global, outside inputs |
 | `Esc` | Close palette, sheet, popover or confirm dialog | Global |
 | `↑` `↓`, `↵`, `Tab` | Move, run, edit params | Palette |
 | `Ctrl+Shift+C` | Copy the highlighted result as a CLI line: the command, or an eero, device or profile's `.get` read (`⌘⇧C` on macOS; plain `Ctrl+C` is always the system copy) | Palette, wherever focus is |
-| `Ctrl+Shift+P` | Pause profile... (palette with `profile.pause`) | Global |
-| `Ctrl+Shift+D` | Pause device... (palette with `device.pause`) | Global |
-| `Ctrl+Shift+N` | Open network switcher | Global |
+| `Ctrl+Shift+N` | Open network switcher | Global, with more than one network |
 | `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Signal, Activity (the Network group, in order) | Global |
-| `Ctrl+,` | Settings | Global |
-| `Alt+←` / `Alt+→`, `Ctrl+[` / `Ctrl+]`, mouse back / forward buttons | Back / forward (same as the sidebar's arrows) | Global |
-| `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |
-| `F12` | Open or close the dev tools panel (eero requests), as in browsers. Its DevTools button opens Electron's developer tools docked to the right | Global, sign-in included. Not shown anywhere in the UI. See [devtools.md](../architecture/devtools.md) |
-| `Ctrl+B` | Hide or show the sidebar | Global |
 | `/` | Focus the list search field | Devices, Activity |
 | `Shift+click` | Select a range of rows | Devices table |
 | `Ctrl+A` | Select all visible rows | Devices table |
-| `[` / `]` | Previous / next item | Device detail, eero detail |
-
-Only `Ctrl+K`, `/`, `Esc`, the palette keys, `Ctrl+Shift+P`, `Ctrl+Shift+D`
-and `Shift+click` appear in the mockups; the rest are proposed here. A
-shortcut list lives in Settings.
+| `[` / `]` | Previous / next item | Device, eero and profile detail |
+| `+` `-` `0`, `Ctrl+wheel` | Zoom the topology | Topology |
 
 ## Navigation
 
@@ -662,8 +668,8 @@ engine.md wins.
   quickly; the page then polls the relevant query faster (every 5 s for up to
   3 min) and shows progress in place ("Testing... about 1 minute",
   "Restarting, about 2 to 3 minutes"; the estimate comes from core).
-- **Manual refresh.** The topbar Refresh button (and `Ctrl+R`, `Cmd+R`,
-  `F5`) refetches every query on screen once with `{ fresh: true }`, so a
+- **Manual refresh.** The topbar Refresh button (and its shortcut, `F5` by
+  default) refetches every query on screen once with `{ fresh: true }`, so a
   change made in the eero app shows at once instead of after the cache and
   the next poll. One request per query, never more than the page already
   loads; clicks while it runs are ignored.
