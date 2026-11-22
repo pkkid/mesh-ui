@@ -168,10 +168,10 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
 function ExtensionIcon({ extension }: { extension: ThemeExtension }) {
   const [failed, setFailed] = useState(false);
   return extension.icon && !failed ? (
-    <img src={extension.icon} alt="" className="size-10 shrink-0 rounded-md object-contain" onError={() => setFailed(true)} />
+    <img src={extension.icon} alt="" className="mt-1 size-8 shrink-0 self-start rounded-md object-contain" onError={() => setFailed(true)} />
   ) : (
-    <div aria-hidden className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-      <Palette className="size-4" />
+    <div aria-hidden className="mt-1 grid size-8 shrink-0 self-start place-items-center rounded-md bg-muted text-muted-foreground">
+      <Palette className="size-3.5" />
     </div>
   );
 }
