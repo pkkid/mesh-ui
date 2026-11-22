@@ -114,13 +114,15 @@ function Choice({
   invalid: boolean;
   disabled?: boolean;
 }) {
+  // A required choice with nothing picked yet has no "Any" row: show a prompt, never the raw sentinel.
+  const items = value === UNSET && !options.some((o) => o.value === UNSET) ? [{ value: UNSET, label: "Choose a value" }, ...options] : options;
   return (
-    <Select items={options} value={value} onValueChange={(v) => v !== null && onChange(v)} disabled={disabled}>
+    <Select items={items} value={value} onValueChange={(v) => v !== null && onChange(v)} disabled={disabled}>
       <SelectTrigger id={id} size="tool" className="w-full min-w-0" aria-label={label} aria-invalid={invalid || undefined}>
         <SelectValue />
       </SelectTrigger>
       <SelectPopup className="max-h-[min(300px,var(--available-height))]">
-        {options.map((o) => (
+        {items.map((o) => (
           <SelectItem key={o.value} value={o.value}>
             {o.label}
           </SelectItem>

@@ -54,6 +54,11 @@ export type ConfirmAsk = {
    * disruptive confirm (yellow), not a plain one (primary).
    */
   offline?: boolean;
+  /**
+   * This run cannot be undone though the command usually can (deleting a power saving schedule on hardware that
+   * refuses to add one back): it reads as a destructive confirm (red).
+   */
+  irreversible?: boolean;
 };
 
 export type AskFn = (ask: ConfirmAsk) => Promise<boolean>;
@@ -105,7 +110,7 @@ export type WriteRequest<P = Record<string, unknown>, R = unknown> = {
   /** Muted line under the progress toast: "About 2 to 3 minutes". */
   progressDetail?: string;
   /** Confirm copy. `message` overrides the engine's needs_confirm text. */
-  confirm?: Partial<Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm">>;
+  confirm?: Partial<Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "irreversible">>;
   /** A `write` the UI confirms on its own (block a device): ask first, never send `confirm`. */
   askFirst?: boolean;
   /** From a form: `bad_params` goes to the fields, not a toast. */
@@ -159,6 +164,7 @@ export async function performWrite<P, R>(
       confirmLabel: req.confirm?.confirmLabel ?? label,
       typeToConfirm: req.confirm?.typeToConfirm,
       ...(offline ? { offline } : {}),
+      ...(req.confirm?.irreversible ? { irreversible: true } : {}),
     });
 
   if (req.askFirst && !confirmed) {

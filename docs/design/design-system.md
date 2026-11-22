@@ -1016,8 +1016,10 @@ pages pass words, never layout.
   footer is a band with a top border and `bg-muted/72`, 16px tall padding,
   holding Cancel (`outline`) and the action button on the right. This is the
   one modal with a rule above its footer.
-- **Tone:** title and action button together. `destructive`: red title,
-  filled red button. `disruptive`, or a `write` the engine asked about
+- **Tone:** title and action button together. `destructive`, or a `write`
+  whose run cannot be undone (`irreversible` on the ask: deleting a power
+  saving schedule on hardware that cannot add one back): red title, filled
+  red button. `disruptive`, or a `write` the engine asked about
   because this run takes devices offline (`confirmWhen`, `offline` on the
   ask): yellow title, filled yellow button. Any other `write` asked about
   first (`askFirst`: the palette's writes, deleting a schedule, a

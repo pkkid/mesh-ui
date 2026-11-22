@@ -224,6 +224,12 @@ describe("performWrite: offline writes", () => {
     await performWrite({ id: "kit.light.set", params: { on: true }, askFirst: true }, t.deps);
     expect(t.asks[1]?.offline).toBeUndefined();
   });
+
+  it("a write whose run cannot be undone passes irreversible to the confirm", async () => {
+    const t = setup([true]);
+    await performWrite({ id: "kit.light.set", params: { on: true }, askFirst: true, confirm: { irreversible: true } }, t.deps);
+    expect(t.asks[0]).toMatchObject({ effect: "write", irreversible: true });
+  });
 });
 
 describe("performWrite: errors", () => {

@@ -92,13 +92,13 @@ export function PowerSaving({ settings, timezone, loading }: { settings: Network
   const removeGate = baseRemove.allowed && offline ? { allowed: false, reason: OFFLINE } : baseRemove;
   const [sheet, setSheet] = useState<SheetMode | null>(null);
   const remove = useWrite<Record<string, unknown>, { removed: string; schedule: Schedule }>("settings.power_schedule.remove");
-  // No Undo here: adding a schedule back is refused on this hardware.
+  // No Undo here: adding a schedule back is refused on this hardware, so the confirm reads as destructive (red).
   const del = (s: Schedule) =>
     remove.run(
       { schedule: s.id },
       {
         askFirst: true,
-        confirm: { title: `Delete ${s.name}?`, message: "It cannot be added back on this hardware.", confirmLabel: "Delete schedule" },
+        confirm: { title: `Delete ${s.name}?`, message: "It cannot be added back on this hardware.", confirmLabel: "Delete schedule", irreversible: true },
         success: `Deleted ${s.name}`,
         failure: `Couldn't delete ${s.name}`,
       },
