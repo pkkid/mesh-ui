@@ -23,7 +23,7 @@ import { routeById } from "~/app/routes";
 import { useNow } from "~/components/ui/page";
 import { Bell } from "~/features/notifications/Bell";
 import { openPalette } from "~/features/palette/CommandPalette";
-import { isMac, useBinding, useShortcut, useShortcutText } from "~/lib/shortcuts";
+import { isMac, useBinding, useShortcut, useShortcutText, withKeys } from "~/lib/shortcuts";
 import { toggleAppearance, useResolvedAppearance } from "~/lib/themes";
 import { cn } from "~/lib/utils";
 
@@ -136,9 +136,11 @@ export function TopBar() {
         >
           <Search />
           <span>Search or run a command</span>
-          <kbd className="ms-auto inline-flex h-5 items-center rounded-[5px] border border-input px-1.5 font-kbd text-[10.5px] leading-none">
-            {paletteKeys}
-          </kbd>
+          {paletteKeys && (
+            <kbd className="ms-auto inline-flex h-5 items-center rounded-[5px] border border-input px-1.5 font-kbd text-[10.5px] leading-none">
+              {paletteKeys}
+            </kbd>
+          )}
         </button>
         <RefreshButton />
         <Bell className={iconButton} />
@@ -225,7 +227,7 @@ function RefreshButton() {
   useShortcut("data.refresh", () => void refreshAll());
   const at = useUpdatedAt();
   const now = useNow(15_000);
-  const shortcut = `Refresh (${useShortcutText("data.refresh")})`;
+  const shortcut = withKeys("Refresh", useShortcutText("data.refresh"));
   const every = usePollEvery();
   // Two lines (the shared tooltip keeps line breaks): the shortcut and freshness, then how often it updates on its own.
   const title = `${at === null ? shortcut : `${shortcut} · Updated ${formatRelative(new Date(at).toISOString(), now)}`}\n${everyLine(every)}`;

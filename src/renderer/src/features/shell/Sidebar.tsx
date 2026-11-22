@@ -9,7 +9,7 @@ import { Popover } from "@base-ui/react/popover";
 import { ArrowLeft, ArrowRight, LogOut } from "lucide-react";
 
 import { type HistoryDirection, Link, navigateHistory, useCanNavigateHistory, useLocation } from "~/app/router";
-import { useShortcutText } from "~/lib/shortcuts";
+import { useShortcutText, withKeys } from "~/lib/shortcuts";
 import { ROUTES, type RouteDef, routeById } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
 import { AppIcon } from "~/components/mesh/AppIcon";
@@ -91,7 +91,7 @@ function HistoryButton({ direction }: { direction: HistoryDirection }) {
   return (
     <Button
       aria-label={label}
-      title={`${label} (${keys})`}
+      title={withKeys(label, keys)}
       // The nav icons' dimmer gray, not the ghost button's foreground; full sidebar text on hover.
       className="no-drag text-(--sidebar-icon-color) hover:text-sidebar-foreground"
       disabled={!enabled}

@@ -357,8 +357,9 @@ The mockup's "Pause 5 and 6 GHz for 2.4 GHz setup" row is `wifi.hide5g.set`
 the ones that run commands go through `execute` like any button.
 
 Six global actions are rebindable in Settings, Keyboard shortcuts
-(`lib/shortcuts.ts`, per computer in localStorage). Each has exactly one key
-combination, shown below with its Windows and Linux default. On macOS, Back
+(`lib/shortcuts.ts`, per computer in localStorage). Each has one key
+combination, or none once removed, shown below with its Windows and Linux
+default. On macOS, Back
 and Forward default to `⌘[` / `⌘]` instead, since `Option+←` moves by a word
 in text fields. A new combination needs `Ctrl`, `⌘` or `Alt` (`Option`), or
 is a function key, and cannot be one another action has, one of the fixed

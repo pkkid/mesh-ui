@@ -1,25 +1,32 @@
 /**
- * Settings, Keyboard shortcuts (docs/ux/pages/settings.md): one row per
- * rebindable action with its keys as key caps, Change (records the next key
- * combination in the row, Esc cancels) and Reset once changed. A refused
- * combination (no modifier, taken by another action, kept by the app or the
- * system) shows why under the row and is not saved. Reset all in the header
- * when anything is changed. Each action has exactly one combination; the
- * registry and its rules are lib/shortcuts.ts. Fixed shortcuts are not
- * listed.
+ * Settings, Keyboard shortcuts (docs/ux/pages/settings.md), after T3 Code's
+ * KeybindingsSettings: one row per rebindable action with its keys on the
+ * right as a pill that looks like a button on hover. Clicking it turns it
+ * into a "Press shortcut" field that records the next key combination (Esc,
+ * Tab or clicking away cancels). A ⋯ menu beside it, shown on row hover,
+ * has Reset to default (once changed) and Remove. A refused combination (no
+ * modifier, taken by another action, kept by the app or the system) shows
+ * why under the row and is not saved. Reset all in the header when anything
+ * is changed. Each action has one combination or none; the registry and its
+ * rules are lib/shortcuts.ts. Fixed shortcuts are not listed.
  */
+import { Menu } from "@base-ui/react/menu";
+import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { comboKeys } from "@shared/shortcuts";
+import { comboKeys, comboText } from "@shared/shortcuts";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 import { Kbd } from "~/components/ui/kbd";
 import { Row } from "~/features/advanced/SettingsGroups";
+import { menuClasses } from "~/features/devices/BulkBar";
 import {
   bindingFor,
   isChanged,
   isMac,
   recordNextCombo,
+  removeBinding,
   resetAllBindings,
   resetBinding,
   SHORTCUTS,
@@ -46,34 +53,68 @@ function KeyCaps({ combo }: { combo: string }) {
 
 type Recording = { id: ShortcutId; pressed: string | null; problem: string | null };
 
+/** The ⋯ menu: Reset to default once the keys differ, Remove while the action has keys. Shown on row hover or focus. */
+function RowMenu({ action, combo }: { action: ShortcutAction; combo: string }) {
+  const changed = isChanged(action.id);
+  if (!changed && !combo) return null;
+  return (
+    <span className="flex items-center opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100 has-data-popup-open:opacity-100 pointer-coarse:opacity-100">
+      <Menu.Root>
+        <Menu.Trigger render={<Button variant="ghost-muted" size="icon-sm" aria-label={`Actions for ${action.label}`} />}>
+          <Ellipsis className="size-3.5" />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
+            <Menu.Popup className={menuClasses.popup}>
+              {changed && (
+                <Menu.Item className={menuClasses.item} onClick={() => resetBinding(action.id)}>
+                  Reset to default
+                </Menu.Item>
+              )}
+              {combo && (
+                <Menu.Item className={cn(menuClasses.item, "text-destructive-foreground")} onClick={() => removeBinding(action.id)}>
+                  Remove
+                </Menu.Item>
+              )}
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+    </span>
+  );
+}
+
 function ShortcutRow({ action, recording, onRecord, onCancel }: { action: ShortcutAction; recording: Recording | null; onRecord: () => void; onCancel: () => void }) {
   const combo = useBinding(action.id);
-  const changed = isChanged(action.id);
   return (
-    <div className={cn(recording && "bg-muted/40")}>
+    <div className="group/row">
       <Row
         title={action.label}
         control={
-          recording ? (
-            <>
-              {recording.pressed ? <KeyCaps combo={recording.pressed} /> : <span className="text-foreground text-xs italic">Press keys, Esc to cancel</span>}
-              <Button variant="outline" size="xs" onClick={onCancel}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <KeyCaps combo={combo} />
-              {changed && (
-                <Button variant="ghost-muted" size="xs" onClick={() => resetBinding(action.id)} title="Back to the default keys">
-                  Reset
-                </Button>
-              )}
-              <Button variant="outline" size="xs" onClick={onRecord} aria-label={`Change the ${action.label} shortcut`}>
-                Change
-              </Button>
-            </>
-          )
+          <div className="flex items-center justify-end gap-1.5">
+            <RowMenu action={action} combo={combo} />
+            {recording ? (
+              <Input
+                autoFocus
+                readOnly
+                aria-label={`Keyboard shortcut for ${action.label}`}
+                aria-invalid={recording.problem ? true : undefined}
+                value={recording.pressed ? comboText(recording.pressed, isMac()) : ""}
+                placeholder="Press shortcut"
+                className="w-44 font-mono [&_input]:h-[26px] [&_input]:text-xs"
+                onBlur={onCancel}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={onRecord}
+                aria-label={`Edit shortcut for ${action.label}: ${combo ? comboText(combo, isMac()) : "Unassigned"}`}
+                className="-me-1.5 inline-flex h-7 cursor-pointer items-center rounded-md border border-transparent px-1.5 outline-none transition-colors hover:border-border/70 hover:bg-accent focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/24"
+              >
+                {combo ? <KeyCaps combo={combo} /> : <span className="text-muted-foreground text-sm">Unassigned</span>}
+              </button>
+            )}
+          </div>
         }
       >
         {recording?.problem && (
@@ -129,7 +170,7 @@ export function KeyboardShortcuts({ id }: { id?: string }) {
             action={a}
             recording={recording?.id === a.id ? recording : null}
             onRecord={() => setRecording({ id: a.id, pressed: null, problem: null })}
-            onCancel={() => setRecording(null)}
+            onCancel={() => setRecording((r) => (r?.id === a.id ? null : r))}
           />
         ))}
       </Card>

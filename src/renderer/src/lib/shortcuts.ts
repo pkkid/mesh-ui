@@ -2,8 +2,8 @@
  * The app's rebindable keyboard shortcuts (docs/ux/overview.md#keyboard-shortcuts,
  * Settings > Keyboard shortcuts). Pure view state, like themes: not a
  * command, kept per computer in localStorage as overrides layered over the
- * defaults. Each action has exactly one key combination
- * (src/shared/shortcuts.ts).
+ * defaults. Each action has one key combination (src/shared/shortcuts.ts),
+ * or none once removed (stored as "").
  *
  * Every rebindable action runs through `useShortcut`, which shares one
  * window keydown listener and also hears the keys main catches before the
@@ -72,7 +72,7 @@ function readOverrides(): Partial<Record<ShortcutId, string>> {
     const out: Partial<Record<ShortcutId, string>> = {};
     for (const a of SHORTCUTS) {
       const v = (parsed as Record<string, unknown>)[a.id];
-      if (typeof v === "string" && parseCombo(v)) out[a.id] = v;
+      if (typeof v === "string" && (v === "" || parseCombo(v))) out[a.id] = v;
     }
     return out;
   } catch {
@@ -105,7 +105,7 @@ export function defaultBinding(id: ShortcutId): string {
   return isMac() ? d.mac : d.other;
 }
 
-/** The action's current key combination ("F1", "ctrl+Comma"). */
+/** The action's current key combination ("F1", "ctrl+Comma"), or "" when removed. */
 export function bindingFor(id: ShortcutId): string {
   return overrides[id] ?? defaultBinding(id);
 }
@@ -139,7 +139,7 @@ export function bindingProblem(id: ShortcutId, combo: string): string | null {
     if (resolveFixed(f.keys) === combo) return `${text} is kept for ${f.label}.`;
   }
   for (const a of SHORTCUTS) {
-    if (a.id !== id && bindingFor(a.id) === combo) return `${text} is already used by ${a.label}.`;
+    if (a.id !== id && combo !== "" && bindingFor(a.id) === combo) return `${text} is already used by ${a.label}.`;
   }
   return null;
 }
@@ -153,6 +153,11 @@ export function setBinding(id: ShortcutId, combo: string): string | null {
   else next[id] = combo;
   writeOverrides(next);
   return null;
+}
+
+/** Leaves the action with no keys (Settings, Remove); Reset to default brings them back. */
+export function removeBinding(id: ShortcutId): void {
+  writeOverrides({ ...overrides, [id]: "" });
 }
 
 export function resetBinding(id: ShortcutId): void {
@@ -182,9 +187,14 @@ export function useAnyChanged(): boolean {
   return useSyncExternalStore(subscribe, () => SHORTCUTS.some((a) => isChanged(a.id)));
 }
 
-/** The action's current combination as tooltip text ("F1", "Ctrl+,", "⌘["). */
+/** The action's current combination as tooltip text ("F1", "Ctrl+,", "⌘["), "" when it has none. */
 export function useShortcutText(id: ShortcutId): string {
   return comboText(useBinding(id), isMac());
+}
+
+/** A tooltip with the action's keys in brackets when it has any: "Refresh (F5)", or just "Refresh". */
+export function withKeys(label: string, keys: string): string {
+  return keys ? `${label} (${keys})` : label;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +212,7 @@ export function dispatchCombo(combo: string): boolean {
     recorder(combo);
     return true;
   }
+  if (!combo) return false;
   for (const a of SHORTCUTS) {
     if (bindingFor(a.id) !== combo) continue;
     const set = handlers.get(a.id);
@@ -215,6 +226,8 @@ export function dispatchCombo(combo: string): boolean {
 function onKeyDown(e: KeyboardEvent): void {
   if (e.isComposing || isModifierCode(e.code)) return;
   if (recorder) {
+    // Plain Tab moves focus on as usual; leaving the field cancels recording.
+    if (e.code === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     // Plain Esc cancels recording; it can never be a binding.

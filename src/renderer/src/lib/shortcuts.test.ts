@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { comboText } from "@shared/shortcuts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { bindingFor, bindingProblem, defaultBinding, dispatchCombo, isChanged, onShortcut, recordNextCombo, reloadBindings, resetAllBindings, resetBinding, SHORTCUTS, setBinding } from "./shortcuts";
+import { bindingFor, bindingProblem, defaultBinding, dispatchCombo, isChanged, onShortcut, recordNextCombo, reloadBindings, removeBinding, resetAllBindings, resetBinding, SHORTCUTS, setBinding, withKeys } from "./shortcuts";
 
 function memoryStorage() {
   const map = new Map<string, string>();
@@ -96,6 +96,31 @@ describe("rebinding", () => {
     resetAllBindings();
     expect(SHORTCUTS.some((a) => isChanged(a.id))).toBe(false);
     expect(bindingFor("devtools.toggle")).toBe("F12");
+  });
+
+  it("Remove leaves the action with no keys, frees them for another action, and survives a restart", () => {
+    const toggled = vi.fn();
+    const off = onShortcut("devtools.toggle", toggled);
+    try {
+      removeBinding("devtools.toggle");
+      expect(bindingFor("devtools.toggle")).toBe("");
+      expect(isChanged("devtools.toggle")).toBe(true);
+      expect(dispatchCombo("F12")).toBe(false);
+      expect(dispatchCombo("")).toBe(false);
+      expect(toggled).not.toHaveBeenCalled();
+      expect(setBinding("palette.open", "F12")).toBeNull();
+      reloadBindings();
+      expect(bindingFor("devtools.toggle")).toBe("");
+      resetBinding("devtools.toggle");
+      expect(bindingFor("devtools.toggle")).toBe("F12");
+    } finally {
+      off();
+    }
+  });
+
+  it("drops the brackets from tooltips when an action has no keys", () => {
+    expect(withKeys("Refresh", "F5")).toBe("Refresh (F5)");
+    expect(withKeys("Refresh", "")).toBe("Refresh");
   });
 
   it("ignores stored junk", () => {
