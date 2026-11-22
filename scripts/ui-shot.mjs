@@ -16,6 +16,7 @@
  *   --scale <n>          device scale factor (default 1)
  *   --scenario <name>    demo scenario for demo.scenario.set (demo only; default "default")
  *   --before <js>        JS run in the page before the shot, awaited (click, open a popover)
+ *   --hover <selector>   move the pointer to the centre of this element before the shot (real :hover)
  *   --wait <ms>          settle time after load and after --before (default 600)
  *   --out <file.png>     output path (default ui-shot.png)
  * Run options:
@@ -58,7 +59,7 @@ function log(msg) {
 // ---------------------------------------------------------------------------
 // Arguments
 
-const SHOT_KEYS = { route: "route", theme: "theme", "theme-id": "themeId", size: "size", scale: "scale", scenario: "scenario", before: "before", wait: "wait", out: "out" };
+const SHOT_KEYS = { route: "route", theme: "theme", "theme-id": "themeId", size: "size", scale: "scale", scenario: "scenario", before: "before", hover: "hover", wait: "wait", out: "out" };
 const FLAGS = new Set(["fake", "signed-out", "build", "no-build", "keep", "help"]);
 
 function parseArgs(argv) {
@@ -91,6 +92,7 @@ function normaliseShot(raw, { outDir, fake }) {
     scale: 1,
     scenario: null,
     before: null,
+    hover: null,
     wait: 600,
     out: "ui-shot.png",
     ...Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined && v !== null)),
@@ -254,6 +256,8 @@ function launch({ outDir, userData, env, fake }) {
   if (process.platform === "linux") {
     // Headless ozone has a 1x1 screen unless told otherwise, and no GPU.
     args.push("--ozone-platform=headless", "--ozone-override-screen-size=3840,2160", "--disable-gpu");
+    // Headless ozone has no mouse, so (hover: hover) is false and every Tailwind hover: style is off. Report a mouse.
+    args.push("--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4");
   }
   const child = spawn(electron, args, { env, stdio: ["ignore", "pipe", "pipe"] });
   let output = "";
@@ -340,6 +344,13 @@ async function takeShot(session, shot, { fake, errors }) {
       errors.push(`--before failed for ${shot.out}: ${err instanceof Error ? err.message : String(err)}`);
     }
     await sleep(shot.wait);
+  }
+  if (shot.hover) {
+    const box = await evaluate(session, `(() => { const r = document.querySelector(${JSON.stringify(shot.hover)})?.getBoundingClientRect(); return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null; })()`);
+    if (box) {
+      await session.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y });
+      await sleep(150);
+    } else errors.push(`--hover found no element for ${shot.hover} in ${shot.out}`);
   }
   const { data } = await session.send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
   mkdirSync(dirname(shot.out), { recursive: true });

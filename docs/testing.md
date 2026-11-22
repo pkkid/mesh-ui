@@ -269,10 +269,12 @@ pnpm ui:shot --help
 Per shot: `--route` (default `#/overview`), `--theme light|dark`,
 `--theme-id <id>`, `--size 1200x780`, `--scale 1`, `--scenario <name>` (demo
 only, default `default`), `--before <js>` (awaited in the page before the
-shot: click, open a popover), `--wait <ms>` (settle time, default 600) and
+shot: click, open a popover), `--hover <selector>` (moves the pointer to the
+centre of that element before the shot, so real `:hover` styles show),
+`--wait <ms>` (settle time, default 600) and
 `--out <file.png>`. `--shots` takes a JSON array of objects with the same
 fields (`out`, `route`, `theme`, `themeId`, `size`, `scale`, `scenario`,
-`before`, `wait`), all taken in one app launch:
+`before`, `hover`, `wait`), all taken in one app launch:
 
 ```json
 [

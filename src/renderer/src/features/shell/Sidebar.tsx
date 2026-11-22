@@ -144,10 +144,12 @@ function UserFooter({ active }: { active: boolean }) {
     <div className="p-2">
       <UpdateChip />
       {/* The whole row is the Account button: the link's ::after covers it, and
-          sign out sits above that layer, so the markup never nests a button in a link. */}
+          sign out sits above that layer, so the markup never nests a button in a link.
+          The row drops its hover while the pointer is on sign out, and sign out takes a
+          foreground mix of its own, so it reads as its own target in every theme (#352). */}
       <div
         data-active={active || undefined}
-        className="relative flex items-center gap-1 rounded-[var(--control-radius)] py-1.5 ps-2.5 pe-1.5 text-sidebar-foreground hover:bg-sidebar-row-hover has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring data-active:bg-sidebar-row-selected"
+        className="relative flex items-center gap-1 rounded-[var(--control-radius)] py-1.5 ps-2.5 pe-1.5 text-sidebar-foreground not-data-active:hover:not-has-[button:hover]:bg-sidebar-row-hover has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring data-active:bg-sidebar-row-selected"
       >
         <Link
           to={routeById("account").path}
@@ -155,14 +157,14 @@ function UserFooter({ active }: { active: boolean }) {
           title="Account"
           className="min-w-0 flex-1 outline-none after:absolute after:inset-0 after:rounded-[inherit]"
         >
-          <div className="truncate font-medium text-[13px]">{name ?? "-"}</div>
-          <div className="text-2xs text-muted-foreground">{role}</div>
+          <div className="truncate font-medium text-sm">{name ?? "-"}</div>
+          <div className="text-muted-foreground text-xs">{role}</div>
         </Link>
         <Popover.Root>
           <Popover.Trigger
             aria-label="Sign out"
             title="Sign out"
-            className="relative z-10 grid size-7 cursor-pointer place-items-center rounded-[var(--control-radius)] text-muted-foreground outline-none hover:bg-sidebar-row-active hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-10 grid size-7 cursor-pointer place-items-center rounded-[var(--control-radius)] text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <LogOut className="size-3.5" />
           </Popover.Trigger>
