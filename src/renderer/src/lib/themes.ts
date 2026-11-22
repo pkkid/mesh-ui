@@ -57,7 +57,7 @@ export function themeFor(current: ThemeSettings, appearance: ThemeAppearance): T
 }
 
 
-/** Colours the theme editor is showing in place of the picked theme, while it is open. */
+/** Colors the theme editor is showing in place of the picked theme, while it is open. */
 export type ThemePreview = { colors: ThemeColors; series: SeriesPalette; appearance: ThemeAppearance };
 let preview: ThemePreview | null = null;
 

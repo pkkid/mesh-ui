@@ -3,12 +3,12 @@
  * (MIT) and trimmed to Mesh UI (docs/ux/pages/settings.md, Theme editor).
  *
  * A panel in the bottom right of the window that can be dragged by its
- * header, resized from its corner and minimised. The page stays usable
+ * header, resized from its corner and minimized. The page stays usable
  * behind it and shows the draft live (`setThemePreview`), so changes are
  * judged on the real UI. It edits the name, the light and dark palettes the
  * theme has, either simply (a background and an accent derive the rest) or
- * colour by colour in groups, plus the chart colours. Picking a colour's
- * name spotlights everywhere it is used; Inspect names the colour under the
+ * color by color in groups, plus the chart colors. Picking a color's
+ * name spotlights everywhere it is used; Inspect names the color under the
  * pointer. Save writes the theme library; Cancel puts the picked theme back.
  * Pure view state, not a command.
  */
@@ -53,7 +53,7 @@ import {
 
 type ByAppearance<T> = Record<ThemeAppearance, T>;
 
-/** Colours every appearance starts with: the source theme's where it has them. */
+/** Colors every appearance starts with: the source theme's where it has them. */
 function initialDraft(source: ThemeDefinition | null) {
   const colors = {} as ByAppearance<ThemeColors>;
   const series = {} as ByAppearance<SeriesPalette>;
@@ -114,7 +114,7 @@ export function ThemeEditorPanel({
   const modes: ReadonlyArray<ThemeAppearance> = source ? getThemeModes(source) : ["light", "dark"];
   const [name, setName] = useState(() => editingTheme?.label ?? seedName ?? "");
   const [appearance, setAppearance] = useState<ThemeAppearance>(() => (modes.includes(initialAppearance) ? initialAppearance : (modes[0] ?? "light")));
-  // Saved themes are hand-tuned (VS Code imports, built-ins), so the editor opens on every colour.
+  // Saved themes are hand-tuned (VS Code imports, built-ins), so the editor opens on every color.
   const [advanced, setAdvanced] = useState(source !== null);
   const [draft, setDraft] = useState(() => initialDraft(source));
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +190,7 @@ export function ThemeEditorPanel({
     setInspecting(false);
   }, []);
 
-  // Spotlight every element the selected colour paints. Live pages re-render on polls, so refresh at most twice a second.
+  // Spotlight every element the selected color paints. Live pages re-render on polls, so refresh at most twice a second.
   const highlightKey = selected ? (FAMILY_BY_VARIABLE.get(selected)?.roles.map(themeVariable) ?? [selected]).join(",") : "";
   useEffect(() => {
     clearInspectorHighlights();
@@ -233,7 +233,7 @@ export function ThemeEditorPanel({
     };
   }, [highlightKey, inspecting]);
 
-  // Inspect mode: hover names the colour under the pointer; a click selects it and leaves the mode.
+  // Inspect mode: hover names the color under the pointer; a click selects it and leaves the mode.
   useEffect(() => {
     if (!inspecting) return clearInspectorHover();
     let disarm = false;
@@ -406,7 +406,7 @@ export function ThemeEditorPanel({
     ? "Select an element · Esc to cancel"
     : selected
       ? `${variableLabel(selected)} · ${usage ?? 0} ${usage === 1 ? "use" : "uses"}`
-      : "Select a colour below";
+      : "Select a color below";
 
   return (
     <div
@@ -447,13 +447,13 @@ export function ThemeEditorPanel({
           size="xs"
           variant={inspecting ? "secondary" : "ghost"}
           aria-pressed={inspecting}
-          title={inspecting ? "Cancel and clear the selection" : "Pick a colour from the app"}
+          title={inspecting ? "Cancel and clear the selection" : "Pick a color from the app"}
           onClick={() => (inspecting ? clearInspector() : setInspecting(true))}
         >
           <MousePointer2 />
           {inspecting ? "Cancel" : "Inspect"}
         </Button>
-        <Button size="icon-xs" variant="ghost-muted" aria-label={minimized ? "Expand the theme editor" : "Minimise the theme editor"} title={minimized ? "Expand" : "Minimise"} onClick={() => setMinimized(!minimized)}>
+        <Button size="icon-xs" variant="ghost-muted" aria-label={minimized ? "Expand the theme editor" : "Minimize the theme editor"} title={minimized ? "Expand" : "Minimize"} onClick={() => setMinimized(!minimized)}>
           {minimized ? <ChevronUp /> : <ChevronDown />}
         </Button>
         <Button size="icon-xs" variant="ghost-muted" aria-label="Close the theme editor" title="Close" onClick={onClose}>
@@ -496,9 +496,9 @@ export function ThemeEditorPanel({
                 }))}
               />
             </Row>
-            <Row label="Colours" detail={advanced ? undefined : "Two colours, the rest derived"}>
+            <Row label="Colors" detail={advanced ? undefined : "Two colors, the rest derived"}>
               <Segmented
-                aria-label="Colour mode"
+                aria-label="Color mode"
                 value={advanced ? "advanced" : "simple"}
                 onValueChange={(v) => {
                   setAdvanced(v === "advanced");
@@ -506,12 +506,12 @@ export function ThemeEditorPanel({
                   if (v === "simple" && family && !SIMPLE_ROLES.includes(family.role)) setSelected(null);
                 }}
                 options={[
-                  { value: "simple", label: "Simple", title: "A background and an accent derive every other colour" },
-                  { value: "advanced", label: "Advanced", title: "Every colour, grouped by area" },
+                  { value: "simple", label: "Simple", title: "A background and an accent derive every other color" },
+                  { value: "advanced", label: "Advanced", title: "Every color, grouped by area" },
                 ]}
               />
             </Row>
-            {advanced && <Input aria-label="Filter colours" type="search" placeholder="Filter colours" value={query} className="h-7 text-xs [&_input]:h-[26px]" onChange={(e) => setQuery(e.currentTarget.value)} />}
+            {advanced && <Input aria-label="Filter colors" type="search" placeholder="Filter colors" value={query} className="h-7 text-xs [&_input]:h-[26px]" onChange={(e) => setQuery(e.currentTarget.value)} />}
 
             {advanced ? (
               <>
@@ -525,7 +525,7 @@ export function ThemeEditorPanel({
               <Group title="Theme">{SIMPLE_ROLES.map((role) => field(themeVariable(role), role === "canvas" ? "Background" : "Accent", colors[role]))}</Group>
             )}
             {hues.length > 0 && (
-              <Group title="Chart colours" detail="Series and status dots: download, bands, each eero">
+              <Group title="Chart colors" detail="Series and status dots: download, bands, each eero">
                 {hues.map((hue) => field(seriesVariable(hue), SERIES_LABELS[hue], series[hue]))}
               </Group>
             )}

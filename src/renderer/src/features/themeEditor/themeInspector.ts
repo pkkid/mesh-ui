@@ -3,12 +3,12 @@
  * (MIT). Plain DOM code.
  *
  * - **Spotlight:** `highlightVariableUsage` finds every element painted by
- *   some colour variables and dims the rest of the window with an SVG mask,
+ *   some color variables and dims the rest of the window with an SVG mask,
  *   outlining the matches.
  * - **Inspect:** `inspectElement` names the variable that paints the element
  *   under the pointer.
  *
- * Both work by probing: set a variable to a marker colour and see whose
+ * Both work by probing: set a variable to a marker color and see whose
  * computed paint changes. Mesh UI works on CSS variables rather than T3's
  * role names, so the chart hues (`--series-*`) are found as well as the
  * theme roles (`--theme-*`); SVG chart marks are outlined by their `<svg>`.
@@ -37,7 +37,7 @@ export const THEME_VARIABLES: ReadonlyArray<string> = [
   ...SERIES_HUES.map((hue) => `--series-${hue}`),
 ];
 
-/** Mesh UI's Tailwind colour tokens (index.css) and the variable each reads. */
+/** Mesh UI's Tailwind color tokens (index.css) and the variable each reads. */
 const UTILITY_VARIABLES: Readonly<Record<string, string>> = {
   background: "canvas",
   foreground: "text",
@@ -251,7 +251,7 @@ function paintOf(element: Element, { forHitTest = false } = {}): PaintSnapshot |
 
 const changedKinds = (before: PaintSnapshot, after: PaintSnapshot) => PAINT_KINDS.filter((kind) => before[kind] !== after[kind]);
 
-/** Turns transitions off while probing, so no probe colour is ever painted. */
+/** Turns transitions off while probing, so no probe color is ever painted. */
 function withProbeSession<T>(run: () => T): T {
   const root = document.documentElement;
   const nested = root.hasAttribute(PROBE_ATTRIBUTE);
@@ -296,7 +296,7 @@ function variableFromUtilities(element: Element): string | null {
   return null;
 }
 
-/** The fast path for hovering: the nearest element with a theme colour class. */
+/** The fast path for hovering: the nearest element with a theme color class. */
 export function inspectFromUtilities(element: Element): ElementInspection | null {
   if (element.closest(EDITOR_SELECTOR)) return null;
   for (const candidate of ancestry(element)) {
