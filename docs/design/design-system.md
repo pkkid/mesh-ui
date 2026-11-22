@@ -32,6 +32,14 @@ outline or shadow standing in for one. Selection shows by fill and text
 colour alone: the track is `bg-muted`, the selected pill `bg-card` with
 `text-foreground` and `font-medium`, the others `text-muted-foreground`.
 
+**Highlights are fill only.** A selected, active or highlighted item
+(a list row, a menu item, a pill, the selected color in the theme editor)
+shows it by changing its background, and its text colour where needed. It
+never adds a border, ring, outline or inset shadow to do it. Only an element
+that already has a border at rest (a theme tile, a card) may recolour that
+border for its selected state. Focus rings for the keyboard
+(`focus-visible`) are separate and stay.
+
 **Scroll fades.** Content that scrolls behind something fixed (a title or
 header, a footer or button bar, the top bar) dissolves into it instead of
 being cut off at a hard edge or a divider. One look everywhere:

@@ -214,7 +214,7 @@ export const ThemeColorField = memo(function ThemeColorField({ variable, label, 
   return (
     <div
       data-theme-color-variable={variable}
-      className={cn("flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-2 py-1 transition-colors", selected && "bg-accent ring-1 ring-inset ring-ring")}
+      className={cn("flex min-h-9 min-w-0 items-center gap-2 rounded-lg px-2 py-1 transition-colors", selected && "bg-accent")}
     >
       <button
         type="button"
