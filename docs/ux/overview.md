@@ -338,10 +338,10 @@ For a command:
 **Running.** `query` commands show their result in the preview pane as
 a collapsible, syntax-coloured JSON tree (the dev tools' `JsonTree`) with a "Copy" button and, where a page exists, "Open page".
 `query` commands run on Enter with no confirm. Every change asks first, in
-the app's confirm dialog over the palette: a `write` in a calm confirm (title, what it does,
-Cancel and an outline button repeating the action; no red,
-`calm` on the ask), sending no `confirm`; `disruptive` and `destructive` in
-the usual red confirm, sending `confirm: true`. A write then shows its toast
+the app's confirm dialog over the palette: a `write` in a plain confirm (title, what it does,
+Cancel and a filled primary button repeating the action),
+sending no `confirm`; `disruptive` and `destructive` in
+the usual yellow or red confirm, sending `confirm: true`. A write then shows its toast
 with Undo. For
 `disruptive` and `destructive` commands the Run button becomes a two-step
 confirm in the preview pane (consequence text, then a danger button "Yes,
