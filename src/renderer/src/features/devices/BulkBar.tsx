@@ -7,7 +7,7 @@
  * takes one device or a list and reports each device that failed.
  */
 import { Ban, Check, ChevronDown, CircleCheck, Pause, Play, UserRoundPlus, X } from "lucide-react";
-import type { ReactElement } from "react";
+import { type ReactElement, useRef } from "react";
 
 import { type Gate, performWrite, type WriteRequest } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
@@ -228,7 +228,39 @@ type BulkBarProps = {
 };
 
 /** The bar over the table while rows are selected (devices.md, Layout 4). */
-export function BulkBar({ selected, profiles, networkName, bridged, gate: writeGate, blockGate: blockWriteGate, onSelect }: BulkBarProps) {
+/**
+ * The bar slides open under the filters when the first row is picked, so the
+ * table moves down smoothly instead of jumping a row, and its contents fade
+ * in once it has room; closing reverses it, still showing the last selection
+ * while it folds away. Reduced motion skips both.
+ */
+export function BulkBar(props: BulkBarProps) {
+  const open = props.selected.length > 0;
+  const last = useRef(props.selected);
+  if (open) last.current = props.selected;
+  return (
+    <div
+      data-open={open || undefined}
+      inert={!open}
+      className={cn(
+        // Closed, it also cancels the column's gap above it, so nothing is left behind.
+        "-mt-2.5 grid grid-rows-[0fr] transition-[grid-template-rows,margin] delay-75 duration-200 ease-out motion-reduce:transition-none",
+        "data-open:mt-0 data-open:grid-rows-[1fr] data-open:delay-0",
+      )}
+    >
+      <div
+        className={cn(
+          "min-h-0 overflow-hidden opacity-0 transition-opacity duration-75 motion-reduce:transition-none",
+          open && "opacity-100 delay-150 duration-150",
+        )}
+      >
+        <BulkBarContent {...props} selected={last.current} />
+      </div>
+    </div>
+  );
+}
+
+function BulkBarContent({ selected, profiles, networkName, bridged, gate: writeGate, blockGate: blockWriteGate, onSelect }: BulkBarProps) {
   if (selected.length === 0) return null;
   const tooMany: Gate = { allowed: false, reason: `Select ${BULK_MAX} devices or fewer` };
   const over = selected.length > BULK_MAX;

@@ -4,12 +4,13 @@
  * a 16px box with a 4px radius, `border-input` on `bg-background` when off,
  * `bg-primary` with a lucide `Check` when on (the switch's "on" color), and a
  * `Minus` on the same fill when `indeterminate`. Disabled dims to 64%.
- * `onClick` still sees the mouse event, so a table can read `shiftKey` for
- * range select. Every checkbox in the app is this one; `checkbox.test.ts`
- * fails on a native `type="checkbox"`.
+ * `onCheckedChange` also says whether Shift was held (click or Shift+Space),
+ * so a table can select a range. Every checkbox in the app is this one;
+ * `checkbox.test.ts` fails on a native `type="checkbox"`.
  */
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { Check, Minus } from "lucide-react";
+import { useRef } from "react";
 
 import { cn } from "~/lib/utils";
 
@@ -17,7 +18,6 @@ export function Checkbox({
   checked,
   indeterminate = false,
   onCheckedChange,
-  onClick,
   disabled = false,
   id,
   title,
@@ -27,9 +27,8 @@ export function Checkbox({
   checked: boolean;
   /** The mixed state: some, not all, of a set is picked. Draws a minus. */
   indeterminate?: boolean;
-  onCheckedChange?: (next: boolean) => void;
-  /** For callers that need the event (`shiftKey`) rather than the next value. */
-  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
+  /** `shiftKey`: Shift was held for the click or key press, as for a range select. */
+  onCheckedChange?: (next: boolean, info: { shiftKey: boolean }) => void;
   disabled?: boolean;
   /** The id of the hidden input, for a `<label htmlFor>`. */
   id?: string;
@@ -37,12 +36,21 @@ export function Checkbox({
   className?: string;
   "aria-label"?: string;
 }) {
+  const shift = useRef(false);
   return (
     <CheckboxPrimitive.Root
       checked={checked}
       indeterminate={indeterminate}
-      onCheckedChange={(next) => onCheckedChange?.(next)}
-      onClick={onClick}
+      onPointerDown={(e) => {
+        shift.current = e.shiftKey;
+      }}
+      onKeyDown={(e) => {
+        shift.current = e.shiftKey;
+      }}
+      onCheckedChange={(next) => {
+        onCheckedChange?.(next, { shiftKey: shift.current });
+        shift.current = false;
+      }}
       disabled={disabled}
       id={id}
       title={title}
