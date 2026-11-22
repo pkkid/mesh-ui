@@ -28,7 +28,12 @@ import { formatRelative } from "../../../../core/format";
 import type { AppInfo, AuditList, CliStatus } from "../../../../core/model";
 
 const CLI_EXAMPLE = "mesh-ui run device.list";
-const MCP_EXAMPLE = "claude mcp add mesh-ui -- mesh-ui mcp";
+/** The command that adds the MCP server, for each agent CLI. */
+const MCP_ADD = [
+  { agent: "Claude Code", text: "claude mcp add mesh-ui -- mesh-ui mcp" },
+  { agent: "Codex", text: "codex mcp add mesh-ui -- mesh-ui mcp" },
+  { agent: "Antigravity", text: "agy mcp add mesh-ui mesh-ui mcp" },
+];
 /** Latest commands listed beside the sparkline. */
 const SHOWN = 5;
 
@@ -101,7 +106,9 @@ function CommandLines({ cli }: { cli: CliStatus | null }) {
         <CodeLine text={CLI_EXAMPLE} label="the command line example" />
       </Labelled>
       <Labelled label="MCP server">
-        <CodeLine text={MCP_EXAMPLE} label="the MCP server command" />
+        {MCP_ADD.map((m) => (
+          <CodeLine key={m.agent} text={m.text} label={`the ${m.agent} MCP command`} />
+        ))}
       </Labelled>
       {cli?.installed && cli.pathLine && (
         <Labelled label="Not on PATH yet">

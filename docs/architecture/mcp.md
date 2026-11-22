@@ -11,6 +11,12 @@ uses the same backend and session as `mesh-ui run`.
 # Claude Code
 claude mcp add mesh-ui -- mesh-ui mcp
 
+# Codex
+codex mcp add mesh-ui -- mesh-ui mcp
+
+# Antigravity
+agy mcp add mesh-ui mesh-ui mcp
+
 # Demo network, for trying it out
 claude mcp add mesh-ui-demo -- mesh-ui mcp --demo
 
