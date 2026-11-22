@@ -18,6 +18,12 @@ export function useImpact(ids: readonly string[]) {
   return useQuery<SettingsImpact>("settings.impact", { changes: ids.map((id) => ({ id })) }, { enabled: ids.length > 0 });
 }
 
+/** How many eeros a change restarts: every one when it restarts, else 0; null while either answer loads. */
+export function eerosRestarting(impact: Pick<SettingsImpact, "restarts"> | null, eeroCount: number | null): number | null {
+  if (!impact) return null;
+  return impact.restarts ? eeroCount : 0;
+}
+
 /**
  * The impact of saving `ids`. `title` heads it ("Impact of saving", "Pending change"). Nothing shows
  * while `ids` is empty (nothing changed yet), so a sheet stays quiet until there is something to say.
@@ -28,7 +34,7 @@ export function ImpactPanel({ ids, title = "Impact of saving", what, className }
   const impact = ids.length > 0 ? (q.data ?? null) : null;
   if (ids.length === 0) return null;
 
-  const restarting = impact ? (impact.restarts ? (eeros.data?.length ?? null) : 0) : null;
+  const restarting = eerosRestarting(impact, eeros.data?.length ?? null);
   return (
     <ImpactBox title={title} fading={q.fading} className={className}>
       {what && <div className="font-medium text-sm">{what}</div>}
