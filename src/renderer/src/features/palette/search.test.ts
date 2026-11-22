@@ -165,6 +165,20 @@ describe("search", () => {
     expect(r.counts.page).toBe(4);
   });
 
+  it("lists every command of an effect when the query names it", async () => {
+    const s = await sources();
+    for (const effect of ["query", "write", "disruptive", "destructive"] as const) {
+      const want = s.commands.filter((c) => c.info.effect === effect && Object.keys(c.params).length === 0).length;
+      const r = search(` ${effect.toUpperCase()} `, s);
+      const cmds = r.flat.filter((h) => h.item.kind === "command");
+      expect(want).toBeGreaterThan(0);
+      expect(cmds).toHaveLength(want);
+      expect(cmds.every((h) => h.item.kind === "command" && h.item.info.effect === effect)).toBe(true);
+    }
+    // A partial word is an ordinary search.
+    expect(search("destr", s).flat.some((h) => h.item.kind === "command" && h.item.info.effect !== "destructive")).toBe(true);
+  });
+
   it("finds presets by their own label", async () => {
     const s = await sources();
     const hit = search("online devices", s).flat[0]?.item;

@@ -48,6 +48,7 @@ Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. 
 | Type | none (view state) | | | Filters and ranks results: exact, then prefix, word start, substring and fuzzy (in order) label matches; every word must match. Device rows also match their profile and eero; eero rows also match their model |
 | Scope chip | none | | | Limits to one group |
 | `>` prefix | none | | | Command only mode, matches ids as well as labels |
+| An effect name | none | | | `query`, `write`, `disruptive` or `destructive` alone lists every command with that effect, by label, with no group limit (presets left out) |
 | Up / Down | none | | | Moves selection; preview follows |
 | Tab | none | | | Moves focus into the params form |
 | Enter or run button on a page, eero, device or profile | none (navigation) | | | Palette closes and the page, eero, device or profile page opens |
