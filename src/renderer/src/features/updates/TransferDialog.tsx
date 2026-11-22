@@ -127,7 +127,7 @@ function TransferDialog({ networkName, onClose, onSent }: { networkName: string;
 
   return (
     <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
-      <DialogPopup className="w-full max-w-md">
+      <DialogPopup showCloseButton={false} className="w-full max-w-md">
         <form
           className="flex flex-col gap-4 p-5"
           onSubmit={(e) => {
@@ -135,7 +135,7 @@ function TransferDialog({ networkName, onClose, onSent }: { networkName: string;
             if (ready && !running) void start();
           }}
         >
-          <div className="flex flex-col gap-1.5 pe-8">
+          <div className="flex flex-col gap-1.5">
             <DialogTitle className="flex items-center gap-2 text-base text-destructive-foreground">
               <TriangleAlert className="size-4 shrink-0" />
               Transfer {networkName}?

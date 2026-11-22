@@ -479,7 +479,7 @@ sentences on who loses what and for how long ("Everyone loses internet for
 about 2 to 3 minutes, including every connected device and any calls in
 progress."), then a ghost Cancel and a filled danger button that repeats
 the action ("Yes, restart network", "Remove from network", "Block device").
-Focus starts on Cancel (or the type-to-confirm field); the X, `Esc`, the backdrop
+Focus starts on Cancel (or the type-to-confirm field); `Esc`, the backdrop
 and Cancel all cancel. Controls never turn into a confirm in place: a note
 in place was easy to miss. Inside another dialog (the palette, a sheet) the
 confirm opens nested over it, so focus and `Esc` stay there.
