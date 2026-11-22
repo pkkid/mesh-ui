@@ -1,0 +1,88 @@
+[
+  {
+    "out": "confirm-light.png",
+    "route": "#/troubleshooting",
+    "theme": "light",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Restart network\")).click()"
+  },
+  {
+    "out": "confirm-dark.png",
+    "route": "#/troubleshooting",
+    "theme": "dark",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Restart network\")).click()"
+  },
+  {
+    "out": "sheet-light.png",
+    "route": "#/settings/wifi",
+    "theme": "light",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Edit name and password\")).click()"
+  },
+  {
+    "out": "sheet-dark.png",
+    "route": "#/settings/wifi",
+    "theme": "dark",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Edit name and password\")).click()"
+  },
+  {
+    "out": "popover-light.png",
+    "route": "#/devices",
+    "theme": "light",
+    "before": "document.querySelector('[aria-label^=\"Filters\"]').click()"
+  },
+  {
+    "out": "popover-dark.png",
+    "route": "#/devices",
+    "theme": "dark",
+    "before": "document.querySelector('[aria-label^=\"Filters\"]').click()"
+  },
+  {
+    "out": "menu-light.png",
+    "route": "#/devices",
+    "theme": "light",
+    "before": "document.querySelector('[aria-label^=\"Actions for \"]').click()",
+    "size": "1440x780"
+  },
+  {
+    "out": "menu-dark.png",
+    "route": "#/devices",
+    "theme": "dark",
+    "before": "document.querySelector('[aria-label^=\"Actions for \"]').click()",
+    "size": "1440x780"
+  },
+  {
+    "out": "palette-light.png",
+    "route": "#/overview",
+    "theme": "light",
+    "before": "document.querySelector('[aria-label=\"Search or run a command\"]').click()"
+  },
+  {
+    "out": "palette-dark.png",
+    "route": "#/overview",
+    "theme": "dark",
+    "before": "document.querySelector('[aria-label=\"Search or run a command\"]').click()"
+  },
+  {
+    "out": "position-confirm-700.png",
+    "route": "#/troubleshooting",
+    "size": "1200x700",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Restart network\")).click()"
+  },
+  {
+    "out": "position-sheet-700.png",
+    "route": "#/settings/wifi",
+    "size": "1200x700",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Edit name and password\")).click()"
+  },
+  {
+    "out": "position-confirm-1200.png",
+    "route": "#/troubleshooting",
+    "size": "1200x1200",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Restart network\")).click()"
+  },
+  {
+    "out": "position-sheet-1200.png",
+    "route": "#/settings/wifi",
+    "size": "1200x1200",
+    "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Edit name and password\")).click()"
+  }
+]

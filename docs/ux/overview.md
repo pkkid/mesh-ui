@@ -472,7 +472,7 @@ humane.
 | `disruptive` | Confirm dialog | Yes, after the user confirms |
 | `destructive` | Confirm dialog with type-to-confirm or an explicit checkbox | Yes, after the user confirms |
 
-**Confirm dialog.** Every confirm is the same centred modal, wherever the
+**Confirm dialog.** Every confirm is the same modal, wherever the
 trigger is (a page button, a row menu, the bulk bar, the palette, a sheet):
 icon and title naming the target ("Block Alex's MacBook Pro?"), one or two
 sentences on who loses what and for how long ("Everyone loses internet for
@@ -516,8 +516,11 @@ and, for destructive actions on a named thing, the name to type.
 Editors that need more than one field open as a sheet (mockups: Appearance on
 06, Edit schedule on 08).
 
-- Centred panel near the top of the window (about 60 px down, 520 to 560 px
-  wide) over a dimmed backdrop, `bg-popover`, 18 px radius.
+- A 540 px panel (640 px wide sheet), horizontally centred over a dimmed
+  backdrop, `bg-popover`, 18 px radius. Its top edge sits at the shared
+  modal offset (below the titlebar, 15% down a tall window) and it grows
+  downward; see
+  [design-system.md#position](../design/design-system.md#position).
 - **Header:** icon, title, a muted line saying what it affects ("Mia · pauses
   all 4 devices automatically"), close button.
 - **Body:** labelled fields, 16 px apart. Live helpers under fields

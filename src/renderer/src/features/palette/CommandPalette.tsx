@@ -105,7 +105,7 @@ export function CommandPalette() {
       }}
     >
       <DialogPopup
-        align="top"
+        placement="palette"
         showCloseButton={false}
         aria-label="Command palette"
         // Exactly the main content's surface: the flat canvas.

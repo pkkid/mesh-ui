@@ -194,7 +194,7 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogPopup align="top" className="w-full max-w-[460px] rounded-[18px]" data-slot="sheet">
+      <DialogPopup className="w-full max-w-[460px] rounded-[18px]" data-slot="sheet">
         <div className="flex flex-col gap-1 px-5 pt-5">
           <DialogTitle className="flex items-center gap-2 text-base">
             <UserPlus className="size-4 text-muted-foreground" />

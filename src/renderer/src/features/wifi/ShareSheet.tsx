@@ -38,7 +38,7 @@ export function ShareWifiSheet({ open, onClose }: { open: boolean; onClose: () =
   const ssid = share?.ssid ?? network.data?.name ?? null;
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogPopup align="top" showCloseButton={false} className="w-full max-w-[440px] rounded-[18px]" data-slot="sheet">
+      <DialogPopup showCloseButton={false} className="w-full max-w-[440px] rounded-[18px]" data-slot="sheet">
         <div className="flex items-start gap-3 border-b px-5 py-4">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground [&_svg]:size-4">
             <Wifi />

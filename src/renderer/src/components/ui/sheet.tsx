@@ -85,7 +85,6 @@ function Sheet({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
       <DialogPopup
-        align="top"
         showCloseButton={false}
         className={cn("w-full max-w-[540px] rounded-[18px]", className)}
         data-slot="sheet"
