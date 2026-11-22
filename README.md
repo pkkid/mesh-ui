@@ -132,6 +132,8 @@ Restarts, DNS changes and anything that cannot be undone fail with
 
 ```sh
 claude mcp add mesh-ui -- mesh-ui mcp              # Claude Code
+codex mcp add mesh-ui -- mesh-ui mcp               # Codex
+agy mcp add mesh-ui mesh-ui mcp                    # Antigravity
 claude mcp add mesh-ui-demo -- mesh-ui mcp --demo  # demo networks only
 claude mcp add mesh-ui -- mesh-ui mcp --read-only  # only read tools
 ```
