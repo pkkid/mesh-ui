@@ -30,7 +30,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
    details** (outline, dim icon) and a dim text link **View ISP settings →**
    (Advanced networking). Two cards:
    - **Internet provider** (globe icon, "From geo IP lookup", status "ISP
-     up"): ISP, Organisation, ASN (mono), Location, Plan ("1,200 Mbps / 1,200
+     up"): ISP, Organization, ASN (mono), Location, Plan ("1,200 Mbps / 1,200
      Mbps", or "Not set") with a small outline button under the value,
      right-aligned: **Change plan…** (or **Set plan…**), opening the plan
      sheet, hence the ellipsis. No "set by you" badge: only the user sets a
@@ -151,7 +151,7 @@ Topbar: title "Internet", nothing after it (freshness is in the Refresh tooltip)
   and always allowed.
 - **Capability missing.** No IPv6: IPv6 rows show `-` with "IPv6 is off"
   and a link to Advanced networking. Geo IP lookup missing: ISP card shows
-  "-" and drops the Organisation and ASN rows.
+  "-" and drops the Organization and ASN rows.
 - **Bridge mode.** Badge "Bridge mode" replaces "NAT mode"; Double NAT row is
   hidden; DNS row shows what the upstream router hands out if eero reports
   it, else `-`. By device and By profile are

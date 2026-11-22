@@ -301,7 +301,7 @@ export function internetText(i: M.Internet): string {
   const lines = [
     "Internet provider",
     `ISP: ${or(i.isp.name)}`,
-    `Organisation: ${or(i.isp.org)}`,
+    `Organization: ${or(i.isp.org)}`,
     `ASN: ${or(i.isp.asn)}`,
     `Location: ${or(place)}`,
     `Plan: ${i.planMbps ? `${formatMbps(i.planMbps.down)} down / ${formatMbps(i.planMbps.up)} up (set by you)` : MISSING}`,

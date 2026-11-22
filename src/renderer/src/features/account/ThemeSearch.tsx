@@ -101,7 +101,7 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
         {results === null ? (
           <p className="m-auto text-xs text-muted-foreground">Searching Open VSX...</p>
         ) : results.length === 0 ? (
-          <p className="m-auto text-xs text-muted-foreground">No colour themes found.</p>
+          <p className="m-auto text-xs text-muted-foreground">No color themes found.</p>
         ) : (
           results.map((extension) => (
             <div

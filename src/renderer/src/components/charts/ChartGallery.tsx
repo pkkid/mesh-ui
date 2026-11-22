@@ -305,7 +305,7 @@ export function ChartGallery() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Block title="Loading, no data yet" note="Unlabelled placeholder gridlines">
+          <Block title="Loading, no data yet" note="Unlabeled placeholder gridlines">
             <AreaChart
               ariaLabel="Throughput, loading"
               series={[{ id: "down", label: "Download", color: seriesColors.download, values: [] }]}
@@ -315,7 +315,7 @@ export function ChartGallery() {
               heightClassName="h-36"
             />
           </Block>
-          <Block title="Empty range" note="One centred muted sentence">
+          <Block title="Empty range" note="One centered muted sentence">
             <AreaChart
               ariaLabel="Throughput, no activity"
               series={[{ id: "down", label: "Download", color: seriesColors.download, values: zeros }]}

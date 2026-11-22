@@ -107,7 +107,7 @@ export function Connection() {
 
   const provider: KvItem[] = [
     { label: "ISP", value: i?.isp.name },
-    ...(geo ? [{ label: "Organisation", value: i?.isp.org }, { label: "ASN", value: i?.isp.asn, mono: true }] : []),
+    ...(geo ? [{ label: "Organization", value: i?.isp.org }, { label: "ASN", value: i?.isp.asn, mono: true }] : []),
     { label: "Location", value: place },
     {
       label: "Plan",

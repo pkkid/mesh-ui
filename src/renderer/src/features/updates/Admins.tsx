@@ -67,7 +67,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
   };
 
   const cancelInvite = (i: Invite) =>
-    cancel.run({ invite: i.id }, { success: `Cancelled the invite${i.nickname ? ` for ${i.nickname}` : ""}`, failure: "Couldn't cancel the invite" });
+    cancel.run({ invite: i.id }, { success: `Canceled the invite${i.nickname ? ` for ${i.nickname}` : ""}`, failure: "Couldn't cancel the invite" });
 
   // Resend: the old link stops working first (so a full network still has its seat), then a new one with the same nickname.
   const resend = async (i: Invite) => {

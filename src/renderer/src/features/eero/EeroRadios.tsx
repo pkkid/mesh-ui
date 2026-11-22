@@ -69,10 +69,10 @@ function RadioRow({ radio: r, offline }: { radio: Radio; offline: boolean }) {
       </div>
       <div className="mt-2">
         <div className="flex justify-between text-2xs text-muted-foreground">
-          <span>Utilisation now</span>
+          <span>Utilization now</span>
           <span className={cn("tabular-nums", busy && "text-warning-foreground")}>{formatPercent(util)}</span>
         </div>
-        <Meter value={util} warnAt={BUSY_AT} label={`${bandLabel(r.band)} utilisation`} className="mt-1" />
+        <Meter value={util} warnAt={BUSY_AT} label={`${bandLabel(r.band)} utilization`} className="mt-1" />
       </div>
     </div>
   );

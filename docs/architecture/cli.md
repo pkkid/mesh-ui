@@ -118,7 +118,7 @@ Global options
   --network <id|name>      Network for this run (default: the selected one)
   --format <json|table>    Output format (default: table on a TTY, json otherwise)
   --quiet                  Print nothing on success; errors still go to stderr
-  --no-color               Disable colour (also NO_COLOR=1)
+  --no-color               Disable color (also NO_COLOR=1)
   --version                Print the version
   -h, --help               Help
 

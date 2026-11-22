@@ -32,7 +32,7 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
         <span role="columnheader">Band</span>
         <span role="columnheader">Channel</span>
         <span role="columnheader">Width</span>
-        <span role="columnheader">Utilisation</span>
+        <span role="columnheader">Utilization</span>
         <span role="columnheader" className="text-right">
           Devices
         </span>
@@ -57,7 +57,7 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
                 <span className="text-muted-foreground">{MISSING}</span>
               ) : (
                 <>
-                  <Meter value={r.utilization} warnAt={BUSY_AT} label={`${bandName(r.band)} utilisation`} className="flex-1" />
+                  <Meter value={r.utilization} warnAt={BUSY_AT} label={`${bandName(r.band)} utilization`} className="flex-1" />
                   <span className={cn("w-[30px] text-right text-2xs tabular-nums", busy ? "text-warning-foreground" : "text-muted-foreground")}>
                     {formatPercent(r.utilization)}
                   </span>
