@@ -501,7 +501,7 @@ export function ThemeEditorPanel({
                 }))}
               />
             </Row>
-            <Row label="Colors" detail={advanced ? undefined : "Two colors, the rest derived"}>
+            <Row label="Colors" detail={advanced ? "Define every color" : "Most colors derived"}>
               <Segmented
                 aria-label="Color mode"
                 value={advanced ? "advanced" : "simple"}
