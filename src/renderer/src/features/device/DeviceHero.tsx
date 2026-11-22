@@ -264,8 +264,8 @@ export function IconSheet({ device: d, open, onClose }: { device: Device; open: 
     <Sheet
       open={open}
       onClose={onClose}
-      title="Icon"
-      subtitle={`The icon for ${d.name}, shown everywhere in Mesh UI and the eero app`}
+      title={`Select icon for ${d.name}`}
+      subtitle="Shown everywhere in Mesh UI and the eero app"
       dirty={changed}
       valid
       onSave={save}
@@ -286,8 +286,9 @@ export function IconSheet({ device: d, open, onClose }: { device: Device; open: 
               title={t.label}
               onClick={() => setType(t.type)}
               className={cn(
-                "flex cursor-pointer flex-col items-center gap-1 rounded-lg border px-0.5 py-1.5 outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring",
-                on ? "border-foreground/50 bg-muted text-foreground" : "border-transparent text-muted-foreground",
+                // Picked: a background, as a pressed button (bg-accent), never an outline.
+                "flex cursor-pointer flex-col items-center gap-1 rounded-lg px-0.5 py-1.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                on ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
               )}
             >
               <Icon aria-hidden className="size-4" />

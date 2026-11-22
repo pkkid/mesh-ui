@@ -214,7 +214,7 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
           copyLabel="Copy link"
           copyText={created.inviteUrl}
           actions={
-            <Button type="button" size="xs" variant="outline" disabled={create.running} onClick={() => void make()}>
+            <Button type="button" size="xs" variant="outline" className="[&_svg]:text-muted-foreground" disabled={create.running} onClick={() => void make()}>
               <RefreshCw />
               New code
             </Button>
