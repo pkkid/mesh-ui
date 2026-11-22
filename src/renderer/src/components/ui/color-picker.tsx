@@ -1,5 +1,5 @@
 /**
- * Colour picking surfaces, ported from T3 Code's
+ * Color picking surfaces, ported from T3 Code's
  * `components/ui/color-picker.tsx` (MIT): a saturation and brightness plane
  * and a hue slider, both draggable and keyboard operable.
  */

@@ -478,9 +478,9 @@ html.dark[data-theme-id="rose"] [data-sidebar-surface] {
 }
 
 /* Theme editor inspector (features/themeEditor/themeInspector.ts, from T3
-   Code). Probing swaps colour variables for a frame; no transition may
-   paint the probe colour. The spotlight dims everything except the elements
-   a colour paints and outlines them; the hover box names the colour under
+   Code). Probing swaps color variables for a frame; no transition may
+   paint the probe color. The spotlight dims everything except the elements
+   a color paints and outlines them; the hover box names the color under
    the pointer in inspect mode. Both sit under the editor panel (z 46) and
    its popovers (z 50). A plain outline, no glow. */
 html[data-theme-token-probe],

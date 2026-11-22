@@ -1,6 +1,6 @@
 /**
- * One colour row in the theme editor, ported from T3 Code's
- * `ThemeColorPicker.tsx` (MIT): the name (click to show where the colour is
+ * One color row in the theme editor, ported from T3 Code's
+ * `ThemeColorPicker.tsx` (MIT): the name (click to show where the color is
  * used), a swatch that opens a picker popover, and a hex field. Escape in
  * the picker reverts the edit.
  */
@@ -77,7 +77,7 @@ function PickerPanel({ label, value, committer, onChange }: { label: string; val
       setHexDraft(hex);
       setRgbDraft(rgbText(hex));
     }
-    // hex to HSV loses hue and saturation for greys, so only re-read it when the colour really moved.
+    // hex to HSV loses hue and saturation for grays, so only re-read it when the color really moved.
     if (current !== hex) setHsv(hexToHsv(hex));
   }
 
@@ -99,7 +99,7 @@ function PickerPanel({ label, value, committer, onChange }: { label: string; val
       <div className="flex items-center justify-between border-b px-3 py-2.5">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold text-foreground">{label}</p>
-          <p className="text-2xs text-muted-foreground">Choose a colour</p>
+          <p className="text-2xs text-muted-foreground">Choose a color</p>
         </div>
         <span className="size-6 shrink-0 rounded-full border border-foreground/20" style={{ backgroundColor: current }} />
       </div>
@@ -160,24 +160,24 @@ function PickerPanel({ label, value, committer, onChange }: { label: string; val
 function Swatch({ label, value, onChange, onEditStart, onEditCancel, onInteract }: { label: string; value: string; onChange: (value: string) => void; onEditStart?: () => void; onEditCancel?: () => void; onInteract?: () => void }) {
   const [committer] = useState(createFrameCommitter);
   // Escape reverts the edit, so commits after it (the frame flushed on close) are dropped.
-  const cancelled = useRef(false);
+  const canceled = useRef(false);
   // Unmounting with the popover open never fires onOpenChange.
   useEffect(() => committer.flush, [committer]);
   return (
     <Popover
       onOpenChange={(open, details) => {
-        cancelled.current = !open && details.reason === "escape-key";
+        canceled.current = !open && details.reason === "escape-key";
         if (open) return onEditStart?.();
         committer.flush();
-        if (cancelled.current) onEditCancel?.();
+        if (canceled.current) onEditCancel?.();
       }}
     >
       <PopoverTrigger
         render={
           <button
             type="button"
-            title={`Choose ${label} colour`}
-            aria-label={`Choose ${label} colour`}
+            title={`Choose ${label} color`}
+            aria-label={`Choose ${label} color`}
             onFocus={onInteract}
             onPointerDown={onInteract}
             className="relative size-6 shrink-0 cursor-pointer rounded-full border border-foreground/30 outline-none transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring"
@@ -187,7 +187,7 @@ function Swatch({ label, value, onChange, onEditStart, onEditCancel, onInteract 
         }
       />
       <PopoverPopup data-theme-editor-panel="" side="bottom" align="end" sideOffset={8}>
-        <PickerPanel committer={committer} label={label} value={value} onChange={(next) => !cancelled.current && onChange(next)} />
+        <PickerPanel committer={committer} label={label} value={value} onChange={(next) => !canceled.current && onChange(next)} />
       </PopoverPopup>
     </Popover>
   );

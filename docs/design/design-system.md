@@ -144,29 +144,29 @@ current appearance; Export and Remove take the whole collection.
 `ThemeColorPicker.tsx` and `themeInspector.ts`): a floating panel mounted once
 in the window shell, bottom right, on the popover surface (`popoverSurface`),
 `no-drag`, z 46 (under popovers and dialogs). Drag it by its header, resize
-it from its corner, minimise it. The page stays usable behind it and shows
+it from its corner, minimize it. The page stays usable behind it and shows
 the draft live (`setThemePreview` in `lib/themes.ts` paints it over the picked
 theme until the editor closes); Cancel, Close or Escape put the picked theme
 back.
 
 - **Name** and **Appearance** (Light / Dark: the palettes the theme has; a
   palette it lacks is disabled).
-- **Colours**, **Simple** (a background and an accent derive every role,
-  `createVividThemeColors`) or **Advanced** (every colour family Mesh UI
+- **Colors**, **Simple** (a background and an accent derive every role,
+  `createVividThemeColors`) or **Advanced** (every color family Mesh UI
   paints, grouped Foundation, Brand and controls, Sidebar, Status, with a
-  filter; editing a family's colour re-derives its text and washes,
+  filter; editing a family's color re-derives its text and washes,
   `updateThemeColorFamily`). T3 Code's terminal, search and message roles are
   not shown and keep their values. It opens in Advanced, since saved themes
   are hand-tuned.
-- **Chart colours**: the eight series hues for the appearance (both modes).
-- Each row: the name (click to spotlight where the colour is used), a swatch
+- **Chart colors**: the eight series hues for the appearance (both modes).
+- Each row: the name (click to spotlight where the color is used), a swatch
   that opens a picker popover (saturation plane, hue slider, hex and RGB;
   Escape reverts), and a hex field.
-- **Spotlight and Inspect**: selecting a colour dims the window with an SVG
+- **Spotlight and Inspect**: selecting a color dims the window with an SVG
   mask and outlines every element it paints, with a use count in the header;
-  **Inspect** names the colour under the pointer and a click selects it. Both
-  probe the CSS variable (`--theme-*` or `--series-*`) with a marker colour
-  and compare computed paint, and read Mesh UI's Tailwind colour classes
+  **Inspect** names the color under the pointer and a click selects it. Both
+  probe the CSS variable (`--theme-*` or `--series-*`) with a marker color
+  and compare computed paint, and read Mesh UI's Tailwind color classes
   directly. A chart's marks are outlined once, as their `<svg>`. The outline
   is a plain 2px ring, no glow. Refreshes are throttled to two a second, so
   live-polling pages stay cheap.

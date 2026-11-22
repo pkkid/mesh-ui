@@ -428,8 +428,8 @@ export function createVividThemeColors(appearance: ThemeAppearance, canvasValue:
 }
 
 /**
- * Sets one colour in the theme editor's advanced mode and re-derives the
- * roles that go with it (a surface's text, a status colour's text and
+ * Sets one color in the theme editor's advanced mode and re-derives the
+ * roles that go with it (a surface's text, a status color's text and
  * wash), as T3 Code's `updateThemeColorFamily`. Trimmed to the families
  * Mesh UI paints.
  */
@@ -528,7 +528,7 @@ export function updateThemeColorFamily(
 
 export type Hsv = { h: number; s: number; v: number };
 
-/** `#rrggbb` to hue (0 to 360), saturation and value (0 to 1), for the colour picker. */
+/** `#rrggbb` to hue (0 to 360), saturation and value (0 to 1), for the color picker. */
 export function hexToHsv(hex: string): Hsv {
   const numeric = Number.parseInt(hex.slice(1, 7), 16);
   const r = ((numeric >> 16) & 255) / 255;

@@ -1,6 +1,6 @@
 /**
- * What the theme editor shows: its colour families in groups, the chart
- * hues, and the label for any colour variable (shared by the panel and the
+ * What the theme editor shows: its color families in groups, the chart
+ * hues, and the label for any color variable (shared by the panel and the
  * inspector's hover label). Trimmed from T3 Code's ThemeEditorPanel.tsx.
  */
 import { SERIES_HUES, themeVariable, type SeriesHue, type ThemeColorRole } from "~/lib/themePalettes";
@@ -8,7 +8,7 @@ import { SERIES_HUES, themeVariable, type SeriesHue, type ThemeColorRole } from 
 export type Family = { id: string; label: string; role: ThemeColorRole; roles: ReadonlyArray<ThemeColorRole> };
 
 /**
- * The colours the advanced mode shows, grouped by area. Each family is one
+ * The colors the advanced mode shows, grouped by area. Each family is one
  * field: its first role is the one edited, the rest follow it
  * (`updateThemeColorFamily`). Roles Mesh UI does not paint (T3 Code's
  * terminal, search matches, message bubbles) are left out and keep their values.

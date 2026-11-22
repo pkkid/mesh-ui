@@ -16,7 +16,7 @@ const custom = (id: string, label: string, extra: Partial<ThemeDefinition> = {})
 });
 
 describe("theme files: export and import back", () => {
-  it("round-trips one theme with both palettes and its chart colours", () => {
+  it("round-trips one theme with both palettes and its chart colors", () => {
     const theme = custom("my-grove", "My Grove", { series: { dark: { ...MID_TONE_SERIES.dark, blue: "#123456" } } });
     const text = serializeThemeFile(theme);
     expect(JSON.parse(text)).toMatchObject({ version: 1, id: "my-grove", name: "My Grove", appearance: theme.appearance });
@@ -65,7 +65,7 @@ describe("theme library: edit and duplicate", () => {
   });
 });
 
-describe("colour families", () => {
+describe("color families", () => {
   const colors = CLASSIC_THEME.colors;
 
   it("moves the window chrome with the background", () => {
@@ -73,7 +73,7 @@ describe("colour families", () => {
     expect([next.canvas, next.chrome, next.toolbar].map((c) => colorToHex(c))).toEqual(["#fafaf0", "#fafaf0", "#fafaf0"]);
   });
 
-  it("derives readable text for a surface and a status colour", () => {
+  it("derives readable text for a surface and a status color", () => {
     const sidebar = updateThemeColorFamily("light", colors, "sidebar", "#1d2021");
     expect(contrastRatio(parseRgb(sidebar.sidebarForeground, { r: 0, g: 0, b: 0 }), parseRgb(sidebar.sidebar, { r: 0, g: 0, b: 0 }))).toBeGreaterThan(4.5);
     const error = updateThemeColorFamily("light", colors, "error", "#cc241d");
@@ -93,7 +93,7 @@ describe("colour families", () => {
 });
 
 describe("inspector", () => {
-  it("maps Mesh UI's colour classes to the variable they read", () => {
+  it("maps Mesh UI's color classes to the variable they read", () => {
     expect(variableFromUtilityClass("bg-card/40", "background")).toBe(themeVariable("surface"));
     expect(variableFromUtilityClass("text-muted-foreground", "foreground")).toBe("--theme-muted-foreground");
     expect(variableFromUtilityClass("bg-primary", "background")).toBe("--theme-message-action");
