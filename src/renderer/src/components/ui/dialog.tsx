@@ -56,10 +56,11 @@ function DialogPopup({
             >
               {children}
               {showCloseButton && (
+                // Same place and look as the Sheet header's close button.
                 <DialogPrimitive.Close
                   aria-label="Close"
-                  className="absolute end-2 top-2"
-                  render={<Button size="icon" variant="ghost" />}
+                  className="absolute end-5 top-4"
+                  render={<Button size="icon-sm" variant="ghost-muted" />}
                 >
                   <XIcon />
                 </DialogPrimitive.Close>

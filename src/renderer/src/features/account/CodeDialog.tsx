@@ -119,7 +119,7 @@ export function CodeDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
-      <DialogPopup showCloseButton={false} className="w-full max-w-sm">
+      <DialogPopup className="w-full max-w-sm">
         <form
           className="flex flex-col gap-4 p-5"
           onSubmit={(e) => {
@@ -128,7 +128,7 @@ export function CodeDialog({
             void (step === "field" ? submitField() : submitCode());
           }}
         >
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 pe-8">
             <DialogTitle className="text-base">{step === "field" ? title : verify?.command === "account.phone.verify" ? "Verify mobile" : "Verify email"}</DialogTitle>
             <DialogDescription className="text-xs">{lead}</DialogDescription>
           </div>

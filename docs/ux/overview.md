@@ -335,7 +335,7 @@ For a command:
 a collapsible, syntax-coloured JSON tree (the dev tools' `JsonTree`) with a "Copy" button and, where a page exists, "Open page".
 `query` commands run on Enter with no confirm. Every change asks first, in
 the app's confirm dialog over the palette: a `write` in a calm confirm (title, what it does,
-Cancel and an outline button repeating the action; no warning icon or red,
+Cancel and an outline button repeating the action; no red,
 `calm` on the ask), sending no `confirm`; `disruptive` and `destructive` in
 the usual red confirm, sending `confirm: true`. A write then shows its toast
 with Undo. For
@@ -474,12 +474,12 @@ humane.
 
 **Confirm dialog.** Every confirm is the same modal, wherever the
 trigger is (a page button, a row menu, the bulk bar, the palette, a sheet):
-icon and title naming the target ("Block Alex's MacBook Pro?"), one or two
+a title naming the target ("Block Alex's MacBook Pro?"), one or two
 sentences on who loses what and for how long ("Everyone loses internet for
 about 2 to 3 minutes, including every connected device and any calls in
 progress."), then a ghost Cancel and a filled danger button that repeats
 the action ("Yes, restart network", "Remove from network", "Block device").
-Focus starts on Cancel (or the type-to-confirm field); `Esc`, the backdrop
+Focus starts on Cancel (or the type-to-confirm field); the X, `Esc`, the backdrop
 and Cancel all cancel. Controls never turn into a confirm in place: a note
 in place was easy to miss. Inside another dialog (the palette, a sheet) the
 confirm opens nested over it, so focus and `Esc` stay there.
