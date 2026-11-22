@@ -17,9 +17,12 @@
 //
 // `pnpm icons --tray` renders only the tray PNGs. The tray SVGs themselves are
 // hand-tuned (KDE ColorScheme classes); here the symbol's color is swapped
-// for plain white or black, and the glyph is trimmed and scaled to the
-// Gruvbox Plus panel icons' measured size (median tray icon in panel/16 and
-// panel/22): it fills a 16 px canvas, and is 18 px with 2 px padding on 22.
+// for plain white or black, and the glyph is trimmed and scaled: it fills
+// the 16 px canvas (Windows, macOS template, like the Gruvbox Plus panel/16
+// tray icons), and is 20 px with 1 px padding on 22 (Linux). Linux tray hosts
+// scale an app's pixmap into their own icon box (GNOME's BetterTrayIcons uses
+// 20 px), where themed tray icons land at about 90% of the box; 20 of 22
+// lands at the same size beside them.
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -69,8 +72,8 @@ renderGlyph(tray16, 32, 32, resolve(root, "build/tray/mesh-ui-trayTemplate@2x.pn
 const tmp = mkdtempSync(join(tmpdir(), "mesh-ui-tray-"));
 mkdirSync(resolve(root, "build/tray/png"), { recursive: true });
 for (const [name, color] of [["white", "#ffffff"], ["black", "#000000"]]) {
-  // [source, [canvas, glyph] per size]: full bleed at 16 and 32, 18 of 22 (and 36 of 44) like the pack's panel icons.
-  for (const [svg, sizes] of [["mesh-ui-tray-16.svg", [[16, 16], [32, 32]]], ["mesh-ui-tray-22.svg", [[22, 18], [44, 36]]]]) {
+  // [source, [canvas, glyph] per size]: full bleed at 16 and 32, 20 of 22 (and 40 of 44) for Linux panels.
+  for (const [svg, sizes] of [["mesh-ui-tray-16.svg", [[16, 16], [32, 32]]], ["mesh-ui-tray-22.svg", [[22, 20], [44, 40]]]]) {
     const text = readFileSync(resolve(root, "build/tray", svg), "utf8").replace(/(\.ColorScheme-Text \{ color:)#[0-9a-fA-F]+/, `$1${color}`);
     const recolored = join(tmp, `${name}-${svg}`);
     writeFileSync(recolored, text);
