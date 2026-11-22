@@ -11,6 +11,7 @@ import type { ReactElement } from "react";
 
 import { type Gate, performWrite, type WriteRequest } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { GatedButton } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
@@ -246,16 +247,7 @@ export function BulkBar({ selected, profiles, networkName, bridged, gate: writeG
 
   return (
     <div className="flex items-center gap-2.5 rounded-xl border bg-muted/60 py-2 ps-3.5 pe-2.5" role="toolbar" aria-label="Selected devices">
-      <input
-        type="checkbox"
-        aria-label="Clear selection"
-        checked
-        ref={(el) => {
-          if (el) el.indeterminate = true;
-        }}
-        onChange={() => onSelect([])}
-        className="size-3.5 cursor-pointer rounded-[4px] border accent-primary"
-      />
+      <Checkbox aria-label="Clear selection" checked indeterminate onCheckedChange={() => onSelect([])} />
       <span className="shrink-0 font-medium text-[13px] tabular-nums">{selected.length} selected</span>
       <span className="min-w-0 truncate text-muted-foreground text-xs" title={names}>
         {names}

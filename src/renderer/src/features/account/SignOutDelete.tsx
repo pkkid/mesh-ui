@@ -26,6 +26,7 @@ import { useCommand, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { GatedButton } from "~/components/ui/page";
 import type { Account, AppInfo, AuthStatus, NetworkSummary } from "../../../../core/model";
@@ -120,14 +121,7 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
         <div id={bodyId} className="flex flex-col gap-2">
           {networks && (plan.owned.length > 0 || plan.shared.length > 0) && <p className="text-muted-foreground text-xs">{plan.text.replace(/^Closes your eero account and deletes your personal data\. /, "")}</p>}
           <label htmlFor={checkId} className="flex cursor-pointer items-start gap-2 text-xs">
-            <input
-              id={checkId}
-              type="checkbox"
-              checked={checked}
-              disabled={owns}
-              onChange={(e) => setChecked(e.target.checked)}
-              className="mt-px size-3.5 shrink-0 cursor-pointer rounded-[4px] border accent-primary disabled:cursor-not-allowed disabled:opacity-60"
-            />
+            <Checkbox id={checkId} checked={checked} disabled={owns} onCheckedChange={setChecked} />
             I want to permanently close my account and delete my data
           </label>
           <div>
