@@ -26,6 +26,7 @@ import { affectedBy, execute, invalidate, type QueryState, useQuery } from "~/ap
 import { askInDialog, errorText, fieldErrors, useWrite } from "~/app/useWrite";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { Card, CardLink, Empty, Section } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { GatedButton, SectionError, SectionLink, useGate } from "~/components/ui/page";
@@ -638,7 +639,7 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
                 const Icon = deviceIcon(r.device);
                 return (
                   <label key={r.id} className="flex cursor-pointer items-center gap-2.5 border-b px-3 py-1.5 last:border-b-0 hover:bg-muted/50">
-                    <input type="checkbox" className="accent-primary" checked={picked.has(r.id)} onChange={() => toggle(r.id)} />
+                    <Checkbox checked={picked.has(r.id)} onCheckedChange={() => toggle(r.id)} />
                     <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate text-[13px]">{r.name}</span>
                     {r.note && <span className="shrink-0 text-2xs text-muted-foreground">{r.note}</span>}

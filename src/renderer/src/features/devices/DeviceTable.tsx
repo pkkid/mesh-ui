@@ -38,6 +38,7 @@ import { Link, navigate, pathFor } from "~/app/router";
 import { type Gate, performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { BandBadge } from "~/components/ui/band-badge";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Card, Empty } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "~/components/ui/menu";
@@ -336,11 +337,11 @@ export function DeviceTable(props: DeviceTableProps) {
             <tr className="border-b">
               <th className={cn(th, "w-7")}>
                 <Checkbox
-                  label="Select all devices"
+                  aria-label="Select all devices"
                   checked={visible.length > 0 && visible.every((id) => selected.has(id))}
-                  mixed={visible.some((id) => selected.has(id)) && !visible.every((id) => selected.has(id))}
+                  indeterminate={visible.some((id) => selected.has(id)) && !visible.every((id) => selected.has(id))}
                   disabled={visible.length === 0}
-                  onPick={() => onSelect(visible.every((id) => selected.has(id)) ? [] : visible)}
+                  onCheckedChange={() => onSelect(visible.every((id) => selected.has(id)) ? [] : visible)}
                 />
               </th>
               {sortable("name", "Device")}
@@ -419,35 +420,6 @@ function FullRow({ columns, children }: { columns: number; children: ReactNode }
   );
 }
 
-function Checkbox({
-  label,
-  checked,
-  mixed = false,
-  disabled = false,
-  onPick,
-}: {
-  label: string;
-  checked: boolean;
-  mixed?: boolean;
-  disabled?: boolean;
-  onPick: (shift: boolean) => void;
-}) {
-  return (
-    <input
-      type="checkbox"
-      aria-label={label}
-      checked={checked}
-      disabled={disabled}
-      ref={(el) => {
-        if (el) el.indeterminate = mixed;
-      }}
-      onChange={() => {}}
-      onClick={(e) => onPick(e.shiftKey)}
-      className="size-3.5 cursor-pointer rounded-[4px] border accent-primary disabled:cursor-not-allowed disabled:opacity-60"
-    />
-  );
-}
-
 type RowProps = DeviceTableProps & {
   device: Device;
   show: (c: ColumnKey) => boolean;
@@ -472,7 +444,7 @@ function Row(props: RowProps) {
       onClick={(e) => {
         // Menus render in a portal; their clicks still bubble here through React.
         if (!e.currentTarget.contains(e.target as Node)) return;
-        if ((e.target as HTMLElement).closest("a,button,input")) return;
+        if ((e.target as HTMLElement).closest("a,button,input,[role=checkbox]")) return;
         navigate(to);
       }}
       aria-selected={isSelected}
@@ -487,7 +459,7 @@ function Row(props: RowProps) {
       )}
     >
       <td className={cn(td, isSelected && "shadow-[inset_2px_0_0_var(--color-foreground)]")}>
-        <Checkbox label={`Select ${d.name}`} checked={isSelected} onPick={onPick} />
+        <Checkbox aria-label={`Select ${d.name}`} checked={isSelected} onClick={(e) => onPick(e.shiftKey)} />
       </td>
       <td className={td}>
         <div className="flex min-w-0 items-center gap-2.5">
