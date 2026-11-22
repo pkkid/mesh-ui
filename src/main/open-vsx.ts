@@ -211,7 +211,7 @@ export function createOpenVsx(fetchImpl: FetchLike) {
       }
       // Details are fetched again here: nothing from the renderer is trusted but the id.
       const d = await detail(extensionId, signal);
-      if (!d) return { ok: false, message: "That extension's licence does not allow Mesh UI to use it." };
+      if (!d) return { ok: false, message: "That extension's license does not allow Mesh UI to use it." };
       const checksum = (await get(d.sha256Url, 1024, signal)).toString("utf8").trim().slice(0, 64).toLowerCase();
       if (!/^[0-9a-f]{64}$/.test(checksum)) throw new Error("Open VSX returned no checksum for the package.");
       const vsix = await get(d.vsixUrl, MAX_VSIX_BYTES, signal);
@@ -221,7 +221,7 @@ export function createOpenVsx(fetchImpl: FetchLike) {
       const zip = openZip(vsix, ZIP_LIMITS);
       const manifest = parseJson(zip.read("extension/package.json", MAX_JSON_BYTES).toString("utf8"), "The manifest");
       if (permissive(isRecord(manifest) ? manifest.license : null) !== d.extension.license) {
-        throw new Error("The package's licence does not match Open VSX.");
+        throw new Error("The package's license does not match Open VSX.");
       }
       const contributions = themeContributions(manifest).slice(0, MAX_THEMES);
       const themes = contributions.flatMap((contribution): ThemeFile[] => {
@@ -242,7 +242,7 @@ export function createOpenVsx(fetchImpl: FetchLike) {
           },
         ];
       });
-      if (themes.length === 0) throw new Error("That extension has no colour themes.");
+      if (themes.length === 0) throw new Error("That extension has no color themes.");
       return { ok: true, extension: { ...d.extension, themeCount: themes.length }, themes };
     } catch (cause) {
       return { ok: false, message: messageOf(cause, "The theme could not be downloaded.") };

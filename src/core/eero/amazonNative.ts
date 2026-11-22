@@ -199,7 +199,7 @@ export function createAmazonNativeAttempt(opts: AmazonNativeAttemptOptions): Ama
       throw new BackendError("eero_error", "The Amazon response did not match this sign-in attempt. Close the window and try again.");
     }
     if (query.error !== undefined || query["openid.error"] !== undefined) {
-      throw new BackendError("eero_error", "Amazon sign-in was cancelled or rejected.");
+      throw new BackendError("eero_error", "Amazon sign-in was canceled or rejected.");
     }
     const code = query["openid.oa2.authorization_code"];
     if (!code || code.length > MAX_TOKEN_CHARS || !isPrintableAscii(code, true)) {
@@ -254,7 +254,7 @@ export function createAmazonNativeAttempt(opts: AmazonNativeAttemptOptions): Ama
       text = await response.text();
     } catch (err) {
       if (signal?.aborted || controller.signal.aborted) {
-        throw new BackendError("eero_error", "Amazon sign-in was cancelled.");
+        throw new BackendError("eero_error", "Amazon sign-in was canceled.");
       }
       throw new BackendError("network_error", "Could not reach Amazon to finish sign-in. Check your internet connection.");
     } finally {
@@ -293,7 +293,7 @@ export function createAmazonNativeAttempt(opts: AmazonNativeAttemptOptions): Ama
     if (tokenType.toLowerCase() !== "bearer" || !token || token.length > MAX_TOKEN_CHARS || !isPrintableAscii(token, false)) {
       throw new BackendError("eero_error", "Amazon did not return a valid access token.");
     }
-    if (signal?.aborted) throw new BackendError("eero_error", "Amazon sign-in was cancelled.");
+    if (signal?.aborted) throw new BackendError("eero_error", "Amazon sign-in was canceled.");
     return token;
   }
 

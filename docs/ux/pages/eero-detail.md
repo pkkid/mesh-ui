@@ -43,7 +43,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      ("3 radios, fixed channel on 5 GHz", "2 radios, auto channel selection
      on"). One card with a row per band, split by faint dividers (no card
      per band): band badge, "Ch 36", "160 MHz · tx 23 dBm", client count,
-     and "Utilisation now" with a meter in the band colour.
+     and "Utilization now" with a meter in the band colour.
 3. Two columns:
    - **Connected devices**. Description under the title: the count, then
      how many are wired ("12 devices, 3 wired"). A dim text link "View all

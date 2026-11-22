@@ -55,7 +55,7 @@ Sidebar count: number of eeros.
      detail page (a clickable card, see the design system); no chevron
      button.
    - Body: a band table with columns Band (badge "2.4 GHz", "5 GHz", "6
-     GHz"), Channel ("ch 149"), Width ("160 MHz"), Utilisation (meter in the
+     GHz"), Channel ("ch 149"), Width ("160 MHz"), Utilization (meter in the
      band colour, warning colour and text at 65% or more, percent on the
      right), Devices; headers in normal case. A Wired row with the wired
      client count, when there are any, is the last row of the same table

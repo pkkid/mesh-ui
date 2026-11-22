@@ -123,7 +123,7 @@ export function createAmazonSignIn(deps: AmazonSignInDeps): { signIn(): Promise<
               void handleReturn(url);
               win.close();
             },
-            onCancel: () => finish(() => reject(new BackendError("eero_error", "Amazon sign-in was cancelled."))),
+            onCancel: () => finish(() => reject(new BackendError("eero_error", "Amazon sign-in was canceled."))),
             onUnsupported: () =>
               finish(() => reject(new BackendError("eero_error", "Amazon requested an unsupported destination."))),
           });
@@ -181,7 +181,7 @@ export function createAmazonSignIn(deps: AmazonSignInDeps): { signIn(): Promise<
         });
         win.on("closed", () => {
           clearAmazonSession(ses);
-          finish(() => reject(new BackendError("eero_error", "Amazon sign-in was cancelled.")));
+          finish(() => reject(new BackendError("eero_error", "Amazon sign-in was canceled.")));
         });
 
         void win.loadURL(attempt.signInUrl).catch(() => {

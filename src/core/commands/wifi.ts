@@ -322,7 +322,7 @@ export const commands: AnyCommand[] = [
     id: "wifi.health",
     label: "Signal",
     description:
-      "Signal and link speed of the connected wireless devices right now: devices per signal quality (excellent at -55 dBm or better, good to -65, fair to -75, weak below) and the median dBm, overall and per band, median and best link speed per band, the 5 weakest devices, a histogram of devices per 5 dBm (-90 to -40), devices per Wi-Fi generation, and each eero (model, devices) and its radios, one per radio (channel, width, channel utilisation, transmit power, devices), with the busiest one. Read from the device and eero lists; no history.",
+      "Signal and link speed of the connected wireless devices right now: devices per signal quality (excellent at -55 dBm or better, good to -65, fair to -75, weak below) and the median dBm, overall and per band, median and best link speed per band, the 5 weakest devices, a histogram of devices per 5 dBm (-90 to -40), devices per Wi-Fi generation, and each eero (model, devices) and its radios, one per radio (channel, width, channel utilization, transmit power, devices), with the busiest one. Read from the device and eero lists; no history.",
     icon: "activity",
     params: z.object({}),
     effect: "query",

@@ -175,6 +175,6 @@ describe("createOpenVsx", () => {
     const { fetch, requests } = fakeRegistry({ license: "GPL-3.0" });
     expect(await createOpenVsx(fetch).download("../../etc")).toMatchObject({ ok: false });
     expect(requests).toHaveLength(0);
-    expect(await createOpenVsx(fetch).download("sample.sample-theme")).toMatchObject({ ok: false, message: expect.stringMatching(/licence/) });
+    expect(await createOpenVsx(fetch).download("sample.sample-theme")).toMatchObject({ ok: false, message: expect.stringMatching(/license/) });
   });
 });

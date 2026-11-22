@@ -110,7 +110,7 @@ export function ThemeImportDialog({
         <div className="flex flex-col gap-1 pe-8">
           <DialogTitle className="text-base">Add theme</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            VS Code colour themes work, as do Mesh UI and T3 Code theme files.
+            VS Code color themes work, as do Mesh UI and T3 Code theme files.
           </DialogDescription>
         </div>
 

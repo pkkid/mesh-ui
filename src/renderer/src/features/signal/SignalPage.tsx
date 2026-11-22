@@ -337,7 +337,7 @@ function LinkSpeedSection({ health: h, className }: SectionArgs) {
  */
 function RadiosSection({ health: h, className }: SectionArgs) {
   const bands = (h?.bands ?? []).map((b) => b.band);
-  const description = !h ? "-" : h.busiest ? `Busiest: ${h.busiest.eero} ${bandLabel(h.busiest.band)} at ${formatPercent(h.busiest.utilization)}` : "No eero reports channel utilisation";
+  const description = !h ? "-" : h.busiest ? `Busiest: ${h.busiest.eero} ${bandLabel(h.busiest.band)} at ${formatPercent(h.busiest.utilization)}` : "No eero reports channel utilization";
   const cell = (row: WifiHealth["radios"][number], band: (typeof bands)[number]): ReactNode => {
     const rs = row.bands.filter((x) => x.band === band);
     if (!rs.length) return <span className="block py-1.5 text-muted-foreground text-xs" title={`${row.eero} has no ${bandLabel(band)} radio`}>{MISSING}</span>;
@@ -349,7 +349,7 @@ function RadiosSection({ health: h, className }: SectionArgs) {
             <span
               key={i}
               className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-xs tabular-nums"
-              title={`${row.eero} ${bandLabel(band)}: ${u === null ? "utilisation not reported" : `${formatPercent(u)} busy`}, channel ${r.channel ?? MISSING}${r.widthMhz ? ` at ${r.widthMhz} MHz` : ""}${r.devices !== null ? `, ${plural(r.devices, "device")}` : ""}${r.txPowerDbm !== null ? `, ${r.txPowerDbm} dBm transmit power` : ""}`}
+              title={`${row.eero} ${bandLabel(band)}: ${u === null ? "utilization not reported" : `${formatPercent(u)} busy`}, channel ${r.channel ?? MISSING}${r.widthMhz ? ` at ${r.widthMhz} MHz` : ""}${r.devices !== null ? `, ${plural(r.devices, "device")}` : ""}${r.txPowerDbm !== null ? `, ${r.txPowerDbm} dBm transmit power` : ""}`}
               style={u === null ? undefined : { background: `color-mix(in srgb, ${bandColor(band)} ${Math.max(6, Math.min(60, u))}%, transparent)` }}
             >
               {u === null ? MISSING : formatPercent(u)}
@@ -396,7 +396,7 @@ function RadiosSection({ health: h, className }: SectionArgs) {
           </tbody>
         </table>
       </Card>
-      <Footnote>How busy each radio's channel is right now (eero's channel utilisation), refreshed every minute. eero picks the channels itself, and keeps a history only for eero Plus.</Footnote>
+      <Footnote>How busy each radio's channel is right now (eero's channel utilization), refreshed every minute. eero picks the channels itself, and keeps a history only for eero Plus.</Footnote>
     </Section>
   );
 }
