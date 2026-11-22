@@ -987,7 +987,8 @@ and are capped at the space available below their trigger, then scroll.
   takes devices offline; the normal title colour for everything else. Never
   an icon inside the title text (no warning triangle on a confirm).
 - **Close X:** every sheet has `DialogPopup`'s X at the top right, with or
-  without a footer. A confirm has none: it is a question, and Cancel and Esc
+  without a footer. It is `ghost-muted`, the dim gray of icons elsewhere,
+  and turns to the foreground colour on hover, in every modal that has one. A confirm has none: it is a question, and Cancel and Esc
   answer it (`showCloseButton={false}`).
 - **Footer:** the band from the confirm (top border, `bg-muted/72`, `py-4`)
   on confirms and form sheets alike; a content sheet (Share Wi-Fi, an
