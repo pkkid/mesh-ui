@@ -129,7 +129,7 @@ export function DayBar({ start, end, enabled, ariaLabel, aside }: { start: strin
         <span>Each day</span>
         {aside != null && <span className="font-normal text-muted-foreground tabular-nums">{aside}</span>}
       </div>
-      <div role="img" aria-label={ariaLabel} className={cn("relative h-5 overflow-hidden rounded-md bg-muted", !enabled && "opacity-60")}>
+      <div role="img" aria-label={ariaLabel} className={cn("relative h-2.5 overflow-hidden rounded-sm bg-muted", !enabled && "opacity-60")}>
         {daySpans(start, end).map((s) => (
           <i
             key={s.from}

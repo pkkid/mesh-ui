@@ -920,7 +920,8 @@ Every write control uses the same pieces (M4.3):
   as one connected control in Segmented's look, any number picked, presets
   under it), `TimeSelect` (the app's dropdown in 15 minute steps, never the
   native time input) and `DayBar` (one day, midnight to midnight, the span
-  in the `foreground` colour, as text, dashed while the schedule is off).
+  in the `foreground` colour, as text, dashed while the schedule is off;
+  10px tall, so it previews without shouting).
 
 ```tsx
 const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });
