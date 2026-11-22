@@ -32,7 +32,7 @@
  */
 
 import { execFile, spawn as spawnProcess } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -59,6 +59,7 @@ import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 import { previewUpdate } from "./updater";
+import { createStartup, openedAtLogin } from "./startup";
 import { createTrayMode, linuxTrayAvailable, type RunText } from "./tray";
 import { fitWindowState, readWindowState, trackWindowState, writeWindowState } from "./window-state";
 import trayColorIcon from "../../build/icons/32x32.png?asset";
@@ -212,7 +213,7 @@ function windowActions(settings: SettingsStore, dir: string): HostActions {
   // An update restart closes every window before before-quit fires: tell tray mode first, or the close is turned into a hide.
   const update = actions.update;
   if (update) actions.update = { ...update, install: () => (trayMode.quitting(), update.install()) };
-  return { ...actions, tray: trayAction };
+  return { ...actions, tray: trayAction, startup: startupAction };
 }
 
 /** The engine for any surface. Only live mode reads or writes the saved session. */
@@ -361,10 +362,39 @@ const trayAction: NonNullable<HostActions["tray"]> = isHeadless
       },
     };
 
+/**
+ * The window's `startup` host action (src/main/startup.ts). Headless runs
+ * keep it in memory, so a screenshot never adds a real login item.
+ */
+const startupAction: NonNullable<HostActions["startup"]> = isHeadless
+  ? (() => {
+      let enabled = false;
+      const status = async () => ({ supported: true, enabled });
+      return { status, set: async (on: boolean) => ((enabled = on), status()) };
+    })()
+  : createStartup({
+      platform: process.platform,
+      install: installKind,
+      exePath: process.execPath,
+      env: process.env,
+      home: os.homedir(),
+      login: { get: (o) => app.getLoginItemSettings(o), set: (s) => app.setLoginItemSettings(s) },
+      fs: {
+        exists: existsSync,
+        read: (f) => readFileSync(f, "utf8"),
+        write: (f, text) => {
+          mkdirSync(path.dirname(f), { recursive: true });
+          writeFileSync(f, text, "utf8");
+        },
+        remove: (f) => rmSync(f, { force: true }),
+      },
+    });
+
 // ---------------------------------------------------------------------------
 // Window
 
-function createWindow(): BrowserWindow {
+/** `hidden`: a login launch with tray mode on stays in the tray until opened. */
+function createWindow({ hidden = false }: { hidden?: boolean } = {}): BrowserWindow {
   const dark = nativeTheme.shouldUseDarkColors;
   const isMac = process.platform === "darwin";
   // Headless runs (ui:shot) always use the default size, so screenshots match.
@@ -425,6 +455,7 @@ function createWindow(): BrowserWindow {
   if (!isHeadless) {
     trackWindowState(win, (state) => writeWindowState(paths.windowState, state));
     win.once("ready-to-show", () => {
+      if (hidden) return;
       if (bounds.maximized) win.maximize();
       win.show();
     });
@@ -564,8 +595,9 @@ if (isCli) {
       themes: createOpenVsx((url, init) => fetch(url, init)),
       devtools: { available: !isDemo, openElectron: () => mainWindow?.webContents.openDevTools({ mode: "right" }) },
     });
-    createWindow();
-    if (runInTray) void trayMode.apply(true);
+    // The tray comes first, so a login launch knows whether it may stay hidden in it.
+    const inTray = runInTray ? await trayMode.apply(true) : false;
+    createWindow({ hidden: inTray && openedAtLogin(process.platform, argv, { get: () => app.getLoginItemSettings() }) });
     app.on("second-instance", () => void showWindow());
     app.on("activate", () => {
       // The Dock icon brings back a window hidden to the tray, or makes a new one.

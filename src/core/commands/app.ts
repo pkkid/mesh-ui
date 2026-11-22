@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { z } from "zod";
 import { readAudit } from "../audit";
 import { CommandError } from "../errors";
-import type { AppInfo, AppSettings, AuditList, CliStatus, UpdateStatus } from "../model";
+import type { AppInfo, AppSettings, AuditList, CliStatus, StartupStatus, UpdateStatus } from "../model";
 import { POLL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, HOST_ONLY, type HostActions } from "../spec";
 
@@ -58,6 +58,7 @@ export const commands: AnyCommand[] = [
       const auth = await ctx.backend.auth.status();
       const cli: CliStatus | null = ctx.host.actions?.cli ? await ctx.host.actions.cli.status() : null;
       const tray = ctx.host.actions?.tray ? await ctx.host.actions.tray.available() : null;
+      const startup = ctx.host.actions?.startup ? await ctx.host.actions.startup.status() : null;
       return {
         version: ctx.host.version,
         electron: ctx.host.electron,
@@ -71,6 +72,7 @@ export const commands: AnyCommand[] = [
         update: await updateStatus(ctx),
         cli,
         tray,
+        startup,
         configDir: ctx.host.configDir ?? "",
       };
     },
@@ -129,6 +131,23 @@ export const commands: AnyCommand[] = [
     gate: { area: null },
     scope: "app",
     run: (ctx): Promise<CliStatus> => action(ctx, "cli").install(),
+  }),
+
+  defineCommand({
+    id: "app.startup.set",
+    label: "Start at login",
+    description:
+      "Opens Mesh UI when you sign in to this computer (a macOS or Windows login item, an XDG autostart entry on Linux), or stops it. With Keep running in the tray on, it starts in the tray. Not in a development build. Only in the Mesh UI window.",
+    icon: "power",
+    params: z.object({ enabled: z.boolean().describe("true to open Mesh UI at login, false to stop.") }),
+    effect: "write",
+    gate: { area: null },
+    scope: "app",
+    run: async (ctx, { enabled }): Promise<StartupStatus> => {
+      const startup = action(ctx, "startup");
+      if (!(await startup.status()).supported) throw new CommandError("bad_params", "Only in an installed copy of Mesh UI, not a development build.");
+      return startup.set(enabled);
+    },
   }),
 
   defineCommand({

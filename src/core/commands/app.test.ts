@@ -28,6 +28,7 @@ describe("app.info", () => {
         update: { state: "unsupported", version: null, channel: "latest", checkedAt: null, progress: null, error: null },
         cli: null,
         tray: null,
+        startup: null,
         configDir: "/tmp/mesh-ui-test",
       },
     });
@@ -112,6 +113,7 @@ const HOST_ONLY_IDS: [string, unknown][] = [
   ["app.update.install", {}],
   ["app.demo.set", { enabled: true }],
   ["app.log.show", {}],
+  ["app.startup.set", { enabled: true }],
 ];
 
 describe("app.info with host actions", () => {
@@ -183,6 +185,39 @@ describe("keep running in the tray (runInTray)", () => {
   it("reports no tray where the host has none (CLI, MCP)", async () => {
     const engine = createEngine({ backend: createDemoBackend(), host });
     expect(await engine.execute<AppInfo>("app.info")).toMatchObject({ ok: true, result: { tray: null } });
+  });
+});
+
+describe("app.startup.set", () => {
+  const fakeStartup = (supported = true) => {
+    let enabled = false;
+    const set: boolean[] = [];
+    return {
+      set,
+      startup: {
+        status: async () => ({ supported, enabled }),
+        set: async (on: boolean) => (set.push(on), (enabled = on), { supported, enabled }),
+      },
+    };
+  };
+
+  it("adds and removes the login item, and app.info shows it", async () => {
+    const f = fakeStartup();
+    const engine = createEngine({ backend: createDemoBackend(), host: { ...host, actions: { startup: f.startup } } });
+    expect(await engine.execute<AppInfo>("app.info")).toMatchObject({ ok: true, result: { startup: { supported: true, enabled: false } } });
+    expect(await engine.execute("app.startup.set", { enabled: true })).toEqual({ ok: true, result: { supported: true, enabled: true } });
+    expect(await engine.execute<AppInfo>("app.info")).toMatchObject({ ok: true, result: { startup: { enabled: true } } });
+    expect(await engine.execute("app.startup.set", { enabled: false })).toMatchObject({ ok: true, result: { enabled: false } });
+    expect(f.set).toEqual([true, false]);
+  });
+
+  it("refuses a development build and bad params", async () => {
+    const f = fakeStartup(false);
+    const engine = createEngine({ backend: createDemoBackend(), host: { ...host, actions: { startup: f.startup } } });
+    expect(await engine.execute("app.startup.set", { enabled: true })).toMatchObject({ ok: false, error: { code: "bad_params", message: expect.stringContaining("development build") } });
+    expect(await engine.execute("app.startup.set", {})).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(await engine.execute("app.startup.set", { enabled: "yes" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+    expect(f.set).toEqual([]);
   });
 });
 
