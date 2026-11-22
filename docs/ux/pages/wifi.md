@@ -30,7 +30,7 @@ Name, password, security and 2.4 GHz only now change through the write kit; ever
 
 ## Built in M5 (time zone)
 
-- **Time zone sheet** (Nickname and location > **Edit**, `TimezoneSheet.tsx`): a select of IANA zones (the runtime's list, plus the current zone if missing), the local time in the chosen zone, and the `settings.impact` panel ("Nothing restarts; schedules follow the new time zone"). **Save** runs `settings.timezone.set` (a `write`, no confirm), then a toast "Time zone set to ..." with **Undo**, which sets the old zone back. If eero answers but keeps the old zone, the command fails with that reason (an error toast with Retry), so the toast never names a zone eero did not save. Edit dims with the gate's reason (settings permission) and while the network is offline.
+- **Time zone sheet** (Nickname and location > **Edit**, `TimezoneSheet.tsx`): a select of IANA zones (the runtime's list, plus the current zone if missing), the local time in the chosen zone, and the `settings.impact` panel ("Nothing restarts; schedules follow the new time zone"). **Save** runs `settings.timezone.set` (`disruptive`: it always asks in a confirm over the sheet), then a toast "Time zone set to ..." with **Undo**, which sets the old zone back. If eero answers but keeps the old zone, the command fails with that reason (an error toast with Retry), so the toast never names a zone eero did not save. Edit dims with the gate's reason (settings permission) and while the network is offline.
 - The network nickname stays read only: no command sets it yet (M6). **Print a card** is still "Coming soon" (M6).
 
 ## Built in M6.9 (nickname, Print a card, time zone)
@@ -98,7 +98,7 @@ Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `
 | Band security segment | stages `wifi.security.set` `{band24?, band5?}` | disruptive | confirm dialog naming the WPA2 only devices that can not rejoin | |
 | 2.4 GHz only Turn on / Turn off | `wifi.hide5g.set` `{enabled}` | disruptive | confirm dialog with the impact | Countdown to `hide5g.expiresAt` |
 | Nickname input (Enter or leaving the field) | `network.nickname.set` `{nickname}` (empty clears) | write | no | Toast with Undo (sets the old nickname back); network switcher updates |
-| Time zone pencil, sheet Save | `settings.timezone.set` `{timezone}` | write | only when the new zone starts a scheduled pause now (dialog over the sheet) | Toast with Undo (sets the old zone back). Demo only: dimmed on the eero backend (M6.9) |
+| Time zone pencil, sheet Save | `settings.timezone.set` `{timezone}` | disruptive | Yes, a dialog over the sheet (every schedule shifts; core's message names devices a schedule takes offline right away) | Toast with Undo (sets the old zone back). Demo only: dimmed on the eero backend (M6.9) |
 | Confirm bar Discard | none | | | Reverts staged edits |
 | Save and reconnect | `wifi.name.set`, `wifi.password.set`, `wifi.security.set` in that order, each with `confirm: true` | disruptive | the confirm bar plus impact panel is the confirm | Wireless clients drop and rejoin; hero updates |
 

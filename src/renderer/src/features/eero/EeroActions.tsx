@@ -20,7 +20,7 @@ import { restartLine } from "./helpers";
 export function useEeroRestart(eero: Eero | null, eeros: ReadonlyArray<Eero>, networkName: string, offline: boolean) {
   const name = eero?.location ?? "eero";
   const restart = useWrite<{ eero: string }, RestartResult>("eero.restart", {
-    confirm: { title: `Restart ${name}?`, confirmLabel: `Yes, restart ${name}` },
+    confirm: { title: `Restart ${name}?`, confirmLabel: `Restart ${name}` },
   });
   const gate = useGate({ area: "eeros" });
   const restarting = eero?.status === "updating";

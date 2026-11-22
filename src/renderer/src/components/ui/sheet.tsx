@@ -121,16 +121,22 @@ function Sheet({
   );
 }
 
-/** A labelled field: label, the control, then the bad_params message or a live helper. */
+/**
+ * A labelled field: label, the control, then the bad_params message or a live
+ * helper. `aside` sits at the right end of the label's line, for a small
+ * control that changes what the field takes (Transfer's Email or Text message).
+ */
 function SheetField({
   label,
   htmlFor,
   error,
   helper,
+  aside,
   children,
 }: {
   label: ReactNode;
   htmlFor?: string;
+  aside?: ReactNode;
   /** The command's bad_params message for this field. */
   error?: string;
   /** Live helper ("18 / 32"), hidden while there is an error. */
@@ -139,9 +145,18 @@ function SheetField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="font-medium text-xs">
-        {label}
-      </label>
+      {aside ? (
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor={htmlFor} className="font-medium text-xs">
+            {label}
+          </label>
+          {aside}
+        </div>
+      ) : (
+        <label htmlFor={htmlFor} className="font-medium text-xs">
+          {label}
+        </label>
+      )}
       {children}
       {error ? (
         <div role="alert" className="text-destructive-foreground text-xs">

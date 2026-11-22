@@ -133,7 +133,7 @@ export function SoftwareCard({
 
   const runInstall = async () => {
     if (!version || !networkId) return;
-    const r = await install.run({}, { confirm: { title: `Install eeroOS ${version} now?`, confirmLabel: "Yes, install now" } });
+    const r = await install.run({}, { confirm: { title: `Install eeroOS ${version} now?`, confirmLabel: "Install now" } });
     if (!r?.ok) return;
     setWatching(true);
     watchInstall(networkId, version, () => mounted.current && setWatching(false));

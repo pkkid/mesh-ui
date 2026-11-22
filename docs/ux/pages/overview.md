@@ -116,7 +116,7 @@ actions.
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
 | Share Wi-Fi | `wifi.share` | query | No | Opens the Share Wi-Fi sheet (`features/wifi/ShareSheet.tsx`, shared with Devices): opening it is the ask, so it runs `wifi.share` then and shows the QR code with Copy password and Save QR. The password lives only while the sheet is open |
-| Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog | Opens the confirm dialog "Restarts every eero on Maple Street at once. Everyone loses internet for about 2 to 3 minutes." with "Yes, restart network" and Cancel. On run: progress toast, hero status Restarting, faster polling until Online |
+| Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog | Opens the confirm dialog "Restarts every eero on Maple Street at once. Everyone loses internet for about 2 to 3 minutes." with "Restart network" and Cancel. On run: progress toast, hero status Restarting, faster polling until Online |
 | Range dropdown (Data usage) | - (view state; re-queries `usage.get` with the range) | - | No | Chart, hero and share bar switch range |
 | Topology → | - | - | No | eeros page |
 | eero row | - | - | No | eero detail |

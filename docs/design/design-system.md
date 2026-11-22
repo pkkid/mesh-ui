@@ -998,6 +998,28 @@ and are capped at the space available below their trigger, then scroll.
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
   the left.
 
+### Confirm
+
+The detail for confirms (#360). Every confirm goes through `ConfirmDialog`;
+pages pass words, never layout.
+
+- **Words:** the title names the target as a question ("Restart network?",
+  "Remove "Garage" from Maple Street?"). The message is the engine's
+  `needs_confirm` text, one or two sentences on who loses what and for how
+  long. The action button repeats the action with no "Yes," in front
+  ("Restart network", "Remove from network", "Change time zone").
+- **Type-to-confirm:** a destructive action on a named thing (a network, an
+  eero, a profile, an admin, the account) adds a field under the message
+  ("Type "Garage" to confirm"); the button stays disabled until it matches.
+- **A confirm with fields** (Transfer network; Change email and Verify
+  mobile) keeps the confirm width and rhythm: title, 30px, message, 16px,
+  the fields 16px apart, 30px, buttons. A small choice that changes what a
+  field takes (Email or Text message) is a `tool` dropdown at the right end
+  of that field's label line (`SheetField aside`), not a toggle above it.
+- **Always asks:** `disruptive` and `destructive` commands confirm every
+  time, including a toast's Undo that runs one. Changing the time zone is
+  `disruptive`, since every schedule shifts at once.
+
 ### No divider lines
 
 No modal has a rule under its header or above its footer; spacing alone

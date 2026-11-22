@@ -119,48 +119,51 @@ export function CodeDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
-      <DialogPopup showCloseButton={false} className="w-full max-w-sm">
+      <DialogPopup showCloseButton={false} className="w-full max-w-md">
+        {/* Confirm size and spacing (design-system.md#modals-and-popups): title, 30px, message, the field, 30px, buttons. */}
         <form
-          className="flex flex-col gap-4 p-5"
+          className="flex flex-col px-5 pt-5 pb-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (!ready || running) return;
             void (step === "field" ? submitField() : submitCode());
           }}
         >
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-[30px]">
             <DialogTitle className="text-base">{step === "field" ? title : verify?.command === "account.phone.verify" ? "Verify mobile" : "Verify email"}</DialogTitle>
-            <DialogDescription className="text-xs">{lead}</DialogDescription>
+            <DialogDescription className="text-foreground/80">{lead}</DialogDescription>
           </div>
-          {step === "field" && field ? (
-            <SheetField label={field.label} htmlFor={ids.field} error={error ?? undefined} helper={field.hint}>
-              <Input
-                id={ids.field}
-                type={field.type}
-                value={value}
-                placeholder={field.placeholder}
-                autoComplete="off"
-                spellCheck={false}
-                autoFocus
-                onChange={(e) => setValue(e.target.value)}
-              />
-            </SheetField>
-          ) : (
-            <SheetField label="Code" htmlFor={ids.code} error={error ?? undefined} helper={demoHint ?? undefined}>
-              <Input
-                id={ids.code}
-                value={code}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                placeholder="000000"
-                className="font-mono tabular-nums tracking-[0.3em]"
-                autoFocus
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              />
-            </SheetField>
-          )}
-          <div className="flex justify-end gap-2">
+          <div className="pt-4">
+            {step === "field" && field ? (
+              <SheetField label={field.label} htmlFor={ids.field} error={error ?? undefined} helper={field.hint}>
+                <Input
+                  id={ids.field}
+                  type={field.type}
+                  value={value}
+                  placeholder={field.placeholder}
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoFocus
+                  onChange={(e) => setValue(e.target.value)}
+                />
+              </SheetField>
+            ) : (
+              <SheetField label="Code" htmlFor={ids.code} error={error ?? undefined} helper={demoHint ?? undefined}>
+                <Input
+                  id={ids.code}
+                  value={code}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder="000000"
+                  className="font-mono tabular-nums tracking-[0.3em]"
+                  autoFocus
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                />
+              </SheetField>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-[30px]">
             <Button type="button" size="sm" variant="ghost" disabled={running} onClick={onClose}>
               {step === "code" && field ? "Later" : "Cancel"}
             </Button>

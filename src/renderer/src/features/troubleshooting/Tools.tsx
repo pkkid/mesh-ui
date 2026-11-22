@@ -158,7 +158,7 @@ export function StatusLights() {
 function RestartEero({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; networkName: string }) {
   const gate = useGate("eero.restart");
   const write = useWrite<{ eero: string }, RestartResult>("eero.restart", {
-    confirm: { title: `Restart ${eero.location}?`, confirmLabel: `Yes, restart ${eero.location}` },
+    confirm: { title: `Restart ${eero.location}?`, confirmLabel: `Restart ${eero.location}` },
   });
   const blocked = eero.status === "offline" ? `${eero.location} is offline` : eero.status === "updating" ? `${eero.location} is restarting` : null;
   const run = async () => {

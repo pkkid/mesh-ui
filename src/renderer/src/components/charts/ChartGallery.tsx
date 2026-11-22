@@ -404,7 +404,7 @@ function WriteKit() {
       <ConfirmDialog
         ask={
           dialog === "restart"
-            ? { effect: "disruptive", title: "Restart Maple Street?", message: "Everyone loses internet for about 2 to 3 minutes, including any calls in progress.", confirmLabel: "Yes, restart network" }
+            ? { effect: "disruptive", title: "Restart Maple Street?", message: "Everyone loses internet for about 2 to 3 minutes, including any calls in progress.", confirmLabel: "Restart network" }
             : dialog === "delete"
               ? { effect: "destructive", title: "Delete Mia?", message: "Delete profile: this cannot be undone. Her 4 devices move to Unassigned.", confirmLabel: "Delete profile", typeToConfirm: "Mia" }
               : null

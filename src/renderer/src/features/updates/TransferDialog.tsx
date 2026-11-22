@@ -9,7 +9,7 @@
  * permission) show the reason and no button.
  * docs/ux/pages/updates-admins.md (Layout 6).
  */
-import { ArrowRightLeft, TriangleAlert } from "lucide-react";
+import { ArrowRightLeft } from "lucide-react";
 import { useId, useState } from "react";
 
 import { defaultDeps, fieldErrors, performWrite } from "~/app/useWrite";
@@ -18,12 +18,17 @@ import { Card, Section } from "~/components/ui/card";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { GatedButton, useGate } from "~/components/ui/page";
-import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { SheetField } from "~/components/ui/sheet";
 import { Status } from "~/components/ui/status";
 import type { Network } from "../../../../core/model";
 
 type Sent = { recipient: string; sentTo: string };
+
+const VIA = [
+  { value: "email", label: "By email" },
+  { value: "phone", label: "By text message" },
+] as const;
 
 const STEPS: [string, string][] = [
   ["Review", "Admins and settings move with the network; subscriptions do not."],
@@ -128,40 +133,51 @@ function TransferDialog({ networkName, onClose, onSent }: { networkName: string;
   return (
     <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
       <DialogPopup showCloseButton={false} className="w-full max-w-md">
+        {/* Laid out as a confirm (design-system.md#modals-and-popups): title, 30px, message, the fields, 30px, buttons. */}
         <form
-          className="flex flex-col gap-4 p-5"
+          className="flex flex-col px-5 pt-5 pb-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (ready && !running) void start();
           }}
         >
-          <div className="flex flex-col gap-1.5">
-            <DialogTitle className="flex items-center gap-2 text-base text-destructive-foreground">
-              <TriangleAlert className="size-4 shrink-0" />
-              Transfer {networkName}?
-            </DialogTitle>
-            <DialogDescription className="text-foreground/80 text-xs">
+          <div className="flex flex-col gap-[30px]">
+            <DialogTitle className="text-base text-destructive-foreground">Transfer {networkName}?</DialogTitle>
+            <DialogDescription className="text-foreground/80">
               The recipient becomes the owner once they accept. Admins and settings move; subscriptions do not. You stay on as an admin. This cannot be undone.
             </DialogDescription>
           </div>
-          <SheetField label="Recipient's name" htmlFor={ids.name} error={errors.name}>
-            <Input id={ids.name} value={recipient} autoComplete="off" onChange={(e) => setRecipient(e.target.value)} />
-          </SheetField>
-          <div className="flex flex-col gap-2">
-            <Segmented
-              aria-label="Send the transfer by"
-              value={via}
-              onValueChange={(v) => {
-                setVia(v);
-                setContact("");
-              }}
-              options={[
-                { value: "email", label: "Email" },
-                { value: "phone", label: "Text message" },
-              ]}
-              className="self-start"
-            />
-            <SheetField label={via === "email" ? "Recipient's email" : "Recipient's phone"} htmlFor={ids.contact} error={errors[via]}>
+          <div className="flex flex-col gap-4 pt-4">
+            <SheetField label="Recipient's name" htmlFor={ids.name} error={errors.name}>
+              <Input id={ids.name} value={recipient} autoComplete="off" onChange={(e) => setRecipient(e.target.value)} />
+            </SheetField>
+            <SheetField
+              label={via === "email" ? "Recipient's email" : "Recipient's phone"}
+              htmlFor={ids.contact}
+              error={errors[via]}
+              aside={
+                <Select
+                  items={VIA}
+                  value={via}
+                  onValueChange={(v) => {
+                    if (v !== "email" && v !== "phone") return;
+                    setVia(v);
+                    setContact("");
+                  }}
+                >
+                  <SelectTrigger size="tool" aria-label="Send the transfer by">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectPopup>
+                    {VIA.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectPopup>
+                </Select>
+              }
+            >
               <Input
                 id={ids.contact}
                 type={via === "email" ? "email" : "tel"}
@@ -171,11 +187,11 @@ function TransferDialog({ networkName, onClose, onSent }: { networkName: string;
                 onChange={(e) => setContact(e.target.value)}
               />
             </SheetField>
+            <SheetField label={`Type "${networkName}" to continue`} htmlFor={ids.confirm} error={errors.networkName ?? errors._form}>
+              <Input id={ids.confirm} value={typed} autoComplete="off" spellCheck={false} onChange={(e) => setTyped(e.target.value)} />
+            </SheetField>
           </div>
-          <SheetField label={`Type "${networkName}" to continue`} htmlFor={ids.confirm} error={errors.networkName ?? errors._form}>
-            <Input id={ids.confirm} value={typed} autoComplete="off" spellCheck={false} onChange={(e) => setTyped(e.target.value)} />
-          </SheetField>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-[30px]">
             <Button type="button" size="sm" variant="ghost" disabled={running} onClick={onClose}>
               Cancel
             </Button>

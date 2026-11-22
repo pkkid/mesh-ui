@@ -86,7 +86,7 @@ Sidebar count: number of eeros.
    "Everyone loses internet" until it answers), and **Restart network…**
    (outline, neutral, dim icon; the ellipsis because it opens the confirm
    dialog: "Restarts every eero on Maple Street at once. Everyone loses
-   internet for about 2 to 3 minutes." with **Yes, restart network** and
+   internet for about 2 to 3 minutes." with **Restart network** and
    **Cancel**).
 
 ## Data

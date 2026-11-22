@@ -2,9 +2,10 @@
  * The time zone sheet behind Wi-Fi > Nickname and location > Edit: one select
  * of IANA zones (this runtime's list, plus the current zone if it is
  * missing), the local time there, and core's `settings.impact` for the
- * change. Save runs `settings.timezone.set` through the write kit. It is a
- * `write`, but core asks (a confirm dialog over the sheet) when the new zone
- * starts a scheduled pause right now; the toast's Undo sets the old zone back.
+ * change. Save runs `settings.timezone.set` through the write kit. It is
+ * `disruptive` (every schedule shifts), so Save always asks in a confirm over
+ * the sheet with core's message, which names any devices a schedule takes
+ * offline right away; the toast's Undo sets the old zone back.
  * docs/ux/pages/wifi.md (Nickname and location).
  */
 import { Clock } from "lucide-react";
@@ -40,7 +41,7 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
   const now = useNow(30_000);
   const save = useWrite<{ timezone: string }, NetworkSettings>(ID, {
     success: (r) => `Time zone set to ${r.timezone ?? tz}`,
-    undo: current ? { id: ID, params: { timezone: current }, success: `Time zone set back to ${current}` } : undefined,
+    undo: current ? { id: ID, params: { timezone: current }, success: `Time zone set back to ${current}`, confirm: { title: "Change the time zone back?", confirmLabel: "Change time zone" } } : undefined,
     form: true,
     confirmIn: "nested",
     confirm: { title: "Change the time zone?", confirmLabel: "Change time zone" },
