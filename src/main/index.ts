@@ -62,7 +62,14 @@ import { previewUpdate } from "./updater";
 import { createStartup, openedAtLogin } from "./startup";
 import { createTrayMode, linuxTrayAvailable, type RunText } from "./tray";
 import { fitWindowState, readWindowState, trackWindowState, writeWindowState } from "./window-state";
-import trayColorIcon from "../../build/icons/32x32.png?asset";
+import trayBlack16 from "../../build/tray/png/mesh-ui-tray-black-16.png?asset";
+import trayBlack22 from "../../build/tray/png/mesh-ui-tray-black-22.png?asset";
+import trayBlack32 from "../../build/tray/png/mesh-ui-tray-black-32.png?asset";
+import trayBlack44 from "../../build/tray/png/mesh-ui-tray-black-44.png?asset";
+import trayWhite16 from "../../build/tray/png/mesh-ui-tray-white-16.png?asset";
+import trayWhite22 from "../../build/tray/png/mesh-ui-tray-white-22.png?asset";
+import trayWhite32 from "../../build/tray/png/mesh-ui-tray-white-32.png?asset";
+import trayWhite44 from "../../build/tray/png/mesh-ui-tray-white-44.png?asset";
 import trayTemplateIcon from "../../build/tray/mesh-ui-trayTemplate.png?asset";
 import trayTemplateIcon2x from "../../build/tray/mesh-ui-trayTemplate@2x.png?asset";
 import { isAmazonAllowedNavigation } from "../core/eero/amazonNative";
@@ -303,14 +310,31 @@ function electronCliHost(): CliHost {
 const runText: RunText = (cmd, args) =>
   new Promise((resolve) => execFile(cmd, args, { timeout: 2000, encoding: "utf8" }, (err, stdout) => resolve(err ? null : stdout)));
 
-/** The tray icon: a template image in the macOS menu bar, the color app icon on Windows and Linux panels. */
+/** The monochrome tray glyphs (build/tray/png, `pnpm icons --tray`): white for dark taskbars and panels, black for light ones. */
+const TRAY_GLYPHS = {
+  win32: { white: [trayWhite16, trayWhite32], black: [trayBlack16, trayBlack32] },
+  linux: { white: [trayWhite22, trayWhite44], black: [trayBlack22, trayBlack44] },
+} as const;
+
+/** Whether the taskbar or panel the icon sits on is dark. Windows themes its taskbar apart from apps. */
+const darkPanel = () => (process.platform === "win32" ? nativeTheme.shouldUseDarkColorsForSystemIntegratedUI : nativeTheme.shouldUseDarkColors);
+
+/**
+ * The tray icon, always the monochrome mesh glyph: a template image in the
+ * macOS menu bar (macOS tints it), and on Windows and Linux white or black
+ * to suit the taskbar or panel, swapped when the OS theme changes.
+ */
 function trayImage(): Electron.NativeImage {
-  if (process.platform !== "darwin") return nativeImage.createFromBuffer(readFileSync(trayColorIcon));
-  const image = nativeImage.createFromBuffer(readFileSync(trayTemplateIcon), { scaleFactor: 1 });
-  image.addRepresentation({ scaleFactor: 2, buffer: readFileSync(trayTemplateIcon2x) });
-  image.setTemplateImage(true);
+  const [one, two] =
+    process.platform === "darwin" ? [trayTemplateIcon, trayTemplateIcon2x] : TRAY_GLYPHS[process.platform === "win32" ? "win32" : "linux"][darkPanel() ? "white" : "black"];
+  const image = nativeImage.createFromBuffer(readFileSync(one), { scaleFactor: 1 });
+  image.addRepresentation({ scaleFactor: 2, buffer: readFileSync(two) });
+  if (process.platform === "darwin") image.setTemplateImage(true);
   return image;
 }
+
+/** The tray icon while it shows, so a theme change can swap its glyph. */
+let trayIcon: Tray | null = null;
 
 /** Shows, restores and focuses the window, creating it when there is none. */
 function showWindow(): BrowserWindow {
@@ -326,6 +350,7 @@ const trayMode = createTrayMode({
   available: async () => process.platform !== "linux" || linuxTrayAvailable(runText),
   create(menu) {
     const tray = new Tray(trayImage());
+    trayIcon = tray;
     tray.setToolTip("Mesh UI");
     tray.setContextMenu(
       Menu.buildFromTemplate([
@@ -345,6 +370,19 @@ const trayMode = createTrayMode({
     notifyHost.show({ title: "Mesh UI is still running", body: `It is in the ${where}, so desktop alerts keep arriving. Quit from there to close it.` }, () => void showWindow());
   },
 });
+
+/** How long a Linux login launch waits for the panel's tray host before showing the window. */
+const LOGIN_TRAY_WAIT_MS = 20_000;
+
+/** Shows the tray icon, retrying every second for up to `waitMs` while no tray host is there yet. */
+async function waitForTray(waitMs: number): Promise<boolean> {
+  const until = Date.now() + waitMs;
+  for (;;) {
+    if (await trayMode.apply(true)) return true;
+    if (Date.now() >= until) return false;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
 
 /**
  * The window's `tray` host action. The single-instance lock follows the
@@ -596,8 +634,11 @@ if (isCli) {
       devtools: { available: !isDemo, openElectron: () => mainWindow?.webContents.openDevTools({ mode: "right" }) },
     });
     // The tray comes first, so a login launch knows whether it may stay hidden in it.
-    const inTray = runInTray ? await trayMode.apply(true) : false;
-    createWindow({ hidden: inTray && openedAtLogin(process.platform, argv, { get: () => app.getLoginItemSettings() }) });
+    // A login launch with tray mode on always starts hidden in the tray. At login a Linux panel's
+    // tray host may come up after us, so wait for it a while before giving up and showing the window.
+    const atLogin = runInTray && openedAtLogin(process.platform, argv, { get: () => app.getLoginItemSettings() });
+    const inTray = runInTray ? await waitForTray(atLogin && process.platform === "linux" ? LOGIN_TRAY_WAIT_MS : 0) : false;
+    createWindow({ hidden: inTray && atLogin });
     app.on("second-instance", () => void showWindow());
     app.on("activate", () => {
       // The Dock icon brings back a window hidden to the tray, or makes a new one.
@@ -605,6 +646,10 @@ if (isCli) {
       else if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
     powerMonitor.on("shutdown", () => trayMode.quitting());
+    // Light or dark taskbar: the tray glyph follows (macOS tints its template image itself).
+    nativeTheme.on("updated", () => {
+      if (trayIcon && !trayIcon.isDestroyed() && process.platform !== "darwin") trayIcon.setImage(trayImage());
+    });
   });
 
   // Every real quit (tray menu, Cmd+Q, app menu) lets the window close.
