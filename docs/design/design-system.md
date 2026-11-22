@@ -991,7 +991,8 @@ and are capped at the space available below their trigger, then scroll.
   included, has no X; Esc and Cancel close it (`showCloseButton={false}`). A
   dialog with no Cancel (only Done, or no footer) keeps `DialogPopup`'s X at
   the top right, since Esc would otherwise be its only way out.
-- **Footer:** buttons are `sm`, on the right, Cancel (ghost) then the primary
+- **Footer:** buttons are `sm`, on the right, Cancel (ghost; `outline` on a
+  confirm, see [Confirm](#confirm)) then the primary
   action last. The action is `outline`, the same neutral button as a hero
   action, never filled blue (#360; Change email and Verify mobile follow it,
   sheets still show a filled Save and move over in #346 task 3). On a confirm the action button matches the title:
@@ -1005,6 +1006,11 @@ and are capped at the space available below their trigger, then scroll.
 The detail for confirms (#360). Every confirm goes through `ConfirmDialog`;
 pages pass words, never layout.
 
+- **Layout** (as T3 Code's `AlertDialog`): two bands. The body (title,
+  30px, message, and any fields) sits on `bg-background`, 20px padding. The
+  footer is a band with a top border and `bg-muted/72`, 16px tall padding,
+  holding Cancel (`outline`) and the action button on the right. This is the
+  one modal with a rule above its footer.
 - **Words:** the title names the target as a question ("Restart network?",
   "Remove "Garage" from Maple Street?"). The message is the engine's
   `needs_confirm` text, one or two sentences on who loses what and for how
@@ -1015,7 +1021,8 @@ pages pass words, never layout.
   ("Type "Garage" to confirm"); the button stays disabled until it matches.
 - **A confirm with fields** (Transfer network; Change email and Verify
   mobile) keeps the confirm width and rhythm: title, 30px, message, 16px,
-  the fields 16px apart, 30px, buttons. A small choice that changes what a
+  the fields 16px apart, 30px, buttons. They do not use the footer band
+  yet. A small choice that changes what a
   field takes (Email or Text message) is a `tool` dropdown at the right end
   of that field's label line (`SheetField aside`), not a toggle above it.
 - **Always asks:** `disruptive` and `destructive` commands confirm every
@@ -1024,7 +1031,8 @@ pages pass words, never layout.
 
 ### No divider lines
 
-No modal has a rule under its header or above its footer; spacing alone
+No modal has a rule under its header or above its footer (except a
+confirm's footer band, see [Confirm](#confirm)); spacing alone
 separates them, so every modal reads as one clean panel, not three stacked
 sections. Rules inside the body (a list's row dividers) are fine. In a menu,
 a separator between groups of items is a 1px `border-border/60` line with
