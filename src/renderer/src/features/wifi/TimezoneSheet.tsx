@@ -8,21 +8,18 @@
  * offline right away; the toast's Undo sets the old zone back.
  * docs/ux/pages/wifi.md (Nickname and location).
  */
-import { Clock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { fieldErrors, useWrite } from "~/app/useWrite";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { useNow } from "~/components/ui/page";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { ImpactPanel } from "~/features/advanced/ImpactPanel";
 import { networkClock } from "../../../../core/format";
 import type { NetworkSettings } from "../../../../core/model";
 
 const ID = "settings.timezone.set";
-
-const selectClass =
-  "h-8 w-full cursor-pointer truncate rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 dark:bg-input/32";
 
 /** Every IANA zone this runtime knows, A to Z, with `current` added if it is missing. */
 export function timeZoneOptions(current: string | null): string[] {
@@ -52,7 +49,6 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<Clock />}
       title="Time zone"
       subtitle="Profile schedules, power saving and updates follow it"
       dirty={tz !== "" && tz !== current}
@@ -60,14 +56,18 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
       error={errors._form}
     >
       <SheetField label="Time zone" htmlFor="timezone-sheet-zone" error={errors.timezone} helper={tz ? `Local time ${networkClock(tz).time(now)}` : null}>
-        <select id="timezone-sheet-zone" className={selectClass} value={tz} onChange={(e) => setTz(e.target.value)}>
-          {tz === "" && <option value="">Not set</option>}
-          {zones.map((z) => (
-            <option key={z} value={z}>
-              {z.replaceAll("_", " ")}
-            </option>
-          ))}
-        </select>
+        <Select items={zones.map((z) => ({ value: z, label: z.replaceAll("_", " ") }))} value={tz || null} onValueChange={(v) => v !== null && setTz(v)}>
+          <SelectTrigger id="timezone-sheet-zone" className="w-full min-w-0">
+            <SelectValue placeholder="Not set" />
+          </SelectTrigger>
+          <SelectPopup align="start" className="max-h-72 text-sm">
+            {zones.map((z) => (
+              <SelectItem key={z} value={z}>
+                {z.replaceAll("_", " ")}
+              </SelectItem>
+            ))}
+          </SelectPopup>
+        </Select>
       </SheetField>
       <ImpactPanel ids={[ID]} />
       <WriteConfirmDialog write={save} />

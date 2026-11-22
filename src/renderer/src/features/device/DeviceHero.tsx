@@ -260,12 +260,10 @@ export function IconSheet({ device: d, open, onClose }: { device: Device; open: 
     return res;
   };
 
-  const CurrentIcon = deviceIcon({ type, category: deviceCategory(type) });
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<CurrentIcon className="size-4" />}
       title="Icon"
       subtitle={`The icon for ${d.name}, shown everywhere in Mesh UI and the eero app`}
       dirty={changed}

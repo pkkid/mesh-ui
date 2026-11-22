@@ -13,7 +13,7 @@
  * changes both: the password goes first (its confirm names an open
  * network), then the rename runs without asking again.
  */
-import { Copy, Eye, EyeOff, Pencil, TriangleAlert, Wand2, Wifi } from "lucide-react";
+import { Copy, Eye, EyeOff, Pencil, TriangleAlert, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useCommand } from "~/app/useCommand";
@@ -200,7 +200,6 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
     <Sheet
       open
       onClose={onClose}
-      icon={<Wifi />}
       title="Name & password"
       subtitle={guest.online > 0 ? `Saving disconnects ${guest.online} ${guest.online === 1 ? "guest" : "guests"} now online` : "Saving disconnects current guests"}
       dirty={dirty}

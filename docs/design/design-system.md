@@ -938,7 +938,7 @@ Until a kind has moved, its current call sites may still differ (listed in
 | Kind | Use it for | Built with |
 | --- | --- | --- |
 | Confirm | A yes or no before a `disruptive` or `destructive` action, or a write the UI asks about first (`askFirst`). Nothing to fill in except a type-to-confirm name | `ConfirmDialog` (`ui/confirm.tsx`), opened by `useWrite`; `WriteConfirmDialog` inside another dialog |
-| Sheet | An editor with more than one field, or content that is the action itself (Share Wi-Fi's QR, Admins) | `Sheet` (`ui/sheet.tsx`) |
+| Sheet | An editor with more than one field, or content that is the action itself (Share Wi-Fi's QR, Invite an admin) | `Sheet` (`ui/sheet.tsx`) |
 | Popover | A panel anchored to its trigger: filters, notifications, the network switcher, pickers | `PopoverPopup` (`ui/popover.tsx`) |
 | Menu | A short list of actions on one target or selection: a row's Actions, the bulk bar | Base UI `Menu` with the shared menu classes |
 
@@ -954,7 +954,7 @@ Modals take one of three widths, never a free value:
 | --- | --- | --- |
 | Confirm | 448px (`max-w-md`) | Every confirm, and small single-purpose dialogs (sign-in code, transfer of ownership) |
 | Sheet | 540px | Every sheet (the default), Share Wi-Fi included |
-| Wide sheet | 640px | A sheet whose content needs the room: the device icon picker, Invite an admin, Add theme |
+| Wide sheet | 640px | A sheet whose content needs the room: the device icon picker |
 
 Height follows the content. A modal never grows past the window: it keeps a
 16px gap at the bottom and its body scrolls inside, header and footer fixed.
@@ -974,25 +974,25 @@ and are capped at the space available below their trigger, then scroll.
   button row, in every modal, sheets and confirms alike. On a confirm the
   title section is the title alone, so it reads title, 30px, message, 30px,
   buttons (`gap-[30px]`, `pt-[30px]`); a type-to-confirm field sits under the
-  message, still 30px above the buttons. On a sheet it is header, 30px,
-  fields, 30px, buttons.
-- **Header:** a sheet's header is an optional 32px icon tile (`bg-muted`,
-  1px border, muted icon), the title (`text-base font-semibold`) and an
-  optional muted `text-xs` line on what it affects ("Mia · pauses all 4
-  devices automatically"). A confirm's header is its title alone in
-  `text-base font-semibold`; its message is `text-foreground/80`.
+  message, still 30px above the buttons. On a sheet it is title and muted
+  line, 20px, fields, 30px, the footer band.
+- **Header:** no icon tile. A sheet's header is the title (`text-base
+  font-semibold`) and an optional muted `text-xs` line on what it affects
+  ("Mia · pauses all 4 devices automatically"). A confirm's header is its
+  title alone in `text-base font-semibold`; its message is
+  `text-foreground/80`.
 - **Title colour says how serious it is:** red
   (`text-destructive-foreground`) for a `destructive` action, which cannot be
   undone; yellow (`text-warning-foreground`) for a `disruptive` one, which
   takes devices offline; the normal title colour for everything else. Never
-  an icon inside the title text (no warning triangle on a confirm); a
-  sheet's icon tile sits beside its title, not in it.
-- **No close X with a Cancel button:** any modal that has Cancel, sheets
-  included, has no X; Esc and Cancel close it (`showCloseButton={false}`). A
-  dialog with no Cancel (only Done, or no footer) keeps `DialogPopup`'s X at
-  the top right, since Esc would otherwise be its only way out.
-- **Footer:** buttons are `sm`, on the right, Cancel (ghost; `outline` on a
-  confirm, see [Confirm](#confirm)) then the primary
+  an icon inside the title text (no warning triangle on a confirm).
+- **Close X:** every sheet has `DialogPopup`'s X at the top right, with or
+  without a footer. A confirm has none: it is a question, and Cancel and Esc
+  answer it (`showCloseButton={false}`).
+- **Footer:** the band from the confirm (top border, `bg-muted/72`, `py-4`)
+  on confirms and form sheets alike; a content sheet (Share Wi-Fi, an
+  invite once made) has no footer. Buttons are `sm`, on the right, Cancel
+  (`outline`) then the primary
   action last. The action is filled `bg-primary` (`default`), as T3 Code's
   dialogs: sheet Save, Send code (Change email, Verify mobile), Create
   invite, Add theme. On a confirm the action button matches the title:
@@ -1008,18 +1008,23 @@ and are capped at the space available below their trigger, then scroll.
 The detail for sheets (#361). Every sheet goes through `Sheet`
 (`ui/sheet.tsx`); pages pass a title, fields and a save, never layout.
 
-- **One style:** no rule under the header or above the footer
-  ([No divider lines](#no-divider-lines)). There is no other style and no
-  prop to turn the rules back on.
+- **One style, the confirm's:** the popup on `bg-background`; the title
+  and its muted line, 20px, the content, 30px, then the footer band (top
+  border, `bg-muted/72`) with Cancel (`outline`) and the filled primary
+  action. No icon tile and no rule under the header. There is no other
+  style.
 - **Width:** `size` names it, never a class: the default is 540px, `wide`
   is 640px for content that needs the room (the device icon picker). A call
   site never passes `className` or a `max-w-*`.
-- **Layout:** header (`pt-5`: icon tile, title, muted line), 30px, the
-  fields 16px apart, 30px, the footer (`pb-4`: optional action on the left,
-  Cancel and Save on the right), all at 20px from the sides. A form-level
-  error sits under the last field.
-- **No X:** a sheet has Cancel, so it has no close button; Esc and Cancel
-  close it.
+- **Layout:** header (`pt-5`), 20px, the fields 16px apart, 30px, the
+  footer band (optional action on the left, Cancel and Save on the right),
+  all at 20px from the sides. A form-level error sits under the last field.
+- **Form or content:** a sheet with `onSave` is a form and has the footer.
+  Without it the sheet is content (Share Wi-Fi's QR): no footer, 20px
+  under the content. A sheet can be both in turn: Invite an admin is a form
+  until the invite exists, then shows its QR with no footer.
+- **Close X:** every sheet has the X at the top right; the X, Esc and
+  Cancel close it.
 - **Scroll:** when a sheet would pass the bottom of the window, its body
   scrolls and the header and footer stay in view. A sheet never adds its
   own scroll box or max height.
@@ -1064,8 +1069,9 @@ pages pass words, never layout.
 
 ### No divider lines
 
-No modal has a rule under its header or above its footer (except a
-confirm's footer band, see [Confirm](#confirm)); spacing alone
+No modal has a rule under its header. The one rule is the top border of
+the footer band on confirms and form sheets ([Confirm](#confirm),
+[Sheet](#sheet)); otherwise spacing alone
 separates them, so every modal reads as one clean panel, not three stacked
 sections. Rules inside the body (a list's row dividers) are fine. In a menu,
 a separator between groups of items is a 1px `border-border/60` line with
@@ -1100,8 +1106,8 @@ popover over the titlebar still takes clicks.
   Cancel (or a dialog's X) does: a confirm answers no, a sheet or dialog
   closes. A click on the backdrop does nothing, on every modal and the
   command palette (`Dialog` sets `disablePointerDismissal`), so a stray click
-  never throws away a form. If that gets annoying, the fix is bringing back
-  the X, not backdrop clicks. Popovers and menus are not modal: Esc and a
+  never throws away a form; the X on every sheet is the pointer's way out.
+  Popovers and menus are not modal: Esc and a
   click outside close them.
 - **Never ask "Discard changes?"** Esc or Cancel on a sheet with unsaved
   changes closes it at once and drops the changes. The only hold: a modal

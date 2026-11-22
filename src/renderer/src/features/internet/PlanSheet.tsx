@@ -6,7 +6,6 @@
  * `openPlanSheet()` opens whichever `<PlanSheet />` the page renders.
  * docs/ux/pages/internet.md (Actions: Plan value).
  */
-import { Gauge } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { invalidate, useQuery } from "~/app/useCommand";
@@ -112,7 +111,6 @@ function PlanForm({ onClose }: { onClose: () => void }) {
     <Sheet
       open
       onClose={onClose}
-      icon={<Gauge />}
       title="Internet plan"
       subtitle={`${network.data?.name ?? "This network"} · gauges and speed test verdicts compare against it. Saved in Mesh UI, not on eero.`}
       dirty={dirty}

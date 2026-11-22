@@ -417,7 +417,6 @@ function WriteKit() {
           setSheet(false);
           setName("Office");
         }}
-        icon={<Pencil />}
         title="Rename eero"
         subtitle="Office · shown in the app and the eero app"
         dirty={name !== "Office"}

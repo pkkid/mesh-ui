@@ -6,13 +6,13 @@
  * and keeps the answer only while it is open: closing it, or a network
  * switch, drops the password.
  */
-import { Share2, Wifi, XIcon } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { execute, useQuery } from "~/app/useCommand";
 import { Button, type ButtonProps } from "~/components/ui/button";
-import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { QrBlock } from "~/components/ui/qr";
+import { Sheet } from "~/components/ui/sheet";
 import type { Network, WifiShare } from "../../../../core/model";
 
 type ShareState = { value: WifiShare | null; error: string | null };
@@ -36,37 +36,21 @@ export function ShareWifiSheet({ open, onClose }: { open: boolean; onClose: () =
 
   const share = state.value;
   const ssid = share?.ssid ?? network.data?.name ?? null;
+  // Content only: no footer; the X and Esc close it.
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogPopup showCloseButton={false} className="w-full max-w-[440px] rounded-[18px]" data-slot="sheet">
-        <div className="flex items-start gap-3 border-b px-5 py-4">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground [&_svg]:size-4">
-            <Wifi />
-          </span>
-          <div className="min-w-0 flex-1">
-            <DialogTitle className="text-base">Share Wi-Fi</DialogTitle>
-            <DialogDescription className="text-xs">
-              {ssid ? `Scan to join ${ssid}, or copy its password` : "Scan to join, or copy the password"}
-            </DialogDescription>
-          </div>
-          <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Close" onClick={onClose}>
-            <XIcon />
-          </Button>
-        </div>
-        <div className="flex justify-center px-5 py-5">
-          <QrBlock
-            value={share?.qr ?? null}
-            size={156}
-            ariaLabel={ssid ? `QR code to join ${ssid}` : "Wi-Fi QR code"}
-            caption={state.error ? <span className="text-destructive-foreground">Couldn't load the code</span> : (ssid ?? "Wi-Fi Network")}
-            copyLabel={share?.password === null ? undefined : "Copy password"}
-            copyText={share?.password ?? ""}
-            fileName={`${ssid ?? "Wi-Fi"} QR.png`}
-          />
-        </div>
-        {state.error && <div className="px-5 pb-4 text-destructive-foreground text-xs">{state.error}</div>}
-      </DialogPopup>
-    </Dialog>
+    <Sheet open={open} onClose={onClose} title="Share Wi-Fi" subtitle={ssid ? `Scan to join ${ssid}, or copy its password` : "Scan to join, or copy the password"} error={state.error}>
+      <div className="flex justify-center">
+        <QrBlock
+          value={share?.qr ?? null}
+          size={156}
+          ariaLabel={ssid ? `QR code to join ${ssid}` : "Wi-Fi QR code"}
+          caption={state.error ? <span className="text-destructive-foreground">Couldn't load the code</span> : (ssid ?? "Wi-Fi Network")}
+          copyLabel={share?.password === null ? undefined : "Copy password"}
+          copyText={share?.password ?? ""}
+          fileName={`${ssid ?? "Wi-Fi"} QR.png`}
+        />
+      </div>
+    </Sheet>
   );
 }
 

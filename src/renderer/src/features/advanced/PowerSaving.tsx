@@ -232,7 +232,6 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
     <Sheet
       open
       onClose={onClose}
-      icon={mode.kind === "add" ? <CalendarPlus /> : <Leaf />}
       title={mode.kind === "add" ? "Add power saving schedule" : "Edit power saving schedule"}
       subtitle="Every eero · radios drop to 1x1 while it runs"
       dirty={mode.kind === "add" || changed}
@@ -291,7 +290,11 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
                 type="button"
                 aria-pressed={on}
                 onClick={() => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]))}
-                className={cn("h-7 flex-1 rounded-[var(--control-radius)] font-medium text-xs transition-colors", on ? "bg-foreground/80 text-background" : "bg-muted text-muted-foreground hover:text-foreground")}
+                // Neutral, as the profile schedule sheet: a picked day gets a stronger outline, not a fill.
+                className={cn(
+                  "h-7 flex-1 cursor-pointer rounded-[var(--control-radius)] border font-medium text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  on ? "border-foreground/45 bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground",
+                )}
               >
                 {d.charAt(0) + d.slice(1).toLowerCase()}
               </button>

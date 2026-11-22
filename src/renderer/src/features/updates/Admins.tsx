@@ -18,11 +18,10 @@ import { useWrite } from "~/app/useWrite";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { GatedButton, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
 import { QrBlock } from "~/components/ui/qr";
-import { SheetField } from "~/components/ui/sheet";
+import { Sheet, SheetField } from "~/components/ui/sheet";
 import { Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
 import type { InviteCreated } from "../../../../core/backend";
@@ -192,54 +191,37 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
     else if (r) setError(r.error.message);
   };
 
+  // Before the invite exists it is a form (Cancel, Create invite); after, the QR is the content and the X closes it.
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogPopup className="w-full max-w-[460px] rounded-[18px]" data-slot="sheet">
-        <div className="flex flex-col gap-1 px-5 pt-5">
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <UserPlus className="size-4 text-muted-foreground" />
-            Invite an admin
-          </DialogTitle>
-          <DialogDescription className="text-xs">Single use, about 48 hours. The invitee accepts it in the eero app.</DialogDescription>
-        </div>
-        <form
-          className="flex flex-col gap-4 px-5 pt-4 pb-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!invalid && !create.running) void make();
-          }}
-        >
-          <SheetField label="Invitee nickname" htmlFor={inputId} error={invalid ?? error ?? undefined} helper={`${n.length} / ${NICKNAME_MAX}`}>
-            <Input id={inputId} value={nickname} placeholder="Jamie" autoComplete="off" onChange={(e) => setNickname(e.target.value)} disabled={created !== null} />
-          </SheetField>
-          {created ? (
-            <QrBlock
-              value={created.inviteUrl}
-              ariaLabel={`QR code for the admin invite${created.invite.nickname ? ` for ${created.invite.nickname}` : ""}`}
-              caption={created.invite.nickname ?? "Admin invite"}
-              copyLabel="Copy link"
-              copyText={created.inviteUrl}
-              actions={
-                <Button type="button" size="xs" variant="outline" disabled={create.running} onClick={() => void make()}>
-                  <RefreshCw />
-                  New code
-                </Button>
-              }
-            />
-          ) : null}
-          <div className="flex justify-end gap-2">
-            <Button type="button" size="sm" variant="ghost" onClick={onClose}>
-              {created ? "Done" : "Cancel"}
+    <Sheet
+      open
+      onClose={onClose}
+      title="Invite an admin"
+      subtitle="Single use, about 48 hours. The invitee accepts it in the eero app."
+      dirty
+      valid={!invalid && !create.running}
+      onSave={created ? undefined : make}
+      saveLabel="Create invite"
+    >
+      <SheetField label="Invitee nickname" htmlFor={inputId} error={invalid ?? error ?? undefined} helper={`${n.length} / ${NICKNAME_MAX}`}>
+        <Input id={inputId} value={nickname} placeholder="Jamie" autoComplete="off" onChange={(e) => setNickname(e.target.value)} disabled={created !== null} />
+      </SheetField>
+      {created ? (
+        <QrBlock
+          value={created.inviteUrl}
+          ariaLabel={`QR code for the admin invite${created.invite.nickname ? ` for ${created.invite.nickname}` : ""}`}
+          caption={created.invite.nickname ?? "Admin invite"}
+          copyLabel="Copy link"
+          copyText={created.inviteUrl}
+          actions={
+            <Button type="button" size="xs" variant="outline" disabled={create.running} onClick={() => void make()}>
+              <RefreshCw />
+              New code
             </Button>
-            {!created && (
-              <Button type="submit" size="sm" disabled={!!invalid || create.running}>
-                Create invite
-              </Button>
-            )}
-          </div>
-        </form>
-      </DialogPopup>
-    </Dialog>
+          }
+        />
+      ) : null}
+    </Sheet>
   );
 }
 

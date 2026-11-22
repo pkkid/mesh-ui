@@ -3,7 +3,6 @@
 // lines), up to 32 characters with a live count. The page passes the write:
 // `onSave` resolves to the execute result, and the sheet closes on `ok`.
 // A `bad_params` message from the command shows under the field.
-import { Pencil } from "lucide-react";
 import { useId, useState } from "react";
 
 import { Input } from "~/components/ui/input";
@@ -45,7 +44,6 @@ function RenameBody({ onClose, title, subtitle, label = "Name", value, placehold
     <Sheet
       open
       onClose={onClose}
-      icon={<Pencil />}
       title={title}
       subtitle={subtitle}
       dirty={trimmed !== value.trim()}
