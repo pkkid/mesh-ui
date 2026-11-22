@@ -2,7 +2,7 @@
  * Settings, Command line and agents (docs/ux/pages/settings.md,
  * Layout 5; docs/mockups/17-account-settings.html).
  *
- * Left: the Command line and MCP server lines to copy, or **Install CLI**
+ * Left: the Command line and Add MCP server lines to copy, or **Install CLI**
  * (`app.cli.install`) when this install kind can put `mesh-ui` on PATH and
  * has not, and the PATH line when the launcher's folder is not on PATH.
  * Right: this week's CLI and agent commands from the audit log
@@ -105,7 +105,7 @@ function CommandLines({ cli }: { cli: CliStatus | null }) {
       <Labelled label="Command line">
         <CodeLine text={CLI_EXAMPLE} label="the command line example" />
       </Labelled>
-      <Labelled label="MCP server">
+      <Labelled label="Add MCP server">
         {MCP_ADD.map((m) => (
           <CodeLine key={m.agent} text={m.text} label={`the ${m.agent} MCP command`} />
         ))}
