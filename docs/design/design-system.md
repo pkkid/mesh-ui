@@ -158,8 +158,9 @@ Mesh UI / T3 Code theme files (choose, drop or paste). An extension becomes
 one card; its themes take ids prefixed with the extension, so adding it again
 updates it.
 
-**Card actions** (as T3 Code's theme library): small `ghost-muted` icon
-buttons with tooltips after the card's name. **Duplicate** (every theme,
+**Card actions** (as T3 Code's theme library): one "..." menu after the
+card's name, the tables' row menu (`RowMenu`), so the card stays quiet and
+the actions are labelled. **Duplicate** (every theme,
 built-ins too) opens the theme editor on a copy named "<name> copy", so
 built-ins stay read-only. **Edit** (added themes) opens the editor on the
 theme itself. **Export** (every theme) saves a theme file through the save
@@ -169,7 +170,8 @@ collection as a JSON array of those, each with its `collection`. Add theme
 reads both back and keeps their ids, so importing an export updates the theme
 it came from (a built-in comes back as an added copy). **Remove** (added
 themes). On a collection, Duplicate and Edit act on the style showing for the
-current appearance; Export and Remove take the whole collection.
+current appearance and name it ("Duplicate Hard"); Export and Remove take the
+whole collection.
 
 **Theme editor** (`features/themeEditor/`, ported from T3 Code's
 `ThemeEditorPanel.tsx`, `ThemeEditorHost.tsx`, `themeEditorStore.ts`,
