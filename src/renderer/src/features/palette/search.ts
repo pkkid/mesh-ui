@@ -346,6 +346,9 @@ export type SearchResult = {
 /** Most rows a group shows under "All"; its own scope shows every match. */
 export const GROUP_LIMIT: Record<Kind, number> = { command: 50, page: 8, eero: 5, device: 5, profile: 5 };
 
+/** The effects a query can name to list every command of that kind ("disruptive"). */
+const EFFECTS: ReadonlyArray<Effect> = ["query", "write", "disruptive", "destructive"];
+
 function rank(hits: Hit[]): Hit[] {
   return hits.sort((a, b) => b.score - a.score || a.item.label.localeCompare(b.item.label));
 }
@@ -356,6 +359,7 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
   // `>` lists only commands, so a device or page scope falls back to All.
   const scope: Scope = mode === "id" && requested !== "command" ? "all" : requested;
   const q = mode === "id" ? trimmed.slice(1).trim() : trimmed;
+  const effectQuery = mode === "text" && EFFECTS.some((e) => e === q.toLowerCase());
   const byKind: Record<Kind, Hit[]> = { command: [], page: [], eero: [], device: [], profile: [] };
 
   if (mode === "id") {
@@ -391,7 +395,15 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
       }
       rank(byKind[kind]);
     };
-    add("command", sources.commands);
+    // An effect's name ("write", "destructive") lists every command with that effect, by label, with no
+    // group limit, so the whole category can be read at once. Presets are left out: they repeat a command.
+    const effect = EFFECTS.find((e) => e === q.toLowerCase());
+    if (effectQuery && effect) {
+      byKind.command = sources.commands
+        .filter((item) => item.info.effect === effect && Object.keys(item.params).length === 0)
+        .map((item) => ({ item, score: 0, ranges: [], idRanges: [] }));
+      rank(byKind.command);
+    } else add("command", sources.commands);
     // A place matches its title, then (ranked lower) the page it is on: "advanced" lists Advanced networking first.
     add("page", sources.pages, (i) => (i.kind === "page" ? (i.context ?? null) : null));
     // An eero matches its location, then (ranked lower) its model.
@@ -410,7 +422,7 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
   };
   const groups = kinds
     .filter((k) => scope === "all" || scope === k)
-    .map((kind) => ({ kind, hits: scope === "all" ? byKind[kind].slice(0, GROUP_LIMIT[kind]) : byKind[kind] }))
+    .map((kind) => ({ kind, hits: scope === "all" && !(kind === "command" && effectQuery) ? byKind[kind].slice(0, GROUP_LIMIT[kind]) : byKind[kind] }))
     .filter((g) => g.hits.length > 0);
   const total = scope === "all" ? KINDS.reduce((sum, k) => sum + counts[k], 0) : counts[scope];
   return { mode, groups, counts, total, flat: groups.flatMap((g) => g.hits) };

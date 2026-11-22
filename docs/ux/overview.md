@@ -267,6 +267,10 @@ sidebar, with no outline or side bar;
   right the most likely action for that entity in its current state
   (Resume, Pause, Pause now) with its effect chip. Enter runs that
   action; `Ctrl+Enter` opens the entity's page instead.
+- **Effect names.** Typing an effect on its own (`query`, `write`,
+  `disruptive` or `destructive`, any case) lists every command with that
+  effect, by label, with no group limit (presets left out), so a whole
+  category can be read at once. Places and entities still match as usual.
 - A tip at the bottom: type `>` to search all commands by id
   (`>eero.restart`). In `>` mode only commands are listed, matched on id and
   label.
