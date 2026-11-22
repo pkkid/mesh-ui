@@ -158,6 +158,23 @@ export function installThemes(themes: ReadonlyArray<ThemeDefinition>): ReadonlyA
   return installed;
 }
 
+/** Replaces a saved theme in place, keeping its spot in the picker. False when it is not a saved theme. */
+export function updateTheme(theme: ThemeDefinition): boolean {
+  const index = customThemes.findIndex((t) => t.id === theme.id);
+  if (index === -1) return false;
+  const next = [...customThemes];
+  next[index] = theme;
+  writeCustomThemes(next);
+  return true;
+}
+
+/** An id for a new theme named `label` that no theme has yet: `aurora`, then `aurora-2`. */
+export function freeThemeId(base: string): string {
+  let id = base;
+  for (let n = 2; findTheme(id); n += 1) id = `${base.slice(0, 60)}-${n}`;
+  return id;
+}
+
 export function removeThemes(ids: ReadonlyArray<string>): void {
   const remove = new Set(ids);
   writeCustomThemes(customThemes.filter((theme) => !remove.has(theme.id)));

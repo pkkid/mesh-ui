@@ -74,6 +74,9 @@ export const THEME_COLOR_ROLES = [
 ] as const;
 
 export type ThemeColorRole = (typeof THEME_COLOR_ROLES)[number];
+
+/** The CSS custom property `themes.ts` sets for a role: `surfaceRaised` is `--theme-surface-raised`. */
+export const themeVariable = (role: string): string => `--theme-${role.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
 export type ThemeColors = Readonly<Record<ThemeColorRole, string>>;
 export type ThemeVariants = Readonly<Partial<Record<ThemeAppearance, ThemeColors>>>;
 export type ThemeDefinition = Readonly<{

@@ -8,7 +8,7 @@
  * palettes and VS Code themes use (hex, rgb(), oklch(), color()), so the
  * parser is hand-written and there is no dependency.
  */
-import { ROSE_THEME, type ThemeAppearance, type ThemeColors } from "./themePalettes";
+import { ROSE_THEME, type ThemeAppearance, type ThemeColorRole, type ThemeColors } from "./themePalettes";
 
 export type Rgb = { r: number; g: number; b: number };
 export type Rgba = Rgb & { a: number };
@@ -425,4 +425,134 @@ export function createVividThemeColors(appearance: ThemeAppearance, canvasValue:
     terminalScrollbar: css(surfaceAt(dark ? 0.22 : 0.16, tintC)),
     terminalScrollbarHover: css(surfaceAt(dark ? 0.3 : 0.22, tintC)),
   };
+}
+
+/**
+ * Sets one colour in the theme editor's advanced mode and re-derives the
+ * roles that go with it (a surface's text, a status colour's text and
+ * wash), as T3 Code's `updateThemeColorFamily`. Trimmed to the families
+ * Mesh UI paints.
+ */
+export function updateThemeColorFamily(
+  appearance: ThemeAppearance,
+  colors: ThemeColors,
+  role: ThemeColorRole,
+  value: string,
+): ThemeColors {
+  const parsed = parseColor(value);
+  if (!parsed) return { ...colors, [role]: value };
+  const normalized = formatOklch(rgbToOklch(parsed), parsed.a);
+  const canvas = parseRgb(colors.canvas, appearance === "dark" ? { r: 24, g: 15, b: 27 } : { r: 250, g: 245, b: 250 });
+  const selectedOn = (background: Rgb) => flattenOver(parsed, background);
+  const onCanvas = selectedOn(canvas);
+  const dark = isDarkSurface(canvas);
+  const foregroundOn = (background: Rgb) => rgbToCss(readableForeground(background));
+  const toneOn = (background: Rgb) =>
+    formatOklch(solveLightness(rgbToOklch(parsed), [background], 4.6, isDarkSurface(background) ? "lighter" : "darker"));
+  const status = () => {
+    const surface = mixRgb(canvas, onCanvas, dark ? 0.16 : 0.08);
+    return { foreground: toneOn(surface), surface: rgbToCss(surface) };
+  };
+
+  switch (role) {
+    case "canvas":
+      return { ...colors, canvas: normalized, chrome: normalized, toolbar: normalized };
+    case "text":
+      return { ...colors, text: normalized, toolbarForeground: normalized, toolbarControlForeground: normalized };
+    case "mutedForeground":
+      return {
+        ...colors,
+        textMuted: normalized,
+        mutedForeground: normalized,
+        placeholder: normalized,
+        secondaryLabel: normalized,
+        iconMuted: normalized,
+        sidebarMutedForeground: normalized,
+      };
+    case "border":
+      return { ...colors, border: normalized, toolbarBorder: normalized, sidebarBorder: normalized };
+    case "secondary":
+      return { ...colors, secondary: normalized, secondaryForeground: foregroundOn(onCanvas), muted: normalized, toolbarControl: normalized };
+    case "accentSurface":
+      return { ...colors, accentSurface: normalized, accentSurfaceForeground: foregroundOn(onCanvas), toolbarControlHover: normalized };
+    case "accent": {
+      const updateSurface = mixRgb(canvas, onCanvas, dark ? 0.32 : 0.16);
+      return {
+        ...colors,
+        accent: normalized,
+        accentForeground: foregroundOn(onCanvas),
+        focus: normalized,
+        update: normalized,
+        updateForeground: toneOn(updateSurface),
+        updateSurface: rgbToCss(updateSurface),
+        terminalCursor: normalized,
+      };
+    }
+    case "messageAction": {
+      const foreground = readableForeground(onCanvas);
+      const toward = luminance(foreground) > 0.5 ? BLACK : WHITE;
+      const hover = mixRgb(parsed, toward, 0.12);
+      return {
+        ...colors,
+        messageAction: normalized,
+        messageActionForeground: rgbToCss(foreground),
+        messageActionHover: formatOklch(rgbToOklch(hover), parsed.a),
+      };
+    }
+    case "codeBackground":
+      return { ...colors, codeBackground: normalized, codeForeground: foregroundOn(onCanvas) };
+    case "sidebar":
+      return { ...colors, sidebar: normalized, sidebarForeground: foregroundOn(onCanvas) };
+    case "sidebarRowSelected": {
+      const sidebar = parseRgb(colors.sidebar, canvas);
+      const onSidebar = selectedOn(sidebar);
+      return {
+        ...colors,
+        sidebarRowHover: rgbToCss(mixRgb(sidebar, onSidebar, 0.5)),
+        sidebarRowActive: rgbToCss(mixRgb(sidebar, onSidebar, 0.8)),
+        sidebarRowSelected: normalized,
+      };
+    }
+    case "error": {
+      const { foreground, surface } = status();
+      return { ...colors, error: normalized, errorForeground: foreground, errorSurface: surface };
+    }
+    case "warning": {
+      const { foreground, surface } = status();
+      return { ...colors, warning: normalized, warningForeground: foreground, warningSurface: surface };
+    }
+    default:
+      return { ...colors, [role]: normalized };
+  }
+}
+
+export type Hsv = { h: number; s: number; v: number };
+
+/** `#rrggbb` to hue (0 to 360), saturation and value (0 to 1), for the colour picker. */
+export function hexToHsv(hex: string): Hsv {
+  const numeric = Number.parseInt(hex.slice(1, 7), 16);
+  const r = ((numeric >> 16) & 255) / 255;
+  const g = ((numeric >> 8) & 255) / 255;
+  const b = (numeric & 255) / 255;
+  const max = Math.max(r, g, b);
+  const delta = max - Math.min(r, g, b);
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : delta / max, v: max };
+}
+
+export function hsvToHex({ h, s, v }: Hsv): string {
+  const hue = ((h % 360) + 360) % 360;
+  const chroma = v * s;
+  const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = v - chroma;
+  const [r, g, b] =
+    hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
+  return rgbToHex({ r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 });
 }

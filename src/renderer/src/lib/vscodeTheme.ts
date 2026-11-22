@@ -393,8 +393,50 @@ export function buildThemeCollection(
   return paired.map((theme) => ({ ...theme, collection }));
 }
 
-/** Mesh UI and T3 Code theme files: `{ version: 1, name, appearance, colors, variants? }`. */
+/**
+ * Mesh UI and T3 Code theme files: `{ version: 1, id?, name, appearance,
+ * colors, variants?, collection? }`. Mesh UI adds `series` (chart hues per
+ * appearance), which T3 Code ignores. A collection exports as a JSON array
+ * of theme files.
+ */
 export const THEME_FILE_VERSION = 1;
+
+type ThemeFileJson = {
+  version: typeof THEME_FILE_VERSION;
+  id: string;
+  name: string;
+  appearance: ThemeAppearance;
+  colors: ThemeColors;
+  variants?: ThemeDefinition["variants"];
+  collection?: ThemeDefinition["collection"];
+  series?: ThemeDefinition["series"];
+};
+
+function themeFileJson(theme: ThemeDefinition): ThemeFileJson {
+  return {
+    version: THEME_FILE_VERSION,
+    id: theme.id,
+    name: theme.label,
+    appearance: theme.appearance,
+    colors: theme.colors,
+    ...(theme.variants ? { variants: theme.variants } : {}),
+    ...(theme.collection ? { collection: theme.collection } : {}),
+    ...(theme.series ? { series: theme.series } : {}),
+  };
+}
+
+/** One theme as a file, or a collection's themes as an array of them. Read back by `parseThemeTexts`. */
+export function serializeThemeFile(themes: ThemeDefinition | ReadonlyArray<ThemeDefinition>): string {
+  const value = Array.isArray(themes) ? themes.map(themeFileJson) : themeFileJson(themes as ThemeDefinition);
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+/** The file name an export suggests: the theme's or collection's id, `gruvbox.json`. */
+export function themeFileName(themes: ReadonlyArray<ThemeDefinition>): string {
+  const first = themes[0];
+  const name = themes.length > 1 && first?.collection ? first.collection.label : (first?.label ?? "theme");
+  return `${themeIdFromName(name)}.json`;
+}
 
 function parseColorOverrides(value: unknown): Partial<ThemeColors> {
   if (!isRecord(value)) return {};
@@ -404,6 +446,18 @@ function parseColorOverrides(value: unknown): Partial<ThemeColors> {
     if (typeof color === "string" && parseColor(color)) out[role] = color.trim();
   }
   return out;
+}
+
+function parseSeries(value: unknown): ThemeDefinition["series"] | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: Partial<Record<ThemeAppearance, SeriesPalette>> = {};
+  for (const mode of ["light", "dark"] as const) {
+    const palette = value[mode];
+    if (isRecord(palette) && SERIES_HUES.every((hue) => typeof palette[hue] === "string" && parseColor(palette[hue]))) {
+      out[mode] = Object.fromEntries(SERIES_HUES.map((hue) => [hue, (palette[hue] as string).trim()])) as SeriesPalette;
+    }
+  }
+  return out.light || out.dark ? out : undefined;
 }
 
 /** A Mesh UI or T3 Code theme file. Missing roles are derived from the canvas and accent. */
@@ -426,25 +480,81 @@ export function parseThemeFile(value: unknown): ThemeDefinition {
   const other: ThemeAppearance = appearance === "light" ? "dark" : "light";
   const variant = isRecord(value.variants) ? value.variants[other] : undefined;
   const label = name.trim();
+  const id = typeof value.id === "string" && /^[a-z0-9][a-z0-9-]{0,63}$/.test(value.id) ? value.id : themeIdFromName(label);
+  const { collection } = value;
+  const validCollection =
+    isRecord(collection) &&
+    typeof collection.id === "string" &&
+    collection.id.length > 0 &&
+    collection.id.length <= 128 &&
+    typeof collection.label === "string" &&
+    collection.label.trim().length > 0 &&
+    collection.label.length <= 64;
+  const series = parseSeries(value.series);
   return {
-    id: themeIdFromName(label),
+    id,
     label,
     appearance,
     colors: build(appearance, value.colors),
     ...(isRecord(variant) ? { variants: { [other]: build(other, variant) } } : {}),
+    ...(validCollection ? { collection: { id: collection.id as string, label: (collection.label as string).trim() } } : {}),
+    ...(series ? { series } : {}),
   };
 }
 
-/** Parses pasted or dropped text: a VS Code theme or a Mesh UI / T3 Code theme file. */
-export function parseThemeText(source: string, fileName?: string): ThemeDefinition {
+/**
+ * Parses pasted or dropped text: a VS Code theme, a Mesh UI / T3 Code theme
+ * file, or an array of theme files (an exported collection).
+ */
+export function parseThemeTexts(source: string, fileName?: string): ReadonlyArray<ThemeDefinition> {
   const errors: ParseError[] = [];
   const value: unknown = parse(source, errors, { allowTrailingComma: true });
   if (errors.length > 0 || value === undefined) throw new Error("That theme file is not valid JSON.");
+  if (Array.isArray(value)) {
+    if (value.length === 0) throw new Error("That theme file has no themes.");
+    return value.map((entry) => parseThemeFile(entry));
+  }
   if (isVsCodeThemeFile(value)) {
     const label = isRecord(value) && typeof value.name === "string" ? undefined : fileName?.replace(/\.[^.]+$/, "");
-    return parseVsCodeTheme(value, label ? { label } : {});
+    return [parseVsCodeTheme(value, label ? { label } : {})];
   }
-  return parseThemeFile(value);
+  return [parseThemeFile(value)];
+}
+
+/** Parses one theme from text; an exported collection gives its first theme. */
+export function parseThemeText(source: string, fileName?: string): ThemeDefinition {
+  return parseThemeTexts(source, fileName)[0]!;
+}
+
+/** The words every label starts with ("Gruvbox" for "Gruvbox Hard", "Gruvbox Soft"). */
+function sharedPrefix(labels: ReadonlyArray<string>): string {
+  const words = labels.map((label) => label.split(/\s+/));
+  const first = words[0] ?? [];
+  const n = first.findIndex((word, i) => words.some((w) => w[i]?.toLowerCase() !== word.toLowerCase()));
+  return first.slice(0, n === -1 ? first.length : n).join(" ");
+}
+
+/**
+ * Parses picked files into themes, paired and grouped. Mesh UI exports
+ * (one theme or a collection's array) keep their ids, so adding one back
+ * updates the theme it came from. Throws with every file's problem.
+ */
+export function themesFromFiles(files: ReadonlyArray<{ name: string; text: string }>): ReadonlyArray<ThemeDefinition> {
+  const parsed: ThemeDefinition[] = [];
+  const failures: string[] = [];
+  for (const file of files) {
+    try {
+      parsed.push(...parseThemeTexts(file.text, file.name));
+    } catch (cause) {
+      failures.push(`${file.name}: ${cause instanceof Error ? cause.message : "not a theme"}`);
+    }
+  }
+  if (failures.length > 0) throw new Error(failures.join(" "));
+  // An exported collection (or one exported theme) comes back as it was saved.
+  const saved = parsed[0]?.collection;
+  if (saved && parsed.every((t) => t.collection?.id === saved.id)) return parsed;
+  const label = sharedPrefix(parsed.map((t) => t.label)) || parsed[0]?.label || "Imported";
+  return buildThemeCollection(parsed, { id: `import:${themeIdFromName(label)}`, label: label.slice(0, 48) });
 }
 
 /**

@@ -11,39 +11,14 @@ import { Button } from "~/components/ui/button";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { toast } from "~/components/ui/toast";
 import { installThemes } from "~/lib/themeLibrary";
-import type { ThemeDefinition } from "~/lib/themePalettes";
 import { pickThemeEverywhere } from "~/lib/themes";
 import { cn } from "~/lib/utils";
-import { buildThemeCollection, parseThemeText, themeIdFromName } from "~/lib/vscodeTheme";
+import { themesFromFiles } from "~/lib/vscodeTheme";
 
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_FILES = 40;
 
 type Picked = { name: string; text: string };
-
-/** The words every label starts with ("Gruvbox" for "Gruvbox Hard", "Gruvbox Soft"). */
-function sharedPrefix(labels: ReadonlyArray<string>): string {
-  const words = labels.map((label) => label.split(/\s+/));
-  const first = words[0] ?? [];
-  const n = first.findIndex((word, i) => words.some((w) => w[i]?.toLowerCase() !== word.toLowerCase()));
-  return first.slice(0, n === -1 ? first.length : n).join(" ");
-}
-
-/** Parses picked files into themes, paired and grouped. Throws with every file's problem. */
-export function themesFromFiles(files: ReadonlyArray<Picked>): ReadonlyArray<ThemeDefinition> {
-  const parsed: ThemeDefinition[] = [];
-  const failures: string[] = [];
-  for (const file of files) {
-    try {
-      parsed.push(parseThemeText(file.text, file.name));
-    } catch (cause) {
-      failures.push(`${file.name}: ${cause instanceof Error ? cause.message : "not a theme"}`);
-    }
-  }
-  if (failures.length > 0) throw new Error(failures.join(" "));
-  const label = sharedPrefix(parsed.map((t) => t.label)) || parsed[0]?.label || "Imported";
-  return buildThemeCollection(parsed, { id: `import:${themeIdFromName(label)}`, label: label.slice(0, 48) });
-}
 
 export function ThemeImportDialog({
   open,
