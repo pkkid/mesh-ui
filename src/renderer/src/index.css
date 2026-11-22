@@ -119,6 +119,9 @@
      sits at 15% of the window on taller ones (design-system.md, Modals and
      popups). The command palette keeps its own position. */
   --dialog-top: max(calc(var(--titlebar-height) + 24px), 15vh);
+  /* The least gap under a modal that is taller than the window: its body
+     scrolls inside instead. */
+  --dialog-bottom: 60px;
   --sidebar-width: 15rem;
   /* Space reserved for native window controls. The per-platform values below
      are fallbacks; on Windows and Linux lib/titlebarInset.ts measures the
