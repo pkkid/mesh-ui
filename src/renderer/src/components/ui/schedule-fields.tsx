@@ -93,15 +93,26 @@ export function DayPicker({
 
 const STEP = 15;
 
-/** A time of day as the app's dropdown, in 15 minute steps ("9:00 PM"), plus the current value when it is off the grid. */
-export function TimeSelect({ id, value, onChange, invalid }: { id: string; value: string; onChange: (hhmm: string) => void; invalid?: boolean }) {
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/**
+ * The time dropdown's options: every 15 minutes from midnight ("00:00",
+ * "12:00 AM"), plus `value` in its place when it is off the grid, so a
+ * schedule saved at 9:05 PM keeps its exact time.
+ */
+export function timeOptions(value: string): { value: string; label: string }[] {
   const grid = Array.from({ length: MINUTES_PER_DAY / STEP }, (_, i) => i * STEP);
   const current = value === "" ? null : hhmmMinutes(value);
   const all = current === null || grid.includes(current) ? grid : [...grid, current].sort((a, b) => a - b);
-  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  const items = all.map((m) => ({ value: hhmm(m), label: formatMinute(m) }));
+  return all.map((m) => ({ value: hhmm(m), label: formatMinute(m) }));
+}
+
+/** A time of day as the app's dropdown, in 15 minute steps ("9:00 PM"), plus the current value when it is off the grid. */
+export function TimeSelect({ id, value, onChange, invalid }: { id: string; value: string; onChange: (hhmm: string) => void; invalid?: boolean }) {
+  const items = timeOptions(value);
+  const current = value === "" ? null : hhmm(hhmmMinutes(value));
   return (
-    <Select items={items} value={current === null ? null : hhmm(current)} onValueChange={(v) => v !== null && onChange(v)}>
+    <Select items={items} value={current} onValueChange={(v) => v !== null && onChange(v)}>
       <SelectTrigger id={id} className="w-full min-w-0 tabular-nums" aria-invalid={invalid || undefined}>
         <SelectValue placeholder="Pick a time" />
       </SelectTrigger>

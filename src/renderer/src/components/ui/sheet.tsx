@@ -64,6 +64,13 @@ type SheetProps = {
   footerStart?: ReactNode;
 };
 
+/** Save's colour from the effects of the commands it runs, as the confirm's button: red, yellow, or the primary colour. */
+export function saveVariantFor(effects: ReadonlyArray<string | undefined>): "destructive" | "warning" | "default" {
+  if (effects.includes("destructive")) return "destructive";
+  if (effects.includes("disruptive")) return "warning";
+  return "default";
+}
+
 function Sheet({
   open,
   onClose,
@@ -80,8 +87,7 @@ function Sheet({
   footerStart,
 }: SheetProps) {
   const commands = useCommands();
-  const effects = new Set((saves ?? []).map((id) => commands?.find((c) => c.id === id)?.effect));
-  const saveVariant = effects.has("destructive") ? "destructive" : effects.has("disruptive") ? "warning" : "default";
+  const saveVariant = saveVariantFor((saves ?? []).map((id) => commands?.find((c) => c.id === id)?.effect));
   const [saving, setSaving] = useState(false);
   const requestClose = () => {
     if (!saving) onClose();
