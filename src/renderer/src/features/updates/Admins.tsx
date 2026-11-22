@@ -165,7 +165,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
 
 /**
  * The invite sheet: a nickname, then Create invite; once made it shows the
- * link, read only, with Copy and New link (another single-use link). eero sends
+ * link, read only, with Copy and Generate new link icon buttons (another single-use link). eero sends
  * no email, so the link is shared by hand.
  */
 function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated | null; nickname: string }; onClose: () => void }) {
@@ -212,13 +212,12 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
         <SheetField label="Invite link" htmlFor={linkId} helper="Send it to them yourself; eero sends no email">
           <div className="flex items-center gap-1.5">
             <Input id={linkId} readOnly value={created.inviteUrl} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
-            <Button type="button" size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => void copyText(created.inviteUrl, { toast: "Copied invite link" })}>
+            {/* Plain icon buttons with tooltips, as the password field's on Guest network. */}
+            <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Copy" title="Copy" onClick={() => void copyText(created.inviteUrl, { toast: "Copied invite link" })}>
               <Copy />
-              Copy
             </Button>
-            <Button type="button" size="sm" variant="outline" className="[&_svg]:text-muted-foreground" disabled={create.running || cancel.running} onClick={() => void make()}>
+            <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Generate new link" title="Generate new link" disabled={create.running || cancel.running} onClick={() => void make()}>
               <RefreshCw />
-              New link
             </Button>
           </div>
         </SheetField>
