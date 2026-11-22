@@ -786,13 +786,17 @@ export const commands: AnyCommand[] = [
     description: "Sets the network time zone (IANA, like America/New_York). Schedules (pauses, power saving) and the network clock follow it. Applies without a restart.",
     icon: "clock",
     params: z.object({ timezone: z.string().trim().min(1).refine(isTimeZone, "Not a time zone. Use an IANA name like America/New_York.").describe("IANA time zone, like America/New_York.") }),
-    effect: "write",
+    // Disruptive: every schedule (pauses, power saving, update window) shifts at once, and one that is
+    // on now in the new zone takes its devices offline straight away, so it always asks first.
+    effect: "disruptive",
     gate: { area: "settings" },
     invalidates: ["settings", "network", "profiles"],
-    // Schedules follow the zone: one that is on now in the new zone pauses its devices straight away.
-    async confirmWhen(ctx, p) {
+    async confirmMessage(ctx, p) {
       const s = await ctx.backend.settings.get(ctx.net);
-      return s.timezone === p.timezone ? null : timezoneConfirm(ctx, s.timezone, p.timezone);
+      if (s.timezone === p.timezone) return "Nothing changes.";
+      const shift = `Profile pauses, power saving and the update window move to ${p.timezone} time.`;
+      const offline = await timezoneConfirm(ctx, s.timezone, p.timezone);
+      return offline ? `${shift} ${offline}` : `${shift} No schedule starts now, so no device goes offline.`;
     },
     run: async (ctx, p): Promise<M.NetworkSettings> => {
       const s = await ctx.backend.settings.get(ctx.net);

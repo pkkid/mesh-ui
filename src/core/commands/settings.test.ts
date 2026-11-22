@@ -668,10 +668,8 @@ const M53: [string, Record<string, unknown>, (s: M.NetworkSettings) => unknown, 
   ["settings.simple_setup.set", { enabled: false }, (s) => s.simpleSetup, false],
   ["settings.thread.set", { enabled: false, credentialSync: false }, (s) => [s.thread?.enabled, s.thread?.credentialSync], [false, false]],
 ];
-const M53_DISRUPTIVE = ["settings.mlo.set", "settings.legacy_mode.set", "settings.fast_transition.set", "settings.thread.set"];
-/** The time zone write confirms only when a scheduled pause would start; Berlin starts Mia's Bedtime in the demo. */
-const M53_CONFIRMS_WHEN = ["settings.timezone.set"];
-const m53conf = (id: string) => (M53_DISRUPTIVE.includes(id) || M53_CONFIRMS_WHEN.includes(id) ? { confirm: true } : {});
+const M53_DISRUPTIVE = ["settings.mlo.set", "settings.legacy_mode.set", "settings.fast_transition.set", "settings.thread.set", "settings.timezone.set"];
+const m53conf = (id: string) => (M53_DISRUPTIVE.includes(id) ? { confirm: true } : {});
 const THREAD_KEY = "00112233445566778899aabbccddeeff";
 
 describe("wireless, mesh and Thread settings writes (demo)", () => {
@@ -694,19 +692,24 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     expect(await engine.execute("settings.fast_transition.set", { networkId: MAPLE, enabled: false })).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Fast roaming turns off. Nothing restarts and no device disconnects." } });
     const thread = await engine.execute("settings.thread.set", { networkId: MAPLE, enabled: false });
     expect(thread).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^Thread turns off\. /) } });
-    const live = M53.filter(([id]) => !M53_DISRUPTIVE.includes(id) && !M53_CONFIRMS_WHEN.includes(id));
+    const live = M53.filter(([id]) => !M53_DISRUPTIVE.includes(id));
     for (const [id, params] of live) expect((await engine.execute(id, { networkId: MAPLE, ...params })).ok, id).toBe(true);
   });
 
-  it("a time zone change asks only when it starts a scheduled pause now, naming who goes offline", async () => {
+  it("a time zone change always asks, naming who goes offline when it starts a scheduled pause now", async () => {
     const engine = demoEngine();
     const before = (await settingsOf(engine, MAPLE)).timezone;
     // 14:41 in Los Angeles is 23:41 in Berlin, inside Mia's Bedtime (9:00 PM to 7:00 AM).
     const berlin = await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "Europe/Berlin" });
-    expect(berlin).toMatchObject({ ok: false, error: { code: "needs_confirm", message: expect.stringMatching(/^In Europe\/Berlin, Mia's Bedtime pause is on now, so .+ lose internet until 7:00 AM\.$/) } });
+    expect(berlin).toMatchObject({
+      ok: false,
+      error: { code: "needs_confirm", message: expect.stringMatching(/^Profile pauses, power saving and the update window move to Europe\/Berlin time\. In Europe\/Berlin, Mia's Bedtime pause is on now, so .+ lose internet until 7:00 AM\.$/) },
+    });
     expect((await settingsOf(engine, MAPLE)).timezone).toBe(before);
-    // 15:41 in Denver starts nothing, so it runs without confirm.
-    expect((await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "America/Denver" })).ok).toBe(true);
+    // 15:41 in Denver starts nothing, but schedules still shift, so it asks too.
+    const denver = await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "America/Denver" });
+    expect(denver).toMatchObject({ ok: false, error: { code: "needs_confirm", message: "Profile pauses, power saving and the update window move to America/Denver time. No schedule starts now, so no device goes offline." } });
+    expect((await engine.execute("settings.timezone.set", { networkId: MAPLE, timezone: "America/Denver", confirm: true })).ok).toBe(true);
   });
 
   it("a change that changes nothing returns the settings as they are", async () => {
@@ -715,7 +718,7 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
     for (const [id, params] of [
       ["settings.band_steering.set", { enabled: true }],
       ["settings.power_saving.set", { enabled: true }],
-      ["settings.timezone.set", { timezone: before.timezone }],
+      ["settings.timezone.set", { timezone: before.timezone, confirm: true }],
       ["settings.thread.set", { enabled: true, confirm: true }],
       ["settings.mlo.set", { mode: "multi", confirm: true }],
     ] as const) {
@@ -828,7 +831,7 @@ describe("wireless, mesh and Thread settings writes (demo)", () => {
       "settings.mlo.set": ["disruptive", g(), ["settings", "network", "wifi"]],
       "settings.legacy_mode.set": ["disruptive", g(), ["settings", "network", "wifi"]],
       "settings.power_saving.set": ["write", g(), ["settings"]],
-      "settings.timezone.set": ["write", g(), ["settings", "network", "profiles"]],
+      "settings.timezone.set": ["disruptive", g(), ["settings", "network", "profiles"]],
       "settings.simple_setup.set": ["write", g(), ["settings"]],
       "settings.thread.set": ["disruptive", g(), ["settings"]],
       "settings.power_schedule.add": ["write", g(), ["settings"]],

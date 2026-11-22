@@ -478,7 +478,7 @@ a title naming the target ("Block Alex's MacBook Pro?"), one or two
 sentences on who loses what and for how long ("Everyone loses internet for
 about 2 to 3 minutes, including every connected device and any calls in
 progress."), then a ghost Cancel and a filled button that repeats
-the action, yellow for a disruptive action and red for a destructive one ("Yes, restart network", "Remove from network", "Block device").
+the action without a "Yes," in front, yellow for a disruptive action and red for a destructive one ("Restart network", "Remove from network", "Block device").
 Focus starts on Cancel (or the type-to-confirm field); `Esc` and Cancel
 cancel, and a click on the backdrop does nothing. The title is red for a
 destructive action, yellow for a disruptive one, with no icon. Controls never turn into a confirm in place: a note

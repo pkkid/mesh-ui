@@ -45,7 +45,7 @@ export type ConfirmAsk = {
   title: string;
   /** The consequence; the engine's `needs_confirm` message unless the caller gave one. */
   message: string;
-  /** Repeats the action on the danger button: "Yes, restart network". */
+  /** Repeats the action on the danger button: "Restart network". */
   confirmLabel: string;
   /** Destructive actions on a named thing: the person types this to enable the button. */
   typeToConfirm?: string;

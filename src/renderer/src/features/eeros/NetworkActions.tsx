@@ -74,7 +74,7 @@ export function watchRestart(result: RestartResult, what: string): void {
 export function useRestartNetwork() {
   const network = useQuery<Network>("network.get");
   const write = useWrite<Record<string, never>, RestartResult>("network.restart", {
-    confirm: { title: "Restart network?", confirmLabel: "Yes, restart network" },
+    confirm: { title: "Restart network?", confirmLabel: "Restart network" },
   });
   const gate = useGate({ area: "network" });
   const name = network.data?.name ?? "the network";

@@ -148,7 +148,7 @@ describe("performWrite: confirm", () => {
   it("disruptive: needs_confirm message goes to the confirm, then runs with confirm: true and a progress toast", async () => {
     const t = setup([true]);
     const res = await performWrite(
-      { id: "kit.network.restart", success: "Restarted Maple Street", progress: "Restarting Maple Street", confirm: { confirmLabel: "Yes, restart network" } },
+      { id: "kit.network.restart", success: "Restarted Maple Street", progress: "Restarting Maple Street", confirm: { confirmLabel: "Restart network" } },
       t.deps,
     );
     expect(res).toMatchObject({ ok: true, result: { restarts: 1 } });
@@ -162,7 +162,7 @@ describe("performWrite: confirm", () => {
         effect: "disruptive",
         title: "Restart network?",
         message: "Everyone loses internet for about 2 to 3 minutes.",
-        confirmLabel: "Yes, restart network",
+        confirmLabel: "Restart network",
         typeToConfirm: undefined,
       },
     ]);
