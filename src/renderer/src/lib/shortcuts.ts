@@ -20,15 +20,15 @@ export type ShortcutId = "palette.open" | "nav.settings" | "nav.back" | "nav.for
 
 export type ShortcutAction = { id: ShortcutId; label: string; defaults: { mac: string; other: string } };
 
-/** The rebindable actions, in the order Settings lists them. */
+/** The rebindable actions, in the order Settings lists them: the first three in the left card, the rest in the right. */
 export const SHORTCUTS: ReadonlyArray<ShortcutAction> = [
   { id: "palette.open", label: "Open command palette", defaults: { mac: "F1", other: "F1" } },
   { id: "nav.settings", label: "Open Settings", defaults: { mac: "meta+Comma", other: "ctrl+Comma" } },
+  { id: "devtools.toggle", label: "Toggle DevTools panel", defaults: { mac: "F12", other: "F12" } },
   // Option+Left moves by a word in macOS text fields, so the Mac default is Cmd+[ as in Safari and Chrome.
   { id: "nav.back", label: "Go back", defaults: { mac: "meta+BracketLeft", other: "alt+ArrowLeft" } },
   { id: "nav.forward", label: "Go forward", defaults: { mac: "meta+BracketRight", other: "alt+ArrowRight" } },
   { id: "data.refresh", label: "Refresh page data", defaults: { mac: "F5", other: "F5" } },
-  { id: "devtools.toggle", label: "Toggle DevTools panel", defaults: { mac: "F12", other: "F12" } },
 ];
 
 /**
