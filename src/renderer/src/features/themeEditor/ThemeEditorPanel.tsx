@@ -445,7 +445,8 @@ export function ThemeEditorPanel({
         {/* Title with the live status under it; the buttons stay on the title's line, at the top. */}
         <div className="flex min-w-0 flex-1 flex-col pt-0.5">
           <h2 className="font-medium text-sm text-foreground">{title}</h2>
-          {!minimized && status && <p className="truncate text-muted-foreground text-xs">{status}</p>}
+          {/* The status line keeps its height when empty, so the body never jumps as it comes and goes. */}
+          {!minimized && <p className="min-h-4 truncate text-muted-foreground text-xs">{status}</p>}
         </div>
         <Button
           size="xs"
