@@ -10,21 +10,16 @@
  *   (src/main/tray.ts). On a Linux desktop with no tray it can only be
  *   turned off.
  *
- * With both on, a login launch starts in the tray without opening the window.
+ * With both on, a login launch always starts hidden in the tray; with the
+ * tray off it opens the window, and Start at login's description says which.
  */
 import { useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
 import { Group, Row, WriteSwitch } from "~/features/advanced/SettingsGroups";
 import type { AppInfo, AppSettings, StartupStatus } from "../../../../core/model";
+import { startAtLoginDetail, startupSummary } from "./startupCopy";
 
 const ALLOWED = { allowed: true, reason: null };
-
-/** The section's description from the two settings: what happens at login and when the window closes. */
-export function startupSummary(startAtLogin: boolean | undefined, inTray: boolean | undefined): string {
-  if (startAtLogin === undefined || inTray === undefined) return "How Mesh UI starts and stops on this computer.";
-  const login = startAtLogin ? (inTray ? "Starts in the tray at login" : "Opens at login") : "Opens only when you start it";
-  return `${login}. ${inTray ? "Closing the window keeps it running in the tray." : "Closing the window quits it."}`;
-}
 
 export function StartupTray({ id }: { id?: string }) {
   const info = useQuery<AppInfo>("app.info", undefined, { poll: true });
@@ -41,11 +36,7 @@ export function StartupTray({ id }: { id?: string }) {
     <Group id={id} title="Startup and tray" description={startupSummary(startup?.supported ? startup.enabled : startup ? false : undefined, inTray)}>
       <Row
         title="Start at login"
-        description={
-          startup && !startup.supported
-            ? "Open Mesh UI when you sign in to this computer. Not available in a development build."
-            : "Open Mesh UI when you sign in to this computer. With Keep running in the tray on, it starts in the tray without opening the window."
-        }
+        description={startAtLoginDetail(startup?.supported, inTray === true && !noTray)}
         control={
           <WriteSwitch
             on={startup ? startup.supported && startup.enabled : undefined}

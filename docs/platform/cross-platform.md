@@ -123,8 +123,11 @@ is closed, so desktop alerts keep arriving.
   shutting down.
 - **Tray icon:** clicking it (Windows and Linux) or its menu's **Open Mesh
   UI** shows and focuses the window. The menu holds no eero data. The icon
-  is the macOS template image `build/tray/mesh-ui-trayTemplate.png` in the
-  menu bar and the color app icon on Windows and Linux panels.
+  is always the monochrome mesh glyph (`build/tray/mesh-ui-tray-*.svg`): a
+  template image in the macOS menu bar (`mesh-ui-trayTemplate.png`, which
+  macOS tints), and on Windows and Linux white on a dark taskbar or panel and
+  black on a light one (`build/tray/png/`), swapped when the OS theme changes
+  (Windows reads the taskbar's own theme, `shouldUseDarkColorsForSystemIntegratedUI`).
 - **One copy:** while the setting is on Mesh UI holds Electron's
   single-instance lock, so launching it again shows the running copy instead
   of opening a second one (two copies would poll, and alert, twice).
@@ -155,9 +158,12 @@ The OS keeps the truth, so turning it off in system settings shows in Mesh UI.
 | Windows | The Run key entry Electron writes for this exe, with `--hidden` (NSIS and the portable zip) |
 | Linux | `~/.config/autostart/mesh-ui.desktop` (or under `$XDG_CONFIG_HOME`), `Exec` the AppImage file or the installed binary with `--hidden`; an entry the desktop turned off (`Hidden=true`, `X-GNOME-Autostart-enabled=false`) reads as off |
 
-- A login launch starts in the tray without showing the window, but only
-  while Keep running in the tray is on and the tray icon is showing;
-  otherwise the window opens as usual. The demo relaunch drops `--hidden`.
+- With Keep running in the tray on, a login launch always starts hidden in
+  the tray. On Linux the panel's tray host can start after Mesh UI, so a
+  login launch retries for up to 20 s before giving up; only a desktop with
+  no tray at all then shows the window. With the tray setting off the
+  window opens as usual, and the Start at login row says so. The demo
+  relaunch drops `--hidden`.
 - Development builds cannot register one (it would start the bare Electron
   binary): the switch is disabled.
 - Headless runs keep it in memory, so a screenshot never adds a real login item.

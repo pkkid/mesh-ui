@@ -1124,6 +1124,11 @@ pack's standard badge, a 4px dot (radius 2 on the 22px canvas) in the
 bottom-right corner with a 1px gap cut from the symbol, in
 `ColorScheme-NeutralText` or `ColorScheme-NegativeText`. They use no masks,
 because Qt's SVG renderer does not support them.
+The running app's tray (Keep running in the tray) always uses the normal
+`mesh-ui-tray` glyph, never the color app icon: a template image in the
+macOS menu bar, and on Windows and Linux rendered in plain white for dark
+taskbars and panels and black for light ones (`build/tray/png/`,
+`pnpm icons --tray`), picked from the OS theme.
 
 ## Accessibility
 
