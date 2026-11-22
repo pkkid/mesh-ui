@@ -1129,8 +1129,10 @@ The running app's tray (Keep running in the tray) always uses the normal
 macOS menu bar, and on Windows and Linux rendered in plain white for dark
 taskbars and panels and black for light ones (`build/tray/png/`,
 `pnpm icons --tray`), picked from the OS theme. The rendered glyph is
-trimmed and scaled to the pack's median panel tray icon: it fills the 16px
-canvas (and the macOS template), and is 18px with 2px padding on 22px.
+trimmed and scaled: it fills the 16px canvas (and the macOS template), like
+the pack's panel tray icons, and is 20px with 1px padding on 22px, because
+Linux tray hosts shrink an app's image into their icon box (20px in GNOME's
+BetterTrayIcons) while themed icons are drawn at about 90% of it.
 
 ## Accessibility
 
