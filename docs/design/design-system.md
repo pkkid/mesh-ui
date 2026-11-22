@@ -124,7 +124,55 @@ does: Popular, Top rated or Newest, permissively licensed only, fetched and
 checked in main, see [ui.md](../architecture/ui.md)) and imports VS Code or
 Mesh UI / T3 Code theme files (choose, drop or paste). An extension becomes
 one card; its themes take ids prefixed with the extension, so adding it again
-updates it. Added themes have a remove button.
+updates it.
+
+**Card actions** (as T3 Code's theme library): small `ghost-muted` icon
+buttons with tooltips after the card's name. **Duplicate** (every theme,
+built-ins too) opens the theme editor on a copy named "<name> copy", so
+built-ins stay read-only. **Edit** (added themes) opens the editor on the
+theme itself. **Export** (every theme) saves a theme file through the save
+dialog: one theme as `{ version: 1, id, name, appearance, colors, variants?,
+series? }` (T3 Code's format; `series` is Mesh UI's and T3 ignores it), a
+collection as a JSON array of those, each with its `collection`. Add theme
+reads both back and keeps their ids, so importing an export updates the theme
+it came from (a built-in comes back as an added copy). **Remove** (added
+themes). On a collection, Duplicate and Edit act on the style showing for the
+current appearance; Export and Remove take the whole collection.
+
+**Theme editor** (`features/themeEditor/`, ported from T3 Code's
+`ThemeEditorPanel.tsx`, `ThemeEditorHost.tsx`, `themeEditorStore.ts`,
+`ThemeColorPicker.tsx` and `themeInspector.ts`): a floating panel mounted once
+in the window shell, bottom right, on the popover surface (`popoverSurface`),
+`no-drag`, z 46 (under popovers and dialogs). Drag it by its header, resize
+it from its corner, minimise it. The page stays usable behind it and shows
+the draft live (`setThemePreview` in `lib/themes.ts` paints it over the picked
+theme until the editor closes); Cancel, Close or Escape put the picked theme
+back.
+
+- **Name** and **Appearance** (Light / Dark: the palettes the theme has; a
+  palette it lacks is disabled).
+- **Colours**, **Simple** (a background and an accent derive every role,
+  `createVividThemeColors`) or **Advanced** (every colour family Mesh UI
+  paints, grouped Foundation, Brand and controls, Sidebar, Status, with a
+  filter; editing a family's colour re-derives its text and washes,
+  `updateThemeColorFamily`). T3 Code's terminal, search and message roles are
+  not shown and keep their values. It opens in Advanced, since saved themes
+  are hand-tuned.
+- **Chart colours**: the eight series hues for the appearance (both modes).
+- Each row: the name (click to spotlight where the colour is used), a swatch
+  that opens a picker popover (saturation plane, hue slider, hex and RGB;
+  Escape reverts), and a hex field.
+- **Spotlight and Inspect**: selecting a colour dims the window with an SVG
+  mask and outlines every element it paints, with a use count in the header;
+  **Inspect** names the colour under the pointer and a click selects it. Both
+  probe the CSS variable (`--theme-*` or `--series-*`) with a marker colour
+  and compare computed paint, and read Mesh UI's Tailwind colour classes
+  directly. A chart's marks are outlined once, as their `<svg>`. The outline
+  is a plain 2px ring, no glow. Refreshes are throttled to two a second, so
+  live-polling pages stay cheap.
+- **Save** writes the theme library: Edit replaces the theme in place; a new
+  theme gets a free id and is picked for its appearances. No custom CSS
+  editor (T3 Code has one).
 
 Settings are stored in localStorage (`mesh-ui:theme:v1`, `{ light, dark,
 mode }`; the older `{ themeId, mode }` is read too), added themes in

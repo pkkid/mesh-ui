@@ -476,3 +476,69 @@ html.dark[data-theme-id="rose"] [data-sidebar-surface] {
   margin-left: -20px;
   color: var(--color-foreground);
 }
+
+/* Theme editor inspector (features/themeEditor/themeInspector.ts, from T3
+   Code). Probing swaps colour variables for a frame; no transition may
+   paint the probe colour. The spotlight dims everything except the elements
+   a colour paints and outlines them; the hover box names the colour under
+   the pointer in inspect mode. Both sit under the editor panel (z 46) and
+   its popovers (z 50). A plain outline, no glow. */
+html[data-theme-token-probe],
+html[data-theme-token-probe] *,
+html[data-theme-token-probe] *::before,
+html[data-theme-token-probe] *::after {
+  transition: none !important;
+}
+
+#theme-inspector-spotlight {
+  position: fixed;
+  z-index: 44;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.theme-inspector-spotlight-dimmer {
+  fill: rgb(2 3 8 / 50%);
+}
+
+.theme-inspector-spotlight-outline {
+  fill: none;
+  stroke: var(--color-ring);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+#theme-inspector-hover {
+  position: fixed;
+  z-index: 45;
+  pointer-events: none;
+  border: 2px solid var(--color-ring);
+}
+
+#theme-inspector-hover [data-theme-inspector-hover-label] {
+  position: absolute;
+  left: -2px;
+  max-width: 14rem;
+  overflow: hidden;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background: var(--color-popover);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 24%);
+  color: var(--color-popover-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#theme-inspector-hover[data-placement="above"] [data-theme-inspector-hover-label] {
+  bottom: calc(100% + 0.25rem);
+}
+
+#theme-inspector-hover[data-placement="below"] [data-theme-inspector-hover-label] {
+  top: calc(100% + 0.25rem);
+}

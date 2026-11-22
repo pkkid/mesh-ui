@@ -3,15 +3,21 @@
  * modelled on T3 Code's theme settings (ThemeSettings.tsx): System / Light /
  * Dark tiles, then a card per theme or collection with a light and a dark
  * circle. Light and dark are picked separately; a collection's circles fan
- * out its styles on hover (Gruvbox Hard, Medium, Soft). Theme choice is
- * renderer view state in localStorage, not a command.
+ * out its styles on hover (Gruvbox Hard, Medium, Soft). Each card has
+ * Duplicate (built-ins too, into an editable copy), Edit (added themes),
+ * Export (a theme file, or a collection's themes in one file) and Remove,
+ * as T3 Code; Duplicate and Edit open the floating theme editor
+ * (features/themeEditor). Theme choice is renderer view state in
+ * localStorage, not a command.
  */
-import { Moon, Plus, Sun, Trash2 } from "lucide-react";
+import { Copy, Moon, PenLine, Plus, Sun, Trash2, Upload } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { Footnote } from "~/components/ui/page";
+import { openThemeEditor } from "~/features/themeEditor/themeEditorStore";
+import { saveTextFile } from "~/lib/saveFile";
 import { isBuiltInTheme, groupThemes, removeThemes, useAllThemes } from "~/lib/themeLibrary";
 import { getThemeModes, type ThemeAppearance, type ThemeDefinition } from "~/lib/themePalettes";
 import {
@@ -20,10 +26,11 @@ import {
   pickThemeEverywhere,
   setThemeSettings,
   themeFor,
+  useResolvedAppearance,
   useThemeSettings,
 } from "~/lib/themes";
 import { cn } from "~/lib/utils";
-import { collectionVariantLabels } from "~/lib/vscodeTheme";
+import { collectionVariantLabels, serializeThemeFile, themeFileName } from "~/lib/vscodeTheme";
 
 import { ThemeImportDialog } from "./ThemeImportDialog";
 import { ThemePreviewCircle, ThemeWireframe, previewColors } from "./ThemePreview";
@@ -139,6 +146,7 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
   const labels = isCollection ? collectionVariantLabels(themes) : [first.label];
   const name = first.collection?.label ?? first.label;
   const custom = !isBuiltInTheme(first.id);
+  const appearance = useResolvedAppearance();
 
   const groups = (["light", "dark"] as const).flatMap((mode) => {
     const options: Option[] = themes.flatMap((theme, i) =>
@@ -148,6 +156,13 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
     return selected ? [{ mode, options, selected, active: selected.theme.id === settings[mode] }] : [];
   });
   const lone = groups.length === 1;
+  // Duplicate and Edit act on the style showing for the current appearance (a collection's picked one).
+  const shown = (groups.find((g) => g.mode === appearance) ?? groups[0])?.selected.theme ?? first;
+  const shownName = isCollection ? `${name} ${labels[themes.indexOf(shown)] ?? shown.label}` : name;
+  const duplicate = () =>
+    openThemeEditor({ editingThemeId: null, seedThemeId: shown.id, seedName: `${shown.label} copy`.slice(0, 48), initialAppearance: appearance });
+  const edit = () => openThemeEditor({ editingThemeId: shown.id, seedThemeId: null, seedName: null, initialAppearance: appearance });
+  const exportFile = () => void saveTextFile(themeFileName(themes), serializeThemeFile(isCollection ? themes : first));
 
   const pickCard = () => {
     if (!isCollection) return pickThemeEverywhere(first);
@@ -246,6 +261,7 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
         <button
           type="button"
           aria-label={`Use ${name}`}
+          title={name}
           onClick={(e) => {
             e.stopPropagation();
             pickCard();
@@ -254,22 +270,48 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
         >
           {name}
         </button>
-        {custom && (
-          <Button
-            size="icon-xs"
-            variant="ghost-muted"
-            title={isCollection ? "Remove these themes" : "Remove theme"}
-            aria-label={`Remove ${name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              removeThemes(themes.map((t) => t.id));
-            }}
-          >
-            <Trash2 />
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <CardAction label={`Duplicate ${shownName}`} title="Duplicate theme" onClick={duplicate}>
+            <Copy />
+          </CardAction>
+          {custom && (
+            <CardAction label={`Edit ${shownName}`} title="Edit theme" onClick={edit}>
+              <PenLine />
+            </CardAction>
+          )}
+          <CardAction label={`Export ${name}`} title={isCollection ? "Export these themes" : "Export theme file"} onClick={exportFile}>
+            <Upload />
+          </CardAction>
+          {custom && (
+            <CardAction
+              label={`Remove ${name}`}
+              title={isCollection ? "Remove these themes" : "Remove theme"}
+              onClick={() => removeThemes(themes.map((t) => t.id))}
+            >
+              <Trash2 />
+            </CardAction>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+/** A small ghost icon button on a theme card, with a tooltip; it never picks the card. */
+function CardAction({ label, title, onClick, children }: { label: string; title: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Button
+      size="icon-xs"
+      variant="ghost-muted"
+      title={title}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+    >
+      {children}
+    </Button>
   );
 }
 

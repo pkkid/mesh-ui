@@ -4,7 +4,7 @@
  * steps (docs/ux/sign-in.md), which stay up after the code checks until they
  * have opened the last used network (else the first), then hand over to the
  * dashboard. The shell also hosts the write kit's toasts and confirm dialog
- * (app/useWrite.ts).
+ * (app/useWrite.ts) and the floating theme editor.
  */
 import { useEffect, useState } from "react";
 
@@ -19,6 +19,7 @@ import { errorCode } from "~/features/sign-in/errorCode";
 import { SignInView } from "~/features/sign-in/SignInView";
 import { Sidebar } from "~/features/shell/Sidebar";
 import { TopBar, TopBarProvider } from "~/features/shell/TopBar";
+import { ThemeEditorHost } from "~/features/themeEditor/ThemeEditorHost";
 import type { AuthStatus } from "../../core/model";
 
 /**
@@ -100,6 +101,7 @@ function Shell() {
         </main>
       </TopBarProvider>
       <CommandPalette />
+      <ThemeEditorHost />
       <Toaster />
       <ConfirmHost />
     </div>

@@ -23,7 +23,10 @@ import {
   getSeriesForAppearance,
   getThemeColorsForAppearance,
   getThemeModes,
+  themeVariable,
+  type SeriesPalette,
   type ThemeAppearance,
+  type ThemeColors,
   type ThemeDefinition,
 } from "./themePalettes";
 
@@ -53,23 +56,38 @@ export function themeFor(current: ThemeSettings, appearance: ThemeAppearance): T
   return findTheme(current[appearance]) ?? DEFAULT_THEME;
 }
 
-const kebab = (role: string) => role.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+
+/** Colours the theme editor is showing in place of the picked theme, while it is open. */
+export type ThemePreview = { colors: ThemeColors; series: SeriesPalette; appearance: ThemeAppearance };
+let preview: ThemePreview | null = null;
+
+/**
+ * Paints the theme editor's draft over the whole window (null puts the
+ * picked theme back). The preview wins over settings changes until cleared.
+ */
+export function setThemePreview(next: ThemePreview | null): void {
+  preview = next;
+  applyTheme();
+}
 
 export function applyTheme(): void {
+  if (preview) return paint(preview.colors, preview.series, preview.appearance, "preview");
   const wanted = resolveAppearance(settings.mode);
   const theme = themeFor(settings, wanted);
   // A one-appearance theme shows as itself, so the page stays legible.
   const appearance = getThemeModes(theme).includes(wanted) ? wanted : theme.appearance;
-  const colors = getThemeColorsForAppearance(theme, appearance);
+  paint(getThemeColorsForAppearance(theme, appearance), getSeriesForAppearance(theme, appearance), appearance, theme.id);
+}
+
+function paint(colors: ThemeColors, series: SeriesPalette, appearance: ThemeAppearance, id: string): void {
   const root = document.documentElement;
 
   root.classList.add("no-transitions");
   root.classList.toggle("dark", appearance === "dark");
-  root.dataset.themeId = theme.id;
+  root.dataset.themeId = id;
   for (const role of THEME_COLOR_ROLES) {
-    root.style.setProperty(`--theme-${kebab(role)}`, colors[role]);
+    root.style.setProperty(themeVariable(role), colors[role]);
   }
-  const series = getSeriesForAppearance(theme, appearance);
   for (const hue of SERIES_HUES) {
     root.style.setProperty(`--series-${hue}`, series[hue]);
   }
