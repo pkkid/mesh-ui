@@ -685,8 +685,10 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | QR block | `qr.tsx`. **Plain** (`QrCode plain`, the Guest network and Wi-Fi network heroes): the code at error correction level L with no tile or glyph, so a guest `WIFI:` payload is 29 x 29 modules instead of 41 x 41, drawn as round dots (radius 0.46 of a module, so scanners still read them) with the three finder patterns as rounded squares, in the full text colour on screen (a 60% dim was tried and dropped). Both heroes frame it in a 1px rounded border with 15px of padding and no buttons beside it; their share actions are hero buttons (**Copy invite**, **Copy password**). Wi-Fi network keeps the frame empty, with **Show code** centred in it, until clicked. Standard: `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then any page actions), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog. (The printed guest card was dropped on 2026-11-20 with Print a card.) Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
 
-**Buttons.** Primary (filled) is only for the submit button of a sheet
-or form (Save, Create), the sign-in flow, and the one action
+**Buttons.** Primary (filled `bg-primary`, the `default` variant) is used
+sparingly: only for the submit button of a sheet, dialog or form (Save,
+Create invite, Send code, Add theme), a plain write's confirm, the sign-in
+flow, and the one action
 that switches on a page whose feature is off (Guest network's **Turn on
 guest network**): there the whole page is waiting on that one step. Hero actions are
 never filled, not even the main one (Run speed test, Pause): every button in
@@ -993,13 +995,13 @@ and are capped at the space available below their trigger, then scroll.
   the top right, since Esc would otherwise be its only way out.
 - **Footer:** buttons are `sm`, on the right, Cancel (ghost; `outline` on a
   confirm, see [Confirm](#confirm)) then the primary
-  action last. The action is `outline`, the same neutral button as a hero
-  action, never filled blue (#360; Change email and Verify mobile follow it,
-  sheets still show a filled Save and move over in #346 task 3). On a confirm the action button matches the title:
+  action last. The action is filled `bg-primary` (`default`), as T3 Code's
+  dialogs: sheet Save, Send code (Change email, Verify mobile), Create
+  invite, Add theme. On a confirm the action button matches the title:
   filled red (`destructive`) for a destructive action, filled yellow
-  (`warning`) for a disruptive one, and filled `bg-primary` (`default`) for a
-  plain write, as T3 Code's confirms. That is the one place a modal shows a
-  filled primary button.
+  (`warning`) for a disruptive one, and filled `bg-primary` for a plain
+  write. A form dialog that does something destructive (Start transfer)
+  takes the red button too.
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
   the left.
 
