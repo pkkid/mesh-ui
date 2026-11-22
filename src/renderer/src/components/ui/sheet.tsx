@@ -8,11 +8,11 @@
 // the write (usually `useWrite(...).run(params, { form: true })`); the sheet
 // closes when it resolves `{ ok: true }` and stays open otherwise, with
 // `bad_params` messages under their fields (`fieldErrors` in useWrite.ts).
-// Esc, the backdrop and the close button cancel; with unsaved changes the
-// footer asks "Discard changes?" first.
+// Esc, Cancel and the close button close it at once, unsaved changes or not
+// (never a "Discard changes?" ask); a click on the backdrop does nothing.
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
@@ -20,7 +20,7 @@ import { cn } from "~/lib/utils";
 
 type SheetProps = {
   open: boolean;
-  /** Called when the sheet should close: after a save, or a cancel the person confirmed. */
+  /** Called when the sheet should close: after a save, or on Esc, Cancel or the close button. */
   onClose: () => void;
   icon?: ReactNode;
   title: ReactNode;
@@ -64,15 +64,8 @@ function Sheet({
   clean = false,
 }: SheetProps) {
   const [saving, setSaving] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
-  useEffect(() => {
-    if (!open) setDiscarding(false);
-  }, [open]);
-
   const requestClose = () => {
-    if (saving) return;
-    if (dirty) setDiscarding(true);
-    else onClose();
+    if (!saving) onClose();
   };
 
   const save = async () => {
@@ -114,27 +107,13 @@ function Sheet({
           {error && <div className="px-5 pb-3 text-destructive-foreground text-xs">{error}</div>}
 
           <div className={cn("flex items-center gap-2 px-5 py-3", !clean && "border-t")}>
-            {discarding ? (
-              <>
-                <span className="me-auto text-foreground/80 text-xs">Discard changes?</span>
-                <Button type="button" size="sm" variant="ghost" autoFocus onClick={() => setDiscarding(false)}>
-                  Keep editing
-                </Button>
-                <Button type="button" size="sm" variant="destructive" onClick={onClose}>
-                  Discard
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="me-auto">{footerStart}</div>
-                <DialogPrimitive.Close render={<Button type="button" size="sm" variant="ghost" />} disabled={saving}>
-                  Cancel
-                </DialogPrimitive.Close>
-                <Button type="submit" size="sm" disabled={!dirty || !valid || saving}>
-                  {saveLabel}
-                </Button>
-              </>
-            )}
+            <div className="me-auto">{footerStart}</div>
+            <DialogPrimitive.Close render={<Button type="button" size="sm" variant="ghost" />} disabled={saving}>
+              Cancel
+            </DialogPrimitive.Close>
+            <Button type="submit" size="sm" disabled={!dirty || !valid || saving}>
+              {saveLabel}
+            </Button>
           </div>
         </form>
       </DialogPopup>

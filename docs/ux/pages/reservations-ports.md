@@ -59,7 +59,7 @@ says "Plex was already removed" (no Undo) and the lists refresh. The sheets live
 | Reservation menu: Open device | none (navigation) | | | Device detail |
 | Add port forward | opens the sheet | | | |
 | Sheet Save port forward | `forward.add` `{device, description, externalPort, internalPort, protocol, enabled}` | write | no | Creates the reservation first if the device has none; the toast says so ("Added Lamp UI and reserved 192.168.4.190") |
-| Sheet Cancel, X, backdrop | none | | | Closes the sheet |
+| Sheet Cancel, Esc | none | | | Closes the sheet |
 | Enabled switch | `forward.update` `{forward, enabled}` | write | no | |
 | Forward menu: Edit | `forward.update` | write | no | Same sheet, filled in |
 | Forward menu: Remove | `forward.remove` `{forward}` | write | dialog | |
