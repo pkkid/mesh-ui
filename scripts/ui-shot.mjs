@@ -12,6 +12,9 @@
  *   --route <hash>       route to open, e.g. '#/devices' (default '#/overview')
  *   --theme light|dark   appearance (default light)
  *   --theme-id <id>      theme palette id, e.g. ocean (default: the app default)
+ *   --theme-file <json>  a theme file exported from Mesh UI or T3 Code (one theme or an array, as
+ *                        Settings exports them), installed as custom themes for the shot; pick one
+ *                        with --theme-id (default: the first in the file)
  *   --size <WxH>         viewport size (default 1200x780, the window size)
  *   --scale <n>          device scale factor (default 1)
  *   --scenario <name>    demo scenario for demo.scenario.set (demo only; default "default")
@@ -47,6 +50,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const THEME_KEY = "mesh-ui:theme:v1";
+const CUSTOM_THEMES_KEY = "mesh-ui:themes:v1";
 const FAKE_CODE = "123456";
 const LIMITS_NOTE =
   "Headless shots cannot show the native window controls (Linux and Windows overlay, macOS traffic lights) " +
@@ -59,7 +63,7 @@ function log(msg) {
 // ---------------------------------------------------------------------------
 // Arguments
 
-const SHOT_KEYS = { route: "route", theme: "theme", "theme-id": "themeId", size: "size", scale: "scale", scenario: "scenario", before: "before", hover: "hover", wait: "wait", out: "out" };
+const SHOT_KEYS = { route: "route", theme: "theme", "theme-id": "themeId", "theme-file": "themeFile", size: "size", scale: "scale", scenario: "scenario", before: "before", hover: "hover", wait: "wait", out: "out" };
 const FLAGS = new Set(["fake", "signed-out", "build", "no-build", "keep", "help"]);
 
 function parseArgs(argv) {
@@ -88,6 +92,7 @@ function normaliseShot(raw, { outDir, fake }) {
     route: "#/overview",
     theme: "light",
     themeId: null,
+    themeFile: null,
     size: "1200x780",
     scale: 1,
     scenario: null,
@@ -108,6 +113,14 @@ function normaliseShot(raw, { outDir, fake }) {
   if (!(shot.scale > 0) || !(shot.wait >= 0)) throw new Error("scale must be > 0 and wait >= 0");
   if (fake && shot.scenario) throw new Error("scenario works only with the demo backend, not --fake");
   shot.out = resolve(outDir ?? process.cwd(), shot.out);
+  if (shot.themeFile) {
+    // A theme file entry is the stored theme plus `version` and `name` for `label` (lib/vscodeTheme.ts serializeThemeFile).
+    const raw = JSON.parse(readFileSync(resolve(shot.themeFile), "utf8"));
+    shot.customThemes = (Array.isArray(raw) ? raw : [raw]).map(({ version: _v, name, ...rest }) => ({ ...rest, label: name }));
+    if (!shot.customThemes.length) throw new Error(`${shot.themeFile} has no themes`);
+    shot.themeId ??= shot.customThemes[0].id;
+    if (!shot.customThemes.some((t) => t.id === shot.themeId)) throw new Error(`${shot.themeFile} has no theme ${shot.themeId}`);
+  }
   return shot;
 }
 
@@ -329,7 +342,8 @@ async function takeShot(session, shot, { fake, errors }) {
   }
   // View state (theme, columns, last route) starts fresh for every shot too.
   const theme = { mode: shot.theme, ...(shot.themeId ? { themeId: shot.themeId } : {}) };
-  await evaluate(session, `localStorage.clear(); localStorage.setItem(${JSON.stringify(THEME_KEY)}, ${JSON.stringify(JSON.stringify(theme))}); location.hash = ${JSON.stringify(shot.route)}`);
+  const custom = shot.customThemes ? `localStorage.setItem(${JSON.stringify(CUSTOM_THEMES_KEY)}, ${JSON.stringify(JSON.stringify(shot.customThemes))}); ` : "";
+  await evaluate(session, `localStorage.clear(); ${custom}localStorage.setItem(${JSON.stringify(THEME_KEY)}, ${JSON.stringify(JSON.stringify(theme))}); location.hash = ${JSON.stringify(shot.route)}`);
   await session.send("Page.reload");
   await sleep(100);
   await waitForApp(session);
