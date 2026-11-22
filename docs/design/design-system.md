@@ -911,8 +911,16 @@ Every write control uses the same pieces (M4.3):
   [overview.md](../ux/overview.md#sheets) and [Sheet](#sheet) under Modals
   and popups. Choices inside a sheet are dropdowns (`Select`, full width or
   sharing a row with related fields), never Segmented, and on/off is the
-  standard 36x20 switch. Shortcuts that fill a field (the schedule sheet's
-  day presets) are plain text links, not pills or chips.
+  standard 36x20 switch. Shortcuts that fill a field (the schedule sheets'
+  day presets) are plain text links, not pills or chips. A picked tile in a
+  grid of choices (the device icon picker) is marked by a background
+  (`bg-accent`, as a pressed button), never an outline.
+- **Schedule fields** (`ui/schedule-fields.tsx`), shared by every schedule
+  sheet (a profile's scheduled pause, power saving): `DayPicker` (the days
+  as one connected control in Segmented's look, any number picked, presets
+  under it), `TimeSelect` (the app's dropdown in 15 minute steps, never the
+  native time input) and `DayBar` (one day, midnight to midnight, the span
+  in the neutral `muted-foreground` fill, dashed while the schedule is off).
 
 ```tsx
 const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });
@@ -1026,6 +1034,32 @@ The detail for sheets (#361). Every sheet goes through `Sheet`
   until the invite exists, then shows its QR with no footer.
 - **Close X:** every sheet has the X at the top right; the X, Esc and
   Cancel close it.
+- **Save's colour:** a sheet names the commands its Save runs (`saves`),
+  and Save takes the confirm's colour from their effect: filled yellow
+  (`warning`) when one is `disruptive` (Wi-Fi name and password, guest
+  name and password, ISP, DHCP, DNS, time zone), red when one is
+  `destructive`, filled primary otherwise.
+- **Content:** a switch that turns a field on is a switch row (label and
+  muted hint on the left, switch on the right, as "Schedule on"), with the
+  field appearing under it while it is on (the uplink VLAN tag).
+
+### Impact of saving
+
+The box a sheet shows before a change that takes devices offline is saved
+(the pieces in `ui/impact.tsx`, used by `ImpactPanel` for settings and `WifiImpact` for Wi-Fi). It
+appears only once something changed; there is no "Nothing to save" state.
+
+- A muted box: `rounded-xl border bg-muted/40`, `px-3.5 py-3`, items 10px
+  apart.
+- Title "Impact of saving" in the field label style (`font-medium
+  text-xs`), not an uppercase eyebrow.
+- Figures, two to a row: the count in `text-base font-semibold
+  tabular-nums` over a lowercase muted `text-xs` label ("0" over "devices
+  lose internet", "4" over "eeros restart"). A count above zero takes the
+  warning colour (red for devices that cannot rejoin); zero stays plain.
+  Counts, never words ("None").
+- Core's summary sentence under them in `text-muted-foreground text-xs`.
+  No step lists.
 - **Scroll:** when a sheet would pass the bottom of the window, its body
   scrolls and the header and footer stay in view. A sheet never adds its
   own scroll box or max height.

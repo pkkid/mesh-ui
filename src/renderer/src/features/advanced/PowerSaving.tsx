@@ -23,10 +23,10 @@ import { Input } from "~/components/ui/input";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import type { Gate } from "~/app/useWrite";
 import { Sheet, SheetField } from "~/components/ui/sheet";
-import { formatMinute, MINUTES_PER_DAY, WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
+import { formatMinute, WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
 import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
-import { daySpans } from "~/features/profile/ScheduleSheet";
+import { DayBar, DayPicker, TimeSelect } from "~/components/ui/schedule-fields";
 import { networkClock } from "../../../../core/format";
 import type { Day, NetworkSettings, Schedule, ScheduleInput } from "../../../../core/model";
 
@@ -38,6 +38,13 @@ export const NO_POWER_SAVING = "Your eero hardware does not support power saving
 const DAY_INDEX: Record<Day, number> = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MON_FIRST: ReadonlyArray<Day> = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+/** Shortcuts under the day picker, as the profile schedule sheet's. */
+const POWER_PRESETS: ReadonlyArray<{ label: string; days: ReadonlyArray<Day> }> = [
+  { label: "Weekdays", days: ["MON", "TUE", "WED", "THU", "FRI"] },
+  { label: "Weekends", days: ["SAT", "SUN"] },
+  { label: "Every day", days: MON_FIRST },
+];
 
 const minutes = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -264,7 +271,7 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
 
       <div className="grid grid-cols-2 gap-3.5">
         <SheetField label="Start time" htmlFor="power-sheet-start" error={errors.start}>
-          <Input id="power-sheet-start" type="time" step={60} required value={start} onChange={(e) => setStart(e.target.value)} />
+          <TimeSelect id="power-sheet-start" value={start} onChange={setStart} />
         </SheetField>
         <SheetField
           label={
@@ -276,54 +283,20 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
           htmlFor="power-sheet-end"
           error={sameTimes ? "End must differ from start." : errors.end}
         >
-          <Input id="power-sheet-end" type="time" step={60} required value={end} aria-invalid={sameTimes || undefined} onChange={(e) => setEnd(e.target.value)} />
+          <TimeSelect id="power-sheet-end" value={end} onChange={setEnd} invalid={sameTimes} />
         </SheetField>
       </div>
 
       <SheetField label="Repeats on" error={errors.days ?? (days.length === 0 ? "Pick at least one day." : undefined)}>
-        <div className="flex gap-1" role="group" aria-label="Repeats on">
-          {MON_FIRST.map((d) => {
-            const on = days.includes(d);
-            return (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]))}
-                // Neutral, as the profile schedule sheet: a picked day gets a stronger outline, not a fill.
-                className={cn(
-                  "h-7 flex-1 cursor-pointer rounded-[var(--control-radius)] border font-medium text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  on ? "border-foreground/45 bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {d.charAt(0) + d.slice(1).toLowerCase()}
-              </button>
-            );
-          })}
-        </div>
+        <DayPicker order={MON_FIRST} days={days} onChange={setDays} presets={POWER_PRESETS} />
       </SheetField>
 
-      <div className="flex flex-col gap-1.5">
-        <div className="font-medium text-xs">Each day</div>
-        <div
-          role="img"
-          aria-label={sameTimes || !start || !end ? "No power saving" : `Power saving ${formatMinute(minutes(start))} to ${formatMinute(minutes(end))}${wraps ? " the next day" : ""}`}
-          className={cn("relative h-5 overflow-hidden rounded-md border bg-muted/40", !enabled && "opacity-60")}
-        >
-          {daySpans(start, end).map((s) => (
-            <i
-              key={s.from}
-              className={cn("absolute inset-y-0", !enabled && "border-[1.5px] border-dashed")}
-              style={{ left: `${(s.from / MINUTES_PER_DAY) * 100}%`, width: `${((s.to - s.from) / MINUTES_PER_DAY) * 100}%`, ...(enabled ? { backgroundColor: seriesColors.powerSaving } : { borderColor: seriesColors.powerSaving }) }}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between text-3xs text-muted-foreground uppercase tracking-wide" aria-hidden>
-          {["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"].map((t, i) => (
-            <span key={i}>{t}</span>
-          ))}
-        </div>
-      </div>
+      <DayBar
+        start={start}
+        end={end}
+        enabled={enabled}
+        ariaLabel={sameTimes || !start || !end ? "No power saving" : `Power saving ${formatMinute(minutes(start))} to ${formatMinute(minutes(end))}${wraps ? " the next day" : ""}`}
+      />
     </Sheet>
   );
 }

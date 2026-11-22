@@ -21,7 +21,7 @@ import { seriesColors } from "~/lib/chartColors";
 import { formatDuration, formatRelative, networkClock } from "../../../../core/format";
 import type { Internet, Network, NetworkHealth, SpeedHistory } from "../../../../core/model";
 import { useRestartNetwork } from "~/features/eeros/NetworkActions";
-import { ShareWifiButton } from "~/features/wifi/ShareSheet";
+import { ShareGuestButton, ShareWifiButton } from "~/features/wifi/ShareSheet";
 import { SpeedGauge, useRunningSpeedTest } from "~/features/internet/InternetHero";
 import { openPlanSheet, PlanSheet } from "~/features/internet/PlanSheet";
 
@@ -91,6 +91,7 @@ export function NetworkHero() {
           <>
             {/* Outline buttons with dim icons (design-system.md, Buttons and links). */}
             <ShareWifiButton className={DIM_ICON} />
+            <ShareGuestButton className={DIM_ICON} />
             <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate} disabled={restart.write.running} onClick={() => void restart.run()}>
               <RotateCcw />
               Restart network…

@@ -468,6 +468,7 @@ function WanSheet({ open, onClose, settings, isp, offline }: { open: boolean; on
       dirty={dirty}
       valid={!staticProblem && !vlanProblem && !pppoeProblem}
       onSave={() => write.run(params())}
+      saves={["settings.wan.set"]}
       saveLabel="Save and restart"
       error={errors._form ?? errors.static ?? errors.pppoe}
     >
@@ -491,12 +492,19 @@ function WanSheet({ open, onClose, settings, isp, offline }: { open: boolean; on
           </SheetField>
         </div>
       )}
-      <SheetField label="Uplink VLAN tag" htmlFor="wan-vlan" error={vlanProblem ?? errors.vlan} helper="Only if your ISP tags its traffic, 1 to 4094">
-        <div className="flex items-center gap-2.5">
-          <WriteSwitch on={vlanOn} label="Uplink VLAN tag" gate={{ allowed: true, reason: null }} onToggle={setVlanOn} />
-          <Input id="wan-vlan" inputMode="numeric" value={vlan} disabled={!vlanOn} onChange={(e) => setVlan(e.target.value.replace(/\D/g, ""))} className="w-28 font-mono" aria-invalid={vlanProblem ? true : undefined} />
+      {/* A switch row (as a schedule's "Schedule on"); the tag's field appears under it while it is on. */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="font-medium text-sm">Uplink VLAN tag</div>
+          <div className="text-muted-foreground text-xs">Only if your ISP tags its traffic</div>
         </div>
-      </SheetField>
+        <WriteSwitch on={vlanOn} label="Uplink VLAN tag" gate={{ allowed: true, reason: null }} onToggle={setVlanOn} />
+      </div>
+      {vlanOn && (
+        <SheetField label="VLAN ID" htmlFor="wan-vlan" error={(vlan !== "" ? vlanProblem : undefined) ?? errors.vlan} helper="1 to 4094">
+          <Input id="wan-vlan" inputMode="numeric" value={vlan} onChange={(e) => setVlan(e.target.value.replace(/\D/g, ""))} className="w-28 font-mono" aria-invalid={vlanProblem ? true : undefined} />
+        </SheetField>
+      )}
       <ImpactPanel ids={dirty ? ["settings.wan.set"] : []} />
       <WriteConfirmDialog write={write} />
     </Sheet>
@@ -746,6 +754,7 @@ function DhcpSheet({ open, onClose, settings, offline }: { open: boolean; onClos
       dirty={dirty}
       valid={!problem}
       onSave={() => write.run({ mode: "custom", ...range })}
+      saves={["settings.dhcp.set"]}
       saveLabel="Save and restart"
       error={errors._form}
     >
@@ -789,6 +798,7 @@ function DnsSheet({ open, onClose, settings, offline }: { open: boolean; onClose
       dirty={dirty}
       valid={servers.length > 0 && problems.every((p) => !p)}
       onSave={() => write.run({ mode: "custom", servers, ipv6Servers })}
+      saves={["settings.dns.set"]}
       saveLabel="Save and restart"
       error={errors._form}
     >

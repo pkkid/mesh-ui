@@ -3,7 +3,8 @@
 // (design-system.md#sheet). A body on the page background with the title, its
 // muted line, 20px, then the content; and, for a form, the footer band (top
 // border, muted fill) with an optional action on the left and Cancel and the
-// filled primary Save on the right. Every sheet has the close X at the top
+// filled Save on the right: primary, or yellow (red) when a command it runs is
+// `disruptive` (`destructive`), named by `saves`, as the confirm's button. Every sheet has the close X at the top
 // right. A content sheet (Share Wi-Fi) passes no `onSave` and has no footer.
 // One of two named widths; the body scrolls when the sheet would pass the
 // bottom of the window, header and footer stay in view.
@@ -17,6 +18,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { type ReactNode, useState } from "react";
 
+import { useCommands } from "~/app/useCommand";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { cn } from "~/lib/utils";
@@ -51,6 +53,12 @@ type SheetProps = {
   /** The form is valid (client-side checks; the command's zod schema is the final word). */
   valid?: boolean;
   saveLabel?: ReactNode;
+  /**
+   * The command ids Save may run. Their effect colours Save as the confirm's
+   * button does: yellow when one is `disruptive` (devices go offline), red
+   * when one is `destructive`, the primary colour otherwise.
+   */
+  saves?: readonly string[];
   /** Footer left: a secondary or destructive action ("Delete schedule") that reveals its own confirm. */
   footerStart?: ReactNode;
 };
@@ -67,8 +75,12 @@ function Sheet({
   dirty = false,
   valid = true,
   saveLabel = "Save",
+  saves,
   footerStart,
 }: SheetProps) {
+  const commands = useCommands();
+  const effects = new Set((saves ?? []).map((id) => commands?.find((c) => c.id === id)?.effect));
+  const saveVariant = effects.has("destructive") ? "destructive" : effects.has("disruptive") ? "warning" : "default";
   const [saving, setSaving] = useState(false);
   const requestClose = () => {
     if (!saving) onClose();
@@ -108,7 +120,7 @@ function Sheet({
               <DialogPrimitive.Close render={<Button type="button" size="sm" variant="outline" />} disabled={saving}>
                 Cancel
               </DialogPrimitive.Close>
-              <Button type="submit" size="sm" disabled={!dirty || !valid || saving}>
+              <Button type="submit" size="sm" variant={saveVariant} disabled={!dirty || !valid || saving}>
                 {saveLabel}
               </Button>
             </div>

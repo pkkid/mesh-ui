@@ -20,9 +20,9 @@ import { Button } from "~/components/ui/button";
 import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Input } from "~/components/ui/input";
 import { Sheet, SheetField } from "~/components/ui/sheet";
-import { formatMinute, MINUTES_PER_DAY } from "~/components/ui/timeline";
+import { DayBar, DayPicker, sameDays, TimeSelect } from "~/components/ui/schedule-fields";
+import { formatMinute } from "~/components/ui/timeline";
 import { WriteSwitch } from "~/features/advanced/SettingsGroups";
-import { cn } from "~/lib/utils";
 import type { Day, Profile, Schedule, ScheduleInput } from "../../../../core/model";
 
 import { minutesOf, spanMinutes } from "./helpers";
@@ -42,25 +42,12 @@ export const PRESETS: ReadonlyArray<{ label: string; days: ReadonlyArray<Day> }>
 /** A new schedule starts as Bedtime-like: 9:00 PM to 7:00 AM on school nights. */
 export const NEW_SCHEDULE: ScheduleInput = { name: "New schedule", days: ["SUN", "MON", "TUE", "WED", "THU"], start: "21:00", end: "07:00", enabled: true };
 
-const sameDays = (a: ReadonlyArray<Day>, b: ReadonlyArray<Day>) => a.length === b.length && a.every((d) => b.includes(d));
 
 /** "10h paused, 50h a week" (minutes rounded to a tenth of an hour). */
 export function pausedLine(input: Pick<ScheduleInput, "start" | "end" | "days">): string {
   const hours = (m: number) => `${Math.round((m / 60) * 10) / 10}h`;
   const day = input.start === input.end ? 0 : spanMinutes(input);
   return `${hours(day)} paused, ${hours(day * new Set(input.days).size)} a week`;
-}
-
-/** The paused spans within one day for the preview bar: one, or two when it wraps past midnight. */
-export function daySpans(start: string, end: string): { from: number; to: number }[] {
-  const s = minutesOf(start);
-  const e = minutesOf(end);
-  if (s === e) return [];
-  if (e > s) return [{ from: s, to: e }];
-  return [
-    ...(e > 0 ? [{ from: 0, to: e }] : []),
-    { from: s, to: MINUTES_PER_DAY },
-  ];
 }
 
 /** The sheet's switch is form state, not a write: always usable. */
@@ -132,7 +119,6 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
     if (res?.ok) onClose();
   };
 
-  const toggleDay = (d: Day) => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
   const startAt = formatMinute(minutesOf(mode.kind === "edit" ? mode.schedule.start : start));
 
   return (
@@ -175,7 +161,7 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
 
       <div className="grid grid-cols-2 gap-3.5">
         <SheetField label="Start time" htmlFor="schedule-sheet-start" error={errors.start}>
-          <Input id="schedule-sheet-start" type="time" step={60} required value={start} onChange={(e) => setStart(e.target.value)} />
+          <TimeSelect id="schedule-sheet-start" value={start} onChange={setStart} />
         </SheetField>
         <SheetField
           label={
@@ -187,76 +173,21 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
           htmlFor="schedule-sheet-end"
           error={sameTimes ? "End must differ from start." : errors.end}
         >
-          <Input id="schedule-sheet-end" type="time" step={60} required value={end} aria-invalid={sameTimes || undefined} onChange={(e) => setEnd(e.target.value)} />
+          <TimeSelect id="schedule-sheet-end" value={end} onChange={setEnd} invalid={sameTimes} />
         </SheetField>
       </div>
 
       <SheetField label="Repeats on" error={errors.days ?? (days.length === 0 ? "Pick at least one day." : undefined)}>
-        <div className="flex gap-1" role="group" aria-label="Repeats on">
-          {SUN_FIRST.map((d) => {
-            const on = days.includes(d);
-            return (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={on}
-                onClick={() => toggleDay(d)}
-                className={cn(
-                  "h-7 flex-1 cursor-pointer rounded-[var(--control-radius)] border font-medium text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  on ? "border-foreground/45 bg-muted text-foreground" : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {d.charAt(0) + d.slice(1).toLowerCase()}
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-1 flex flex-wrap gap-x-3.5 gap-y-1">
-          {PRESETS.map((preset) => {
-            const on = sameDays(days, preset.days);
-            return (
-              <button
-                key={preset.label}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setDays(preset.days)}
-                // A plain text link; the preset that matches the days reads in the foreground colour.
-                className={cn(
-                  "cursor-pointer rounded-sm text-xs underline-offset-2 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring",
-                  on ? "font-medium text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
+        <DayPicker order={SUN_FIRST} days={days} onChange={setDays} presets={PRESETS} />
       </SheetField>
 
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-baseline justify-between font-medium text-xs">
-          <span>Each day</span>
-          <span className="font-normal text-muted-foreground tabular-nums">{valid || sameTimes ? pausedLine(input) : "-"}</span>
-        </div>
-        <div
-          role="img"
-          aria-label={sameTimes || !start || !end ? "No pause" : `Paused ${formatMinute(minutesOf(start))} to ${formatMinute(minutesOf(end))}${wraps ? " the next day" : ""}`}
-          className={cn("relative h-5 overflow-hidden rounded-md bg-muted", !enabled && "opacity-60")}
-        >
-          {daySpans(start, end).map((s) => (
-            <i
-              key={s.from}
-              className={cn("absolute inset-y-0", enabled ? "bg-muted-foreground/45" : "border-[1.5px] border-muted-foreground/70 border-dashed")}
-              style={{ left: `${(s.from / MINUTES_PER_DAY) * 100}%`, width: `${((s.to - s.from) / MINUTES_PER_DAY) * 100}%` }}
-            />
-          ))}
-        </div>
-        <div className="flex justify-between text-3xs text-muted-foreground tabular-nums" aria-hidden>
-          {["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"].map((t, i) => (
-            <span key={i}>{t}</span>
-          ))}
-        </div>
-      </div>
+      <DayBar
+        start={start}
+        end={end}
+        enabled={enabled}
+        aside={valid || sameTimes ? pausedLine(input) : "-"}
+        ariaLabel={sameTimes || !start || !end ? "No pause" : `Paused ${formatMinute(minutesOf(start))} to ${formatMinute(minutesOf(end))}${wraps ? " the next day" : ""}`}
+      />
     </Sheet>
   );
 }

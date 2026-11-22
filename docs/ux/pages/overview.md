@@ -17,7 +17,7 @@ actions.
    - Metric row: ISP ("Ziply Fiber"), Public IP ("203.0.113.48"), Last
      speed test ("2h ago"), all three values in the same type so they share a
      baseline.
-   - Action row: **Share Wi-Fi**, **Restart network…** (the ellipsis because it confirms first), both outline buttons with dim icons. Speed tests
+   - Action row: **Share Wi-Fi**, **Share guest** (only while the guest network is on), **Restart network…** (the ellipsis because it confirms first), both outline buttons with dim icons. Speed tests
      run from Internet and Troubleshooting; profiles pause on Profiles.
    - Right side: two speed gauges, Download and Upload, each a 240 degree arc
      with the latest result in the middle ("942 Mbps", "918 Mbps") in the
@@ -115,7 +115,8 @@ actions.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Share Wi-Fi | `wifi.share` | query | No | Opens the Share Wi-Fi sheet (`features/wifi/ShareSheet.tsx`, shared with Devices): opening it is the ask, so it runs `wifi.share` then and shows the QR code with Copy password and Save QR. The password lives only while the sheet is open |
+| Share Wi-Fi | `wifi.share` | query | No | Opens the Share Wi-Fi sheet (`features/wifi/ShareSheet.tsx`): opening it is the ask, so it runs `wifi.share` then and shows the QR code, centred in the same frame as the Wi-Fi network header, with Copy password under it. The password lives only while the sheet is open |
+| Share guest | `guest.share` | query | No | Shown only while the guest network is on (`guest.get`). Opens the same kind of sheet with the guest network's QR code and Copy invite under it (the Guest network page's invite text) |
 | Restart network | `network.restart {confirm: true}` | disruptive | Yes, in the confirm dialog | Opens the confirm dialog "Restarts every eero on Maple Street at once. Everyone loses internet for about 2 to 3 minutes." with "Restart network" and Cancel. On run: progress toast, hero status Restarting, faster polling until Online |
 | Range dropdown (Data usage) | - (view state; re-queries `usage.get` with the range) | - | No | Chart, hero and share bar switch range |
 | Topology → | - | - | No | eeros page |

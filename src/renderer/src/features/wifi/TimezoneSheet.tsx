@@ -53,6 +53,7 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
       subtitle="Profile schedules, power saving and updates follow it"
       dirty={tz !== "" && tz !== current}
       onSave={() => save.run({ timezone: tz })}
+      saves={[ID]}
       error={errors._form}
     >
       <SheetField label="Time zone" htmlFor="timezone-sheet-zone" error={errors.timezone} helper={tz ? `Local time ${networkClock(tz).time(now)}` : null}>
@@ -69,7 +70,7 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
           </SelectPopup>
         </Select>
       </SheetField>
-      <ImpactPanel ids={[ID]} />
+      <ImpactPanel ids={tz !== "" && tz !== current ? [ID] : []} />
       <WriteConfirmDialog write={save} />
     </Sheet>
   );

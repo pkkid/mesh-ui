@@ -66,7 +66,7 @@ The mockup's side panel and sticky confirm bar were never built (the impact pane
 
 Side panel:
 
-1. **Impact of saving.** Big figures: devices that disconnect (warning colour) and devices that need setup in their own app. Icon stack of those devices plus a muted list of names. Check list of what stays fine: guest network not affected, wired devices stay online, eeros do not restart.
+1. **Impact of saving.** Figures, in the shared style ([design-system.md#impact-of-saving](../../design/design-system.md#impact-of-saving)): devices that disconnect (warning colour) and devices that need setup in their own app. Icon stack of those devices plus a muted list of names. Check list of what stays fine: guest network not affected, wired devices stay online, eeros do not restart.
 2. **Tips.** Password advice, a tip to keep the name and change only the password, and a muted line that extra SSIDs (IoT, business) only exist on eero Business and ISP networks.
 
 Bottom: **confirm bar** (sticky) when there are unsaved changes: warning icon, `1 unsaved change · Wi-Fi password`, consequence line (`27 devices will disconnect and must rejoin with the new password`), **Discard** and **Save and reconnect**.

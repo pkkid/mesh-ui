@@ -250,6 +250,7 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
       valid={!nameProblem(name) && !passwordProblem(pw)}
       onSave={save}
       saveLabel="Save and reconnect"
+      saves={["wifi.name.set", "wifi.password.set"]}
       error={formError}
     >
       <SheetField label="Wi-Fi network name" htmlFor="wifi-sheet-name" error={nameError} helper={`${formatCount(bytes(name))} of ${SSID_MAX_BYTES} bytes`}>
@@ -275,7 +276,7 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
           <IconButton label={shown ? "Hide password" : "Show password"} onClick={() => setShown((v) => !v)}>
             {shown ? <EyeOff /> : <Eye />}
           </IconButton>
-          <Button type="button" size="sm" variant="outline" onClick={() => void generate()}>
+          <Button type="button" size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => void generate()}>
             <Dices />
             Generate
           </Button>
