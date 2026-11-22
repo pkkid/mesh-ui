@@ -355,7 +355,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
       is_private: false,
       connectivity: wired ? {} : { signal: "-52 dBm", signal_avg: "-54 dBm", score: 0.9, score_bars: 4, rx_bitrate: "866.7 Mbit/s" },
       usage: null,
-      last_active: iso("12T17:55:00"),
+      // Relative to now: a fixed date ages offline devices out of device.list once it is a week old.
+      last_active: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
       first_active: iso("01T12:30:00"),
       paused: d.paused ?? false,
       blocked: false,

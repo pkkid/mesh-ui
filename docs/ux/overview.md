@@ -369,7 +369,7 @@ the ones that run commands go through `execute` like any button.
 | `Ctrl+Shift+N` | Open network switcher | Global |
 | `Ctrl+1` ... `Ctrl+7` | Overview, Internet, eeros, Devices, Profiles, Signal, Activity (the Network group, in order) | Global |
 | `Ctrl+,` | Settings | Global |
-| `Alt+←` / `Alt+→` (`⌘[` / `⌘]`) | Back / forward | Global |
+| `Alt+←` / `Alt+→`, `Ctrl+[` / `Ctrl+]`, mouse back / forward buttons | Back / forward (same as the sidebar's arrows) | Global |
 | `Ctrl+R`, `F5` | Refresh the current page's queries now, past the engine cache (same as the topbar Refresh) | Global; main catches them so they do not reload the window. `Ctrl+Shift+R` still reloads |
 | `F12` | Open or close the dev tools panel (eero requests), as in browsers. Its DevTools button opens Electron's developer tools docked to the right | Global, sign-in included. Not shown anywhere in the UI. See [devtools.md](../architecture/devtools.md) |
 | `Ctrl+B` | Hide or show the sidebar | Global |
@@ -397,7 +397,13 @@ shortcut list lives in Settings.
   exists. A detail route whose id is gone (device removed, profile deleted)
   shows "This device is no longer on Maple Street." with a link back to the
   list.
-- Back and forward follow in-app history. Crumbs link to parents.
+- Back and forward follow in-app history, as in T3 Code: arrow buttons in
+  the sidebar titlebar beside the app name (disabled when there is nowhere
+  to go), the shortcuts below and the mouse thumb buttons. Every page visit
+  is a history entry; only steps that should not be remembered replace the
+  current one (detail Prev and Next, a section link redirected to its page),
+  and the remembered last route on startup replaces the entry rather than
+  adding one. Crumbs link to parents.
 - "See all" links in section headers ("Topology →", "All devices →",
   "Manage", "All") go to the matching page, carrying filters where it makes
   sense (Overview "Top devices" → Devices sorted by data today).

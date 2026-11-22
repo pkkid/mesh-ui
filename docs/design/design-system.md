@@ -1007,6 +1007,14 @@ Beside the icon, the name is the wordmark `AppWordmark`
 (`components/mesh/AppWordmark.tsx`), modelled on T3 Code's sidebar brand:
 "Mesh" bold in the text colour, "UI" medium in `text-muted-foreground`.
 
+The sidebar header copies T3 Code's `SidebarChromeHeader`: icon and
+wordmark, then Back and Forward (`ArrowLeft` / `ArrowRight`, `size-3.5`, in
+`ghost` `icon-sm` buttons, `gap-1` after the brand, disabled at 64% when
+there is nowhere to go, tooltip "Go back (Alt+←)" or "(⌘[)" on macOS), then
+the Demo badge `ml-1`. The row is one `h-8` line that wraps with overflow
+hidden, so a badge that does not fit drops out of sight instead of crowding
+the buttons.
+
 The app icon follows the pack's measured conventions on a 256 canvas:
 
 - **Box:** the pack's shared rounded-square path (6..250 across, 12..240

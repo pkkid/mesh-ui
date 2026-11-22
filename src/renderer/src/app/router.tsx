@@ -3,7 +3,7 @@
  * the browser history, and the last route remembered in localStorage. It is
  * view state, never a command. See docs/ux/overview.md#navigation.
  */
-import { type AnchorHTMLAttributes, type MouseEvent, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type AnchorHTMLAttributes, type MouseEvent as ReactMouseEvent, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ComingSoon } from "~/features/shell/ComingSoon";
 import { PageLoading } from "~/features/shell/PageLoading";
@@ -123,7 +123,7 @@ type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & { to: s
 
 /** An in-app link. Plain anchors with `#/...` hrefs, so they work with the keyboard and middle click is harmless. */
 export function Link({ to, onClick, ...props }: LinkProps) {
-  const handle = (e: MouseEvent<HTMLAnchorElement>) => {
+  const handle = (e: ReactMouseEvent<HTMLAnchorElement>) => {
     onClick?.(e);
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
@@ -132,12 +132,47 @@ export function Link({ to, onClick, ...props }: LinkProps) {
   return <a href={`#${to}`} onClick={handle} {...props} />;
 }
 
+export type HistoryDirection = "back" | "forward";
+
+/** The slice of Chromium's Navigation API we use (Electron-only, so it is always there in the app; absent in tests). */
+type NavigationLike = EventTarget & { readonly canGoBack: boolean; readonly canGoForward: boolean };
+const navigationApi = (): NavigationLike | undefined => (window as unknown as { navigation?: NavigationLike }).navigation;
+
+export function navigateHistory(direction: HistoryDirection): void {
+  if (direction === "back") window.history.back();
+  else window.history.forward();
+}
+
+/** Whether there is an in-app history entry that way, as T3 Code's navigationHistory.ts. */
+export function useCanNavigateHistory(direction: HistoryDirection): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const nav = navigationApi();
+      nav?.addEventListener("currententrychange", onChange);
+      return () => nav?.removeEventListener("currententrychange", onChange);
+    },
+    () => {
+      const nav = navigationApi();
+      if (!nav) return false;
+      return direction === "back" ? nav.canGoBack : nav.canGoForward;
+    },
+  );
+}
+
+const isMac = () => navigator.platform.startsWith("Mac");
+
+/** The shortcut shown in the Back and Forward tooltips. */
+export function historyShortcutLabel(direction: HistoryDirection): string {
+  if (isMac()) return direction === "back" ? "⌘[" : "⌘]";
+  return direction === "back" ? "Alt+←" : "Alt+→";
+}
+
 /** Global navigation shortcuts from docs/ux/overview.md#keyboard-shortcuts. */
 export function useNavigationShortcuts(): void {
   useEffect(() => {
     const numbered = ROUTES.filter((r) => r.nav === "network");
     const onKey = (e: KeyboardEvent) => {
-      const mod = navigator.platform.startsWith("Mac") ? e.metaKey : e.ctrlKey;
+      const mod = isMac() ? e.metaKey : e.ctrlKey;
       if (mod && !e.shiftKey && !e.altKey && /^[1-7]$/.test(e.key)) {
         const route = numbered[Number(e.key) - 1];
         if (route) {
@@ -147,14 +182,28 @@ export function useNavigationShortcuts(): void {
       } else if (mod && e.key === ",") {
         e.preventDefault();
         navigate(pathFor("settings"));
-      } else if (e.altKey && !mod && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+      } else if (e.altKey && !mod && !e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         e.preventDefault();
-        if (e.key === "ArrowLeft") window.history.back();
-        else window.history.forward();
+        navigateHistory(e.key === "ArrowLeft" ? "back" : "forward");
+      } else if (mod && !e.shiftKey && !e.altKey && (e.key === "[" || e.key === "]")) {
+        // T3 Code's navigation.back / navigation.forward (mod+[ / mod+]). Bare [ and ] stay detail Prev / Next.
+        e.preventDefault();
+        navigateHistory(e.key === "[" ? "back" : "forward");
       }
     };
+    // Mouse thumb buttons: 3 is Back, 4 is Forward. Chromium may run them itself on mouseup;
+    // cancel that and step once here, so every platform moves exactly one entry.
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      e.preventDefault();
+      navigateHistory(e.button === 3 ? "back" : "forward");
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
   }, []);
 }
 

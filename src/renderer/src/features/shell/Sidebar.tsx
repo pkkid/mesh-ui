@@ -6,9 +6,9 @@
  * Reservations & ports in bridge mode) are hidden, not greyed out.
  */
 import { Popover } from "@base-ui/react/popover";
-import { LogOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, LogOut } from "lucide-react";
 
-import { Link, useLocation } from "~/app/router";
+import { type HistoryDirection, historyShortcutLabel, Link, navigateHistory, useCanNavigateHistory, useLocation } from "~/app/router";
 import { ROUTES, type RouteDef, routeById } from "~/app/routes";
 import { useCommand, useQuery } from "~/app/useCommand";
 import { AppIcon } from "~/components/mesh/AppIcon";
@@ -35,10 +35,25 @@ export function Sidebar() {
 
   return (
     <aside data-app-sidebar="" className="flex w-(--sidebar-width) shrink-0 flex-col border-e bg-sidebar surface-grain text-sidebar-foreground">
-      <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-[9px] ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
-        <AppIcon className="size-[22px]" />
-        <AppWordmark className="text-sm" />
-        {auth.data?.backend === "demo" && <Badge className="border text-2xs">Demo</Badge>}
+      {/* T3 Code's SidebarChromeHeader: brand, then Back and Forward, then the pill; the pill wraps out of sight when it does not fit. */}
+      <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center ps-[calc(var(--titlebar-inset-left)+1rem)] pe-3">
+        <div className="flex h-8 min-w-0 flex-1 flex-wrap content-start items-center gap-x-2 overflow-hidden py-0.5">
+          <div className="flex shrink-0 items-center gap-1">
+            <div className="flex h-7 min-w-0 items-center gap-[9px]">
+              <AppIcon className="size-[22px]" />
+              <AppWordmark className="text-sm" />
+            </div>
+            <div className="flex items-center">
+              <HistoryButton direction="back" />
+              <HistoryButton direction="forward" />
+            </div>
+          </div>
+          {auth.data?.backend === "demo" && (
+            <div className="ml-1 flex h-7 items-center">
+              <Badge className="border text-2xs">Demo</Badge>
+            </div>
+          )}
+        </div>
       </div>
 
       <NetworkSwitcher />
@@ -63,6 +78,26 @@ export function Sidebar() {
 
       <UserFooter active={active === "account"} />
     </aside>
+  );
+}
+
+/** T3 Code's HistoryNavigationButton: a ghost icon button, disabled when there is nowhere to go. */
+function HistoryButton({ direction }: { direction: HistoryDirection }) {
+  const enabled = useCanNavigateHistory(direction);
+  const label = direction === "back" ? "Go back" : "Go forward";
+  const Icon = direction === "back" ? ArrowLeft : ArrowRight;
+  return (
+    <Button
+      aria-label={label}
+      title={`${label} (${historyShortcutLabel(direction)})`}
+      className="no-drag"
+      disabled={!enabled}
+      onClick={() => navigateHistory(direction)}
+      size="icon-sm"
+      variant="ghost"
+    >
+      <Icon className="size-3.5" />
+    </Button>
   );
 }
 

@@ -215,8 +215,13 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
 
 From the mockups (`01-overview.html` and every page):
 
-- **Sidebar** (`bg-sidebar`, 15rem): app icon (`AppIcon`) at the top in the titlebar
-  strip; the **network picker** (status dot, name, "Online · 1.2 Gbps fiber",
+- **Sidebar** (`bg-sidebar`, 15rem): app icon (`AppIcon`) and wordmark at the top in
+  the titlebar strip, then **Back** and **Forward** icon buttons (T3 Code's
+  `HistoryNavigationButton`: `ghost`, `icon-sm`, `no-drag`; enabled from the
+  Navigation API's `canGoBack` / `canGoForward`, click calls
+  `history.back()` / `forward()`; `useCanNavigateHistory` in
+  `app/router.tsx`), then the Demo badge, which wraps out of sight when the
+  row is too narrow (macOS traffic lights); the **network picker** (status dot, name, "Online · 1.2 Gbps fiber",
   chevrons) which calls `network.list` and `network.select`; two nav groups,
   **Network** (Overview, Internet, eeros, Devices, Profiles, Activity, Guest
   network) and **Settings** (Wi-Fi, Advanced networking, Reservations & ports,
