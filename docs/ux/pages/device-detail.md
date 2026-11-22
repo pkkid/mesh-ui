@@ -8,7 +8,9 @@ Mockup: [../../mockups/06-device-detail.html](../../mockups/06-device-detail.htm
 name field on the row and the icon-only sheet).
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: crumbs "Devices / Alex's MacBook Pro", then only the **Live** switch
+Topbar: crumbs "Devices / Alex's MacBook Pro" (the name opens the crumb
+switcher, a searchable list of every device in the Devices table's order;
+see design-system.md, Crumb switcher), then only the **Live** switch
 (see devices.md, Live switch), beside the search field, where it sits on
 Devices too. No Prev / Next buttons; `[` and `]` still step to the previous
 and next device in the Devices table's order. Sidebar item Devices stays active.

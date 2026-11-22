@@ -14,6 +14,7 @@ export const SCENARIOS = {
   network_offline: "Maple Street is offline: internet down, every eero offline, devices disconnected.",
   eero_offline: "The Garage eero on Maple Street is offline and its devices have dropped.",
   empty_network: "Maple Street has its eeros but no devices and no profiles yet.",
+  many_devices: "Maple Street with 120 more devices, to check long lists (Devices, the detail page switcher).",
   slow: "The default fixtures, but every read takes a moment (about 1.5 s), to show loading states.",
   errors: "The default fixtures, but every read fails with eero_error, to show error states. Sign-in still works.",
   admin: "Every network is shared with you as an admin and none is owned, so the account can be deleted.",
@@ -99,6 +100,10 @@ export function applyScenario(fx: DemoFixtures, name: ScenarioName, now: number)
       return { signedIn: true, reads: "normal" };
     }
 
+    case "many_devices":
+      if (maple) addDevices(maple, 120);
+      return { signedIn: true, reads: "normal" };
+
     case "empty_network":
       if (maple) {
         maple.devices = [];
@@ -110,6 +115,26 @@ export function applyScenario(fx: DemoFixtures, name: ScenarioName, now: number)
         maple.notifications = maple.notifications.filter((n) => !n.refs.deviceId);
       }
       return { signedIn: true, reads: "normal" };
+  }
+}
+
+/** Invented names for `many_devices`: a room and a thing, numbered past the first round. */
+const ROOMS = ["Attic", "Back Porch", "Basement", "Den", "Garage", "Guest Room", "Hallway", "Kitchen", "Laundry", "Office", "Patio", "Studio"];
+const THINGS = ["Camera", "Lamp", "Plug", "Sensor", "Speaker", "Switch", "Tablet", "Thermostat", "TV"];
+
+/** Adds `count` copies of the network's devices with new invented names, MACs and addresses. */
+function addDevices(net: DemoFixtures["networks"][number], count: number) {
+  const base = [...net.devices];
+  for (let i = 0; i < count && base.length > 0; i++) {
+    const src = base[i % base.length]!;
+    const mac = ["02", "4d", "55", "7f", (i >> 8).toString(16).padStart(2, "0"), (i & 0xff).toString(16).padStart(2, "0")].join(":");
+    const id = mac.replace(/:/g, "");
+    const round = Math.floor(i / (ROOMS.length * THINGS.length));
+    const name = `${ROOMS[i % ROOMS.length]} ${THINGS[Math.floor(i / ROOMS.length) % THINGS.length]}${round > 0 ? ` ${round + 1}` : ""}`;
+    const ipv4 = src.ipv4 ? src.ipv4.replace(/\.\d+$/, `.${100 + (i % 150)}`) : null;
+    net.devices.push({ ...structuredClone(src), id, mac, name, nickname: name, hostname: null, ipv4, ipv6: [], privateMac: false });
+    const usage = net.usage[src.id];
+    if (usage) net.usage[id] = structuredClone(usage);
   }
 }
 

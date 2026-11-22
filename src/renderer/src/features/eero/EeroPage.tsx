@@ -6,14 +6,16 @@
  * Layout, data and states: docs/ux/pages/eero-detail.md
  * and docs/mockups/04-eero-detail.html. `[` and `]` move between eeros.
  */
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
 import { Card, Empty } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { TopBarTitle, useTopBarUpdated } from "~/features/shell/TopBar";
+import { useTopBarUpdated } from "~/features/shell/TopBar";
+import { TopBarTitleSwitcher } from "~/features/shell/TitleSwitcher";
+import { eeroItems } from "~/features/palette/search";
 import { networkClock } from "../../../../core/format";
 import type { Eero, Internet, Network, NetworkHealth, UsageBreakdown, DeviceList } from "../../../../core/model";
 
@@ -47,6 +49,7 @@ export function EeroPage({ params }: PageProps) {
   const networkOffline = health.data?.status === "offline" || (health.data?.issues ?? []).some((i) => i.kind === "network_offline");
 
   useEeroShortcuts(list, id);
+  const siblings = useMemo(() => eeroItems(eeros.data ?? null), [eeros.data]);
 
   // Gone: the latest list no longer has this eero (removed elsewhere), even if an older eero.get is cached.
   if (eeros.data && !listed) {
@@ -76,7 +79,9 @@ export function EeroPage({ params }: PageProps) {
   return (
     <>
       {/* "Basement eero": the eero's name in the breadcrumb, with "eero" so it reads as one. */}
-      {data?.location && <TopBarTitle>{`${data.location} eero`}</TopBarTitle>}
+      {data?.location && (
+        <TopBarTitleSwitcher title={`${data.location} eero`} kind="eero" items={siblings} currentId={id} pathFor={(to) => pathFor("eero", { eeroId: to })} />
+      )}
 
       <EeroHero
         eero={data}

@@ -7,7 +7,7 @@
  * docs/ux/pages/profile-detail.md and docs/mockups/08-profile-detail.html.
  * `[` and `]` move between profiles.
  */
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
@@ -18,7 +18,8 @@ import { Card, Empty } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
 import { RenameSheet } from "~/components/ui/rename-sheet";
 import { ProfileSheet, type SheetMode, useDeleteProfile } from "~/features/profiles/ProfileCards";
-import { TopBarTitle } from "~/features/shell/TopBar";
+import { TopBarTitleSwitcher } from "~/features/shell/TitleSwitcher";
+import { profileItems } from "~/features/palette/search";
 import { entityColors, seriesColors } from "~/lib/chartColors";
 import type { Network, ProfileDetail, ProfileList } from "../../../../core/model";
 
@@ -62,6 +63,7 @@ function OneProfile({ params }: PageProps) {
     list.map((p) => p.id),
     id,
   );
+  const siblings = useMemo(() => profileItems(profiles.data ?? null), [profiles.data]);
 
   if (bridged) {
     return (
@@ -90,7 +92,7 @@ function OneProfile({ params }: PageProps) {
   const name = data?.name ?? "";
   return (
     <>
-      <TopBarTitle>{name}</TopBarTitle>
+      {name && <TopBarTitleSwitcher title={name} kind="profile" items={siblings} currentId={id} pathFor={(to) => pathFor("profile", { profileId: to })} />}
       <ProfileSheet mode={sheet} onClose={() => setSheet(null)} />
 
       <ProfileHero profile={data} color={color} timezone={timezone} fading={profile.fading} onRename={() => setRenaming(true)} />
