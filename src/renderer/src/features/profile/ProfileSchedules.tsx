@@ -214,39 +214,6 @@ function ScheduleRow({ profile: p, schedule: s, color, allowed, reason, onOpen }
   );
 }
 
-/** The small on or off switch of a schedule row and the sheet's "Schedule on". */
-export function Toggle({
-  checked,
-  onChange,
-  label,
-  labelledBy,
-  disabled,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  label?: string;
-  labelledBy?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      aria-labelledby={labelledBy}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative h-4 w-7 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-        checked ? "bg-foreground/70" : "bg-muted shadow-[inset_0_0_0_1px_var(--color-border)]",
-      )}
-    >
-      <span className={cn("absolute top-0.5 size-3 rounded-full bg-background shadow-xs transition-[left]", checked ? "left-3.5" : "left-0.5")} />
-    </button>
-  );
-}
-
 function Swatch({ label, style, dashed }: { label: ReactNode; style?: CSSProperties; dashed?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5">

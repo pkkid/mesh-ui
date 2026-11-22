@@ -9,13 +9,12 @@
  * docs/ux/pages/advanced-networking.md (Integrations), mockup 13.
  */
 import { type QueryState, useQuery } from "~/app/useCommand";
-import { type Gate, useWrite } from "~/app/useWrite";
+import { useWrite } from "~/app/useWrite";
 import { GatedButton, SectionError, useGate } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
-import { cn } from "~/lib/utils";
 import type { Integration, IntegrationId, Integrations as IntegrationsData, Network } from "../../../../core/model";
 
-import { Group, Row } from "./SettingsGroups";
+import { Group, Row, WriteSwitch } from "./SettingsGroups";
 
 const COPY: Record<IntegrationId, { title: string; description: string }> = {
   homekit: { title: "Apple HomeKit", description: "HomeKit router mode: manage device access from the Home app" },
@@ -33,43 +32,19 @@ function description(id: IntegrationId, i: Integration | undefined): string {
   return i.available ? `${base} · ${i.detail}` : i.detail;
 }
 
-/** An on or off switch for a write; dims with the gate's reason. null (unknown) cannot be flipped. */
-function Switch({ on, label, gate, onChange }: { on: boolean | null | undefined; label: string; gate: Gate; onChange: (on: boolean) => void }) {
-  const known = on === true || on === false;
-  return (
-    <span title={gate.reason ?? (known ? undefined : "eero does not report this setting")} className="inline-flex">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on === true}
-        aria-label={label}
-        disabled={!gate.allowed || !known}
-        onClick={() => onChange(!on)}
-        className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-70",
-          on === true ? "border-transparent bg-primary" : "bg-muted",
-          !known && "border-dashed",
-        )}
-      >
-        <i className={cn("absolute size-3.5 rounded-full bg-background shadow-sm transition-[left]", on === true ? "left-[18px]" : "left-0.5")} />
-      </button>
-    </span>
-  );
-}
-
 /** A switch row's control: `integrations.<id>.set`, with a toast and Undo. */
 function IntegrationSwitch({ id, on }: { id: "builtin"; on: boolean | null | undefined }) {
   const command = `integrations.${id}.set`;
   const gate = useGate(command);
   const write = useWrite<{ enabled: boolean }, IntegrationsData>(command);
   const title = COPY[id].title;
-  const busy: Gate = write.running ? { allowed: false, reason: null } : gate;
   return (
-    <Switch
+    <WriteSwitch
       on={on}
       label={title}
-      gate={busy}
-      onChange={(enabled) =>
+      gate={gate}
+      busy={write.running}
+      onToggle={(enabled) =>
         void write.run(
           { enabled },
           {
@@ -161,7 +136,7 @@ export function Integrations({ query }: { query: QueryState<IntegrationsData>; o
         else if (id === "builtin") control = <IntegrationSwitch id={id} on={i?.enabled} />;
         else if (id === "ffs") control = i?.enabled === true ? <Status tone="success">On</Status> : i?.enabled === false ? <Status tone="muted">Off</Status> : null;
         // HomeKit has no write: eero sets it up from the Home app.
-        else control = <Switch on={i?.enabled} label={COPY[id].title} gate={{ allowed: false, reason: "Set up in the Apple Home app" }} onChange={() => {}} />;
+        else control = <WriteSwitch on={i?.enabled} label={COPY[id].title} gate={{ allowed: false, reason: "Set up in the Apple Home app" }} onToggle={() => {}} />;
         return (
           <Row
             key={id}

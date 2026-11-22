@@ -22,6 +22,7 @@ import { useQuery } from "~/app/useCommand";
 import { performWrite, useWrite } from "~/app/useWrite";
 import { useGate } from "~/components/ui/page";
 import { Sheet } from "~/components/ui/sheet";
+import { Switch } from "~/components/ui/switch";
 import { toast } from "~/components/ui/toast";
 import { cn } from "~/lib/utils";
 import type { DesktopKey } from "../../../../core/commands/notifications";
@@ -288,33 +289,17 @@ export function SwitchRow({
   onChange: (on: boolean) => void;
   className?: string;
 }) {
-  const known = on === true || on === false;
-  const off = disabled || !known;
   return (
-    <div className={cn("flex items-center gap-3 py-1.5", disabled && "opacity-60", className)}>
-      {icon && <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground [&_svg]:size-3.5">{icon}</span>}
-      <div className="min-w-0 flex-1">
-        <div className="text-foreground/90 text-xs">{label}</div>
-        {detail && <div className="text-2xs text-muted-foreground">{detail}</div>}
+    <div className={cn("flex items-center gap-3 py-1.5", className)}>
+      {/* The switch dims itself when disabled; the label and icon dim with it. */}
+      <div className={cn("flex min-w-0 flex-1 items-center gap-3", disabled && "opacity-64")}>
+        {icon && <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground [&_svg]:size-3.5">{icon}</span>}
+        <div className="min-w-0 flex-1">
+          <div className="text-foreground/90 text-xs">{label}</div>
+          {detail && <div className="text-2xs text-muted-foreground">{detail}</div>}
+        </div>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on === true}
-        aria-label={label}
-        disabled={off}
-        title={!known ? "eero does not report this setting" : title}
-        onClick={() => onChange(!on)}
-        // The app's standard switch (WriteSwitch in SettingsGroups): primary when on.
-        className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-          off ? "cursor-not-allowed" : "cursor-pointer",
-          on ? "border-transparent bg-primary" : "bg-muted",
-          !known && "border-dashed",
-        )}
-      >
-        <span className={cn("size-4 rounded-full bg-background shadow-sm transition-transform", on ? "translate-x-4" : "translate-x-0.5")} />
-      </button>
+      <Switch checked={on} aria-label={label} disabled={disabled} title={title} onCheckedChange={onChange} />
     </div>
   );
 }
