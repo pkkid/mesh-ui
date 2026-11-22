@@ -396,7 +396,7 @@ export function SecurityRows({ wifi, devices, offline }: { wifi: WifiSettings | 
             <Button size="sm" variant="ghost" disabled={save.running} onClick={() => setStaged({})}>
               Discard
             </Button>
-            <Button size="sm" disabled={save.running} onClick={() => void save.run(params)}>
+            <Button size="sm" variant="outline" disabled={save.running} onClick={() => void save.run(params)}>
               Save and restart{"\u2026"}
             </Button>
           </div>

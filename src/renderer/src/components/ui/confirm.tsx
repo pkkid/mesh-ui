@@ -52,7 +52,7 @@ function TypeToConfirm({
 
 type ConfirmDialogProps = {
   /** The confirm to show, or null when closed. */
-  ask: (Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "offline"> & Partial<Pick<ConfirmAsk, "effect">>) | null;
+  ask: (Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "offline" | "irreversible"> & Partial<Pick<ConfirmAsk, "effect">>) | null;
   onAnswer: (ok: boolean) => void;
 };
 
@@ -76,8 +76,8 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
   const matches = current?.typeToConfirm === undefined || typed === current.typeToConfirm;
   // The title and button say how serious it is: red when it cannot be undone, yellow when it takes devices
   // offline (a disruptive command, or a write whose run would), and a plain title with a filled primary
-  // button for a reversible write asked about only to be sure.
-  const tone = current?.effect === "destructive" ? "destructive" : current?.effect === "disruptive" || current?.offline ? "warning" : "plain";
+  // button for a reversible write asked about only to be sure. A write whose run cannot be undone reads red.
+  const tone = current?.effect === "destructive" || current?.irreversible ? "destructive" : current?.effect === "disruptive" || current?.offline ? "warning" : "plain";
   const confirmVariant = tone === "plain" ? "default" : tone;
   const titleTone = tone === "destructive" ? "text-destructive-foreground" : tone === "warning" ? "text-warning-foreground" : undefined;
 
