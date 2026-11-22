@@ -967,19 +967,24 @@ and are capped at the space available below their trigger, then scroll.
   every modal, confirms included; the shadow and backdrop from
   `ui/dialog.tsx` ([Borders and surfaces](#borders-and-surfaces)). Popovers
   and menus use `popoverSurface`: 12px radius, `shadow-lg`, `text-xs`.
-- **Padding:** 20px at the sides (`px-5`). A sheet's header and body are
-  `py-4`, its footer `py-3`; a confirm is `pt-5` at the top and `pb-4` at the
-  bottom, with 20px between its message and its buttons. Menus and popovers
-  have 4px (`p-1`) inside, items `px-2.5 py-1.5` with an 8px radius.
+- **Padding:** 20px at the sides (`px-5`), `pt-5` above the header and
+  `pb-4` under the buttons. Menus and popovers have 4px (`p-1`) inside, items
+  `px-2.5 py-1.5` with an 8px radius.
+- **Breathing room:** at least 30px under the header and 30px above the
+  button row, in every modal. On a confirm the header is the title alone, so
+  it reads title, 30px, message, 30px, buttons (`gap-[30px]`,
+  `pt-[30px]`); a type-to-confirm field sits under the message, still 30px
+  above the buttons.
 - **Header:** a sheet's header is an optional 32px icon tile (`bg-muted`,
   1px border, muted icon), the title (`text-base font-semibold`) and an
   optional muted `text-xs` line on what it affects ("Mia · pauses all 4
-  devices automatically"). A confirm's header is its title in
-  `text-base font-semibold`, with a warning icon and the destructive
-  foreground colour unless it is `calm`, then the message in
-  `text-foreground/80`.
-- **Close button:** sheets always have one, a ghost `icon-sm` X at the right
-  of the header. Confirms never do: Cancel is the way out.
+  devices automatically"). A confirm's header is its title alone in
+  `text-base font-semibold`, with no icon, in the destructive foreground
+  colour unless it is `calm`; its message is `text-foreground/80`.
+- **Close button:** every modal with a Cancel button, confirms included, has
+  an X at the top right: a `ghost-muted` `icon-sm` button 16px from the top
+  and 20px from the right (`DialogPopup`'s own close, the Sheet header's on
+  sheets). The title keeps clear of it.
 - **Footer:** buttons are `sm`, on the right, Cancel (ghost) then the primary
   action last (filled; danger filled on a confirm, outline on a `calm` one).
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
@@ -1018,10 +1023,12 @@ popover over the titlebar still takes clicks.
   Cancel, or the type-to-confirm field when it has one; a popover focuses its
   search field or its list; a menu its first item. Closing returns focus to
   the trigger.
-- **Esc and the backdrop** cancel a confirm (the answer is no) and close a
-  sheet, popover or menu. A sheet with unsaved changes asks "Discard
-  changes?" first, in its footer (Keep editing, Discard), and ignores both
-  while it is saving.
+- **The X, Esc and a click on the backdrop** all do what Cancel does, in
+  every modal with a Cancel button: a confirm answers no, a sheet or dialog
+  closes. Esc and a click outside also close a popover or menu. The only
+  holds: a sheet with unsaved changes asks "Discard changes?" first, in its
+  footer (Keep editing, Discard), and a modal ignores all three while its
+  command is running (saving, sending a code, a transfer).
 - **Nested confirms:** a write inside a sheet or the palette confirms with
   `WriteConfirmDialog` (`useWrite` with `confirmIn: "nested"`), rendered
   inside that dialog. It opens at the same top edge above it, Esc closes only
@@ -1154,8 +1161,8 @@ Disruptive and destructive actions confirm in a modal before running
 ([Modals and popups](#modals-and-popups)),
 the same everywhere (never a note in place of the button):
 
-- A title naming the target and one or two sentences on the effect and how
-  long it lasts ("Turn off guest network? 4 guests are disconnected right
+- A title naming the target (no icon) and one or two sentences on the
+  effect and how long it lasts ("Turn off guest network? 4 guests are disconnected right
   away."), then Cancel and a filled danger button that repeats the action.
 - Destructive dialogs need a checkbox or typed name.
 - Danger buttons are red text on a neutral button until the confirm step,

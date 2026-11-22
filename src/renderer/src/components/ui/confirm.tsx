@@ -1,8 +1,8 @@
 // The confirm from docs/ux/overview.md#confirmations: every disruptive or
 // destructive action (and the few writes the UI confirms on its own) asks in
-// a centred modal naming the target and the consequence, with a filled
-// danger button that repeats the action and Cancel. Focus starts on Cancel;
-// Esc and the backdrop cancel. After the person confirms, the write kit runs
+// a modal naming the target and the consequence, with a filled danger
+// button that repeats the action and Cancel. Focus starts on Cancel; the X,
+// Esc and the backdrop cancel too (docs/design/design-system.md#look). After the person confirms, the write kit runs
 // the command with `confirm: true` (disruptive and destructive) or without it.
 //
 // Pages rarely build these by hand (app/useWrite.ts):
@@ -11,7 +11,6 @@
 //   message and type-to-confirm for destructive actions on a named thing.
 // - `WriteConfirmDialog` nests the same dialog inside another dialog (the
 //   palette, a sheet) for a `useWrite(id, { confirmIn: "nested" })` write.
-import { TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { answerDialog, type ConfirmAsk, useDialogAsk, type WriteState } from "~/app/useWrite";
@@ -57,8 +56,9 @@ type ConfirmDialogProps = {
 };
 
 /**
- * The centred confirm dialog: icon and title naming the target, the
- * consequence, a filled danger button that repeats the action and Cancel.
+ * The confirm dialog: a title naming the target, 30px, the consequence, 30px,
+ * then Cancel and a filled danger button that repeats the action, with the
+ * close X top right.
  * Destructive asks with `typeToConfirm` keep the button disabled until the
  * name matches. Esc, the backdrop and Cancel all answer false.
  */
@@ -72,23 +72,20 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
   const current = shown.current;
   useEffect(() => setTyped(""), [ask]);
   const matches = current?.typeToConfirm === undefined || typed === current.typeToConfirm;
-  // A plain write asked about only to be sure (the search palette) is not a danger: no warning icon, no red, an outline button.
+  // A plain write asked about only to be sure (the search palette) is not a danger: no red title, an outline button.
   const calm = current?.calm === true;
 
   return (
     <Dialog open={ask !== null} onOpenChange={(open) => !open && onAnswer(false)}>
-      <DialogPopup showCloseButton={false} className="max-w-md" initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}>
-        <div className="flex flex-col gap-1.5 px-5 pt-5">
-          <DialogTitle className={cn("flex items-center gap-2 text-base", !calm && "text-destructive-foreground")}>
-            {!calm && <TriangleAlert className="size-4 shrink-0" />}
-            {current?.title}
-          </DialogTitle>
+      <DialogPopup className="max-w-md" initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}>
+        <div className="flex flex-col gap-[30px] px-5 pt-5">
+          <DialogTitle className={cn("pe-8 text-base", !calm && "text-destructive-foreground")}>{current?.title}</DialogTitle>
           {current?.message && <DialogDescription className="text-foreground/80">{current.message}</DialogDescription>}
         </div>
         {current?.typeToConfirm !== undefined && (
           <TypeToConfirm id={inputId} name={current.typeToConfirm} value={typed} onChange={setTyped} className="px-5 pt-4" />
         )}
-        <div className="flex justify-end gap-2 px-5 pt-5 pb-4">
+        <div className="flex justify-end gap-2 px-5 pt-[30px] pb-4">
           <Button ref={cancelRef} size="sm" variant="ghost" onClick={() => onAnswer(false)}>
             Cancel
           </Button>
