@@ -148,7 +148,6 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
       onSave={save}
       saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
       error={errors._form}
-      clean
       footerStart={
         mode.kind === "edit" ? (
           <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" disabled={remove.running} onClick={() => void del()}>

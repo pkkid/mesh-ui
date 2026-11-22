@@ -908,10 +908,8 @@ Every write control uses the same pieces (M4.3):
   given a name), `ConfirmHost`, mounted once by the shell, and
   `WriteConfirmDialog` for a nested write.
 - **Sheet** (`ui/sheet.tsx`): `Sheet` and `SheetField`, as in
-  [overview.md](../ux/overview.md#sheets). **No divider lines:** like the
-  confirm dialog, a sheet has no rule under its header or above its footer
-  (`Sheet clean`, [No divider lines](#no-divider-lines)). Sheets not yet
-  on it move over with #346, and then `clean` becomes the only style. Choices inside a sheet are dropdowns (`Select`, full width or
+  [overview.md](../ux/overview.md#sheets) and [Sheet](#sheet) under Modals
+  and popups. Choices inside a sheet are dropdowns (`Select`, full width or
   sharing a row with related fields), never Segmented, and on/off is the
   standard 36x20 switch. Shortcuts that fill a field (the schedule sheet's
   day presets) are plain text links, not pills or chips.
@@ -1004,6 +1002,27 @@ and are capped at the space available below their trigger, then scroll.
   takes the red button too.
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
   the left.
+
+### Sheet
+
+The detail for sheets (#361). Every sheet goes through `Sheet`
+(`ui/sheet.tsx`); pages pass a title, fields and a save, never layout.
+
+- **One style:** no rule under the header or above the footer
+  ([No divider lines](#no-divider-lines)). There is no other style and no
+  prop to turn the rules back on.
+- **Width:** `size` names it, never a class: the default is 540px, `wide`
+  is 640px for content that needs the room (the device icon picker). A call
+  site never passes `className` or a `max-w-*`.
+- **Layout:** header (`pt-5`: icon tile, title, muted line), 30px, the
+  fields 16px apart, 30px, the footer (`pb-4`: optional action on the left,
+  Cancel and Save on the right), all at 20px from the sides. A form-level
+  error sits under the last field.
+- **No X:** a sheet has Cancel, so it has no close button; Esc and Cancel
+  close it.
+- **Scroll:** when a sheet would pass the bottom of the window, its body
+  scrolls and the header and footer stay in view. A sheet never adds its
+  own scroll box or max height.
 
 ### Confirm
 

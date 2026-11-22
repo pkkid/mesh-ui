@@ -252,7 +252,6 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
       onSave={save}
       saveLabel="Save and reconnect"
       error={formError}
-      clean
     >
       <SheetField label="Wi-Fi network name" htmlFor="wifi-sheet-name" error={nameError} helper={`${formatCount(bytes(name))} of ${SSID_MAX_BYTES} bytes`}>
         <Input id="wifi-sheet-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" spellCheck={false} aria-invalid={nameError ? true : undefined} />

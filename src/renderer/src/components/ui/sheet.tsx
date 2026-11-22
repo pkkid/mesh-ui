@@ -1,8 +1,11 @@
 // The edit sheet from docs/ux/overview.md#sheets (mockups: Appearance on 06,
-// Edit schedule on 08): a panel near the top of the window over a dimmed
-// backdrop, with a header (icon, title, what it affects, close), labelled
-// fields 16 px apart, and a footer with an optional destructive action on the
-// left and Cancel and Save on the right.
+// Edit schedule on 08): a panel at the shared modal offset over a dimmed
+// backdrop, with a header (icon, title, what it affects), labelled fields
+// 16 px apart, and a footer with an optional destructive action on the left
+// and Cancel and Save on the right. One clean style: no rule under the header
+// or above the footer, 30px of space instead, and one of two named widths
+// (design-system.md#modals-and-popups). The body scrolls when the sheet would
+// pass the bottom of the window; header and footer stay in view.
 //
 // Save is disabled until something changed and the form is valid. Save runs
 // the write (usually `useWrite(...).run(params, { form: true })`); the sheet
@@ -11,7 +14,6 @@
 // Esc, Cancel and the close button close it at once, unsaved changes or not
 // (never a "Discard changes?" ask); a click on the backdrop does nothing.
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { XIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -38,13 +40,15 @@ type SheetProps = {
   /** A form-level error (an eero error, or bad_params with no field). */
   error?: ReactNode;
   children: ReactNode;
-  className?: string;
-  /**
-   * No divider lines under the header or above the footer, like the confirm
-   * dialog (design-system.md, Components: Sheet). Sheets move over to it page
-   * by page; the device icon sheet is the first.
-   */
-  clean?: boolean;
+  /** `default` 540px for every sheet; `wide` 640px when the content needs the room (the device icon picker). */
+  size?: SheetSize;
+};
+
+type SheetSize = "default" | "wide";
+
+const SIZE_CLASS: Record<SheetSize, string> = {
+  default: "max-w-[540px]",
+  wide: "max-w-[640px]",
 };
 
 function Sheet({
@@ -60,8 +64,7 @@ function Sheet({
   footerStart,
   error,
   children,
-  className,
-  clean = false,
+  size = "default",
 }: SheetProps) {
   const [saving, setSaving] = useState(false);
   const requestClose = () => {
@@ -79,16 +82,17 @@ function Sheet({
     <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
       <DialogPopup
         showCloseButton={false}
-        className={cn("w-full max-w-[540px] rounded-[18px]", className)}
+        className={cn("w-full", SIZE_CLASS[size])}
         data-slot="sheet"
       >
         <form
+          className="flex min-h-0 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
             if (dirty && valid && !saving) void save();
           }}
         >
-          <div className={cn("flex items-start gap-3 px-5 py-4", !clean && "border-b")}>
+          <div className="flex shrink-0 items-start gap-3 px-5 pt-5">
             {icon && (
               <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground [&_svg]:size-4">
                 {icon}
@@ -98,15 +102,14 @@ function Sheet({
               <DialogTitle className="text-base">{title}</DialogTitle>
               {subtitle && <DialogDescription className="text-xs">{subtitle}</DialogDescription>}
             </div>
-            <Button type="button" size="icon-sm" variant="ghost-muted" aria-label="Close" onClick={requestClose}>
-              <XIcon />
-            </Button>
           </div>
 
-          <div className="flex flex-col gap-4 px-5 py-4">{children}</div>
-          {error && <div className="px-5 pb-3 text-destructive-foreground text-xs">{error}</div>}
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 py-[30px]">
+            {children}
+            {error && <div className="text-destructive-foreground text-xs">{error}</div>}
+          </div>
 
-          <div className={cn("flex items-center gap-2 px-5 py-3", !clean && "border-t")}>
+          <div className="flex shrink-0 items-center gap-2 px-5 pb-4">
             <div className="me-auto">{footerStart}</div>
             <DialogPrimitive.Close render={<Button type="button" size="sm" variant="ghost" />} disabled={saving}>
               Cancel

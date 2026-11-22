@@ -272,8 +272,7 @@ export function IconSheet({ device: d, open, onClose }: { device: Device; open: 
       valid
       onSave={save}
       error={error}
-      className="max-w-xl"
-      clean
+      size="wide"
     >
       {/* The grid alone: the title says what it is, and the picked tile is marked. */}
       <div role="radiogroup" aria-label="Device type" className="grid grid-cols-8 gap-1">

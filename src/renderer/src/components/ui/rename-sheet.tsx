@@ -52,7 +52,6 @@ function RenameBody({ onClose, title, subtitle, label = "Name", value, placehold
       valid={!tooLong && (allowEmpty || trimmed.length > 0)}
       onSave={() => onSave(trimmed)}
       saveLabel="Rename"
-      clean
     >
       <SheetField
         label={label}
