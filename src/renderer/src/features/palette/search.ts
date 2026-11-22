@@ -56,6 +56,8 @@ export type DeviceItem = {
   state: string | null;
   /** "Mia · Upstairs Hall". */
   context: string;
+  /** The eero it is on ("Upstairs Hall"), shown alone by the detail page switcher. */
+  eero: string | null;
 };
 
 export type ProfileItem = {
@@ -210,10 +212,9 @@ export function deviceItems(devices: ReadonlyArray<Device>, profiles: ProfileLis
   const eeroName = new Map(eeros?.map((e) => [e.id, e.location]) ?? []);
   return devices.map((d) => {
     const state = d.blocked ? "Blocked" : d.paused ? "Paused" : !d.connected ? "Offline" : null;
-    const context = [d.profileId ? profileName.get(d.profileId) : null, d.eeroId ? eeroName.get(d.eeroId) : null]
-      .filter(Boolean)
-      .join(" · ");
-    return { kind: "device", key: `device:${d.id}`, id: d.id, label: d.name, device: d, state, context };
+    const eero = (d.eeroId ? eeroName.get(d.eeroId) : null) ?? null;
+    const context = [d.profileId ? profileName.get(d.profileId) : null, eero].filter(Boolean).join(" · ");
+    return { kind: "device", key: `device:${d.id}`, id: d.id, label: d.name, device: d, state, context, eero };
   });
 }
 
