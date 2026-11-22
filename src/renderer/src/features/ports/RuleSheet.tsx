@@ -335,7 +335,6 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
       onSave={save}
       saveLabel={mode.kind === "add" ? "Save port forward" : "Save"}
       error={errors._form}
-      clean
     >
       <SheetField
         label="Device"

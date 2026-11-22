@@ -205,48 +205,45 @@ function SettingsForm({ networkId, networkName, saved, onClose }: { networkId: s
       onSave={save}
       error={write.error?.message ?? push.error?.message ?? null}
     >
-      {/* The sheet sits near the top of the window: scroll the switches, keep the footer in view. */}
-      <div className="-mx-5 -my-4 flex max-h-[calc(100vh-13rem)] flex-col gap-4 overflow-y-auto px-5 py-4">
-        <Group title="eero alerts" hint="Sent by eero for this network">
-          {keys.length ? (
-            keys.map((k) => (
-              <SwitchRow
-                key={k}
-                icon={EERO_LABELS[k]?.icon ?? <Bell />}
-                label={EERO_LABELS[k]?.label ?? k}
-                detail={k === "device.new" ? (weekDetail ?? EERO_LABELS[k]?.detail) : EERO_LABELS[k]?.detail}
-                on={draft.eero[k] === true}
-                disabled={!gate.allowed}
-                title={gate.reason ?? undefined}
-                onChange={(on) => set("eero", k, on)}
-              />
-            ))
-          ) : (
-            <p className="py-2 text-muted-foreground text-xs">eero sent no alert switches for this network.</p>
-          )}
-        </Group>
-        {saved.push && (
-          <Group title="Phone alerts" hint="From the eero app, for every network on the account">
-            {PUSH_ROWS.map((r) => (
-              <SwitchRow
-                key={r.key}
-                icon={r.icon}
-                label={r.label}
-                on={draft.push[r.key] ?? null}
-                disabled={!pushGate.allowed}
-                title={pushGate.reason ?? undefined}
-                onChange={(on) => set("push", r.key, on)}
-              />
-            ))}
-          </Group>
+      <Group title="eero alerts" hint="Sent by eero for this network">
+        {keys.length ? (
+          keys.map((k) => (
+            <SwitchRow
+              key={k}
+              icon={EERO_LABELS[k]?.icon ?? <Bell />}
+              label={EERO_LABELS[k]?.label ?? k}
+              detail={k === "device.new" ? (weekDetail ?? EERO_LABELS[k]?.detail) : EERO_LABELS[k]?.detail}
+              on={draft.eero[k] === true}
+              disabled={!gate.allowed}
+              title={gate.reason ?? undefined}
+              onChange={(on) => set("eero", k, on)}
+            />
+          ))
+        ) : (
+          <p className="py-2 text-muted-foreground text-xs">eero sent no alert switches for this network.</p>
         )}
-        <Group title="Desktop alerts" hint="On this computer, for every network">
-          <SwitchRow label="Show desktop alerts" on={desktopOn} onChange={(on) => set("desktop", "enabled", on)} />
-          {DESKTOP_ROWS.map((r) => (
-            <SwitchRow key={r.key} label={r.label} detail={r.detail} on={draft.desktop[r.key] !== false} disabled={!desktopOn} onChange={(on) => set("desktop", r.key, on)} />
+      </Group>
+      {saved.push && (
+        <Group title="Phone alerts" hint="From the eero app, for every network on the account">
+          {PUSH_ROWS.map((r) => (
+            <SwitchRow
+              key={r.key}
+              icon={r.icon}
+              label={r.label}
+              on={draft.push[r.key] ?? null}
+              disabled={!pushGate.allowed}
+              title={pushGate.reason ?? undefined}
+              onChange={(on) => set("push", r.key, on)}
+            />
           ))}
         </Group>
-      </div>
+      )}
+      <Group title="Desktop alerts" hint="On this computer, for every network">
+        <SwitchRow label="Show desktop alerts" on={desktopOn} onChange={(on) => set("desktop", "enabled", on)} />
+        {DESKTOP_ROWS.map((r) => (
+          <SwitchRow key={r.key} label={r.label} detail={r.detail} on={draft.desktop[r.key] !== false} disabled={!desktopOn} onChange={(on) => set("desktop", r.key, on)} />
+        ))}
+      </Group>
     </Sheet>
   );
 }

@@ -58,7 +58,6 @@ export function TimezoneSheet({ open, onClose, current }: { open: boolean; onClo
       dirty={tz !== "" && tz !== current}
       onSave={() => save.run({ timezone: tz })}
       error={errors._form}
-      clean
     >
       <SheetField label="Time zone" htmlFor="timezone-sheet-zone" error={errors.timezone} helper={tz ? `Local time ${networkClock(tz).time(now)}` : null}>
         <select id="timezone-sheet-zone" className={selectClass} value={tz} onChange={(e) => setTz(e.target.value)}>
