@@ -1007,7 +1007,8 @@ The detail for confirms (#360). Every confirm goes through `ConfirmDialog`;
 pages pass words, never layout.
 
 - **Layout** (as T3 Code's `AlertDialog`): two bands. The body (title,
-  30px, message, and any fields) sits on `bg-background`, 20px padding. The
+  20px, message, and any fields) sits on `bg-background`, 20px padding (30px
+  under the content). The
   footer is a band with a top border and `bg-muted/72`, 16px tall padding,
   holding Cancel (`outline`) and the action button on the right. This is the
   one modal with a rule above its footer.
@@ -1020,7 +1021,7 @@ pages pass words, never layout.
   eero, a profile, an admin, the account) adds a field under the message
   ("Type "Garage" to confirm"); the button stays disabled until it matches.
 - **A confirm with fields** (Transfer network; Change email and Verify
-  mobile) keeps the confirm width and rhythm: title, 30px, message, 16px,
+  mobile) keeps the confirm width and, for now, the older rhythm: title, 30px, message, 16px,
   the fields 16px apart, 30px, buttons. They do not use the footer band
   yet. A small choice that changes what a
   field takes (Email or Text message) is a `tool` dropdown at the right end
