@@ -2,7 +2,7 @@
  * Settings, Command line and agents (docs/ux/pages/settings.md,
  * Layout 5; docs/mockups/17-account-settings.html).
  *
- * Left: the Command line and MCP server lines to copy, or **Install CLI**
+ * Left: the Command line and Add MCP server lines to copy, or **Install CLI**
  * (`app.cli.install`) when this install kind can put `mesh-ui` on PATH and
  * has not, and the PATH line when the launcher's folder is not on PATH.
  * Right: this week's CLI and agent commands from the audit log
@@ -28,7 +28,12 @@ import { formatRelative } from "../../../../core/format";
 import type { AppInfo, AuditList, CliStatus } from "../../../../core/model";
 
 const CLI_EXAMPLE = "mesh-ui run device.list";
-const MCP_EXAMPLE = "claude mcp add mesh-ui -- mesh-ui mcp";
+/** The command that adds the MCP server, for each agent CLI. */
+const MCP_ADD = [
+  { agent: "Claude Code", text: "claude mcp add mesh-ui -- mesh-ui mcp" },
+  { agent: "Codex", text: "codex mcp add mesh-ui -- mesh-ui mcp" },
+  { agent: "Antigravity", text: "agy mcp add mesh-ui mesh-ui mcp" },
+];
 /** Latest commands listed beside the sparkline. */
 const SHOWN = 5;
 
@@ -100,8 +105,10 @@ function CommandLines({ cli }: { cli: CliStatus | null }) {
       <Labelled label="Command line">
         <CodeLine text={CLI_EXAMPLE} label="the command line example" />
       </Labelled>
-      <Labelled label="MCP server">
-        <CodeLine text={MCP_EXAMPLE} label="the MCP server command" />
+      <Labelled label="Add MCP server">
+        {MCP_ADD.map((m) => (
+          <CodeLine key={m.agent} text={m.text} label={`the ${m.agent} MCP command`} />
+        ))}
       </Labelled>
       {cli?.installed && cli.pathLine && (
         <Labelled label="Not on PATH yet">
