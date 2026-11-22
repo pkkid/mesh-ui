@@ -436,14 +436,15 @@ export function ThemeEditorPanel({
       }}
     >
       <div
-        className="flex cursor-grab touch-none select-none items-center gap-1 px-3 py-2 active:cursor-grabbing"
+        className="flex cursor-grab touch-none select-none items-start gap-1 px-3 py-2 active:cursor-grabbing"
         onPointerDown={onDragDown}
         onPointerMove={onDragMove}
         onPointerUp={() => (dragOffset.current = null)}
         onPointerCancel={() => (dragOffset.current = null)}
       >
-        <div className="flex min-w-0 flex-1 items-baseline gap-2">
-          <h2 className="shrink-0 font-medium text-sm text-foreground">{title}</h2>
+        {/* Title with the live status under it; the buttons stay on the title's line, at the top. */}
+        <div className="flex min-w-0 flex-1 flex-col pt-0.5">
+          <h2 className="font-medium text-sm text-foreground">{title}</h2>
           {!minimized && status && <p className="truncate text-muted-foreground text-xs">{status}</p>}
         </div>
         <Button
