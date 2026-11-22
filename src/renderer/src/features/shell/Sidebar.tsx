@@ -5,7 +5,6 @@
  * Counts come from `network.get`; items the network cannot use (Profiles and
  * Reservations & ports in bridge mode) are hidden, not greyed out.
  */
-import { Popover } from "@base-ui/react/popover";
 import { ArrowLeft, ArrowRight, LogOut } from "lucide-react";
 
 import { type HistoryDirection, Link, navigateHistory, useCanNavigateHistory, useLocation } from "~/app/router";
@@ -16,6 +15,7 @@ import { AppIcon } from "~/components/mesh/AppIcon";
 import { AppWordmark } from "~/components/mesh/AppWordmark";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Popover, PopoverClose, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 import { formatCount } from "../../../../core/format";
 import type { Account, AuthStatus, Network, NetworkSummary } from "../../../../core/model";
@@ -162,33 +162,27 @@ function UserFooter({ active }: { active: boolean }) {
           <div className="truncate font-medium text-sm">{name ?? "-"}</div>
           <div className="text-muted-foreground text-xs">{role}</div>
         </Link>
-        <Popover.Root>
-          <Popover.Trigger
+        <Popover>
+          <PopoverTrigger
             aria-label="Sign out"
             title="Sign out"
             className="relative z-10 grid size-7 cursor-pointer place-items-center rounded-[var(--control-radius)] text-muted-foreground outline-none hover:bg-foreground/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <LogOut className="size-3.5" />
-          </Popover.Trigger>
-          <Popover.Portal>
-            <Popover.Positioner side="top" align="end" sideOffset={6} className="z-50">
-              <Popover.Popup className="w-64 rounded-xl border bg-popover p-3 text-popover-foreground shadow-lg outline-none">
-                <Popover.Title className="font-medium text-sm">Sign out of Mesh UI?</Popover.Title>
-                <Popover.Description className="mt-1 text-muted-foreground text-xs">
-                  Your networks keep running.
-                </Popover.Description>
-                {logout.error && <div className="mt-2 text-destructive-foreground text-xs">{logout.error.message}</div>}
-                <div className="mt-3 flex justify-end gap-2">
-                  <Popover.Close render={<Button size="sm" variant="ghost" />}>Cancel</Popover.Close>
-                  <Button size="sm" variant="outline" disabled={logout.running} onClick={() => void logout.run({})}>
-                    <LogOut />
-                    Sign out
-                  </Button>
-                </div>
-              </Popover.Popup>
-            </Popover.Positioner>
-          </Popover.Portal>
-        </Popover.Root>
+          </PopoverTrigger>
+          <PopoverPopup side="top" align="end" className="w-64 p-3">
+            <PopoverTitle className="font-medium text-sm">Sign out of Mesh UI?</PopoverTitle>
+            <PopoverDescription className="mt-1 text-muted-foreground">Your networks keep running.</PopoverDescription>
+            {logout.error && <div className="mt-2 text-destructive-foreground">{logout.error.message}</div>}
+            <div className="mt-3 flex justify-end gap-2">
+              <PopoverClose render={<Button size="sm" variant="ghost" />}>Cancel</PopoverClose>
+              <Button size="sm" variant="outline" disabled={logout.running} onClick={() => void logout.run({})}>
+                <LogOut />
+                Sign out
+              </Button>
+            </div>
+          </PopoverPopup>
+        </Popover>
       </div>
     </div>
   );

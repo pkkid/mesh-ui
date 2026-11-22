@@ -6,6 +6,10 @@
  * the width of the row, and each of its rows shows what the row shows: status
  * dot, name and the same status line. The name is the network nickname when
  * one is set, with the Wi-Fi name leading the line under it (#270).
+ *
+ * The one popover not on `PopoverPopup`: it extends the sidebar, so it keeps
+ * the sidebar surface (bg-sidebar, grain, sidebar border) on purpose. See
+ * docs/design/design-system.md (Popovers and menus).
  */
 import { Popover } from "@base-ui/react/popover";
 import { ChevronsUpDown, Settings } from "lucide-react";

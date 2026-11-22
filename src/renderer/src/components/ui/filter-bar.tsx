@@ -5,12 +5,12 @@
  * that are set as removable chips under it with Clear all. Devices and
  * Activity both build their bars from these pieces.
  */
-import { Popover } from "@base-ui/react/popover";
 import { Check, ChevronDown, ListFilter, type LucideIcon, Search, X } from "lucide-react";
 import { type ComponentProps, type ReactNode, type RefObject, useEffect, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { Popover, PopoverPopup, PopoverTrigger, popoverButtonItem } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 
 export type FilterOption = { value: string; label: string; count?: number };
@@ -107,8 +107,8 @@ export function FiltersButton({ active, onClear, children }: { active: number; o
   // The wrapper keeps the popover's focus guards out of the toolbar's flex gaps.
   return (
     <div className="flex">
-      <Popover.Root>
-        <Popover.Trigger
+      <Popover>
+        <PopoverTrigger
           render={<Button variant="outline" aria-label={active ? `Filters, ${active} set` : "Filters"} />}
           className="gap-1.5 px-2 font-normal text-[13px]"
         >
@@ -119,26 +119,19 @@ export function FiltersButton({ active, onClear, children }: { active: number; o
               {active}
             </span>
           )}
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-            <Popover.Popup
-              aria-label="Filters"
-              className="no-drag w-[340px] rounded-xl border bg-popover text-popover-foreground text-xs shadow-lg outline-none"
-            >
-              <div className="flex flex-col gap-2.5 p-3">{children}</div>
-              <div className="flex items-center justify-between border-t px-3 py-2">
-                <span className="text-muted-foreground">
-                  {active === 0 ? "No filters set" : `${active} ${active === 1 ? "filter" : "filters"} set`}
-                </span>
-                <Button variant="ghost-muted" size="xs" disabled={active === 0} onClick={onClear}>
-                  Clear all
-                </Button>
-              </div>
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
+        </PopoverTrigger>
+        <PopoverPopup aria-label="Filters" className="w-[340px]">
+          <div className="flex flex-col gap-2.5 p-3">{children}</div>
+          <div className="flex items-center justify-between border-t px-3 py-2">
+            <span className="text-muted-foreground">
+              {active === 0 ? "No filters set" : `${active} ${active === 1 ? "filter" : "filters"} set`}
+            </span>
+            <Button variant="ghost-muted" size="xs" disabled={active === 0} onClick={onClear}>
+              Clear all
+            </Button>
+          </div>
+        </PopoverPopup>
+      </Popover>
     </div>
   );
 }
@@ -170,11 +163,6 @@ export function FilterToggle({ pressed, onClick, children }: { pressed: boolean;
     </button>
   );
 }
-
-export const popupClass =
-  "no-drag max-h-80 min-w-44 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none";
-export const itemClass =
-  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start outline-none hover:bg-muted/60 focus-visible:bg-muted/60";
 
 /**
  * A popover list of options with a check on the current one. Long lists get
@@ -212,19 +200,17 @@ export function Picker({
     onChange(v);
   };
   return (
-    <Popover.Root
+    <Popover
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
         if (o) setQuery("");
       }}
     >
-      <Popover.Trigger aria-label={label} title={label} className={triggerClassName}>
+      <PopoverTrigger aria-label={label} title={label} className={triggerClassName}>
         {trigger}
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner side="bottom" align={align} sideOffset={4} className="z-50">
-          <Popover.Popup className={cn(popupClass, searchable && "w-64")}>
+      </PopoverTrigger>
+      <PopoverPopup variant="list" align={align} className={cn(searchable && "w-64")}>
             {searchable && (
               <div className="sticky -top-1 z-10 -mx-1 -mt-1 bg-popover p-1">
               <input
@@ -253,19 +239,17 @@ export function Picker({
                   type="button"
                   role="option"
                   aria-selected={o.value === value}
-                  className={itemClass}
+                  className={popoverButtonItem}
                   onClick={() => pick(o.value)}
                 >
-                  <Check className={cn("size-3.5 shrink-0", o.value !== value && "invisible")} />
+                  <Check className={cn(o.value !== value && "invisible")} />
                   <span className="min-w-0 flex-1 truncate">{o.label}</span>
                   {o.count !== undefined && <span className="text-muted-foreground tabular-nums">{o.count}</span>}
                 </button>
               ))}
             </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
+      </PopoverPopup>
+    </Popover>
   );
 }
 
