@@ -17,7 +17,7 @@
  * fails on them.
  */
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 import { parseAst } from "vite";
 
@@ -212,7 +212,8 @@ export function scanPlaces(repo: string): ScannedPlace[] {
   // conditional on those pages too. A component shown both ways round (`bridged ? <A/> : <A/>`) is not.
   const usages = new Map<string, { route: string; conditional: boolean }[]>();
   for (const abs of files) {
-    const file = relative(repo, abs);
+    // Forward slashes on every OS: routeFor splits on "/", and Windows paths use "\\".
+    const file = relative(repo, abs).split(sep).join("/");
     const src = readFileSync(abs, "utf8");
     const route = routeFor(file);
     walkFile(src, (el, path) => {
