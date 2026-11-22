@@ -27,13 +27,13 @@
     "out": "confirm-nested-light.png",
     "route": "#/settings/wifi",
     "theme": "light",
-    "before": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const btn = (t, root = document) => [...root.querySelectorAll(\"button\")].find((b) => b.textContent.trim().startsWith(t)); document.querySelector(\"[aria-label=\\\"Change time zone\\\"]\").click(); await sleep(400); const s = document.querySelector(\"#timezone-sheet-zone\"); s.value = [...s.options].find((o) => o.value && o.value !== s.value).value; s.dispatchEvent(new Event(\"change\", { bubbles: true })); await sleep(300); btn(\"Save\", document.querySelector(\"[role=dialog]\")).click();"
+    "before": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const btn = (t, root = document) => [...root.querySelectorAll(\"button\")].find((b) => b.textContent.trim().startsWith(t)); document.querySelector(\"[aria-label=\\\"Change time zone\\\"]\").click(); await sleep(400); document.querySelector(\"#timezone-sheet-zone\").click(); await sleep(400); document.querySelector(\"[role=option]:not([aria-selected=true])\").click(); await sleep(300); btn(\"Save\", document.querySelector(\"[role=dialog]\")).click();"
   },
   {
     "out": "confirm-nested-dark.png",
     "route": "#/settings/wifi",
     "theme": "dark",
-    "before": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const btn = (t, root = document) => [...root.querySelectorAll(\"button\")].find((b) => b.textContent.trim().startsWith(t)); document.querySelector(\"[aria-label=\\\"Change time zone\\\"]\").click(); await sleep(400); const s = document.querySelector(\"#timezone-sheet-zone\"); s.value = [...s.options].find((o) => o.value && o.value !== s.value).value; s.dispatchEvent(new Event(\"change\", { bubbles: true })); await sleep(300); btn(\"Save\", document.querySelector(\"[role=dialog]\")).click();"
+    "before": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms)); const btn = (t, root = document) => [...root.querySelectorAll(\"button\")].find((b) => b.textContent.trim().startsWith(t)); document.querySelector(\"[aria-label=\\\"Change time zone\\\"]\").click(); await sleep(400); document.querySelector(\"#timezone-sheet-zone\").click(); await sleep(400); document.querySelector(\"[role=option]:not([aria-selected=true])\").click(); await sleep(300); btn(\"Save\", document.querySelector(\"[role=dialog]\")).click();"
   },
   {
     "out": "confirm-form-light.png",

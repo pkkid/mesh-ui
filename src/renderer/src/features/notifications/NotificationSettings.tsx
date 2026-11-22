@@ -15,7 +15,7 @@
  * desktop keys, then `account.push.set` with the changed push keys. The
  * "Saved notification settings" toast's Undo puts every changed key back.
  */
-import { BadgeCheck, Bell, BellRing, CalendarClock, CirclePlus, Router, ShieldAlert, UserCog, WifiOff } from "lucide-react";
+import { BadgeCheck, Bell, CalendarClock, CirclePlus, Router, ShieldAlert, UserCog, WifiOff } from "lucide-react";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
 
 import { useQuery } from "~/app/useCommand";
@@ -122,7 +122,7 @@ function NotificationSettingsSheet({ networkId, networkName, open, onClose }: { 
   if (!settings.data) {
     // Open at once: loading, or the read failed with a Retry.
     return (
-      <Sheet open onClose={onClose} icon={<BellRing />} title="Notification settings" dirty={false} onSave={async () => null}>
+      <Sheet open onClose={onClose} title="Notification settings" dirty={false} onSave={async () => null}>
         <p className="py-4 text-center text-muted-foreground text-xs">
           {settings.error ? (
             <>
@@ -198,7 +198,7 @@ function SettingsForm({ networkId, networkName, saved, onClose }: { networkId: s
     <Sheet
       open
       onClose={onClose}
-      icon={<BellRing />}
+     
       title="Notification settings"
       subtitle={`${networkName ?? "This network"} · shown in the bell, on your phone and as desktop alerts`}
       dirty={dirty}

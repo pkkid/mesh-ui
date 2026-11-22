@@ -17,7 +17,7 @@
  * zone lives in DangerZone.tsx. Layout: docs/ux/pages/advanced-networking.md,
  * mockup 13.
  */
-import { Cable, ChevronRight, Network, Pencil, Server } from "lucide-react";
+import { ChevronRight, Pencil } from "lucide-react";
 import { Children, createContext, type ReactNode, use, useEffect, useId, useState } from "react";
 
 import { Link, pathFor } from "~/app/router";
@@ -463,7 +463,6 @@ function WanSheet({ open, onClose, settings, isp, offline }: { open: boolean; on
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<Cable />}
       title="ISP settings"
       subtitle={`Only change these if ${isp ?? "your ISP"} asks you to · every eero restarts`}
       dirty={dirty}
@@ -742,7 +741,6 @@ function DhcpSheet({ open, onClose, settings, offline }: { open: boolean; onClos
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<Network />}
       title="Manual DHCP range"
       subtitle="Devices get new addresses · every eero restarts"
       dirty={dirty}
@@ -786,7 +784,6 @@ function DnsSheet({ open, onClose, settings, offline }: { open: boolean; onClose
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<Server />}
       title="Custom DNS"
       subtitle="Name servers for every device · every eero restarts"
       dirty={dirty}

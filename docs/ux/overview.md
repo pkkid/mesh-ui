@@ -522,23 +522,26 @@ Editors that need more than one field open as a sheet (mockups: Appearance on
 06, Edit schedule on 08).
 
 - A 540 px panel (`size="wide"`: 640 px), horizontally centred over a
-  dimmed backdrop, `bg-popover`, 18 px radius, one clean style with no
-  divider lines under the header or above the footer. Its top edge sits at the shared
-  modal offset (below the titlebar, 15% down a tall window) and it grows
-  downward; see
+  dimmed backdrop, `bg-background`, 18 px radius, laid out like the confirm
+  dialog. Its top edge sits at the shared modal offset (below the titlebar,
+  15% down a tall window) and it grows downward; see
   [design-system.md#position](../design/design-system.md#position).
-- **Header:** icon, title, a muted line saying what it affects ("Mia · pauses
-  all 4 devices automatically"). No close button: Cancel and `Esc` close it.
-- **Body:** labelled fields, 16 px apart, 30 px below the header and above
-  the footer. Live helpers under fields (character count "18 / 32", "next
-  day", a preview bar). A long body scrolls; the header and footer stay put.
-- **Footer:** destructive action on the left if any ("Delete schedule", which
-  opens the confirm dialog over the sheet), Cancel and primary Save on the right.
+- **Header:** title and a muted line saying what it affects ("Mia · pauses
+  all 4 devices automatically"). No icon, no rule under it. The close X sits
+  at the top right on every sheet.
+- **Body:** 20 px under the header, labelled fields 16 px apart. Live
+  helpers under fields (character count "18 / 32", "next day", a preview
+  bar). A long body scrolls; the header and footer stay put.
+- **Footer:** the confirm's band (top border, muted fill). A secondary or
+  destructive action on the left if any ("Delete schedule", which opens the
+  confirm dialog over the sheet), Cancel (outline) and the filled primary
+  Save on the right. A content sheet (Share Wi-Fi) has no footer; the X and
+  `Esc` close it.
 - Save is disabled until something changed and the form is valid. Validation
   is the command's zod schema: `bad_params` messages land under the field.
 - Save runs the command(s); the sheet closes on `ok` with a toast, stays open
   with the error otherwise.
-- `Esc` and Cancel close it at once, unsaved changes or not; never ask
+- `Esc`, the X and Cancel close it at once, unsaved changes or not; never ask
   "Discard changes?". A click on the backdrop does nothing. See
   [design-system.md#behaviour](../design/design-system.md#behaviour).
 

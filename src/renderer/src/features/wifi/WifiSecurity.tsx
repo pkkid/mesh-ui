@@ -8,7 +8,7 @@
  * before `wifi.security.set`. 6 GHz is always WPA3.
  * docs/ux/pages/wifi.md (Layout, left column 1 and 2).
  */
-import { Check, Copy, Dices, Eye, EyeOff, Pencil, Wifi } from "lucide-react";
+import { Check, Copy, Dices, Eye, EyeOff, Pencil } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { execute } from "~/app/useCommand";
@@ -244,7 +244,6 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
     <Sheet
       open={open}
       onClose={onClose}
-      icon={<Wifi />}
       title="Network name and password"
       subtitle={`${wifi.ssid}, every wireless device rejoins after a change`}
       dirty={nameDirty || pwDirty}

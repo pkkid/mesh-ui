@@ -18,7 +18,7 @@
  * ProfilePauseButton, ProfileSheet (add, rename, devices) and
  * useDeleteProfile.
  */
-import { Pause, Pencil, Play, Plus, UserRoundPlus } from "lucide-react";
+import { Pause, Play, Plus, UserRoundPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Link, navigate, pathFor } from "~/app/router";
@@ -613,7 +613,6 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
     <Sheet
       open
       onClose={onClose}
-      icon={mode.kind === "create" ? <UserRoundPlus /> : mode.kind === "rename" ? <Pencil /> : <Plus />}
       title={mode.kind === "create" ? "Add a profile" : mode.kind === "rename" ? `Rename ${startName}` : `${startName}'s devices`}
       subtitle={showDevices ? `${picked.size} ${picked.size === 1 ? "device" : "devices"} selected · devices move out of their old profile` : undefined}
       dirty={dirty}

@@ -12,7 +12,7 @@
  * buttons (a picked day gets a stronger outline, not a colour) and the
  * presets as plain text links, not pills.
  */
-import { CalendarPlus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { fieldErrors, useWrite } from "~/app/useWrite";
@@ -26,7 +26,6 @@ import { cn } from "~/lib/utils";
 import type { Day, Profile, Schedule, ScheduleInput } from "../../../../core/model";
 
 import { minutesOf, spanMinutes } from "./helpers";
-import { ScheduleIcon } from "./ProfileSchedules";
 
 export type ScheduleSheetMode = { kind: "add" } | { kind: "edit"; schedule: Schedule };
 
@@ -140,7 +139,6 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
     <Sheet
       open
       onClose={onClose}
-      icon={mode.kind === "add" ? <CalendarPlus /> : <ScheduleIcon name={trimmed || initial.name} />}
       title={mode.kind === "add" ? "Add a scheduled pause" : "Edit schedule"}
       subtitle={`${p.name}, pauses ${devices === 1 ? "its device" : `all ${devices} devices`} automatically`}
       dirty={dirty}

@@ -10,14 +10,13 @@
  * Undo) refreshes all of them and device detail's reservation (`RELATED` in
  * useCommand). Removals ask first in the app's confirm dialog.
  */
-import { Bookmark, BookmarkPlus, Check, CircleAlert, Plus, ShieldPlus, Trash2 } from "lucide-react";
+import { Check, CircleAlert, Trash2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { fieldErrors, performWrite, useWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Segmented } from "~/components/ui/segmented";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { WriteSwitch } from "~/features/advanced/SettingsGroups";
@@ -31,38 +30,20 @@ const PROTOCOLS = [
   { value: "both", label: "TCP + UDP" },
 ] as const;
 
-const selectClass =
-  "h-8 w-full cursor-pointer truncate rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 dark:bg-input/32";
-
 /** Main-network devices, A to Z: the ones that can take a reservation, forward or rule. */
 function useDevices(): Device[] {
   const devices = useQuery<DeviceList>("device.list");
   return (devices.data?.devices ?? []).filter((d) => d.ssid !== "guest").sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 }
 
-function DeviceSelect({ id, value, devices, onChange, disabled }: { id: string; value: string; devices: Device[]; onChange: (id: string) => void; disabled?: boolean }) {
-  return (
-    <select id={id} className={cn(selectClass, value === "" && "text-muted-foreground")} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Pick a device</option>
-      {devices.map((d) => (
-        <option key={d.id} value={d.id}>
-          {d.name}
-          {d.ipv4 ? ` · ${d.ipv4}` : ""}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 /**
- * The port forward sheet's device dropdown: the app's styled Select, the
- * device's name in the trigger and its address beside each option. The
- * reservation and IPv6 rule sheets still use the native one, page by page.
+ * The device dropdown of every rule sheet: the app's styled Select, the
+ * device's name in the trigger and its address beside each option.
  */
-function DevicePicker({ id, value, devices, onChange }: { id: string; value: string; devices: Device[]; onChange: (id: string) => void }) {
+function DevicePicker({ id, value, devices, onChange, disabled }: { id: string; value: string; devices: Device[]; onChange: (id: string) => void; disabled?: boolean }) {
   const items = devices.map((d) => ({ value: d.id, label: d.name }));
   return (
-    <Select items={items} value={value || null} onValueChange={(v) => v !== null && onChange(v)}>
+    <Select items={items} value={value || null} disabled={disabled} onValueChange={(v) => v !== null && onChange(v)}>
       <SelectTrigger id={id} className="w-full min-w-0">
         <SelectValue placeholder="Pick a device" />
       </SelectTrigger>
@@ -171,7 +152,6 @@ function ReservationBody({ mode, onClose, removable }: { mode: ReservationSheetM
     <Sheet
       open
       onClose={onClose}
-      icon={mode.kind === "add" ? <BookmarkPlus /> : <Bookmark />}
       title={mode.kind === "add" ? "Add a reservation" : "Edit reservation"}
       subtitle="The device always gets this address. Applies instantly, no restart."
       dirty={dirty}
@@ -202,7 +182,7 @@ function ReservationBody({ mode, onClose, removable }: { mode: ReservationSheetM
       error={errors._form}
     >
       <SheetField label="Device" htmlFor={ids.device} error={errors.device ?? errors.mac} helper={device ? `${device.mac}${device.connected ? "" : " · offline"}` : undefined}>
-        <DeviceSelect id={ids.device} value={deviceId} devices={devices} onChange={setDeviceId} disabled={mode.kind === "edit"} />
+        <DevicePicker id={ids.device} value={deviceId} devices={devices} onChange={setDeviceId} disabled={mode.kind === "edit"} />
       </SheetField>
       <SheetField
         label="Reserved IP"
@@ -327,7 +307,6 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
     <Sheet
       open
       onClose={onClose}
-      icon={<Plus />}
       title={mode.kind === "add" ? "Add port forward" : "Edit port forward"}
       subtitle={publicIp ? `Open to the internet on ${publicIp}` : "Open to the internet"}
       dirty={dirty}
@@ -432,7 +411,7 @@ export function PinholeSheet({ open, deviceId, onClose }: { open: boolean; devic
 
 function PinholeBody({ deviceId: initial, onClose }: { deviceId?: string; onClose: () => void }) {
   const devices = useDevices();
-  const ids = { device: useId(), port: useId() };
+  const ids = { device: useId(), port: useId(), protocol: useId() };
   const [deviceId, setDeviceId] = useState(initial ?? "");
   const [port, setPort] = useState("");
   const [protocol, setProtocol] = useState<Protocol>("tcp");
@@ -453,7 +432,6 @@ function PinholeBody({ deviceId: initial, onClose }: { deviceId?: string; onClos
     <Sheet
       open
       onClose={onClose}
-      icon={<ShieldPlus />}
       title="Add IPv6 firewall rule"
       subtitle="Lets the internet reach one device over IPv6. Applies instantly, no restart."
       dirty={deviceId !== "" || port !== ""}
@@ -463,14 +441,16 @@ function PinholeBody({ deviceId: initial, onClose }: { deviceId?: string; onClos
       error={errors._form}
     >
       <SheetField label="Device" htmlFor={ids.device} error={errors.device} helper={device ? (device.ipv6[0] ?? "No IPv6 address yet") : undefined}>
-        <DeviceSelect id={ids.device} value={deviceId} devices={devices} onChange={setDeviceId} />
+        <DevicePicker id={ids.device} value={deviceId} devices={devices} onChange={setDeviceId} />
       </SheetField>
-      <SheetField label="Port" htmlFor={ids.port} error={errors.port} helper="A port or a range (27015-27030)">
-        <Input id={ids.port} className="font-mono" inputMode="numeric" placeholder="443" value={port} onChange={(e) => setPort(e.currentTarget.value)} />
-      </SheetField>
-      <SheetField label="Protocol">
-        <Segmented aria-label="Protocol" value={protocol} onValueChange={setProtocol} options={PROTOCOLS} />
-      </SheetField>
+      <div className="grid grid-cols-2 gap-3">
+        <SheetField label="Port" htmlFor={ids.port} error={errors.port} helper="A port or a range (27015-27030)">
+          <Input id={ids.port} className="font-mono" inputMode="numeric" placeholder="443" value={port} onChange={(e) => setPort(e.currentTarget.value)} />
+        </SheetField>
+        <SheetField label="Protocol" htmlFor={ids.protocol}>
+          <ProtocolPicker id={ids.protocol} value={protocol} onChange={setProtocol} />
+        </SheetField>
+      </div>
     </Sheet>
   );
 }
