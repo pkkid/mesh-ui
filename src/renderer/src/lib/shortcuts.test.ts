@@ -32,12 +32,12 @@ afterEach(() => {
 
 describe("shortcut defaults", () => {
   it("are F1, Ctrl+comma, Alt+arrows, F5 and F12 on Windows and Linux", () => {
-    expect(SHORTCUTS.map((a) => bindingFor(a.id))).toEqual(["F1", "ctrl+Comma", "F12", "alt+ArrowLeft", "alt+ArrowRight", "F5"]);
+    expect(SHORTCUTS.map((a) => bindingFor(a.id))).toEqual(["F1", "F12", "ctrl+Comma", "F5", "alt+ArrowLeft", "alt+ArrowRight"]);
   });
 
   it("use Cmd on macOS, and Cmd+[ / Cmd+] for Back and Forward (Option+arrow moves by word in fields)", () => {
     usePlatform("MacIntel");
-    expect(SHORTCUTS.map((a) => bindingFor(a.id))).toEqual(["F1", "meta+Comma", "F12", "meta+BracketLeft", "meta+BracketRight", "F5"]);
+    expect(SHORTCUTS.map((a) => bindingFor(a.id))).toEqual(["F1", "F12", "meta+Comma", "F5", "meta+BracketLeft", "meta+BracketRight"]);
   });
 
   it("have no conflicts between them on either platform", () => {

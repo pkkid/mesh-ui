@@ -163,7 +163,7 @@ export function KeyboardShortcuts({ id }: { id?: string }) {
         )
       }
     >
-      {/* Two cards of three side by side to save height (app actions left, navigation and data right); one column when narrow. */}
+      {/* Two cards of three side by side to save height (app actions left, refresh and navigation right); one column when narrow. */}
       <div className="grid items-start gap-4 md:grid-cols-2">
         {[SHORTCUTS.slice(0, 3), SHORTCUTS.slice(3)].map((column) => (
           <Card key={column[0]?.id} className="divide-y divide-border/50">
