@@ -53,7 +53,6 @@ function ShortcutRow({ action, recording, onRecord, onCancel }: { action: Shortc
     <div className={cn(recording && "bg-muted/40")}>
       <Row
         title={action.label}
-        description={action.hint}
         control={
           recording ? (
             <>

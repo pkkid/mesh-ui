@@ -18,15 +18,15 @@ import { comboText, eventCombo, formatCombo, isFunctionKey, isModifierCode, pars
 
 export type ShortcutId = "palette.open" | "nav.settings" | "nav.back" | "nav.forward" | "data.refresh" | "devtools.toggle";
 
-export type ShortcutAction = { id: ShortcutId; label: string; hint?: string; defaults: { mac: string; other: string } };
+export type ShortcutAction = { id: ShortcutId; label: string; defaults: { mac: string; other: string } };
 
 /** The rebindable actions, in the order Settings lists them. */
 export const SHORTCUTS: ReadonlyArray<ShortcutAction> = [
   { id: "palette.open", label: "Open command palette", defaults: { mac: "F1", other: "F1" } },
   { id: "nav.settings", label: "Open Settings", defaults: { mac: "meta+Comma", other: "ctrl+Comma" } },
   // Option+Left moves by a word in macOS text fields, so the Mac default is Cmd+[ as in Safari and Chrome.
-  { id: "nav.back", label: "Go back", hint: "The mouse back button always works too.", defaults: { mac: "meta+BracketLeft", other: "alt+ArrowLeft" } },
-  { id: "nav.forward", label: "Go forward", hint: "The mouse forward button always works too.", defaults: { mac: "meta+BracketRight", other: "alt+ArrowRight" } },
+  { id: "nav.back", label: "Go back", defaults: { mac: "meta+BracketLeft", other: "alt+ArrowLeft" } },
+  { id: "nav.forward", label: "Go forward", defaults: { mac: "meta+BracketRight", other: "alt+ArrowRight" } },
   { id: "data.refresh", label: "Refresh page data", defaults: { mac: "F5", other: "F5" } },
   { id: "devtools.toggle", label: "Toggle DevTools panel", defaults: { mac: "F12", other: "F12" } },
 ];
