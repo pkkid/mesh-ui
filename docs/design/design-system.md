@@ -26,7 +26,13 @@ semantic classes.
   [Buttons and links](#buttons-and-links)).
 - **Subtext under titles.** Muted detail sits on its own line below a
   title, never beside it (see [Sections](#sections)).
-- **Dropdowns, not pill toggles.** View choices (range, metric, grouping)
+- **Pills.** Wherever pills remain (Segmented, a set of choices in a track),
+they have no borders: not on the track, not on the selected pill, and no
+outline or shadow standing in for one. Selection shows by fill and text
+colour alone: the track is `bg-muted`, the selected pill `bg-card` with
+`text-foreground` and `font-medium`, the others `text-muted-foreground`.
+
+**Dropdowns, not pill toggles.** View choices (range, metric, grouping)
   are dropdowns, never Segmented pill toggles (see
   [Buttons and links](#buttons-and-links)).
 - **Room to scroll past the end.** Every page ends with 100px of empty
@@ -398,12 +404,12 @@ Every border is 1px. Colour comes from two tokens, softened with opacity:
 
 | Border | Class | Used by |
 | --- | --- | --- |
-| Default | `border` (`border-border`) | Dialogs, popovers, tooltips, outline badges, the rule under the page header, table header rule, Segmented track, chips |
+| Default | `border` (`border-border`) | Dialogs, popovers, tooltips, outline badges, the rule under the page header, table header rule, chips |
 | Card edge | `border-border/60` | Section cards, toasts (`/50`) |
 | Row divider | `divide-y divide-border/50`, `border-b border-border/50` | Rows inside a card, table rows |
 | Control | `border-input` | Outline buttons, inputs, selects |
 | Focus | `ring-2 ring-ring` (inputs: `ring-[3px] ring-ring/24` and `border-ring`) | Every focusable control |
-| Inset outline | `shadow-[inset_0_0_0_1px_var(--color-border)]` | Avatars, icon tiles, selected Segmented item |
+| Inset outline | `shadow-[inset_0_0_0_1px_var(--color-border)]` | Avatars, icon tiles |
 | Sidebar edge | `border-e`, coloured in `index.css` (`[data-app-sidebar]`) | Sidebar |
 
 No double borders: a card inside a card, or a bordered box flush against a
@@ -419,7 +425,7 @@ Backgrounds, from back to front:
 | Section card | `bg-card/40`, `shadow-xs/5` |
 | Hover on rows and cards | `hover:bg-muted/50` (rows), `hover:bg-muted/30` (cards) |
 | Inset: Segmented track, badges, avatars, icon tiles, table group rows | `bg-muted` |
-| Raised inside an inset: selected Segmented item | `bg-card` |
+| Selected Segmented item, on its `bg-muted` track | `bg-card` |
 | Outline buttons, popovers, dialogs, toasts | `bg-popover` (outline buttons `dark:bg-input/32`) |
 | Inputs | `bg-background` (`dark:bg-input/32`) |
 | Dialog backdrop | `bg-background/60` (`/64` dark), `backdrop-blur-[2px]` |
@@ -622,7 +628,7 @@ now. A fixed label is about a tenth as useful.
 **Header tools are 28px.** Every control in the tools slot (buttons,
 `HeaderLink`, Segmented toggles, selects, and inputs such as a filter box) is 28px tall, the height of the
 title's line, so their top and bottom edges line up: buttons are the `tool`
-size (`h-7`, 12px text, 14px icons) and Segmented its `tool` size (border,
+size (`h-7`, 12px text, 14px icons) and Segmented its `tool` size (3px padding,
 `p-0.5`, 22px items). `Section` sets both once through `ButtonSizeContext`
 and `SegmentedSizeContext`, so call sites inside the tools slot leave `size`
 off, like the page header. A shared button that also appears outside a header
@@ -661,7 +667,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Component | Look |
 | --- | --- |
 | Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled red, white text), `warning` (filled yellow, `text-black/85`; only the confirm button of a disruptive action), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
-| Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons |
+| Segmented toggle | Pills ([below](#pills)): a `bg-muted` track, the selected segment on `bg-card` in the foreground colour, no border or shadow on either. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons |
 | Switch | 36 x 20 (`h-5 w-9`), full radius, `bg-primary` when on, `bg-muted` with a border when off, dashed border when eero does not report the value |
 | Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`). Focus, as T3 Code: `border-ring` and a 3px glow inside the border (`ring-[3px] ring-inset ring-ring/24`), never outside. Text fields use `components/ui/input.tsx`, with no decorative icon (no pencil); an optional 16px leading icon only when it says what to type (search); selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
 | Chip | 24px (`h-6`), full radius, 1px border, `bg-card`, `text-xs text-foreground/80`, for filters; selected chip gets a stronger border, not colour |
