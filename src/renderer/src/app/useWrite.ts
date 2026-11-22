@@ -49,7 +49,7 @@ export type ConfirmAsk = {
   confirmLabel: string;
   /** Destructive actions on a named thing: the person types this to enable the button. */
   typeToConfirm?: string;
-  /** A plain, reversible change asked about only to be sure (the search palette's writes): no warning icon or red. */
+  /** A plain, reversible change asked about only to be sure (the search palette's writes): an outline button, not a filled danger one. */
   calm?: boolean;
 };
 

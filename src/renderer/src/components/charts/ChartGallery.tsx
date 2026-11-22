@@ -404,9 +404,9 @@ function WriteKit() {
       <ConfirmDialog
         ask={
           dialog === "restart"
-            ? { title: "Restart Maple Street?", message: "Everyone loses internet for about 2 to 3 minutes, including any calls in progress.", confirmLabel: "Yes, restart network" }
+            ? { effect: "disruptive", title: "Restart Maple Street?", message: "Everyone loses internet for about 2 to 3 minutes, including any calls in progress.", confirmLabel: "Yes, restart network" }
             : dialog === "delete"
-              ? { title: "Delete Mia?", message: "Delete profile: this cannot be undone. Her 4 devices move to Unassigned.", confirmLabel: "Delete profile", typeToConfirm: "Mia" }
+              ? { effect: "destructive", title: "Delete Mia?", message: "Delete profile: this cannot be undone. Her 4 devices move to Unassigned.", confirmLabel: "Delete profile", typeToConfirm: "Mia" }
               : null
         }
         onAnswer={() => setDialog(null)}

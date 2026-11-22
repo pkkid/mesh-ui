@@ -952,9 +952,9 @@ Modals take one of three widths, never a free value:
 
 | Size | Width | Used by |
 | --- | --- | --- |
-| Confirm | 448px (`max-w-md`) | Every confirm, and small single-purpose dialogs (sign-in code, transfer) |
-| Sheet | 540px | Every sheet (the default) |
-| Wide sheet | 640px | A sheet whose content needs the room: a grid of choices (device icon), a list (Admins, theme import) |
+| Confirm | 448px (`max-w-md`) | Every confirm, and small single-purpose dialogs (sign-in code, transfer of ownership) |
+| Sheet | 540px | Every sheet (the default), Share Wi-Fi included |
+| Wide sheet | 640px | A sheet whose content needs the room: the device icon picker, Invite an admin, Add theme |
 
 Height follows the content. A modal never grows past the window: it keeps a
 16px gap at the bottom and its body scrolls inside, header and footer fixed.
@@ -970,21 +970,27 @@ and are capped at the space available below their trigger, then scroll.
 - **Padding:** 20px at the sides (`px-5`), `pt-5` above the header and
   `pb-4` under the buttons. Menus and popovers have 4px (`p-1`) inside, items
   `px-2.5 py-1.5` with an 8px radius.
-- **Breathing room:** at least 30px under the header and 30px above the
-  button row, in every modal. On a confirm the header is the title alone, so
-  it reads title, 30px, message, 30px, buttons (`gap-[30px]`,
-  `pt-[30px]`); a type-to-confirm field sits under the message, still 30px
-  above the buttons.
+- **Breathing room:** 30px under the title section and 30px above the
+  button row, in every modal, sheets and confirms alike. On a confirm the
+  title section is the title alone, so it reads title, 30px, message, 30px,
+  buttons (`gap-[30px]`, `pt-[30px]`); a type-to-confirm field sits under the
+  message, still 30px above the buttons. On a sheet it is header, 30px,
+  fields, 30px, buttons.
 - **Header:** a sheet's header is an optional 32px icon tile (`bg-muted`,
   1px border, muted icon), the title (`text-base font-semibold`) and an
   optional muted `text-xs` line on what it affects ("Mia · pauses all 4
   devices automatically"). A confirm's header is its title alone in
-  `text-base font-semibold`, with no icon, in the destructive foreground
-  colour unless it is `calm`; its message is `text-foreground/80`.
-- **No close X with a Cancel button:** a confirm or dialog that has Cancel
-  needs no X, since Esc and a click on the backdrop already cancel
-  (`showCloseButton={false}`). A dialog with no Cancel (only Done, or no
-  footer) keeps `DialogPopup`'s X at the top right.
+  `text-base font-semibold`; its message is `text-foreground/80`.
+- **Title colour says how serious it is:** red
+  (`text-destructive-foreground`) for a `destructive` action, which cannot be
+  undone; yellow (`text-warning-foreground`) for a `disruptive` one, which
+  takes devices offline; the normal title colour for everything else. Never
+  an icon inside the title text (no warning triangle on a confirm); a
+  sheet's icon tile sits beside its title, not in it.
+- **No close X with a Cancel button:** any modal that has Cancel, sheets
+  included, has no X; Esc and Cancel close it (`showCloseButton={false}`). A
+  dialog with no Cancel (only Done, or no footer) keeps `DialogPopup`'s X at
+  the top right, since Esc would otherwise be its only way out.
 - **Footer:** buttons are `sm`, on the right, Cancel (ghost) then the primary
   action last (filled; danger filled on a confirm, outline on a `calm` one).
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
@@ -1023,11 +1029,17 @@ popover over the titlebar still takes clicks.
   Cancel, or the type-to-confirm field when it has one; a popover focuses its
   search field or its list; a menu its first item. Closing returns focus to
   the trigger.
-- **Esc and a click on the backdrop** both do what Cancel (or a dialog's
-  X) does, in every modal: a confirm answers no, a sheet or dialog closes. Esc and a click outside also close a popover or menu. The only
-  holds: a sheet with unsaved changes asks "Discard changes?" first, in its
-  footer (Keep editing, Discard), and a modal ignores all three while its
-  command is running (saving, sending a code, a transfer).
+- **Esc and Cancel close a modal; the backdrop does not.** Esc does what
+  Cancel (or a dialog's X) does: a confirm answers no, a sheet or dialog
+  closes. A click on the backdrop does nothing, on every modal and the
+  command palette (`Dialog` sets `disablePointerDismissal`), so a stray click
+  never throws away a form. If that gets annoying, the fix is bringing back
+  the X, not backdrop clicks. Popovers and menus are not modal: Esc and a
+  click outside close them.
+- **Never ask "Discard changes?"** Esc or Cancel on a sheet with unsaved
+  changes closes it at once and drops the changes. The only hold: a modal
+  ignores Esc and Cancel while its command is running (saving, sending a
+  code, a transfer).
 - **Nested confirms:** a write inside a sheet or the palette confirms with
   `WriteConfirmDialog` (`useWrite` with `confirmIn: "nested"`), rendered
   inside that dialog. It opens at the same top edge above it, Esc closes only

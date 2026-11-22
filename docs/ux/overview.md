@@ -479,8 +479,9 @@ sentences on who loses what and for how long ("Everyone loses internet for
 about 2 to 3 minutes, including every connected device and any calls in
 progress."), then a ghost Cancel and a filled danger button that repeats
 the action ("Yes, restart network", "Remove from network", "Block device").
-Focus starts on Cancel (or the type-to-confirm field); `Esc`, the backdrop
-and Cancel all cancel. Controls never turn into a confirm in place: a note
+Focus starts on Cancel (or the type-to-confirm field); `Esc` and Cancel
+cancel, and a click on the backdrop does nothing. The title is red for a
+destructive action, yellow for a disruptive one, with no icon. Controls never turn into a confirm in place: a note
 in place was easy to miss. Inside another dialog (the palette, a sheet) the
 confirm opens nested over it, so focus and `Esc` stay there.
 
@@ -522,7 +523,7 @@ Editors that need more than one field open as a sheet (mockups: Appearance on
   downward; see
   [design-system.md#position](../design/design-system.md#position).
 - **Header:** icon, title, a muted line saying what it affects ("Mia · pauses
-  all 4 devices automatically"), close button.
+  all 4 devices automatically"). No close button: Cancel and `Esc` close it.
 - **Body:** labelled fields, 16 px apart. Live helpers under fields
   (character count "18 / 32", "next day", a preview bar).
 - **Footer:** destructive action on the left if any ("Delete schedule", which
@@ -531,11 +532,11 @@ Editors that need more than one field open as a sheet (mockups: Appearance on
   is the command's zod schema: `bad_params` messages land under the field.
 - Save runs the command(s); the sheet closes on `ok` with a toast, stays open
   with the error otherwise.
-- `Esc`, the backdrop and the close button all cancel. If there are unsaved
-  changes, ask "Discard changes?" first.
+- `Esc` and Cancel close it at once, unsaved changes or not; never ask
+  "Discard changes?". A click on the backdrop does nothing. See
+  [design-system.md#behaviour](../design/design-system.md#behaviour).
 
-Built as `components/ui/sheet.tsx` (`Sheet`, `SheetField`). "Discard
-changes?" replaces the footer buttons with Keep editing and Discard.
+Built as `components/ui/sheet.tsx` (`Sheet`, `SheetField`).
 
 ## Loading, empty and error
 

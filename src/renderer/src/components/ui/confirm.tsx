@@ -1,9 +1,9 @@
 // The confirm from docs/ux/overview.md#confirmations: every disruptive or
 // destructive action (and the few writes the UI confirms on its own) asks in
 // a modal naming the target and the consequence, with a filled danger
-// button that repeats the action and Cancel. Focus starts on Cancel; Esc and
-// the backdrop cancel too, so there is no close X
-// (docs/design/design-system.md#look). After the person confirms, the write kit runs
+// button that repeats the action and Cancel. Focus starts on Cancel; Esc
+// cancels too, so there is no close X, and a backdrop click does nothing
+// (docs/design/design-system.md#modals-and-popups). After the person confirms, the write kit runs
 // the command with `confirm: true` (disruptive and destructive) or without it.
 //
 // Pages rarely build these by hand (app/useWrite.ts):
@@ -52,7 +52,7 @@ function TypeToConfirm({
 
 type ConfirmDialogProps = {
   /** The confirm to show, or null when closed. */
-  ask: Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "calm"> | null;
+  ask: (Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "calm"> & Partial<Pick<ConfirmAsk, "effect">>) | null;
   onAnswer: (ok: boolean) => void;
 };
 
@@ -72,14 +72,17 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
   const current = shown.current;
   useEffect(() => setTyped(""), [ask]);
   const matches = current?.typeToConfirm === undefined || typed === current.typeToConfirm;
-  // A plain write asked about only to be sure (the search palette) is not a danger: no red title, an outline button.
+  // A plain write asked about only to be sure (the search palette) is not a danger: an outline button.
   const calm = current?.calm === true;
+  // The title says how serious it is: red when it cannot be undone, yellow when it takes devices offline, plain otherwise.
+  const titleTone =
+    current?.effect === "destructive" ? "text-destructive-foreground" : current?.effect === "disruptive" ? "text-warning-foreground" : undefined;
 
   return (
     <Dialog open={ask !== null} onOpenChange={(open) => !open && onAnswer(false)}>
       <DialogPopup showCloseButton={false} className="max-w-md" initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}>
         <div className="flex flex-col gap-[30px] px-5 pt-5">
-          <DialogTitle className={cn("text-base", !calm && "text-destructive-foreground")}>{current?.title}</DialogTitle>
+          <DialogTitle className={cn("text-base", titleTone)}>{current?.title}</DialogTitle>
           {current?.message && <DialogDescription className="text-foreground/80">{current.message}</DialogDescription>}
         </div>
         {current?.typeToConfirm !== undefined && (

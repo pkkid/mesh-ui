@@ -1,7 +1,8 @@
 // Adapted from T3 Code's components/ui/dialog.tsx and dialog-styles.ts (MIT).
 // Trimmed to what Mesh UI uses: a modal popup over a dimmed backdrop, with a
-// title, description and close. Base UI handles focus trapping, Esc and
-// clicks on the backdrop.
+// title, description and close. Base UI handles focus trapping and Esc. A
+// click on the backdrop never closes a modal: Esc and Cancel do
+// (docs/design/design-system.md#behaviour).
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
 
@@ -13,9 +14,12 @@ const BACKDROP_CLASS =
   "fixed inset-0 z-50 bg-background/60 backdrop-blur-[2px] transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:bg-background/64";
 
 const POPUP_CLASS =
-  "no-drag relative flex min-h-0 w-full min-w-0 flex-col rounded-2xl border bg-popover text-popover-foreground shadow-[0_24px_64px_-24px_rgb(0_0_0/65%)] outline-none transition-[scale,opacity] duration-150 data-ending-style:scale-98 data-ending-style:opacity-0 data-starting-style:scale-98 data-starting-style:opacity-0";
+  "no-drag relative flex min-h-0 w-full min-w-0 flex-col rounded-[18px] border bg-popover text-popover-foreground shadow-[0_24px_64px_-24px_rgb(0_0_0/65%)] outline-none transition-[scale,opacity] duration-150 data-ending-style:scale-98 data-ending-style:opacity-0 data-starting-style:scale-98 data-starting-style:opacity-0";
 
-const Dialog = DialogPrimitive.Root;
+/** A modal root that ignores clicks on the backdrop; Esc and Cancel close it. */
+function Dialog(props: DialogPrimitive.Root.Props) {
+  return <DialogPrimitive.Root disablePointerDismissal {...props} />;
+}
 
 function DialogClose(props: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
