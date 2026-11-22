@@ -5,16 +5,16 @@
  * `account.phone.verify`). Verify only (an unverified address or number)
  * opens straight at the code step. `bad_params` and a wrong code show under
  * the field; the code itself never leaves this dialog except as the verify
- * command's param.
+ * command's param. A form sheet (design-system.md#sheet): the lead is its
+ * muted line, Send code or Verify its action, and Cancel reads Later once a
+ * new address or number is pending its code.
  */
 import { useId, useState } from "react";
 
 import { affectedBy, execute, invalidate, useQuery } from "~/app/useCommand";
 import { fieldErrors, performWrite, type WriteRequest } from "~/app/useWrite";
-import { Button } from "~/components/ui/button";
-import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
-import { SheetField } from "~/components/ui/sheet";
+import { Sheet, SheetField } from "~/components/ui/sheet";
 import { toast } from "~/components/ui/toast";
 import type { ExecuteError } from "../../../../core/errors";
 import type { Account, AppInfo } from "../../../../core/model";
@@ -66,14 +66,13 @@ export function CodeDialog({
   const [value, setValue] = useState(field?.initial ?? "");
   const [code, setCode] = useState("");
   const [sentTo, setSentTo] = useState(verify?.sentTo ?? "");
-  const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const info = useQuery<AppInfo>("app.info");
   const ids = { field: useId(), code: useId() };
 
+  // Each submit resolves `{ ok: true }` only when the sheet should close.
   const submitField = async () => {
-    if (!field) return;
-    setRunning(true);
+    if (!field) return null;
     setError(null);
     const v = value.trim();
     const res = await performWrite<Record<string, unknown>, Account>({
@@ -83,31 +82,30 @@ export function CodeDialog({
       // With a code step the toast waits for the verify.
       ...(verify ? {} : { success: () => field.success?.(v) ?? "Saved", ...(field.undo ? { undo: field.undo } : {}) }),
     });
-    setRunning(false);
-    if (!res) return;
+    if (!res) return null;
     if (!res.ok) {
       const errs = fieldErrors(res.error);
       setError(errs[field.param] ?? errs._form ?? null);
-      return;
+      return null;
     }
-    if (!verify) return onClose();
+    if (!verify) return res;
     setSentTo(v);
     setStep("code");
+    return null;
   };
 
   const submitCode = async () => {
-    if (!verify) return;
-    setRunning(true);
+    if (!verify) return null;
     setError(null);
     // Run directly: a wrong code belongs under the field, not in a toast.
     const res = await execute<Account>(verify.command, { code });
-    setRunning(false);
     if (res.ok) {
       invalidate(affectedBy(verify.command));
       toast.success(verify.success);
-      return onClose();
+      return res;
     }
     setError(codeError(res.error));
+    return null;
   };
 
   const ready = step === "field" ? value.trim() !== "" && value.trim() !== (field?.initial ?? "").trim() : CODE.test(code);
@@ -118,62 +116,47 @@ export function CodeDialog({
   const demoHint = info.data?.backend === "demo" ? "Demo mode: no code is sent. Enter any 6 digits." : info.data?.fakeServer ? "Fake eero server: enter 123456." : null;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
-      <DialogPopup showCloseButton={false} className="w-full max-w-md">
-        {/* Confirm size and spacing (design-system.md#modals-and-popups): title, 30px, message, the field, 30px, buttons. */}
-        <form
-          className="flex flex-col px-5 pt-5 pb-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!ready || running) return;
-            void (step === "field" ? submitField() : submitCode());
-          }}
-        >
-          <div className="flex flex-col gap-[30px]">
-            <DialogTitle className="text-base">{step === "field" ? title : verify?.command === "account.phone.verify" ? "Verify mobile" : "Verify email"}</DialogTitle>
-            <DialogDescription className="text-foreground/80">{lead}</DialogDescription>
-          </div>
-          <div className="pt-4">
-            {step === "field" && field ? (
-              <SheetField label={field.label} htmlFor={ids.field} error={error ?? undefined} helper={field.hint}>
-                <Input
-                  id={ids.field}
-                  type={field.type}
-                  value={value}
-                  placeholder={field.placeholder}
-                  autoComplete="off"
-                  spellCheck={false}
-                  autoFocus
-                  onChange={(e) => setValue(e.target.value)}
-                />
-              </SheetField>
-            ) : (
-              <SheetField label="Code" htmlFor={ids.code} error={error ?? undefined} helper={demoHint ?? undefined}>
-                <Input
-                  id={ids.code}
-                  value={code}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  placeholder="000000"
-                  className="font-mono tabular-nums tracking-[0.3em]"
-                  autoFocus
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                />
-              </SheetField>
-            )}
-          </div>
-          <div className="flex justify-end gap-2 pt-[30px]">
-            <Button type="button" size="sm" variant="ghost" disabled={running} onClick={onClose}>
-              {step === "code" && field ? "Later" : "Cancel"}
-            </Button>
-            <Button type="submit" size="sm" disabled={!ready || running}>
-              {step === "field" ? field?.submitLabel : "Verify"}
-            </Button>
-          </div>
-        </form>
-      </DialogPopup>
-    </Dialog>
+    <Sheet
+      open
+      onClose={onClose}
+      title={step === "field" ? title : verify?.command === "account.phone.verify" ? "Verify mobile" : "Verify email"}
+      subtitle={lead}
+      onSave={step === "field" ? submitField : submitCode}
+      dirty={ready}
+      saveLabel={step === "field" ? field?.submitLabel : "Verify"}
+      cancelLabel={step === "code" && field ? "Later" : "Cancel"}
+      saves={[step === "field" && field ? field.command : (verify?.command ?? "")]}
+    >
+      {step === "field" && field ? (
+        <SheetField label={field.label} htmlFor={ids.field} error={error ?? undefined} helper={field.hint}>
+          <Input
+            id={ids.field}
+            type={field.type}
+            value={value}
+            placeholder={field.placeholder}
+            autoComplete="off"
+            spellCheck={false}
+            autoFocus
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </SheetField>
+      ) : (
+        <SheetField label="Code" htmlFor={ids.code} error={error ?? undefined} helper={demoHint ?? undefined}>
+          <Input
+            key="code"
+            id={ids.code}
+            value={code}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="000000"
+            className="font-mono tabular-nums tracking-[0.3em]"
+            autoFocus
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          />
+        </SheetField>
+      )}
+    </Sheet>
   );
 }
 

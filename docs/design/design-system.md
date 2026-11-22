@@ -947,7 +947,7 @@ Until a kind has moved, its current call sites may still differ (listed in
 | Kind | Use it for | Built with |
 | --- | --- | --- |
 | Confirm | A yes or no before a `disruptive` or `destructive` action, or a write the UI asks about first (`askFirst`). Nothing to fill in except a type-to-confirm name | `ConfirmDialog` (`ui/confirm.tsx`), opened by `useWrite`; `WriteConfirmDialog` inside another dialog |
-| Sheet | An editor with more than one field, or content that is the action itself (Share Wi-Fi's QR, Invite an admin) | `Sheet` (`ui/sheet.tsx`) |
+| Sheet | A form (an editor, Edit name, Change email and its code, Transfer network) or content that is the action itself (Share Wi-Fi's QR, Invite an admin) | `Sheet` (`ui/sheet.tsx`) |
 | Popover | A panel anchored to its trigger: filters, notifications, the network switcher, pickers | `PopoverPopup` (`ui/popover.tsx`) |
 | Menu | A short list of actions on one target or selection: a row's Actions, the bulk bar | Base UI `Menu` with the shared menu classes |
 
@@ -961,7 +961,7 @@ Modals take one of three widths, never a free value:
 
 | Size | Width | Used by |
 | --- | --- | --- |
-| Confirm | 448px (`max-w-md`) | Every confirm, and small single-purpose dialogs (sign-in code, transfer of ownership) |
+| Confirm | 448px (`max-w-md`) | Every confirm |
 | Sheet | 540px | Every sheet (the default), Share Wi-Fi included |
 | Wide sheet | 640px | A sheet whose content needs the room: the device icon picker |
 
@@ -1004,12 +1004,12 @@ and are capped at the space available below their trigger, then scroll.
   made) has just an outline Close in it. Buttons are `sm`, on the right, Cancel
   (`outline`) then the primary
   action last. The action is filled `bg-primary` (`default`), as T3 Code's
-  dialogs: sheet Save, Send code (Change email, Verify mobile), Create
-  invite, Add theme. On a confirm the action button matches the title:
+  dialogs: sheet Save, Send code and Verify (Change email, Verify mobile),
+  Create invite, Add theme. On a confirm the action button matches the title:
   filled red (`destructive`) for a destructive action, filled yellow
   (`warning`) for a disruptive one, and filled `bg-primary` for a plain
-  write. A form dialog that does something destructive (Start transfer)
-  takes the red button too.
+  write. A sheet whose save is destructive (Start transfer) takes the red
+  button too (`saves`).
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
   the left.
 
@@ -1037,7 +1037,9 @@ The detail for sheets (#361). Every sheet goes through `Sheet`
 - **Name the action:** the primary button says what it saves, never a bare
   "Save": Rename device, Save icon, Save time zone, Save name and password,
   Save plan, Save profile, Save notifications, Save schedule, Save and
-  restart.
+  restart, Save name, Send code, Verify, Start transfer. Cancel keeps its
+  name unless closing leaves something pending (`cancelLabel`: Later, once
+  Change email has sent its code).
 - **Close X:** every sheet has the X at the top right; the X, Esc and
   Cancel close it.
 - **Save's colour:** a sheet names the commands its Save runs (`saves`),
@@ -1099,10 +1101,9 @@ pages pass words, never layout.
 - **Type-to-confirm:** a destructive action on a named thing (a network, an
   eero, a profile, an admin, the account) adds a field under the message
   ("Type "Garage" to confirm"); the button stays disabled until it matches.
-- **A confirm with fields** (Transfer network; Change email and Verify
-  mobile) keeps the confirm width and, for now, the older rhythm: title, 30px, message, 16px,
-  the fields 16px apart, 30px, buttons. They do not use the footer band
-  yet. A small choice that changes what a
+- **Fields beyond a type-to-confirm** make it a sheet, not a confirm
+  (Transfer network keeps its warning as the first line of the body and
+  the type-to-confirm as its last field). A small choice that changes what a
   field takes (Email or Text message) is a `tool` dropdown at the right end
   of that field's label line (`SheetField aside`), not a toggle above it.
 - **Always asks:** `disruptive` and `destructive` commands confirm every
