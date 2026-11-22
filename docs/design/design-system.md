@@ -988,6 +988,20 @@ the same everywhere (never a note in place of the button):
 - Destructive dialogs need a checkbox or typed name.
 - Danger buttons are red text on a neutral button until the confirm step,
   where the confirming button is filled.
+- **Red text is for actions that do not undo themselves**: destructive ones
+  (Delete network, Remove eero, Delete profile, Reset Thread) and Block
+  device, which cuts a device off until someone unblocks it. Disruptive
+  actions that recover on their own (Restart network, Restart eero, Pause)
+  are neutral outline buttons with a dim icon; their confirm dialog carries
+  the warning.
+- **Restart copy has one shape.** What restarts, then who loses internet and
+  for how long: "Restarts every eero at once. 31 devices online lose internet
+  for about 2 to 3 minutes." or "Restarts Office. 6 devices on it lose
+  internet for about 1 minute." (`restartNetworkLine` and `restartLine` in
+  `features/eero/helpers.ts`, estimates from core). Restart network is one
+  shared row, `useRestartNetworkRow` in `features/eeros/NetworkActions.tsx` (each page writes the title itself so Places indexes it),
+  on the eeros page, Troubleshooting and Advanced networking; Overview's hero
+  button has the same neutral look.
 
 ## App icon
 

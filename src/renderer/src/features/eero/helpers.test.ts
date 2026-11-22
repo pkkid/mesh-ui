@@ -99,7 +99,7 @@ describe("autoChannelLine", () => {
 
 describe("uplinkOf", () => {
   const gateway = eero({ id: "g", location: "Living Room", isGateway: true, backhaul: "wired" });
-  const office = eero({ id: "o", location: "Office", upstream: "g" });
+  const office = eero({ id: "o", location: "Office", upstream: "g", clients: { total: 6, wired: 1, wireless: 5 } });
   const garage = eero({ id: "a", location: "Garage", upstream: "o" });
   const hall = eero({ id: "h", location: "Hall", upstream: null });
   const all = [gateway, office, garage, hall];
@@ -171,16 +171,18 @@ describe("ipText", () => {
 
 describe("restartLine", () => {
   const gateway = eero({ id: "g", location: "Living Room", isGateway: true });
-  const office = eero({ id: "o", location: "Office", upstream: "g" });
+  const office = eero({ id: "o", location: "Office", upstream: "g", clients: { total: 6, wired: 1, wireless: 5 } });
   const garage = eero({ id: "a", location: "Garage", upstream: "o" });
 
   it("warns that the whole network drops for the gateway", () => {
-    expect(restartLine(gateway, [gateway, office, garage], "Maple Street")).toBe("Everyone on Maple Street loses internet for about 2 to 3 minutes");
+    expect(restartLine(gateway, [gateway, office, garage], "Maple Street")).toBe("Restarts Living Room, the gateway. Everyone on Maple Street loses internet for about 2 to 3 minutes.");
   });
 
   it("names downstream eeros for a leaf", () => {
-    expect(restartLine(office, [gateway, office, garage], "Maple Street")).toBe("Its devices and Garage (downstream) drop for about 1 minute");
-    expect(restartLine(garage, [gateway, office, garage], "Maple Street")).toBe("Its devices drop for about 1 minute");
+    expect(restartLine(office, [gateway, office, garage], "Maple Street")).toBe("Restarts Office. 6 devices on it lose internet for about 1 minute. Garage connects through it and drops too.");
+    expect(restartLine(garage, [gateway, office, garage], "Maple Street")).toBe("Restarts Garage. Its devices lose internet for about 1 minute.");
+    const one = eero({ id: "b", location: "Den", upstream: "g", clients: { total: 1, wired: 0, wireless: 1 } });
+    expect(restartLine(one, [gateway, one], "Maple Street")).toBe("Restarts Den. 1 device on it loses internet for about 1 minute.");
   });
 });
 
@@ -191,15 +193,15 @@ describe("restart copy comes from core's estimates", () => {
   it("uses settings.impact's network.restart estimate for the gateway and eero.restart's for a leaf", () => {
     const network = IMPACT["network.restart"]?.estimate;
     expect(network).toBeTruthy();
-    expect(restartLine(gateway, [gateway, leaf], "Maple Street")).toBe(`Everyone on Maple Street loses internet for ${network}`);
-    expect(restartLine(leaf, [gateway, leaf], "Maple Street")).toBe(`Its devices drop for ${RESTART_ESTIMATE.eero}`);
+    expect(restartLine(gateway, [gateway, leaf], "Maple Street")).toBe(`Restarts Living Room, the gateway. Everyone on Maple Street loses internet for ${network}.`);
+    expect(restartLine(leaf, [gateway, leaf], "Maple Street")).toBe(`Restarts Office. Its devices lose internet for ${RESTART_ESTIMATE.eero}.`);
   });
 
   it("Network actions counts the devices settings.impact says drop", () => {
     const device = (id: string, connected: boolean) => ({ id, connected, blocked: false, band: "5", ssid: "main" }) as unknown as Device;
     const impact = settingsImpact(["network.restart"], [device("a", true), device("b", true), device("c", false)]);
-    expect(restartNetworkLine(impact)).toBe(`Disruptive: 2 devices online lose internet for ${IMPACT["network.restart"]?.estimate}.`);
+    expect(restartNetworkLine(impact)).toBe(`Restarts every eero at once. 2 devices online lose internet for ${IMPACT["network.restart"]?.estimate}.`);
     expect(restartNetworkLine(settingsImpact(["network.restart"], [device("a", true)]))).toContain("1 device online loses internet");
-    expect(restartNetworkLine(undefined)).toBe(`Disruptive: everyone loses internet for ${IMPACT["network.restart"]?.estimate}.`);
+    expect(restartNetworkLine(undefined)).toBe(`Restarts every eero at once. Everyone loses internet for ${IMPACT["network.restart"]?.estimate}.`);
   });
 });

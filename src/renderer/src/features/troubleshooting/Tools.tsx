@@ -7,8 +7,9 @@
  *   network page, `wifi.hide5g.set`) and Legacy mode (state from
  *   `settings.get`; the switch lives on Advanced networking).
  * - Status light colors: static reference.
- * - Restart: one row per eero (`eero.restart`) and Restart network
- *   (`network.restart`), both asking first, with the shared restart watcher.
+ * - Restart: one row per eero (`eero.restart`) and the shared
+ *   Restart network row (`useRestartNetworkRow`, `network.restart`), both
+ *   asking first, with the shared restart watcher.
  *   Disruptive, so it is its own section near the foot of the page.
  * docs/ux/pages/troubleshooting.md (Tools, Fixes, Status light colors, Restart).
  */
@@ -25,7 +26,7 @@ import { Status } from "~/components/ui/status";
 import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { restartLine } from "~/features/eero/helpers";
 import { BlinkLightButton } from "~/features/eeros/EeroCards";
-import { useRestartNetwork, watchRestart } from "~/features/eeros/NetworkActions";
+import { useRestartNetworkRow, watchRestart } from "~/features/eeros/NetworkActions";
 import { useSpeedTest } from "~/features/internet/InternetHero";
 import { Hide5gRow } from "~/features/wifi/WifiBands";
 import { hue } from "~/lib/chartColors";
@@ -172,7 +173,7 @@ function RestartEero({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; 
           {eero.isGateway && <Status tone="muted">Gateway</Status>}
         </>
       }
-      description={eero.isGateway ? <span className="text-warning-foreground">Restarting the gateway takes the whole network offline.</span> : restartLine(eero, eeros, networkName)}
+      description={restartLine(eero, eeros, networkName)}
       control={
         <GatedButton gate={blocked ? { allowed: false, reason: blocked } : gate} variant="outline" className={DIM_ICON} disabled={write.running} onClick={() => void run()}>
           <RotateCcw />
@@ -184,7 +185,7 @@ function RestartEero({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; 
 }
 
 export function Restarts({ eeros, networkName }: { eeros: Eero[] | undefined; networkName: string }) {
-  const restart = useRestartNetwork();
+  const restart = useRestartNetworkRow();
   const n = eeros?.length ?? 0;
   const online = eeros?.filter((e) => e.status !== "offline").length ?? 0;
   const description = !eeros ? "-" : `${plural(n, "eero")}${online < n ? `, ${formatCount(n - online)} offline` : ""}`;
@@ -194,16 +195,7 @@ export function Restarts({ eeros, networkName }: { eeros: Eero[] | undefined; ne
         {(eeros ?? []).map((e) => (
           <RestartEero key={e.id} eero={e} eeros={eeros ?? []} networkName={networkName} />
         ))}
-        <SettingsRow
-          title="Restart network"
-          description="Every eero restarts at once. Everyone loses internet for about 2 to 3 minutes."
-          control={
-            <GatedButton gate={restart.gate} variant="outline" className="text-destructive-foreground [&_svg]:text-destructive-foreground/70" disabled={restart.write.running} onClick={() => void restart.run()}>
-              <RotateCcw />
-              Restart network…
-            </GatedButton>
-          }
-        />
+        <SettingsRow title="Restart network" {...restart} />
       </Card>
     </Section>
   );

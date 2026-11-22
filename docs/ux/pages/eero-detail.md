@@ -24,8 +24,9 @@ eeros stays active. `[` and `]` move to the previous and next eero.
    - Actions under the facts, as on Overview and Internet (`hero` size,
      28px, outline, dim icons, 12px above): **Blink light** (blinks at once,
      then "Blinking · 30s") and **Restart eero…** (the ellipsis because it
-     confirms first; its tooltip says what drops, "Its devices and Garage
-     (downstream) drop for about 1 minute").
+     confirms first; its tooltip says what drops, "Restarts Office. 6 devices
+     on it lose internet for about 1 minute. Garage connects through it and
+     drops too.", the sentence Troubleshooting's restart rows use).
    - Right: **Uplink** card, "Wireless backhaul": upstream eero (Living Room,
      Gateway), a dashed link with its quality chip ("Excellent · 4 bars"),
      this eero, then any downstream eero with its own link chip ("Weak · 2
@@ -161,7 +162,8 @@ eeros stays active. `[` and `]` move to the previous and next eero.
   action button changes (Disable port, Enable port, Restart PoE) or is
   absent. Placement and utilisation as on [eeros.md](eeros.md).
 - **Gateway.** Uplink shows Internet and the WAN link. Restart copy reads
-  "Everyone on Maple Street loses internet for about 2 to 3 minutes". Remove is
+  "Restarts Living Room, the gateway. Everyone on Maple Street loses internet
+  for about 2 to 3 minutes." Remove is
   not offered for the gateway while other eeros remain (replace it with the
   mobile app instead); core refuses it too. A gateway that is the only eero
   can be removed, which takes the network offline.

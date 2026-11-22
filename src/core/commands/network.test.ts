@@ -350,7 +350,7 @@ describe("network.restart", () => {
     expect(info).toMatchObject({ effect: "disruptive", scope: "network" });
     expect(await engine.execute("network.restart", {})).toMatchObject({
       ok: false,
-      error: { code: "needs_confirm", message: "Restarts every eero on Maple Street. Every device loses internet for about 2 to 3 minutes." },
+      error: { code: "needs_confirm", message: "Restarts every eero on Maple Street at once. Everyone loses internet for about 2 to 3 minutes." },
     });
     expect((await ok(engine.execute<M.NetworkHealth>("network.health"))).status).not.toBe("updating");
     expect(await code(engine.execute("network.restart", { bogus: 1, confirm: true }))).toBe("bad_params");
