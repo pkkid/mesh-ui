@@ -25,6 +25,8 @@ export const SWITCHER_FILTER_THRESHOLD = 10;
 
 type Kind = SiblingItem["kind"];
 const NOUN: Record<Kind, string> = { device: "devices", eero: "eeros", profile: "profiles" };
+/** Devices carry an icon, eero and status dot; eeros and profiles are short rows. */
+const WIDTH: Record<Kind, string> = { device: "w-[300px]", eero: "w-[240px]", profile: "w-[240px]" };
 
 export type TitleSwitcherProps = {
   /** The crumb text ("Basement eero"). */
@@ -110,7 +112,7 @@ function SwitcherPopup({ kind, items, currentId, onPick }: { kind: Kind; items: 
 
   const optionId = (i: number) => `title-switcher-${i}`;
   return (
-    <PopoverPopup initialFocus={searchable ? inputRef : listRef} className="w-[340px] max-h-[min(60vh,var(--available-height))]" onKeyDown={onKeyDown}>
+    <PopoverPopup initialFocus={searchable ? inputRef : listRef} className={cn(WIDTH[kind], "max-h-[min(60vh,var(--available-height))]")} onKeyDown={onKeyDown}>
       {searchable && (
         <div className="border-border/60 border-b p-1.5">
           <input
@@ -179,7 +181,8 @@ function Row({ hit }: { hit: SiblingHit }) {
       <>
         <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
         {name}
-        {item.context && <span className="max-w-[45%] shrink truncate text-muted-foreground">{item.context}</span>}
+        {/* Only the eero: the profile still matches a search (as in the palette) but is not shown. */}
+        {item.eero && <span className="max-w-[45%] shrink truncate text-muted-foreground">{item.eero}</span>}
         <span title={state} className="flex shrink-0 items-center">
           <StatusDot tone={DEVICE_TONE[state] ?? "success"} />
           <span className="sr-only">{state}</span>

@@ -410,13 +410,15 @@ respects `--titlebar-inset-left/right`. See
 crumb, the item's name, is a button (`TopBarTitleSwitcher` in
 `features/shell/TitleSwitcher.tsx`), copied from T3 Code's thread title: no
 border or fill at rest, a `size-3.5` muted chevron after the name that fades
-in on hover, keyboard focus and while open. It opens a 340px `PopoverPopup`
+in on hover, keyboard focus and while open. It opens a `PopoverPopup` (300px for devices, 240px for eeros and
+profiles)
 (at most 60vh, the list scrolling inside) of every sibling in the list
 page's order: devices in the Devices table's order (the `[` / `]` order),
 then any its filters hid; eeros and profiles in their list order. The
 current one has a check and is scrolled into view. A row is the icon
 (`deviceIcon`, `eeroIcon`; profiles have none), the name, and muted context
-on the right: a device's profile and eero with a status dot (online,
+on the right: a device's eero with a status dot (its profile still matches a search
+but is not shown) (online,
 paused, blocked, offline), an eero's status, a profile's Paused or
 Scheduled. Lists longer than 10 get a filter field, focused on open, that
 ranks matches as the command palette does (`siblingHits` in
