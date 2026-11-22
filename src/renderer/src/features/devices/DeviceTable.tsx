@@ -331,7 +331,10 @@ export function DeviceTable(props: DeviceTableProps) {
             // over the first HEAD_FADE_PX pinned), so it does not pop in.
             className={cn(
               "relative z-10 [--head-bg:color-mix(in_srgb,var(--color-card)_40%,var(--color-background))] [&_th]:bg-(--head-bg)",
-              "data-pinned:[&_th]:relative data-pinned:[&_th]:after:pointer-events-none data-pinned:[&_th]:after:absolute data-pinned:[&_th]:after:inset-x-0 data-pinned:[&_th]:after:top-full data-pinned:[&_th]:after:h-(--topbar-scroll-fade-height) data-pinned:[&_th]:after:bg-linear-to-b data-pinned:[&_th]:after:from-(--head-bg) data-pinned:[&_th]:after:to-transparent data-pinned:[&_th]:after:opacity-(--head-fade) data-pinned:[&_th]:after:content-['']",
+              // A shield above the row, on the page background: it always sits behind the sticky block, but when the
+              // row lags a frame behind a fast scroll up, it fills the gap so rows never show above the header.
+              "[&_th]:before:pointer-events-none [&_th]:before:absolute [&_th]:before:-inset-x-px [&_th]:before:bottom-full [&_th]:before:h-10 [&_th]:before:bg-background [&_th]:before:content-['']",
+              "[&_th]:relative data-pinned:[&_th]:after:pointer-events-none data-pinned:[&_th]:after:absolute data-pinned:[&_th]:after:inset-x-0 data-pinned:[&_th]:after:top-full data-pinned:[&_th]:after:h-(--topbar-scroll-fade-height) data-pinned:[&_th]:after:bg-linear-to-b data-pinned:[&_th]:after:from-(--head-bg) data-pinned:[&_th]:after:to-transparent data-pinned:[&_th]:after:opacity-(--head-fade) data-pinned:[&_th]:after:content-['']",
             )}
           >
             <tr className="border-b">
