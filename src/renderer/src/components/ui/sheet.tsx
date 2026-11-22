@@ -54,6 +54,8 @@ type SheetProps = {
   /** The form is valid (client-side checks; the command's zod schema is the final word). */
   valid?: boolean;
   saveLabel?: ReactNode;
+  /** The footer's Cancel, renamed when closing keeps something pending ("Later" on a code step). */
+  cancelLabel?: ReactNode;
   /**
    * The command ids Save may run. Their effect colours Save as the confirm's
    * button does: yellow when one is `disruptive` (devices go offline), red
@@ -83,6 +85,7 @@ function Sheet({
   dirty = false,
   valid = true,
   saveLabel = "Save",
+  cancelLabel = "Cancel",
   saves,
   footerStart,
 }: SheetProps) {
@@ -126,7 +129,7 @@ function Sheet({
               <>
                 <div className="me-auto">{footerStart}</div>
                 <DialogPrimitive.Close render={<Button type="button" size="sm" variant="outline" />} disabled={saving}>
-                  Cancel
+                  {cancelLabel}
                 </DialogPrimitive.Close>
                 <Button type="submit" size="sm" variant={saveVariant} disabled={!dirty || !valid || saving}>
                   {saveLabel}

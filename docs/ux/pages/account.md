@@ -42,9 +42,9 @@ without leaving the page.
 
 | Control | Command | Effect | Confirm | Result |
 | --- | --- | --- | --- | --- |
-| Edit name | `account.name.set` `{name}` | write | no | Dialog with one field |
-| Change email | `account.email.set` `{email}`, then `account.email.verify` `{code}` | write | no | Dialog: new address, then 6 digit code |
-| Verify mobile | `account.phone.verify` `{code}` (after a code is sent by `account.phone.set`) | write | no | Dialog with code field; status becomes `Verified` |
+| Edit name | `account.name.set` `{name}` | write | no | Sheet with one field |
+| Change email | `account.email.set` `{email}`, then `account.email.verify` `{code}` | write | no | Sheet: new address, then 6 digit code |
+| Verify mobile | `account.phone.verify` `{code}` (after a code is sent by `account.phone.set`) | write | no | Sheet with code field; status becomes `Verified` |
 | Stay up to date | `account.consents.set` `{marketingEmails}` | write | no | |
 | Notifications row (Edit) | none (opens the sheet) | | | The Notification settings sheet; its Save runs `notifications.settings.set` and `account.push.set` |
 | Network row | `network.select` `{network}` | write (app local) | no | Switches the current network |
@@ -68,7 +68,7 @@ without leaving the page.
 - The weekly report row is not built (M6.7): `{net}/data_usage/report_settings` was never captured (endpoints.md section 20), so there is no known key. When eero sends its own `network.dataUsageReport` notifications key, it shows like any other alert key, as "Data usage report". The Simple Setup row is an integrations setting, not an alert, and stays on Advanced networking.
 - Account writes (name, email, mobile, Stay up to date, push switches) work in demo and against the fake eero server. Against the real eero API they answer "not available yet" (no live-tested request, endpoints.md section 20) and the toast says so.
 - Notification choices have one editor, the bell's Notification settings sheet; this page only summarises them in the Notifications row (#279 replaced the old section of instant-save switches).
-- The hero's code dialog (`CodeDialog.tsx`) takes the new address or number, then the 6 digit code; a wrong code shows under the field and keeps the change pending. An unverified address or number opens it at the code step (the button reads Verify email or Verify mobile; Add mobile when there is none). Edit name has Undo; email and mobile changes do not (they need a code).
+- The hero's code sheet (`CodeDialog.tsx`, on `Sheet`: the lead as its muted line, Save name, Send code or Verify in the footer, and Later in place of Cancel once a code is pending) takes the new address or number, then the 6 digit code; a wrong code shows under the field and keeps the change pending. An unverified address or number opens it at the code step (the button reads Verify email or Verify mobile; Add mobile when there is none). Edit name has Undo; email and mobile changes do not (they need a code).
 - Desktop notifications are raised by the main process from the same `notifications.list` poll that feeds the bell; one poll, both surfaces.
 - Mesh UI does not offer **Switch to Amazon login** (it is permanent and needs Amazon sign in), so the Account section has no login row.
 - Support ID is the account `log_id`; it shows on Settings (About) and Troubleshooting (Get help). Network ID, the id in the network URL, is on Troubleshooting (Get help), under the Support ID.

@@ -308,9 +308,8 @@ fields (`out`, `route`, `theme`, `themeId`, `size`, `scale`, `scenario`,
 ([design-system.md#modals-and-popups](design/design-system.md#modals-and-popups))
 in light and dark: a confirm (Restart network on Troubleshooting), a
 type-to-confirm confirm (Delete network), a confirm nested over a sheet
-(Change time zone, then Save), the Transfer network dialog (a confirm with
-fields), a sheet
-(Edit name and password on Wi-Fi network), a popover (Filters on Devices), a
+(Change time zone, then Save), sheets (Edit name and password on Wi-Fi
+network, Transfer network, and Change email at its code step), a popover (Filters on Devices), a
 menu (a device row's Actions, taken 1440px wide so the Actions column is on
 screen) and the command palette. It also takes the
 confirm and the sheet in a 700px-tall and a 1200px-tall window, whose top

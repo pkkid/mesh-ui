@@ -1,10 +1,11 @@
 /**
  * "Transfer network" (owner only): the four steps, the danger note and
- * Start transfer, which opens the transfer dialog: the recipient's name, an
+ * Start transfer, which opens the transfer sheet: the warning, the recipient's name, an
  * email or a phone number (eero sends the transfer there; the clients send
  * exactly one), and the network name typed to confirm. The typed name is
  * the confirm, sent with `confirm: true`, so there is no second ask. After
- * it runs the section says it is waiting for the recipient.
+ * it runs the section says it is waiting for the recipient. The sheet's
+ * Start transfer is red, as `network.transfer` is `destructive`.
  * Unavailable networks (no `ownership_transfer` capability, or no
  * permission) show the reason and no button.
  * docs/ux/pages/updates-admins.md (Layout 6).
@@ -15,11 +16,10 @@ import { useId, useState } from "react";
 import { defaultDeps, fieldErrors, performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
-import { Dialog, DialogDescription, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { SheetField } from "~/components/ui/sheet";
+import { Sheet, SheetField } from "~/components/ui/sheet";
 import { Status } from "~/components/ui/status";
 import type { Network } from "../../../../core/model";
 
@@ -87,7 +87,7 @@ export function TransferNetwork({ network }: { network: Network }) {
         )}
       </Card>
       {open && (
-        <TransferDialog
+        <TransferSheet
           networkName={name}
           onClose={() => setOpen(false)}
           onSent={(s) => {
@@ -100,19 +100,17 @@ export function TransferNetwork({ network }: { network: Network }) {
   );
 }
 
-function TransferDialog({ networkName, onClose, onSent }: { networkName: string; onClose: () => void; onSent: (s: Sent) => void }) {
+function TransferSheet({ networkName, onClose, onSent }: { networkName: string; onClose: () => void; onSent: (s: Sent) => void }) {
   const [recipient, setRecipient] = useState("");
   const [via, setVia] = useState<"email" | "phone">("email");
   const [contact, setContact] = useState("");
   const [typed, setTyped] = useState("");
-  const [running, setRunning] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const ids = { name: useId(), contact: useId(), confirm: useId() };
   const matches = typed.trim() === networkName.trim();
   const ready = recipient.trim() !== "" && contact.trim() !== "" && matches;
 
   const start = async () => {
-    setRunning(true);
     setErrors({});
     const r = await performWrite<Record<string, unknown>, Sent>(
       {
@@ -125,82 +123,67 @@ function TransferDialog({ networkName, onClose, onSent }: { networkName: string;
       // The typed name was the confirm.
       { ...defaultDeps, ask: async () => true },
     );
-    setRunning(false);
     if (r?.ok) onSent(r.result);
     else if (r) setErrors(fieldErrors(r.error));
+    return r;
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
-      <DialogPopup showCloseButton={false} className="w-full max-w-md">
-        {/* Laid out as a confirm (design-system.md#modals-and-popups): title, 30px, message, the fields, 30px, buttons. */}
-        <form
-          className="flex flex-col px-5 pt-5 pb-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (ready && !running) void start();
-          }}
-        >
-          <div className="flex flex-col gap-[30px]">
-            <DialogTitle className="text-base text-destructive-foreground">Transfer {networkName}?</DialogTitle>
-            <DialogDescription className="text-foreground/80">
-              The recipient becomes the owner once they accept. Admins and settings move; subscriptions do not. You stay on as an admin. This cannot be undone.
-            </DialogDescription>
-          </div>
-          <div className="flex flex-col gap-4 pt-4">
-            <SheetField label="Recipient's name" htmlFor={ids.name} error={errors.name}>
-              <Input id={ids.name} value={recipient} autoComplete="off" onChange={(e) => setRecipient(e.target.value)} />
-            </SheetField>
-            <SheetField
-              label={via === "email" ? "Recipient's email" : "Recipient's phone"}
-              htmlFor={ids.contact}
-              error={errors[via]}
-              aside={
-                <Select
-                  items={VIA}
-                  value={via}
-                  onValueChange={(v) => {
-                    if (v !== "email" && v !== "phone") return;
-                    setVia(v);
-                    setContact("");
-                  }}
-                >
-                  <SelectTrigger size="tool" aria-label="Send the transfer by">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectPopup>
-                    {VIA.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectPopup>
-                </Select>
-              }
-            >
-              <Input
-                id={ids.contact}
-                type={via === "email" ? "email" : "tel"}
-                value={contact}
-                placeholder={via === "email" ? "name@example.com" : "+1 555 010 0199"}
-                autoComplete="off"
-                onChange={(e) => setContact(e.target.value)}
-              />
-            </SheetField>
-            <SheetField label={`Type "${networkName}" to continue`} htmlFor={ids.confirm} error={errors.networkName ?? errors._form}>
-              <Input id={ids.confirm} value={typed} autoComplete="off" spellCheck={false} onChange={(e) => setTyped(e.target.value)} />
-            </SheetField>
-          </div>
-          <div className="flex justify-end gap-2 pt-[30px]">
-            <Button type="button" size="sm" variant="ghost" disabled={running} onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" variant="destructive" disabled={!ready || running}>
-              Start transfer
-            </Button>
-          </div>
-        </form>
-      </DialogPopup>
-    </Dialog>
+    <Sheet
+      open
+      onClose={onClose}
+      title="Transfer network"
+      subtitle={`Hand ${networkName} to someone else`}
+      onSave={start}
+      dirty={ready}
+      saveLabel="Start transfer"
+      saves={["network.transfer"]}
+    >
+      <p className="text-foreground/80 text-sm">
+        The recipient becomes the owner once they accept. Admins and settings move; subscriptions do not. You stay on as an admin. This cannot be undone.
+      </p>
+      <SheetField label="Recipient's name" htmlFor={ids.name} error={errors.name}>
+        <Input id={ids.name} value={recipient} autoComplete="off" onChange={(e) => setRecipient(e.target.value)} />
+      </SheetField>
+      <SheetField
+        label={via === "email" ? "Recipient's email" : "Recipient's phone"}
+        htmlFor={ids.contact}
+        error={errors[via]}
+        aside={
+          <Select
+            items={VIA}
+            value={via}
+            onValueChange={(v) => {
+              if (v !== "email" && v !== "phone") return;
+              setVia(v);
+              setContact("");
+            }}
+          >
+            <SelectTrigger size="tool" aria-label="Send the transfer by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {VIA.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        }
+      >
+        <Input
+          id={ids.contact}
+          type={via === "email" ? "email" : "tel"}
+          value={contact}
+          placeholder={via === "email" ? "name@example.com" : "+1 555 010 0199"}
+          autoComplete="off"
+          onChange={(e) => setContact(e.target.value)}
+        />
+      </SheetField>
+      <SheetField label={`Type "${networkName}" to continue`} htmlFor={ids.confirm} error={errors.networkName ?? errors._form}>
+        <Input id={ids.confirm} value={typed} autoComplete="off" spellCheck={false} onChange={(e) => setTyped(e.target.value)} />
+      </SheetField>
+    </Sheet>
   );
 }

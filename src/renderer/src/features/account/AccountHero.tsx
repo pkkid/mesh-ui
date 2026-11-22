@@ -90,7 +90,7 @@ export function AccountHero({ id }: { id?: string }) {
             label: "Name",
             type: "text",
             initial: a?.name ?? "",
-            submitLabel: "Save",
+            submitLabel: "Save name",
             success: (v) => `Renamed to ${v}`,
             ...(a?.name ? { undo: { id: "account.name.set", params: { name: a.name } } } : {}),
           }}
