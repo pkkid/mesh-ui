@@ -1,8 +1,9 @@
 // The confirm from docs/ux/overview.md#confirmations: every disruptive or
 // destructive action (and the few writes the UI confirms on its own) asks in
 // a modal naming the target and the consequence, with a filled danger
-// button that repeats the action and Cancel. Focus starts on Cancel; the X,
-// Esc and the backdrop cancel too (docs/design/design-system.md#look). After the person confirms, the write kit runs
+// button that repeats the action and Cancel. Focus starts on Cancel; Esc and
+// the backdrop cancel too, so there is no close X
+// (docs/design/design-system.md#look). After the person confirms, the write kit runs
 // the command with `confirm: true` (disruptive and destructive) or without it.
 //
 // Pages rarely build these by hand (app/useWrite.ts):
@@ -57,8 +58,7 @@ type ConfirmDialogProps = {
 
 /**
  * The confirm dialog: a title naming the target, 30px, the consequence, 30px,
- * then Cancel and a filled danger button that repeats the action, with the
- * close X top right.
+ * then Cancel and a filled danger button that repeats the action. No close X.
  * Destructive asks with `typeToConfirm` keep the button disabled until the
  * name matches. Esc, the backdrop and Cancel all answer false.
  */
@@ -77,9 +77,9 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
 
   return (
     <Dialog open={ask !== null} onOpenChange={(open) => !open && onAnswer(false)}>
-      <DialogPopup className="max-w-md" initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}>
+      <DialogPopup showCloseButton={false} className="max-w-md" initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}>
         <div className="flex flex-col gap-[30px] px-5 pt-5">
-          <DialogTitle className={cn("pe-8 text-base", !calm && "text-destructive-foreground")}>{current?.title}</DialogTitle>
+          <DialogTitle className={cn("text-base", !calm && "text-destructive-foreground")}>{current?.title}</DialogTitle>
           {current?.message && <DialogDescription className="text-foreground/80">{current.message}</DialogDescription>}
         </div>
         {current?.typeToConfirm !== undefined && (

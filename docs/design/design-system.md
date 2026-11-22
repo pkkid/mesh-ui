@@ -981,10 +981,10 @@ and are capped at the space available below their trigger, then scroll.
   devices automatically"). A confirm's header is its title alone in
   `text-base font-semibold`, with no icon, in the destructive foreground
   colour unless it is `calm`; its message is `text-foreground/80`.
-- **Close button:** every modal with a Cancel button, confirms included, has
-  an X at the top right: a `ghost-muted` `icon-sm` button 16px from the top
-  and 20px from the right (`DialogPopup`'s own close, the Sheet header's on
-  sheets). The title keeps clear of it.
+- **No close X with a Cancel button:** a confirm or dialog that has Cancel
+  needs no X, since Esc and a click on the backdrop already cancel
+  (`showCloseButton={false}`). A dialog with no Cancel (only Done, or no
+  footer) keeps `DialogPopup`'s X at the top right.
 - **Footer:** buttons are `sm`, on the right, Cancel (ghost) then the primary
   action last (filled; danger filled on a confirm, outline on a `calm` one).
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
@@ -1023,9 +1023,8 @@ popover over the titlebar still takes clicks.
   Cancel, or the type-to-confirm field when it has one; a popover focuses its
   search field or its list; a menu its first item. Closing returns focus to
   the trigger.
-- **The X, Esc and a click on the backdrop** all do what Cancel does, in
-  every modal with a Cancel button: a confirm answers no, a sheet or dialog
-  closes. Esc and a click outside also close a popover or menu. The only
+- **Esc and a click on the backdrop** both do what Cancel (or a dialog's
+  X) does, in every modal: a confirm answers no, a sheet or dialog closes. Esc and a click outside also close a popover or menu. The only
   holds: a sheet with unsaved changes asks "Discard changes?" first, in its
   footer (Keep editing, Discard), and a modal ignores all three while its
   command is running (saving, sending a code, a transfer).
