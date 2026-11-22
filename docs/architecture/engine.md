@@ -336,9 +336,14 @@ type HostEvent =
 - No eero data and never the token travel on this channel.
 - Desktop notifications: the renderer's `notifications.list` poll finds new
   entries and asks main to show them with Electron `Notification`, filtered
-  by the desktop choices in app settings. While the window is hidden no
-  polls run, so alerts wait until it is shown (open question: a slow 5 min
-  background poll in main for "network offline" alerts).
+  by the desktop choices in app settings. A hidden or minimized window keeps
+  polling, stretched to every 5 minutes (`backgroundThrottling: false`), so
+  alerts keep arriving. With **Keep running in the tray** (`runInTray`)
+  closing the window hides it instead of quitting, and that same poll is
+  the background alert poll: there is no second poller in main, so the
+  new-item detection and desktop filters stay in one place (core's
+  `findDesktopAlerts`) and an alert is never shown twice. See
+  [cross-platform.md#system-tray](../platform/cross-platform.md#system-tray).
 
 ## Network switching
 

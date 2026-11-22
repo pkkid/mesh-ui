@@ -62,6 +62,18 @@ describe("pollQuery", () => {
     expect(calls).toHaveLength(3);
   });
 
+  it("keeps polling, every 5 minutes, while the window is hidden (tray mode), so desktop alerts still arrive", async () => {
+    vi.stubGlobal("document", { visibilityState: "hidden", addEventListener: () => {} });
+    const off = pollQuery("poll.hidden", undefined, 60);
+    await after(60);
+    expect(calls).toEqual([]);
+    await after(300);
+    expect(calls).toEqual(["poll.hidden"]);
+    await after(300);
+    expect(calls).toEqual(["poll.hidden", "poll.hidden"]);
+    off();
+  });
+
   it("does not restart a running countdown when another reader mounts", async () => {
     const offs = [pollQuery("poll.remount", undefined, 60)];
     await vi.advanceTimersByTimeAsync(50_000);

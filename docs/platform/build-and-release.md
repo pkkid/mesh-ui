@@ -41,7 +41,8 @@ package's install scripts: `dpkg-deb -e dist/mesh-ui_<v>_amd64.deb <dir>`
 | `build/icon.svg` | The app icon's source; `pnpm icons` (needs ImageMagick) renders `build/icon.png`, `build/icons/` and the website icons from it, and the UI shows it with `AppIcon` |
 | `build/icon.png` | The app icon, 1024 px, rendered from `build/icon.svg`; electron-builder derives icns and ico |
 | `build/icons/<n>x<n>.png` | The Linux hicolor sizes, 16 to 1024 px, rendered from `build/icon.svg` |
-| `build/tray/*.svg` | Tray icons for a future status bar (not packaged yet); see the design system's App icon section |
+| `build/tray/*.svg` | Panel-style tray icons for Linux icon themes (not packaged); see the design system's App icon section |
+| `build/tray/mesh-ui-trayTemplate.png`, `@2x` | The macOS menu bar template image for Keep running in the tray, rendered from `mesh-ui-tray-16.svg` by `pnpm icons` and bundled into `out/main` (`?asset`); Windows and Linux trays use `build/icons/32x32.png` |
 | `build/entitlements.mac.plist` | macOS entitlements (only `allow-jit`), for the hardened runtime once Developer ID signing is added |
 | `build/mac/mesh-ui` | macOS CLI launcher, `Contents/Resources/bin/mesh-ui` |
 | `build/win/mesh-ui.cmd`, `build/win/cli-relay.js` | Windows CLI launcher and relay, `bin\mesh-ui.cmd` and `resources\cli-relay.js` |

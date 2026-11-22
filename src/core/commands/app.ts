@@ -37,6 +37,10 @@ const settingsPatch = z.object({
   openOnLaunch: z.string().trim().min(1).nullable().optional().describe("Network id to open on launch; null for the last used one."),
   autoUpdate: z.boolean().optional().describe("Check for updates 10 s after launch and every 6 hours."),
   updateChannel: z.enum(["latest", "beta"]).optional().describe("Update channel: latest, or beta for pre-releases."),
+  runInTray: z
+    .boolean()
+    .optional()
+    .describe("Keep running in the system tray: closing (and on Windows and Linux minimizing) hides the window, so desktop alerts keep arriving. Takes effect at once in the window."),
 });
 
 export const commands: AnyCommand[] = [
@@ -53,6 +57,7 @@ export const commands: AnyCommand[] = [
     run: async (ctx): Promise<AppInfo> => {
       const auth = await ctx.backend.auth.status();
       const cli: CliStatus | null = ctx.host.actions?.cli ? await ctx.host.actions.cli.status() : null;
+      const tray = ctx.host.actions?.tray ? await ctx.host.actions.tray.available() : null;
       return {
         version: ctx.host.version,
         electron: ctx.host.electron,
@@ -65,6 +70,7 @@ export const commands: AnyCommand[] = [
         install: ctx.host.install,
         update: await updateStatus(ctx),
         cli,
+        tray,
         configDir: ctx.host.configDir ?? "",
       };
     },
@@ -73,7 +79,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "app.settings.get",
     label: "App settings",
-    description: "Mesh UI's own settings on this computer (settings.json): User-Agent, plan speeds, desktop alerts, network to open, automatic updates and channel.",
+    description: "Mesh UI's own settings on this computer (settings.json): User-Agent, plan speeds, desktop alerts, network to open, automatic updates and channel, and keep running in the tray.",
     icon: "settings",
     params: z.object({}),
     effect: "query",
@@ -84,7 +90,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "app.settings.set",
     label: "Change app settings",
-    description: "Changes Mesh UI's own settings on this computer: User-Agent, network to open on launch, automatic updates and update channel. Nothing changes on eero.",
+    description: "Changes Mesh UI's own settings on this computer: User-Agent, network to open on launch, automatic updates, update channel and keep running in the tray. Nothing changes on eero.",
     icon: "settings",
     params: settingsPatch,
     effect: "write",
@@ -93,7 +99,10 @@ export const commands: AnyCommand[] = [
     run: async (ctx, p): Promise<AppSettings> => {
       const patch = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined)) as Partial<AppSettings>;
       if (Object.keys(patch).length === 0) throw new CommandError("bad_params", "Give at least one setting to change.");
-      return ctx.settings.update(patch);
+      const next = await ctx.settings.update(patch);
+      // The window shows or removes its tray icon at once; other hosts pick it up on the next launch.
+      if (patch.runInTray !== undefined) await ctx.host.actions?.tray?.apply(next.runInTray);
+      return next;
     },
   }),
 

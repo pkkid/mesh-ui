@@ -1115,7 +1115,7 @@ The app icon follows the pack's measured conventions on a 256 canvas:
   a 4px top lip in `#fbf1c7` at 60%, and the pack's rim gradient over the box
   (light top edge, darker bottom). No filters or blurs.
 
-Tray icons for a future status bar live in `build/tray/`, in the pack's
+Tray icons live in `build/tray/`, in the pack's
 panel style: flat filled paths in `currentColor` with the KDE
 `ColorScheme-*` classes, at 16, 22 and 24px (`mesh-ui-symbolic.svg` is the
 16px monochrome app icon). States: `mesh-ui-tray` (normal),

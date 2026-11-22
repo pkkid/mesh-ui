@@ -4,7 +4,8 @@
  * the update status, then Electron, Platform, Release notes and Source and
  * issues stacked in one format (icon, then "Label value" or the link),
  * then Check for updates or Restart to update and the Automatic updates and
- * Beta updates switches. On the right, "eero details" in the same format: the
+ * Beta updates switches, and in the window the Keep running in the tray
+ * switch (src/main/tray.ts). On the right, "eero details" in the same format: the
  * Support ID (with a copy icon), eero support articles and Show eero request
  * log.
  * It was the About side panel until 2026-11-21. The updater lives in main (src/main/updater.ts);
@@ -85,6 +86,9 @@ export function SettingsHero({ id }: { id?: string }) {
   const busy = update?.state === "checking" || update?.state === "downloading";
   const line = app && update ? updateStatusLine(update, app.install, Date.now()) : null;
   const error = check.error ?? install.error ?? setSettings.error ?? showLog.error;
+  const updateControls = updates || update?.state === "available";
+  /** null outside the window (no tray there); false when this desktop shows no tray icons. */
+  const tray = app?.tray ?? null;
 
   return (
     <PageHeader
@@ -120,52 +124,66 @@ export function SettingsHero({ id }: { id?: string }) {
         </div>
       }
       actions={
-        // Only where this copy updates itself (or can download a new version); a dev or package build has no buttons.
-        (updates || update?.state === "available") && (
+        // Update buttons only where this copy updates itself (or can download a new version); a dev or package build has none.
+        (updateControls || tray !== null) && (
           <div className="flex flex-col gap-4">
             {update?.state === "downloading" && <Meter value={(update.progress ?? 0) * 100} label="Update download" className="w-64" />}
             {update?.state === "available" && (
               <p className="max-w-md text-muted-foreground text-xs">This copy is not signed, so Mesh UI cannot install updates itself. Download the new version and replace the app.</p>
             )}
-            <div className="flex flex-wrap items-center gap-2">
-              {update?.state === "ready" && (
-                <Button variant="outline" className={DIM_ICON} disabled={install.running} onClick={() => void install.run({})}>
-                  <RotateCw />
-                  Restart to update
-                </Button>
-              )}
-              {update?.state === "available" && (
-                <Button variant="outline" className={DIM_ICON} render={<a href={releaseUrl(update.version)} target="_blank" rel="noreferrer" />}>
-                  <Download />
-                  Download from GitHub
-                </Button>
-              )}
-              {updates && update.state !== "ready" && (
-                <Button variant="outline" className={DIM_ICON} disabled={busy || check.running} onClick={() => void check.run({})}>
-                  <RefreshCw className={cn(busy && "animate-spin motion-reduce:animate-none")} />
-                  Check for updates
-                </Button>
-              )}
-            </div>
-            {/* The update switches sit with the update buttons, under the details. */}
-            {updates && (
-              <div className="flex w-72 flex-col gap-3">
-                <SwitchRow
-                  label="Automatic updates"
-                  detail="Check at launch and every 6 hours"
-                  on={settings.data?.autoUpdate}
-                  disabled={setSettings.running}
-                  onChange={(autoUpdate) => void setSettings.run({ autoUpdate })}
-                />
-                <SwitchRow
-                  label="Beta updates"
-                  detail="Also get pre-releases"
-                  on={settings.data ? settings.data.updateChannel === "beta" : undefined}
-                  disabled={setSettings.running}
-                  onChange={(beta) => void setSettings.run({ updateChannel: beta ? "beta" : "latest" })}
-                />
+            {updateControls && (
+              <div className="flex flex-wrap items-center gap-2">
+                {update?.state === "ready" && (
+                  <Button variant="outline" className={DIM_ICON} disabled={install.running} onClick={() => void install.run({})}>
+                    <RotateCw />
+                    Restart to update
+                  </Button>
+                )}
+                {update?.state === "available" && (
+                  <Button variant="outline" className={DIM_ICON} render={<a href={releaseUrl(update.version)} target="_blank" rel="noreferrer" />}>
+                    <Download />
+                    Download from GitHub
+                  </Button>
+                )}
+                {updates && update.state !== "ready" && (
+                  <Button variant="outline" className={DIM_ICON} disabled={busy || check.running} onClick={() => void check.run({})}>
+                    <RefreshCw className={cn(busy && "animate-spin motion-reduce:animate-none")} />
+                    Check for updates
+                  </Button>
+                )}
               </div>
             )}
+            {/* The update switches sit with the update buttons, under the details, then the tray switch. */}
+            <div className="flex w-72 flex-col gap-3">
+              {updates && (
+                <>
+                  <SwitchRow
+                    label="Automatic updates"
+                    detail="Check at launch and every 6 hours"
+                    on={settings.data?.autoUpdate}
+                    disabled={setSettings.running}
+                    onChange={(autoUpdate) => void setSettings.run({ autoUpdate })}
+                  />
+                  <SwitchRow
+                    label="Beta updates"
+                    detail="Also get pre-releases"
+                    on={settings.data ? settings.data.updateChannel === "beta" : undefined}
+                    disabled={setSettings.running}
+                    onChange={(beta) => void setSettings.run({ updateChannel: beta ? "beta" : "latest" })}
+                  />
+                </>
+              )}
+              {tray !== null && (
+                <SwitchRow
+                  label="Keep running in the tray"
+                  detail={tray ? "Closing keeps desktop alerts coming" : "This desktop shows no tray icons"}
+                  on={settings.data?.runInTray}
+                  // With no tray it can only be turned off, never on.
+                  disabled={setSettings.running || (!tray && settings.data?.runInTray !== true)}
+                  onChange={(runInTray) => void setSettings.run({ runInTray })}
+                />
+              )}
+            </div>
           </div>
         )
       }

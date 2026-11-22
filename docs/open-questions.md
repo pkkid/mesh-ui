@@ -56,4 +56,3 @@ gathers them ([testing.md](testing.md#manual-checks)).
 - Whether Smart Home Hub (Zigbee discovery) is free or an eero Business feature. ([advanced-networking.md](ux/pages/advanced-networking.md#notes))
 - One combined write for Wi-Fi name, password and security, instead of three restarts in sequence. ([wifi.md](ux/pages/wifi.md#notes))
 - `usage.get {scope: "eero"}` without an id via `{net}/data_usage/eeros`: verify against the fake server. ([overview.md](ux/pages/overview.md#notes))
-- A slow background poll in main for "network offline" desktop alerts while the window is hidden. ([engine.md](architecture/engine.md))
