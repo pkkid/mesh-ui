@@ -549,38 +549,3 @@ html[data-theme-token-probe] *::after {
 #theme-inspector-hover[data-placement="below"] [data-theme-inspector-hover-label] {
   top: calc(100% + 0.25rem);
 }
-
-/*
- * Devices table header pin (DeviceTable's usePinnedHead). The header row
- * follows the sticky block above it with a scroll-driven animation on the
- * page scroller's timeline (--page-scroll), so it moves on the compositor in
- * step with the scroll instead of a frame behind, as a scroll listener would.
- * JS only measures, on layout changes: --pin-start and --pin-end are the
- * scroll offsets where pinning starts and where the last row is reached,
- * --pin-travel the distance between them.
- */
-@keyframes pinned-head-move {
-  from { transform: translateY(0); }
-  to { transform: translateY(var(--pin-travel, 0px)); }
-}
-@keyframes pinned-head-show {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@utility pinned-head {
-  animation: pinned-head-move linear both;
-  animation-timeline: --page-scroll;
-  animation-range: var(--pin-start, 0px) var(--pin-end, 0px);
-  /* The fade under each header cell comes in over the first 50px pinned (about one row), so it does not pop in. */
-  & th::after {
-    animation: pinned-head-show linear both;
-    animation-timeline: --page-scroll;
-    animation-range: var(--pin-start, 0px) calc(var(--pin-start, 0px) + 50px);
-  }
-}
-/* Shown only while the header is pinned (the card's redrawn rounded top on Devices). */
-@utility pinned-head-only {
-  animation: pinned-head-show linear both;
-  animation-timeline: --page-scroll;
-  animation-range: var(--pin-start, 0px) calc(var(--pin-start, 0px) + 1px);
-}
