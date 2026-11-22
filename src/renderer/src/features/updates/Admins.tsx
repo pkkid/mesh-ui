@@ -10,7 +10,7 @@
  * read only, without invites or the invite card.
  * docs/ux/pages/updates-admins.md (Layout 4 and 5).
  */
-import { Check, Crown, Mail, RefreshCw, User, UserMinus, UserPlus, X } from "lucide-react";
+import { Check, Copy, Crown, Mail, RefreshCw, User, UserMinus, UserPlus, X } from "lucide-react";
 import { useId, useState } from "react";
 
 import type { QueryState } from "~/app/useCommand";
@@ -20,7 +20,7 @@ import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { GatedButton, PlaceholderRows, Row, RowList, SectionError, useGate } from "~/components/ui/page";
-import { QrBlock } from "~/components/ui/qr";
+import { copyText } from "~/lib/clipboard";
 import { Sheet, SheetField } from "~/components/ui/sheet";
 import { Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
@@ -141,7 +141,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium text-sm">Invite an admin</div>
                   <div className="text-muted-foreground text-xs">
-                    {full ? "Every admin seat is in use. Remove an admin or cancel an invite to make room." : `${d.seatsMax - d.seatsUsed} of ${d.seatsMax} seats free. Share a QR code or link; it is accepted in the eero app within 48 hours.`}
+                    {full ? "Every admin seat is in use. Remove an admin or cancel an invite to make room." : `${d.seatsMax - d.seatsUsed} of ${d.seatsMax} seats free. Share the link; it is accepted in the eero app within 48 hours.`}
                   </div>
                 </div>
                 <GatedButton gate={full ? { allowed: false, reason: "All admin seats are in use" } : inviteGate} size="xs" variant="outline" className={DIM_ICON} onClick={() => setSheet({ created: null, nickname: "" })}>
@@ -165,7 +165,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
 
 /**
  * The invite sheet: a nickname, then Create invite; once made it shows the
- * QR code with Copy link and New code (another single-use link). eero sends
+ * link, read only, with Copy and New link (another single-use link). eero sends
  * no email, so the link is shared by hand.
  */
 function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated | null; nickname: string }; onClose: () => void }) {
@@ -175,6 +175,7 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
   const [created, setCreated] = useState<InviteCreated | null>(initial.created);
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
+  const linkId = useId();
   const n = nickname.trim();
   const invalid = n.length > NICKNAME_MAX ? `Use at most ${NICKNAME_MAX} characters.` : null;
 
@@ -191,7 +192,7 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
     else if (r) setError(r.error.message);
   };
 
-  // Before the invite exists it is a form (Cancel, Create invite); after, the QR is the content and the X closes it.
+  // Before the invite exists it is a form (Cancel, Create invite); after, the link is the content and the footer holds Close.
   return (
     <Sheet
       open
@@ -207,19 +208,20 @@ function InviteSheet({ initial, onClose }: { initial: { created: InviteCreated |
         <Input id={inputId} value={nickname} placeholder="Jamie" autoComplete="off" onChange={(e) => setNickname(e.target.value)} disabled={created !== null} />
       </SheetField>
       {created ? (
-        <QrBlock
-          value={created.inviteUrl}
-          ariaLabel={`QR code for the admin invite${created.invite.nickname ? ` for ${created.invite.nickname}` : ""}`}
-          caption={created.invite.nickname ?? "Admin invite"}
-          copyLabel="Copy link"
-          copyText={created.inviteUrl}
-          actions={
-            <Button type="button" size="xs" variant="outline" className="[&_svg]:text-muted-foreground" disabled={create.running} onClick={() => void make()}>
-              <RefreshCw />
-              New code
+        // The link to send, read only (select it, or Copy); New link cancels this one and makes another.
+        <SheetField label="Invite link" htmlFor={linkId} helper="Send it to them yourself; eero sends no email">
+          <div className="flex items-center gap-1.5">
+            <Input id={linkId} readOnly value={created.inviteUrl} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+            <Button type="button" size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => void copyText(created.inviteUrl, { toast: "Copied invite link" })}>
+              <Copy />
+              Copy
             </Button>
-          }
-        />
+            <Button type="button" size="sm" variant="outline" className="[&_svg]:text-muted-foreground" disabled={create.running || cancel.running} onClick={() => void make()}>
+              <RefreshCw />
+              New link
+            </Button>
+          </div>
+        </SheetField>
       ) : null}
     </Sheet>
   );

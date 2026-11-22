@@ -141,6 +141,7 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
         open={renaming}
         onClose={() => setRenaming(false)}
         title={`Rename ${eero.location}`}
+        saveLabel="Rename eero"
         subtitle="The name shown everywhere for this eero, like Office, Den or Kitchen"
         label="Location"
         value={eero.location}

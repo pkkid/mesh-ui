@@ -206,6 +206,7 @@ function NamePasswordSheet({ guest, networkName, onClose, onSaved }: { guest: Gu
       valid={!local.name && !local.password && loaded}
       onSave={save}
       saves={["guest.rename", "guest.password.set"]}
+      saveLabel="Save name and password"
       error={formError}
     >
       <SheetField

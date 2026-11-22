@@ -920,7 +920,7 @@ Every write control uses the same pieces (M4.3):
   as one connected control in Segmented's look, any number picked, presets
   under it), `TimeSelect` (the app's dropdown in 15 minute steps, never the
   native time input) and `DayBar` (one day, midnight to midnight, the span
-  in the neutral `muted-foreground` fill, dashed while the schedule is off).
+  in the `foreground` colour, as text, dashed while the schedule is off).
 
 ```tsx
 const rename = useWrite<{ eero: string; name: string }>("eero.rename", { form: true });
@@ -999,8 +999,8 @@ and are capped at the space available below their trigger, then scroll.
   and turns to the foreground colour on hover, in every modal that has one. A confirm has none: it is a question, and Cancel and Esc
   answer it (`showCloseButton={false}`).
 - **Footer:** the band from the confirm (top border, `bg-muted/72`, `py-4`)
-  on confirms and form sheets alike; a content sheet (Share Wi-Fi, an
-  invite once made) has no footer. Buttons are `sm`, on the right, Cancel
+  on confirms and every sheet; a content sheet (Share Wi-Fi, an invite once
+  made) has just an outline Close in it. Buttons are `sm`, on the right, Cancel
   (`outline`) then the primary
   action last. The action is filled `bg-primary` (`default`), as T3 Code's
   dialogs: sheet Save, Send code (Change email, Verify mobile), Create
@@ -1028,10 +1028,15 @@ The detail for sheets (#361). Every sheet goes through `Sheet`
 - **Layout:** header (`pt-5`), 20px, the fields 16px apart, 30px, the
   footer band (optional action on the left, Cancel and Save on the right),
   all at 20px from the sides. A form-level error sits under the last field.
-- **Form or content:** a sheet with `onSave` is a form and has the footer.
-  Without it the sheet is content (Share Wi-Fi's QR): no footer, 20px
-  under the content. A sheet can be both in turn: Invite an admin is a form
-  until the invite exists, then shows its QR with no footer.
+- **Form or content:** a sheet with `onSave` is a form: Cancel and its
+  action in the footer. Without it the sheet is content (Share Wi-Fi's QR)
+  and the footer holds one outline Close. A sheet can be both in turn:
+  Invite an admin is a form until the invite exists, then shows the link
+  with Close.
+- **Name the action:** the primary button says what it saves, never a bare
+  "Save": Rename device, Save icon, Save time zone, Save name and password,
+  Save plan, Save profile, Save notifications, Save schedule, Save and
+  restart.
 - **Close X:** every sheet has the X at the top right; the X, Esc and
   Cancel close it.
 - **Save's colour:** a sheet names the commands its Save runs (`saves`),
@@ -1053,7 +1058,8 @@ appears only once something changed; there is no "Nothing to save" state.
   apart.
 - Title "Impact of saving" in the field label style (`font-medium
   text-xs`), not an uppercase eyebrow.
-- Figures, two to a row: the count in `text-base font-semibold
+- Figures packed to the left, 40px apart (`gap-x-10`, the hero facts'
+  spacing), never split into equal columns: the count in `text-base font-semibold
   tabular-nums` over a lowercase muted `text-xs` label ("0" over "devices
   lose internet", "4" over "eeros restart"). A count above zero takes the
   warning colour (red for devices that cannot rejoin); zero stays plain.
@@ -1105,7 +1111,7 @@ pages pass words, never layout.
 ### No divider lines
 
 No modal has a rule under its header. The one rule is the top border of
-the footer band on confirms and form sheets ([Confirm](#confirm),
+the footer band on confirms and sheets ([Confirm](#confirm),
 [Sheet](#sheet)); otherwise spacing alone
 separates them, so every modal reads as one clean panel, not three stacked
 sections. Rules inside the body (a list's row dividers) are fine. In a menu,

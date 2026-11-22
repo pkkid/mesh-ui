@@ -26,6 +26,8 @@ type RenameSheetProps = {
   helper?: (name: string) => string;
   error?: string | null;
   onSave: (name: string) => Promise<unknown>;
+  /** The button names what it does: "Rename device", "Rename eero", "Rename profile". */
+  saveLabel: string;
 };
 
 export const NAME_MAX = 32;
@@ -35,7 +37,7 @@ export function RenameSheet({ open, ...props }: RenameSheetProps) {
   return open ? <RenameBody {...props} /> : null;
 }
 
-function RenameBody({ onClose, title, subtitle, label = "Name", value, placeholder, allowEmpty = false, helper, error, onSave }: Omit<RenameSheetProps, "open">) {
+function RenameBody({ onClose, title, subtitle, label = "Name", value, placeholder, allowEmpty = false, helper, error, onSave, saveLabel }: Omit<RenameSheetProps, "open">) {
   const id = useId();
   const [name, setName] = useState(value);
   const trimmed = name.trim();
@@ -49,7 +51,7 @@ function RenameBody({ onClose, title, subtitle, label = "Name", value, placehold
       dirty={trimmed !== value.trim()}
       valid={!tooLong && (allowEmpty || trimmed.length > 0)}
       onSave={() => onSave(trimmed)}
-      saveLabel="Rename"
+      saveLabel={saveLabel}
     >
       <SheetField
         label={label}

@@ -178,7 +178,7 @@ function ReservationBody({ mode, onClose, removable }: { mode: ReservationSheetM
           </Button>
         ) : undefined
       }
-      saveLabel={mode.kind === "add" ? "Save reservation" : "Save"}
+      saveLabel="Save reservation"
       error={errors._form}
     >
       <SheetField label="Device" htmlFor={ids.device} error={errors.device ?? errors.mac} helper={device ? `${device.mac}${device.connected ? "" : " · offline"}` : undefined}>
@@ -312,7 +312,7 @@ function ForwardBody({ mode, onClose }: { mode: ForwardSheetMode; onClose: () =>
       dirty={dirty}
       valid={valid}
       onSave={save}
-      saveLabel={mode.kind === "add" ? "Save port forward" : "Save"}
+      saveLabel="Save port forward"
       error={errors._form}
     >
       <SheetField

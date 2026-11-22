@@ -102,6 +102,7 @@ function OneProfile({ params }: PageProps) {
           open={renaming}
           onClose={() => setRenaming(false)}
           title={`Rename ${data.name}`}
+          saveLabel="Rename profile"
           subtitle="Shown everywhere in Mesh UI and the eero app"
           value={data.name}
           error={rename.error?.code === "bad_params" ? rename.error.message : null}
