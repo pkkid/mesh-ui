@@ -113,8 +113,11 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
    stay).
 5. **Bulk action bar** (only while rows are selected): mixed checkbox, "3
    selected", the selected names in muted text, then **Pause…**, **Resume**,
-   **Assign profile ▾**, **Block 3…** (danger), a rule, **Clear**.
-6. **Device table** (card). Columns: checkbox, Device (icon, name
+   **Assign profile ▾**, **Block 3…** (danger), a rule, **Clear**. It
+   slides open (200ms) so the table moves down smoothly, then its contents
+   fade in; clearing reverses it. Reduced motion skips both.
+6. **Device table** (card). Columns: checkbox (the whole cell picks the
+   row, so a near miss never opens the device), Device (icon, name
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Live down / up

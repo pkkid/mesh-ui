@@ -444,7 +444,7 @@ function Row(props: RowProps) {
       onClick={(e) => {
         // Menus render in a portal; their clicks still bubble here through React.
         if (!e.currentTarget.contains(e.target as Node)) return;
-        if ((e.target as HTMLElement).closest("a,button,input,[role=checkbox]")) return;
+        if ((e.target as HTMLElement).closest("a,button,input,[role=checkbox],[data-select-cell]")) return;
         navigate(to);
       }}
       aria-selected={isSelected}
@@ -458,8 +458,16 @@ function Row(props: RowProps) {
         isSelected && "bg-accent hover:bg-accent",
       )}
     >
-      <td className={cn(td, isSelected && "shadow-[inset_2px_0_0_var(--color-foreground)]")}>
-        <Checkbox aria-label={`Select ${d.name}`} checked={isSelected} onClick={(e) => onPick(e.shiftKey)} />
+      <td
+        // The whole cell selects, so a click a little above or below the box picks the row instead of opening it.
+        data-select-cell
+        onClick={(e) => {
+          // The box reports its own change (with Shift); this is for clicks around it.
+          if (!(e.target as HTMLElement).closest("[role=checkbox],input")) onPick(e.shiftKey);
+        }}
+        className={cn(td, "cursor-pointer", isSelected && "shadow-[inset_2px_0_0_var(--color-foreground)]")}
+      >
+        <Checkbox aria-label={`Select ${d.name}`} checked={isSelected} onCheckedChange={(_, { shiftKey }) => onPick(shiftKey)} />
       </td>
       <td className={td}>
         <div className="flex min-w-0 items-center gap-2.5">
