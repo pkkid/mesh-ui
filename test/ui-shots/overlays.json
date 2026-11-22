@@ -132,5 +132,79 @@
     "route": "#/settings/wifi",
     "size": "1200x1200",
     "before": "[...document.querySelectorAll('button')].find((b) => b.textContent.trim().startsWith(\"Edit name and password\")).click()"
+  },
+  {
+    "out": "menu-bulk-light.png",
+    "route": "#/devices",
+    "theme": "light",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));document.querySelectorAll(\"[aria-label^=\\\"Select \\\"]\")[1].click(); await sleep(400); btn(\"Assign profile\").click()",
+    "size": "1440x780"
+  },
+  {
+    "out": "menu-bulk-dark.png",
+    "route": "#/devices",
+    "theme": "dark",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));document.querySelectorAll(\"[aria-label^=\\\"Select \\\"]\")[1].click(); await sleep(400); btn(\"Assign profile\").click()",
+    "size": "1440x780"
+  },
+  {
+    "out": "popover-list-light.png",
+    "route": "#/devices",
+    "theme": "light",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"[aria-label=\\\"Columns\\\"]\").click()"
+  },
+  {
+    "out": "popover-list-dark.png",
+    "route": "#/devices",
+    "theme": "dark",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"[aria-label=\\\"Columns\\\"]\").click()"
+  },
+  {
+    "out": "popover-notifications-light.png",
+    "route": "#/overview",
+    "theme": "light",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"[aria-label*=\\\"otification\\\"]\").click()"
+  },
+  {
+    "out": "popover-notifications-dark.png",
+    "route": "#/overview",
+    "theme": "dark",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"[aria-label*=\\\"otification\\\"]\").click()"
+  },
+  {
+    "out": "popover-sign-out-light.png",
+    "route": "#/overview",
+    "theme": "light",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"[aria-label=\\\"Sign out\\\"]\").click()"
+  },
+  {
+    "out": "popover-sign-out-dark.png",
+    "route": "#/overview",
+    "theme": "dark",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"[aria-label=\\\"Sign out\\\"]\").click()"
+  },
+  {
+    "out": "popover-add-schedule-light.png",
+    "route": "#/profiles",
+    "theme": "light",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));const x=window.mesh.execute; const r=await x(\"profile.list\",{}); const d=r.result; for (const p of [...d.profiles, {id:\"unassigned\",...d.unassigned}]) { for (const s of p.schedules) await x(\"profile.schedule.remove\",{profile:p.id,schedule:s.id}); if (p.paused) await x(\"profile.resume\",{profile:p.id}); } q(\"[aria-label=\\\"Refresh\\\"]\").click(); await sleep(1500); const b=btn(\"Add a schedule\"); b.scrollIntoView({block:\"center\"}); await sleep(300); b.click()"
+  },
+  {
+    "out": "popover-add-schedule-dark.png",
+    "route": "#/profiles",
+    "theme": "dark",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));const x=window.mesh.execute; const r=await x(\"profile.list\",{}); const d=r.result; for (const p of [...d.profiles, {id:\"unassigned\",...d.unassigned}]) { for (const s of p.schedules) await x(\"profile.schedule.remove\",{profile:p.id,schedule:s.id}); if (p.paused) await x(\"profile.resume\",{profile:p.id}); } q(\"[aria-label=\\\"Refresh\\\"]\").click(); await sleep(1500); const b=btn(\"Add a schedule\"); b.scrollIntoView({block:\"center\"}); await sleep(300); b.click()"
+  },
+  {
+    "out": "popover-title-switcher-light.png",
+    "route": "#/devices",
+    "theme": "light",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"tbody a\").click(); await sleep(600); q(\"[aria-label*=\\\": switch to another\\\"]\").click()"
+  },
+  {
+    "out": "popover-title-switcher-dark.png",
+    "route": "#/devices",
+    "theme": "dark",
+    "before": "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));const q=(s)=>document.querySelector(s);const btn=(t,root=document)=>[...root.querySelectorAll(\"button\")].find(b=>b.textContent.trim().startsWith(t));q(\"tbody a\").click(); await sleep(600); q(\"[aria-label*=\\\": switch to another\\\"]\").click()"
   }
 ]

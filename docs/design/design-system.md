@@ -712,7 +712,8 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from a device to an icon, shown in an Icon tile. An Amazon Echo is matched by its model name first (see [Product icons](#product-icons)), then the device type, then core's guess for a `generic` device (`inferredType`), then the category. A device nothing is known about gets a neutral device icon (`MonitorSmartphone`), never a question mark. Never map device types to icons anywhere else |
 | eero icon | `lib/deviceIcons.ts` `eeroIcon(eero)`: the only map from an eero to its product glyph, by `modelNumber`, then the model name, then the puck. See [Product icons](#product-icons) |
 | Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-md` (6px), `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
-| Popover | `popover.tsx` (trimmed from T3 Code's). `PopoverPopup` anchors under its trigger (`side="bottom" align="start"`, 4px offset), `no-drag`, and is capped at the available height with its content scrolling inside. One surface, `popoverSurface`: `bg-popover`, 1px border, 12px radius, `shadow-lg`, `text-xs`. New popovers use it; the older hand-built ones move onto it with #346 |
+| Popover | `popover.tsx` (trimmed from T3 Code's). `PopoverPopup` anchors under its trigger (`side="bottom" align="start"`, 4px offset), `no-drag`, and is capped at the available height with its content scrolling inside. One surface, `popoverSurface`: `bg-popover`, 1px border, 12px radius, `shadow-lg`, `text-xs`, with shared list, item and separator classes. Every popover uses it ([Popovers and menus](#popovers-and-menus)) |
+| Menu | `menu.tsx` (trimmed from T3 Code's). `Menu`, `MenuTrigger`, `MenuPopup`, `MenuItem` (`variant="destructive"`), `MenuSeparator`, `MenuSub`, `MenuSubTrigger`, `MenuSubPopup`, on the popover surface and item classes ([Popovers and menus](#popovers-and-menus)) |
 | Dialog and sheet | `dialog.tsx`, `sheet.tsx`, `confirm.tsx`. `bg-popover`, 1px border, backdrop `bg-background/60` with a 2px blur; every one opens at `--dialog-top`. Kinds, sizes, look and behaviour: [Modals and popups](#modals-and-popups) |
 | QR block | `qr.tsx`. **Plain** (`QrCode plain`, the Guest network and Wi-Fi network heroes): the code at error correction level L with no tile or glyph, so a guest `WIFI:` payload is 29 x 29 modules instead of 41 x 41, drawn as round dots (radius 0.46 of a module, so scanners still read them) with the three finder patterns as rounded squares, in the full text colour on screen (a 60% dim was tried and dropped). Both heroes frame it in a 1px rounded border with 15px of padding and no buttons beside it; their share actions are hero buttons (**Copy invite**, **Copy password**). Wi-Fi network keeps the frame empty, with **Show code** centred in it, until clicked. Standard: `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then any page actions), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog. (The printed guest card was dropped on 2026-11-20 with Print a card.) Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
@@ -969,10 +970,9 @@ The dev gallery's Write kit section shows each piece.
 
 ## Modals and popups
 
-One standard for everything that floats over a page (#346). This section is
-the rule; tasks 2 to 5 of #346 move each kind onto it and fill in its detail.
-Until a kind has moved, its current call sites may still differ (listed in
-#346); new overlays follow this section.
+One standard for everything that floats over a page (#346). Every kind is
+on its shared component; feature files pass content and placement, never a
+surface of their own.
 
 ### Kinds
 
@@ -981,7 +981,7 @@ Until a kind has moved, its current call sites may still differ (listed in
 | Confirm | A yes or no before a `disruptive` or `destructive` action, or a write the UI asks about first (`askFirst`). Nothing to fill in except a type-to-confirm name | `ConfirmDialog` (`ui/confirm.tsx`), opened by `useWrite`; `WriteConfirmDialog` inside another dialog |
 | Sheet | A form (an editor, Edit name, Change email and its code, Transfer network) or content that is the action itself (Share Wi-Fi's QR, Invite an admin) | `Sheet` (`ui/sheet.tsx`) |
 | Popover | A panel anchored to its trigger: filters, notifications, the network switcher, pickers | `PopoverPopup` (`ui/popover.tsx`) |
-| Menu | A short list of actions on one target or selection: a row's Actions, the bulk bar | Base UI `Menu` with the shared menu classes |
+| Menu | A short list of actions on one target or selection: a row's Actions, the bulk bar | `MenuPopup` and `MenuItem` (`ui/menu.tsx`) |
 
 A single field or switch is edited in place on the page, never in a modal.
 The command palette is its own kind and the one exception to the position
@@ -999,8 +999,9 @@ Modals take one of three widths, never a free value:
 
 Height follows the content. A modal never grows past the window: it keeps a
 16px gap at the bottom and its body scrolls inside, header and footer fixed.
-Popovers and menus size to their content (a menu at least 176px, `min-w-44`)
-and are capped at the space available below their trigger, then scroll.
+Popovers and menus size to their content (a list at least 176px, `min-w-44`)
+and are capped at the space available below their trigger, then scroll; a
+list also stops at 320px. See [Popovers and menus](#popovers-and-menus).
 
 ### Look
 
@@ -1142,6 +1143,41 @@ pages pass words, never layout.
   time, including a toast's Undo that runs one. Changing the time zone is
   `disruptive`, since every schedule shifts at once.
 
+### Popovers and menus
+
+The detail for popovers and menus (#363). Everything lives in
+`ui/popover.tsx` and `ui/menu.tsx`; a feature file never writes its own
+surface, item or separator classes (`popover.test.ts` fails on a feature
+that imports Base UI's popover or menu directly or uses `bg-popover`).
+
+| Piece | What it is |
+| --- | --- |
+| `PopoverPopup` | A popover. Portal, positioner (`z-50`, `side="bottom"`, `align="start"`, 4px offset), `no-drag`, `popoverSurface`, capped at `--available-height` and scrolling inside. `variant="panel"` (default) leaves padding to the content; `variant="list"` adds `popoverList` |
+| `MenuPopup`, `MenuItem` | A menu (Base UI `Menu`): the same positioner, surface and list. `MenuItem variant="destructive"` is red text (Block, Remove); `MenuSeparator`; `MenuSub` with `MenuSubTrigger` (chevron added) and `MenuSubPopup` |
+| `popoverSurface` | `bg-popover`, 1px `border`, 12px radius, `shadow-lg`, `text-xs`. Also the Select list and the theme editor panel |
+| `popoverList` | 4px padding (`p-1`), at least 176px (`min-w-44`), at most 320px or the space available, scrolling inside |
+| `popoverItem` | A row of a menu, a Select or a listbox: 28px (`min-h-7`), `px-2.5 py-1.5`, 8px radius, 8px gap, direct icons `size-3.5`; lit `bg-muted/60` while `data-highlighted` (Base UI sets it on hover and arrow keys). Disabled rows at 50% |
+| `popoverButtonItem` | The same row as a plain `<button>` in a popover list (pickers, Columns, Add a schedule), lit on hover and keyboard focus |
+| `popoverSeparator` | A 1px `border/60` rule, 4px above and below, edge to edge inside the padding |
+| `popoverLabel` | A muted heading row at the top of a list ("Pick who to schedule") |
+
+- **Menu or popover list?** A menu runs actions (a row's Actions, the bulk
+  Assign profile, a shortcut's Reset or Remove). A popover list picks a value
+  or toggles (filter pickers, Columns, the title switcher, Add a schedule's
+  profile). A popover panel holds anything else: the Filters form,
+  notifications, the Sign out confirm.
+- **Panels pad themselves:** 12px (`p-3`) for a form or a short confirm
+  (Filters, Sign out), 4px for a list with a header (notifications).
+- **A picked row** shows a `size-3.5` check before its label; rows that are
+  not picked keep the space (`invisible`) so labels line up. A profile row
+  has a `size-4` avatar after the check.
+- **Placement:** pass only `side` and `align` (top bar and row menus
+  `align="end"`, the sidebar's Sign out `side="top"`); never an offset.
+- **The exception:** the network switcher keeps the sidebar surface
+  (`bg-sidebar`, grain, `border-sidebar-border`, the row's width), since it
+  reads as the sidebar row opening, not a floating panel. It still opens 4px
+  below and is `no-drag`.
+
 ### No divider lines
 
 No modal has a rule under its header. The one rule is the top border of
@@ -1149,8 +1185,8 @@ the footer band on confirms and sheets ([Confirm](#confirm),
 [Sheet](#sheet)); otherwise spacing alone
 separates them, so every modal reads as one clean panel, not three stacked
 sections. Rules inside the body (a list's row dividers) are fine. In a menu,
-a separator between groups of items is a 1px `border-border/60` line with
-4px above and below.
+a separator between groups of items is `popoverSeparator`, a 1px
+`border/60` line with 4px above and below.
 
 ### Position
 
