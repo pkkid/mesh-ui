@@ -116,6 +116,7 @@ function PlanForm({ onClose }: { onClose: () => void }) {
       dirty={dirty}
       valid={valid}
       onSave={save}
+      saveLabel="Save plan"
       error={server._form}
       footerStart={
         plan &&

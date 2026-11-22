@@ -19,9 +19,9 @@ export function ImpactBox({ title = "Impact of saving", fading = false, classNam
   );
 }
 
-/** A row of figures, two to a line. */
+/** A row of figures packed to the left, 40px apart (the hero facts' `gap-x-10`). */
 export function ImpactFigures({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3">{children}</div>;
+  return <div className="flex flex-wrap gap-x-10 gap-y-3">{children}</div>;
 }
 
 /** One count: "0" over "devices lose internet". Null shows "-" while it loads. */

@@ -5,7 +5,8 @@
 // border, muted fill) with an optional action on the left and Cancel and the
 // filled Save on the right: primary, or yellow (red) when a command it runs is
 // `disruptive` (`destructive`), named by `saves`, as the confirm's button. Every sheet has the close X at the top
-// right. A content sheet (Share Wi-Fi) passes no `onSave` and has no footer.
+// right. A content sheet (Share Wi-Fi) passes no `onSave`; its footer holds
+// one outline Close button.
 // One of two named widths; the body scrolls when the sheet would pass the
 // bottom of the window, header and footer stay in view.
 //
@@ -45,7 +46,7 @@ type SheetProps = {
   /**
    * Runs the write. Resolving to an execute result with `ok: true` closes the
    * sheet; anything else keeps it open. Without it the sheet is content only:
-   * no footer, the X and Esc close it.
+   * the footer holds just an outline Close.
    */
   onSave?: () => Promise<unknown>;
   /** Something changed since the sheet opened (Save stays disabled until then). */
@@ -109,22 +110,26 @@ function Sheet({
             {subtitle && <DialogDescription className="text-xs">{subtitle}</DialogDescription>}
           </div>
 
-          <div className={cn("flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pt-5", onSave ? "pb-[30px]" : "pb-5")}>
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pt-5 pb-[30px]">
             {children}
             {error && <div className="text-destructive-foreground text-xs">{error}</div>}
           </div>
 
-          {onSave && (
-            <div className="flex shrink-0 items-center gap-2 rounded-b-[17px] border-t bg-muted/72 px-5 py-4">
-              <div className="me-auto">{footerStart}</div>
-              <DialogPrimitive.Close render={<Button type="button" size="sm" variant="outline" />} disabled={saving}>
-                Cancel
-              </DialogPrimitive.Close>
-              <Button type="submit" size="sm" variant={saveVariant} disabled={!dirty || !valid || saving}>
-                {saveLabel}
-              </Button>
-            </div>
-          )}
+          <div className="flex shrink-0 items-center gap-2 rounded-b-[17px] border-t bg-muted/72 px-5 py-4">
+            {onSave ? (
+              <>
+                <div className="me-auto">{footerStart}</div>
+                <DialogPrimitive.Close render={<Button type="button" size="sm" variant="outline" />} disabled={saving}>
+                  Cancel
+                </DialogPrimitive.Close>
+                <Button type="submit" size="sm" variant={saveVariant} disabled={!dirty || !valid || saving}>
+                  {saveLabel}
+                </Button>
+              </>
+            ) : (
+              <DialogPrimitive.Close render={<Button type="button" size="sm" variant="outline" className="ms-auto" />}>Close</DialogPrimitive.Close>
+            )}
+          </div>
         </form>
       </DialogPopup>
     </Dialog>

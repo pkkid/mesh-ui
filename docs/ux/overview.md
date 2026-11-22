@@ -535,8 +535,8 @@ Editors that need more than one field open as a sheet (mockups: Appearance on
 - **Footer:** the confirm's band (top border, muted fill). A secondary or
   destructive action on the left if any ("Delete schedule", which opens the
   confirm dialog over the sheet), Cancel (outline) and the filled primary
-  Save on the right. A content sheet (Share Wi-Fi) has no footer; the X and
-  `Esc` close it.
+  Save on the right, named for what it saves ("Save plan", never a bare
+  "Save"). A content sheet (Share Wi-Fi) has just an outline Close there.
 - Save is disabled until something changed and the form is valid. Validation
   is the command's zod schema: `bad_params` messages land under the field.
 - Save runs the command(s); the sheet closes on `ok` with a toast, stays open

@@ -118,7 +118,7 @@ export function TimeSelect({ id, value, onChange, invalid }: { id: string; value
 
 /**
  * One day as a bar, midnight to midnight, with the schedule's span filled in
- * the neutral schedule colour (dashed outline while the schedule is off), and
+ * the foreground colour, as text (a dashed outline while the schedule is off), and
  * start, middle and end labels under it. `aside` sits at the right of the
  * "Each day" label ("10h paused, 50h a week").
  */
@@ -133,7 +133,7 @@ export function DayBar({ start, end, enabled, ariaLabel, aside }: { start: strin
         {daySpans(start, end).map((s) => (
           <i
             key={s.from}
-            className={cn("absolute inset-y-0", enabled ? "bg-muted-foreground/45" : "border-[1.5px] border-muted-foreground/70 border-dashed")}
+            className={cn("absolute inset-y-0", enabled ? "bg-foreground" : "border-[1.5px] border-foreground border-dashed")}
             style={{ left: `${(s.from / MINUTES_PER_DAY) * 100}%`, width: `${((s.to - s.from) / MINUTES_PER_DAY) * 100}%` }}
           />
         ))}

@@ -244,7 +244,7 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
       dirty={mode.kind === "add" || changed}
       valid={valid}
       onSave={save}
-      saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
+      saveLabel={mode.kind === "add" ? "Add schedule" : "Save schedule"}
       error={errors._form}
       footerStart={
         mode.kind === "edit" ? (

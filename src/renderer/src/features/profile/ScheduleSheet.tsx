@@ -130,7 +130,7 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
       dirty={dirty}
       valid={valid}
       onSave={save}
-      saveLabel={mode.kind === "add" ? "Add schedule" : "Save"}
+      saveLabel={mode.kind === "add" ? "Add schedule" : "Save schedule"}
       error={errors._form}
       footerStart={
         mode.kind === "edit" ? (

@@ -422,6 +422,7 @@ function WriteKit() {
         dirty={name !== "Office"}
         valid={nameError === undefined}
         onSave={async () => ({ ok: false })}
+        saveLabel="Rename eero"
       >
         <SheetField label="Name" htmlFor="gallery-eero-name" error={nameError} helper={`${name.length} / 32`}>
           <Input id="gallery-eero-name" value={name} onChange={(e) => setName(e.target.value)} />

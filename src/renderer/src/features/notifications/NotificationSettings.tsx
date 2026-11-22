@@ -122,7 +122,7 @@ function NotificationSettingsSheet({ networkId, networkName, open, onClose }: { 
   if (!settings.data) {
     // Open at once: loading, or the read failed with a Retry.
     return (
-      <Sheet open onClose={onClose} title="Notification settings" dirty={false} onSave={async () => null}>
+      <Sheet open onClose={onClose} title="Notification settings" dirty={false} onSave={async () => null} saveLabel="Save notifications">
         <p className="py-4 text-center text-muted-foreground text-xs">
           {settings.error ? (
             <>
@@ -203,6 +203,7 @@ function SettingsForm({ networkId, networkName, saved, onClose }: { networkId: s
       subtitle={`${networkName ?? "This network"} · shown in the bell, on your phone and as desktop alerts`}
       dirty={dirty}
       onSave={save}
+      saveLabel="Save notifications"
       error={write.error?.message ?? push.error?.message ?? null}
     >
       <Group title="eero alerts" hint="Sent by eero for this network">
@@ -304,14 +305,15 @@ export function SwitchRow({
         disabled={off}
         title={!known ? "eero does not report this setting" : title}
         onClick={() => onChange(!on)}
+        // The app's standard switch (WriteSwitch in SettingsGroups): primary when on.
         className={cn(
-          "relative h-5 w-9 shrink-0 rounded-full border",
+          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
           off ? "cursor-not-allowed" : "cursor-pointer",
-          on ? "bg-foreground/70" : "bg-muted",
+          on ? "border-transparent bg-primary" : "bg-muted",
           !known && "border-dashed",
         )}
       >
-        <i className={cn("absolute top-0.5 size-3.5 rounded-full bg-background shadow-sm", on ? "right-0.5" : "left-0.5")} />
+        <span className={cn("size-4 rounded-full bg-background shadow-sm transition-transform", on ? "translate-x-4" : "translate-x-0.5")} />
       </button>
     </div>
   );

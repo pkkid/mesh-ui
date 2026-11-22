@@ -212,6 +212,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
           open={renaming}
           onClose={() => setRenaming(false)}
           title={`Rename ${ready.name}`}
+          saveLabel="Rename device"
           subtitle="Shown everywhere in Mesh UI and the eero app"
           value={ready.nickname ?? ""}
           placeholder={ready.hostname ?? ready.name}
@@ -269,6 +270,7 @@ export function IconSheet({ device: d, open, onClose }: { device: Device; open: 
       dirty={changed}
       valid
       onSave={save}
+      saveLabel="Save icon"
       error={error}
       size="wide"
     >

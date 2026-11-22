@@ -618,7 +618,7 @@ function ProfileSheetBody({ mode, onClose, openAfterCreate }: { mode: SheetMode;
       dirty={dirty}
       valid={valid}
       onSave={save}
-      saveLabel={mode.kind === "create" ? "Add profile" : "Save"}
+      saveLabel={mode.kind === "create" ? "Add profile" : mode.kind === "rename" ? "Rename profile" : "Save profile"}
       error={errors._form}
     >
       {showName && (
