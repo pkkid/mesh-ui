@@ -167,7 +167,7 @@ export function CodeDialog({
             <Button type="button" size="sm" variant="ghost" disabled={running} onClick={onClose}>
               {step === "code" && field ? "Later" : "Cancel"}
             </Button>
-            <Button type="submit" size="sm" disabled={!ready || running}>
+            <Button type="submit" size="sm" variant="outline" disabled={!ready || running}>
               {step === "field" ? field?.submitLabel : "Verify"}
             </Button>
           </div>

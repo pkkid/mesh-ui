@@ -60,11 +60,17 @@ backends   eero (live cloud API) · demo (fixtures)
   - `label`: the English UI label.
   - `params`: a zod schema. It validates input and generates the JSON Schema
     shown by `mesh-ui commands` and the MCP tool, so it is the params doc.
-  - `effect`: `query` (reads only) | `write` (changes something, reversible)
-    | `disruptive` (restarts eeros or takes any device offline, even briefly,
-    e.g. reboot, DNS or DHCP changes, pausing or blocking a device or
-    profile) | `destructive` (cannot be undone: delete network, remove eero,
-    transfer ownership).
+  - `effect`: `query` (reads only) | `write` (changes something, reversible,
+    no device goes offline) | `disruptive` (devices go offline, but it can be
+    reversed: they come back on their own, as after a restart, a DNS change or
+    a time zone change, or one action in the app puts things back, as resume,
+    unblock, guest network on, or the old Wi-Fi name) | `destructive` (cannot
+    be undone from the app: something is deleted or handed over, as a
+    network, an eero, a profile, an admin, the account or Thread credentials,
+    so getting back means a person sets it up again by hand). The test, in
+    order: nothing goes offline and it is reversible, `write`; it cannot be
+    undone, `destructive`; otherwise `disruptive`. Full table:
+    `docs/architecture/commands.md#effects`.
   - `run(ctx, params)`: async, returns plain JSON-serialisable data from the
     model in `src/core/model.ts`, never a raw eero response.
 - `engine.execute(id, params)` is the **only** way state changes or eero is

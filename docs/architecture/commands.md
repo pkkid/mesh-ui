@@ -119,8 +119,13 @@ Field notes (this is the one place they are defined):
 | --- | --- | --- | --- |
 | `query` | Reads only. Safe to repeat. | no | `readOnlyHint: true`, `idempotentHint: true` |
 | `write` | Changes something reversible without taking any device offline. | no | `readOnlyHint: false`, `destructiveHint: false` |
-| `disruptive` | Restarts eeros or takes any device offline, even briefly (reboot, DNS, DHCP, Wi-Fi password, guest off, pausing or blocking a device or profile). Reversible. | `confirm: true` | `destructiveHint: true` |
-| `destructive` | Cannot be undone (delete account or profile, remove eero, remove admin, transfer network, reset Thread). | `confirm: true` | `destructiveHint: true` |
+| `disruptive` | Devices go offline, but it can be reversed. Either they come back on their own (restart network or eero, DNS, DHCP, ISP settings, an update, a time zone change that starts a schedule), or one action in the app puts things back (resume a pause, unblock, turn the guest network back on, set the old Wi-Fi name or password, turn Thread back on). | `confirm: true` | `destructiveHint: true` |
+| `destructive` | Cannot be undone from the app: something is deleted or handed over, so getting back means a person sets it up again by hand (delete network, account or profile, remove eero, remove admin, transfer network, unlink Amazon, regenerate Thread credentials). Whether devices go offline does not matter. | `confirm: true` | `destructiveHint: true` |
+
+**Picking an effect, in order:** nothing goes offline and it is reversible,
+`write`. It cannot be undone from the app, `destructive`. Otherwise,
+`disruptive`. The UI colors them the same way: yellow title and button for
+disruptive, red for destructive ([design-system.md](../design/design-system.md#modals-and-popups)).
 
 `sensitive: true` queries also say in their MCP description that the result
 contains a credential, and the CLI masks them unless `--reveal` is passed
