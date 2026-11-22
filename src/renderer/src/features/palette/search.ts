@@ -56,11 +56,6 @@ export type DeviceItem = {
   state: string | null;
   /** "Mia · Upstairs Hall". */
   context: string;
-  action: "Pause" | "Resume";
-  /** Why the row action cannot run ("Coming soon", "Off in bridge mode"), or null. Set by `withActions`. */
-  actionBlocked?: string | null;
-  /** The row action command's effect (Pause is disruptive). Set by `withActions`. */
-  actionEffect?: Effect;
 };
 
 export type ProfileItem = {
@@ -70,11 +65,6 @@ export type ProfileItem = {
   label: string;
   state: "Paused" | "Scheduled" | null;
   context: string;
-  action: "Pause" | "Resume";
-  /** Why the row action cannot run, or null. Set by `withActions`. */
-  actionBlocked?: string | null;
-  /** The row action command's effect (Pause is disruptive). Set by `withActions`. */
-  actionEffect?: Effect;
 };
 
 export type EeroItem = {
@@ -223,7 +213,7 @@ export function deviceItems(devices: ReadonlyArray<Device>, profiles: ProfileLis
     const context = [d.profileId ? profileName.get(d.profileId) : null, d.eeroId ? eeroName.get(d.eeroId) : null]
       .filter(Boolean)
       .join(" · ");
-    return { kind: "device", key: `device:${d.id}`, id: d.id, label: d.name, device: d, state, context, action: d.paused ? "Resume" : "Pause" };
+    return { kind: "device", key: `device:${d.id}`, id: d.id, label: d.name, device: d, state, context };
   });
 }
 
@@ -233,7 +223,7 @@ export function profileItems(list: ProfileList | null): ProfileItem[] {
     const devices = `${p.deviceIds.length} ${p.deviceIds.length === 1 ? "device" : "devices"}`;
     const schedule = p.schedules[0]?.name;
     const context = [devices, schedule].filter(Boolean).join(" · ");
-    return { kind: "profile", key: `profile:${p.id}`, id: p.id, label: p.name, state, context, action: p.paused ? "Resume" : "Pause" };
+    return { kind: "profile", key: `profile:${p.id}`, id: p.id, label: p.name, state, context };
   });
 }
 
@@ -601,45 +591,6 @@ export function writeRequest(
       typeToConfirm: info.effect === "destructive" && target ? target : undefined,
     },
   };
-}
-
-/** The command a device or profile row action runs: `device.pause`, `profile.resume`. */
-export const entityActionId = (item: DeviceItem | ProfileItem) => `${item.kind}.${item.action.toLowerCase()}`;
-
-/**
- * The write a device or profile row action runs, from the registry: the
- * action's command with the entity in its picker param, and Undo through the
- * opposite action when the registry has it. Null when the command does not
- * exist yet.
- */
-export function entityWrite(item: DeviceItem | ProfileItem, commands: ReadonlyArray<CommandInfo>): WriteRequest | null {
-  const info = commands.find((c) => c.id === entityActionId(item));
-  if (!info) return null;
-  const param = paramFields(info.params).find((f) => f.kind === "ref" && f.refKind === item.kind)?.name ?? item.kind;
-  const params = { [param]: item.id };
-  const inverse = commands.find((c) => c.id === `${item.kind}.${item.action === "Pause" ? "resume" : "pause"}`);
-  return {
-    id: info.id,
-    params,
-    success: `${item.action === "Pause" ? "Paused" : "Resumed"} ${item.label}`,
-    failure: `Couldn't ${item.action.toLowerCase()} ${item.label}`,
-    confirm: { title: `${item.action} ${item.label}?`, confirmLabel: item.action },
-    // Undo of a Resume is a pause, which is disruptive and asks again.
-    undo: inverse ? { id: inverse.id, params, confirm: item.action === "Resume" ? { title: `Pause ${item.label}?`, confirmLabel: "Pause" } : undefined } : undefined,
-  };
-}
-
-/** Sets each row's `actionBlocked`: "Coming soon" until its command exists, else its gate. */
-export function withActions<T extends DeviceItem | ProfileItem>(
-  items: ReadonlyArray<T>,
-  commands: ReadonlyArray<CommandInfo>,
-  ctx: AvailabilityContext,
-): T[] {
-  return items.map((item) => {
-    const info = commands.find((c) => c.id === entityActionId(item));
-    const blocked = info ? availability(info, ctx) : "Coming soon";
-    return { ...item, actionBlocked: blocked === false ? "Coming soon" : blocked, actionEffect: info?.effect ?? "write" };
-  });
 }
 
 // ---------------------------------------------------------------------------

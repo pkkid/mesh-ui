@@ -25,7 +25,7 @@ import { Button } from "~/components/ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import type { AuthStatus, DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
-import { KIND_ICON, KIND_LABEL, Keys, PaletteResults, useCommandIcons } from "./PaletteResults";
+import { KIND_LABEL, Keys, PaletteResults, useCommandIcons } from "./PaletteResults";
 import type { EntityOptions } from "./ParamsForm";
 import { PalettePreview, type RunState } from "./PalettePreview";
 import {
@@ -35,7 +35,6 @@ import {
   defaultParams,
   deviceItems,
   eeroItems,
-  entityWrite,
   type Item,
   KINDS,
   pageItems,
@@ -46,7 +45,6 @@ import {
   search,
   missingRequired,
   validateParams,
-  withActions,
   writeRequest,
 } from "./search";
 import { withUndo } from "./undo";
@@ -98,13 +96,29 @@ export function CommandPalette() {
   }, []);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    // Only Esc and the close button close it, never a click outside. Esc with focus anywhere but the search box
+    // first takes focus back to the search box; a second Esc closes.
+    <Dialog
+      open={open}
+      disablePointerDismissal
+      onOpenChange={(next, details) => {
+        if (!next && details.reason === "escape-key") {
+          const input = document.querySelector<HTMLInputElement>("[data-palette-input]");
+          if (input && document.activeElement !== input) {
+            details.cancel();
+            input.focus();
+            return;
+          }
+        }
+        setOpen(next);
+      }}
+    >
       <DialogPopup
         align="top"
         showCloseButton={false}
         aria-label="Command palette"
-        // Exactly the main content's surface (the page colour with the app's grain, as body has it).
-        className="h-[min(780px,calc(100vh-80px))] w-[min(1080px,calc(100vw-48px))] overflow-hidden bg-background surface-grain"
+        // Exactly the main content's surface: the flat canvas.
+        className="h-[min(780px,calc(100vh-80px))] w-[min(1080px,calc(100vw-48px))] overflow-hidden bg-background"
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <PaletteBody close={() => setOpen(false)} />
@@ -151,8 +165,8 @@ function PaletteBody({ close }: { close: () => void }) {
       // Places: the pages, then every section and settings row the page would show now (placeRules.ts).
       pages: signedIn ? [...pageItems(ROUTES), ...placeItems(PLACES, ROUTES, (rule) => placeShown(rule, placeCtx))] : [],
       eeros: signedIn ? eeroItems(eeros.data ?? null) : [],
-      devices: signedIn ? withActions(deviceItems(devices.data?.devices ?? [], profiles.data ?? null, eeros.data ?? null), cmds, ctx) : [],
-      profiles: signedIn ? withActions(profileItems(profiles.data ?? null), cmds, ctx) : [],
+      devices: signedIn ? deviceItems(devices.data?.devices ?? [], profiles.data ?? null, eeros.data ?? null) : [],
+      profiles: signedIn ? profileItems(profiles.data ?? null) : [],
       recent,
     };
   }, [registry, signedIn, permissions.data, network.data, devices.data, profiles.data, eeros.data, placeCtx]);
@@ -208,12 +222,11 @@ function PaletteBody({ close }: { close: () => void }) {
           (missing.length > 0 ? `Set ${missing.join(", ")} first` : Object.keys(errors).length > 0 ? "Fix the params first" : null));
 
   // A change asks first (a confirm), so its button ends in an ellipsis; a query runs at once.
-  const runLabel = !item || item.kind === "command" ? (item && item.info.effect !== "query" ? "Run\u2026" : "Run") : `Open ${item.label}`;
+  const runLabel = !item || item.kind === "command" ? (item && item.info.effect !== "query" ? "Run command\u2026" : "Run command") : `Go to ${item.label}`;
 
   // Writes: one useWrite for whatever is selected. Its confirm is a dialog
   // nested over the palette, so focus and Esc stay with it.
-  const action = item?.kind === "device" || item?.kind === "profile" ? entityWrite(item, registry ?? []) : null;
-  const writeId = item?.kind === "command" ? item.info.id : (action?.id ?? "");
+  const writeId = item?.kind === "command" ? item.info.id : "";
   const write = useWrite(writeId, { confirmIn: "nested" });
   const busy = write.running || write.asking !== null;
 
@@ -266,19 +279,23 @@ function PaletteBody({ close }: { close: () => void }) {
     },
   });
 
-  /** The row action (Pause, Resume) of the selected device or profile. */
-  const runAction = async () => {
-    if (!item || (item.kind !== "device" && item.kind !== "profile") || !action || item.actionBlocked || busy) return;
-    askedFor.current = item.key;
-    const { id: _id, params, ...options } = action;
-    await write.run(params, item.actionEffect === "write" ? { ...options, ...askWrite(`${item.action} ${item.label}`, null) } : options);
-    inputRef.current?.focus();
+  /** Runs the selected eero, device or profile's details read (`device.get`, ...) in line, as a query command runs. */
+  const runDetails = async () => {
+    if (!item || (item.kind !== "eero" && item.kind !== "device" && item.kind !== "profile")) return;
+    const key = item.key;
+    setRun({ key, state: { running: true, result: null } });
+    const res = await execute(`${item.kind}.get`, { [item.kind]: item.id });
+    setRun((r) => (r.key === key ? { key, state: { running: false, result: res } } : r));
   };
 
+  /** The highlighted result's CLI line: the command with its chosen params, or an eero, device or profile's details read. */
   const copyCli = async (): Promise<boolean> => {
-    if (item?.kind !== "command") return false;
+    let line: string | null = null;
+    if (item?.kind === "command") line = cliLine(item.info.id, chosen, item.info.effect);
+    else if (item?.kind === "eero" || item?.kind === "device" || item?.kind === "profile") line = cliLine(`${item.kind}.get`, { [item.kind]: item.id }, "query");
+    if (line === null) return false; // a place has no command
     try {
-      return await copyText(cliLine(item.info.id, chosen, item.info.effect), { toast: "Copied the CLI command" });
+      return await copyText(line, { toast: "Copied the CLI command" });
     } catch {
       return false;
     }
@@ -311,21 +328,21 @@ function PaletteBody({ close }: { close: () => void }) {
   };
 
   /**
-   * Ctrl+C (Cmd+C) anywhere in the palette copies the selected command as a CLI line, unless real text is selected:
-   * part of the query, or text in the preview. The query's own select-all on focus does not count.
+   * Ctrl+Shift+C (Cmd+Shift+C) copies the highlighted result's CLI line whenever the palette is open, wherever focus
+   * is (the search box, a params field, a button, the dialog itself). Plain Ctrl+C is the system copy and is never
+   * taken over. A window listener, since focus can sit on the dialog popup, outside this body.
    */
-  const onPaletteKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (!((isMac() ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "c")) return;
-    if (item?.kind !== "command") return;
-    const t = e.target as HTMLElement;
-    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) {
-      const { selectionStart: a, selectionEnd: b, value } = t;
-      const partial = a !== null && b !== null && a !== b && !(a === 0 && b === value.length && t === inputRef.current);
-      if (partial) return;
-    } else if ((window.getSelection()?.toString() ?? "") !== "") return;
-    e.preventDefault();
-    void copyCli();
-  };
+  const copyRef = useRef(copyCli);
+  copyRef.current = copyCli;
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!((isMac() ? e.metaKey : e.ctrlKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "c")) return;
+      e.preventDefault();
+      void copyRef.current();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 
   // Enter in a params field runs too (not on buttons, which have their own Enter).
   const onPreviewKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -355,11 +372,12 @@ function PaletteBody({ close }: { close: () => void }) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col" onKeyDown={onPaletteKey}>
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-[58px] shrink-0 items-center gap-3 px-[18px]">
         <Search className="size-[18px] shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
+          data-palette-input=""
           autoFocus
           onFocus={(e) => e.currentTarget.select()}
           value={query}
@@ -398,21 +416,17 @@ function PaletteBody({ close }: { close: () => void }) {
             <SelectValue />
           </SelectTrigger>
           <SelectPopup>
-            {chips.map((c) => {
-              const Icon = c.scope === "all" ? null : KIND_ICON[c.scope];
-              return (
-                <SelectItem key={c.scope} value={c.scope}>
-                  <span className="flex w-full items-center gap-2">
-                    {Icon ? <Icon className="size-3.5 text-muted-foreground" /> : <span className="size-3.5" />}
-                    <span className="flex-1">{c.label}</span>
-                    {c.count !== null && <span className="text-muted-foreground tabular-nums">{c.count}</span>}
-                  </span>
-                </SelectItem>
-              );
-            })}
+            {chips.map((c) => (
+              <SelectItem key={c.scope} value={c.scope}>
+                <span className="flex w-full items-center gap-2">
+                  <span className="flex-1">{c.label}</span>
+                  {c.count !== null && <span className="text-muted-foreground tabular-nums">{c.count}</span>}
+                </span>
+              </SelectItem>
+            ))}
           </SelectPopup>
         </Select>
-        {/* Close: Esc and a click outside close it too, so the button needs no key hint. */}
+        {/* Close: Esc closes it too (a click outside does not). */}
         <Button size="icon-sm" variant="ghost-muted" aria-label="Close" title="Close (Esc)" onClick={close}>
           <X />
         </Button>
@@ -431,15 +445,14 @@ function PaletteBody({ close }: { close: () => void }) {
           }}
           loading={listLoading}
           showLoading={result.mode === "text" && query.trim() !== "" && (scope === "all" || scope === "eero" || scope === "device" || scope === "profile")}
-          commandCount={registry?.length ?? 0}
           empty={result.total === 0 && registry !== null}
         />
-        {/* The preview is its own panel, rounded and inset, in exactly the navigation sidebar's surface and its 1px border colour. */}
+        {/* The preview is its own panel running to the palette's right and bottom edges, in exactly the navigation sidebar's surface, with 1px top and left borders and a rounded top-left corner. */}
         <div
           ref={previewRef}
           onKeyDown={onPreviewKey}
           data-sidebar-surface=""
-          className="ms-2.5 me-2.5 mb-2.5 flex min-h-0 flex-col overflow-hidden rounded-xl border bg-sidebar surface-grain"
+          className="ms-2.5 flex min-h-0 flex-col overflow-hidden rounded-tl-xl border-t border-l bg-sidebar surface-grain"
         >
           {item ? (
             <PalettePreview
@@ -452,11 +465,10 @@ function PaletteBody({ close }: { close: () => void }) {
               entities={entities}
               run={write.asking ? { ...runState, running: false } : runState}
               onRun={() => void runItem(item)}
+              onRunDetails={() => void runDetails()}
               blocked={blocked}
               runLabel={runLabel}
               onCopy={copyCli}
-              onAction={() => void runAction()}
-              actionRunning={write.running}
             />
           ) : (
             <div className="grid flex-1 place-items-center px-6 text-center text-muted-foreground text-sm">
@@ -475,14 +487,11 @@ function PaletteBody({ close }: { close: () => void }) {
         </span>
         <span className="inline-flex items-center gap-1.5">
           <Keys keys={["↵"]} />
-          Run
+          Run, Go to
         </span>
+        {/* Tab still moves into the params; it is what people expect, so the footer does not list it. */}
         <span className="inline-flex items-center gap-1.5">
-          <Keys keys={["Tab"]} />
-          Edit params
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Keys keys={isMac() ? ["⌘", "C"] : ["Ctrl", "C"]} />
+          <Keys keys={isMac() ? ["⌘", "⇧", "C"] : ["Ctrl", "Shift", "C"]} />
           Copy as CLI
         </span>
       </div>

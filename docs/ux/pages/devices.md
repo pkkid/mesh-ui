@@ -75,8 +75,7 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
 2. **All devices** section (56px below the rule). **Frozen while
    scrolling:** once the heading reaches the top of the page, the heading
    and its description, the toolbar, the active filter chips and the bulk
-   bar stay put (CSS `sticky`, on the page background with its grain lined
-   up, starting 24px higher so the heading clears the topbar's scroll fade),
+   bar stay put (CSS `sticky`, on the page's flat background, starting 24px higher so the heading clears the topbar's scroll fade),
    and the table's header row stays right under them; the rows scroll up
    behind both. The header row is moved with a transform on scroll
    (`usePinnedHead`) rather than `sticky`, because the table's box scrolls

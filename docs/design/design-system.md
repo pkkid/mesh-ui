@@ -53,7 +53,7 @@ variables on `<html>`.
 
 | Theme | Notes |
 | --- | --- |
-| **Classic** | Default. Neutral zinc, close to T3 Code's default |
+| **Classic** | Default. T3 Code's standard theme as its web app paints it: zinc in light, a true black page, chrome and sidebar in dark |
 | Rose | T3 Code's T3 Chat theme |
 | Grove | |
 | Ocean | |
@@ -65,13 +65,28 @@ or a file). Gruvbox is no longer built in; the import's tests use its files
 (`test/fixtures/vscode-themes/gruvbox/`, MIT) because their result is known
 to match T3 Code's Gruvbox role for role.
 
-**Surface grain.** As in T3 Code, the body, sidebar, main pane and topbar
-carry a faint fractal-noise tile (`surface-grain` in `index.css`, 3.5%
-opacity, copied from T3). It is texture, not colour, and is the reason a
-theme looks a few steps lighter (dark) or darker (light) than its flat role
-colour: Gruvbox Hard's `#1d2021` canvas paints at about `#202324`. Any other
-opaque surface that sits directly on the body opts in with `surface-grain`,
-or it shows as a flat patch.
+**Surfaces, as T3 Code paints them.** The roles map to tokens as in T3
+Code's `index.css`: `canvas` is `bg-background`, `chrome` is the body,
+`sidebar` is `bg-sidebar`, `surface` is `bg-card`, `surfaceOverlay` is
+`bg-popover`. The window paints them the same way:
+
+| Mesh UI | T3 Code | Paint |
+| --- | --- | --- |
+| `html`, `body` | `html, body` (base layer) | `chrome`, with grain on `body` |
+| Navigation sidebar | `sidebar-inner` in `ui/sidebar.tsx` | `bg-sidebar surface-grain` |
+| Main pane (topbar and content) | the page column over `SidebarInset` (`ChatView`, `NoActiveThreadState`) | `bg-background`, flat |
+| Palette details panel | | `bg-sidebar surface-grain`, as the sidebar |
+
+**Surface grain.** A faint fractal-noise tile (`surface-grain` in
+`index.css`, 3.5% opacity, copied from T3) on the body and the sidebar
+only. It is texture, not colour, and lifts a dark sidebar a few steps above
+its flat role colour (dims a light one): with Gruvbox Dark Hard, whose
+canvas and sidebar are both `#1d2021`, the sidebar paints at `#202324` and
+the main pane at `#1d2021`, exactly as in T3 Code. T3's `SidebarInset` also
+carries the grain, but every page column inside it paints a flat
+`bg-background` over it, so the content T3 shows is flat; Mesh UI's main
+pane is flat for the same reason. A panel drawn in the sidebar's surface
+takes `bg-sidebar surface-grain`; anything on the page stays flat.
 
 **Light and dark are picked separately**, as in T3 Code: the settings hold a
 theme id for light mode, one for dark mode, and the mode (System, Light,
@@ -352,8 +367,8 @@ Backgrounds, from back to front:
 
 | Surface | Class |
 | --- | --- |
-| Page, titlebar, tooltips | `bg-background` (with `surface-grain`), `bg-tooltip/95` |
-| Sidebar | `bg-sidebar`; rows `bg-sidebar-row-hover`, `bg-sidebar-row-selected` |
+| Page, titlebar, tooltips | `bg-background` (flat), `bg-tooltip/95` |
+| Sidebar | `bg-sidebar surface-grain`; rows `bg-sidebar-row-hover`, `bg-sidebar-row-selected` |
 | Section card | `bg-card/40`, `shadow-xs/5` |
 | Hover on rows and cards | `hover:bg-muted/50` (rows), `hover:bg-muted/30` (cards) |
 | Inset: Segmented track, badges, avatars, icon tiles, table group rows | `bg-muted` |
@@ -380,7 +395,7 @@ sign-out icon.
 Main pane: a 44px top bar (breadcrumbs, page navigation, search,
 Refresh, notifications, theme toggle, window controls) over a scrolling content
 column. The top bar paints no background of its own (the main pane's
-surface and grain show through, so it matches the content and the
+flat canvas shows through, so it matches the content and the
 transparent native window controls exactly) and has no bottom border: as in T3 Code, the scroll column's
 top 1.5rem fades from transparent to opaque (`topbar-scroll-fade`, a mask;
 the scrollbar lane stays opaque), so content scrolling up dissolves under the

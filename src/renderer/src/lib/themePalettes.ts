@@ -921,13 +921,31 @@ export const IRIS_THEME: ThemeDefinition = {
   },
 };
 
-/** Neutral zinc, T3 Code's default palette. */
+/**
+ * T3 Code's standard theme as its web app paints it (themePalette.ts,
+ * STANDARD_WEB_PAINTED_COLORS, and the :root block of index.css). The shared
+ * palette above is what T3's mobile app uses; on the web the dark canvas is
+ * true black, and the window chrome, toolbar and terminal follow the canvas
+ * (`--app-chrome-background: var(--background)`).
+ */
+const STANDARD_WEB_PAINTED: Record<ThemeAppearance, Partial<ThemeColors>> = {
+  light: { messageSurface: "#ebebed" },
+  dark: {
+    canvas: "#000000",
+    chrome: "#000000",
+    toolbar: "#000000",
+    terminalBackground: "#000000",
+    messageSurface: "#1e1e1e",
+  },
+};
+
+/** Neutral zinc, T3 Code's default palette, painted as T3 Code's web app paints it. */
 export const CLASSIC_THEME: ThemeDefinition = {
   id: "classic",
   label: "Classic",
   appearance: "light",
-  colors: DEFAULT_LIGHT_COLORS,
-  variants: { dark: DEFAULT_DARK_COLORS },
+  colors: { ...DEFAULT_LIGHT_COLORS, ...STANDARD_WEB_PAINTED.light },
+  variants: { dark: { ...DEFAULT_DARK_COLORS, ...STANDARD_WEB_PAINTED.dark } },
 };
 
 /** The built-in themes, in picker order. More come from VS Code themes the user adds. */

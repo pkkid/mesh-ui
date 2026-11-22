@@ -32,6 +32,8 @@ import {
   type Rgba,
 } from "./themeColor";
 import {
+  DEFAULT_DARK_COLORS,
+  DEFAULT_LIGHT_COLORS,
   SERIES_HUES,
   THEME_COLOR_ROLES,
   getThemeModes,
@@ -155,7 +157,8 @@ export function parseVsCodeTheme(value: unknown, options: { label?: string } = {
     const parsed = pick(...keys);
     return parsed ? rgbToHex(flattenOver(parsed, base)) : null;
   };
-  const rgb = (hex: string): Rgb => parseRgb(hex, { r: 0, g: 0, b: 0 });
+  // As T3's hexToRgb: any colour is rounded to 8-bit hex before it is measured.
+  const rgb = (value: string): Rgb => parseRgb(colorToHex(value) ?? value, { r: 0, g: 0, b: 0 });
   const standsApart = (first: string, second: string) => contrastRatio(rgb(first), rgb(second)) >= 1.1;
 
   const canvasColor = pick("editor.background", "editorPane.background");
@@ -187,8 +190,10 @@ export function parseVsCodeTheme(value: unknown, options: { label?: string } = {
     accentHex = candidateHex;
     break;
   }
+  // T3's getStandardThemeColors: the Classic palette (its accent and input do not change when painted).
+  const standard = appearance === "dark" ? DEFAULT_DARK_COLORS : DEFAULT_LIGHT_COLORS;
   if (!accentColor || !accentHex) {
-    const standardAccent = appearance === "dark" ? "#8b9cff" : "#1b4ed8";
+    const standardAccent = colorToHex(standard.accent)!;
     accentHex =
       [standardAccent, "#ffffff", "#000000"].find(
         (candidate) =>
@@ -199,17 +204,16 @@ export function parseVsCodeTheme(value: unknown, options: { label?: string } = {
 
   const mutedAccentHex = rgbToHex(flattenOver({ ...accentColor, a: 0.2 }, canvas));
   const derived = createVividThemeColors(appearance, canvasHex, mutedAccentHex);
-  const derivedHex = (role: ThemeColorRole) => colorToHex(derived[role]) ?? "#808080";
 
-  const sidebarHex = solidOver(canvas, "sideBar.background", "activityBar.background") ?? derivedHex("sidebar");
+  const sidebarHex = solidOver(canvas, "sideBar.background", "activityBar.background") ?? derived.sidebar;
   const sidebar = rgb(sidebarHex);
-  const terminalHex = solidOver(canvas, "terminal.background", "panel.background") ?? derivedHex("terminalBackground");
+  const terminalHex = solidOver(canvas, "terminal.background", "panel.background") ?? derived.terminalBackground;
   const terminal = rgb(terminalHex);
 
   /** The first named colour readable at 4.5:1 on `surface`, else the derived one, else black or white. */
   const readableOn = (surface: string, fallback: string, ...keys: ReadonlyArray<string>): string => {
     const surfaceRgb = rgb(surface);
-    const isReadable = (candidate: string) => contrastRatio(parseRgb(candidate, surfaceRgb), surfaceRgb) >= 4.5;
+    const isReadable = (candidate: string) => contrastRatio(rgb(candidate), surfaceRgb) >= 4.5;
     const specified = solidOver(surfaceRgb, ...keys);
     if (specified && isReadable(specified)) return specified;
     if (isReadable(fallback)) return fallback;
@@ -219,18 +223,18 @@ export function parseVsCodeTheme(value: unknown, options: { label?: string } = {
   // is lightened along its hue rather than replaced by black or white.
   const readableStatus = (fallback: string, ...keys: ReadonlyArray<string>): string => {
     const specified = solidOver(canvas, ...keys);
-    const base = specified && standsApart(specified, canvasHex) ? specified : (colorToHex(fallback) ?? fallback);
+    const base = specified && standsApart(specified, canvasHex) ? specified : fallback;
     return readableColorOn(base, canvasHex, 4.5);
   };
 
-  const surfaceRaisedHex = raisedCandidate ?? derivedHex("surfaceRaised");
+  const surfaceRaisedHex = raisedCandidate ?? derived.surfaceRaised;
   const buttonHex = solidOver(canvas, "button.background");
   const actionHex =
     buttonHex && standsApart(buttonHex, canvasHex) && standsApart(buttonHex, surfaceRaisedHex) ? buttonHex : accentHex;
   const inputCandidates = [
-    derivedHex("input"),
-    derivedHex("surfaceRaised"),
-    appearance === "dark" ? "#3f3f46" : "#d4d4d8",
+    derived.input,
+    derived.surfaceRaised,
+    standard.input,
     "#000000",
     "#ffffff",
     "#808080",
@@ -246,9 +250,9 @@ export function parseVsCodeTheme(value: unknown, options: { label?: string } = {
     }
   }
   const searchMatchBackground =
-    solidOver(canvas, "editor.findMatchHighlightBackground") ?? derivedHex("searchMatchBackground");
+    solidOver(canvas, "editor.findMatchHighlightBackground") ?? derived.searchMatchBackground;
   const searchMatchActiveBackground =
-    solidOver(canvas, "editor.findMatchBackground") ?? derivedHex("searchMatchActiveBackground");
+    solidOver(canvas, "editor.findMatchBackground") ?? derived.searchMatchActiveBackground;
 
   const overrides: Partial<Record<ThemeColorRole, string>> = {
     canvas: canvasHex,

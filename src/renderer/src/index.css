@@ -156,10 +156,14 @@
  * Surface grain, ported from T3 Code (apps/web/src/index.css). A fractal
  * noise tile at 3.5% opacity painted over each app surface's own background:
  * it lifts dark themes by a few steps and dims light ones, which is why the
- * same theme reads lighter in T3 Code than its flat colour (Gruvbox Hard dark
- * #1d2021 paints as about #222526). Opaque surfaces that sit on the body
- * (sidebar, main, topbar) opt in with `surface-grain`, or they would stand
- * out against it. Rose is T3's T3 Chat theme and keeps its lighter tile.
+ * same theme's sidebar reads lighter than its flat colour (Gruvbox Hard dark
+ * #1d2021 paints as #202324). As in T3 Code, only the body, the navigation
+ * sidebar (`bg-sidebar surface-grain`, T3's sidebar-inner) and panels drawn
+ * in the sidebar's surface carry it. The main pane is the flat canvas: T3's
+ * SidebarInset has the grain, but every page column inside it (ChatView,
+ * NoActiveThreadState, IssuesPage) paints a flat `bg-background` over it, so
+ * the content area T3 shows is the canvas colour itself. Rose is T3's T3 Chat
+ * theme and keeps its lighter tile.
  */
 :root {
   --surface-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
@@ -186,8 +190,14 @@ html[data-theme-id="rose"] {
   #root {
     height: 100%;
   }
+  /* As T3 Code (index.css, base layer): the window chrome colour under
+     everything, with the grain on body. The sidebar and main pane cover it. */
+  html,
   body {
-    @apply bg-background surface-grain font-sans text-foreground antialiased;
+    background-color: var(--color-chrome);
+  }
+  body {
+    @apply surface-grain font-sans text-foreground antialiased;
     font-size: 14px;
     overflow: hidden;
     user-select: none;
@@ -246,6 +256,53 @@ html[data-theme-id="rose"] {
     100% calc(var(--topbar-scroll-fade-height) + 1px),
     100% calc(100% - var(--topbar-scroll-fade-height)),
     var(--app-scrollbar-width) 100%;
+}
+
+/*
+ * scroll-fade-y: a scroll box whose content dissolves at the top and bottom
+ * edges, but only where there is more to scroll to (a scroll-driven animation
+ * grows each edge's fade as content passes it, so a list at rest is not
+ * faded at its first row, and a box that does not scroll is not faded at
+ * all). It is a mask, so it fades to whatever surface sits behind the box
+ * (the palette's results and its sidebar-coloured details panel alike). The
+ * scrollbar lane stays opaque, as with topbar-scroll-fade.
+ */
+@property --scroll-fade-top {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --scroll-fade-bottom {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade-top-in {
+  from { --scroll-fade-top: 0px; }
+  to { --scroll-fade-top: var(--topbar-scroll-fade-height); }
+}
+@keyframes scroll-fade-bottom-out {
+  from { --scroll-fade-bottom: var(--topbar-scroll-fade-height); }
+  to { --scroll-fade-bottom: 0px; }
+}
+@utility scroll-fade-y {
+  animation: scroll-fade-top-in linear both, scroll-fade-bottom-out linear both;
+  animation-timeline: scroll(self), scroll(self);
+  animation-range:
+    0 var(--topbar-scroll-fade-height),
+    calc(100% - var(--topbar-scroll-fade-height)) 100%;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      black var(--scroll-fade-top),
+      black calc(100% - var(--scroll-fade-bottom)),
+      transparent 100%
+    ),
+    linear-gradient(black, black);
+  mask-position: top left, right;
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%, var(--app-scrollbar-width) 100%;
 }
 
 /*

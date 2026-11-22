@@ -16,19 +16,19 @@ Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. 
      - **Commands**: icon, label with the match highlighted ("Pause profile..."), the command id under it (`profile.pause`, or with preset params such as `device.list {"status":"online"}`), an effect tag (`query`, `write`, `disruptive`, `destructive`) and a shortcut if one exists (`Ctrl Shift P`). Presets are renderer-only shortcuts listed in `features/palette/search.ts` (`PRESETS`), like keyboard shortcuts.
      - **Pages**: every page in `ROUTES` that has no id in its path (Overview, Devices, Wi-Fi, ...), with its icon and path. Detail pages are reached through eero, device and profile rows.
      - **eeros**: the eero product glyph (`eeroIcon`), the location with the match highlighted, a **Gateway** badge on the gateway, the status as a dot and label ("Online", "Weak link", "Offline"), and context (model, connected device count). Matches the location, then (ranked below every location match) the model. No row action; Enter opens the eero page. eero pages stay available in bridge mode, so the group does too.
-     - **Devices**: icon, name, state (`Paused`), context (profile, eero, usage today), and the contextual action it would run (`Resume`, `Pause`) with its effect.
-     - **Profiles**: avatar, name, state (`Paused`, `Scheduled`), context (time left, device count, schedule), and the action (`Resume`, `Pause now`).
-     - A hint row: type `>` to search all commands by id (e.g. `>eero.restart`).
+     - **Devices**: icon, name, state (`Paused`), context (profile, eero, usage today). No row action; Enter opens the device page.
+     - **Profiles**: avatar, name, state (`Paused`, `Scheduled`), context (time left, device count, schedule). No row action; Enter opens the profile page.
+     - No hint row: typing `>` still searches commands by id (e.g. `>eero.restart`), but the palette does not advertise it.
    - **Preview** of the selected result:
      - Icon, label, effect tag and id (`profile.pause`). The source file is not shown: the registry does not carry it, and guessing it from the area is wrong for some commands (`speedtest.history` lives in `internet.ts`).
      - One line description, including whether it needs confirm.
      - **Params** form generated from the zod schema ("Tab to edit"): required fields marked, selects for entity params (profile picker with a context hint "scheduled, Bedtime at 9 PM"), segmented choices for small enums (none on `profile.pause`, which takes only `profile`).
      - **CLI** block with the equivalent `mesh-ui run <id> --params '{...}'` and **Copy**.
-     - **MCP tool** block: tool name (`profile_pause`), hint badges (`readOnly: false`, `destructive: false`), the tool call JSON and, after a run, the result envelope (`{"ok": true, "result": ...}`) the UI and CLI also get. The CLI and MCP lines show only params that differ from the schema defaults.
+     - **MCP tool** block: tool name (`profile_pause`), hint badges (`readOnly: false`, `destructive: false`), the tool call JSON and, after a run, the result envelope (`{"ok": true, "result": ...}`) the UI and CLI also get, shown as the dev tools show a response: a collapsible, syntax-coloured JSON tree. The CLI and MCP lines show only params that differ from the schema defaults.
      - Surfaces strip: UI (`window.mesh`), CLI (`mesh-ui run`), MCP (`mesh-ui mcp`), and a line that every surface uses one `engine.execute` and that disruptive and destructive commands need `confirm: true`.
-     - Buttons: primary run button (`Run`, or `Open <name>` for pages, devices and profiles, `Enter`) and **Add to script.jsonl** (disabled, coming soon). When the run button is disabled the reason sits beside it ("Set device first", "Coming soon").
+     - Buttons: primary run button (`Run command`, `Run command…` when it asks first, with a play icon, or `Go to <name>` with an arrow icon for places, eeros, devices and profiles, `Enter`; eeros, devices and profiles also get a **Run command** button beside it that runs their `eero.get`, `device.get` or `profile.get` in line and shows the result under the MCP tool call) and **Add to script.jsonl** (disabled, coming soon). When the run button is disabled the reason is its tooltip ("Set device first", "Coming soon"), not text beside it.
      - Long forms show required fields, filled-in fields and the first four optional ones, then "N more params".
-3. **Footer**: key hints (`Up/Down` navigate, `Enter` run, `Tab` edit params, `Ctrl C` copy as CLI) and an effect legend.
+3. **Footer**: key hints (`Up/Down` navigate, `Enter` "Run, Go to", `Ctrl Shift C` copy as CLI). `Tab` still moves into the params but is not listed.
 
 ## Data
 
@@ -55,22 +55,21 @@ Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. 
 | Enter or run button (write) | `window.mesh.execute(id, params)` through `useWrite` | write | no | Success toast ("Done: Pause device, Leo's iPad"), or an error toast with Retry; the result envelope shows in the preview and the palette stays open. A write whose opposite is a `write` in the registry (`.pause` and `.resume`, `.block` and `.unblock`, `.enable` and `.disable`) toasts with Undo, which runs the opposite with the same targets (a bulk device write undoes only the devices it changed, and offers no Undo when none changed); `features/palette/undo.ts` |
 | Enter or run button (disruptive) | `useWrite`: runs once without `confirm`, then `{...params, confirm: true}` after the confirm | disruptive | confirm dialog nested over the palette, with the engine's `needs_confirm` message | Progress toast, then success or error toast |
 | Enter or run button (destructive) | as disruptive | destructive | the confirm dialog over the palette; type the target's name when the command has an entity param | Success or error toast |
-| Device or profile row action (preview Actions button) | `device.pause`, `device.resume`, `profile.pause`, `profile.resume`, the entity in the command's picker param | disruptive (pause) / write (resume) | pause: confirm dialog over the palette | Toast "Paused Leo's iPad" with Undo (the opposite action, which asks first when it is a pause). "Coming soon" until the command is in the registry |
 | Command shortcut (e.g. `Ctrl Shift P`) | opens the palette on that command with params focused | | | |
-| Copy (CLI block) or `Ctrl C` | none | | | Copies the CLI line |
+| Copy (CLI block) or `Ctrl Shift C` | none | | | Copies the highlighted result's CLI line: a command with its chosen params, or an eero, device or profile's `.get` read. Works wherever focus is while the palette is open; a place has no command, so it does nothing |
 | Add to script.jsonl | none (app local) | | | Appends `{"id", "params"}` to a script file chosen once with a save dialog |
-| Esc or backdrop | none | | | Closes |
+| Esc or close button | none | | | Closes. Esc with focus outside the search box first focuses the search box; the next Esc closes. A click on the backdrop does nothing |
 
 Commands shown in the mockup: `profile.pause`, `device.pause`, `wifi.hide5g.set`, `profile.schedule.add`, `profile.unassigned.pause`, `device.list` with preset params.
 
 ## States
 
 - **Empty query:** commands run from the palette in this session first, then every command and every page (no eeros, devices or profiles). The palette reopens on the last query, scope and selection (the query selected, so typing replaces it).
-- **No results:** "No commands, eeros, devices or profiles match." plus the `>` hint.
+- **No results:** "No commands, eeros, devices or profiles match."
 - **Loading entities:** command results show at once; eero, device and profile groups show a muted "Loading..." row.
 - **Invalid params:** the run button is disabled and the field shows the zod message (the same text `bad_params` returns).
 - **Not signed in:** only app and auth commands are listed (no pages, eeros, devices or profiles). The sign-in commands themselves (`auth.login.*`) are never listed; they need the sign-in screen.
-- **No permission:** writes the user cannot run (per `network.permissions`) are listed dimmed with the reason beside the effect tag and the run button, and Enter does nothing: "Owner only" for an admin (and for every `destructive` command when the user is not the owner), "You don't have permission to change this" otherwise. The permission area comes from the id's area (`device` is `devices`, `wifi` and `guest` are `settings`, ...) and the operation from the verb (`create`/`add`, `delete`/`remove` or destructive, else `update`); see `commandGate` in `features/palette/search.ts`.
+- **No permission:** writes the user cannot run (per `network.permissions`) are listed dimmed with the reason beside the effect tag and as the run button's tooltip, and Enter does nothing: "Owner only" for an admin (and for every `destructive` command when the user is not the owner), "You don't have permission to change this" otherwise. The permission area comes from the id's area (`device` is `devices`, `wifi` and `guest` are `settings`, ...) and the operation from the verb (`create`/`add`, `delete`/`remove` or destructive, else `update`); see `commandGate` in `features/palette/search.ts`.
 - **Capability missing or bridge mode:** writes unavailable on this network are dimmed with "Not available on this network" (a `network.get` capability such as `device_blacklist` for block, `led_action` for the status light) or "Off in bridge mode" (pause, block, profiles, reservations, forwards, SQM). The same `gateFor` check the pages use (`app/useWrite.ts`). The engine still has the last word when a command runs.
 - **Confirm pending:** moving to another result cancels it; nothing has run. The preview shows no "Running..." while the confirm waits; it shows once the person confirms.
 - **Error after run:** toast with the error code message and Retry; the result envelope shows in the preview.
@@ -84,5 +83,5 @@ Commands shown in the mockup: `profile.pause`, `device.pause`, `wifi.hide5g.set`
 - "Pause unassigned devices" is `profile.unassigned.pause` (disruptive: it takes every unprofiled device offline, TVs and smart home gear included).
 - "Pause 5 and 6 GHz for 2.4 GHz setup" is `wifi.hide5g.set` `{enabled: true}` (eero ends it on its own; disruptive, so it goes through the confirm dialog).
 - Device and profile rows both say **Resume**, matching `device.resume` and `profile.resume`.
-- `Ctrl C` as "copy as CLI" conflicts with copying selected text in the input. Only take it when the input has no selection.
+- Copy as CLI is `Ctrl Shift C` (`Cmd Shift C`): plain `Ctrl C` is the system copy and is never taken over.
 - The mockup says 64 commands; the count comes from the registry, never hard coded.

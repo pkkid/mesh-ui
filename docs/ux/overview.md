@@ -205,8 +205,10 @@ be found and run here, with the same params and confirm rules as the CLI and
 MCP.
 
 **Open and close.** `Ctrl+K` (`⌘K`), the topbar search field, or `>` typed
-anywhere outside an input. `Esc`, a click outside it, or the close button
-(an X at the right of the input row) close it. Opens centred over the main pane on
+anywhere outside an input. Only `Esc` or the close button
+(an X at the right of the input row) close it; a click outside does not.
+`Esc` with focus anywhere in the palette but the search box first moves
+focus back to the search box; a second `Esc` closes. Opens centred over the main pane on
 a dimmed, slightly blurred backdrop.
 
 **Input row.** Search icon, query text, a result count ("10 results"), a
@@ -280,17 +282,23 @@ the navigation sidebar's surface (`bg-sidebar surface-grain`) with the 1px
 edge the sidebar has on its right, the same rule (`[data-sidebar-surface]`
 in `index.css`: the sidebar's text colour at 8% in dark, 10% in light), on the
 palette's background, which is exactly the main content's
-(`bg-background surface-grain`), so the two differ as the sidebar and page
-do, with rounded corners, inset 10px from the
-results list's scrollbar and the palette's right and bottom edges. The palette has no dividers between the
+(the flat `bg-background`), so the two differ as the sidebar and page
+do. It sits 10px from the results list's scrollbar and runs flush to
+the palette's right edge and down to the footer, with 1px top and left
+borders and a rounded top-left corner (12px); its other corners are square. The results list and the preview each fade their content
+at the top and bottom edges (`scroll-fade-y` in `index.css`), only on an
+edge with more to scroll to. The palette has no dividers between the
 input row, the list and the preview (only the footer keeps its top
-border). The footer lists the keys (Navigate, Run, Edit params, Copy as CLI) and nothing else; the effects legend it once had is gone, since every row shows its own effect.
+border). The footer lists the keys (Navigate, Run, Go to, Copy as CLI; Tab into the params works but is not listed) and nothing else; the effects legend it once had is gone, since every row shows its own effect.
 
 For an eero, device or profile it shows what it is, that Enter opens its
 page, then the details read as a **CLI** line with Copy (`mesh-ui run
 device.get --params '{"device":"..."}'`) and the **MCP tool** call
-(`device_get`, read only), so a script or agent gets what the page shows,
-then the row action (Pause, Resume) under **Actions**.
+(`device_get`, read only), so a script or agent gets what the page shows.
+Beside **Go to <name>** (Enter) a **Run command** button runs that read
+in line and shows its result under the MCP call, as a query command does.
+Rows have no actions (no Pause or Resume): those run as commands
+(`device.pause`, `profile.resume`) or from the entity's page.
 
 For a command:
 
@@ -300,7 +308,7 @@ For a command:
 - A one-line description from the command spec, ending with its confirm rule
   ("Reversible, no confirm needed.").
 - Colours: the title in the text colour; the description, ids and code in
-  the muted colour; sub headings (Params, CLI, MCP tool, Actions) in normal
+  the muted colour; sub headings (Params, CLI, MCP tool) in normal
   case, `text-[13px] font-medium` in the text colour (never small caps);
   code blocks on a plain `bg-muted`, no border.
 - **Params**, a form generated from the zod JSON Schema: required fields
@@ -319,16 +327,15 @@ For a command:
   the heading does not repeat it) (no readOnly or destructive badges: the effect chip in the header
   already says it), noting it is the same result
   the UI and CLI get.
-- **Buttons:** Run (outline: nothing in the palette is a filled call to
-  action; `Run…` with an ellipsis for a write, disruptive or destructive
+- **Buttons:** Run command (outline: nothing in the palette is a filled call to
+  action; `Run command…` with an ellipsis for a write, disruptive or destructive
   command, since it asks first; no Enter key hint on it, the footer has it), labelled with what will happen ("Pause Mia ↵"), . ("Add to script.jsonl", a never-built script buffer, was removed on
   2026-11-21.)
 
 **Running.** `query` commands show their result in the preview pane as
-formatted JSON with a "Copy" button and, where a page exists, "Open page".
+a collapsible, syntax-coloured JSON tree (the dev tools' `JsonTree`) with a "Copy" button and, where a page exists, "Open page".
 `query` commands run on Enter with no confirm. Every change asks first, in
-the app's confirm dialog over the palette: a `write` (and a device or
-profile row action that is a write) in a calm confirm (title, what it does,
+the app's confirm dialog over the palette: a `write` in a calm confirm (title, what it does,
 Cancel and an outline button repeating the action; no warning icon or red,
 `calm` on the ask), sending no `confirm`; `disruptive` and `destructive` in
 the usual red confirm, sending `confirm: true`. A write then shows its toast
@@ -338,8 +345,8 @@ confirm in the preview pane (consequence text, then a danger button "Yes,
 restart network"), and only then passes `confirm: true`. A `bad_params` error
 marks the offending field.
 
-**Footer:** key hints (↑↓ Navigate, ↵ Run, Tab Edit params, Ctrl C Copy as
-CLI) and an effects legend.
+**Footer:** key hints (↑↓ Navigate, ↵ Run, Go to, Ctrl Shift C Copy as
+CLI). Plain Ctrl C stays the system copy.
 
 The mockup's "Pause 5 and 6 GHz for 2.4 GHz setup" row is `wifi.hide5g.set`
 (disruptive) and "Pause unassigned devices" is `profile.unassigned.pause`
@@ -356,7 +363,7 @@ the ones that run commands go through `execute` like any button.
 | `>` | Open palette in command-id mode | Global, outside inputs |
 | `Esc` | Close palette, sheet, popover or confirm dialog | Global |
 | `↑` `↓`, `↵`, `Tab` | Move, run, edit params | Palette |
-| `Ctrl+C` | Copy selected command as CLI | Palette (no text selected) |
+| `Ctrl+Shift+C` | Copy the highlighted result as a CLI line: the command, or an eero, device or profile's `.get` read (`⌘⇧C` on macOS; plain `Ctrl+C` is always the system copy) | Palette, wherever focus is |
 | `Ctrl+Shift+P` | Pause profile... (palette with `profile.pause`) | Global |
 | `Ctrl+Shift+D` | Pause device... (palette with `device.pause`) | Global |
 | `Ctrl+Shift+N` | Open network switcher | Global |

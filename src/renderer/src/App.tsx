@@ -93,7 +93,8 @@ function Shell() {
     <div className="flex h-full">
       <Sidebar />
       <TopBarProvider>
-        <main className="flex min-w-0 flex-1 flex-col bg-background surface-grain">
+        {/* The flat canvas, as T3 Code's page columns paint over its SidebarInset (index.css, Surface grain). */}
+        <main className="flex min-w-0 flex-1 flex-col bg-background">
           <TopBar />
           <RouterOutlet />
         </main>

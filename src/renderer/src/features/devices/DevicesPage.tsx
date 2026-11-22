@@ -236,13 +236,13 @@ export function DevicesPage() {
           The title, its subtitle, the toolbar and the bulk bar stay at the top while the table scrolls under
           them; the table's header row follows below (DeviceTable, usePinnedHead). The block starts 24px higher
           with matching padding so its title sits below the topbar's scroll fade, and it carries the page
-          background (grain lined up with the main surface) so rows disappear behind it; 8px wider each side to
+          background (the main pane's flat canvas) so rows disappear behind it; 8px wider each side to
           cover the table card's shadow.
         */}
         <div
           ref={pinRef}
           data-slot="devices-sticky"
-          className="group/pin sticky top-0 z-20 -mx-2 -mt-6 flex flex-col gap-2.5 bg-background bg-fixed px-2 pt-6 pb-2.5 surface-grain [background-position:var(--sidebar-width)_0]"
+          className="group/pin sticky top-0 z-20 -mx-2 -mt-6 flex flex-col gap-2.5 bg-background px-2 pt-6 pb-2.5"
         >
           <div className="mb-2.5 flex min-w-0 flex-col">
             <h2 className="whitespace-nowrap font-semibold text-base text-foreground leading-7">All devices</h2>

@@ -19,7 +19,6 @@ import {
   defaultParams,
   deviceItems,
   eeroItems,
-  entityWrite,
   highlightParts,
   matchText,
   mcpCall,
@@ -30,7 +29,6 @@ import {
   search,
   missingRequired,
   validateParams,
-  withActions,
   writeRequest,
 } from "./search";
 
@@ -542,25 +540,6 @@ describe("running writes", () => {
     const res = await performWrite(writeRequest(del, del.label, { profile: "Mia" }), t.deps);
     expect(res).toMatchObject({ ok: true, result: { profiles: ["Leo"] } });
     expect(t.asks).toMatchObject([{ effect: "destructive", title: "Delete profile: Mia?", typeToConfirm: "Mia", confirmLabel: "Delete profile" }]);
-  });
-
-  it("device and profile row actions run their command with Undo, and say Coming soon until it exists", async () => {
-    const t = writeSetup();
-    const d = await demo();
-    const [row] = withActions(deviceItems(d.devices.devices, d.profiles, d.eeros), t.commands, SIGNED_IN).filter((r) => r.action === "Pause");
-    expect(row?.actionBlocked).toBeNull();
-    const req = row ? entityWrite(row, t.commands) : null;
-    expect(req).toMatchObject({ id: "device.pause", params: { device: row?.id }, undo: { id: "device.resume" } });
-    await performWrite(req ?? { id: "x" }, t.deps);
-    expect(t.kit.paused.has(row?.id ?? "")).toBe(true);
-    const [done] = toast.list();
-    expect(done).toMatchObject({ kind: "success", title: `Paused ${row?.label}`, action: { label: "Undo" } });
-    await done?.action?.run();
-    expect(t.kit.paused.size).toBe(0);
-
-    const profiles = withActions(profileItems(d.profiles), d.commands.filter((c) => !c.id.startsWith("profile.")), SIGNED_IN);
-    expect(profiles.every((p) => p.actionBlocked === "Coming soon")).toBe(true);
-    expect(profiles[0] && entityWrite(profiles[0], [])).toBeNull();
   });
 });
 

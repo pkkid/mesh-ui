@@ -6,7 +6,6 @@
  */
 import {
   FileText,
-  Lightbulb,
   type LucideIcon,
   MonitorSmartphone,
   Router,
@@ -141,11 +140,10 @@ type ResultsProps = {
   /** Eero, device and profile groups are still loading. */
   loading: { eero: boolean; device: boolean; profile: boolean };
   showLoading: boolean;
-  commandCount: number;
   empty: boolean;
 };
 
-export function PaletteResults({ groups, counts, selectedKey, onSelect, onRun, loading, showLoading, commandCount, empty }: ResultsProps) {
+export function PaletteResults({ groups, counts, selectedKey, onSelect, onRun, loading, showLoading, empty }: ResultsProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
   // Keep the selected row in view as the keyboard moves it.
@@ -158,7 +156,7 @@ export function PaletteResults({ groups, counts, selectedKey, onSelect, onRun, l
   const loadingKinds = showLoading ? (["eero", "device", "profile"] as const).filter((k) => loading[k]) : [];
 
   return (
-    <div ref={listRef} role="listbox" aria-label="Results" className="min-h-0 overflow-y-auto px-2 pt-1.5 pb-2">
+    <div ref={listRef} role="listbox" aria-label="Results" className="scroll-fade-y min-h-0 overflow-y-auto px-2 pt-1.5 pb-2">
       {empty && (
         <p className="px-2.5 pt-6 pb-2 text-center text-muted-foreground text-sm">No commands, eeros, devices or profiles match.</p>
       )}
@@ -191,11 +189,6 @@ export function PaletteResults({ groups, counts, selectedKey, onSelect, onRun, l
           <div className="px-2.5 py-1.5 text-muted-foreground text-xs">Loading...</div>
         </div>
       ))}
-      <div className="mx-2.5 mt-3.5 flex items-center gap-1.5 rounded-[10px] border border-input border-dashed px-3 py-2.5 text-muted-foreground text-xs">
-        <Lightbulb className="size-3.5 shrink-0" />
-        Type <Keys keys={[">"]} /> to search all {commandCount} commands by id, like
-        <span className="font-mono text-foreground/80">&gt;eero.list</span>
-      </div>
     </div>
   );
 }
@@ -263,12 +256,6 @@ function ResultRow({ hit, selected, onSelect, onRun }: { hit: Hit; selected: boo
             {item.unavailable && <span className="text-[11px] text-muted-foreground">{item.unavailable}</span>}
             <EffectTag effect={item.info.effect} />
           </>
-        )}
-        {(item.kind === "device" || item.kind === "profile") && (
-          <span title={item.actionBlocked ?? undefined} className={cn("flex items-center gap-2", item.actionBlocked && "opacity-60")}>
-            <span className="text-[11.5px] text-muted-foreground">{item.action}</span>
-            <EffectTag effect="write" />
-          </span>
         )}
       </div>
     </div>

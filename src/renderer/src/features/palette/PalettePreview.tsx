@@ -5,7 +5,7 @@
  * its result JSON shows under the MCP call. Confirms open in a dialog over
  * the palette (CommandPalette).
  */
-import { Check, Copy, Play, Terminal } from "lucide-react";
+import { ArrowRight, Check, Copy, Play, Terminal } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -13,6 +13,7 @@ import { Status } from "~/components/ui/status";
 import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import type { ExecuteResult } from "../../../../core/errors";
+import { JsonTree } from "../devtools/JsonTree";
 import { EeroBadges, EffectTag } from "./PaletteResults";
 import { type EntityOptions, ParamsForm } from "./ParamsForm";
 import { cliLine, type Item, mcpCall, needsConfirm, type ParamField } from "./search";
@@ -31,13 +32,12 @@ type Props = {
   entities: EntityOptions;
   run: RunState;
   onRun: () => void;
+  /** Runs the selected eero, device or profile's details read (`device.get`, ...) and shows the result in line. */
+  onRunDetails: () => void;
   /** Why the run button is disabled, or null. */
   blocked: string | null;
   runLabel: string;
   onCopy: () => Promise<boolean>;
-  /** Runs the selected device or profile's row action (Pause, Resume). */
-  onAction: () => void;
-  actionRunning: boolean;
 };
 
 export function PalettePreview(props: Props) {
@@ -45,22 +45,29 @@ export function PalettePreview(props: Props) {
   return (
     // The panel's own background and corners come from its frame in CommandPalette (the sidebar colour).
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-5 py-4">
+      <div className="scroll-fade-y flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-5 py-4">
         {item.kind === "command" ? (
           <CommandPreview {...props} item={item} />
         ) : (
-          <EntityPreview item={item} onAction={props.onAction} running={props.actionRunning} />
+          <EntityPreview item={item} run={props.run} />
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2 px-5 py-3">
         <span title={props.blocked ?? undefined} className="inline-flex">
           {/* Outline: the palette has no call to action, so nothing in it is a filled button. */}
           <Button size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
-            <Play />
+            {/* Play runs a command; an arrow goes to a place, eero, device or profile. */}
+            {props.item.kind === "command" ? <Play /> : <ArrowRight />}
             {props.runLabel}
           </Button>
         </span>
-        {props.blocked && <span className="truncate text-muted-foreground text-xs">{props.blocked}</span>}
+        {/* An eero, device or profile also runs its details read in line; Enter still goes to it. */}
+        {(item.kind === "eero" || item.kind === "device" || item.kind === "profile") && (
+          <Button size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={props.onRunDetails} disabled={props.run.running}>
+            <Play />
+            Run command
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -70,7 +77,7 @@ export function PalettePreview(props: Props) {
  * The details read for an eero, device or profile (`eero.get`, `device.get`, `profile.get`) as the CLI line and the
  * MCP tool call, so an agent or script can fetch the same thing the page shows.
  */
-function DetailsCall({ item }: { item: Exclude<Item, { kind: "command" }> }) {
+function DetailsCall({ item, run }: { item: Exclude<Item, { kind: "command" }>; run: RunState }) {
   const [copied, setCopied] = useState(false);
   if (item.kind === "page") return null;
   const id = `${item.kind}.get`;
@@ -84,8 +91,8 @@ function DetailsCall({ item }: { item: Exclude<Item, { kind: "command" }> }) {
             <Button
               size="icon-xs"
               variant="ghost-muted"
-              aria-label="Copy the CLI command"
-              title="Copy the CLI command"
+              aria-label="Copy command"
+              title="Copy command"
               onClick={async () => {
                 if (await copyText(line, { toast: false })) {
                   setCopied(true);
@@ -109,7 +116,23 @@ function DetailsCall({ item }: { item: Exclude<Item, { kind: "command" }> }) {
           MCP tool
         </Label>
         <Code>{JSON.stringify(mcpCall(id, params, "query"))}</Code>
+        <RunResult run={run} />
       </div>
+    </>
+  );
+}
+
+/** A run's result under the MCP tool call: "Running...", then the envelope as the dev tools show a response. */
+function RunResult({ run }: { run: RunState }) {
+  return (
+    <>
+      {run.running && <p className="mt-1.5 text-muted-foreground text-xs">Running...</p>}
+      {run.result && (
+        <div data-selectable className="mt-1.5 max-h-80 overflow-auto rounded-[10px] bg-muted px-3 py-2.5">
+          <p className="mb-1 font-mono text-[11px] text-muted-foreground/70">{"// the same result the UI and CLI get"}</p>
+          <JsonTree text={JSON.stringify(run.result)} />
+        </div>
+      )}
     </>
   );
 }
@@ -190,8 +213,8 @@ function CommandPreview({
             <Button
               size="icon-xs"
               variant="ghost-muted"
-              aria-label="Copy the CLI command"
-              title="Copy the CLI command"
+              aria-label="Copy command"
+              title="Copy command"
               onClick={async () => {
                 if (await onCopy()) {
                   setCopied(true);
@@ -216,29 +239,14 @@ function CommandPreview({
           MCP tool
         </Label>
         <Code>{JSON.stringify(call)}</Code>
-        {run.running && <p className="mt-1.5 text-muted-foreground text-xs">Running...</p>}
-        {run.result && (
-          <Code className={cn("mt-1.5 max-h-80 overflow-auto", !run.result.ok && "text-destructive-foreground")}>
-            <span className="text-muted-foreground/70">{"// the same result the UI and CLI get"}</span>
-            {"\n"}
-            <span data-palette-result>{JSON.stringify(run.result, null, 2)}</span>
-          </Code>
-        )}
+        <RunResult run={run} />
       </div>
 
     </>
   );
 }
 
-function EntityPreview({
-  item,
-  onAction,
-  running,
-}: {
-  item: Exclude<Item, { kind: "command" }>;
-  onAction: () => void;
-  running: boolean;
-}) {
+function EntityPreview({ item, run }: { item: Exclude<Item, { kind: "command" }>; run: RunState }) {
   const what =
     item.kind === "page" ? (item.place === "section" ? "Section" : item.place === "setting" ? "Setting" : "Page") : item.kind === "eero" ? "eero" : item.kind === "device" ? "Device" : "Profile";
   return (
@@ -266,24 +274,7 @@ function EntityPreview({
             : `Opens the ${item.label} page.`
           : `Opens ${item.label} in its ${what.toLowerCase()} page.`}
       </p>
-      <DetailsCall item={item} />
-      {(item.kind === "device" || item.kind === "profile") && (
-        <div>
-          <Label>Actions</Label>
-          <div className="flex items-center gap-2">
-            <span title={item.actionBlocked ?? undefined} className="inline-flex">
-              <Button size="sm" variant="outline" disabled={Boolean(item.actionBlocked) || running} onClick={onAction}>
-                {item.action}
-              </Button>
-            </span>
-            <span className="font-mono text-muted-foreground text-xs">
-              {item.kind}.{item.action.toLowerCase()}
-            </span>
-            <EffectTag effect={item.actionEffect ?? "write"} />
-            {item.actionBlocked && <span className="text-muted-foreground text-xs">{item.actionBlocked}</span>}
-          </div>
-        </div>
-      )}
+      <DetailsCall item={item} run={run} />
     </>
   );
 }

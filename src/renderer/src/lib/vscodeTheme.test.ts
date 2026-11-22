@@ -8,7 +8,7 @@ import gruvboxLightHard from "../../../../test/fixtures/vscode-themes/gruvbox/gr
 import gruvboxLightMedium from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-light-medium.json";
 import gruvboxLightSoft from "../../../../test/fixtures/vscode-themes/gruvbox/gruvbox-light-soft.json";
 import { groupThemes, parseStoredTheme, parseThemeSettings } from "./themeLibrary";
-import { THEME_COLOR_ROLES, getThemeColorsForAppearance, type ThemeDefinition } from "./themePalettes";
+import { CLASSIC_THEME, THEME_COLOR_ROLES, getThemeColorsForAppearance, type ThemeDefinition } from "./themePalettes";
 import {
   buildThemeCollection,
   collectionVariantLabels,
@@ -137,6 +137,24 @@ describe("pairing and collections", () => {
     expect(hex(getThemeColorsForAppearance(hard, "light").canvas)).toBe("#f9f5d7");
   });
 
+  it("paints Gruvbox Dark Hard's surfaces from the keys T3 Code reads", () => {
+    // T3 Code (vscodeThemeImport.ts): canvas is editor.background, chrome and
+    // toolbar are the canvas, sidebar is sideBar.background, cards are
+    // editorWidget.background, popovers menu.background or the next key.
+    const keys = gruvboxDarkHard.colors as Record<string, string>;
+    const colors = getThemeColorsForAppearance(GRUVBOX_THEMES[0]!, "dark");
+    const surfaces = ["canvas", "chrome", "toolbar", "sidebar", "surface", "surfaceRaised", "surfaceOverlay"] as const;
+    expect(Object.fromEntries(surfaces.map((role) => [role, hex(colors[role])]))).toEqual({
+      canvas: keys["editor.background"],
+      chrome: keys["editor.background"],
+      toolbar: keys["editor.background"],
+      sidebar: keys["sideBar.background"],
+      surface: keys["editorWidget.background"],
+      surfaceRaised: keys["editorWidget.background"],
+      surfaceOverlay: keys["menu.background"] ?? keys["quickInput.background"] ?? keys["dropdown.background"],
+    });
+  });
+
   it("does not group a single theme", () => {
     expect(buildThemeCollection([dark, light], { id: "x", label: "X" })[0]?.collection).toBeUndefined();
   });
@@ -230,5 +248,18 @@ describe("themesFromExtension", () => {
 
   it("fails when nothing is usable", () => {
     expect(() => themesFromExtension(extension, [file("Broken", "dark", {})])).toThrow(/no themes/);
+  });
+});
+
+describe("Classic", () => {
+  it("paints T3 Code's standard surfaces as its web app does", () => {
+    const surfaces = (mode: "light" | "dark") => {
+      const colors = getThemeColorsForAppearance(CLASSIC_THEME, mode);
+      return [colors.canvas, colors.chrome, colors.toolbar, colors.sidebar, colors.surface].map(hex);
+    };
+    // zinc-25 page and chrome, zinc-50 sidebar, white cards.
+    expect(surfaces("light")).toEqual(["#fcfcfc", "#fcfcfc", "#fcfcfc", "#fafafa", "#ffffff"]);
+    // Dark: a true black page, chrome and sidebar; cards neutral-950 mixed 3% toward white.
+    expect(surfaces("dark")).toEqual(["#000000", "#000000", "#000000", "#000000", "#111111"]);
   });
 });
