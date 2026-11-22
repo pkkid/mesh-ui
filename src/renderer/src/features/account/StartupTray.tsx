@@ -1,6 +1,7 @@
 /**
  * Settings, Startup and tray (docs/ux/pages/settings.md, Layout 2): two
- * settings rows in one card, as on Advanced networking.
+ * settings rows in one card, as on Advanced networking. Keep running in the
+ * tray comes first, because what Start at login does depends on it.
  *
  * - **Start at login** (`app.startup.set`): the OS login item, read back
  *   from the OS through `app.info.startup`, so a change made in system
@@ -35,24 +36,6 @@ export function StartupTray({ id }: { id?: string }) {
   return (
     <Group id={id} title="Startup and tray" description={startupSummary(startup?.supported ? startup.enabled : startup ? false : undefined, inTray)}>
       <Row
-        title="Start at login"
-        description={startAtLoginDetail(startup?.supported, inTray === true && !noTray)}
-        control={
-          <WriteSwitch
-            on={startup ? startup.supported && startup.enabled : undefined}
-            label="Start at login"
-            gate={startup && !startup.supported ? { allowed: false, reason: "Only in an installed copy of Mesh UI" } : ALLOWED}
-            busy={startupWrite.running}
-            onToggle={(enabled) =>
-              void startupWrite.run(
-                { enabled },
-                { success: enabled ? "Mesh UI will open at login" : "Mesh UI won't open at login", undo: { id: "app.startup.set", params: { enabled: !enabled } } },
-              )
-            }
-          />
-        }
-      />
-      <Row
         title="Keep running in the tray"
         description={
           noTray
@@ -70,6 +53,24 @@ export function StartupTray({ id }: { id?: string }) {
               void trayWrite.run(
                 { runInTray },
                 { success: runInTray ? "Mesh UI will keep running in the tray" : "Closing the window quits Mesh UI", undo: { id: "app.settings.set", params: { runInTray: !runInTray } } },
+              )
+            }
+          />
+        }
+      />
+      <Row
+        title="Start at login"
+        description={startAtLoginDetail(startup?.supported, inTray === true && !noTray)}
+        control={
+          <WriteSwitch
+            on={startup ? startup.supported && startup.enabled : undefined}
+            label="Start at login"
+            gate={startup && !startup.supported ? { allowed: false, reason: "Only in an installed copy of Mesh UI" } : ALLOWED}
+            busy={startupWrite.running}
+            onToggle={(enabled) =>
+              void startupWrite.run(
+                { enabled },
+                { success: enabled ? "Mesh UI will open at login" : "Mesh UI won't open at login", undo: { id: "app.startup.set", params: { enabled: !enabled } } },
               )
             }
           />
