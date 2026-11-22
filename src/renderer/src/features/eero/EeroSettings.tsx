@@ -21,7 +21,7 @@ import { useGate } from "~/components/ui/page";
 import { KvList } from "~/components/ui/kv-list";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { TextLink } from "~/components/ui/text-link";
-import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
+import { Row as SettingsRow, WriteSwitch } from "~/features/advanced/SettingsGroups";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
@@ -93,25 +93,6 @@ function SettingsCard({ icon, title, sub, side, children }: { icon: LucideIcon; 
       </div>
       {children}
     </Card>
-  );
-}
-
-/** A small on/off switch. */
-function Toggle({ on, label, gate, onChange }: { on: boolean | null; label: string; gate: Gate; onChange: (on: boolean) => void }) {
-  return (
-    <span title={gate.reason ?? undefined} className="inline-flex">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on === true}
-        aria-label={label}
-        disabled={!gate.allowed || on === null}
-        onClick={() => onChange(!on)}
-        className={cn("relative h-5 w-9 rounded-full border", gate.allowed ? "cursor-pointer" : "cursor-not-allowed opacity-80", on ? "bg-foreground/70" : "bg-muted")}
-      >
-        <i className={cn("absolute top-0.5 size-3.5 rounded-full bg-background shadow-sm", on ? "right-0.5" : "left-0.5")} />
-      </button>
-    </span>
   );
 }
 
@@ -200,7 +181,7 @@ function StatusLightRow({ eero }: { eero: Eero | null }) {
       description="The LED on the front. Solid white means all is well; it returns to full brightness while offline, restarting or resetting."
       control={
         <>
-          <Toggle on={on} label="Status light" gate={busy} onChange={(v) => set({ on: v })} />
+          <WriteSwitch on={on} label="Status light" gate={gate} busy={led.running} onToggle={(v) => set({ on: v })} />
           <BrightnessSelect value={eero?.led.brightness ?? null} disabled={!busy.allowed || on !== true} reason={busy.reason} onChange={(v) => set({ brightness: v })} />
         </>
       }

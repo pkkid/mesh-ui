@@ -3,10 +3,10 @@
  * modelled on T3 Code's theme settings (ThemeSettings.tsx): System / Light /
  * Dark tiles, then a card per theme or collection with a light and a dark
  * circle. Light and dark are picked separately; a collection's circles fan
- * out its styles on hover (Gruvbox Hard, Medium, Soft). Each card has
- * Duplicate (built-ins too, into an editable copy), Edit (added themes),
- * Export (a theme file, or a collection's themes in one file) and Remove,
- * as T3 Code; Duplicate and Edit open the floating theme editor
+ * out its styles on hover (Gruvbox Hard, Medium, Soft). Each card's "..."
+ * menu has Duplicate (built-ins too, into an editable copy), Edit (added
+ * themes), Export (a theme file, or a collection's themes in one file) and
+ * Remove; Duplicate and Edit open the floating theme editor
  * (features/themeEditor). Theme choice is renderer view state in
  * localStorage, not a command.
  */
@@ -16,6 +16,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { Footnote } from "~/components/ui/page";
+import { type RowAction, RowMenu } from "~/features/ports/Reservations";
 import { openThemeEditor } from "~/features/themeEditor/themeEditorStore";
 import { saveTextFile } from "~/lib/saveFile";
 import { isBuiltInTheme, groupThemes, removeThemes, useAllThemes } from "~/lib/themeLibrary";
@@ -158,11 +159,18 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
   const lone = groups.length === 1;
   // Duplicate and Edit act on the style showing for the current appearance (a collection's picked one).
   const shown = (groups.find((g) => g.mode === appearance) ?? groups[0])?.selected.theme ?? first;
-  const shownName = isCollection ? `${name} ${labels[themes.indexOf(shown)] ?? shown.label}` : name;
+  // On a collection the menu names that style: "Duplicate Hard".
+  const style = isCollection ? ` ${labels[themes.indexOf(shown)] ?? shown.label}` : "";
   const duplicate = () =>
     openThemeEditor({ editingThemeId: null, seedThemeId: shown.id, seedName: `${shown.label} copy`.slice(0, 48), initialAppearance: appearance });
   const edit = () => openThemeEditor({ editingThemeId: shown.id, seedThemeId: null, seedName: null, initialAppearance: appearance });
   const exportFile = () => void saveTextFile(themeFileName(themes), serializeThemeFile(isCollection ? themes : first));
+  const actions: RowAction[] = [
+    { label: `Duplicate${style}`, icon: Copy, onClick: duplicate },
+    ...(custom ? [{ label: `Edit${style}`, icon: PenLine, onClick: edit }] : []),
+    { label: isCollection ? "Export these themes" : "Export theme file", icon: Upload, onClick: exportFile },
+    ...(custom ? [{ label: isCollection ? "Remove these themes" : "Remove theme", icon: Trash2, destructive: true, onClick: () => removeThemes(themes.map((t) => t.id)) }] : []),
+  ];
 
   const pickCard = () => {
     if (!isCollection) return pickThemeEverywhere(first);
@@ -270,48 +278,12 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
         >
           {name}
         </button>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <CardAction label={`Duplicate ${shownName}`} title="Duplicate theme" onClick={duplicate}>
-            <Copy />
-          </CardAction>
-          {custom && (
-            <CardAction label={`Edit ${shownName}`} title="Edit theme" onClick={edit}>
-              <PenLine />
-            </CardAction>
-          )}
-          <CardAction label={`Export ${name}`} title={isCollection ? "Export these themes" : "Export theme file"} onClick={exportFile}>
-            <Upload />
-          </CardAction>
-          {custom && (
-            <CardAction
-              label={`Remove ${name}`}
-              title={isCollection ? "Remove these themes" : "Remove theme"}
-              onClick={() => removeThemes(themes.map((t) => t.id))}
-            >
-              <Trash2 />
-            </CardAction>
-          )}
-        </div>
+        {/* The menu is portalled, but React still bubbles its clicks here: stop them so they never pick the card. */}
+        <span className="flex shrink-0" onClick={(e) => e.stopPropagation()}>
+          <RowMenu label={`Options for ${name}`} actions={actions} />
+        </span>
       </div>
     </div>
-  );
-}
-
-/** A small ghost icon button on a theme card, with a tooltip; it never picks the card. */
-function CardAction({ label, title, onClick, children }: { label: string; title: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <Button
-      size="icon-xs"
-      variant="ghost-muted"
-      title={title}
-      aria-label={label}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-    >
-      {children}
-    </Button>
   );
 }
 

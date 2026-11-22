@@ -158,8 +158,9 @@ Mesh UI / T3 Code theme files (choose, drop or paste). An extension becomes
 one card; its themes take ids prefixed with the extension, so adding it again
 updates it.
 
-**Card actions** (as T3 Code's theme library): small `ghost-muted` icon
-buttons with tooltips after the card's name. **Duplicate** (every theme,
+**Card actions** (as T3 Code's theme library): one "..." menu after the
+card's name, the tables' row menu (`RowMenu`), so the card stays quiet and
+the actions are labelled. **Duplicate** (every theme,
 built-ins too) opens the theme editor on a copy named "<name> copy", so
 built-ins stay read-only. **Edit** (added themes) opens the editor on the
 theme itself. **Export** (every theme) saves a theme file through the save
@@ -169,7 +170,8 @@ collection as a JSON array of those, each with its `collection`. Add theme
 reads both back and keeps their ids, so importing an export updates the theme
 it came from (a built-in comes back as an added copy). **Remove** (added
 themes). On a collection, Duplicate and Edit act on the style showing for the
-current appearance; Export and Remove take the whole collection.
+current appearance and name it ("Duplicate Hard"); Export and Remove take the
+whole collection.
 
 **Theme editor** (`features/themeEditor/`, ported from T3 Code's
 `ThemeEditorPanel.tsx`, `ThemeEditorHost.tsx`, `themeEditorStore.ts`,
@@ -694,7 +696,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | --- | --- |
 | Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled red, white text), `warning` (filled yellow, `text-black/85`; only the confirm button of a disruptive action), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
 | Segmented toggle | Pills ([below](#pills)): a `bg-muted` track, the selected segment on `bg-card` in the foreground colour, no border or shadow on either. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons |
-| Switch | 36 x 20 (`h-5 w-9`), full radius, `bg-primary` when on, `bg-muted` with a border when off, dashed border when eero does not report the value |
+| Switch | `switch.tsx` (Base UI `Switch`, ported from T3 Code), the only switch in the app; `switch.test.ts` fails on a hand-made `role="switch"`. 36 x 20 (`h-5 w-9`), full radius, a 16px `bg-background` knob that squashes slightly while pressed. `bg-primary` when on, `bg-muted` with a border when off, a dashed border that cannot be used when eero does not report the value (`checked` null, tooltip "eero does not report this setting"). Disabled at 64% opacity with the reason as its `title`. One size everywhere, table rows included. Settings rows use `WriteSwitch` (`features/advanced/SettingsGroups.tsx`), which takes a gate and a busy flag |
 | Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`). Focus, as T3 Code: `border-ring` and a 3px glow inside the border (`ring-[3px] ring-inset ring-ring/24`), never outside. Text fields use `components/ui/input.tsx`, with no decorative icon (no pencil); an optional 16px leading icon only when it says what to type (search); selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
 | Chip | 24px (`h-6`), full radius, 1px border, `bg-card`, `text-xs text-foreground/80`, for filters; selected chip gets a stronger border, not colour |
 | Status | `size-1.5` dot in the status colour plus `text-xs text-foreground/80` label ("Online", "Weak link"). No pill outline, fill or uppercase |

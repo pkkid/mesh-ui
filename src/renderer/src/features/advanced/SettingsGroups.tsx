@@ -31,6 +31,7 @@ import { Footnote, GatedButton, SectionLink, useGate } from "~/components/ui/pag
 import { type SegmentedOption } from "~/components/ui/segmented";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Sheet, SheetField } from "~/components/ui/sheet";
+import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/utils";
 import { dhcpProblem, IMPACT, isIpv4, isIpv6, wanStaticProblem } from "../../../../core/commands/settings";
 import { MISSING } from "../../../../core/format";
@@ -255,29 +256,9 @@ export function useSettingsWrite<P>(id: string, what: string, offline: boolean, 
   return { gate, write };
 }
 
-/** A switch that runs a write. null shows an empty, dashed track that cannot be used. */
-export function WriteSwitch({ on, label, gate, busy = false, onToggle }: { on: boolean | null | undefined; label: string; gate: Gate; busy?: boolean; onToggle: (next: boolean) => void }) {
-  const known = on === true || on === false;
-  const usable = known && gate.allowed && !busy;
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on === true}
-      aria-label={label}
-      disabled={!usable}
-      title={!known ? "eero does not report this setting" : (gate.reason ?? undefined)}
-      onClick={() => onToggle(on !== true)}
-      className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
-        on === true ? "border-transparent bg-primary" : "bg-muted",
-        !known && "border-dashed",
-        known && !usable && "opacity-60",
-      )}
-    >
-      <span className={cn("size-4 rounded-full bg-background shadow-sm transition-transform", on === true ? "translate-x-4" : "translate-x-0.5")} />
-    </button>
-  );
+/** A switch (ui/switch.tsx) that runs a write: disabled by the gate, with its reason, or while busy. null shows the dashed unknown track. */
+export function WriteSwitch({ on, label, gate, busy = false, onToggle, className }: { on: boolean | null | undefined; label: string; gate: Gate; busy?: boolean; onToggle: (next: boolean) => void; className?: string }) {
+  return <Switch checked={on} aria-label={label} disabled={!gate.allowed || busy} title={gate.reason} onCheckedChange={onToggle} className={className} />;
 }
 
 /** A row whose switch runs one `{enabled}` write. Live ones offer Undo; restarting ones confirm in the dialog. */

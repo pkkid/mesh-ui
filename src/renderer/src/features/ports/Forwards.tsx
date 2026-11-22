@@ -10,7 +10,7 @@ import { useState } from "react";
 import type { QueryState } from "~/app/useCommand";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, SectionError, useGate } from "~/components/ui/page";
-import { Toggle } from "~/features/profile/ProfileSchedules";
+import { WriteSwitch } from "~/features/advanced/SettingsGroups";
 import { cn } from "~/lib/utils";
 import type { ForwardList } from "../../../../core/commands/routing";
 
@@ -80,9 +80,7 @@ export function Forwards({ query, lookup, publicIp }: { query: QueryState<Forwar
                           <ProtocolTag protocol={f.protocol} />
                         </td>
                         <td className={cn(td, "text-right")}>
-                          <span className="inline-flex align-middle" title={editGate.allowed ? undefined : (editGate.reason ?? undefined)}>
-                            <Toggle checked={f.enabled} label={`${f.name || "Forward"} enabled`} disabled={!editGate.allowed} onChange={(on) => void setForwardEnabled(f, on)} />
-                          </span>
+                          <WriteSwitch on={f.enabled} label={`${f.name || "Forward"} enabled`} gate={editGate} onToggle={(on) => void setForwardEnabled(f, on)} className="align-middle" />
                         </td>
                         <td className={cn(td, "w-8 py-1 text-right")}>
                           <RowMenu

@@ -21,6 +21,7 @@ import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/ui/hero";
 import { Meter } from "~/components/ui/meter";
 import { Status, type StatusTone } from "~/components/ui/status";
+import { Switch } from "~/components/ui/switch";
 import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { formatPercent, formatRelative } from "../../../../core/format";
@@ -236,27 +237,13 @@ function InfoLine({ icon, label, value, mono = false, copy = false }: { icon: Re
 
 /** A label and muted detail with a small on/off switch on the right. */
 function SwitchRow({ label, detail, on, disabled, onChange }: { label: string; detail: string; on: boolean | undefined; disabled: boolean; onChange: (on: boolean) => void }) {
-  const known = on !== undefined;
   return (
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <div className="font-medium text-[13px]">{label}</div>
         <div className="text-muted-foreground text-xs">{detail}</div>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on === true}
-        aria-label={label}
-        disabled={!known || disabled}
-        onClick={() => onChange(on !== true)}
-        className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60",
-          on === true ? "border-transparent bg-primary" : "bg-muted",
-        )}
-      >
-        <span className={cn("size-4 rounded-full bg-background shadow-sm transition-transform", on === true ? "translate-x-4" : "translate-x-0.5")} />
-      </button>
+      <Switch checked={on} aria-label={label} disabled={disabled} onCheckedChange={onChange} />
     </div>
   );
 }
