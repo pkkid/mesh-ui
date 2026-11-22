@@ -75,6 +75,8 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
   // A plain write asked about only to be sure (the search palette) is not a danger: an outline button.
   const calm = current?.calm === true;
   // The title says how serious it is: red when it cannot be undone, yellow when it takes devices offline, plain otherwise.
+  // The button matches: filled yellow for disruptive, filled red otherwise, outline when calm.
+  const confirmVariant = calm ? "outline" : current?.effect === "disruptive" ? "warning" : "destructive";
   const titleTone =
     current?.effect === "destructive" ? "text-destructive-foreground" : current?.effect === "disruptive" ? "text-warning-foreground" : undefined;
 
@@ -92,7 +94,7 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
           <Button ref={cancelRef} size="sm" variant="ghost" onClick={() => onAnswer(false)}>
             Cancel
           </Button>
-          <Button size="sm" variant={calm ? "outline" : "destructive"} disabled={!matches} onClick={() => onAnswer(true)}>
+          <Button size="sm" variant={confirmVariant} disabled={!matches} onClick={() => onAnswer(true)}>
             {current?.confirmLabel}
           </Button>
         </div>

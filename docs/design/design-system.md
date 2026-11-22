@@ -660,7 +660,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 
 | Component | Look |
 | --- | --- |
-| Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
+| Button | `button.tsx`. 8px radius, 1px border, `font-medium`. Variants: `default` (filled `bg-primary`), `outline` (`bg-popover`, `border-input`), `ghost` and `ghost-muted` (no border, `hover:bg-accent`), `secondary`, `destructive` (filled red, white text), `warning` (filled yellow, `text-black/85`; only the confirm button of a disruptive action), `link`. Sizes: `default` 32px 14px text, `sm` 28px, `hero` 28px 13px text, `tool` 28px 12px text, `xs` 24px 12px text, `lg` 36px, `icon` / `icon-sm` / `icon-xs` squares of 32 / 28 / 24px. Disabled at 64% opacity; pressed scales to 97% |
 | Segmented toggle | Inset track (`bg-muted`, border), selected segment raised on `bg-card`. Used for Day / Week, metric switches, Email / Phone. Three sizes: `tool` (28px) in section headers, set by `Section`; `sm` (30px, the default) in forms and settings; `md` (32px) in toolbars beside `h-8` inputs and buttons |
 | Switch | 36 x 20 (`h-5 w-9`), full radius, `bg-primary` when on, `bg-muted` with a border when off, dashed border when eero does not report the value |
 | Input, select | 32px (`h-8`), 8px radius, `border-input`, `text-sm`, `bg-background` (`dark:bg-input/32`). Focus, as T3 Code: `border-ring` and a 3px glow inside the border (`ring-[3px] ring-inset ring-ring/24`), never outside. Text fields use `components/ui/input.tsx`, with no decorative icon (no pencil); an optional 16px leading icon only when it says what to type (search); selects also have a 28px `tool` size. Mono (`font-mono`) for IPs and MACs |
@@ -992,7 +992,9 @@ and are capped at the space available below their trigger, then scroll.
   dialog with no Cancel (only Done, or no footer) keeps `DialogPopup`'s X at
   the top right, since Esc would otherwise be its only way out.
 - **Footer:** buttons are `sm`, on the right, Cancel (ghost) then the primary
-  action last (filled; danger filled on a confirm, outline on a `calm` one).
+  action last (filled). On a confirm the action button matches the title:
+  filled red (`destructive`) for a destructive action, filled yellow
+  (`warning`) for a disruptive one, `outline` for a `calm` one.
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
   the left.
 
@@ -1174,7 +1176,9 @@ the same everywhere (never a note in place of the button):
 
 - A title naming the target (no icon) and one or two sentences on the
   effect and how long it lasts ("Turn off guest network? 4 guests are disconnected right
-  away."), then Cancel and a filled danger button that repeats the action.
+  away."), then Cancel and a filled button that repeats the action: yellow
+  (`warning`) with a yellow title when it is disruptive, red
+  (`destructive`) with a red title when it is destructive.
 - Destructive dialogs need a checkbox or typed name.
 - Danger buttons are red text on a neutral button until the confirm step,
   where the confirming button is filled.
@@ -1183,7 +1187,7 @@ the same everywhere (never a note in place of the button):
   device, which cuts a device off until someone unblocks it. Disruptive
   actions that recover on their own (Restart network, Restart eero, Pause)
   are neutral outline buttons with a dim icon; their confirm dialog carries
-  the warning.
+  the warning, in yellow.
 - **Restart copy has one shape.** What restarts, then who loses internet and
   for how long: "Restarts every eero at once. 31 devices online lose internet
   for about 2 to 3 minutes." or "Restarts Office. 6 devices on it lose

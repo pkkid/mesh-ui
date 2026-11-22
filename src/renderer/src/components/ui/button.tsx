@@ -27,6 +27,9 @@ const buttonVariants = cva(
           "not-disabled:inset-shadow-[0_1px_--theme(--color-white/16%)] border-primary bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
         destructive:
           "not-disabled:inset-shadow-[0_1px_--theme(--color-white/16%)] border-destructive bg-destructive text-white shadow-xs hover:bg-destructive/90",
+        // The confirm button of a disruptive action (design-system.md, Modals and popups): dark text, as destructive's is white.
+        warning:
+          "not-disabled:inset-shadow-[0_1px_--theme(--color-white/16%)] border-warning bg-warning text-black/85 shadow-xs hover:bg-warning/90",
         outline:
           "border-input bg-popover text-foreground shadow-xs/5 hover:bg-accent/50 dark:bg-input/32 dark:hover:bg-input/64",
         secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/90",
