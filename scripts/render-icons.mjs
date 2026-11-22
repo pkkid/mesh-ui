@@ -17,7 +17,9 @@
 //
 // `pnpm icons --tray` renders only the tray PNGs. The tray SVGs themselves are
 // hand-tuned (KDE ColorScheme classes); here the symbol's color is swapped
-// for plain white or black.
+// for plain white or black, and the glyph is trimmed and scaled to the
+// Gruvbox Plus panel icons' measured size (median tray icon in panel/16 and
+// panel/22): it fills a 16 px canvas, and is 18 px with 2 px padding on 22.
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -48,20 +50,31 @@ if (!trayOnly) {
   console.log("website/public/img/icon.svg (copied)");
 }
 
+/** Renders the glyph of a tray SVG trimmed to `glyph` px, centred on a `canvas` px square. */
+function renderGlyph(from, canvas, glyph, out) {
+  execFileSync(
+    "magick",
+    ["-background", "none", "-density", "1536", from, "-trim", "+repage", "-filter", "Lanczos", "-resize", `${glyph}x${glyph}`, "-gravity", "center", "-extent", `${canvas}x${canvas}`, "-depth", "8", "-strip", out],
+    { stdio: "inherit" },
+  );
+  console.log(`${out.replace(`${root}/`, "")} (${glyph} px glyph on ${canvas} px)`);
+}
+
 // macOS shows template images by their alpha only, so the symbol's color does not matter.
 const tray16 = resolve(root, "build/tray/mesh-ui-tray-16.svg");
-render(16, resolve(root, "build/tray/mesh-ui-trayTemplate.png"), [], tray16, 16);
-render(32, resolve(root, "build/tray/mesh-ui-trayTemplate@2x.png"), [], tray16, 16);
+renderGlyph(tray16, 16, 16, resolve(root, "build/tray/mesh-ui-trayTemplate.png"));
+renderGlyph(tray16, 32, 32, resolve(root, "build/tray/mesh-ui-trayTemplate@2x.png"));
 
 // Windows and Linux: the same glyph in white (dark taskbars and panels) and black (light ones).
 const tmp = mkdtempSync(join(tmpdir(), "mesh-ui-tray-"));
 mkdirSync(resolve(root, "build/tray/png"), { recursive: true });
 for (const [name, color] of [["white", "#ffffff"], ["black", "#000000"]]) {
-  for (const [svg, base, sizes] of [["mesh-ui-tray-16.svg", 16, [16, 32]], ["mesh-ui-tray-22.svg", 22, [22, 44]]]) {
+  // [source, [canvas, glyph] per size]: full bleed at 16 and 32, 18 of 22 (and 36 of 44) like the pack's panel icons.
+  for (const [svg, sizes] of [["mesh-ui-tray-16.svg", [[16, 16], [32, 32]]], ["mesh-ui-tray-22.svg", [[22, 18], [44, 36]]]]) {
     const text = readFileSync(resolve(root, "build/tray", svg), "utf8").replace(/(\.ColorScheme-Text \{ color:)#[0-9a-fA-F]+/, `$1${color}`);
     const recolored = join(tmp, `${name}-${svg}`);
     writeFileSync(recolored, text);
-    for (const size of sizes) render(size, resolve(root, `build/tray/png/mesh-ui-tray-${name}-${size}.png`), [], recolored, base);
+    for (const [canvas, glyph] of sizes) renderGlyph(recolored, canvas, glyph, resolve(root, `build/tray/png/mesh-ui-tray-${name}-${canvas}.png`));
   }
 }
 rmSync(tmp, { recursive: true, force: true });
