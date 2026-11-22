@@ -416,6 +416,9 @@ export function ThemeEditorPanel({
       data-theme-editor-panel
       className={cn(
         popoverSurface,
+        // Non-modal, with no dimmed backdrop, so it needs a deep shadow to lift off the page. T3 Code's
+        // theme editor shadow (`dialog-glass` in its index.css), for this panel only.
+        "shadow-[0_24px_64px_-24px_rgb(0_0_0/65%)] dark:shadow-[inset_0_1px_rgb(255_255_255/4%),0_24px_72px_-20px_rgb(0_0_0/90%)]",
         "no-drag fixed z-[46] flex max-h-[min(42rem,calc(100dvh-6rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden",
         position === null && "right-4 bottom-4",
         minimized && "max-h-none",
