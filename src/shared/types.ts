@@ -69,6 +69,8 @@ export type ThemeExtension = {
   license: string;
   downloadCount: number;
   themeCount: number;
+  /** The extension's icon as a `data:` URL (search results only; main fetches it, so the renderer stays offline). */
+  icon?: string;
 };
 
 /** One colour theme from an extension, trimmed to the colours Mesh UI reads. */
