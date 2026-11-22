@@ -22,16 +22,20 @@ function DialogClose(props: DialogPrimitive.Close.Props) {
 }
 
 /**
- * The dialog box with its backdrop. `align="top"` pins it near the top of the
- * window (palettes, search) instead of centring it.
+ * The dialog box with its backdrop. Every confirm and sheet opens with its top
+ * edge at `--dialog-top` (clear of the titlebar, `index.css`) and grows
+ * downward, so it never re-centres and a nested confirm opens at the same
+ * height as its sheet. `placement="palette"` is the command palette's own,
+ * higher position, the one documented exception
+ * (docs/design/design-system.md#modals-and-popups).
  */
 function DialogPopup({
   className,
   children,
   showCloseButton = true,
-  align = "center",
+  placement = "standard",
   ...props
-}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean; align?: "center" | "top" }) {
+}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean; placement?: "standard" | "palette" }) {
   // Reset the control sizes: a dialog opened from a page or section header keeps its own sizes.
   return (
     <ButtonSizeContext value={undefined}>
@@ -40,13 +44,13 @@ function DialogPopup({
           <DialogPrimitive.Backdrop forceRender className={BACKDROP_CLASS} data-slot="dialog-backdrop" />
           <DialogPrimitive.Viewport
             className={cn(
-              "fixed inset-0 z-50 grid justify-items-center p-4",
-              align === "center" ? "grid-rows-[1fr_auto_1fr]" : "grid-rows-[auto_1fr] pt-10",
+              "fixed inset-0 z-50 flex flex-col items-center p-4",
+              placement === "standard" ? "pt-(--dialog-top)" : "pt-10",
             )}
             data-slot="dialog-viewport"
           >
             <DialogPrimitive.Popup
-              className={cn(POPUP_CLASS, align === "center" ? "row-start-2 max-h-full max-w-lg" : "row-start-1", className)}
+              className={cn(POPUP_CLASS, "max-h-full", placement === "standard" && "max-w-lg", className)}
               data-slot="dialog-popup"
               {...props}
             >

@@ -272,7 +272,7 @@ Every page follows the same top-to-bottom shape (details per page in
 `useWrite` drives it: it runs the command without `confirm`, shows the
 engine's `needs_confirm` message (so the copy lives in core) in the confirm,
 and runs again with `confirm: true` only after the person confirms. Every
-confirm is the centred modal from `components/ui/confirm.tsx`; no control
+confirm is the modal from `components/ui/confirm.tsx`; no control
 turns into a confirm in place.
 
 - **`ConfirmHost`**, mounted once by `App.tsx`, shows `ConfirmDialog` for

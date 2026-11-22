@@ -338,8 +338,7 @@ CSS variables on `:root` in `index.css`.
 | Tooltips | 6px | `rounded-md` |
 | Section cards, notes, popovers, toasts | 12px | `rounded-(--card-radius)` or `rounded-xl` (as T3 Code) |
 | Carded page header (being replaced by the flat hero), xl icon tile | 12px | `rounded-(--hero-radius)` |
-| Dialogs | 16px | `rounded-2xl` |
-| Sheets | 18px | `rounded-[18px]` |
+| Dialogs and sheets ([Modals and popups](#modals-and-popups)) | 18px | `rounded-[18px]` |
 | Icon tiles sm / md / lg | 7px / 9px / 12px | set by `IconTile` |
 | Chips, status dots, avatars, switches, count badges | Full | `rounded-full` |
 
@@ -682,7 +681,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | eero icon | `lib/deviceIcons.ts` `eeroIcon(eero)`: the only map from an eero to its product glyph, by `modelNumber`, then the model name, then the puck. See [Product icons](#product-icons) |
 | Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-md` (6px), `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
 | Popover | `popover.tsx` (trimmed from T3 Code's). `PopoverPopup` anchors under its trigger (`side="bottom" align="start"`, 4px offset), `no-drag`, and is capped at the available height with its content scrolling inside. One surface, `popoverSurface`: `bg-popover`, 1px border, 12px radius, `shadow-lg`, `text-xs`. New popovers use it; the older hand-built ones move onto it with #346 |
-| Dialog and sheet | `bg-popover`, 1px border, 16px radius (sheets 18px, max 540px wide), dialog `max-w-lg`, backdrop `bg-background/60` with a 2px blur |
+| Dialog and sheet | `dialog.tsx`, `sheet.tsx`, `confirm.tsx`. `bg-popover`, 1px border, backdrop `bg-background/60` with a 2px blur; every one opens at `--dialog-top`. Kinds, sizes, look and behaviour: [Modals and popups](#modals-and-popups) |
 | QR block | `qr.tsx`. **Plain** (`QrCode plain`, the Guest network and Wi-Fi network heroes): the code at error correction level L with no tile or glyph, so a guest `WIFI:` payload is 29 x 29 modules instead of 41 x 41, drawn as round dots (radius 0.46 of a module, so scanners still read them) with the three finder patterns as rounded squares, in the full text colour on screen (a 60% dim was tried and dropped). Both heroes frame it in a 1px rounded border with 15px of padding and no buttons beside it; their share actions are hero buttons (**Copy invite**, **Copy password**). Wi-Fi network keeps the frame empty, with **Show code** centred in it, until clicked. Standard: `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then any page actions), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog. (The printed guest card was dropped on 2026-11-20 with Print a card.) Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |
 
@@ -895,7 +894,7 @@ Every write control uses the same pieces (M4.3):
   confirm) and the control keeps its old state; `form: true` sends
   `bad_params` to the fields instead (`fieldErrors(error)`). `askFirst`
   covers writes the UI confirms on its own (delete a schedule) and never sends
-  `confirm`. Every confirm is a centred modal: `confirmIn: "dialog"`
+  `confirm`. Every confirm is the same modal ([Modals and popups](#modals-and-popups)): `confirmIn: "dialog"`
   (default) uses the app's confirm dialog; `"nested"`, for a write inside
   another dialog (palette, sheet), holds the ask in the hook for
   `WriteConfirmDialog`, rendered inside that dialog.
@@ -909,12 +908,8 @@ Every write control uses the same pieces (M4.3):
 - **Sheet** (`ui/sheet.tsx`): `Sheet` and `SheetField`, as in
   [overview.md](../ux/overview.md#sheets). **No divider lines:** like the
   confirm dialog, a sheet has no rule under its header or above its footer
-  (`Sheet clean`); spacing alone separates them, so every modal reads as
-  one clean panel, not three stacked sections. The same holds for any new
-  dialog. The device icon sheet, the port forward sheet and the schedule
-  sheet follow this;
-  other sheets move over page by page, and once all do, `clean` becomes the
-  only style. Choices inside a sheet are dropdowns (`Select`, full width or
+  (`Sheet clean`, [No divider lines](#no-divider-lines)). Sheets not yet
+  on it move over with #346, and then `clean` becomes the only style. Choices inside a sheet are dropdowns (`Select`, full width or
   sharing a row with related fields), never Segmented, and on/off is the
   standard 36x20 switch. Shortcuts that fill a field (the schedule sheet's
   day presets) are plain text links, not pills or chips.
@@ -930,6 +925,109 @@ const restart = useWrite("eero.restart"); // confirms in the app's dialog
 ```
 
 The dev gallery's Write kit section shows each piece.
+
+## Modals and popups
+
+One standard for everything that floats over a page (#346). This section is
+the rule; tasks 2 to 5 of #346 move each kind onto it and fill in its detail.
+Until a kind has moved, its current call sites may still differ (listed in
+#346); new overlays follow this section.
+
+### Kinds
+
+| Kind | Use it for | Built with |
+| --- | --- | --- |
+| Confirm | A yes or no before a `disruptive` or `destructive` action, or a write the UI asks about first (`askFirst`). Nothing to fill in except a type-to-confirm name | `ConfirmDialog` (`ui/confirm.tsx`), opened by `useWrite`; `WriteConfirmDialog` inside another dialog |
+| Sheet | An editor with more than one field, or content that is the action itself (Share Wi-Fi's QR, Admins) | `Sheet` (`ui/sheet.tsx`) |
+| Popover | A panel anchored to its trigger: filters, notifications, the network switcher, pickers | `PopoverPopup` (`ui/popover.tsx`) |
+| Menu | A short list of actions on one target or selection: a row's Actions, the bulk bar | Base UI `Menu` with the shared menu classes |
+
+A single field or switch is edited in place on the page, never in a modal.
+The command palette is its own kind and the one exception to the position
+rule below.
+
+### Size
+
+Modals take one of three widths, never a free value:
+
+| Size | Width | Used by |
+| --- | --- | --- |
+| Confirm | 448px (`max-w-md`) | Every confirm, and small single-purpose dialogs (sign-in code, transfer) |
+| Sheet | 540px | Every sheet (the default) |
+| Wide sheet | 640px | A sheet whose content needs the room: a grid of choices (device icon), a list (Admins, theme import) |
+
+Height follows the content. A modal never grows past the window: it keeps a
+16px gap at the bottom and its body scrolls inside, header and footer fixed.
+Popovers and menus size to their content (a menu at least 176px, `min-w-44`)
+and are capped at the space available below their trigger, then scroll.
+
+### Look
+
+- **Surface:** `bg-popover`, 1px `border`, 18px radius (`rounded-[18px]`) for
+  every modal, confirms included; the shadow and backdrop from
+  `ui/dialog.tsx` ([Borders and surfaces](#borders-and-surfaces)). Popovers
+  and menus use `popoverSurface`: 12px radius, `shadow-lg`, `text-xs`.
+- **Padding:** 20px at the sides (`px-5`). A sheet's header and body are
+  `py-4`, its footer `py-3`; a confirm is `pt-5` at the top and `pb-4` at the
+  bottom, with 20px between its message and its buttons. Menus and popovers
+  have 4px (`p-1`) inside, items `px-2.5 py-1.5` with an 8px radius.
+- **Header:** a sheet's header is an optional 32px icon tile (`bg-muted`,
+  1px border, muted icon), the title (`text-base font-semibold`) and an
+  optional muted `text-xs` line on what it affects ("Mia · pauses all 4
+  devices automatically"). A confirm's header is its title in
+  `text-base font-semibold`, with a warning icon and the destructive
+  foreground colour unless it is `calm`, then the message in
+  `text-foreground/80`.
+- **Close button:** sheets always have one, a ghost `icon-sm` X at the right
+  of the header. Confirms never do: Cancel is the way out.
+- **Footer:** buttons are `sm`, on the right, Cancel (ghost) then the primary
+  action last (filled; danger filled on a confirm, outline on a `calm` one).
+  A sheet's secondary or destructive action ("Delete schedule") sits alone on
+  the left.
+
+### No divider lines
+
+No modal has a rule under its header or above its footer; spacing alone
+separates them, so every modal reads as one clean panel, not three stacked
+sections. Rules inside the body (a list's row dividers) are fine. In a menu,
+a separator between groups of items is a 1px `border-border/60` line with
+4px above and below.
+
+### Position
+
+Every modal opens with its top edge at one fixed offset, `--dialog-top` in
+`index.css`: `max(var(--titlebar-height) + 24px, 15vh)`. That clears the
+titlebar in a short window (105px down in a 700px window) and sits a little
+above the middle third in a tall one (180px in a 1200px window). The box
+grows downward from there and never re-centres, so it does not jump when a
+validation error or a section appears, and a confirm opened from a sheet
+opens at the same height as the sheet. `DialogPopup` does this by default;
+nothing passes an offset of its own.
+
+The command palette is the one exception: `placement="palette"` keeps it
+40px from the top, since it is nearly as tall as the window.
+
+Popovers and menus open under their trigger (`side="bottom"`), 4px away,
+aligned to its start edge unless they would leave the window (the top bar's
+popovers align to the end). Everything that floats is `no-drag`, so a
+popover over the titlebar still takes clicks.
+
+### Behaviour
+
+- **Focus on open:** a sheet focuses its first field; a confirm focuses
+  Cancel, or the type-to-confirm field when it has one; a popover focuses its
+  search field or its list; a menu its first item. Closing returns focus to
+  the trigger.
+- **Esc and the backdrop** cancel a confirm (the answer is no) and close a
+  sheet, popover or menu. A sheet with unsaved changes asks "Discard
+  changes?" first, in its footer (Keep editing, Discard), and ignores both
+  while it is saving.
+- **Nested confirms:** a write inside a sheet or the palette confirms with
+  `WriteConfirmDialog` (`useWrite` with `confirmIn: "nested"`), rendered
+  inside that dialog. It opens at the same top edge above it, Esc closes only
+  the confirm, and the sheet stays open behind it.
+- **One at a time:** opening a modal closes any open popover or menu. A
+  popover never opens a second popover; it opens a sheet or confirm instead.
 
 ## Charts
 
@@ -1052,7 +1150,8 @@ Speeds come from `formatMbps` / `mbpsParts` in `src/core/format.ts`: kbps below 
 
 ## Confirmation
 
-Disruptive and destructive actions confirm in a centred modal before running,
+Disruptive and destructive actions confirm in a modal before running
+([Modals and popups](#modals-and-popups)),
 the same everywhere (never a note in place of the button):
 
 - A title naming the target and one or two sentences on the effect and how
