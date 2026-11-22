@@ -52,14 +52,14 @@ function TypeToConfirm({
 
 type ConfirmDialogProps = {
   /** The confirm to show, or null when closed. */
-  ask: (Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "calm"> & Partial<Pick<ConfirmAsk, "effect">>) | null;
+  ask: (Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "offline"> & Partial<Pick<ConfirmAsk, "effect">>) | null;
   onAnswer: (ok: boolean) => void;
 };
 
 /**
  * The confirm dialog, laid out as T3 Code's: a body on the page background with
  * a title naming the target, 20px, and the consequence, 30px; then a footer band
- * (top border, muted fill) with an outline Cancel and a filled danger button
+ * (top border, muted fill) with an outline Cancel and a filled action button
  * that repeats the action. No close X.
  * Destructive asks with `typeToConfirm` keep the button disabled until the
  * name matches. Esc, the backdrop and Cancel all answer false.
@@ -74,13 +74,12 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
   const current = shown.current;
   useEffect(() => setTyped(""), [ask]);
   const matches = current?.typeToConfirm === undefined || typed === current.typeToConfirm;
-  // A plain write asked about only to be sure (the search palette) is not a danger: an outline button.
-  const calm = current?.calm === true;
-  // The title says how serious it is: red when it cannot be undone, yellow when it takes devices offline, plain otherwise.
-  // The button matches: filled yellow for disruptive, filled red otherwise, outline when calm.
-  const confirmVariant = calm ? "outline" : current?.effect === "disruptive" ? "warning" : "destructive";
-  const titleTone =
-    current?.effect === "destructive" ? "text-destructive-foreground" : current?.effect === "disruptive" ? "text-warning-foreground" : undefined;
+  // The title and button say how serious it is: red when it cannot be undone, yellow when it takes devices
+  // offline (a disruptive command, or a write whose run would), and a plain title with a filled primary
+  // button for a reversible write asked about only to be sure.
+  const tone = current?.effect === "destructive" ? "destructive" : current?.effect === "disruptive" || current?.offline ? "warning" : "plain";
+  const confirmVariant = tone === "plain" ? "default" : tone;
+  const titleTone = tone === "destructive" ? "text-destructive-foreground" : tone === "warning" ? "text-warning-foreground" : undefined;
 
   return (
     <Dialog open={ask !== null} onOpenChange={(open) => !open && onAnswer(false)}>

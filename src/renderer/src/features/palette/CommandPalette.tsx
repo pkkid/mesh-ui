@@ -266,7 +266,6 @@ function PaletteBody({ close }: { close: () => void }) {
       title: `${label.replace(/\u2026$|\.\.\.$/, "")}?`,
       message: description || "This changes your network. You can undo it from the toast afterwards.",
       confirmLabel: label.replace(/\u2026$|\.\.\.$/, ""),
-      calm: true,
     },
   });
 

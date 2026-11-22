@@ -997,7 +997,9 @@ and are capped at the space available below their trigger, then scroll.
   action, never filled blue (#360; Change email and Verify mobile follow it,
   sheets still show a filled Save and move over in #346 task 3). On a confirm the action button matches the title:
   filled red (`destructive`) for a destructive action, filled yellow
-  (`warning`) for a disruptive one, `outline` for a `calm` one.
+  (`warning`) for a disruptive one, and filled `bg-primary` (`default`) for a
+  plain write, as T3 Code's confirms. That is the one place a modal shows a
+  filled primary button.
   A sheet's secondary or destructive action ("Delete schedule") sits alone on
   the left.
 
@@ -1012,6 +1014,13 @@ pages pass words, never layout.
   footer is a band with a top border and `bg-muted/72`, 16px tall padding,
   holding Cancel (`outline`) and the action button on the right. This is the
   one modal with a rule above its footer.
+- **Tone:** title and action button together. `destructive`: red title,
+  filled red button. `disruptive`, or a `write` the engine asked about
+  because this run takes devices offline (`confirmWhen`, `offline` on the
+  ask): yellow title, filled yellow button. Any other `write` asked about
+  first (`askFirst`: the palette's writes, deleting a schedule, a
+  reservation or a port forward): plain title, filled `bg-primary` button
+  (`default`).
 - **Words:** the title names the target as a question ("Restart network?",
   "Remove "Garage" from Maple Street?"). The message is the engine's
   `needs_confirm` text, one or two sentences on who loses what and for how

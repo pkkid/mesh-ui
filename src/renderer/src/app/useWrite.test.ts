@@ -48,6 +48,15 @@ function testCommands(kit: Kit): AnyCommand[] {
       run: async () => ({ restarts: ++kit.restarts }),
     }),
     defineCommand({
+      id: "kit.device.move",
+      label: "Move device",
+      effect: "write",
+      scope: "app",
+      params: z.object({ paused: z.boolean() }),
+      confirmWhen: async (_ctx, p) => (p.paused ? "Leo's iPad loses internet: Kids is paused." : null),
+      run: async () => ({}),
+    }),
+    defineCommand({
       id: "kit.profile.delete",
       label: "Delete profile",
       effect: "destructive",
@@ -203,6 +212,17 @@ describe("performWrite: confirm", () => {
     await performWrite({ id: "kit.light.set", params: { on: true }, askFirst: true, confirm: { title: "Block Leo's iPad?", message: "It loses internet until unblocked." } }, t.deps);
     expect(t.asks[0]).toMatchObject({ effect: "write", title: "Block Leo's iPad?", message: "It loses internet until unblocked." });
     expect(t.executed).toEqual([{ id: "kit.light.set", params: { on: true } }]);
+  });
+});
+
+describe("performWrite: offline writes", () => {
+  it("a write the engine asks about because it takes devices offline is marked offline", async () => {
+    const t = setup([true, true]);
+    await performWrite({ id: "kit.device.move", params: { paused: true } }, t.deps);
+    expect(t.asks[0]).toMatchObject({ effect: "write", offline: true, message: "Leo's iPad loses internet: Kids is paused." });
+    // An askFirst write is a plain confirm.
+    await performWrite({ id: "kit.light.set", params: { on: true }, askFirst: true }, t.deps);
+    expect(t.asks[1]?.offline).toBeUndefined();
   });
 });
 

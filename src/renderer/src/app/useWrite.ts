@@ -45,12 +45,15 @@ export type ConfirmAsk = {
   title: string;
   /** The consequence; the engine's `needs_confirm` message unless the caller gave one. */
   message: string;
-  /** Repeats the action on the danger button: "Restart network". */
+  /** Repeats the action on the action button: "Restart network". */
   confirmLabel: string;
   /** Destructive actions on a named thing: the person types this to enable the button. */
   typeToConfirm?: string;
-  /** A plain, reversible change asked about only to be sure (the search palette's writes): an outline button, not a filled danger one. */
-  calm?: boolean;
+  /**
+   * A `write` the engine asked about because this run takes devices offline (`confirmWhen`): it reads as a
+   * disruptive confirm (yellow), not a plain one (primary).
+   */
+  offline?: boolean;
 };
 
 export type AskFn = (ask: ConfirmAsk) => Promise<boolean>;
@@ -102,7 +105,7 @@ export type WriteRequest<P = Record<string, unknown>, R = unknown> = {
   /** Muted line under the progress toast: "About 2 to 3 minutes". */
   progressDetail?: string;
   /** Confirm copy. `message` overrides the engine's needs_confirm text. */
-  confirm?: Partial<Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm" | "calm">>;
+  confirm?: Partial<Pick<ConfirmAsk, "title" | "message" | "confirmLabel" | "typeToConfirm">>;
   /** A `write` the UI confirms on its own (block a device): ask first, never send `confirm`. */
   askFirst?: boolean;
   /** From a form: `bad_params` goes to the fields, not a toast. */
@@ -147,7 +150,7 @@ export async function performWrite<P, R>(
   // `confirm` is only ever added below, after the person confirms.
   const { confirm: _drop, ...base } = { ...(req.params ?? {}) } as Record<string, unknown>;
 
-  const askFor = (message: string) =>
+  const askFor = (message: string, offline = false) =>
     deps.ask({
       id: req.id,
       effect,
@@ -155,7 +158,7 @@ export async function performWrite<P, R>(
       message: req.confirm?.message ?? message,
       confirmLabel: req.confirm?.confirmLabel ?? label,
       typeToConfirm: req.confirm?.typeToConfirm,
-      calm: req.confirm?.calm,
+      ...(offline ? { offline } : {}),
     });
 
   if (req.askFirst && !confirmed) {
@@ -174,7 +177,7 @@ export async function performWrite<P, R>(
   if (withConfirm) startProgress();
   let res = (await deps.execute(req.id, withConfirm ? { ...base, confirm: true } : base)) as ExecuteResult<R>;
   if (!res.ok && res.error.code === "needs_confirm" && !withConfirm) {
-    if (!(await askFor(res.error.message))) return null;
+    if (!(await askFor(res.error.message, effect === "write"))) return null;
     confirmed = true;
     startProgress();
     res = (await deps.execute(req.id, { ...base, confirm: true })) as ExecuteResult<R>;
