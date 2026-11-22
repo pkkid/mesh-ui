@@ -90,7 +90,8 @@ function HistoryButton({ direction }: { direction: HistoryDirection }) {
     <Button
       aria-label={label}
       title={`${label} (${historyShortcutLabel(direction)})`}
-      className="no-drag"
+      // The nav icons' dimmer gray, not the ghost button's foreground; full sidebar text on hover.
+      className="no-drag text-(--sidebar-icon-color) hover:text-sidebar-foreground"
       disabled={!enabled}
       onClick={() => navigateHistory(direction)}
       size="icon-sm"
