@@ -88,6 +88,8 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
           aria-label="Search Open VSX themes"
           maxLength={100}
           onChange={(e) => setQuery(e.target.value)}
+          // Inside the Add theme sheet's form: Enter searches as you type already, never adds a pasted theme.
+          onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
         />
         <Segmented<ThemeSearchSort> aria-label="Sort" value={sort} onValueChange={setSort} options={SORTS} />
       </div>

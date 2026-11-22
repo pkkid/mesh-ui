@@ -22,8 +22,8 @@ describe("saveVariantFor", () => {
 
 describe("hand-made dialogs", () => {
   // Every feature dialog goes through Sheet or ConfirmDialog (design-system.md#modals-and-popups).
-  // The command palette is its own kind. Add theme (ThemeImportDialog) moves to Sheet next (#362).
-  const ALLOWED = new Set(["palette/CommandPalette.tsx", "account/ThemeImportDialog.tsx"]);
+  // The command palette is its own kind.
+  const ALLOWED = new Set(["palette/CommandPalette.tsx"]);
 
   it("no feature imports DialogPopup directly", () => {
     const root = fileURLToPath(new URL("../../features/", import.meta.url));
