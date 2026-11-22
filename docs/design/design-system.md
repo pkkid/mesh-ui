@@ -120,7 +120,7 @@ window in the picked themes, then a card per theme or collection with a light
 and a dark circle. The circle in use has a ring and a sun or moon badge. A
 collection's circle shows the picked style and "+n"; hovering it fans out its
 other styles. **Add theme** searches Open VSX for colour themes (as T3 Code
-does: Popular, Top rated or Newest, permissively licensed only, fetched and
+does: Most popular, Top rated or Newest in a dropdown, each with Install, permissively licensed only, fetched and
 checked in main, see [ui.md](../architecture/ui.md)) and imports VS Code or
 Mesh UI / T3 Code theme files (choose, drop or paste). An extension becomes
 one card; its themes take ids prefixed with the extension, so adding it again

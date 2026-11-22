@@ -124,7 +124,7 @@ export function ThemeImportDialog({
               : (files[0]?.name ?? "Drop .json files here")}
           </p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => fileInput.current?.click()}>
+        <Button size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => fileInput.current?.click()}>
           <FileUp />
           Choose files
         </Button>
