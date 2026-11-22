@@ -217,11 +217,11 @@ of the closest existing job rather than a new value.
 | Size | Class | Use |
 | --- | --- | --- |
 | 10px | `text-3xs` | Chart axis labels, sidebar group labels, stat tile labels, table group headers |
-| 11px | `text-2xs` | Fine metadata: counts in the sidebar, account role, badges, timeline day labels |
-| 12px | `text-xs` | Metadata, legends, section descriptions, table headers, tooltips, toasts, `tool` and `xs` buttons, Segmented items, chips, badges |
-| 13px | `text-[13px]` | Secondary body: hero buttons, key-value lists, empty states, account name |
+| 11px | `text-2xs` | Fine metadata: counts in the sidebar, badges, timeline day labels |
+| 12px | `text-xs` | Metadata, legends, section descriptions, the sidebar's network status line and account role, table headers, tooltips, toasts, `tool` and `xs` buttons, Segmented items, chips, badges |
+| 13px | `text-[13px]` | Secondary body: hero buttons, key-value lists, empty states |
 | 13.5px | `text-[13.5px]` | Sidebar nav items |
-| 14px | `text-sm` / base | Body, default and `sm` buttons, inputs, selects, settings row titles, list row names (eeros, profiles on Overview), dialog descriptions |
+| 14px | `text-sm` / base | Body, default and `sm` buttons, inputs, selects, settings row titles, list row names (eeros, profiles on Overview), the sidebar's network and account names (switcher row, its popup rows, account footer), dialog descriptions |
 | 16px | `text-base` | Section headings, hero fact values |
 | 18px | `text-lg` | Dialog titles |
 | 24px | `text-2xl` | Compact hero figure, stat tile value (mono) |
@@ -368,7 +368,7 @@ Backgrounds, from back to front:
 | Surface | Class |
 | --- | --- |
 | Page, titlebar, tooltips | `bg-background` (flat), `bg-tooltip/95` |
-| Sidebar | `bg-sidebar surface-grain`; rows `bg-sidebar-row-hover`, `bg-sidebar-row-selected` |
+| Sidebar | `bg-sidebar surface-grain`; rows `bg-sidebar-row-hover`, `bg-sidebar-row-selected`; an icon button inside a row (Sign out) `hover:bg-foreground/8`, and the row drops its own hover while the pointer is on it |
 | Section card | `bg-card/40`, `shadow-xs/5` |
 | Hover on rows and cards | `hover:bg-muted/50` (rows), `hover:bg-muted/30` (cards) |
 | Inset: Segmented track, badges, avatars, icon tiles, table group rows | `bg-muted` |

@@ -70,8 +70,8 @@ export function NetworkSwitcher() {
     <>
       <StatusDot tone={status?.tone ?? "muted"} className="size-2" />
       <div className="min-w-0 flex-1 text-start">
-        <div className="truncate font-medium text-[13px] text-sidebar-foreground">{current ? title(current) : "No network"}</div>
-        <div className="truncate text-2xs text-muted-foreground">
+        <div className="truncate font-medium text-sidebar-foreground text-sm">{current ? title(current) : "No network"}</div>
+        <div className="truncate text-muted-foreground text-xs">
           {current ? rowLine(current) : list.error ? "Not connected" : "-"}
         </div>
       </div>
@@ -110,8 +110,8 @@ export function NetworkSwitcher() {
                   >
                     <StatusDot tone={s.tone} className="size-2" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-[13px]">{title(n)}</div>
-                      <div className="truncate text-2xs text-muted-foreground">{rowLine(n)}</div>
+                      <div className="truncate font-medium text-sm">{title(n)}</div>
+                      <div className="truncate text-muted-foreground text-xs">{rowLine(n)}</div>
                     </div>
                   </button>
                 );
