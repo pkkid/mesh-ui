@@ -59,7 +59,7 @@ export function Sidebar() {
 
       <NetworkSwitcher />
 
-      <nav aria-label="Pages" className="flex-1 overflow-y-auto px-2 pb-2">
+      <nav aria-label="Pages" className="scroll-fade-y flex-1 overflow-y-auto px-2 pb-2">
         {GROUPS.map((group) => (
           <div key={group.id}>
             <div className="px-2.5 pt-3 pb-[5px] font-semibold text-3xs text-muted-foreground/70 uppercase tracking-widest">

@@ -119,7 +119,7 @@ function Sheet({
             {subtitle && <DialogDescription className="text-xs">{subtitle}</DialogDescription>}
           </div>
 
-          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pt-5 pb-[30px]">
+          <div className="scroll-fade-y flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pt-5 pb-[30px]">
             {children}
             {error && <div className="text-destructive-foreground text-xs">{error}</div>}
           </div>

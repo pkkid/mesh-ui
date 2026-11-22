@@ -102,7 +102,7 @@ export function NotificationList({ networkId, page, error, onClose }: Props) {
         <span className="font-medium text-foreground text-sm">Notifications</span>
         {summary && <span className="text-2xs text-muted-foreground">{summary}</span>}
       </div>
-      <div className="max-h-[360px] overflow-y-auto">
+      <div className="scroll-fade-y max-h-[360px] overflow-y-auto">
         {items.length > 0 ? (
           items.map((n) => <Item key={n.id} n={n} now={now} onOpen={onClose} />)
         ) : (
