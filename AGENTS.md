@@ -287,9 +287,14 @@ building a new chart; port from them rather than inventing a style.
 - **Show visual changes inline in chat.** When a change alters what the UI
   looks like, the final reply to the maintainer must show screenshots inline
   in the T3 Code chat.
-  1. Take them with `pnpm ui:shot` (demo data) and crop each to the area
+  1. Take them with `pnpm ui:shot` (demo data) in the maintainer's theme,
+     Gruvbox Hard dark: `--theme dark --theme-file
+     test/ui-shots/themes/gruvbox-hard.json` (in a `--shots` list,
+     `"theme": "dark", "themeFile": "test/ui-shots/themes/gruvbox-hard.json"`).
+     Crop each to the area
      that changed, with a little context (`magick in.png -crop WxH+X+Y
      +repage out.png`). Show the core one to three changes, not every one.
+     PR screenshots still show the default theme in light and dark.
   2. Save the final PNGs under the session scratchpad directory (the absolute
      path from the system prompt), not in the worktree, `/tmp` or a git
      branch. If a delegated child took them, copy them into your own
