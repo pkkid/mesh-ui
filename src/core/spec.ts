@@ -61,6 +61,12 @@ export type HostActions = {
      */
     signIn(): Promise<string>;
   };
+  tray?: {
+    /** Whether this desktop can show a tray icon now (Linux needs a StatusNotifier host). */
+    available(): Promise<boolean>;
+    /** Shows or removes the tray icon for the `runInTray` setting. Resolves true when the icon is showing. */
+    apply(on: boolean): Promise<boolean>;
+  };
 };
 
 export const HOST_ONLY = "Only in the Mesh UI window.";

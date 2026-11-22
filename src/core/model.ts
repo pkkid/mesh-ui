@@ -964,6 +964,11 @@ export type AppInfo = {
   update: UpdateStatus;
   /** null where the host cannot tell (the CLI and MCP hosts, tests): only the window installs the CLI. */
   cli: CliStatus | null;
+  /**
+   * Whether this desktop can show a system tray icon (Keep running in the
+   * tray). null where the host has no window (the CLI and MCP hosts, tests).
+   */
+  tray: boolean | null;
   configDir: string;
 };
 
@@ -978,6 +983,8 @@ export type AppSettings = {
   autoUpdate: boolean;
   /** Default `latest`. */
   updateChannel: UpdateChannel;
+  /** Closing (and on Windows and Linux minimizing) hides the window to the system tray, so desktop alerts keep arriving (default false). */
+  runInTray: boolean;
 };
 
 /** One CLI or MCP command from the audit log, as Settings lists it. */

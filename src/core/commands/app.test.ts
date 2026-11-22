@@ -27,6 +27,7 @@ describe("app.info", () => {
         install: "dev",
         update: { state: "unsupported", version: null, channel: "latest", checkedAt: null, progress: null, error: null },
         cli: null,
+        tray: null,
         configDir: "/tmp/mesh-ui-test",
       },
     });
@@ -153,6 +154,35 @@ describe("app.settings.get and .set", () => {
       expect(await engine.execute("app.settings.set", params), JSON.stringify(params)).toMatchObject({ ok: false, error: { code: "bad_params" } });
     }
     expect(await engine.execute("app.settings.get", { x: 1 })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+});
+
+describe("keep running in the tray (runInTray)", () => {
+  it("round-trips through app.settings.set and get, off by default", async () => {
+    const engine = createEngine({ backend: createDemoBackend() });
+    expect(await engine.execute<AppSettings>("app.settings.get")).toMatchObject({ ok: true, result: { runInTray: false } });
+    expect(await engine.execute<AppSettings>("app.settings.set", { runInTray: true })).toMatchObject({ ok: true, result: { runInTray: true } });
+    expect(await engine.execute<AppSettings>("app.settings.get")).toMatchObject({ ok: true, result: { runInTray: true } });
+    expect(await engine.execute("app.settings.set", { runInTray: "yes" })).toMatchObject({ ok: false, error: { code: "bad_params" } });
+  });
+
+  it("tells the window's tray at once, and only when the setting is in the patch", async () => {
+    const applied: boolean[] = [];
+    let available = true;
+    const tray = { available: async () => available, apply: async (on: boolean) => (applied.push(on), on && available) };
+    const engine = createEngine({ backend: createDemoBackend(), host: { ...host, actions: { tray } } });
+    expect(await engine.execute<AppInfo>("app.info")).toMatchObject({ ok: true, result: { tray: true } });
+    await engine.execute("app.settings.set", { runInTray: true });
+    await engine.execute("app.settings.set", { autoUpdate: false });
+    await engine.execute("app.settings.set", { runInTray: false });
+    expect(applied).toEqual([true, false]);
+    available = false;
+    expect(await engine.execute<AppInfo>("app.info")).toMatchObject({ ok: true, result: { tray: false } });
+  });
+
+  it("reports no tray where the host has none (CLI, MCP)", async () => {
+    const engine = createEngine({ backend: createDemoBackend(), host });
+    expect(await engine.execute<AppInfo>("app.info")).toMatchObject({ ok: true, result: { tray: null } });
   });
 });
 

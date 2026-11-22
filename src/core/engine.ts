@@ -76,6 +76,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   openOnLaunch: null,
   autoUpdate: true,
   updateChannel: "latest",
+  runInTray: false,
 };
 
 export function memorySettings(initial: Partial<AppSettings> = {}): SettingsStore {

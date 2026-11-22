@@ -23,16 +23,21 @@
  * Headless runs may also set `MESH_UI_SAVE_DIR`: `window.mesh.saveFile` then
  * writes there under the suggested name instead of showing the save dialog,
  * so `ui:shot` can prove an export writes a file. Ignored with a window.
- * Headless runs never show desktop alerts (`mesh:notify` is not registered).
+ * Headless runs never show desktop alerts (`mesh:notify` is not registered)
+ * and never create a tray icon.
+ *
+ * Keep running in the tray (`runInTray`, src/main/tray.ts): with it on,
+ * closing the window hides it to the system tray and a second launch shows
+ * the running copy (single-instance lock, held only while the setting is on).
  */
 
-import { spawn as spawnProcess } from "node:child_process";
+import { execFile, spawn as spawnProcess } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { app, BrowserWindow, dialog, ipcMain, Notification, nativeTheme, safeStorage, screen, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, nativeImage, nativeTheme, powerMonitor, safeStorage, screen, session, shell, Tray } from "electron";
 import { version as appVersion } from "../../package.json";
 import type { Backend, SecretStore } from "../core/backend";
 import { createDemoBackend, DEMO_SETTINGS } from "../core/demo";
@@ -40,6 +45,7 @@ import { createEeroBackend } from "../core/eero/backend";
 import { fileRequestLog, requestLogPath } from "../core/eero/requestLog";
 import { setInspector } from "../core/eero/inspect";
 import { createEngine, type Engine, fileSettings, memorySettings } from "../core/engine";
+import type { AppSettings } from "../core/model";
 import type { HostActions, SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
@@ -53,7 +59,11 @@ import { detectInstallKind } from "./install-kind";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName } from "./secret-store";
 import { previewUpdate } from "./updater";
+import { createTrayMode, linuxTrayAvailable, type RunText } from "./tray";
 import { fitWindowState, readWindowState, trackWindowState, writeWindowState } from "./window-state";
+import trayColorIcon from "../../build/icons/32x32.png?asset";
+import trayTemplateIcon from "../../build/tray/mesh-ui-trayTemplate.png?asset";
+import trayTemplateIcon2x from "../../build/tray/mesh-ui-trayTemplate@2x.png?asset";
 import { isAmazonAllowedNavigation } from "../core/eero/amazonNative";
 
 /** Matches --titlebar-height in the renderer's index.css. */
@@ -182,7 +192,7 @@ function devHandOff(args: string[]): void {
 
 /** The window's host actions (updater, CLI install, demo relaunch, request log, Amazon sign-in). The CLI host gets none. */
 function windowActions(settings: SettingsStore, dir: string): HostActions {
-  return createHostActions({
+  const actions = createHostActions({
     install: installKind,
     exePath: process.execPath,
     env: process.env,
@@ -199,6 +209,10 @@ function windowActions(settings: SettingsStore, dir: string): HostActions {
     ...(isDemo ? { amazonInstantToken: "demo" } : {}),
     amazonParent: () => mainWindow,
   });
+  // An update restart closes every window before before-quit fires: tell tray mode first, or the close is turned into a hide.
+  const update = actions.update;
+  if (update) actions.update = { ...update, install: () => (trayMode.quitting(), update.install()) };
+  return { ...actions, tray: trayAction };
 }
 
 /** The engine for any surface. Only live mode reads or writes the saved session. */
@@ -282,6 +296,72 @@ function electronCliHost(): CliHost {
 }
 
 // ---------------------------------------------------------------------------
+// Tray (src/main/tray.ts)
+
+/** Runs a command for its stdout (the Linux tray check); null when it is missing or fails. */
+const runText: RunText = (cmd, args) =>
+  new Promise((resolve) => execFile(cmd, args, { timeout: 2000, encoding: "utf8" }, (err, stdout) => resolve(err ? null : stdout)));
+
+/** The tray icon: a template image in the macOS menu bar, the color app icon on Windows and Linux panels. */
+function trayImage(): Electron.NativeImage {
+  if (process.platform !== "darwin") return nativeImage.createFromBuffer(readFileSync(trayColorIcon));
+  const image = nativeImage.createFromBuffer(readFileSync(trayTemplateIcon), { scaleFactor: 1 });
+  image.addRepresentation({ scaleFactor: 2, buffer: readFileSync(trayTemplateIcon2x) });
+  image.setTemplateImage(true);
+  return image;
+}
+
+/** Shows, restores and focuses the window, creating it when there is none. */
+function showWindow(): BrowserWindow {
+  const win = mainWindow ?? createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  return win;
+}
+
+const trayMode = createTrayMode({
+  platform: process.platform,
+  available: async () => process.platform !== "linux" || linuxTrayAvailable(runText),
+  create(menu) {
+    const tray = new Tray(trayImage());
+    tray.setToolTip("Mesh UI");
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: "Open Mesh UI", click: menu.open },
+        { type: "separator" },
+        { label: "Quit Mesh UI", click: menu.quit },
+      ]),
+    );
+    // macOS opens the menu on click; Windows and Linux open the window.
+    if (process.platform !== "darwin") tray.on("click", menu.open);
+    return tray;
+  },
+  open: () => void showWindow(),
+  quit: () => app.quit(),
+  notice() {
+    const where = process.platform === "darwin" ? "menu bar" : "system tray";
+    notifyHost.show({ title: "Mesh UI is still running", body: `It is in the ${where}, so desktop alerts keep arriving. Quit from there to close it.` }, () => void showWindow());
+  },
+});
+
+/**
+ * The window's `tray` host action. The single-instance lock follows the
+ * setting, so a second launch shows this copy instead of a second window.
+ * Headless runs report a tray (for screenshots of the setting) but never make one.
+ */
+const trayAction: NonNullable<HostActions["tray"]> = isHeadless
+  ? { available: async () => true, apply: async () => false }
+  : {
+      available: async () => process.platform !== "linux" || linuxTrayAvailable(runText),
+      async apply(on) {
+        if (on) app.requestSingleInstanceLock();
+        else app.releaseSingleInstanceLock();
+        return trayMode.apply(on);
+      },
+    };
+
+// ---------------------------------------------------------------------------
 // Window
 
 function createWindow(): BrowserWindow {
@@ -350,6 +430,13 @@ function createWindow(): BrowserWindow {
     });
   }
   mainWindow.on("closed", () => (mainWindow = null));
+  // Tray mode: closing (and on Windows and Linux minimizing) hides the window instead.
+  win.on("close", (event) => {
+    if (trayMode.close(win)) event.preventDefault();
+  });
+  win.on("minimize", () => void trayMode.minimize(win));
+  // Windows logging off or shutting down: let the window close.
+  win.on("session-end", () => trayMode.quitting());
 
   if (process.env.ELECTRON_RENDERER_URL) {
     void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -429,10 +516,7 @@ const notifyHost: NotifyHost = {
       win.webContents.once("did-finish-load", () => win.webContents.send(IPC.notifyClick, click));
       return;
     }
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-    mainWindow.webContents.send(IPC.notifyClick, click);
+    showWindow().webContents.send(IPC.notifyClick, click);
   },
 };
 
@@ -457,6 +541,13 @@ if (isCli) {
   void app.whenReady().then(async () => {
     lockDownSession();
     const engine = await createAppEngine();
+    const saved = await engine.execute<AppSettings>("app.settings.get");
+    const runInTray = !isHeadless && saved.ok && saved.result.runInTray;
+    // Tray mode keeps one copy running: a second launch shows it (second-instance) and quits.
+    if (runInTray && !app.requestSingleInstanceLock()) {
+      app.quit();
+      return;
+    }
     registerIpc(ipcMain, {
       engine,
       isAppUrl,
@@ -474,10 +565,18 @@ if (isCli) {
       devtools: { available: !isDemo, openElectron: () => mainWindow?.webContents.openDevTools({ mode: "right" }) },
     });
     createWindow();
+    if (runInTray) void trayMode.apply(true);
+    app.on("second-instance", () => void showWindow());
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      // The Dock icon brings back a window hidden to the tray, or makes a new one.
+      if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
+      else if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+    powerMonitor.on("shutdown", () => trayMode.quitting());
   });
+
+  // Every real quit (tray menu, Cmd+Q, app menu) lets the window close.
+  app.on("before-quit", () => trayMode.quitting());
 
   app.on("window-all-closed", () => {
     if (process.platform !== "darwin" && !handedOff) app.quit();

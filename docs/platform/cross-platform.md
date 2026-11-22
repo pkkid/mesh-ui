@@ -109,6 +109,40 @@ by main with Electron's `Notification`.
 
 The user can turn them off in Settings (`app.settings.set`).
 
+## System tray
+
+**Keep running in the tray** (Settings hero, `app.settings.set {runInTray}`,
+off by default; `src/main/tray.ts`) keeps Mesh UI running after its window
+is closed, so desktop alerts keep arriving.
+
+- **On:** closing the window (X, `Alt F4`, `Cmd W`) hides it; on Windows and
+  Linux minimizing hides it too (macOS keeps its normal minimize to the
+  Dock). The first hide in a run shows one notice, "Mesh UI is still
+  running". Only Quit really exits: the tray menu's **Quit Mesh UI**,
+  `Cmd Q`, the app menu, an update restart, or the OS logging off or
+  shutting down.
+- **Tray icon:** clicking it (Windows and Linux) or its menu's **Open Mesh
+  UI** shows and focuses the window. The menu holds no eero data. The icon
+  is the macOS template image `build/tray/mesh-ui-trayTemplate.png` in the
+  menu bar and the color app icon on Windows and Linux panels.
+- **One copy:** while the setting is on Mesh UI holds Electron's
+  single-instance lock, so launching it again shows the running copy instead
+  of opening a second one (two copies would poll, and alert, twice).
+- **Alerts while hidden:** the hidden window's renderer keeps polling
+  `notifications.list` every 5 minutes (`backgroundThrottling: false`), well
+  under the eero rate budget. See [engine.md](../architecture/engine.md#events-to-the-ui).
+- **Off:** nothing changes: closing quits on Windows and Linux, and macOS
+  stays in the Dock as usual.
+
+| OS | Tray |
+| --- | --- |
+| macOS | Menu bar icon; click opens the menu |
+| Windows | Notification area icon; click opens the window |
+| Linux | StatusNotifier icon (KDE, Cinnamon, XFCE, GNOME with the AppIndicator extension). Mesh UI asks D-Bus for a `StatusNotifierWatcher` (gdbus, else dbus-send); with none (plain GNOME) the switch is disabled with "This desktop shows no tray icons" and closing quits as usual, so the window never hides to a tray that is not there |
+
+Headless runs (ui:shot), the CLI and tests never create a tray; tests drive
+`createTrayMode` with a fake host.
+
 ## Fonts and rendering
 
 - Inter Variable is bundled (`@fontsource-variable/inter`), so text looks the
