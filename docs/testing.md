@@ -270,7 +270,10 @@ pnpm ui:shot --help
 Per shot: `--route` (default `#/overview`), `--theme light|dark`,
 `--theme-id <id>`, `--theme-file <theme.json>` (a theme file exported from
 Mesh UI or T3 Code, installed as custom themes for the shot, so a user theme
-such as Gruvbox can be shot; `--theme-id` picks one, default the first),
+such as Gruvbox can be shot; `--theme-id` picks one, default the first;
+`test/ui-shots/themes/gruvbox-hard.json` is the maintainer's Gruvbox Hard,
+from the MIT-licensed jdinhlife.gruvbox VS Code theme, used for shots shown in
+chat),
 `--size 1200x780`, `--scale 1`, `--scenario <name>` (demo
 only, default `default`), `--before <js>` (awaited in the page before the
 shot: click, open a popover), `--hover <selector>` (moves the pointer to the
