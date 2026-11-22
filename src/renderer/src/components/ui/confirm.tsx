@@ -58,7 +58,7 @@ type ConfirmDialogProps = {
 
 /**
  * The confirm dialog, laid out as T3 Code's: a body on the page background with
- * a title naming the target, 30px, and the consequence; then a footer band
+ * a title naming the target, 20px, and the consequence, 30px; then a footer band
  * (top border, muted fill) with an outline Cancel and a filled danger button
  * that repeats the action. No close X.
  * Destructive asks with `typeToConfirm` keep the button disabled until the
@@ -89,11 +89,11 @@ function ConfirmDialog({ ask, onAnswer }: ConfirmDialogProps) {
         className="max-w-md bg-background"
         initialFocus={current?.typeToConfirm === undefined ? cancelRef : undefined}
       >
-        <div className="flex flex-col gap-[30px] p-5">
+        <div className="flex flex-col gap-5 px-5 pt-5 pb-[30px]">
           <DialogTitle className={cn("text-base", titleTone)}>{current?.title}</DialogTitle>
           {current?.message && <DialogDescription className="text-foreground/80">{current.message}</DialogDescription>}
           {current?.typeToConfirm !== undefined && (
-            <TypeToConfirm id={inputId} name={current.typeToConfirm} value={typed} onChange={setTyped} className="-mt-[14px]" />
+            <TypeToConfirm id={inputId} name={current.typeToConfirm} value={typed} onChange={setTyped} className="-mt-1" />
           )}
         </div>
         <div className="flex justify-end gap-2 rounded-b-[17px] border-t bg-muted/72 px-5 py-4">
