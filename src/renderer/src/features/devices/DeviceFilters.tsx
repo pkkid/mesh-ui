@@ -6,7 +6,6 @@
  * toolbar. Every filter becomes a `device.list` param in DevicesPage;
  * grouping and columns are view state. Sorting is on the table headers.
  */
-import { Popover } from "@base-ui/react/popover";
 import { Check, CircleDot, Columns3, Layers } from "lucide-react";
 import type { RefObject } from "react";
 
@@ -20,10 +19,9 @@ import {
   FilterSearch,
   FiltersButton,
   FilterToggle,
-  itemClass,
-  popupClass,
   SelectPicker,
 } from "~/components/ui/filter-bar";
+import { Popover, PopoverPopup, PopoverTrigger, popoverButtonItem } from "~/components/ui/popover";
 import { Segmented } from "~/components/ui/segmented";
 import { cn } from "~/lib/utils";
 import type { Band, DeviceCategory, DeviceSummary } from "../../../../core/model";
@@ -244,13 +242,11 @@ export function DeviceFilters(props: DeviceFiltersProps) {
 
 function ColumnsButton({ hidden, onToggle }: { hidden: ReadonlySet<ColumnKey>; onToggle: (c: ColumnKey) => void }) {
   return (
-    <Popover.Root>
-      <Popover.Trigger render={<Button variant="outline" size="icon" aria-label="Columns" title="Columns" />}>
+    <Popover>
+      <PopoverTrigger render={<Button variant="outline" size="icon" aria-label="Columns" title="Columns" />}>
         <Columns3 />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-          <Popover.Popup className={popupClass}>
+      </PopoverTrigger>
+      <PopoverPopup variant="list" align="end">
             <div role="group" aria-label="Columns">
               {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map((c) => (
                 <button
@@ -258,17 +254,15 @@ function ColumnsButton({ hidden, onToggle }: { hidden: ReadonlySet<ColumnKey>; o
                   type="button"
                   role="menuitemcheckbox"
                   aria-checked={!hidden.has(c)}
-                  className={itemClass}
+                  className={popoverButtonItem}
                   onClick={() => onToggle(c)}
                 >
-                  <Check className={cn("size-3.5 shrink-0", hidden.has(c) && "invisible")} />
+                  <Check className={cn(hidden.has(c) && "invisible")} />
                   {COLUMN_LABELS[c]}
                 </button>
               ))}
             </div>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
+      </PopoverPopup>
+    </Popover>
   );
 }

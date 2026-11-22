@@ -11,7 +11,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { type KeyboardEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { navigate } from "~/app/router";
-import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
+import { Popover, PopoverPopup, PopoverTrigger, popoverItem } from "~/components/ui/popover";
 import { networkStatus, Status, StatusDot, type StatusTone } from "~/components/ui/status";
 import { Highlight } from "~/features/palette/PaletteResults";
 import { type SiblingHit, type SiblingItem, siblingHits } from "~/features/palette/search";
@@ -153,9 +153,9 @@ function SwitcherPopup({ kind, items, currentId, onPick }: { kind: Kind; items: 
             data-highlighted={i === at ? "" : undefined}
             onMouseMove={() => i !== at && setHighlight(i)}
             onClick={() => onPick(hit.item.id)}
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 data-highlighted:bg-muted/60"
+            className={popoverItem}
           >
-            <Check aria-hidden className={cn("size-3.5 shrink-0", hit.item.id !== currentId && "invisible")} />
+            <Check aria-hidden className={cn(hit.item.id !== currentId && "invisible")} />
             <Row hit={hit} />
           </div>
         ))}

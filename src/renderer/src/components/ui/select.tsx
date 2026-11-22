@@ -1,13 +1,15 @@
 // A styled dropdown select, ported from T3 Code's
 // apps/web/src/components/ui/select.tsx and trimmed to what we use. The
-// popup takes the same surface as the app's menus (bg-popover, border,
-// rounded-xl, shadow-lg). Pass `items` to <Select> so <SelectValue> shows the
+// popup takes the shared popover surface, list padding and item class
+// (ui/popover.tsx), so it matches every menu. Pass `items` to <Select> so <SelectValue> shows the
 // label, not the raw value.
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ChevronDownIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
+
+import { popoverItem, popoverList, popoverSurface } from "./popover";
 
 const Select = SelectPrimitive.Root;
 
@@ -66,7 +68,9 @@ function SelectPopup({
         >
           <SelectPrimitive.List
             className={cn(
-              "max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg",
+              popoverSurface,
+              popoverList,
+              "min-w-(--anchor-width)",
               className,
             )}
             data-slot="select-list"
@@ -83,7 +87,8 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
   return (
     <SelectPrimitive.Item
       className={cn(
-        "flex w-full cursor-pointer items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 outline-none data-highlighted:bg-muted/60 data-selected:font-medium data-disabled:cursor-not-allowed data-disabled:opacity-50",
+        popoverItem,
+        "whitespace-nowrap data-selected:font-medium",
         className,
       )}
       data-slot="select-item"

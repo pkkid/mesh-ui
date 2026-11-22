@@ -6,7 +6,6 @@
  * use the address, removes them too. Each control dims with its command's
  * gate (off in bridge mode, needs settings permission).
  */
-import { Menu } from "@base-ui/react/menu";
 import { BookmarkPlus, Ellipsis, ExternalLink, type LucideIcon, Pencil, Search, Trash2 } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
@@ -15,9 +14,9 @@ import type { QueryState } from "~/app/useCommand";
 import { bandLabel } from "~/components/ui/band-badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { GatedButton, SectionError, useGate } from "~/components/ui/page";
 import type { Gate } from "~/app/useWrite";
-import { menuClasses } from "~/features/devices/BulkBar";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import type { ReservationList } from "../../../../core/commands/routing";
@@ -43,32 +42,28 @@ export type RowAction = { label: string; icon?: LucideIcon; onClick: () => void;
 /** The overflow menu of a row; an item whose gate is closed is dimmed with the reason. */
 export function RowMenu({ label, actions }: { label: string; actions: RowAction[] }) {
   return (
-    <Menu.Root>
-      <Menu.Trigger
+    <Menu>
+      <MenuTrigger
         aria-label={label}
         className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-muted"
       >
         <Ellipsis className="size-[15px]" />
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-          <Menu.Popup className={menuClasses.popup}>
-            {actions.map((a) => (
-              <Menu.Item
-                key={a.label}
-                className={cn(menuClasses.item, a.destructive && "text-destructive-foreground")}
-                disabled={a.gate ? !a.gate.allowed : false}
-                title={a.gate && !a.gate.allowed ? (a.gate.reason ?? undefined) : undefined}
-                onClick={a.onClick}
-              >
-                {a.icon && <a.icon className="size-3.5" />}
-                {a.label}
-              </Menu.Item>
-            ))}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+      </MenuTrigger>
+      <MenuPopup align="end">
+        {actions.map((a) => (
+          <MenuItem
+            key={a.label}
+            variant={a.destructive ? "destructive" : "default"}
+            disabled={a.gate ? !a.gate.allowed : false}
+            title={a.gate && !a.gate.allowed ? (a.gate.reason ?? undefined) : undefined}
+            onClick={a.onClick}
+          >
+            {a.icon && <a.icon />}
+            {a.label}
+          </MenuItem>
+        ))}
+      </MenuPopup>
+    </Menu>
   );
 }
 

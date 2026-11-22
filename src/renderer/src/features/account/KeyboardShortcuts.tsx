@@ -10,7 +10,6 @@
  * is changed. Each action has one combination or none; the registry and its
  * rules are lib/shortcuts.ts. Fixed shortcuts are not listed.
  */
-import { Menu } from "@base-ui/react/menu";
 import { Ellipsis } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -19,8 +18,8 @@ import { Button } from "~/components/ui/button";
 import { Card, Section } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Kbd } from "~/components/ui/kbd";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { Row } from "~/features/advanced/SettingsGroups";
-import { menuClasses } from "~/features/devices/BulkBar";
 import {
   bindingFor,
   isChanged,
@@ -36,7 +35,6 @@ import {
   useAnyChanged,
   useBinding,
 } from "~/lib/shortcuts";
-import { cn } from "~/lib/utils";
 
 function KeyCaps({ combo }: { combo: string }) {
   return (
@@ -59,27 +57,19 @@ function RowMenu({ action, combo }: { action: ShortcutAction; combo: string }) {
   if (!changed && !combo) return null;
   return (
     <span className="flex items-center opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100 has-data-popup-open:opacity-100 pointer-coarse:opacity-100">
-      <Menu.Root>
-        <Menu.Trigger render={<Button variant="ghost-muted" size="icon-sm" aria-label={`Actions for ${action.label}`} />}>
+      <Menu>
+        <MenuTrigger render={<Button variant="ghost-muted" size="icon-sm" aria-label={`Actions for ${action.label}`} />}>
           <Ellipsis className="size-3.5" />
-        </Menu.Trigger>
-        <Menu.Portal>
-          <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-            <Menu.Popup className={menuClasses.popup}>
-              {changed && (
-                <Menu.Item className={menuClasses.item} onClick={() => resetBinding(action.id)}>
-                  Reset to default
-                </Menu.Item>
-              )}
-              {combo && (
-                <Menu.Item className={cn(menuClasses.item, "text-destructive-foreground")} onClick={() => removeBinding(action.id)}>
-                  Remove
-                </Menu.Item>
-              )}
-            </Menu.Popup>
-          </Menu.Positioner>
-        </Menu.Portal>
-      </Menu.Root>
+        </MenuTrigger>
+        <MenuPopup align="end">
+          {changed && <MenuItem onClick={() => resetBinding(action.id)}>Reset to default</MenuItem>}
+          {combo && (
+            <MenuItem variant="destructive" onClick={() => removeBinding(action.id)}>
+              Remove
+            </MenuItem>
+          )}
+        </MenuPopup>
+      </Menu>
     </span>
   );
 }

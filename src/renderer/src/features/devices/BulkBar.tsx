@@ -6,12 +6,12 @@
  * (`device.pause`, `.resume`, `.profile.set`, `.block`, `.unblock`), which
  * takes one device or a list and reports each device that failed.
  */
-import { Menu } from "@base-ui/react/menu";
 import { Ban, Check, ChevronDown, CircleCheck, Pause, Play, UserRoundPlus, X } from "lucide-react";
 import type { ReactElement } from "react";
 
 import { type Gate, performWrite, type WriteRequest } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { GatedButton } from "~/components/ui/page";
 import { cn } from "~/lib/utils";
 import type { Device, DeviceBulkResult } from "../../../../core/model";
@@ -143,10 +143,6 @@ export function failedIds(res: Awaited<ReturnType<typeof performWrite<unknown, D
 // ---------------------------------------------------------------------------
 // Profile menu
 
-const popupClass = "no-drag max-h-80 min-w-44 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none";
-const itemClass =
-  "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start outline-none data-[highlighted]:bg-muted/60 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50";
-
 function Avatar({ p }: { p: ProfileOption | null }) {
   if (!p) return <span aria-hidden className="size-4 shrink-0 rounded-full border border-dashed" />;
   return (
@@ -177,11 +173,11 @@ export function ProfileItems({
       {rows.map((p) => {
         const on = (p?.id ?? null) === current;
         return (
-          <Menu.Item key={p?.id ?? "unassigned"} className={itemClass} onClick={() => onPick(p)}>
-            <Check className={cn("size-3.5 shrink-0", !on && "invisible")} />
+          <MenuItem key={p?.id ?? "unassigned"} onClick={() => onPick(p)}>
+            <Check className={cn(!on && "invisible")} />
             <Avatar p={p} />
             <span className="min-w-0 flex-1 truncate">{p ? p.name : "Unassigned"}</span>
-          </Menu.Item>
+          </MenuItem>
         );
       })}
     </>
@@ -203,20 +199,14 @@ export function ProfileMenu({
   label?: string;
 }) {
   return (
-    <Menu.Root>
-      <Menu.Trigger render={trigger} aria-label={label} />
-      <Menu.Portal>
-        <Menu.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
-          <Menu.Popup className={popupClass}>
-            <ProfileItems profiles={profiles} current={current} onPick={onPick} />
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+    <Menu>
+      <MenuTrigger render={trigger} aria-label={label} />
+      <MenuPopup>
+        <ProfileItems profiles={profiles} current={current} onPick={onPick} />
+      </MenuPopup>
+    </Menu>
   );
 }
-
-export const menuClasses = { popup: popupClass, item: itemClass };
 
 // ---------------------------------------------------------------------------
 // Bulk bar

@@ -186,7 +186,7 @@ function Swatch({ label, value, onChange, onEditStart, onEditCancel, onInteract 
           </button>
         }
       />
-      <PopoverPopup data-theme-editor-panel="" side="bottom" align="end" sideOffset={8}>
+      <PopoverPopup data-theme-editor-panel="" side="bottom" align="end">
         <PickerPanel committer={committer} label={label} value={value} onChange={(next) => !canceled.current && onChange(next)} />
       </PopoverPopup>
     </Popover>

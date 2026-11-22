@@ -7,7 +7,6 @@
  * an Add a schedule picker (a profile opens the schedule sheet, Unassigned
  * opens its page). docs/ux/pages/profiles.md (Layout 3, States), mockup 07.
  */
-import { Popover } from "@base-ui/react/popover";
 import { Plus } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 
@@ -16,6 +15,7 @@ import type { QueryState } from "~/app/useCommand";
 import { Card, Section } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
+import { Popover, PopoverPopup, PopoverTrigger, popoverButtonItem, popoverLabel } from "~/components/ui/popover";
 import { formatMinute, MINUTES_PER_DAY } from "~/components/ui/timeline";
 import { cn } from "~/lib/utils";
 import { networkClock } from "../../../../core/format";
@@ -150,7 +150,6 @@ function AddSchedule({ profiles, colorOf }: { profiles: Profile[]; colorOf: Prof
   const gate = useGate(PROFILE_GATE);
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<Profile | null>(null);
-  const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted";
   if (!gate.allowed) {
     return (
       <GatedButton gate={gate} variant="outline">
@@ -165,29 +164,25 @@ function AddSchedule({ profiles, colorOf }: { profiles: Profile[]; colorOf: Prof
   };
   return (
     <>
-      <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger render={<Button variant="outline" />}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger render={<Button variant="outline" />}>
           <Plus />
           Add a schedule
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-            <Popover.Popup className="max-h-80 w-56 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground text-xs shadow-lg outline-none">
-              <div className="px-2 pt-1 pb-1.5 text-muted-foreground">Pick who to schedule</div>
-              {profiles.map((p) => (
-                <button key={p.id} type="button" className={item} onClick={pick(() => setTarget(p))}>
-                  <Avatar name={p.name} color={colorOf(p.id)} className="size-5 text-2xs" />
-                  <span className="truncate">{p.name}</span>
-                </button>
-              ))}
-              <button type="button" className={item} onClick={pick(() => navigate(pathFor("profile", { profileId: "unassigned" })))}>
-                <Avatar name="Unassigned" color={colorOf(null)} className="size-5 text-2xs" />
-                <span className="truncate">Unassigned</span>
-              </button>
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
+        </PopoverTrigger>
+        <PopoverPopup variant="list" align="end" className="w-56">
+          <div className={popoverLabel}>Pick who to schedule</div>
+          {profiles.map((p) => (
+            <button key={p.id} type="button" className={popoverButtonItem} onClick={pick(() => setTarget(p))}>
+              <Avatar name={p.name} color={colorOf(p.id)} className="size-4 text-[9px]" />
+              <span className="truncate">{p.name}</span>
+            </button>
+          ))}
+          <button type="button" className={popoverButtonItem} onClick={pick(() => navigate(pathFor("profile", { profileId: "unassigned" })))}>
+            <Avatar name="Unassigned" color={colorOf(null)} className="size-4 text-[9px]" />
+            <span className="truncate">Unassigned</span>
+          </button>
+        </PopoverPopup>
+      </Popover>
       {target ? <ScheduleSheet profile={target} mode={{ kind: "add" }} onClose={() => setTarget(null)} /> : null}
     </>
   );

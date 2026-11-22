@@ -4,10 +4,10 @@
  * also runs the desktop alerts from the same poll, and hosts the
  * notification settings sheet that the popover's gear (and any page) opens.
  */
-import { Popover } from "@base-ui/react/popover";
 import { Bell as BellIcon } from "lucide-react";
 import { useState } from "react";
 
+import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 import { NotificationList } from "./NotificationList";
 import { NotificationSettingsHost } from "./NotificationSettings";
@@ -22,19 +22,15 @@ export function Bell({ className }: { className?: string }) {
 
   return (
     <>
-      <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger title="Notifications" aria-label={label} className={cn(className, open && "bg-foreground/5 text-foreground")}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger title="Notifications" aria-label={label} className={cn(className, open && "bg-foreground/5 text-foreground")}>
           <BellIcon />
           {unread && <span className="absolute top-1.5 right-[7px] size-[7px] rounded-full bg-destructive ring-2 ring-background" />}
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
-            <Popover.Popup className="no-drag w-[340px] rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
-              <NotificationList networkId={networkId} page={data} error={error !== null && !data} onClose={() => setOpen(false)} />
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
+        </PopoverTrigger>
+        <PopoverPopup align="end" className="w-[340px] p-1">
+          <NotificationList networkId={networkId} page={data} error={error !== null && !data} onClose={() => setOpen(false)} />
+        </PopoverPopup>
+      </Popover>
       <NotificationSettingsHost />
     </>
   );

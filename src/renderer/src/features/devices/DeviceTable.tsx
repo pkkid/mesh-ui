@@ -8,7 +8,6 @@
  * runs the device writes: pause or resume, rename in place, change profile,
  * block (after the app's confirm dialog) or unblock.
  */
-import { Menu } from "@base-ui/react/menu";
 import {
   ArrowDown,
   ArrowUp,
@@ -41,6 +40,7 @@ import { Button } from "~/components/ui/button";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Card, Empty } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "~/components/ui/menu";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
@@ -48,7 +48,7 @@ import { formatBytes, formatPercent, formatRelative, mbpsParts } from "../../../
 import type { DeviceSortKey } from "../../../../core/commands/device";
 import type { Device, DeviceCategory } from "../../../../core/model";
 
-import { blockRequest, menuClasses, pauseRequest, type ProfileOption, ProfileItems, profileRequest } from "./BulkBar";
+import { blockRequest, pauseRequest, type ProfileOption, ProfileItems, profileRequest } from "./BulkBar";
 import { COLUMN_LABELS, type ColumnKey, type GroupBy } from "./DeviceFilters";
 import type { SortOrder } from "./deviceSort";
 
@@ -576,77 +576,58 @@ function RowMenu({ device: d, bridged, gate, blockGate, profileOptions, networkN
   const canPause = !bridged && !guest && !d.blocked;
   const reason = (g: Gate) => (g.allowed ? undefined : (g.reason ?? undefined));
   return (
-    <Menu.Root>
-      <Menu.Trigger
+    <Menu>
+      <MenuTrigger
         aria-label={`Actions for ${d.name}`}
         className="grid size-6 cursor-pointer place-items-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-muted"
       >
         <Ellipsis className="size-[15px]" />
-      </Menu.Trigger>
-      <Menu.Portal>
-        <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-50">
-          <Menu.Popup className={menuClasses.popup}>
-            {canPause && (
-              <Menu.Item
-                className={menuClasses.item}
-                disabled={!gate.allowed}
-                title={reason(gate)}
-                onClick={() => void performWrite(pauseRequest([d], !d.paused))}
+      </MenuTrigger>
+      <MenuPopup align="end">
+        {canPause && (
+          <MenuItem disabled={!gate.allowed} title={reason(gate)} onClick={() => void performWrite(pauseRequest([d], !d.paused))}>
+            {d.paused ? <Play /> : <Pause />}
+            {d.paused ? "Resume" : "Pause…"}
+          </MenuItem>
+        )}
+        <MenuItem disabled={!gate.allowed} title={reason(gate)} onClick={() => onRename(true)}>
+          <Pencil />
+          Rename…
+        </MenuItem>
+        {canPause && (
+          <MenuSub>
+            <MenuSubTrigger disabled={!gate.allowed} title={reason(gate)}>
+              <UserRound />
+              Change profile
+            </MenuSubTrigger>
+            <MenuSubPopup side="left">
+              <ProfileItems profiles={profileOptions} current={d.profileId} onPick={(p) => void performWrite(profileRequest([d], p))} />
+            </MenuSubPopup>
+          </MenuSub>
+        )}
+        {!bridged && (
+          <>
+            <MenuSeparator />
+            {d.blocked ? (
+              <MenuItem disabled={!blockGate.allowed} title={reason(blockGate)} onClick={() => void performWrite(blockRequest([d], false))}>
+                <CircleCheck />
+                Unblock
+              </MenuItem>
+            ) : (
+              <MenuItem
+                variant="destructive"
+                disabled={!blockGate.allowed}
+                title={reason(blockGate)}
+                onClick={() => void performWrite(blockRequest([d], true, { networkName }))}
               >
-                {d.paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-                {d.paused ? "Resume" : "Pause…"}
-              </Menu.Item>
+                <Ban />
+                Block…
+              </MenuItem>
             )}
-            <Menu.Item className={menuClasses.item} disabled={!gate.allowed} title={reason(gate)} onClick={() => onRename(true)}>
-              <Pencil className="size-3.5" />
-              Rename…
-            </Menu.Item>
-            {canPause && (
-              <Menu.SubmenuRoot>
-                <Menu.SubmenuTrigger className={menuClasses.item} disabled={!gate.allowed} title={reason(gate)}>
-                  <UserRound className="size-3.5" />
-                  <span className="flex-1">Change profile</span>
-                  <ChevronRight className="size-3.5 text-muted-foreground" />
-                </Menu.SubmenuTrigger>
-                <Menu.Portal>
-                  <Menu.Positioner side="left" align="start" sideOffset={4} className="z-50">
-                    <Menu.Popup className={menuClasses.popup}>
-                      <ProfileItems profiles={profileOptions} current={d.profileId} onPick={(p) => void performWrite(profileRequest([d], p))} />
-                    </Menu.Popup>
-                  </Menu.Positioner>
-                </Menu.Portal>
-              </Menu.SubmenuRoot>
-            )}
-            {!bridged && (
-              <>
-                <Menu.Separator className="my-1 h-px bg-border" />
-                {d.blocked ? (
-                  <Menu.Item
-                    className={menuClasses.item}
-                    disabled={!blockGate.allowed}
-                    title={reason(blockGate)}
-                    onClick={() => void performWrite(blockRequest([d], false))}
-                  >
-                    <CircleCheck className="size-3.5" />
-                    Unblock
-                  </Menu.Item>
-                ) : (
-                  <Menu.Item
-                    className={cn(menuClasses.item, "text-destructive-foreground")}
-                    disabled={!blockGate.allowed}
-                    title={reason(blockGate)}
-                    onClick={() => void performWrite(blockRequest([d], true, { networkName }))}
-                  >
-                    <Ban className="size-3.5" />
-                    Block…
-                  </Menu.Item>
-                )}
-              </>
-            )}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+          </>
+        )}
+      </MenuPopup>
+    </Menu>
   );
 }
 
