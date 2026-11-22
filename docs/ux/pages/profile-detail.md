@@ -8,6 +8,8 @@ Mockup: [../../mockups/08-profile-detail.html](../../mockups/08-profile-detail.h
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
 Topbar: crumbs "Profiles / Mia", no page actions (Rename is in the hero).
+The name opens the crumb switcher: every profile in `profile.list` order,
+with Paused or Scheduled beside it (design-system.md, Crumb switcher).
 Sidebar item Profiles stays active.
 
 ## Layout

@@ -27,6 +27,7 @@ import {
   profileItems,
   type Sources,
   search,
+  siblingHits,
   missingRequired,
   validateParams,
   writeRequest,
@@ -228,6 +229,26 @@ describe("eero rows", () => {
     const only = search("o", s, "eero");
     expect(only.groups.map((g) => g.kind)).toEqual(["eero"]);
     expect(only.total).toBe(only.counts.eero);
+  });
+});
+
+describe("detail page switcher", () => {
+  it("lists every sibling in the given order with nothing typed", async () => {
+    const s = await sources();
+    const reversed = [...s.devices].reverse();
+    expect(siblingHits("", "device", reversed).map((h) => h.item.id)).toEqual(reversed.map((d) => d.id));
+    expect(siblingHits("  ", "eero", s.eeros ?? []).map((h) => h.item.id)).toEqual((s.eeros ?? []).map((e) => e.id));
+  });
+
+  it("ranks matches as the palette does for that kind", async () => {
+    const s = await sources();
+    for (const q of ["garage", "o", "beacon"]) {
+      expect(siblingHits(q, "eero", s.eeros ?? []).map((h) => h.item.key)).toEqual(search(q, s, "eero").flat.map((h) => h.item.key));
+    }
+    const devices = siblingHits("tv", "device", s.devices);
+    expect(devices.map((h) => h.item.key)).toEqual(search("tv", s, "device").flat.map((h) => h.item.key));
+    expect(devices.every((h) => h.item.kind === "device")).toBe(true);
+    expect(siblingHits("zzzzqx", "profile", s.profiles)).toEqual([]);
   });
 });
 

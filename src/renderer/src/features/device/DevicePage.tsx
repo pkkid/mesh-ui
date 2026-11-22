@@ -20,12 +20,14 @@ import { performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { TopBarActions, TopBarTitle } from "~/features/shell/TopBar";
+import { TopBarActions } from "~/features/shell/TopBar";
+import { TopBarTitleSwitcher } from "~/features/shell/TitleSwitcher";
+import { deviceItems } from "~/features/palette/search";
 import { blockRequest } from "~/features/devices/BulkBar";
 import { devicesOrder } from "~/features/devices/DeviceTable";
 import { readSort } from "~/features/devices/deviceSort";
 import { SORT_DEFAULT_ORDER } from "../../../../core/commands/device";
-import type { Device, DeviceList, Network } from "../../../../core/model";
+import type { Device, DeviceList, Eero, Network, ProfileList } from "../../../../core/model";
 
 import { DeviceHero } from "./DeviceHero";
 import { DeviceInfo } from "./DeviceInfo";
@@ -52,6 +54,9 @@ export function DevicePage({ params }: PageProps) {
     return { ...(sort === "name" ? {} : { sort }), ...(order === SORT_DEFAULT_ORDER[sort] ? {} : { order }) };
   }, []);
   const all = useQuery<DeviceList>("device.list", listParams, { poll: true });
+  // For the switcher rows' context (profile and eero names); cached reads other pages share.
+  const profiles = useQuery<ProfileList>("profile.list");
+  const eeros = useQuery<Eero[]>("eero.list");
 
   const d = device.data;
   const listed = (all.data?.devices ?? []).find((x) => x.id === id);
@@ -75,6 +80,15 @@ export function DevicePage({ params }: PageProps) {
   const prev = at > 0 ? order[at - 1] : undefined;
   const next = at >= 0 && at < order.length - 1 ? order[at + 1] : undefined;
 
+  // The crumb switcher lists every device: the `[` / `]` order first, then any the Devices table's filters hid.
+  const siblings = useMemo(() => {
+    const devices = all.data?.devices ?? [];
+    const byId = new Map(devices.map((x) => [x.id, x]));
+    const inOrder = order.flatMap((x) => byId.get(x) ?? []);
+    const shown = new Set(order);
+    return deviceItems([...inOrder, ...devices.filter((x) => !shown.has(x.id))], profiles.data ?? null, eeros.data ?? null);
+  }, [order, all.data, profiles.data, eeros.data]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || (e.key !== "[" && e.key !== "]")) return;
@@ -94,7 +108,9 @@ export function DevicePage({ params }: PageProps) {
   return (
     <>
       {/* Same name source as the hero: device.get, or the list's copy while it loads, so the crumb never lags the page. */}
-      {(d ?? listed) && <TopBarTitle>{(d ?? listed)?.name}</TopBarTitle>}
+      {(d ?? listed) && (
+        <TopBarTitleSwitcher title={(d ?? listed)?.name ?? ""} kind="device" items={siblings} currentId={id} pathFor={(to) => pathFor("device", { deviceId: to })} />
+      )}
       <TopBarActions>
         <LiveToggle size="tool" />
       </TopBarActions>

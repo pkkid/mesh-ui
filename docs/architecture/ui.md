@@ -230,7 +230,9 @@ From the mockups (`01-overview.html` and every page):
   plain text (not a link), plus a sign-out icon.
 - **Top bar** (44px, `drag-region`): breadcrumbs (`Maple Street / eeros / Office`:
   the selected network, from the switcher's `network.list`, then the page;
-  not on Settings and Account), then on
+  not on Settings and Account; on a device, eero or profile the last crumb
+  is `TopBarTitleSwitcher`, a searchable list of its siblings from the
+  page's own list query, see design-system.md, Crumb switcher), then on
   the right the search field ("Search or run a command", `Ctrl K` / `Cmd K`),
   the notifications bell with an unread dot (`notifications.list`), and space
   for native window controls (`--titlebar-inset-right`). Every control in it

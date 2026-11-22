@@ -406,6 +406,23 @@ window titlebar (`drag-region`); controls in it need `no-drag`, and it
 respects `--titlebar-inset-left/right`. See
 [architecture/ui.md](../architecture/ui.md#shell).
 
+**Crumb switcher.** On a detail page (device, eero, profile) the last
+crumb, the item's name, is a button (`TopBarTitleSwitcher` in
+`features/shell/TitleSwitcher.tsx`), copied from T3 Code's thread title: no
+border or fill at rest, a `size-3.5` muted chevron after the name that fades
+in on hover, keyboard focus and while open. It opens a 340px `PopoverPopup`
+(at most 60vh, the list scrolling inside) of every sibling in the list
+page's order: devices in the Devices table's order (the `[` / `]` order),
+then any its filters hid; eeros and profiles in their list order. The
+current one has a check and is scrolled into view. A row is the icon
+(`deviceIcon`, `eeroIcon`; profiles have none), the name, and muted context
+on the right: a device's profile and eero with a status dot (online,
+paused, blocked, offline), an eero's status, a profile's Paused or
+Scheduled. Lists longer than 10 get a filter field, focused on open, that
+ranks matches as the command palette does (`siblingHits` in
+`palette/search.ts`), with one muted line when nothing matches ("No devices
+match."). Up and Down move the highlight, Enter opens, Esc closes.
+
 **The titlebar holds navigation and global tools only**: breadcrumbs,
 search, Refresh, notifications, theme, and Prev / Next on detail pages.
 **Rename lives in the hero.** Detail pages (device, eero, profile) put
@@ -614,6 +631,7 @@ T3 Code's `apps/web/src/components/ui/` and trim what is unused.
 | Device icon | `lib/deviceIcons.ts` `deviceIcon(device)`: the only map from a device to an icon, shown in an Icon tile. An Amazon Echo is matched by its model name first (see [Product icons](#product-icons)), then the device type, then core's guess for a `generic` device (`inferredType`), then the category. A device nothing is known about gets a neutral device icon (`MonitorSmartphone`), never a question mark. Never map device types to icons anywhere else |
 | eero icon | `lib/deviceIcons.ts` `eeroIcon(eero)`: the only map from an eero to its product glyph, by `modelNumber`, then the model name, then the puck. See [Product icons](#product-icons) |
 | Tooltip | One surface for every tooltip: `tooltipSurface` in `charts/Tooltip.tsx` (`bg-tooltip/95`, 1px `border`, `rounded-md` (6px), `shadow-lg`, `text-xs`, backdrop blur). Chart tooltips, the share bar and the donut use it, and `ui/title-tooltips.tsx` (mounted once in `main.tsx`) draws every `title` attribute with it, centred above the element after 500ms, instead of the OS tooltip. So components keep writing plain `title="..."` |
+| Popover | `popover.tsx` (trimmed from T3 Code's). `PopoverPopup` anchors under its trigger (`side="bottom" align="start"`, 4px offset), `no-drag`, and is capped at the available height with its content scrolling inside. One surface, `popoverSurface`: `bg-popover`, 1px border, 12px radius, `shadow-lg`, `text-xs`. New popovers use it; the older hand-built ones move onto it with #346 |
 | Dialog and sheet | `bg-popover`, 1px border, 16px radius (sheets 18px, max 540px wide), dialog `max-w-lg`, backdrop `bg-background/60` with a 2px blur |
 | QR block | `qr.tsx`. **Plain** (`QrCode plain`, the Guest network and Wi-Fi network heroes): the code at error correction level L with no tile or glyph, so a guest `WIFI:` payload is 29 x 29 modules instead of 41 x 41, drawn as round dots (radius 0.46 of a module, so scanners still read them) with the three finder patterns as rounded squares, in the full text colour on screen (a 60% dim was tried and dropped). Both heroes frame it in a 1px rounded border with 15px of padding and no buttons beside it; their share actions are hero buttons (**Copy invite**, **Copy password**). Wi-Fi network keeps the frame empty, with **Show code** centred in it, until clicked. Standard: `QrBlock`: `xs` outline buttons stacked on the left (Copy with a page label such as "Copy password", Save QR, then any page actions), the code with a muted `text-xs` caption on the right; `QrCode` is the code alone. On screen the code follows the theme: `text-foreground` modules on a `bg-card` tile with a quiet zone and 1px border, so the dark theme shows light modules on a dark tile (current iOS and Android cameras read inverted codes; Gruvbox foreground on card is about 12:1). The Mesh UI glyph (the three nodes from `build/icon.svg`) sits in a cleared square in the middle, about a quarter of the width, in the modules' colour; the code is encoded at error correction level H so the hidden modules (under 8%) never stop it scanning. An empty muted frame while the payload loads. What leaves the app stays black on white, the only fixed black and white: Save QR writes a black-on-white PNG (4-module quiet zone, glyph included) through Chromium's download save dialog. (The printed guest card was dropped on 2026-11-20 with Print a card.) Encoder: `uqr` (MIT, pinned) |
 | Week timeline | `timeline.tsx`. `WeekTimeline`: a lane per day, Mon to Sun (day label `text-2xs` uppercase, today in `text-foreground` with a stronger lane border), hour gridlines, blocks in the schedule's colour at 78% with `text-background` label (icon from 3 h, label from 2 h), disabled schedules as a dashed muted outline "(off)", a 2px Now line on today, ticks 12 AM, 6 AM, 12 PM, 6 PM, 12 AM. A span ending at or before its start wraps past midnight and splits across two days (Sunday into Monday). `layoutWeek` is the pure layout. Shared by profile schedules and power saving |

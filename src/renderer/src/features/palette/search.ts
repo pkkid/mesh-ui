@@ -415,6 +415,21 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
   return { mode, groups, counts, total, flat: groups.flatMap((g) => g.hits) };
 }
 
+/** A device, eero or profile in a detail page's switcher (features/shell/TitleSwitcher.tsx). */
+export type SiblingItem = DeviceItem | EeroItem | ProfileItem;
+export type SiblingHit = Hit & { item: SiblingItem };
+
+/**
+ * A detail page switcher's rows: every item in the list page's order with
+ * nothing typed, else the palette's matches for that kind, ranked as the
+ * palette ranks them (so "find a device" finds the same thing in both).
+ */
+export function siblingHits(query: string, kind: SiblingItem["kind"], items: ReadonlyArray<SiblingItem>): SiblingHit[] {
+  const of = <K extends SiblingItem["kind"]>(k: K) => items.filter((i): i is Extract<SiblingItem, { kind: K }> => i.kind === k);
+  if (query.trim() === "") return of(kind).map((item) => ({ item, score: 0, ranges: [], idRanges: [] }));
+  return search(query, { commands: [], pages: [], eeros: of("eero"), devices: of("device"), profiles: of("profile") }, kind).flat as SiblingHit[];
+}
+
 // ---------------------------------------------------------------------------
 // Params from JSON Schema
 
