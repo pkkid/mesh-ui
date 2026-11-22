@@ -579,11 +579,12 @@ function Row({ label, detail, children }: { label: string; detail?: string; chil
 function Group({ title, detail, children }: { title: string; detail?: string; children: React.ReactNode }) {
   return (
     <section className="space-y-1">
-      <div className="px-2">
+      <div>
         <h3 className="font-medium text-foreground text-xs">{title}</h3>
         {detail && <p className="text-2xs text-muted-foreground">{detail}</p>}
       </div>
-      <div className="grid gap-0.5">{children}</div>
+      {/* Rows pad their selected highlight by 8px; pulled left so their labels line up with Name and the headings. */}
+      <div className="-ms-2 grid gap-0.5">{children}</div>
     </section>
   );
 }
