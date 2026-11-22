@@ -48,8 +48,9 @@ being cut off at a hard edge or a divider. One look everywhere:
   the edge to opaque. The scrollbar lane stays opaque.
 - `scroll-fade-y` (in `index.css`) on any scroll box: each edge fades only
   while there is more to scroll that way, so a list at rest is not faded
-  at its first row and a box that does not scroll is not faded at all. Used by the command palette's results and preview, Add theme's results
-  and the Edit theme panel.
+  at its first row and a box that does not scroll is not faded at all. Used by every sheet's body, the sidebar's page list, the notifications
+  list, the title switcher's list, the command palette's results and
+  preview, Add theme's results and the Edit theme panel.
 - `topbar-scroll-fade` on the page column, whose top edge always fades
   under the top bar.
 - A bordered scroll box keeps its border on a wrapper outside the masked

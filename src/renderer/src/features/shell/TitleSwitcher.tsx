@@ -140,7 +140,7 @@ function SwitcherPopup({ kind, items, currentId, onPick }: { kind: Kind; items: 
         tabIndex={-1}
         aria-label={`Other ${NOUN[kind]}`}
         aria-activedescendant={!searchable && hits[at] ? optionId(at) : undefined}
-        className="min-h-0 flex-1 overflow-y-auto p-1 outline-none"
+        className="scroll-fade-y min-h-0 flex-1 overflow-y-auto p-1 outline-none"
       >
         {hits.length === 0 && <div className="px-2.5 py-1.5 text-muted-foreground">No {NOUN[kind]} match.</div>}
         {hits.map((hit, i) => (
