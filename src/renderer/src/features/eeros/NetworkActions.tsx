@@ -1,21 +1,23 @@
 /**
  * "Network actions": Restart network, disruptive, with the engine's confirm
- * in the app's confirm dialog. Also home to the restart watcher every restart control shares
+ * in the app's confirm dialog, with the row (`useRestartNetworkRow`) shared with
+ * Troubleshooting and Advanced. Also home to the restart watcher every restart control shares
  * (eeros page, Overview hero, eero detail): a progress toast that stays
  * until the eeros that restarted are back. docs/ux/pages/eeros.md (Layout 3,
  * Actions).
  */
 import { RotateCcw } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { execute, invalidate, useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
-import { Section } from "~/components/ui/card";
-import { formatCount } from "../../../../core/format";
-import { IconTile } from "~/components/ui/hero";
-import { GatedButton, Row, RowList, useGate } from "~/components/ui/page";
+import { Card, Section } from "~/components/ui/card";
+import { GatedButton, useGate } from "~/components/ui/page";
 import { toast } from "~/components/ui/toast";
+import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { restartNetworkLine } from "~/features/eero/helpers";
 import type { RestartResult } from "../../../../core/commands/network";
+import { formatCount } from "../../../../core/format";
 import type { Eero, Network, SettingsImpact } from "../../../../core/model";
 
 /** First check, while eero still reports the restart. */
@@ -84,29 +86,39 @@ export function useRestartNetwork() {
   return { write, run, gate: offline ? { allowed: false, reason: `${name} is offline` } : gate };
 }
 
-export function NetworkActions() {
+/**
+ * The Restart network row's description and button, the same on the eeros
+ * page, Troubleshooting and Advanced (Danger zone): one sentence from
+ * `settings.impact` and `restartNetworkLine`, and a neutral outline button
+ * with a dim icon. Red text is for actions that do not undo themselves
+ * (design-system.md, Confirmation); the confirm dialog carries the warning.
+ * Each page writes `<SettingsRow title="Restart network" {...row} />` itself,
+ * so the search palette's Places index it on that page (scripts/places.ts
+ * reads titles per file).
+ */
+export function useRestartNetworkRow(): { description: string; control: ReactNode } {
   const restart = useRestartNetwork();
   const impact = useQuery<SettingsImpact>("settings.impact", { changes: [{ id: "network.restart" }] });
+  return {
+    description: restartNetworkLine(impact.data),
+    control: (
+      // Ellipsis: it confirms first.
+      <GatedButton gate={restart.gate} variant="outline" className="[&_svg]:text-muted-foreground" disabled={restart.write.running} onClick={() => void restart.run()}>
+        <RotateCcw />
+        Restart network{"\u2026"}
+      </GatedButton>
+    ),
+  };
+}
+
+export function NetworkActions({ eeros }: { eeros: ReadonlyArray<Eero> | undefined }) {
+  const restart = useRestartNetworkRow();
+  const n = eeros?.length ?? 0;
   return (
-    // "31 devices online would lose internet": what is at stake, from the same impact read as the row.
-    <Section
-      title="Network actions"
-      description={impact.data ? `${formatCount(impact.data.devicesOnline)} ${impact.data.devicesOnline === 1 ? "device" : "devices"} online would lose internet` : "-"}
-      className="gap-[15px]"
-    >
-      <RowList>
-        <Row>
-          <IconTile icon={RotateCcw} />
-          <div className="min-w-0 flex-1">
-            <div className="font-medium text-sm">Restart network</div>
-            <div className="text-muted-foreground text-xs">Restarts every eero at once. {restartNetworkLine(impact.data)}</div>
-          </div>
-          {/* Ellipsis: it confirms first. 28px (`sm`), the height of the section dropdowns, centred in the row. */}
-          <GatedButton gate={restart.gate} size="sm" variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>
-            Restart network…
-          </GatedButton>
-        </Row>
-      </RowList>
+    <Section title="Network actions" description={eeros ? `${formatCount(n)} ${n === 1 ? "eero" : "eeros"}` : "-"} className="gap-[15px]">
+      <Card className="divide-y divide-border/50">
+        <SettingsRow title="Restart network" {...restart} />
+      </Card>
     </Section>
   );
 }

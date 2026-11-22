@@ -182,7 +182,7 @@ export const commands: AnyCommand[] = [
     invalidates: ["network", "eeros"],
     async confirmMessage(ctx) {
       const name = (await ctx.backend.network.get(ctx.net).catch(() => null))?.name;
-      return `Restarts every eero on ${name ?? "the network"}. Every device loses internet for ${RESTART_ESTIMATE.network}.`;
+      return `Restarts every eero on ${name ?? "the network"} at once. Everyone loses internet for ${RESTART_ESTIMATE.network}.`;
     },
     async run(ctx): Promise<RestartResult> {
       const eeros = await ctx.backend.eero.list(ctx.net).catch(() => [] as M.Eero[]);

@@ -207,7 +207,7 @@ export function EerosPage(_props: PageProps) {
         )}
       </div>
       {/* Disruptive actions in their own row at the bottom of the page, away from the read-only sections. */}
-      <NetworkActions />
+      <NetworkActions eeros={eeros.data} />
     </div>
   );
 }

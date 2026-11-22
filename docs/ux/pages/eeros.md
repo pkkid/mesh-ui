@@ -79,12 +79,15 @@ Sidebar count: number of eeros.
      the middle stays.
 4. **Network actions**, its own full-width section at the bottom of the
    page (disruptive actions sit apart from the read-only sections).
-   Description: "31 devices online would lose internet" (from
-   `settings.impact`). One row: Restart network, "Restarts every eero at
-   once" with the impact line, and **Restart network…** (outline, 28px like the
-   section dropdowns, centred in the row; the ellipsis because it opens the confirm dialog: "Everyone loses
-   internet for about 2 to 3 minutes, including every connected device and
-   any calls in progress." with **Yes, restart network** and **Cancel**).
+   Description: the eero count ("3 eeros"). One row, the shared
+   row from `useRestartNetworkRow` (also on Troubleshooting and Advanced networking):
+   Restart network, "Restarts every eero at once. 31 devices online lose
+   internet for about 2 to 3 minutes." (the count from `settings.impact`;
+   "Everyone loses internet" until it answers), and **Restart network…**
+   (outline, neutral, dim icon; the ellipsis because it opens the confirm
+   dialog: "Restarts every eero on Maple Street at once. Everyone loses
+   internet for about 2 to 3 minutes." with **Yes, restart network** and
+   **Cancel**).
 
 ## Data
 
