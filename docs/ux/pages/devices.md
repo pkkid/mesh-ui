@@ -80,7 +80,10 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
    behind both. The header row is moved with a transform on scroll
    (`usePinnedHead`) rather than `sticky`, because the table's box scrolls
    sideways on narrow windows and would capture a sticky row; it stops at
-   the last row. While it is pinned, a cap under the frozen block redraws the
+   the last row. That transform can trail a fast scroll by a frame, so a
+   40px shield in the page background sits just above the header row,
+   always hidden behind the frozen block, and fills any gap the lag opens
+   so rows never show above the header. While it is pinned, a cap under the frozen block redraws the
    card's rounded top edge (its 1px border at the card radius, with the page
    colour covering the card's straight sides at the corners), since the
    card's own top has scrolled away, and a fade the height of the topbar's
