@@ -30,7 +30,8 @@ function DialogClose(props: DialogPrimitive.Close.Props) {
  * edge at `--dialog-top` (clear of the titlebar, `index.css`) and grows
  * downward, so it never re-centres and a nested confirm opens at the same
  * height as its sheet. `placement="palette"` is the command palette's own,
- * higher position, the one documented exception
+ * higher position, the one documented exception. A box taller than the
+ * window stops `--dialog-bottom` (60px) above the bottom edge and scrolls inside
  * (docs/design/design-system.md#modals-and-popups).
  */
 function DialogPopup({
@@ -48,7 +49,7 @@ function DialogPopup({
           <DialogPrimitive.Backdrop forceRender className={BACKDROP_CLASS} data-slot="dialog-backdrop" />
           <DialogPrimitive.Viewport
             className={cn(
-              "fixed inset-0 z-50 flex flex-col items-center p-4",
+              "fixed inset-0 z-50 flex flex-col items-center p-4 pb-(--dialog-bottom)",
               placement === "standard" ? "pt-(--dialog-top)" : "pt-10",
             )}
             data-slot="dialog-viewport"

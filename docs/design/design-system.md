@@ -999,8 +999,9 @@ Modals take one of three widths, never a free value:
 | Sheet | 540px | Every sheet (the default), Share Wi-Fi included |
 | Wide sheet | 640px | A sheet whose content needs the room: the device icon picker |
 
-Height follows the content. A modal never grows past the window: it keeps a
-16px gap at the bottom and its body scrolls inside, header and footer fixed.
+Height follows the content. A modal never grows past the window: it keeps at
+least a 60px gap at the bottom (`--dialog-bottom` in `index.css`) and its body
+scrolls inside, header and footer fixed.
 Popovers and menus size to their content (a list at least 176px, `min-w-44`)
 and are capped at the space available below their trigger, then scroll; a
 list also stops at 320px. See [Popovers and menus](#popovers-and-menus).
