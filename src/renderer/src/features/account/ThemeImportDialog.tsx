@@ -89,7 +89,7 @@ export function ThemeImportDialog({
       onClose={close}
       size="wide"
       title="Add theme"
-      subtitle="VS Code color themes work, as do Mesh UI and T3 Code theme files."
+      subtitle="Find open-source themes from Open VSX."
       error={error}
       onSave={add}
       dirty={files.length > 1 || json.trim() !== ""}

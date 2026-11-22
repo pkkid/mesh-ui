@@ -157,9 +157,6 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
           {error}
         </p>
       )}
-      <p className="text-2xs text-muted-foreground">
-        From open-vsx.org, permissively licensed themes only. The download is checked against its published checksum.
-      </p>
     </div>
   );
 }
