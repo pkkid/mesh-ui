@@ -32,6 +32,23 @@ outline or shadow standing in for one. Selection shows by fill and text
 colour alone: the track is `bg-muted`, the selected pill `bg-card` with
 `text-foreground` and `font-medium`, the others `text-muted-foreground`.
 
+**Scroll fades.** Content that scrolls behind something fixed (a title or
+header, a footer or button bar, the top bar) dissolves into it instead of
+being cut off at a hard edge or a divider. One look everywhere:
+- A mask, not an overlay, so it fades to whatever surface is behind, on
+  any theme. 1.5rem tall (`--topbar-scroll-fade-height`), transparent at
+  the edge to opaque. The scrollbar lane stays opaque.
+- `scroll-fade-y` (in `index.css`) on any scroll box: each edge fades only
+  while there is more to scroll that way, so a list at rest is not faded
+  at its first row and a box that does not scroll is not faded at all. Used by the command palette's results and preview, Add theme's results
+  and the Edit theme panel.
+- `topbar-scroll-fade` on the page column, whose top edge always fades
+  under the top bar.
+- A bordered scroll box keeps its border on a wrapper outside the masked
+  box, or the fade eats the border (Add theme's results).
+- No divider stands in for the fade: a header or title over a scroll area
+  has no rule under it ([No divider lines](#no-divider-lines)).
+
 **Dropdowns, not pill toggles.** View choices (range, metric, grouping)
   are dropdowns, never Segmented pill toggles (see
   [Buttons and links](#buttons-and-links)).

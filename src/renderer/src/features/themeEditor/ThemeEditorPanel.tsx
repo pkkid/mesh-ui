@@ -468,7 +468,8 @@ export function ThemeEditorPanel({
 
       {!minimized && (
         <>
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-3 ps-3 pe-1.5">
+          {/* Rows fade under the header and footer as they scroll (design-system.md, Scroll fades). */}
+          <div className="scroll-fade-y min-h-0 flex-1 space-y-3 overflow-y-auto pt-[17px] pb-3 ps-3 pe-1.5">
             <Row label="Name">
               <Input
                 autoFocus
