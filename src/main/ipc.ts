@@ -26,6 +26,7 @@ import {
   type ThemeSearchResult,
   type TitlebarColors,
 } from "../shared/types";
+import { formatCombo } from "../shared/shortcuts";
 import { type NotifyHost, registerNotify } from "./notify";
 
 // ---------------------------------------------------------------------------
@@ -215,20 +216,25 @@ export function registerIpc(ipcMain: IpcMainLike, opts: IpcOptions): () => void 
   };
 }
 
-/** The parts of Electron's `Input` (before-input-event) the refresh shortcut reads. */
+/** The parts of Electron's `Input` (before-input-event) the reload keys check reads. */
 export type KeyInput = { type: string; key: string; control: boolean; meta: boolean; alt: boolean; shift: boolean };
 
 /**
- * Whether a key press is the Refresh shortcut: `Cmd+R` on macOS, `Ctrl+R`
- * elsewhere, or a bare `F5`. Main stops these before the page and the menu
- * see them, so they refresh data instead of reloading the window.
- * `Ctrl+Shift+R` (force reload) is left alone.
+ * The key combination (src/shared/shortcuts.ts) when a key press is one main
+ * must catch: `Cmd+R` on macOS, `Ctrl+R` elsewhere, or a bare `F5`. The
+ * default menu's Reload would reload the window on the first, so main stops
+ * all of them before the page and the menu see them and hands the
+ * combination to the renderer (`window.mesh.onCaughtKey`), whose shortcut
+ * registry runs whatever is bound to it (Refresh by default is `F5`).
+ * `Ctrl+Shift+R` (force reload) is left alone. Null for every other key.
  */
-export function isRefreshKey(input: KeyInput, platform: string): boolean {
-  if (input.type !== "keyDown" || input.alt || input.shift) return false;
-  const mod = platform === "darwin" ? input.meta && !input.control : input.control && !input.meta;
-  if (input.key === "F5") return !input.control && !input.meta;
-  return mod && input.key.toLowerCase() === "r";
+export function caughtKey(input: KeyInput, platform: string): string | null {
+  if (input.type !== "keyDown" || input.alt || input.shift) return null;
+  if (input.key === "F5") return !input.control && !input.meta ? "F5" : null;
+  const mac = platform === "darwin";
+  const mod = mac ? input.meta && !input.control : input.control && !input.meta;
+  if (!mod || input.key.toLowerCase() !== "r") return null;
+  return formatCombo({ ctrl: !mac, meta: mac, alt: false, shift: false, code: "KeyR" });
 }
 
 // ---------------------------------------------------------------------------
@@ -299,10 +305,12 @@ export function createMeshBridge(ipc: IpcRendererLike, platform: string): MeshAp
         return { ok: false, message: "Lost contact with the app." };
       }
     },
-    onRefresh(listener) {
-      const wrapped = () => listener();
-      ipc.on(IPC.refresh, wrapped);
-      return () => void ipc.removeListener(IPC.refresh, wrapped);
+    onCaughtKey(listener) {
+      const wrapped = (_e: unknown, combo: unknown) => {
+        if (typeof combo === "string") listener(combo);
+      };
+      ipc.on(IPC.caughtKey, wrapped);
+      return () => void ipc.removeListener(IPC.caughtKey, wrapped);
     },
     devtools: {
       capture: async (on) => {

@@ -60,7 +60,7 @@ in `src/main/ipc.ts`, so they are tested together.
 type MeshApi = {
   platform: "darwin" | "linux" | "win32";
   execute(id: string, params?: unknown, options?: { fresh?: boolean }): Promise<Result>; // the only data path
-  onRefresh(listener: () => void): () => void;             // Ctrl+R / Cmd+R / F5 from main
+  onCaughtKey(listener: (combo: string) => void): () => void; // Ctrl+R / Cmd+R / F5, caught by main
   commands(): Promise<CommandInfo[]>;                       // registry listing
   on(listener: (e: HostEvent) => void): () => void;         // host events; returns an unsubscribe
   setTitlebarColors(colors: TitlebarColors): void;          // window-only, not a command
@@ -77,11 +77,14 @@ type Result = { ok: true; result: unknown } | { ok: false; error: { code: string
   `{ ok: false, error: { code: "network_error" } }`. The only option,
   `{ fresh: true }`, makes a query skip the engine cache (see
   [Refresh](#refresh)); main passes it on only as a real boolean.
-- `onRefresh` fires on `mesh:refresh`, which main sends when the window gets
-  `Ctrl+R` (`Cmd+R` on macOS) or a bare `F5`. Main stops those keys in
-  `before-input-event` (`isRefreshKey` in `src/main/ipc.ts`), so they never
-  reach the page or the default menu's Reload; `Ctrl+Shift+R` still force
-  reloads the window.
+- `onCaughtKey` fires on `mesh:caught-key`, which main sends when the window
+  gets `Ctrl+R` (`Cmd+R` on macOS) or a bare `F5`, with the key combination
+  as shortcut text (`"ctrl+KeyR"`, `"F5"`, see `src/shared/shortcuts.ts`).
+  Main stops those keys in `before-input-event` (`caughtKey` in
+  `src/main/ipc.ts`), so they never reach the page or the default menu's
+  Reload; the renderer's shortcut registry (`lib/shortcuts.ts`) runs
+  whatever is bound to them (Refresh is `F5` by default). `Ctrl+Shift+R`
+  still force reloads the window.
 - `commands()` returns `{ id, label, description, icon, effect, sensitive,
   params (JSON Schema), poll? }` for every command (fields defined in
   [commands.md](commands.md#the-spec)). Params follow the
@@ -196,8 +199,8 @@ await pause.run({ profile: "Leo" });   // Ref: an id or exact name
   refresh runs return the same promise and start nothing. Errors land on
   each query, so sections show their usual error notes (and `rate_limited`
   its usual message). `useRefresh()` gives `{ refreshing, refresh }` to the
-  topbar button; `window.mesh.onRefresh` (the keyboard shortcut) calls the
-  same function.
+  topbar button; its keyboard shortcut (`useShortcut("data.refresh")`)
+  calls the same function.
 - **`followHostEvents()`**, called once by `App.tsx`, ends the session on a
   `session.changed` sign-out and refetches every query on
   `network.selected`. Any command answering `not_signed_in` also ends the
@@ -233,12 +236,12 @@ From the mockups (`01-overview.html` and every page):
   not on Settings and Account; on a device, eero or profile the last crumb
   is `TopBarTitleSwitcher`, a searchable list of its siblings from the
   page's own list query, see design-system.md, Crumb switcher), then on
-  the right the search field ("Search or run a command", `Ctrl K` / `Cmd K`),
+  the right the search field ("Search or run a command", with the palette's shortcut, `F1` by default),
   the notifications bell with an unread dot (`notifications.list`), and space
   for native window controls (`--titlebar-inset-right`). Every control in it
   has `no-drag`. Nothing follows the page title. Pages report
   their data's age with `useTopBarUpdated(fetchedAt)`, shown in the Refresh
-  button's tooltip ("Refresh (Ctrl+R) · Updated 2m ago"), and fill one
+  button's tooltip ("Refresh (F5) · Updated 2m ago"), and fill one
   slot, `TopBarActions`, which holds **navigation and global tools only** (Prev /
   Next on Device detail). Page actions (Add a profile, Export CSV, Rename)
   go in the page: hero actions or a section's `tools`. See
@@ -291,7 +294,7 @@ turns into a confirm in place.
 
 ## Command palette
 
-`Ctrl K` / `Cmd K` opens it (`19-command-palette.html`).
+Its shortcut (`F1` by default, rebindable) or the topbar search opens it (`19-command-palette.html`).
 
 - Searches commands (label and id), devices, profiles and eeros in one list,
   grouped, with scope chips (All, Commands, Devices, Profiles).

@@ -22,7 +22,7 @@ export const IPC = {
   saveFile: "mesh:save-file",
   notify: "mesh:notify",
   notifyClick: "mesh:notify-click",
-  refresh: "mesh:refresh",
+  caughtKey: "mesh:caught-key",
   themeSearch: "mesh:theme-search",
   themeDownload: "mesh:theme-download",
   devtoolsCapture: "mesh:devtools-capture",
@@ -95,8 +95,12 @@ export type MeshApi = {
    * `{ fresh: true }` skips the engine's cached answer for a query (Refresh).
    */
   execute<R = unknown>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>>;
-  /** The host asks for a Refresh (Ctrl+R, Cmd+R or F5 in the window). Returns an unsubscribe. */
-  onRefresh(listener: () => void): () => void;
+  /**
+   * A key combination main caught before the page could see it (Ctrl+R, Cmd+R or F5, which would otherwise reload
+   * the window), as shortcut text ("ctrl+KeyR", "F5"). The renderer's shortcut registry runs whatever is bound to
+   * it. Returns an unsubscribe.
+   */
+  onCaughtKey(listener: (combo: string) => void): () => void;
   /** The command registry as JSON. */
   commands(): Promise<CommandInfo[]>;
   /** Host events (session.changed, network.selected, update.changed). Returns an unsubscribe. */

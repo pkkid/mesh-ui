@@ -43,7 +43,7 @@ import { createEngine, type Engine, fileSettings, memorySettings } from "../core
 import type { HostActions, SettingsStore, Surface } from "../core/spec";
 import { type CliHost, cliMain, nodeHost } from "../cli";
 import { IPC } from "../shared/types";
-import { isRefreshKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
+import { caughtKey, registerIpc, SAVE_EXTS, type SaveFileHost } from "./ipc";
 import { createOpenVsx } from "./open-vsx";
 import type { NotifyHost } from "./notify";
 import { cliExitDelay, guardCliHost } from "./cli-host";
@@ -326,7 +326,8 @@ function createWindow(): BrowserWindow {
     },
   });
 
-  // Ctrl+R / Cmd+R and F5 refresh the page's data instead of reloading the window.
+  // Ctrl+R / Cmd+R and F5 never reload the window: main catches them and hands them to the renderer's
+  // shortcut registry, which runs whatever they are bound to (F5 is Refresh by default).
   // (F12 opens the app's own dev tools panel; the renderer handles it.)
   const win = mainWindow;
   // A reload or a closed window ends any dev tools recording; the new page starts with it off.
@@ -335,9 +336,10 @@ function createWindow(): BrowserWindow {
   win.webContents.on("render-process-gone", () => setInspector(null));
   win.on("closed", () => setInspector(null));
   win.webContents.on("before-input-event", (event, input) => {
-    if (!isRefreshKey(input, process.platform)) return;
+    const combo = caughtKey(input, process.platform);
+    if (combo === null) return;
     event.preventDefault();
-    win.webContents.send(IPC.refresh);
+    win.webContents.send(IPC.caughtKey, combo);
   });
 
   if (!isHeadless) {

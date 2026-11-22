@@ -17,7 +17,7 @@ import type { HostEvent } from "../core/model";
 import { defineCommand } from "../core/spec";
 import { IPC } from "../shared/types";
 import { inspecting } from "../core/eero/inspect";
-import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, isRefreshKey, type KeyInput, registerIpc, SAVE_MAX_CHARS, type SaveFileHost, type SenderEvent } from "./ipc";
+import { checkSaveRequest, createMeshBridge, type IpcMainLike, type IpcRendererLike, caughtKey, type KeyInput, registerIpc, SAVE_MAX_CHARS, type SaveFileHost, type SenderEvent } from "./ipc";
 import { configPaths, resolveConfigDir } from "./paths";
 import { createSecretStore, keychainName, type SafeStorageLike, storageKind } from "./secret-store";
 
@@ -427,15 +427,16 @@ describe("window.mesh bridge", () => {
     expect(await handler?.({ senderFrame: { url: APP_URL } }, "test.count", {}, { fresh: "yes", extra: 1 })).toEqual({ ok: true, result: 2 });
   });
 
-  it("delivers the host's Refresh request to onRefresh listeners until unsubscribed", async () => {
+  it("delivers keys main caught to onCaughtKey listeners until unsubscribed, ignoring anything but text", async () => {
     const { mesh, ipc } = await bridgeSetup();
-    let n = 0;
-    const off = mesh.onRefresh(() => n++);
-    ipc.broadcast(IPC.refresh, undefined as never);
-    expect(n).toBe(1);
+    const got: string[] = [];
+    const off = mesh.onCaughtKey((combo) => got.push(combo));
+    ipc.broadcast(IPC.caughtKey, "F5" as never);
+    ipc.broadcast(IPC.caughtKey, { not: "text" } as never);
+    expect(got).toEqual(["F5"]);
     off();
-    ipc.broadcast(IPC.refresh, undefined as never);
-    expect(n).toBe(1);
+    ipc.broadcast(IPC.caughtKey, "F5" as never);
+    expect(got).toEqual(["F5"]);
   });
 
   it("returns engine envelopes: unknown_command, needs_confirm, then ok with confirm", async () => {
@@ -501,27 +502,27 @@ describe("window.mesh bridge", () => {
   });
 });
 
-describe("isRefreshKey", () => {
+describe("caughtKey", () => {
   const key = (k: string, mods: Partial<KeyInput> = {}): KeyInput => ({ type: "keyDown", key: k, control: false, meta: false, alt: false, shift: false, ...mods });
-  it("is Ctrl+R on Windows and Linux, Cmd+R on macOS, and a bare F5 everywhere", () => {
+  it("catches Ctrl+R on Windows and Linux, Cmd+R on macOS, and a bare F5 everywhere, as shortcut text", () => {
     for (const p of ["linux", "win32"]) {
-      expect(isRefreshKey(key("r", { control: true }), p)).toBe(true);
-      expect(isRefreshKey(key("R", { control: true }), p)).toBe(true);
-      expect(isRefreshKey(key("r", { meta: true }), p)).toBe(false);
+      expect(caughtKey(key("r", { control: true }), p)).toBe("ctrl+KeyR");
+      expect(caughtKey(key("R", { control: true }), p)).toBe("ctrl+KeyR");
+      expect(caughtKey(key("r", { meta: true }), p)).toBeNull();
     }
-    expect(isRefreshKey(key("r", { meta: true }), "darwin")).toBe(true);
-    expect(isRefreshKey(key("r", { control: true }), "darwin")).toBe(false);
-    for (const p of ["linux", "win32", "darwin"]) expect(isRefreshKey(key("F5"), p)).toBe(true);
+    expect(caughtKey(key("r", { meta: true }), "darwin")).toBe("meta+KeyR");
+    expect(caughtKey(key("r", { control: true }), "darwin")).toBeNull();
+    for (const p of ["linux", "win32", "darwin"]) expect(caughtKey(key("F5"), p)).toBe("F5");
   });
   it("leaves force reload, other keys and key-up alone", () => {
-    expect(isRefreshKey(key("r", { control: true, shift: true }), "linux")).toBe(false);
-    expect(isRefreshKey(key("r", { control: true, alt: true }), "linux")).toBe(false);
-    expect(isRefreshKey(key("F5", { control: true }), "linux")).toBe(false);
-    expect(isRefreshKey(key("r"), "linux")).toBe(false);
-    expect(isRefreshKey(key("t", { control: true }), "linux")).toBe(false);
-    expect(isRefreshKey({ ...key("r", { control: true }), type: "keyUp" }, "linux")).toBe(false);
+    expect(caughtKey(key("r", { control: true, shift: true }), "linux")).toBeNull();
+    expect(caughtKey(key("r", { control: true, alt: true }), "linux")).toBeNull();
+    expect(caughtKey(key("F5", { control: true }), "linux")).toBeNull();
+    expect(caughtKey(key("r"), "linux")).toBeNull();
+    expect(caughtKey({ ...key("F5"), type: "keyUp" }, "linux")).toBeNull();
   });
 });
+
 
 describe("dev tools capture channel", () => {
   /** registerIpc with only the dev tools channels exercised: handlers, and a sender that collects records. */

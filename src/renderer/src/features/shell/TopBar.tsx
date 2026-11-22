@@ -5,11 +5,11 @@
  *
  * Left: crumbs (parent page link, then the page title), nothing after it.
  * Right: an actions slot for the page, Refresh (every query on screen, past
- * the engine cache; also Ctrl+R / Cmd+R / F5 from main), search,
+ * the engine cache; also its shortcut, F5 by default), search,
  * notifications and the light/dark toggle. Pages fill the slots with
  * <TopBarTitle> and <TopBarActions>, which portal into the bar, and report
  * how fresh their data is with `useTopBarUpdated(at)`, which Refresh's
- * tooltip shows ("Refresh (Ctrl+R) · Updated 2m ago"), and on a second line
+ * tooltip shows ("Refresh (F5) · Updated 2m ago"), and on a second line
  * how often the page updates on its own ("Updates every minute"; a page whose
  * main data polls slower says so with `useTopBarPollEvery(seconds)`).
  */
@@ -23,6 +23,7 @@ import { routeById } from "~/app/routes";
 import { useNow } from "~/components/ui/page";
 import { Bell } from "~/features/notifications/Bell";
 import { openPalette } from "~/features/palette/CommandPalette";
+import { isMac, useBinding, useShortcut, useShortcutText } from "~/lib/shortcuts";
 import { toggleAppearance, useResolvedAppearance } from "~/lib/themes";
 import { cn } from "~/lib/utils";
 
@@ -30,6 +31,7 @@ import type { NetworkSummary } from "../../../../core/model";
 import { networkTitle } from "./NetworkSwitcher";
 
 import { formatRelative } from "../../../../core/format";
+import { comboKeys } from "@shared/shortcuts";
 
 /** A crumb that links somewhere: muted, foreground on hover, as T3 Code's project crumb. */
 const CRUMB_LINK =
@@ -82,7 +84,7 @@ export function TopBar() {
   const current = networks.data?.find((n) => n.selected);
   const networkName = current && route.id !== "settings" && route.id !== "account" ? networkTitle(current) : null;
   const appearance = useResolvedAppearance();
-  const isMac = navigator.platform.startsWith("Mac");
+  const paletteKeys = comboKeys(useBinding("palette.open"), isMac()).join(isMac() ? "" : " ");
   const themeLabel = appearance === "dark" ? "Switch to light" : "Switch to dark";
 
   return (
@@ -135,10 +137,10 @@ export function TopBar() {
           <Search />
           <span>Search or run a command</span>
           <kbd className="ms-auto inline-flex h-5 items-center rounded-[5px] border border-input px-1.5 font-kbd text-[10.5px] leading-none">
-            {isMac ? "⌘K" : "Ctrl K"}
+            {paletteKeys}
           </kbd>
         </button>
-        <RefreshButton isMac={isMac} />
+        <RefreshButton />
         <Bell className={iconButton} />
         <button type="button" onClick={toggleAppearance} title={themeLabel} aria-label={themeLabel} className={iconButton}>
           {appearance === "dark" ? <Sun /> : <Moon />}
@@ -207,25 +209,23 @@ function useUpdatedAt(): number | null {
 
 /**
  * Refetches every query on screen, skipping the engine cache. Clicks while it
- * runs are ignored. Main sends the same request for Ctrl+R / Cmd+R and F5
- * (`window.mesh.onRefresh`) instead of reloading.
+ * runs are ignored. Its shortcut (F5 by default, Settings > Keyboard
+ * shortcuts) does the same; main catches F5 and Ctrl+R / Cmd+R so they never
+ * reload the window (lib/shortcuts.ts).
  *
  * It is also the app's only "updating" cue: the icon spins while a refresh
  * runs or any background refetch (a poll, a re-read after a write) has taken
  * longer than 150 ms, so sections never dim for them. With reduced motion it
  * does not spin; it turns foreground-coloured instead.
  */
-function RefreshButton({ isMac }: { isMac: boolean }) {
+function RefreshButton() {
   const { refreshing, refresh } = useRefresh();
   const updating = useUpdating();
   const busy = refreshing || updating;
-  useEffect(() => {
-    const mesh = (window as { mesh?: { onRefresh?: (l: () => void) => () => void } }).mesh;
-    return typeof mesh?.onRefresh === "function" ? mesh.onRefresh(() => void refreshAll()) : undefined;
-  }, []);
+  useShortcut("data.refresh", () => void refreshAll());
   const at = useUpdatedAt();
   const now = useNow(15_000);
-  const shortcut = `Refresh (${isMac ? "⌘R" : "Ctrl+R"})`;
+  const shortcut = `Refresh (${useShortcutText("data.refresh")})`;
   const every = usePollEvery();
   // Two lines (the shared tooltip keeps line breaks): the shortcut and freshness, then how often it updates on its own.
   const title = `${at === null ? shortcut : `${shortcut} · Updated ${formatRelative(new Date(at).toISOString(), now)}`}\n${everyLine(every)}`;

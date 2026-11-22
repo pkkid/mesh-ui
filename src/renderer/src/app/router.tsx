@@ -7,6 +7,7 @@ import { type AnchorHTMLAttributes, type MouseEvent as ReactMouseEvent, Suspense
 
 import { ComingSoon } from "~/features/shell/ComingSoon";
 import { PageLoading } from "~/features/shell/PageLoading";
+import { useShortcut } from "~/lib/shortcuts";
 import { cn } from "~/lib/utils";
 import { HoldPage, PageLoad, PageLoadContext } from "./pageLoad";
 import { DEFAULT_ROUTE, PAGES, ROUTES, type RouteDef, routeById } from "./routes";
@@ -161,14 +162,14 @@ export function useCanNavigateHistory(direction: HistoryDirection): boolean {
 
 const isMac = () => navigator.platform.startsWith("Mac");
 
-/** The shortcut shown in the Back and Forward tooltips. */
-export function historyShortcutLabel(direction: HistoryDirection): string {
-  if (isMac()) return direction === "back" ? "⌘[" : "⌘]";
-  return direction === "back" ? "Alt+←" : "Alt+→";
-}
-
-/** Global navigation shortcuts from docs/ux/overview.md#keyboard-shortcuts. */
+/**
+ * Global navigation shortcuts from docs/ux/overview.md#keyboard-shortcuts. Settings, Back and Forward are
+ * rebindable (lib/shortcuts.ts); Ctrl+1 to Ctrl+7 and the mouse thumb buttons are fixed.
+ */
 export function useNavigationShortcuts(): void {
+  useShortcut("nav.settings", () => navigate(pathFor("settings")));
+  useShortcut("nav.back", () => navigateHistory("back"));
+  useShortcut("nav.forward", () => navigateHistory("forward"));
   useEffect(() => {
     const numbered = ROUTES.filter((r) => r.nav === "network");
     const onKey = (e: KeyboardEvent) => {
@@ -179,16 +180,6 @@ export function useNavigationShortcuts(): void {
           e.preventDefault();
           navigate(route.path);
         }
-      } else if (mod && e.key === ",") {
-        e.preventDefault();
-        navigate(pathFor("settings"));
-      } else if (e.altKey && !mod && !e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-        e.preventDefault();
-        navigateHistory(e.key === "ArrowLeft" ? "back" : "forward");
-      } else if (mod && !e.shiftKey && !e.altKey && (e.key === "[" || e.key === "]")) {
-        // T3 Code's navigation.back / navigation.forward (mod+[ / mod+]). Bare [ and ] stay detail Prev / Next.
-        e.preventDefault();
-        navigateHistory(e.key === "[" ? "back" : "forward");
       }
     };
     // Mouse thumb buttons: 3 is Back, 4 is Forward. Chromium may run them itself on mouseup;

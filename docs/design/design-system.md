@@ -448,7 +448,7 @@ transparent native window controls exactly) and has no bottom border: as in T3 C
 top 1.5rem fades from transparent to opaque (`topbar-scroll-fade`, a mask;
 the scrollbar lane stays opaque), so content scrolling up dissolves under the
 bar. The search field keeps about 26px to the Refresh glyph (`me-[15px]` on top of the 4px gap), set by eye against the space the theme toggle keeps to the native window controls. Headless screenshots cannot show the native controls; check this one in a real window. Its icon controls (Refresh, bell, theme) are neutral 30px ghost
-buttons with a `title` tooltip naming any shortcut ("Refresh (Ctrl+R)");
+buttons with a `title` tooltip naming any shortcut ("Refresh (F5)", the current binding);
 a running Refresh only spins its icon (rotation, no other animation). The top strip of each pane is the
 window titlebar (`drag-region`); controls in it need `no-drag`, and it
 respects `--titlebar-inset-left/right`. See
@@ -1095,7 +1095,7 @@ The sidebar header copies T3 Code's `SidebarChromeHeader`: icon and
 wordmark, then Back and Forward (`ArrowLeft` / `ArrowRight`, `size-3.5`, in
 `ghost` `icon-sm` buttons in the nav icons' `--sidebar-icon-color`
 (full sidebar text on hover), `gap-1` after the brand, disabled at 64% when
-there is nowhere to go, tooltip "Go back (Alt+←)" or "(⌘[)" on macOS), then
+there is nowhere to go, tooltip "Go back (Alt+←)" or "(⌘[)" on macOS, the current binding), then
 the Demo badge `ml-1`. The row is one `h-8` line that wraps with overflow
 hidden, so a badge that does not fit drops out of sight instead of crowding
 the buttons.

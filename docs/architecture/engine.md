@@ -184,8 +184,8 @@ it pages through history, and `events.list` carries the live part).
   share it, and its TTL starts again); a failed fresh load drops the entry.
   It only skips the engine cache: the eero client may still answer a GET
   from a request finished in the last 5 s (`share`), and `ctx.resolve`
-  lists stay cached. The UI uses it for Refresh (topbar button, `Ctrl+R`,
-  `Cmd+R`, `F5`) and per-page Check for updates and Run again. The older
+  lists stay cached. The UI uses it for Refresh (topbar button and its
+  shortcut, `F5` by default) and per-page Check for updates and Run again. The older
   `refresh: true` params of `health.check` and `coverage.scan` still work
   for the CLI and MCP, which have no option for it.
 - A backend `not_signed_in` clears the whole cache and emits

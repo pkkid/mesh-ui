@@ -91,8 +91,9 @@ Never hard-code a separator; use `path.join`.
 - macOS gets a standard app menu (About, Settings `Cmd ,`, Hide, Quit), plus
   Edit (needed for copy and paste in inputs) and Window. Windows and Linux get
   no menu bar; the same items are in the sidebar and Settings.
-- Modifier: `Cmd` on macOS, `Ctrl` elsewhere. Shortcut definitions use
-  `Mod+K` and render per platform (`Cmd K`, `Ctrl K`).
+- Modifier: `Cmd` on macOS, `Ctrl` elsewhere. Rebindable shortcuts
+  (`lib/shortcuts.ts`) have a default per platform and render per platform
+  (`⌘,`, `Ctrl+,`).
 - `Ctrl Q` / `Cmd Q` quits; `Alt F4` on Windows and Linux closes as usual.
 
 ## Notifications
