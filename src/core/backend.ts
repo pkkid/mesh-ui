@@ -370,6 +370,31 @@ export interface IntegrationsBackend {
   unlinkAmazon(net: M.Id): Promise<M.Integrations>;
 }
 
+/** One turn sent to eero's assistant: a message, or an answer to a permission ask. */
+export type ConversationRequest = {
+  /** null starts a new chat. */
+  conversationId: M.Id | null;
+  message?: string;
+  answer?: { id: string; approved: boolean };
+};
+
+/**
+ * eero's assistant chat (`/2.2/conversations*`). Not an eero Plus feature.
+ * `send` streams: it calls `onEvent` for each event as it arrives and
+ * resolves when the reply ends, or as soon as eero asks permission (the
+ * rest comes after the answer). `signal` stops reading.
+ */
+export interface ConversationBackend {
+  list(net: M.Id): Promise<M.ConversationSummary[]>;
+  /** The chat as events in order; core builds the items. */
+  get(net: M.Id, id: M.Id): Promise<{ id: M.Id; title: string | null; events: M.ConversationEvent[] }>;
+  /** eero's starter prompts; may be empty (core adds its own then). */
+  suggestions(net: M.Id): Promise<M.ConversationSuggestion[]>;
+  send(net: M.Id, request: ConversationRequest, onEvent: (event: M.ConversationEvent) => void, signal?: AbortSignal): Promise<void>;
+  /** Thumbs up or down on one of eero's replies. */
+  rate(net: M.Id, messageId: string, helpful: boolean): Promise<void>;
+}
+
 export type NotificationChunk = { notifications: M.Notification[]; nextCursor: string | null };
 
 export interface NotificationsBackend {
@@ -407,6 +432,7 @@ export interface BackendAreas {
   admins: AdminsBackend;
   integrations: IntegrationsBackend;
   notifications: NotificationsBackend;
+  conversation: ConversationBackend;
 }
 
 export type AreaName = keyof BackendAreas;
@@ -454,6 +480,7 @@ export const WRITE_METHODS = {
   admins: ["createInvite", "cancelInvite", "remove", "transfer"],
   integrations: ["setBuiltin", "discoverZigbee", "unlinkAmazon"],
   notifications: ["markRead", "setSettings"],
+  conversation: ["send", "rate"],
 } as const satisfies { [K in AreaName]?: readonly (keyof BackendAreas[K])[] };
 
 export type WriteMethod<K extends AreaName> = K extends keyof typeof WRITE_METHODS ? (typeof WRITE_METHODS)[K][number] : never;
@@ -480,6 +507,7 @@ export const AREA_NAMES: readonly AreaName[] = [
   "admins",
   "integrations",
   "notifications",
+  "conversation",
 ];
 
 export interface Backend extends BackendAreas {

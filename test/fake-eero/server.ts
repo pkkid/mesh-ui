@@ -56,8 +56,11 @@ export type RouteContext = {
   network(id: string): FakeNetwork;
 };
 
-/** What a route returns: `data` (wrapped in the envelope) with an optional status, error and headers. */
-export type RouteResult = { status?: number; data?: unknown; error?: string; headers?: Record<string, string> };
+/**
+ * What a route returns: `data` (wrapped in the envelope) with an optional status, error and headers.
+ * `raw` sends that body as is instead of an envelope (the assistant chat's stream of JSON objects).
+ */
+export type RouteResult = { status?: number; data?: unknown; error?: string; headers?: Record<string, string>; raw?: string };
 
 export type Route = {
   method: Method;
@@ -172,6 +175,7 @@ export function createFakeEero(options: FakeEeroOptions = {}): FakeEero {
       }
     }
     const status = result.status ?? 200;
+    if (result.raw !== undefined) return { status, headers, body: result.raw, hang: effect.hang, delayMs: effect.delayMs };
     const meta: Record<string, unknown> = { code: status, server_time: new Date(state.now()).toISOString() };
     if (result.error) meta.error = result.error;
     return { status, headers, body: JSON.stringify({ meta, data: result.data ?? null }), hang: effect.hang, delayMs: effect.delayMs };

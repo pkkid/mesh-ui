@@ -64,7 +64,8 @@ export type Topic =
   | "permissions"
   | "firmware_history"
   | "coverage"
-  | "diagnostics";
+  | "diagnostics"
+  | "conversations";
 
 const MIN = 60;
 
@@ -93,6 +94,7 @@ export const TTL: Record<Topic, number> = {
   firmware_history: 24 * 60 * MIN,
   coverage: 60 * MIN,
   diagnostics: MIN,
+  conversations: 30,
 };
 
 /** Usage cache lifetime by range: day 4 min, week 15 min. */

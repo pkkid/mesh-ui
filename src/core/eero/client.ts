@@ -66,6 +66,15 @@ export type RequestSpec = {
    * password changed elsewhere shows on the next reveal. Default true.
    */
   share?: boolean;
+  /**
+   * A streamed reply (the assistant chat): on a 2xx the body is handed here
+   * once headers arrive instead of being read as an envelope, and the
+   * request answers null once it returns. The usual timeout covers only the
+   * wait for headers, and the rate limit slot is let go then too. A non-2xx
+   * answer is read and mapped as usual (session refresh included). Never
+   * retried, never queued behind other writes.
+   */
+  stream?: (response: Response) => Promise<void>;
 };
 
 /** One line per HTTP attempt. Never holds a token, cookie, header or body. */
@@ -386,6 +395,8 @@ export class EeroClient {
 
   private async exchange<T>(spec: RequestSpec): Promise<Exchange<T>> {
     const effect = spec.effect ?? (spec.method === "GET" ? "query" : "write");
+    // A streamed write can run for minutes: it must not hold up other writes.
+    if (spec.stream) return this.withRetries<T>(spec, "write");
     if (effect === "write") {
       // A write may change anything a shared read holds: drop them before and after.
       this.shared.clear();
@@ -562,10 +573,12 @@ export class EeroClient {
     }, this.timeoutMs);
     let response: Response;
     let text: string;
+    let streamed = false;
     try {
       response = await this.fetchFn(url.href, { method: spec.method, headers, body, redirect: "error", signal: controller.signal });
       if (capture) headersAt = Date.now();
-      text = await readBody(response);
+      streamed = spec.stream !== undefined && isOk(response.status);
+      text = streamed ? "" : await readBody(response);
     } catch (err) {
       const e =
         err instanceof BackendError
@@ -578,6 +591,12 @@ export class EeroClient {
     } finally {
       clearTimeout(timer);
       release();
+    }
+
+    if (streamed && spec.stream) {
+      await spec.stream(response);
+      capture?.response(response.status, response.headers, "(streamed reply)", { queuedMs: sentAt - queuedAt, waitMs: headersAt - sentAt, downloadMs: Date.now() - headersAt });
+      return { status: response.status, envelope: null, cookieToken: cookieToken(response.headers), retryAfter: null };
     }
 
     capture?.response(response.status, response.headers, text, { queuedMs: sentAt - queuedAt, waitMs: headersAt - sentAt, downloadMs: Date.now() - headersAt });
@@ -838,6 +857,8 @@ export function mapError(status: number, eeroError: string | null, method: strin
   if (e === "error.app.version.blocked") {
     return new BackendError("eero_error", "eero refused this app's User-Agent. Set userAgent in settings.json to a current eero app string.", detail);
   }
+  if (e === "error.conversations.not_available") return new BackendError("eero_error", "eero has not turned on its assistant for this account or network.", detail);
+  if (e === "error.conversations.user_blocked") return new BackendError("eero_error", "eero has turned off its assistant for this account.", detail);
   if (e === "error.eero.offline") return new BackendError("eero_error", "eero says that eero is offline.", detail);
   if (status === 402 || e.startsWith("error.premium")) {
     return new BackendError("eero_error", "This needs eero Plus, which Mesh UI does not support.", detail);

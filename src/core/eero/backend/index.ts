@@ -40,6 +40,7 @@ export type EeroArea<K extends AreaName> = (ctx: EeroContext) => PartialWrites<K
 import { account } from "./account";
 import { admins } from "./admins";
 import { auth } from "./auth";
+import { conversation } from "./conversations";
 import { placement } from "./coverage";
 import { device } from "./device";
 import { diagnostics } from "./diagnostics";
@@ -62,6 +63,7 @@ const areas: { [K in AreaName]?: EeroArea<K> } = {
   account,
   admins,
   auth,
+  conversation,
   device,
   diagnostics,
   eero: (ctx) => ({ ...eero(ctx), ...placement(ctx) }),

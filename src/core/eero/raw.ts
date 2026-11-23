@@ -602,3 +602,53 @@ export type RawNightlightWrite = { enabled: boolean; brightness_percentage: numb
 
 /** `PUT {net}/temporary_flags/hide_5g`, JSON or form; off is `DELETE` with no body. */
 export type RawHide5gWrite = { value: true };
+
+// ---------------------------------------------------------------------------
+// Conversations (eero's assistant chat). Source: the LD client's API reference;
+// not yet captured on a real network (docs/eero-api/endpoints.md, Conversations).
+
+export type RawConversationSummary = { conversation_id?: string; description?: string | null; created?: string | null };
+
+export type RawPermissionRequest = { interrupt_id?: string; friendly_sentence?: string; content?: string; tool_descriptions?: unknown[] };
+
+export type RawWidgetEvent = {
+  instance_id?: string;
+  action?: string;
+  widget_type?: string;
+  content_summary?: string;
+  properties?: Record<string, unknown> & { contacts?: { title?: string; content?: string }[]; choices?: unknown[] };
+};
+
+/** One object of the reply stream. */
+export type RawConversationEvent = {
+  conversation_id?: string;
+  /** LD lists InitialMessage, MessageDelta, ToolUse, Reasoning, Error; real history rows use message, toolUsage, toolResult, widgetEvent (2026-11-22). */
+  type?: string;
+  message_id?: string;
+  content?: string;
+  sender?: string;
+  message?: { content?: string; sender?: string } | null;
+  delta?: string;
+  text?: string;
+  tool_usage?: { name?: string; message?: string } | null;
+  finished?: boolean;
+  permission_request?: RawPermissionRequest | null;
+  widget_event?: RawWidgetEvent | null;
+};
+
+/** One row of `GET /2.2/conversations/{id}` `message_history`. Real rows (2026-11-22) carry `type` (message, toolUsage, toolResult, widgetEvent), `created`, and `sender` and `content` at the top as well as in `message`. */
+export type RawConversationHistoryRow = {
+  type?: string;
+  message_id?: string;
+  sender?: string;
+  content?: string;
+  tool_usage?: { name?: string; message?: string } | null;
+  message?: { sender?: string; content?: string } | null;
+  permission_request?: RawPermissionRequest | null;
+  permission_grant?: { approved?: boolean; interrupt_id?: string } | null;
+  widget_event?: RawWidgetEvent | null;
+};
+
+export type RawConversation = { conversation_id?: string; description?: string | null; message_history?: RawConversationHistoryRow[] };
+
+export type RawConversationRecommendation = { suggested_prompt?: string; title?: string; cta_text?: string };

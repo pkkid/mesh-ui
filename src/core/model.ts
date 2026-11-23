@@ -1022,9 +1022,73 @@ export type AuditList = {
 };
 
 // ---------------------------------------------------------------------------
-// Host events (the only push channel; never eero data, never the token)
+// Conversations (eero's assistant chat). See docs/ux/pages/conversations.md.
+
+/** A past chat in the history list. */
+export type ConversationSummary = { id: Id; title: string; createdAt: Iso | null };
+
+/** A starter prompt: `label` on the chip, `prompt` sent when it is clicked. */
+export type ConversationSuggestion = { label: string; prompt: string };
+
+/** One step eero took while answering: a tool call or a reasoning note. `text` is what eero said about it, if anything. */
+export type ConversationStep = { kind: "tool" | "reasoning"; text: string | null };
+
+/** A label and value on an assistant card ("Status", "Online"). */
+export type ConversationCardRow = { label: string; value: string };
+
+/** One thing in a chat, in order. */
+export type ConversationItem =
+  | { kind: "user"; id: string; text: string }
+  /** eero's answer. Plain text with light Markdown (bold, lists, code). `done` once eero marks it finished. */
+  | { kind: "reply"; id: string; text: string; done: boolean }
+  /** What eero did while working, grouped between two messages. */
+  | { kind: "steps"; id: string; steps: ConversationStep[] }
+  /** eero asks before it changes something. `id` is eero's interrupt id; `answer` stays null until someone answers. */
+  | { kind: "permission"; id: string; question: string; tools: string[]; answer: "approved" | "declined" | null }
+  /** An inline card (a device, an eero, contacts). `choices` are replies that send as a message. */
+  | { kind: "card"; id: string; title: string; type: string | null; rows: ConversationCardRow[]; contacts: ConversationCardRow[]; choices: string[] }
+  | { kind: "error"; id: string; message: string };
+
+/** A whole chat: `id` is null for one not started yet. */
+export type Conversation = { id: Id | null; title: string | null; items: ConversationItem[] };
+
+/** What one turn (a message, or an answer to a permission ask) added. */
+export type ConversationTurn = {
+  conversationId: Id | null;
+  /** This turn's items only, the user's message first. */
+  items: ConversationItem[];
+  /** eero stopped to ask permission: the id of the open ask. */
+  waitingFor: string | null;
+};
+
+/**
+ * One thing read from eero's reply stream, already mapped from eero's shape.
+ * Backends hand these to core, and core builds the chat from them
+ * (`applyEvent` in src/core/conversation.ts), for live replies and history alike.
+ */
+export type ConversationEvent =
+  | { type: "conversation"; id: Id }
+  | { type: "user"; id: string | null; text: string }
+  /**
+   * `append` false replaces the text (eero's InitialMessage), true adds to it (MessageDelta).
+   * `merge`: eero did not say which (a plain `message` event): text that starts with what is
+   * there already replaces it, anything else is added.
+   */
+  | { type: "text"; messageId: string | null; text: string; append: boolean; merge?: true }
+  | { type: "finished"; messageId: string | null }
+  | { type: "step"; step: ConversationStep }
+  | { type: "permission"; id: string; question: string; tools: string[] }
+  | { type: "answer"; id: string | null; approved: boolean }
+  /** `card` null removes the card with this id. */
+  | { type: "card"; id: string; card: Omit<Extract<ConversationItem, { kind: "card" }>, "kind" | "id"> | null }
+  | { type: "error"; message: string };
+
+// ---------------------------------------------------------------------------
+// Host events (the only push channel; never the token, and eero data only for a chat reply as it streams)
 
 export type HostEvent =
   | { type: "session.changed"; state: "signed_out" | "signed_in"; storage: SessionStorageKind }
   | { type: "network.selected"; networkId: Id }
-  | { type: "update.changed"; status: UpdateStatus };
+  | { type: "update.changed"; status: UpdateStatus }
+  /** A chat reply so far, while `conversation.send` (or approve, decline) runs. `turn` is the caller's `turnId`. */
+  | { type: "conversation.progress"; turn: string; networkId: Id; conversationId: Id | null; items: ConversationItem[] };

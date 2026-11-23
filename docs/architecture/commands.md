@@ -551,6 +551,33 @@ and eero alerts first and sends at most 5 per poll.
 | `support.info` | Get help | `{}` | q | `GET {net}/support` (pinned to `/2.2/`), `log_id` from `GET /2.2/account` | `SupportInfo`: eero and ISP contacts, support ID. `email` is the address in `email_web_form_url`, a `mailto:` link on real networks (2026-11-21). eero's 2.2 object has no ISP contact, so `isp` is then `{name}` from `internet.get` with null phone and url, or null. |
 | `support.report` **(added)** | Copy diagnostics report | `{}` | q | composite: the `health.check` reads, `GET {net}/devices` (counts only), `GET /2.2/account`, `GET {net}/diagnostics` (last run) | Plain-text report for "Copy diagnostics report": network, health check, internet, eeros, firmware, issues, last cloud diagnostics. Names, serials, MACs and IPs keep only their last four characters (`***rage`; four or fewer characters are hidden whole): every known value is replaced first, then any leftover MAC or IP pattern. Never holds the token. Built in core; not cached. |
 
+### conversation (`commands/conversation.ts`) (prototype)
+
+eero's assistant chat, the eero app's Support chat. Not an eero Plus feature
+(a free account answered `conversation.suggestions`, read-only check
+2026-11-22). A reply streams: `conversation.send`, `.approve` and `.decline`
+run until eero finishes or asks permission, then return the whole turn
+(`ConversationTurn`: `conversationId`, this turn's `items`, `waitingFor`).
+While they run, a caller that passes `turnId` gets `conversation.progress`
+host events (`{turn, networkId, conversationId, items}`, at most one per
+50 ms plus a last one) so the window can show the reply as it arrives; the
+CLI and MCP just get the result. Items are built in core from mapped events
+(`ConversationBuilder` in `src/core/conversation.ts`), the same way for a
+live reply and for history. A turn stops after 3 minutes; a stream that
+breaks after eero said something keeps what came and ends with an `error`
+item. eero's tool token (`POST /2.2/conversations/token`, the `mcp_token`)
+is fetched for every turn inside the backend and never returned.
+
+| id | label | params | effect | eero endpoint(s) | notes |
+| --- | --- | --- | --- | --- | --- |
+| `conversation.list` | Conversations | `{}` | q | `GET /2.2/conversations?networkId=&excludeEmpty=true` | `ConversationSummary[]` newest first (`id`, `title` from `description`, `createdAt`). Topic `conversations`. |
+| `conversation.get` | Open conversation | `{ conversationId }` | q | `GET /2.2/conversations/{id}` | `Conversation`: items in order (`user`, `reply`, `steps`, `permission`, `card`, `error`). eero's history has no steps. Topic `conversations`. |
+| `conversation.suggestions` | Conversation suggestions | `{}` | q | `GET /2.2/conversations/recommended?networkId=` | `ConversationSuggestion[]` (`label` from `title` or `cta_text`, `prompt` from `suggested_prompt`), at most 6; `STARTER_PROMPTS` when eero sends none. Cached 10 min. |
+| `conversation.send` | Ask eero | `{ message (1 to 8000), conversationId?, turnId? }` | w | `POST /2.2/conversations/token`, then `PUT /2.2/conversations/messages` (streamed) | Gate `{ area: null }`: asking changes nothing; eero asks before it does. Leave out `conversationId` for a new chat. Invalidates `conversations`. |
+| `conversation.approve` | Approve eero's request | `{ conversationId, permissionId, turnId? }` | d | as `send`, body `permission_grant: {approved: true, interrupt_id}` and no `message` | Gate `network`. eero then changes the network itself and Mesh UI cannot know beforehand what it runs, so it is `disruptive`; the confirm message is eero's ask and its tool list. Invalidates `conversations` and the network, eero, device, profile and settings topics. |
+| `conversation.decline` | Decline eero's request | `{ conversationId, permissionId, turnId? }` | w | as `approve` with `approved: false` | Nothing changes on the network. |
+| `conversation.rate` | Rate eero's reply | `{ messageId, helpful }` | w | `PUT /2.2/conversations/feedbacks` `{message_id, positive}` | One rating per reply. Reply ids Mesh UI made up (`reply-3`, when eero sent none) are `bad_params`. |
+
 ### app (`commands/app.ts`, scope app, no eero)
 
 | id | label | params | effect | eero endpoint(s) | notes |

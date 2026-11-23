@@ -98,6 +98,7 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 | Settings | Reservations & ports | `arrow-left-right` | - | [pages/reservations-ports.md](pages/reservations-ports.md) | 14 |
 | Settings | Updates & admins | `download` | - | [pages/updates-admins.md](pages/updates-admins.md) | 15 |
 | Settings | Troubleshooting | `stethoscope` | - | [pages/troubleshooting.md](pages/troubleshooting.md) | 16 |
+| Settings | Conversations (prototype) | `messages-square` | - | [pages/conversations.md](pages/conversations.md) | - |
 | Settings | Application | `settings` | - | [pages/settings.md](pages/settings.md) | 17 |
 | (sidebar footer) | Account | `account` | - | [pages/account.md](pages/account.md) | 17 |
 

@@ -30,6 +30,7 @@ import { classifyDevice } from "../eero/map/device";
 import { mapLan } from "../eero/map/routing";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
+import { createDemoConversations } from "./conversations";
 import { applyScenario, type ReadMode, type ScenarioName } from "./scenario";
 
 export type DemoBackendOptions = {
@@ -40,7 +41,12 @@ export type DemoBackendOptions = {
   scenario?: ScenarioName;
   /** How long each read waits in the `slow` scenario, in ms. */
   slowMs?: number;
+  /** Pause between the pieces of a streamed chat reply, in ms. Default CHAT_DELAY_MS; tests pass 0. */
+  chatDelayMs?: number;
 };
+
+/** The demo chat streams a piece about this often. */
+export const CHAT_DELAY_MS = 40;
 
 export interface DemoBackend extends Backend {
   readonly kind: "demo";
@@ -538,6 +544,16 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) throw new BackendError("bad_params", "Usage range needs a valid from before to.");
     return { from, to };
   };
+
+  const conversation = createDemoConversations({
+    now,
+    delayMs: opts.chatDelayMs ?? CHAT_DELAY_MS,
+    facts: (id) => {
+      const data = net(id);
+      return { name: data.network.name, eeros: data.eeros.map((e) => eeroView(data, e)), devices: clone(data.devices) };
+    },
+    restartEero: (id, eeroId) => areas.eero.restart(id, eeroId),
+  });
 
   const areas: BackendAreas = {
     auth: {
@@ -1281,6 +1297,8 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
         return clone(data.integrations);
       },
     },
+
+    conversation,
 
     notifications: {
       list: async (id, cursor): Promise<NotificationChunk> => {

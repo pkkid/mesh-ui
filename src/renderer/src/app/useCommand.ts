@@ -112,6 +112,12 @@ export function followHostEvents(): () => void {
   });
 }
 
+/** Listens to every host event (a chat reply streaming, say). Returns an unsubscribe; a no-op on the stub bridge. */
+export function onHostEvent(listener: (event: HostEvent) => void): () => void {
+  const mesh = bridge();
+  return typeof mesh.on === "function" ? mesh.on(listener) : () => {};
+}
+
 // ---------------------------------------------------------------------------
 // Registry
 

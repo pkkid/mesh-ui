@@ -351,7 +351,7 @@ Backup internet (`$` rows) is eero Plus and out of scope. Multi-WAN and multi st
 | POST | `/2.2/amazon/networks/{id}/account_unlink` | **D** | LD | Unlink Amazon account. Used by `integrations.amazon.unlink` (M5.4). Permission key `amazon.account`. |
 | POST | `/2.3/networks/{id}/shh/start_zigbee_discovery` | W | LD | Amazon smart home hub. Used by `integrations.zigbee.discover` (M5.4). Permission key `network.smart_home_hub`. |
 | GET / DELETE | `{net}/accessories/setup/status`, `{net}/accessories/{serial}`, `{net}/sip_config_associations/{eero_id}` | R/W | LD | Accessories / cellular. |
-| GET / POST / PUT | `/2.2/conversations*` | R/W | LD | eero AI assistant chat (streaming). |
+| GET / POST / PUT | `/2.2/conversations*` | R/W | LD | eero AI assistant chat (streaming). Used by the `conversation.*` commands; see [Conversations](#conversations) below. |
 
 ## 17. Real captures for M3 (2026-11-13)
 
@@ -551,3 +551,64 @@ Credential changes that drop clients: `PUT/DELETE {net}/password`, guest network
 Irreversible deletes: `DELETE {net}` (network), `DELETE /2.2/account` (account), `DELETE {eero}` (remove node), `DELETE {profile}`, `DELETE {net}/admins/{id}`, network transfer endpoints, `DELETE {net}/subnets_config/{type}`.
 
 Benign writes safe for one-click UI: speed test, burst reporter, LED on/off/brightness, `led_cycle` (find eero), nightlight, device pause/nickname/type/profile, profile pause/rename, block/unblock device, reservations, port forwards, notifications settings, `hide_5g`, diagnostics.
+
+## Conversations
+
+eero's assistant chat (the eero app's Support chat). Source: LD's
+API-REFERENCE.md section 9 and its `Conversations.cs`. Not eero Plus. Read-only
+checks on a real free account (2026-11-22): `GET /2.2/conversations/recommended`
+answered 4 recommendations with their own titles; `GET /2.2/conversations`
+answered `{conversations: []}` (no saved chats on that network). The stream and
+history shapes below are from LD and the fake server unless noted.
+
+Real checks after the maintainer sent messages from Mesh UI (read-only reads,
+2026-11-22):
+
+- `GET /2.2/conversations` lists only chats made through this API. It also
+  answers without `networkId`, with the same rows plus `updated`. `/2.3/` and
+  `/2.4/` are 404. The eero app's newer **Support** chat (with the Alexa badge)
+  is a separate feature, the network capability `alexa_chat`
+  (`requirements: network_is_in_supported_country, org_enabled,
+  org_not_in_exclusion_list`). Its history does not show here, and its
+  endpoints are unknown (not under `/2.2/support/`, `/2.2/assistant/` or
+  `/2.2/account/` `conversations`).
+- History rows carry `type` (`message`, `toolUsage`, `toolResult`,
+  `widgetEvent`), `created`, `message_id`, and for messages `id`, `sender`
+  (`USER`, `ASSISTANT`), `content` and `feedback` at the top as well as inside
+  `message`. `toolUsage` has `tool_usage {name, message, id}`; `toolResult` has
+  `tool_result {id, status: "success"}`. Widgets seen: `internet`
+  (`connection_type, connection_state, wan_type`) and `choice`
+  (`prompt_text`, three `choices`), `action: "CREATE"`.
+- The live stream did not carry reply text under LD's `InitialMessage` and
+  `MessageDelta`; its real names are not captured yet. Mesh UI reads both
+  LD's names and history's (`message`, whole or in pieces, `toolUsage`), and
+  when a turn ends with no reply text it reads the reply from history.
+  `MESH_UI_CHAT_SHAPES=1` prints each stream object's shape to stderr (enum
+  values and string lengths only, never text).
+
+| Method | Path | Body / query | Returns |
+| --- | --- | --- | --- |
+| POST | `/2.2/conversations/warmup` | the turn body without `message` | Readies the service when the chat opens. Mesh UI does not call it yet. |
+| GET | `/2.2/conversations` | `networkId`, `excludeEmpty=true` | `{conversations: [{conversation_id, description, created}]}` |
+| GET | `/2.2/conversations/{id}` | - | `{conversation_id, description?, message_history: [{message_id, message: {sender: "USER" or other, content}, permission_request?, permission_grant?: {approved, interrupt_id}, widget_event?}]}` |
+| GET | `/2.2/conversations/recommended` | `networkId` | `{recommendations: [{suggested_prompt, title?, cta_text?}]}` |
+| POST | `/2.2/conversations/token` | JSON `{refresh_token: ""}` | `{access_token}`, sent as the turn's `mcp_token`. A turn without one still goes. |
+| PUT | `/2.2/conversations/messages` | JSON turn body | A stream, below. Errors `error.conversations.not_available`, `error.conversations.user_blocked`. |
+| PUT | `/2.2/conversations/feedbacks` | JSON `{message_id, positive}` | - |
+
+**Turn body.** `{context: {focused_network_id, client_capabilities: {opt_in_widgets: []}}, conversation_id?, message? (1 to 8000 chars), mcp_token?, permission_grant?: {approved, interrupt_id}}`. A `ui_event` object exists but its shape is unknown.
+
+**Stream.** Not Server-Sent Events and not one object per line: complete
+JSON objects back to back, whitespace allowed between them. Split by brace
+depth outside strings (`src/core/eero/jsonStream.ts`); refuse a body that does
+not start with `{`, objects over 1 MiB, replies over 8 MiB, and a cut-off last
+object. Each object may have `conversation_id`, `type` (`InitialMessage` sets
+the reply text, `MessageDelta` adds to it, `ToolUse` and `Reasoning` are steps,
+`Error`), `message_id`, `content`, `finished`, `widget_event` and
+`permission_request` (`{interrupt_id, friendly_sentence or content,
+tool_descriptions[]}`). On a permission request the client stops reading; the
+answer is a new `PUT` with `permission_grant` and no `message`, once per
+`interrupt_id`.
+
+**Widget events (cards).** `{instance_id (a later one with the same id replaces it), action ("remove" or "delete" drops it), widget_type, content_summary, properties}`. Title from `content_summary`, else `properties.prompt_text`, `title` or `description`, else the widget type. Rows from a known list of properties (`name, location, model, status, connected, connection_type, connection_state, device_type, is_guest, is_private, score_bars, mesh_quality_bars, wan_type, eero, port_number, negotiated_speed, total_devices, paused_devices, accessory_type, bars, cellular_backup_status, configuration_status`), `properties.contacts[]` `{title, content}`, and `properties.choices[]` (strings sent as the next message).
+

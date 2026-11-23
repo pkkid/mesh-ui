@@ -9,6 +9,7 @@
 export { routes as account } from "./account";
 export { routes as admins } from "./admins";
 export { routes as auth } from "./auth";
+export { routes as conversations } from "./conversations";
 export { routes as devices } from "./devices";
 export { routes as diagnostics } from "./diagnostics";
 export { routes as eeros } from "./eeros";

@@ -13,6 +13,7 @@ import {
   Globe,
   LayoutDashboard,
   type LucideIcon,
+  MessagesSquare,
   MonitorSmartphone,
   Router,
   Settings,
@@ -43,6 +44,7 @@ export type RouteId =
   | "ports"
   | "updates"
   | "troubleshooting"
+  | "conversations"
   | "settings"
   | "account"
   | "dev-charts";
@@ -90,6 +92,7 @@ export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "ports", path: "/settings/ports", title: "Reservations & ports", icon: ArrowLeftRight, nav: "settings", natOnly: true, doc: "reservations-ports.md" },
   { id: "updates", path: "/settings/updates", title: "Updates & admins", icon: Download, nav: "settings", doc: "updates-admins.md" },
   { id: "troubleshooting", path: "/troubleshooting", title: "Troubleshooting", icon: Stethoscope, nav: "settings", doc: "troubleshooting.md" },
+  { id: "conversations", path: "/conversations", title: "Conversations", icon: MessagesSquare, nav: "settings", keywords: "Chat Assistant Ask eero Support AI", doc: "conversations.md" },
   // Mesh UI's own settings. Titled Application, not Settings: it sits in the Settings group (#376). The id and path stay.
   { id: "settings", path: "/settings", title: "Application", icon: Settings, nav: "settings", keywords: "Settings Preferences", doc: "settings.md" },
   // Deep links to an Application section (#/settings/theme). After the other /settings/* pages, which match first.
@@ -128,6 +131,7 @@ export const PAGES: Partial<Record<RouteId, Page>> = {
   ports: page(() => import("~/features/ports/PortsPage"), "PortsPage"),
   wifi: page(() => import("~/features/wifi/WifiPage"), "WifiPage"),
   troubleshooting: page(() => import("~/features/troubleshooting/TroubleshootingPage"), "TroubleshootingPage"),
+  conversations: page(() => import("~/features/conversations/ConversationsPage"), "ConversationsPage"),
   ...(import.meta.env.DEV ? { "dev-charts": page(() => import("~/components/charts/ChartGallery"), "ChartGallery") } : {}),
 };
 
