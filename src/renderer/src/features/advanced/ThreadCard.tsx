@@ -147,7 +147,7 @@ export function ThreadCard({ settings, offline }: { settings: NetworkSettings | 
               <Copy />
               {revealed && !revealed.dataset ? "Copy credentials" : "Copy dataset"}
             </Button>
-            <GatedButton size="xs" variant="outline" className="text-destructive-foreground" gate={resetGate} disabled={reset.running} onClick={() => void regenerate()}>
+            <GatedButton size="xs" variant="outline" tone="danger" gate={resetGate} disabled={reset.running} onClick={() => void regenerate()}>
               <KeyRound />
               Regenerate credentials
             </GatedButton>

@@ -345,7 +345,6 @@ function CopyAll({ text }: { text: string }) {
     <Button
       size="xs"
       variant="outline"
-      className="[&_svg]:text-muted-foreground"
       disabled={text === ""}
       onClick={() => void copyText(text).then((ok) => ok && setCopied(true))}
     >

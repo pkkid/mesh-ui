@@ -84,7 +84,7 @@ function UnlinkAmazon() {
     <GatedButton
       size="xs"
       variant="outline"
-      className="text-destructive-foreground"
+      tone="danger"
       gate={gate}
       disabled={write.running || name === null}
       onClick={() =>

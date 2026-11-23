@@ -59,7 +59,7 @@ export function RemoveEeroRow({ eero, eeros, networkName }: { eero: Eero | null;
         <GatedButton
           size="sm"
           variant="outline"
-          className="text-destructive-foreground"
+          tone="danger"
           gate={eero && !removable ? { allowed: false, reason: "Disabled: the gateway can't be removed while other eeros use it" } : removeGate}
           disabled={!eero || remove.running}
           onClick={() => void runRemove()}

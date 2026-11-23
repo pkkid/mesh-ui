@@ -35,7 +35,6 @@ import type { RestartResult } from "../../../../core/commands/network";
 import { formatCount, formatMbps, formatRelative } from "../../../../core/format";
 import type { Eero, Internet, NetworkSettings, WifiSettings } from "../../../../core/model";
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 export function Tools({ eeros, offline }: { eeros: Eero[] | undefined; offline: boolean }) {
   const speedTest = useSpeedTest();
@@ -57,7 +56,7 @@ export function Tools({ eeros, offline }: { eeros: Eero[] | undefined; offline: 
           description="Measures your internet download and upload. Uses the connection for about 30 seconds."
           control={
             <>
-              <GatedButton gate={speedTest.gate} variant="outline" className={DIM_ICON} onClick={() => void speedTest.run()}>
+              <GatedButton gate={speedTest.gate} variant="outline" onClick={() => void speedTest.run()}>
                 {speedTest.testing ? <LoaderCircle className="animate-spin motion-reduce:animate-none" /> : <Gauge />}
                 {speedTest.label}
               </GatedButton>
@@ -175,7 +174,7 @@ function RestartEero({ eero, eeros, networkName }: { eero: Eero; eeros: Eero[]; 
       }
       description={restartLine(eero, eeros, networkName)}
       control={
-        <GatedButton gate={blocked ? { allowed: false, reason: blocked } : gate} variant="outline" className={DIM_ICON} disabled={write.running} onClick={() => void run()}>
+        <GatedButton gate={blocked ? { allowed: false, reason: blocked } : gate} variant="outline" disabled={write.running} onClick={() => void run()}>
           <RotateCcw />
           Restart {eero.location}…
         </GatedButton>

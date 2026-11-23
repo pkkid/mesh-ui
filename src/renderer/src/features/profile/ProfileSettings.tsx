@@ -29,7 +29,7 @@ export function ProfileSettings({ profile: p, onDelete, deleting }: Props) {
           description={`${p ? `${name}'s` : "Its"} devices move to Unassigned, the schedules are removed and any pause is lifted. Usage history stays with the devices.`}
           control={
             // Destructive text, outline; the ellipsis because it asks first (type the name), as eero detail's Remove eero.
-            <GatedButton size="sm" variant="outline" className="text-destructive-foreground" gate={deleteGate} disabled={!p || deleting} onClick={onDelete}>
+            <GatedButton size="sm" variant="outline" tone="danger" gate={deleteGate} disabled={!p || deleting} onClick={onDelete}>
               Delete profile{"…"}
             </GatedButton>
           }

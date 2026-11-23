@@ -32,7 +32,6 @@ import { cn } from "~/lib/utils";
 import type { ForwardList, ReservationList } from "../../../../core/commands/routing";
 import type { Forward, Protocol } from "../../../../core/model";
 
-import { DIM_ICON } from "./DeviceHero";
 import type { DeviceView } from "./DevicePage";
 
 const PROTOCOL: Record<Protocol, string> = { tcp: "TCP", udp: "UDP", both: "TCP+UDP" };
@@ -93,7 +92,6 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
                 gate={reserveGate}
                 variant="outline"
                 size="sm"
-                className={DIM_ICON}
                 title={reserved ? "Edit this device's address reservation" : "Always give this device the same IPv4 address"}
                 onClick={() => {
                   if (!d) return;
@@ -140,7 +138,7 @@ export function DeviceNetwork({ view, id }: { view: DeviceView; id: string }) {
             }
             control={
               d && !d.blocked ? (
-                <GatedButton gate={addGate} variant="outline" size="sm" className={DIM_ICON} onClick={() => setForwardSheet({ kind: "add", deviceId: id })}>
+                <GatedButton gate={addGate} variant="outline" size="sm" onClick={() => setForwardSheet({ kind: "add", deviceId: id })}>
                   <Plus />
                   Open a port{"…"}
                 </GatedButton>

@@ -134,7 +134,7 @@ function SheetBody({ profile: p, mode, onClose }: { profile: Profile; mode: Sche
       error={errors._form}
       footerStart={
         mode.kind === "edit" ? (
-          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" disabled={remove.running} onClick={() => void del()}>
+          <Button type="button" size="sm" variant="ghost" tone="danger" disabled={remove.running} onClick={() => void del()}>
             <Trash2 />
             Delete schedule{"\u2026"}
           </Button>

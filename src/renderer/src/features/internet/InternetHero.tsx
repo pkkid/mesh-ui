@@ -137,14 +137,12 @@ export function useSpeedTest(): { run: () => Promise<void>; gate: Gate; testing:
   return { run, gate, testing, label: testing ? "Testing..." : "Run speed test" };
 }
 
-/** Icons inside hero buttons use the dim text colour; the label stays bright. */
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 /** The Run speed test button in a hero: outline (hero buttons are never filled), with a spinner while a test runs. */
 export function RunSpeedTestButton() {
   const test = useSpeedTest();
   return (
-    <GatedButton gate={test.gate} variant="outline" className={DIM_ICON} onClick={() => void test.run()}>
+    <GatedButton gate={test.gate} variant="outline" onClick={() => void test.run()}>
       {test.testing ? <LoaderCircle className="animate-spin motion-reduce:animate-none" /> : <GaugeIcon />}
       {test.label}
     </GatedButton>
@@ -193,7 +191,7 @@ export function InternetHero() {
 
   const troubleshoot = (
     // Navigates, but reads as an action ("go troubleshoot"), so it stays a button: a one-off, not a rule.
-    <Button variant="outline" className={DIM_ICON} render={<Link to={pathFor("troubleshooting")} />}>
+    <Button variant="outline" render={<Link to={pathFor("troubleshooting")} />}>
       <Stethoscope />
       Troubleshoot
     </Button>

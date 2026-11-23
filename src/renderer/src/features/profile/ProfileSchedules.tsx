@@ -24,7 +24,6 @@ import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
 import { WriteSwitch } from "~/features/advanced/SettingsGroups";
-import { DIM_ICON } from "~/features/device/DeviceHero";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 import { entityColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
@@ -69,7 +68,7 @@ export function ProfileSchedules({ profile: p, timezone, fading }: Props) {
   const name = p?.name ?? "this profile";
   // Opens the schedule sheet, so it ends in an ellipsis.
   const addButton = (
-    <GatedButton gate={gate} variant="outline" className={DIM_ICON} disabled={!p} onClick={() => setSheet({ kind: "add" })}>
+    <GatedButton gate={gate} variant="outline" disabled={!p} onClick={() => setSheet({ kind: "add" })}>
       <Plus />
       Add a scheduled pause{"\u2026"}
     </GatedButton>

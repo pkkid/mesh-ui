@@ -37,7 +37,6 @@ function RowIcon({ icon: Icon }: { icon: typeof User }) {
 /** Invite nicknames, as core checks them. */
 const NICKNAME_MAX = 32;
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>; timezone: string | null; myRole: Role | null }) {
   const d = list.data;
@@ -106,7 +105,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                   {a.role === "owner" ? "Owner" : "Admin"}
                 </Badge>
                 {owner && a.role !== "owner" && (
-                  <GatedButton gate={removeGate} size="xs" variant="outline" className={DIM_ICON} disabled={remove.running} onClick={() => removeAdmin(a)} aria-label={`Remove ${a.name ?? "admin"}`}>
+                  <GatedButton gate={removeGate} size="xs" variant="outline" disabled={remove.running} onClick={() => removeAdmin(a)} aria-label={`Remove ${a.name ?? "admin"}`}>
                     <UserMinus />
                     Remove{"\u2026"}
                   </GatedButton>
@@ -123,7 +122,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                 <Status tone="warning">Pending</Status>
                 {owner && (
                   <>
-                    <GatedButton gate={inviteGate} size="xs" variant="outline" className={DIM_ICON} disabled={create.running || cancel.running} onClick={() => void resend(i)}>
+                    <GatedButton gate={inviteGate} size="xs" variant="outline" disabled={create.running || cancel.running} onClick={() => void resend(i)}>
                       <RefreshCw />
                       Resend
                     </GatedButton>
@@ -144,7 +143,7 @@ export function Admins({ list, timezone, myRole }: { list: QueryState<AdminList>
                     {full ? "Every admin seat is in use. Remove an admin or cancel an invite to make room." : `${d.seatsMax - d.seatsUsed} of ${d.seatsMax} seats free. Share the link; it is accepted in the eero app within 48 hours.`}
                   </div>
                 </div>
-                <GatedButton gate={full ? { allowed: false, reason: "All admin seats are in use" } : inviteGate} size="xs" variant="outline" className={DIM_ICON} onClick={() => setSheet({ created: null, nickname: "" })}>
+                <GatedButton gate={full ? { allowed: false, reason: "All admin seats are in use" } : inviteGate} size="xs" variant="outline" onClick={() => setSheet({ created: null, nickname: "" })}>
                   <UserPlus />
                   Create invite{"\u2026"}
                 </GatedButton>

@@ -93,7 +93,7 @@ export function EeroPorts({ eeroId, offline }: { eeroId: string; offline: boolea
           {actions.map(({ port, action, words }) => (
             <div key={`${port.number}-${action}`} className="flex items-center gap-2">
               {/* Ellipsis: each port action confirms first. Dim icon. */}
-              <GatedButton size="xs" variant="outline" className="[&_svg]:text-muted-foreground" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
+              <GatedButton size="xs" variant="outline" gate={actionGate} disabled={write.running} onClick={() => run(port, action)}>
                 <Power />
                 {words.label(portName(port))}…
               </GatedButton>

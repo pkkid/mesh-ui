@@ -131,7 +131,7 @@ export function Reservations({ query, lookup }: { query: QueryState<ReservationL
           onChange={(e) => setFilter(e.currentTarget.value)}
         />
       )}
-      <GatedButton gate={addGate} variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => setSheet({ kind: "add" })}>
+      <GatedButton gate={addGate} variant="outline" onClick={() => setSheet({ kind: "add" })}>
         <BookmarkPlus />
         Add a reservation{"\u2026"}
       </GatedButton>

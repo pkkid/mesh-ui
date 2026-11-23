@@ -180,7 +180,6 @@ function ExportCsvButton({ network, range }: { network: string | null; range: Hi
     <Button
       variant="outline"
       // Icons inside buttons are dim (design-system.md, Buttons and links).
-      className="[&_svg]:text-muted-foreground"
       disabled={state.kind === "busy"}
       title={state.kind === "saved" ? `Saved ${state.name}` : state.kind === "failed" ? state.message : undefined}
       onClick={() => void run()}

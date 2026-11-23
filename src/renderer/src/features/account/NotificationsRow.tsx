@@ -18,7 +18,7 @@ export function NotificationsRow({ id, summary, error }: { id?: string; summary:
         title="Notifications"
         description={summary ?? (error ? "Could not load notification settings." : "Desktop alerts and eero's push alerts for this network.")}
         control={
-          <Button variant="outline" className="[&_svg]:text-muted-foreground" onClick={openNotificationSettings}>
+          <Button variant="outline" onClick={openNotificationSettings}>
             <BellRing />
             Edit{"\u2026"}
           </Button>

@@ -15,7 +15,6 @@ import { Pencil } from "lucide-react";
 
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Status } from "~/components/ui/status";
-import { DIM_ICON } from "~/features/device/DeviceHero";
 import { PROFILE_GATE, PROFILE_STATE, ProfilePauseButton } from "~/features/profiles/ProfileCards";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatCount } from "../../../../core/format";
@@ -82,7 +81,7 @@ export function ProfileHero({ profile: p, color, timezone, fading, onRename }: P
         p ? (
           <>
             {/* Rename first in every detail hero; it opens the rename sheet, so it ends in an ellipsis. */}
-            <GatedButton gate={gate} variant="outline" className={DIM_ICON} onClick={onRename}>
+            <GatedButton gate={gate} variant="outline" onClick={onRename}>
               <Pencil />
               Rename{"\u2026"}
             </GatedButton>

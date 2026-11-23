@@ -371,7 +371,7 @@ export function InternetGroup({ settings, internet, bridged, offline = false }: 
         control={
           <>
             {s && <span className="text-muted-foreground text-xs">{WAN_OPTIONS.find((o) => o.value === s.wan.mode)?.label}</span>}
-            <GatedButton variant="outline" className="[&_svg]:text-muted-foreground" gate={gate} disabled={!s} onClick={() => setEditing(true)}>
+            <GatedButton variant="outline" gate={gate} disabled={!s} onClick={() => setEditing(true)}>
               <Pencil />
               Edit{"\u2026"}
             </GatedButton>

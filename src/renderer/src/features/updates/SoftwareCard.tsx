@@ -184,7 +184,7 @@ export function SoftwareCard({
       }
       actions={
         <>
-          <Button variant="outline" className={DIM_ICON} disabled={checking || installing} onClick={onCheck}>
+          <Button variant="outline" disabled={checking || installing} onClick={onCheck}>
             <RefreshCw className={cn(checking && "animate-spin motion-reduce:animate-none")} />
             Check for updates
           </Button>
@@ -205,7 +205,6 @@ export function SoftwareCard({
   );
 }
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 /** Each eero while the install runs: restarting or back, with a meter of how many are back. */
 function InstallProgress() {

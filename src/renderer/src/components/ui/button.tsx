@@ -6,10 +6,16 @@ import { createContext, use } from "react";
 
 import { cn } from "~/lib/utils";
 
+/**
+ * Icon color (design-system.md, Buttons and links): every variant sets
+ * `--btn-icon`, and an icon without its own `text-*` class takes it. Outline,
+ * ghost and secondary dim their icons to muted; filled variants, ghost-muted,
+ * link and `tone="danger"` use the label's color. Call sites never set it.
+ */
 const buttonVariants = cva(
-  "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-[var(--control-radius)] border font-medium text-sm outline-none transition-[box-shadow,scale,background-color] [&:active:not([aria-haspopup])]:scale-[0.97] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-64 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "[--btn-icon:currentColor] [&_svg:not([class*='text-'])]:text-(--btn-icon) relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-[var(--control-radius)] border font-medium text-sm outline-none transition-[box-shadow,scale,background-color] [&:active:not([aria-haspopup])]:scale-[0.97] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-64 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
-    defaultVariants: { size: "default", variant: "default" },
+    defaultVariants: { size: "default", tone: "default", variant: "default" },
     variants: {
       size: {
         default: "h-8 px-[calc(--spacing(3)-1px)]",
@@ -31,12 +37,17 @@ const buttonVariants = cva(
         warning:
           "not-disabled:inset-shadow-[0_1px_--theme(--color-white/16%)] border-warning bg-warning text-black/85 shadow-xs hover:bg-warning/90",
         outline:
-          "border-input bg-popover text-foreground shadow-xs/5 hover:bg-accent/50 dark:bg-input/32 dark:hover:bg-input/64",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/90",
-        ghost: "border-transparent text-foreground hover:bg-accent data-pressed:bg-accent",
+          "[--btn-icon:var(--color-muted-foreground)] border-input bg-popover text-foreground shadow-xs/5 hover:bg-accent/50 dark:bg-input/32 dark:hover:bg-input/64",
+        secondary: "[--btn-icon:var(--color-muted-foreground)] border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/90",
+        ghost: "[--btn-icon:var(--color-muted-foreground)] border-transparent text-foreground hover:bg-accent data-pressed:bg-accent",
         "ghost-muted":
           "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground data-pressed:bg-accent",
         link: "border-transparent underline-offset-4 hover:underline",
+      },
+      // A red-text outline or ghost button (Block, Delete schedule, Remove eero): label and icon both red.
+      tone: {
+        default: "",
+        danger: "[--btn-icon:currentColor] text-destructive-foreground",
       },
     },
   },
@@ -44,10 +55,13 @@ const buttonVariants = cva(
 
 type ButtonVariant = NonNullable<VariantProps<typeof buttonVariants>["variant"]>;
 type ButtonSize = NonNullable<VariantProps<typeof buttonVariants>["size"]>;
+type ButtonTone = NonNullable<VariantProps<typeof buttonVariants>["tone"]>;
 
 interface ButtonProps extends useRender.ComponentProps<"button"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** `danger`: red label and icon on an outline or ghost button. Filled buttons use `variant="destructive"`. */
+  tone?: ButtonTone;
 }
 
 /**
@@ -66,10 +80,10 @@ const QR_BUTTON_SIZE: ButtonSize = "xs";
 /** Every button in a section header's tools slot, the same 28px as the Segmented beside it. */
 const SECTION_TOOL_SIZE: ButtonSize = "tool";
 
-function Button({ className, variant, size: sizeProp, render, ...props }: ButtonProps) {
+function Button({ className, variant, size: sizeProp, tone, render, ...props }: ButtonProps) {
   const size = sizeProp ?? use(ButtonSizeContext);
   const defaultProps = {
-    className: cn(buttonVariants({ className, size, variant })),
+    className: cn(buttonVariants({ className, size, tone, variant })),
     "data-slot": "button",
     type: render ? undefined : ("button" as const),
   };

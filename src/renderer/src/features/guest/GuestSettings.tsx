@@ -57,7 +57,7 @@ export function GuestSettings({ guest, networkName, onSaved }: Props) {
       description={description}
       className="gap-[15px]"
       tools={
-        <GatedButton gate={gate} variant="outline" className="[&_svg]:text-muted-foreground" disabled={!guest} onClick={() => setOpen(true)}>
+        <GatedButton gate={gate} variant="outline" disabled={!guest} onClick={() => setOpen(true)}>
           <Pencil />
           Edit name and password{"\u2026"}
         </GatedButton>
