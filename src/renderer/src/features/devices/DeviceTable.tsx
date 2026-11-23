@@ -332,7 +332,7 @@ export function DeviceTable(props: DeviceTableProps) {
               "relative z-10 [--head-bg:color-mix(in_srgb,var(--color-card)_40%,var(--color-background))] [&_th]:bg-(--head-bg)",
               // A shield above the row, on the page background: it always sits behind the sticky block, but when the
               // row lags a frame behind a fast scroll up, it fills the gap so rows never show above the header.
-              "[&_th]:before:pointer-events-none [&_th]:before:absolute [&_th]:before:-inset-x-px [&_th]:before:bottom-full [&_th]:before:h-10 [&_th]:before:bg-background [&_th]:before:content-['']",
+              "[&_th]:before:pointer-events-none [&_th]:before:absolute [&_th]:before:inset-x-0 [&_th]:before:bottom-full [&_th]:before:h-10 [&_th]:before:bg-background [&_th]:before:content-['']",
               "[&_th]:relative data-pinned:[&_th]:after:pointer-events-none data-pinned:[&_th]:after:absolute data-pinned:[&_th]:after:inset-x-0 data-pinned:[&_th]:after:top-full data-pinned:[&_th]:after:h-(--topbar-scroll-fade-height) data-pinned:[&_th]:after:bg-linear-to-b data-pinned:[&_th]:after:from-(--head-bg) data-pinned:[&_th]:after:to-transparent data-pinned:[&_th]:after:opacity-(--head-fade) data-pinned:[&_th]:after:content-['']",
             )}
           >
@@ -346,7 +346,7 @@ export function DeviceTable(props: DeviceTableProps) {
                   onCheckedChange={() => onSelect(visible.every((id) => selected.has(id)) ? [] : visible)}
                 />
               </th>
-              {sortable("name", "Device")}
+              {sortable("name", "Device", "w-full")}
               {show("profile") && sortable("profile", "Profile")}
               {show("eero") && sortable("eero", "Connected to")}
               {show("band") && sortable("band", "Band")}
@@ -464,15 +464,16 @@ function Row(props: RowProps) {
       >
         <Checkbox aria-label={`Select ${d.name}`} checked={isSelected} onCheckedChange={(_, { shiftKey }) => onPick(shiftKey)} />
       </td>
-      <td className={td}>
+      {/* The Device column takes the spare width and gives it back first: long names truncate so the table fits its card. */}
+      <td className={cn(td, "min-w-44 max-w-0")}>
         <div className="flex min-w-0 items-center gap-2.5">
-          <IconTile icon={deviceIcon(d)} size="sm" className={cn("size-7", off && "opacity-60")} />
+          <IconTile icon={deviceIcon(d)} size="sm" className={cn("size-7 shrink-0", off && "opacity-60")} />
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
               {renaming ? (
                 <RenameInput device={d} onDone={() => onRename(false)} />
               ) : (
-                <Link to={to} className="truncate font-medium text-foreground outline-none focus-visible:underline">
+                <Link to={to} className="min-w-0 truncate font-medium text-foreground outline-none focus-visible:underline">
                   {d.name}
                 </Link>
               )}

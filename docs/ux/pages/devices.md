@@ -120,7 +120,10 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
    slides open (200ms) so the table moves down smoothly, then its contents
    fade in; clearing reverses it. Reduced motion skips both.
 6. **Device table** (card). Columns: checkbox (the whole cell picks the
-   row, so a near miss never opens the device), Device (icon, name
+   row, so a near miss never opens the device), Device (takes the spare
+   width, at least 176px, and truncates long names and maker lines so the
+   table fits its card; it scrolls sideways only on windows too narrow for
+   the columns shown) (icon, name
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Live down / up
