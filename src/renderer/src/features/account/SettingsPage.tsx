@@ -36,7 +36,7 @@ export function SettingsPage({ params }: PageProps) {
 
   return (
     <>
-      <TopBarTitle>Settings</TopBarTitle>
+      <TopBarTitle>Application</TopBarTitle>
       <SettingsHero id={sectionId("about")} />
       <div className="flex flex-col gap-14">
         <StartupTray id={sectionId("startup")} />

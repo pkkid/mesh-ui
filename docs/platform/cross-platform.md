@@ -107,7 +107,7 @@ by main with Electron's `Notification`.
 | Windows | `app.setAppUserModelId("io.github.pkkid.meshui")` before the first notification, and the Start menu shortcut the NSIS installer creates; the portable zip shows none until run once from a shortcut |
 | Linux | A notification daemon (most desktops); silently skipped otherwise |
 
-The user can turn them off in Settings (`app.settings.set`).
+The user can turn them off on the Application page (`app.settings.set`).
 
 ## System tray
 

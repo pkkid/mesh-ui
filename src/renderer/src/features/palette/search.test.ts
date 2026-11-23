@@ -56,6 +56,7 @@ const ROUTES = [
   { id: "device", path: "/devices/:deviceId", title: "Device" },
   { id: "profiles", path: "/profiles", title: "Profiles" },
   { id: "eeros", path: "/eeros", title: "eeros" },
+  { id: "settings", path: "/settings", title: "Application", keywords: "Settings Preferences" },
 ];
 
 async function sources(): Promise<Sources & { commandsInfo: CommandInfo[] }> {
@@ -120,6 +121,14 @@ describe("search", () => {
     expect(r.total).toBe(r.counts.command + r.counts.page + r.counts.eero + r.counts.device + r.counts.profile);
   });
 
+  it("finds a page by its keywords, below a title match", async () => {
+    const s = await sources();
+    const pages = (q: string) => search(q, s, "page").groups.flatMap((g) => g.hits.map((h) => h.item.label));
+    expect(pages("application")).toContain("Application");
+    expect(pages("settings")).toContain("Application");
+    expect(pages("preferences")).toContain("Application");
+  });
+
   it("counts every kind but lists only the chosen scope", async () => {
     const s = await sources();
     const name = s.devices[0]?.label ?? "";
@@ -162,7 +171,7 @@ describe("search", () => {
     expect(first?.kind === "command" && first.info.id).toBe("network.health");
     expect(r.counts.device).toBe(0);
     expect(r.counts.eero).toBe(0);
-    expect(r.counts.page).toBe(4);
+    expect(r.counts.page).toBe(5);
   });
 
   it("lists every command of an effect when the query names it", async () => {

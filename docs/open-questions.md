@@ -24,7 +24,7 @@ gathers them ([testing.md](testing.md#manual-checks)).
 ## Product decisions for the maintainer
 
 - Show the command's source file path in the palette preview only in dev builds? ([command-palette.md](ux/pages/command-palette.md#notes))
-- Topbar light/dark toggle alongside themes in Settings: proposal is to keep both, the toggle only flips the variant. ([ux/overview.md](ux/overview.md#open-questions))
+- Topbar light/dark toggle alongside themes on the Application page: proposal is to keep both, the toggle only flips the variant. ([ux/overview.md](ux/overview.md#open-questions))
 - Wi-Fi page: move the Save button beside the nickname field, since the time zone saves on change. ([wifi.md](ux/pages/wifi.md#notes))
 
 ## Needs a manual check on the real network

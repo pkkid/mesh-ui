@@ -8,7 +8,7 @@ Shared patterns (dialogs, keyboard shortcuts, confirms, the command model) are d
 
 ## Layout
 
-Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. Trigger: the titlebar search ("Search or run a command") or its shortcut (`F1` by default, rebindable in Settings, Keyboard shortcuts).
+Opens over any page (the mockup shows it over Overview) with a dimmed backdrop. Trigger: the titlebar search ("Search or run a command") or its shortcut (`F1` by default, rebindable on the Application page, Keyboard shortcuts).
 
 1. **Input row**: search icon, the query, a result count (`10 results`), scope chips **All**, **Commands** (6), **Pages** (0), **eeros** (0), **Devices** (2), **Profiles** (2), and an `Esc` key hint. In `>` mode only **All** and **Commands** show.
 2. **Body**, two panes:

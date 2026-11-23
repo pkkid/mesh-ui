@@ -92,7 +92,7 @@ keychain item, the Windows AppUserModelID and the auto-update identity.
 | Windows | x64 | `Mesh-UI-Setup-<v>-x64.exe` (NSIS) | Yes | Per-user install, no admin; adds CLI to `PATH` |
 | Windows | arm64 | `Mesh-UI-Setup-<v>-arm64.exe` (NSIS) | Yes | |
 | Windows | x64, arm64 | `Mesh-UI-<v>-<arch>-portable.zip` | No | Unzip and run; no CLI on `PATH` |
-| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage` | Yes | CLI via "Install CLI" in Settings |
+| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage` | Yes | CLI via "Install CLI" on the Application page |
 | Linux | x64 (amd64), arm64 | `mesh-ui_<v>_<arch>.deb` | No (package manager or release page) | Installs `/usr/bin/mesh-ui` |
 | Linux | x64 (x86_64), arm64 (aarch64) | `mesh-ui-<v>.<arch>.rpm` | No | Installs `/usr/bin/mesh-ui` |
 | All | | `latest.yml`, `latest-mac.yml`, `latest-linux.yml`, `latest-linux-arm64.yml` | | electron-updater metadata |
@@ -273,7 +273,7 @@ published releases.
   each from an issue and a PR into `main` (see [roadmap.md](../roadmap.md#after-m6)).
 - Pre-releases use `-beta.N` and are published as GitHub pre-releases. Users
   on the beta channel (Settings, stored in `settings.json`) get them.
-- The version shows in Settings and in `mesh-ui --version`, and is
+- The version shows on the Application page and in `mesh-ui --version`, and is
   returned by `app.info`.
 - Release notes come from the milestone review (`docs/reviews/M<n>.md`):
   user-facing changes only (its section 4, through
