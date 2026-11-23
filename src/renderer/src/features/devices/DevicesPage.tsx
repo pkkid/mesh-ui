@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
-import { useGate } from "~/components/ui/page";
+import { Footnote, useGate } from "~/components/ui/page";
 import { useLivePage } from "~/app/useLiveMode";
 import { useLiveRates } from "~/app/useLiveRates";
 import { LiveToggle } from "~/components/mesh/LiveToggle";
@@ -319,6 +319,7 @@ export function DevicesPage() {
           gate={gate}
           blockGate={blockGate}
         />
+        <Footnote className="mt-3">Offline devices drop off the list after 7 days. Paused devices stay connected but have no internet.</Footnote>
       </section>
     </>
   );

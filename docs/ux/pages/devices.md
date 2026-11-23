@@ -155,9 +155,9 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
      have the selected surface and a left marker. The row hover is a muted
      background; the device name is not underlined on hover, since the whole
      row opens device detail.
-   - Footer: info icon, "Offline devices drop off the list after 7 days.
-     Paused devices stay connected but have no internet." and, right,
-     "`Shift` click to select a range".
+   - Under the card, outside the table, a plain `Footnote` (no icon):
+     "Offline devices drop off the list after 7 days. Paused devices stay
+     connected but have no internet."
 
 ## Data
 
@@ -274,7 +274,7 @@ from the gates.
 - Blocked devices come from the blocklist and may have no IP (`-`).
   Randomised-MAC devices show "Unknown manufacturer · random MAC".
 - Offline devices age out of eero's list after about 7 days, hence the
-  footer note.
+  footnote under the table.
 - Open question: the "All networks / Main / Guest" segment assumes
   `device.list` reports guest membership (`is_guest`); verify on firmware
   without a guest network.
