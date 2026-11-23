@@ -144,11 +144,12 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-      # rpmbuild for the rpm target. Ubuntu 24.04 blocks the unprivileged user
+      # rpmbuild for the rpm target, zsyncmake for the AppImage .zsync files.
+      # Ubuntu 24.04 blocks the unprivileged user
       # namespaces Chromium's sandbox needs, which the smoke and ui:shot use.
       - run: |
           sudo apt-get update
-          sudo apt-get install -y rpm
+          sudo apt-get install -y rpm zsync
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       # electron-builder's bundled fpm is x86_64 only; arm64 uses a system fpm.
       - if: matrix.arch == 'arm64'
@@ -166,11 +167,15 @@ jobs:
           path: ui-shot-linux-${{ matrix.arch }}.png
           if-no-files-found: error
       - run: pnpm dist
+      # Update information for AppImage managers (Gear Lever); also fixes the
+      # AppImage's sha512 in the update files and writes its .zsync.
+      - run: node scripts/appimage-update-info.mjs dist
       - uses: actions/upload-artifact@v7
         with:
           name: dist-linux-${{ matrix.arch }}
           path: |
             dist/*.AppImage
+            dist/*.AppImage.zsync
             dist/*.deb
             dist/*.rpm
             dist/*.blockmap

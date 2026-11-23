@@ -92,7 +92,8 @@ keychain item, the Windows AppUserModelID and the auto-update identity.
 | Windows | x64 | `Mesh-UI-Setup-<v>-x64.exe` (NSIS) | Yes | Per-user install, no admin; adds CLI to `PATH` |
 | Windows | arm64 | `Mesh-UI-Setup-<v>-arm64.exe` (NSIS) | Yes | |
 | Windows | x64, arm64 | `Mesh-UI-<v>-<arch>-portable.zip` | No | Unzip and run; no CLI on `PATH` |
-| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage` | Yes | CLI via "Install CLI" on the Application page |
+| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage` | Yes | CLI via "Install CLI" on the Application page; carries [update information](#appimage-update-information) for Gear Lever |
+| Linux | x64, arm64 | `Mesh-UI-<v>-<arch>.AppImage.zsync` | | For AppImage managers (Gear Lever), see [AppImage update information](#appimage-update-information) |
 | Linux | x64 (amd64), arm64 | `mesh-ui_<v>_<arch>.deb` | No (package manager or release page) | Installs `/usr/bin/mesh-ui` |
 | Linux | x64 (x86_64), arm64 (aarch64) | `mesh-ui-<v>.<arch>.rpm` | No | Installs `/usr/bin/mesh-ui` |
 | All | | `latest.yml`, `latest-mac.yml`, `latest-linux.yml`, `latest-linux-arm64.yml` | | electron-updater metadata |
@@ -230,7 +231,9 @@ test well under it (property tests check with plain comparisons and one
   `pnpm_config_cache_dir` at a short path: under the default pnpm dlx cache
   electron-builder's NSIS includes pass MAX_PATH and makensis cannot open
   them.
-  The Linux jobs install `rpm` and allow unprivileged user namespaces
+  The Linux jobs then run `scripts/appimage-update-info.mjs dist` (see
+  [AppImage update information](#appimage-update-information)) and also
+  upload the `.AppImage.zsync` files. They install `rpm` and `zsync` and allow unprivileged user namespaces
   (Ubuntu 24.04 blocks them, and Chromium's sandbox needs them); arm64 uses
   a system `fpm` (`USE_SYSTEM_FPM=true`) because electron-builder's bundled
   one is x86_64 only.
@@ -355,6 +358,29 @@ Only the window has an updater; `app.info` `update` reports its state.
   install kind that cannot update) gives a fixed state in unpackaged
   headless runs, so `MESH_UI_UPDATE_STATE=ready pnpm ui:shot --route
   '#/settings/about'` shows it. Packaged builds and windowed runs ignore it.
+
+### AppImage update information
+
+Each AppImage also carries update information for AppImage managers such as
+Gear Lever, so they find new releases with no URL typed in. After `pnpm
+dist`, release.yml runs `scripts/appimage-update-info.mjs dist`, which:
+
+1. writes `gh-releases-zsync|pkkid|mesh-ui|latest|Mesh-UI-*-<arch>.AppImage.zsync`
+   (`x86_64` or `arm64`) into the runtime's empty 1 KB `.upd_info` section,
+   in place, so the size is unchanged;
+2. swaps the AppImage's sha512 in `latest-linux*.yml` (or `beta-linux*.yml`)
+   for the edited file's, so electron-updater still accepts it. The blockmap
+   embedded at the end of the AppImage stays as built: the string is the same
+   in every release, so a differential download still rebuilds the right
+   bytes, and a mismatch would only fall back to a full download;
+3. runs `zsyncmake` for `<name>.AppImage.zsync`. Gear Lever looks up the
+   newest release through the GitHub API, picks the asset matching the
+   pattern, and compares the `.zsync` SHA-1 with the local file.
+
+Check a build with `./Mesh-UI-<v>-x86_64.AppImage --appimage-updateinformation`.
+`latest` means GitHub's latest release, so Gear Lever skips betas. The
+in-app updater keeps working inside Gear Lever: Gear Lever renames the file
+without a version, and electron-updater then replaces it in place.
 
 ## CLI launcher
 
