@@ -23,6 +23,7 @@ export { commands as notifications } from "./notifications";
 export { commands as profile } from "./profile";
 export { commands as routing } from "./routing";
 export { commands as settings } from "./settings";
+export { commands as signal } from "./signal";
 export { commands as updates } from "./updates";
 export { commands as usage } from "./usage";
 export { commands as wifi } from "./wifi";

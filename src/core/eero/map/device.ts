@@ -8,7 +8,7 @@ import { type RawDevice, linkUrl } from "../raw";
 import { compactMac, idFromUrl } from "../urls";
 import { inferDevice } from "./deviceInfer";
 
-type RateInfo = { rate_bps?: number; channel_width?: string | number; phy_type?: string };
+type RateInfo = { rate_bps?: number; channel_width?: string | number; phy_type?: string; nss?: number; mcs?: number };
 
 /** Fields beyond raw.ts that the device mapper reads when eero sends them. */
 export type RawDeviceFull = RawDevice & {
@@ -175,6 +175,7 @@ function link(raw: RawDeviceFull): M.Device["link"] {
     standard: phy ? (PHY[phy] ?? phy.toUpperCase()) : null,
     snr: num(c.snr),
     retryPct: num(c.packet_stats?.tx_retry_pct),
+    streams: num(rx?.nss ?? tx?.nss),
   };
   return Object.values(out).every((v) => v === null) ? null : out;
 }

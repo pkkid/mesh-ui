@@ -11,7 +11,7 @@
  * an unknown place is left out until the data arrives.
  */
 import { useQuery } from "~/app/useCommand";
-import type { Account, CoverageScan, GuestNetwork, Network, NetworkSettings, UpgradeReport, WifiSettings } from "../../../../core/model";
+import type { Account, GuestNetwork, Network, NetworkSettings, WifiInsights, WifiSettings } from "../../../../core/model";
 
 export type PlaceContext = {
   network: Network | undefined;
@@ -19,9 +19,8 @@ export type PlaceContext = {
   account: Account | undefined;
   guest: GuestNetwork | undefined;
   wifi: WifiSettings | undefined;
-  /** eero answered 404 for the `/2.4/` scans: Coverage and the Upgrade report are hidden. Cache only, never read for this. */
-  coverageMissing: boolean;
-  upgradeMissing: boolean;
+  /** The Signal page's `wifi.insights`, from the cache only (it reads eero's upgrade report, which can be slow). */
+  insights: WifiInsights | undefined;
 };
 
 const known = <T,>(v: T | undefined, f: (v: T) => boolean): boolean | undefined => (v === undefined ? undefined : f(v));
@@ -59,10 +58,8 @@ export const PLACE_RULES = {
   guestOn: (c: PlaceContext) => and(nat(c), known(c.guest, (g) => g.enabled)),
   /** 2.4 GHz only: the network has a 2.4 GHz band to keep. */
   twoFourBand: (c: PlaceContext) => known(c.wifi, (w) => w.bands.some((b) => b.band === "2.4")),
-  /** Coverage: eero's coverage scan exists on this network. */
-  coverage: (c: PlaceContext) => !c.coverageMissing,
-  /** Upgrade report: eero's Wi-Fi generation scan exists on this network. */
-  upgradeReport: (c: PlaceContext) => !c.upgradeMissing,
+  /** Signal's What holds them back: eero's upgrade report exists on this network. */
+  upgradeReport: (c: PlaceContext) => known(c.insights, (i) => i.report),
   /** Owner-only sections (Transfer network). */
   owner: (c: PlaceContext) => known(c.network, (n) => n.role === null || n.role === "owner"),
 } as const satisfies Record<string, (c: PlaceContext) => boolean | undefined>;
@@ -71,13 +68,9 @@ export type PlaceRule = keyof typeof PLACE_RULES;
 
 export const isPlaceRule = (name: string): name is PlaceRule => Object.hasOwn(PLACE_RULES, name);
 
-/** A 404 from eero's `/2.4/` API, the way the Signal page hides the scans. */
-const notFound = (error: { code: string; detail?: { status?: number } } | null | undefined) => error?.code === "eero_error" && error.detail?.status === 404;
-
 /**
  * The data the rules read, from the same queries the pages use: when the palette opens, a cold one is read once
- * (shared with every page through the engine cache), never per keystroke. The two scans are read from the cache
- * only, since a scan can be slow.
+ * (shared with every page through the engine cache), never per keystroke.
  */
 export function usePlaceContext(enabled: boolean): PlaceContext {
   const network = useQuery<Network>("network.get", undefined, { enabled });
@@ -86,16 +79,14 @@ export function usePlaceContext(enabled: boolean): PlaceContext {
   const guest = useQuery<GuestNetwork>("guest.get", undefined, { enabled });
   const wifi = useQuery<WifiSettings>("wifi.get", undefined, { enabled });
   // `enabled: false` reads what the Signal page left in the cache without reading eero.
-  const coverage = useQuery<CoverageScan>("coverage.scan", undefined, { enabled: false });
-  const upgrade = useQuery<UpgradeReport>("coverage.upgrade_report", undefined, { enabled: false });
+  const insights = useQuery<WifiInsights>("wifi.insights", undefined, { enabled: false });
   return {
     network: network.data,
     settings: settings.data,
     account: account.data,
     guest: guest.data,
     wifi: wifi.data,
-    coverageMissing: notFound(coverage.error),
-    upgradeMissing: notFound(upgrade.error),
+    insights: insights.data,
   };
 }
 

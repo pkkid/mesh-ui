@@ -23,6 +23,8 @@ import { IMPACT } from "./settings";
 import { HIDE_5G } from "../hide5g";
 
 export { WIFI_PASSWORD };
+// The Signal page's commands and helpers moved to ./signal.ts; these names stay importable from here.
+export { generationOf, HISTOGRAM, SIGNAL_DBM, signalQuality, WEAKEST, wifiHealth } from "./signal";
 
 export type WifiPassword = { ssid: string; password: string | null };
 export type GeneratedPassword = { password: string };
@@ -202,110 +204,6 @@ const hide5gParams = z.object({
   enabled: z.boolean().describe("true hides 5 and 6 GHz so 2.4 GHz only devices can join; eero turns it off on its own. false turns it off now."),
 });
 
-// ---------------------------------------------------------------------------
-// Signal page
-
-/**
- * Signal quality cut-offs in dBm: excellent at or above -55, good at or above
- * -65, fair at or above -75, weak below. Common rules of thumb (eero does not
- * publish its own); eero's 0 to 5 bars are kept beside them.
- */
-export const SIGNAL_DBM = { excellent: -55, good: -65, fair: -75 } as const;
-
-/** At most this many devices in `weakest`. */
-export const WEAKEST = 5;
-
-/** The histogram's buckets: 5 dBm wide, from -90 to -40 (ends open). */
-export const HISTOGRAM = { from: -90, to: -40, step: 5 } as const;
-
-export function signalQuality(dbm: number): M.SignalQuality {
-  return dbm >= SIGNAL_DBM.excellent ? "excellent" : dbm >= SIGNAL_DBM.good ? "good" : dbm >= SIGNAL_DBM.fair ? "fair" : "weak";
-}
-
-/** A device's Wi-Fi generation from its link's standard ("Wi-Fi 6", 802.11ax HE) and band: Wi-Fi 6 on 6 GHz is 6E. */
-export function generationOf(standard: string | null | undefined, band: M.Band | null): M.WifiGeneration {
-  const s = (standard ?? "").toLowerCase();
-  if (/\b7\b|eht|be\b/.test(s)) return "wifi7";
-  if (/6e/.test(s)) return "wifi6e";
-  if (/\b6\b|he\b|ax\b/.test(s)) return band === "6" ? "wifi6e" : "wifi6";
-  if (/\b5\b|vht|ac\b/.test(s)) return "wifi5";
-  if (/\b4\b|ht\b|\bn\b/.test(s)) return "wifi4";
-  return "unknown";
-}
-
-const GENERATION_ORDER: M.WifiGeneration[] = ["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4", "unknown"];
-const WIRELESS: M.WirelessBand[] = ["2.4", "5", "6"];
-const emptyQuality = (): Record<M.SignalQuality, number> => ({ excellent: 0, good: 0, fair: 0, weak: 0 });
-
-function median(values: number[]): number | null {
-  if (values.length === 0) return null;
-  const v = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(v.length / 2);
-  return v.length % 2 ? (v[mid] as number) : Math.round(((v[mid - 1] as number) + (v[mid] as number)) / 2);
-}
-
-/** Works out `wifi.health` from the device and eero lists: no requests of its own. */
-export function wifiHealth(devices: ReadonlyArray<M.Device>, eeros: ReadonlyArray<M.Eero>): M.WifiHealth {
-  const names = new Map(eeros.map((e) => [e.id, e.location]));
-  const wireless = devices.filter(
-    (d): d is M.Device & { band: M.WirelessBand; signal: { dbm: number; bars: number | null } } =>
-      d.connected && d.band !== null && d.band !== "wired" && typeof d.signal?.dbm === "number",
-  );
-  const quality = emptyQuality();
-  for (const d of wireless) quality[signalQuality(d.signal.dbm)] += 1;
-
-  const bands = WIRELESS.filter((b) => eeros.some((e) => e.radios.some((r) => r.band === b)) || wireless.some((d) => d.band === b)).map((band) => {
-    const on = wireless.filter((d) => d.band === band);
-    const q = emptyQuality();
-    for (const d of on) q[signalQuality(d.signal.dbm)] += 1;
-    const speeds = on.map((d) => d.link?.rxMbps).filter((v): v is number => typeof v === "number");
-    return {
-      band,
-      devices: on.length,
-      medianDbm: median(on.map((d) => d.signal.dbm)),
-      quality: q,
-      medianMbps: median(speeds),
-      bestMbps: speeds.length ? Math.max(...speeds) : null,
-    };
-  });
-
-  const weakest = [...wireless]
-    .sort((a, b) => a.signal.dbm - b.signal.dbm || a.name.localeCompare(b.name))
-    .slice(0, WEAKEST)
-    .map((d) => ({ deviceId: d.id, name: d.name, band: d.band, eeroId: d.eeroId, eero: d.eeroId ? (names.get(d.eeroId) ?? null) : null, dbm: d.signal.dbm, bars: d.signal.bars }));
-
-  const gen = new Map<M.WifiGeneration, number>();
-  for (const d of wireless) {
-    const g = generationOf(d.link?.standard, d.band);
-    gen.set(g, (gen.get(g) ?? 0) + 1);
-  }
-  const generations = GENERATION_ORDER.filter((g) => g !== "unknown" || gen.has("unknown")).map((generation) => ({ generation, devices: gen.get(generation) ?? 0 }));
-
-  // One entry per radio: 5 GHz low and high are two radios on some eeros, so a band can appear twice.
-  const radios = eeros.map((e) => ({
-    eeroId: e.id,
-    eero: e.location,
-    model: e.model,
-    devices: e.clients.total,
-    bands: WIRELESS.flatMap((band) =>
-      e.radios.filter((r) => r.band === band).map((r) => ({ band, channel: r.channel, widthMhz: r.widthMhz, utilization: r.utilization, txPowerDbm: r.txPowerDbm, devices: r.clients })),
-    ),
-  }));
-  let busiest: M.WifiHealth["busiest"] = null;
-  for (const row of radios)
-    for (const b of row.bands)
-      if (b.utilization !== null && (busiest === null || b.utilization > busiest.utilization)) busiest = { eeroId: row.eeroId, eero: row.eero, band: b.band, utilization: b.utilization };
-
-  const histogram: M.WifiHealth["histogram"] = [];
-  for (let dbm = HISTOGRAM.from; dbm < HISTOGRAM.to; dbm += HISTOGRAM.step) histogram.push({ dbm, devices: 0 });
-  for (const d of wireless) {
-    const i = Math.min(histogram.length - 1, Math.max(0, Math.floor((d.signal.dbm - HISTOGRAM.from) / HISTOGRAM.step)));
-    (histogram[i] as { devices: number }).devices += 1;
-  }
-
-  return { devices: wireless.length, medianDbm: median(wireless.map((d) => d.signal.dbm)), quality, histogram, bands, weakest, generations, radios, busiest };
-}
-
 export const commands: AnyCommand[] = [
   defineCommand({
     id: "wifi.get",
@@ -317,21 +215,6 @@ export const commands: AnyCommand[] = [
     topic: "wifi",
     poll: POLL.settings,
     run: (ctx): Promise<M.WifiSettings> => ctx.backend.wifi.get(ctx.net),
-  }),
-  defineCommand({
-    id: "wifi.health",
-    label: "Signal",
-    description:
-      "Signal and link speed of the connected wireless devices right now: devices per signal quality (excellent at -55 dBm or better, good to -65, fair to -75, weak below) and the median dBm, overall and per band, median and best link speed per band, the 5 weakest devices, a histogram of devices per 5 dBm (-90 to -40), devices per Wi-Fi generation, and each eero (model, devices) and its radios, one per radio (channel, width, channel utilization, transmit power, devices), with the busiest one. Read from the device and eero lists; no history.",
-    icon: "activity",
-    params: z.object({}),
-    effect: "query",
-    topic: "devices",
-    poll: POLL.devices,
-    run: async (ctx): Promise<M.WifiHealth> => {
-      const [devices, eeros] = await Promise.all([ctx.backend.device.list(ctx.net), ctx.backend.eero.list(ctx.net)]);
-      return wifiHealth(devices, eeros);
-    },
   }),
   defineCommand({
     id: "wifi.password.get",

@@ -13,6 +13,7 @@ import { DEVICE_TYPE_IDS } from "../eero/map/device";
 import { nameList, toCsv } from "../format";
 import type * as M from "../model";
 import { BURST_COOLDOWN_SEC, burstReadTimes, POLL, RATES_STALE_SEC } from "../poll";
+import { recordSignals } from "../signalHistory";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { offlineIn, unassignedIds, UNASSIGNED } from "./profile";
 import { usageWindow } from "./usage";
@@ -482,7 +483,10 @@ export const commands: AnyCommand[] = [
     params: deviceListParams,
     run: async (ctx, p): Promise<M.DeviceList | string> => {
       const now = ctx.now();
-      const all = (await withUnassigned(ctx, knownDevices(await ctx.backend.device.list(ctx.net), now))).map((d) => fresh(d, now));
+      const listed = await ctx.backend.device.list(ctx.net);
+      // Every read of the list is a sample for the Signal page's history (wifi.history).
+      recordSignals(ctx, listed);
+      const all = (await withUnassigned(ctx, knownDevices(listed, now))).map((d) => fresh(d, now));
       const announced = await announcedDevices(ctx);
       let devices = await sort(ctx, await filter(ctx, all, p, announced), p.sort, p.order);
       if (p.limit) devices = devices.slice(0, p.limit);

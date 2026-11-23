@@ -106,13 +106,14 @@ export const wifiGenerationColors = {
 } as const;
 
 /**
- * Signal quality buckets (Signal page). Excellent and good stay neutral, two
- * strengths of the text colour; fair and weak are status (warning, danger), so
- * only the problems carry colour.
+ * Signal quality buckets (Signal page), read as status: excellent is success,
+ * good stays neutral (a strength of the text colour), fair and weak are warning
+ * and danger. Chosen by the maintainer 2026-11-22 over all-neutral good and
+ * excellent.
  */
 export const signalQualityColors = {
-  excellent: "color-mix(in srgb, var(--color-foreground) 75%, var(--color-background))",
-  good: "color-mix(in srgb, var(--color-foreground) 40%, var(--color-background))",
+  excellent: "var(--color-success)",
+  good: "color-mix(in srgb, var(--color-foreground) 55%, var(--color-background))",
   fair: "var(--color-warning)",
   weak: "var(--color-destructive)",
 } as const;

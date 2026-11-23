@@ -177,7 +177,8 @@ describe("placement and coverage mapping", () => {
 
   it("counts generation scan device rows per numeric version, 6 GHz Wi-Fi 6 as 6E, with a note when devices outgrow the eeros", () => {
     expect(["WIFI_7", "6E", "wifi6", "ac", "n", "b", 4, "?"].map(generationOf)).toEqual(["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4", "wifi4", "wifi4", null]);
-    const d = (frequency = "5") => ({ interface: { frequency } });
+    let n = 0;
+    const d = (frequency = "5") => ({ interface: { frequency }, url: `/2.2/networks/1/devices/aabbcc00000${n++}` });
     const r = mapGenerationScan({
       network_wifi_version: 5,
       devices_per_wifi_version: [{ wifi_version: 4, devices: [d("2.4"), d("2.4")] }, { wifi_version: 7, devices: [d()] }, { wifi_version: 5, devices: [d()] }, { wifi_version: 6, devices: [d(), d("6")] }],
@@ -191,7 +192,10 @@ describe("placement and coverage mapping", () => {
       { generation: "wifi6", devices: 1 },
       { generation: "wifi6e", devices: 1 },
     ]);
+    // Each device by the id the device list uses (the url's last part).
+    expect(r.devices).toHaveLength(6);
+    expect(r.devices[0]).toEqual({ deviceId: "aabbcc000000", generation: "wifi4" });
     expect(r.notes).toEqual(["3 devices support a newer Wi-Fi generation than your eeros (Wi-Fi 5)."]);
-    expect(mapGenerationScan(null)).toEqual({ byGeneration: [], limitingEeros: [], notes: [] });
+    expect(mapGenerationScan(null)).toEqual({ byGeneration: [], devices: [], limitingEeros: [], notes: [] });
   });
 });

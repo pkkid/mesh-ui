@@ -182,7 +182,12 @@ const clampZoom = (s: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s));
  */
 export function fitView(layout: MeshLayout, size: { w: number; h: number }, reserveBottom = 0): MapView {
   if (!size.w || !size.h || layout.nodes.length + (layout.internet ? 1 : 0) === 0) return { scale: 1, x: 0, y: 0 };
-  const b = meshBounds(layout, size);
+  return fitBounds(meshBounds(layout, size), size, reserveBottom);
+}
+
+/** The Fit view for any drawing whose extent in px is `b`: centred with padding, shrunk to fit, never past 100%. */
+export function fitBounds(b: { x0: number; x1: number; y0: number; y1: number }, size: { w: number; h: number }, reserveBottom = 0): MapView {
+  if (!size.w || !size.h || b.x1 <= b.x0 || b.y1 <= b.y0) return { scale: 1, x: 0, y: 0 };
   const top = FIT_PAD;
   const bottom = size.h - FIT_PAD - reserveBottom;
   const scale = clampZoom(Math.min(1, (size.w - 2 * FIT_PAD) / (b.x1 - b.x0), (bottom - top) / (b.y1 - b.y0)));
@@ -250,7 +255,7 @@ export function Topology({
   const gateway = layout.nodes.find((n) => n.eero.isGateway);
   const behind = behindOffline(eeros);
   const names = eeros.map((e) => e.location).join(", ");
-  const nav = useMapNav(layout, interactive, legend ? LEGEND_PX : 0);
+  const nav = useMapNav((size) => fitView(layout, size, legend ? LEGEND_PX : 0), interactive);
 
   return (
     <div
@@ -349,19 +354,7 @@ export function Topology({
         </div>
       </div>
 
-      {interactive && (
-        <div data-map-controls className="absolute top-2.5 right-2.5 flex items-center gap-0.5 rounded-(--control-radius) border bg-card p-0.5">
-          <Button variant="ghost-muted" size="icon-xs" aria-label="Zoom out" title="Zoom out (-)" disabled={nav.zoom <= ZOOM_MIN} onClick={nav.zoomOut}>
-            <Minus />
-          </Button>
-          <Button variant="ghost-muted" size="icon-xs" aria-label="Zoom in" title="Zoom in (+)" disabled={nav.zoom >= ZOOM_MAX} onClick={nav.zoomIn}>
-            <Plus />
-          </Button>
-          <Button variant="ghost-muted" size="icon-xs" aria-label="Fit" title="Fit (0)" onClick={nav.fit}>
-            <Maximize />
-          </Button>
-        </div>
-      )}
+      {interactive && <MapControls nav={nav} />}
 
       {legend && (
         <>
@@ -383,8 +376,29 @@ const FIT_NONE: MapView = { scale: 1, x: 0, y: 0 };
 /** A drag shorter than this (px) is still a click. */
 const DRAG_SLOP = 4;
 
-/** Zoom and pan state for the interactive Map; `view` is null when it is off. */
-function useMapNav(layout: MeshLayout, enabled: boolean, reserveBottom: number) {
+/** The + / - / Fit buttons in the top right of a zoomable map. */
+export function MapControls({ nav }: { nav: ReturnType<typeof useMapNav> }) {
+  return (
+    <div data-map-controls className="absolute top-2.5 right-2.5 flex items-center gap-0.5 rounded-(--control-radius) border bg-card p-0.5">
+      <Button variant="ghost-muted" size="icon-xs" aria-label="Zoom out" title="Zoom out (-)" disabled={nav.zoom <= ZOOM_MIN} onClick={nav.zoomOut}>
+        <Minus />
+      </Button>
+      <Button variant="ghost-muted" size="icon-xs" aria-label="Zoom in" title="Zoom in (+)" disabled={nav.zoom >= ZOOM_MAX} onClick={nav.zoomIn}>
+        <Plus />
+      </Button>
+      <Button variant="ghost-muted" size="icon-xs" aria-label="Fit" title="Fit (0)" onClick={nav.fit}>
+        <Maximize />
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Zoom and pan state for a map box (the eeros page Map, the Signal page's
+ * mesh map); `view` is null when it is off. `fit` gives the Fit view for the
+ * box's size. Spread `handlers` on the box.
+ */
+export function useMapNav(fit: (size: { w: number; h: number }) => MapView, enabled: boolean) {
   const boxRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   // null follows Fit, so the map refits on resize and new data until the user zooms or pans.
@@ -393,7 +407,7 @@ function useMapNav(layout: MeshLayout, enabled: boolean, reserveBottom: number) 
   const drag = useRef<{ id: number; x: number; y: number; from: MapView; moved: boolean } | null>(null);
   const swallowClick = useRef(false);
 
-  const view = enabled ? (manual ?? fitView(layout, size, reserveBottom)) : null;
+  const view = enabled ? (manual ?? fit(size)) : null;
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -430,6 +444,7 @@ function useMapNav(layout: MeshLayout, enabled: boolean, reserveBottom: number) 
 
   return {
     boxRef,
+    size,
     view,
     dragging,
     zoom: view?.scale ?? 1,

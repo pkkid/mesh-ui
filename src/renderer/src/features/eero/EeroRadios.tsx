@@ -57,13 +57,15 @@ function RadioRow({ radio: r, offline }: { radio: Radio; offline: boolean }) {
     <div className="px-4 py-3">
       <div className="flex items-center gap-2.5">
         <BandBadge band={r.band} />
-        <span className="font-medium text-sm tabular-nums">Ch {channel ?? MISSING}</span>
+        <span className="whitespace-nowrap font-medium text-sm tabular-nums">Ch {channel ?? MISSING}</span>
+        {/* Width over transmit power, always two lines, so a narrow card never wraps the channel. */}
         {(width !== null || tx !== null) && (
-          <span className="text-muted-foreground text-xs tabular-nums">
-            {[width === null ? null : `${width} MHz`, tx === null ? null : `tx ${tx} dBm`].filter(Boolean).join(" · ")}
+          <span className="flex flex-col whitespace-nowrap text-muted-foreground text-xs leading-tight tabular-nums">
+            {width !== null && <span>{width} MHz</span>}
+            {tx !== null && <span>tx {tx} dBm</span>}
           </span>
         )}
-        <span className="ms-auto text-xs">
+        <span className="ms-auto whitespace-nowrap text-xs">
           <b className="font-medium tabular-nums">{formatCount(clients)}</b> <span className="text-muted-foreground">{clients === 1 ? "device" : "devices"}</span>
         </span>
       </div>
