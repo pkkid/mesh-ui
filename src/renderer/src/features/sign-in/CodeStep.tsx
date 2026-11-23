@@ -8,6 +8,8 @@ import { ArrowLeft, MailCheck, MessageSquareText, ShieldCheck } from "lucide-rea
 import { type ClipboardEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { useCommand, useQuery } from "~/app/useCommand";
+import { IconTile } from "~/components/ui/hero";
+import { TextLink, textLinkClass } from "~/components/ui/text-link";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
 import type { AppInfo, AuthStatus } from "../../../../core/model";
@@ -136,9 +138,7 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
         <ArrowLeft className="size-3.5" />
         Back
       </button>
-      <div className="mt-[18px] grid size-10 place-items-center rounded-[10px] border bg-muted text-foreground">
-        <Icon className="size-5" />
-      </div>
+      <IconTile icon={Icon} size="lg" className="mt-[18px]" />
       <Title className="mt-4">{kind === "email" ? "Check your email" : "Check your messages"}</Title>
       <Lead>
         We sent a {CODE_LENGTH}-digit code to <b className="font-semibold text-foreground">{login}</b>. It can take a minute or two to arrive.
@@ -167,8 +167,9 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
             onPaste={(e) => onPaste(i, e)}
             onFocus={(e) => e.target.select()}
             className={cn(
-              "h-[54px] w-full min-w-0 rounded-[11px] border border-input bg-card text-center font-mono font-semibold text-[22px] outline-none transition-colors focus:border-primary disabled:opacity-60",
-              wrong && "border-destructive text-destructive-foreground focus:border-destructive",
+              // The app's input look (components/ui/input.tsx), taller so a digit is easy to read.
+              "h-11 w-full min-w-0 rounded-lg border border-input bg-background text-center font-mono font-semibold text-foreground text-xl shadow-xs/5 outline-none ring-ring/24 transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-inset disabled:opacity-64 dark:bg-input/32",
+              wrong && "border-destructive/36 text-destructive-foreground",
             )}
           />
         ))}
@@ -181,7 +182,7 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
           ) : error.code === "eero_error" ? (
             <>
               {errorText(error)}{" "}
-              <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className="font-medium underline-offset-2 hover:underline">
+              <a href={SUPPORT_URL} target="_blank" rel="noreferrer" className={textLinkClass}>
                 eero support
               </a>
             </>
@@ -206,21 +207,14 @@ export function CodeStep({ login, kind, onBack, onSwitchKind, onVerified }: Code
                   Resend in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
                 </span>
               ) : (
-                <button
-                  type="button"
-                  disabled={resend.running}
-                  onClick={() => void doResend()}
-                  className="cursor-pointer font-medium text-info-foreground hover:underline disabled:opacity-50"
-                >
+                <TextLink disabled={resend.running} className="disabled:opacity-64" onClick={() => void doResend()}>
                   Resend code
-                </button>
+                </TextLink>
               )}
             </>
           )}
         </span>
-        <button type="button" onClick={onSwitchKind} className="cursor-pointer font-medium text-info-foreground hover:underline">
-          {kind === "email" ? "Use a phone number instead" : "Use an email instead"}
-        </button>
+        <TextLink onClick={onSwitchKind}>{kind === "email" ? "Use a phone number instead" : "Use an email instead"}</TextLink>
       </div>
       {resend.error && resend.error.code !== "rate_limited" && <ErrorLine>{errorText(resend.error)}</ErrorLine>}
       <FootNote icon={<ShieldCheck />}>Each code works once. Five wrong codes may lock the account.</FootNote>

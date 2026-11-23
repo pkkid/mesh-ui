@@ -188,6 +188,27 @@ html[data-theme-id="rose"] {
   background-size: var(--surface-grain-size);
 }
 
+/*
+ * The sign-in screen's backdrop (docs/ux/sign-in.md, Background): an
+ * "overhead light", still and flat. A soft glow in the raised panel colour
+ * (the network switcher tile) from the top centre, through the sidebar
+ * colour, out to the canvas at the edges, under the surface grain so the
+ * shallow gradient never bands. Theme surfaces only, no accent colour.
+ */
+@utility sign-in-backdrop {
+  background-color: var(--color-background);
+  background-image:
+    var(--surface-grain),
+    radial-gradient(
+      ellipse 70% 60% at 50% 0%,
+      var(--color-sidebar-row-selected),
+      var(--color-sidebar) 55%,
+      var(--color-background) 100%
+    );
+  background-repeat: repeat, no-repeat;
+  background-size: var(--surface-grain-size), 100% 100%;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

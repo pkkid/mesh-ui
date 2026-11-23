@@ -24,13 +24,17 @@ import { AppIcon } from "~/components/mesh/AppIcon";
 import { AppWordmark } from "~/components/mesh/AppWordmark";
 import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Segmented } from "~/components/ui/segmented";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Status } from "~/components/ui/status";
+import { TextLink } from "~/components/ui/text-link";
 import { cn } from "~/lib/utils";
 import type { ExecuteError } from "../../../../core/errors";
 import type { Account, AppInfo, AuthStatus, NetworkSummary } from "../../../../core/model";
 import { CodeStep } from "./CodeStep";
 import { withErrorCode } from "./errorCode";
+import { caretAfterDigits, digitsBefore, formatPhone, phoneDisplay, phoneLogin, phonePlaceholder } from "./phoneFormat";
 
 export type LoginKind = "email" | "phone";
 
@@ -155,7 +159,7 @@ function NoNetworks({ error, onRetry }: { error: ExecuteError | null; onRetry: (
 /** The titlebar strip and the centred 460px column. */
 function Frame({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className="sign-in-backdrop flex h-full flex-col">
       <div className="drag-region flex h-(--titlebar-height) shrink-0 items-center gap-2 ps-[calc(var(--titlebar-inset-left)+1rem)] pe-4">
         <AppIcon className="size-[18px]" />
         <AppWordmark className="text-[13px]" />
@@ -175,7 +179,7 @@ export function Lead({ children, className }: { children: ReactNode; className?:
   return <p className={cn("mt-1.5 text-[13px] text-muted-foreground leading-normal", className)}>{children}</p>;
 }
 
-/** Full-width 42px primary button. While `busy` the label fades and the button is disabled. */
+/** A full-width button at the app's default 32px, level with the inputs. While `busy` the label fades and the button is disabled. */
 export function BigButton({
   busy,
   disabled,
@@ -185,10 +189,9 @@ export function BigButton({
 }: React.ComponentProps<typeof Button> & { busy?: boolean }) {
   return (
     <Button
-      size="lg"
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={cn("h-[42px] w-full shrink-0 rounded-[10px] text-sm", busy && "disabled:opacity-100", className)}
+      className={cn("w-full shrink-0", busy && "disabled:opacity-100", className)}
       {...props}
     >
       <span className={cn("inline-flex items-center gap-2 transition-opacity", busy && "opacity-50")}>{children}</span>
@@ -199,7 +202,7 @@ export function BigButton({
 /** The muted rule and line at the bottom of a step. */
 export function FootNote({ icon, children, className }: { icon?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={cn("mt-auto flex shrink-0 items-center gap-2 border-t pt-3.5 text-[11.5px] text-muted-foreground [&_svg]:size-[13px] [&_svg]:shrink-0", className)}>
+    <div className={cn("mt-auto flex shrink-0 items-center gap-2 border-t pt-3.5 text-muted-foreground text-xs [&_svg]:size-3.5 [&_svg]:shrink-0", className)}>
       {icon}
       {children}
     </div>
@@ -228,14 +231,9 @@ function RequestLogLink() {
   const show = useCommand("app.log.show");
   if (!auth.data || auth.data.backend === "demo") return null;
   return (
-    <button
-      type="button"
-      disabled={show.running}
-      onClick={() => void show.run({})}
-      className="w-fit rounded-sm text-muted-foreground underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-    >
+    <TextLink disabled={show.running} onClick={() => void show.run({})} className="w-fit disabled:opacity-64">
       Show request log
-    </button>
+    </TextLink>
   );
 }
 
@@ -266,8 +264,7 @@ const COUNTRIES = [
   ["+91", "IN +91"],
 ] as const;
 
-const fieldClass =
-  "flex h-[42px] w-full items-center gap-2 rounded-[10px] border border-input bg-background px-3 text-sm shadow-xs/5 transition-shadow has-focus-visible:border-primary dark:bg-input/32 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground";
+const COUNTRY_ITEMS = COUNTRIES.map(([value, label]) => ({ value, label }));
 
 function Welcome({
   expired,
@@ -300,7 +297,7 @@ function Welcome({
   useEffect(() => inputRef.current?.focus(), [kind]);
 
   const value = kind === "email" ? email.trim() : phone.trim();
-  const login = kind === "email" || value.startsWith("+") ? value : `${country}${value}`;
+  const login = kind === "email" ? value : phoneLogin(country, value);
   const busy = start.running || amazon.running || amazonOpening;
 
   const submit = async (e: React.FormEvent) => {
@@ -308,7 +305,32 @@ function Welcome({
     if (!value || busy) return;
     lastLogin = { kind, country, value };
     const res = await start.run({ login });
-    if (res.ok) onSent(kind === "email" ? login : `${country} ${value}`.replace(/^(\+\d+) \+/, "+"));
+    if (res.ok) onSent(kind === "email" ? login : phoneDisplay(country, value));
+  };
+
+  /**
+   * Regroups the number as it is typed ("555 010 0142", phoneFormat.ts) and
+   * keeps the caret after the same digit, so typing or deleting mid-number
+   * does not jump to the end.
+   */
+  const onPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const el = e.target;
+    let raw = el.value;
+    let caret = el.selectionStart ?? raw.length;
+    // Backspace over a space removes the digit before it; otherwise the regroup puts the space straight back.
+    const deleting = (e.nativeEvent as InputEvent).inputType === "deleteContentBackward";
+    if (deleting && raw.replace(/\D/g, "") === phone.replace(/\D/g, "")) {
+      const before = digitsBefore(raw, caret);
+      if (before > 0) {
+        const at = caretAfterDigits(raw, before);
+        raw = raw.slice(0, at - 1) + raw.slice(at);
+        caret = at - 1;
+      }
+    }
+    const next = formatPhone(country, raw);
+    const pos = caretAfterDigits(next, digitsBefore(raw, caret));
+    setPhone(next);
+    requestAnimationFrame(() => el.setSelectionRange(pos, pos));
   };
 
   const signInAmazon = async () => {
@@ -357,48 +379,48 @@ function Welcome({
         {kind === "email" ? "Email address" : "Mobile number"}
       </label>
       {kind === "email" ? (
-        <span className={fieldClass}>
-          <AtSign />
-          <input
-            ref={inputRef}
-            id="sign-in-login"
-            type="email"
-            autoComplete="email"
-            placeholder="name@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={start.error ? true : undefined}
-            className="h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-placeholder"
-          />
-        </span>
+        <Input
+          ref={inputRef}
+          id="sign-in-login"
+          icon={<AtSign />}
+          type="email"
+          autoComplete="email"
+          placeholder="name@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-invalid={start.error ? true : undefined}
+        />
       ) : (
-        <span className={fieldClass}>
-          <Phone />
-          <select
-            aria-label="Country code"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="h-full cursor-pointer bg-transparent pe-1 text-sm outline-none"
+        <div className="flex gap-2">
+          <Select items={COUNTRY_ITEMS} value={country} onValueChange={(v) => {
+              if (v === null) return;
+              setCountry(v);
+              setPhone((p) => formatPhone(v, p));
+            }}
           >
-            {COUNTRIES.map(([code, label]) => (
-              <option key={code} value={code}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <span aria-hidden className="h-5 w-px bg-border" />
-          <input
+            <SelectTrigger aria-label="Country code" className="w-28 shrink-0 tabular-nums">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup align="start" className="max-h-72 text-sm tabular-nums">
+              {COUNTRY_ITEMS.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+          <Input
             ref={inputRef}
             id="sign-in-login"
+            icon={<Phone />}
             type="tel"
             autoComplete="tel-national"
-            placeholder="555 010 0142"
+            placeholder={phonePlaceholder(country)}
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={onPhoneChange}
             aria-invalid={start.error ? true : undefined}
-            className="h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-placeholder"
           />
-        </span>
+        </div>
       )}
 
       <BigButton type="submit" className="mt-3.5" busy={start.running} disabled={!value || busy}>
@@ -407,7 +429,7 @@ function Welcome({
       </BigButton>
       {start.error && <ErrorLine log>{errorText(start.error)}</ErrorLine>}
 
-      <div className="mt-4 flex items-center gap-3 text-2xs text-muted-foreground uppercase tracking-wide">
+      <div className="mt-4 flex items-center gap-3 text-muted-foreground text-xs">
         <span className="h-px flex-1 bg-border" />
         or
         <span className="h-px flex-1 bg-border" />
@@ -454,14 +476,9 @@ function Welcome({
           ) : (
             <span>
               {demo ? "Exploring sample networks. " : "Just looking? "}
-              <button
-                type="button"
-                disabled={demoSwitch.running}
-                className="cursor-pointer font-medium text-info-foreground hover:underline disabled:opacity-60"
-                onClick={() => void demoSwitch.run({ enabled: !demo })}
-              >
+              <TextLink disabled={demoSwitch.running} className="disabled:opacity-64" onClick={() => void demoSwitch.run({ enabled: !demo })}>
                 {demo ? "Leave demo mode" : "Try demo mode"}
-              </button>
+              </TextLink>
             </span>
           )}
           <span className="ms-auto tabular-nums">{info.data ? `v${info.data.version}` : ""}</span>

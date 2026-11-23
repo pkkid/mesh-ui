@@ -15,6 +15,16 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
 
 ## Layout
 
+### Background
+
+Behind every step, a still "overhead light" (`sign-in-backdrop` in
+`index.css`): a soft radial glow from the top centre in the raised panel
+colour (`sidebar-row-selected`, the network switcher tile), through the
+sidebar colour, out to the canvas at the edges and behind the lower form,
+under the surface grain so it never bands. Only the theme's own surfaces,
+no accent colour and no animation, so it follows every theme and stays a
+faint shift in tone.
+
 ### 1. Welcome
 
 - The app icon (`AppIcon`, 64px), title "Sign in to your eero account", lead
@@ -22,15 +32,24 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
   We'll send you a one-time code, no password needed." (On first launch
   there is no network name yet; use "your eero networks".)
 - Segmented **Email / Phone** toggle.
-- Field label ("Email address" or "Mobile number") and a large input with an
-  `at-sign` or phone icon. Phone input has a country code picker and stores
-  E.164 (`+15550100142`).
-- Primary full-width **Send code →**.
+- Field label ("Email address" or "Mobile number") and the app's standard
+  `Input` (32px, `components/ui/input.tsx`) with an `at-sign` or phone icon.
+  Phone puts the app's `Select` for the country code beside the input and
+  stores E.164 (`+15550100142`). The number is grouped as it is typed, in
+  the country's usual mobile grouping ("555 010 0142" for +1, "7700 900123"
+  for +44; `phoneFormat.ts`), with the caret kept after the same digit, and
+  the placeholder shows the same grouping. A typed leading trunk 0 ("07700
+  900123") stays on screen but is dropped from the number sent. A number
+  typed with its own `+` or `00` is left as typed.
+- Primary full-width **Send code →**, a default (32px) `Button`, level with
+  the inputs. No oversized controls: the sign-in screen uses the same
+  inputs, selects, buttons and links as the rest of the app.
 - Divider "or", then full-width outline **Sign in with Amazon**
   (`auth.login.amazon`). Opens a private Amazon window; on success the same
   network-open path as verify runs. Cancel or an unlinked Amazon account shows
   an error under the button (request-log link outside demo).
-- Footer rule with "Just looking? **Try demo mode**" and the app version
+- Footer rule with "Just looking? **Try demo mode**" (a `TextLink`, like
+  every link on these screens: underlined, neutral, never an accent color) and the app version
   (`v0.1.0`) on the right. In demo the line reads "Exploring sample
   networks. **Leave demo mode**". While the app relaunches it reads
   "Restarting Mesh UI...". If the host cannot relaunch, it falls back to
@@ -43,8 +62,8 @@ grows into the main window. Shell rules are in [overview.md](overview.md).
   phone), lead "We sent a 6-digit code to **alex.kim@example.com**. It can
   take a minute or two to arrive."
 - "Enter code": six boxes, mono digits. Typing advances, Backspace goes back,
-  pasting a 6-digit string fills all boxes. The active box has the primary
-  border.
+  pasting a 6-digit string fills all boxes. The boxes use the input look
+  (border, background, focus ring), 44px tall so a digit is easy to read.
 - Sandbox hint: outside live mode no code is sent, so one quiet muted line
   under the boxes says what to type. Demo: "Demo mode: no code is sent.
   Enter any 6 digits." (111111 simulates a wrong code). Fake eero server
