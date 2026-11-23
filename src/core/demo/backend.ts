@@ -28,6 +28,7 @@ import { AREA_NAMES, type Backend, type BackendAreas, type BreakdownQuery, type 
 import { INVERSE_PORT_ACTION, portSummary } from "../model";
 import { classifyDevice } from "../eero/map/device";
 import { mapLan } from "../eero/map/routing";
+import { generationOf } from "../signal";
 import type * as M from "../model";
 import { createFixtures, type DemoFixtures, RELEASE_NOTES, type DeviceUsage, type NetworkData, type UsagePattern } from "./fixtures";
 import { applyScenario, type ReadMode, type ScenarioName } from "./scenario";
@@ -47,6 +48,13 @@ export interface DemoBackend extends Backend {
   scenario(): ScenarioName;
   /** Resets to pristine fixtures, then applies the scenario. */
   setScenario(name: ScenarioName): void;
+  /**
+   * An invented last hour of signal samples (one a minute, ending a minute
+   * before `now`), so the Signal page's history has a story the moment the
+   * demo opens: steady strong devices, wandering fair ones and weak ones
+   * that drop out now and then. wifi.history adds live samples after it.
+   */
+  signalSeed(net: M.Id, now: number): { at: number; devices: { id: M.Id; name: string; eeroId: M.Id | null; dbm: number | null }[] }[];
 }
 
 export const isDemoBackend = (b: Backend): b is DemoBackend => b.kind === "demo" && typeof (b as Partial<DemoBackend>).setScenario === "function";
@@ -1213,18 +1221,22 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       },
       upgradeReport: async (id) => {
         const data = net(id);
-        // The demo has no Wi-Fi generation per device, so it estimates from the band each uses.
-        const gen = (band: M.Device["band"]) => (band === "6" ? "wifi6e" : band === "5" ? "wifi6" : band === "2.4" ? "wifi4" : null);
-        const counts = new Map<string, number>();
+        // The newest generation each wireless device supports: the fixture's own when set, else what it connects with.
+        const devices: M.UpgradeReport["devices"] = [];
         for (const d of data.devices) {
-          const g = gen(d.band);
-          if (g) counts.set(g, (counts.get(g) ?? 0) + 1);
+          if (!d.band || d.band === "wired") continue;
+          const current = generationOf(d.link?.standard, d.band);
+          const generation = data.usage[d.id]?.supports ?? (current === "unknown" ? null : current);
+          if (generation) devices.push({ deviceId: d.id, generation });
         }
+        const counts = new Map<string, number>();
+        for (const d of devices) counts.set(d.generation, (counts.get(d.generation) ?? 0) + 1);
         const order = ["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4"] as const;
         return {
           byGeneration: order.map((generation) => ({ generation, devices: counts.get(generation) ?? 0 })),
+          devices,
           limitingEeros: data.eeros.filter((e) => !e.radios.some((r) => r.band === "6")).map((e) => ({ eeroId: e.id, reason: "No 6 GHz radio" })),
-          notes: ["Estimated from the band each device uses (demo)."],
+          notes: ["Invented for the demo network."],
         };
       },
     },
@@ -1319,10 +1331,28 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
 
   const wrapped = Object.fromEntries(AREA_NAMES.map((name) => [name, name === "auth" ? areas.auth : gated(areas[name])])) as unknown as BackendAreas;
 
+  const signalSeed: DemoBackend["signalSeed"] = (id, at) => {
+    const data = fx.networks.find((n) => n.network.id === id);
+    if (!data) return [];
+    const live = data.devices.filter((d) => d.connected && d.band !== null && d.band !== "wired" && typeof d.signal?.dbm === "number");
+    return Array.from({ length: 60 }, (_, i) => ({
+      at: at - (60 - i) * 60_000,
+      devices: live.map((d, n) => {
+        const base = d.signal?.dbm as number;
+        // Weak devices drop out now and then; fair ones wander more than strong ones.
+        const dropped = base < -80 ? i % 23 === 7 || i % 23 === 8 : base < -75 ? i % 29 === 13 : false;
+        const swing = base < -75 ? 4 : base < -65 ? 3 : 1;
+        const wobble = Math.round(Math.sin(i / 4 + n) * swing) + (((i * 7919 + n * 31) % 5) - 2);
+        return { id: d.id, name: d.name, eeroId: d.eeroId, dbm: dropped ? null : base + wobble };
+      }),
+    }));
+  };
+
   return {
     kind: "demo",
     scenario: () => scenario,
     setScenario: reset,
+    signalSeed,
     ...wrapped,
   };
 }

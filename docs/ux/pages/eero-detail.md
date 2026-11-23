@@ -33,7 +33,11 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      bars", warning colour). For the gateway the upstream is the Internet
      node and the link is the WAN ("10 Gbps WAN"). With more than one
      downstream eero (the gateway, usually) they are listed under the row,
-     each with its link chip, instead of drawn inline.
+     each with its link chip, instead of drawn inline. Under the row, for
+     every eero but the gateway (it has no upstream eero to measure
+     against), **Test placement** (xs outline) on the right, with no label;
+     "Testing placement..." while it runs, then the rating (a dot in its
+     signal quality colour and the word) with eero's advice under it.
 2. Two columns, 56px below the hero:
    - **Data usage**. Description under the title: the window and this
      eero's total ("24 hours, 143 GB"; its share of the network is in the
@@ -42,7 +46,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
    - **Radios**. Description: the radio count, then how channels are picked
      ("3 radios, fixed channel on 5 GHz", "2 radios, auto channel selection
      on"). One card with a row per band, split by faint dividers (no card
-     per band): band badge, "Ch 36", "160 MHz · tx 23 dBm", client count,
+     per band): band badge, "Ch 36", "160 MHz" over "tx 23 dBm" (always two lines, so the channel never wraps), client count,
      and "Utilization now" with a meter in the band colour.
 3. Two columns:
    - **Connected devices**. Description under the title: the count, then
@@ -135,6 +139,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
 | Garage link in the Nightlight note | - | - | No | Garage detail |
 | Change (update window) | - | - | No | Updates & admins page |
 | Copy (IP addresses) | - (clipboard of the shown values) | - | No | Toast "IP addresses copied" |
+| Test placement (Uplink card, not the gateway) | `eero.placement.test {eero}` | write | No | "Testing placement..." (up to a minute), then the rating and eero's advice; disabled with a tooltip while the eero is offline |
 | Blink light | `eero.find {eero}` | write | No | Button reads "Blinking · 30s" and counts down; hero LED bar pulses |
 | Restart | `eero.restart {eero, confirm: true}` | disruptive | Yes, in the confirm dialog (the engine's message: the gateway outage, or the eeros downstream that drop too) | Status Updating, progress toast "Restarting Office" with "Back in about 1 minute", refreshing every 5 s until the restarted eeros are back (see [eeros.md](eeros.md#built-so-far-m25-m48)) |
 | Remove from network | `eero.remove {eero, confirm: true}` | destructive | Yes, in the confirm dialog, type the eero's name (the engine's message names the eeros that lose their uplink) | Toast "Office removed from Maple Street"; navigates to eeros |

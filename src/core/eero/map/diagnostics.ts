@@ -8,7 +8,7 @@
 
 import type * as M from "../../model";
 import { linkUrl, type RawCoverageScan, type RawDevice, type RawDiagnostics, type RawGenerationScan, type RawLink, type RawPlacementTest, type RawSupport, type RawText } from "../raw";
-import { idFromUrl } from "../urls";
+import { compactMac, idFromUrl } from "../urls";
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() !== "" ? v.trim() : null);
 
@@ -175,6 +175,7 @@ const GEN_WORD: Record<Generation, string> = { wifi7: "Wi-Fi 7", wifi6e: "Wi-Fi 
 export function mapGenerationScan(raw: RawGenerationScan | null | undefined): M.UpgradeReport {
   const counts = new Map<Generation, number>();
   const network = num(raw?.network_wifi_version);
+  const byDevice: M.UpgradeReport["devices"] = [];
   let newer = 0;
   for (const g of Array.isArray(raw?.devices_per_wifi_version) ? raw.devices_per_wifi_version : []) {
     const devices = Array.isArray(g?.devices) ? g.devices : [];
@@ -182,12 +183,17 @@ export function mapGenerationScan(raw: RawGenerationScan | null | undefined): M.
     for (const d of devices) {
       const gen = deviceGeneration(version, d);
       if (gen) counts.set(gen, (counts.get(gen) ?? 0) + 1);
+      // The same id the device list uses: the device url's last part, else the MAC without colons.
+      const url = linkUrl(d?.url);
+      const deviceId = url ? idFromUrl(url) : typeof d?.mac === "string" ? compactMac(d.mac) : null;
+      if (gen && deviceId) byDevice.push({ deviceId, generation: gen });
     }
     if (network !== null && version !== null && version > network) newer += devices.length;
   }
   const word = network === null ? null : generationOf(network);
   return {
     byGeneration: [...counts].map(([generation, devices]) => ({ generation, devices })),
+    devices: byDevice,
     limitingEeros: [],
     notes: newer && word ? [`${newer} ${newer === 1 ? "device supports" : "devices support"} a newer Wi-Fi generation than your eeros (${GEN_WORD[word]}).`] : [],
   };

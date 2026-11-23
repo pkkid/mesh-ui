@@ -30,6 +30,8 @@ export type DeviceUsage = {
   /** Share of the bytes that are upload, 0 to 1. */
   upShare: number;
   pattern: UsagePattern;
+  /** The newest Wi-Fi generation the device supports, for the demo upgrade report; unset means what it connects with. */
+  supports?: M.UpgradeReport["devices"][number]["generation"];
 };
 
 /** A profile as stored: devices, online count, state and nextChange are derived. */
@@ -259,6 +261,12 @@ type DeviceRow = {
   gb: number;
   up?: number;
   pattern: UsagePattern;
+  /** The newest Wi-Fi generation it supports, when newer than what it connects with (Signal page, what holds devices back). */
+  supports?: M.UpgradeReport["devices"][number]["generation"];
+  /** The link standard, when not the band's usual ("Wi-Fi 4" for a 2.4 GHz device that could do better). */
+  standard?: string;
+  /** Transmit retries in percent, when higher than the usual for its signal (Signal page, noisy links). */
+  retry?: number;
   hostname?: string;
   /** "offline" with minutes since last seen, or "blocked". */
   offlineMin?: number;
@@ -283,8 +291,8 @@ function buildDevice(row: DeviceRow, n: number, now: number, lan: Lan): [M.Devic
   const wireless = row.band !== "wired";
   const radio = lan.eeroList.find((e) => e.id === lan.eeros[row.eero])?.radios.find((r) => r.band === row.band);
   const bars = row.bars ?? 4;
-  // A few dBm of spread per device (from its index), so medians and the weakest list read like a real network.
-  const dbm = ([-90, -82, -74, -67, -60, -52][bars] ?? -60) + ((n * 7) % 7) - 3;
+  // A few dBm of spread per device (from its index), inside its bars' quality band, so charts and medians read like a real network.
+  const dbm = ([-93, -85 - (n % 4), -77 - ((n * 3) % 5), -68 - ((n * 5) % 7), -58 - ((n * 5) % 7), -49 - ((n * 5) % 7)][bars] ?? -60);
   // Link speed falls with signal; the standard follows the band, with a few older and newer devices mixed in.
   const linkScale = [0.08, 0.15, 0.3, 0.5, 0.75, 1][bars] ?? 0.5;
   const live = connected && wireless;
@@ -314,12 +322,14 @@ function buildDevice(row: DeviceRow, n: number, now: number, lan: Lan): [M.Devic
     signal: live ? { dbm, bars } : null,
     link: live
       ? {
-          rxMbps: Math.round((row.band === "6" ? 2401 : row.band === "5" ? 1201 : 144) * linkScale),
+          rxMbps: Math.round((row.band === "6" ? 2401 : row.band === "5" ? 1201 : 144) * linkScale * (0.7 + ((n * 3) % 7) / 20)),
           txMbps: Math.round((row.band === "6" ? 2161 : row.band === "5" ? 1081 : 130) * linkScale),
           widthMhz: radio?.widthMhz ?? null,
-          standard: row.band === "6" ? (n % 2 ? "Wi-Fi 6E" : "Wi-Fi 7") : row.band === "5" ? (n % 4 === 0 ? "Wi-Fi 5" : "Wi-Fi 6") : n % 3 === 0 ? "Wi-Fi 6" : "Wi-Fi 4",
+          standard: row.standard ?? (row.band === "6" ? (n % 2 ? "Wi-Fi 6E" : "Wi-Fi 7") : row.band === "5" ? (n % 4 === 0 ? "Wi-Fi 5" : "Wi-Fi 6") : n % 3 === 0 ? "Wi-Fi 6" : "Wi-Fi 4"),
           snr: 20 + bars * 4,
-          retryPct: bars >= 4 ? 0.2 : 1.8,
+          retryPct: row.retry ?? (bars >= 4 ? 0.2 + (n % 5) / 10 : bars >= 3 ? 1.8 + (n % 4) / 2 : 4 + (n % 3)),
+          // Phones, computers and media gear have two streams; small smart home radios one.
+          streams: TWO_STREAMS.has(row.type) ? 2 : 1,
         }
       : null,
     wiredPort: connected && row.port && eeroId ? { eeroId, port: row.port[0], speedMbps: row.port[1] } : null,
@@ -330,8 +340,10 @@ function buildDevice(row: DeviceRow, n: number, now: number, lan: Lan): [M.Devic
     rates: null,
     reservation: null,
   };
-  return [device, { dailyBytes: row.gb * GB, upShare: row.up ?? defaultUpShare[row.pattern], pattern: row.pattern }];
+  return [device, { dailyBytes: row.gb * GB, upShare: row.up ?? defaultUpShare[row.pattern], pattern: row.pattern, ...(row.supports ? { supports: row.supports } : {}) }];
 }
+
+const TWO_STREAMS = new Set<M.DeviceType>(["phone", "tablet", "laptop_computer", "desktop_computer", "game_console", "media_streamer", "television", "e_reader"]);
 
 const defaultUpShare: Record<UsagePattern, number> = { evening: 0.02, work: 0.2, personal: 0.12, kid: 0.06, steady: 0.3 };
 
@@ -347,11 +359,11 @@ const MAPLE_DEVICES: DeviceRow[] = [
   { name: "Office iMac", maker: "Apple", model: "iMac 24", type: "desktop_computer", profile: "alex", eero: "of", band: "wired", ip: 20, rate: [4.6, 1.2], gb: 14, pattern: "work", port: [1, 2500] },
   { name: "Synology NAS", maker: "Synology", model: "DS923+", type: "hard_drive", profile: "alex", eero: "lr", band: "wired", ip: 10, rate: [11.8, 22.3], gb: 56, up: 0.48, pattern: "steady", port: [2, 10000] },
   { name: "Jamie's iPhone", maker: "Apple", model: "iPhone 16", type: "phone", profile: "jamie", eero: "lr", band: "6", bars: 5, ip: 133, rate: [6.2, 0.8], gb: 19, pattern: "personal" },
-  { name: "Jamie's ThinkPad", maker: "Lenovo", model: "ThinkPad X1", type: "laptop_computer", profile: "jamie", eero: "of", band: "5", bars: 4, ip: 127, rate: [12.4, 3.9], gb: 31, pattern: "work" },
+  { name: "Jamie's ThinkPad", maker: "Lenovo", model: "ThinkPad X1", type: "laptop_computer", profile: "jamie", eero: "of", band: "5", bars: 4, supports: "wifi6e", ip: 127, rate: [12.4, 3.9], gb: 31, pattern: "work" },
   { name: "Jamie's iPad", maker: "Apple", model: "iPad Air", type: "tablet", profile: "jamie", eero: "of", band: "6", bars: 5, ip: 146, rate: [0.9, 0.1], gb: 4.6, pattern: "evening" },
-  { name: "Mia's iPad", maker: "Apple", model: "iPad 11", type: "tablet", profile: "mia", eero: "up", band: "5", bars: 5, ip: 161, rate: [5.4, 0.3], gb: 9.8, pattern: "kid" },
+  { name: "Mia's iPad", maker: "Apple", model: "iPad 11", type: "tablet", profile: "mia", eero: "up", band: "5", bars: 5, supports: "wifi6e", ip: 161, rate: [5.4, 0.3], gb: 9.8, pattern: "kid" },
   { name: "Mia's Chromebook", maker: "Acer", model: "Chromebook Spin", type: "laptop_computer", profile: "mia", eero: "up", band: "5", bars: 4, ip: 162, rate: [1.2, 0.2], gb: 5.1, pattern: "kid" },
-  { name: "Mia's Kindle", maker: "Amazon", model: "Kindle Paperwhite", type: "e_reader", profile: "mia", eero: "up", band: "2.4", bars: 4, ip: 163, rate: [0, 0], gb: 0.1, pattern: "kid" },
+  { name: "Mia's Kindle", maker: "Amazon", model: "Kindle Paperwhite", type: "e_reader", profile: "mia", eero: "up", band: "2.4", bars: 4, supports: "wifi5", standard: "Wi-Fi 4", ip: 163, rate: [0, 0], gb: 0.1, pattern: "kid" },
   { name: "Leo's Fire HD", maker: "Amazon", model: "Fire HD 10", type: "tablet", profile: "leo", eero: "up", band: "5", bars: 4, ip: 171, gb: 1.4, pattern: "kid", paused: true },
   { name: "Grandma's iPad", maker: "Apple", model: "iPad mini", type: "tablet", eero: "lr", band: "5", bars: 5, ip: 188, rate: [3.3, 0.2], gb: 2.7, pattern: "personal", newMin: 2 * 24 * 60 + 300, guest: true },
   { name: "HP LaserJet", maker: "HP", model: "LaserJet Pro M404", type: "printer", eero: "of", band: "2.4", bars: 3, ip: 15, rate: [0, 0], gb: 0.02, pattern: "work" },
@@ -359,18 +371,18 @@ const MAPLE_DEVICES: DeviceRow[] = [
   { name: "Living Room TV", maker: "Samsung", model: "QN90D", type: "television", eero: "lr", band: "wired", ip: 12, rate: [58.2, 0.6], gb: 142, up: 0.008, pattern: "evening", port: [3, 1000] },
   { name: "PlayStation 5", maker: "Sony", model: "PS5 Slim", type: "game_console", eero: "lr", band: "5", bars: 5, ip: 14, rate: [0.4, 0.1], gb: 48, up: 0.06, pattern: "evening" },
   { name: "Apple TV Den", maker: "Apple", model: "Apple TV 4K", type: "media_streamer", eero: "lr", band: "6", bars: 5, ip: 116, rate: [24.6, 0.3], gb: 26, pattern: "evening" },
-  { name: "Sonos Kitchen", maker: "Sonos", model: "Era 100", type: "generic", eero: "lr", band: "5", bars: 4, ip: 117, rate: [0.3, 0], gb: 0.8, pattern: "evening" },
+  { name: "Sonos Kitchen", maker: "Sonos", model: "Era 100", type: "generic", eero: "lr", band: "5", bars: 4, retry: 12, ip: 117, rate: [0.3, 0], gb: 0.8, pattern: "evening" },
   { name: "Sonos Living Room", maker: "Sonos", model: "Arc", type: "audio", eero: "lr", band: "5", bars: 5, ip: 118, rate: [0.2, 0], gb: 0.6, pattern: "evening" },
   { name: "Leo's Switch", maker: "Nintendo", model: "Switch 2", type: "game_console", profile: "leo", eero: "lr", band: "5", bars: 4, ip: 172, gb: 2.8, pattern: "kid", paused: true },
   // Smart home
   { name: "Nest Thermostat", maker: "Google", model: "Nest Thermostat", type: "thermostat", eero: "lr", band: "2.4", bars: 4, ip: 181, rate: [0, 0], gb: 0.05, pattern: "steady", newMin: 48 },
   { name: "Hue Bridge", maker: "Signify", model: "Hue Bridge", type: "hub", eero: "lr", band: "wired", ip: 30, rate: [0, 0], gb: 0.1, pattern: "steady", port: [3, 100] }, // behind a switch on port 3 with the TV (several attachments, M5.7)
-  { name: "Kitchen Echo", maker: "Amazon", model: "Echo (4th Gen)", type: "generic", eero: "lr", band: "2.4", bars: 4, ip: 183, rate: [0.1, 0], gb: 0.4, pattern: "personal" },
+  { name: "Kitchen Echo", maker: "Amazon", model: "Echo (4th Gen)", type: "generic", eero: "lr", band: "2.4", bars: 4, supports: "wifi5", standard: "Wi-Fi 4", ip: 183, rate: [0.1, 0], gb: 0.4, pattern: "personal" },
   { name: "Desk Lamp", maker: "Signify", model: "Hue Go", type: "light", eero: "of", band: "2.4", bars: 4, ip: 190, rate: [0, 0], gb: 0.01, pattern: "steady" },
   { name: "Hallway Smoke Alarm", maker: "Google", model: "Nest Protect", type: "smoke_detector", eero: "up", band: "2.4", bars: 4, ip: 191, rate: [0, 0], gb: 0.01, pattern: "steady" },
   { name: "Bedroom Air Purifier", maker: "Levoit", model: "Core 400S", type: "air_purifier", eero: "up", band: "2.4", bars: 3, ip: 192, rate: [0, 0], gb: 0.02, pattern: "steady" },
   { name: "Hallway Motion Sensor", maker: "Aqara", model: "Motion Sensor P2", type: "alarm_system", eero: "up", band: "2.4", bars: 3, ip: 193, rate: [0, 0], gb: 0.01, pattern: "steady" },
-  { name: "Ring Doorbell", maker: "Ring", model: "Video Doorbell Pro 2", type: "generic", eero: "ga", band: "2.4", bars: 2, ip: 95, rate: [0.2, 1.1], gb: 3.2, up: 0.8, pattern: "steady" },
+  { name: "Ring Doorbell", maker: "Ring", model: "Video Doorbell Pro 2", type: "generic", eero: "ga", band: "2.4", bars: 2, supports: "wifi5", ip: 95, rate: [0.2, 1.1], gb: 3.2, up: 0.8, pattern: "steady" },
   { name: "Garage Door Opener", maker: "Chamberlain", model: "myQ Smart Garage", type: "generic", eero: "ga", band: "2.4", bars: 2, ip: 196, rate: [0, 0], gb: 0.01, pattern: "steady" },
   // Fails writes on purpose (see docs/architecture/backends.md).
   { name: "Flaky Plug", maker: "Kasa", model: "Smart Plug Mini", type: "generic", eero: "ga", band: "2.4", bars: 1, ip: 197, rate: [0, 0], gb: 0.01, pattern: "steady" },

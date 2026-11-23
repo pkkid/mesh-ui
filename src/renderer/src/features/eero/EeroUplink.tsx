@@ -7,12 +7,18 @@
  *
  * The full Topology map needs more room than the hero has, so this is a
  * single row: upstream, link, this eero, links to each downstream eero.
+ *
+ * Under the row, for every eero but the gateway (it has no upstream eero to
+ * measure against), **Test placement** runs eero's placement test on this
+ * uplink (`eero.placement.test`, with the Signal page's hook and rating).
  */
 import { Globe, type LucideIcon } from "lucide-react";
 
 import { Link, pathFor } from "~/app/router";
 import { LINK_COLOR, LinkChip, type LinkLook, linkSpeed, uplinkLook } from "~/components/mesh/LinkChip";
 import { behindOffline } from "~/components/mesh/Topology";
+import { GatedButton } from "~/components/ui/page";
+import { PlacementRating, usePlacementTest } from "~/features/signal/Coverage";
 import { eeroIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import type { Eero } from "../../../../core/model";
@@ -34,6 +40,8 @@ export function EeroUplink({ eero, eeros, internet, networkOffline }: EeroUplink
     : uplinkLook(eero, { networkOffline, behindOffline: behind.has(eero.id) });
   const backhaul = eero.isGateway ? "Gateway (WAN)" : eero.status === "offline" ? "No link" : eero.backhaul === "wired" ? "Wired backhaul" : eero.backhaul === "wireless" ? "Wireless backhaul" : null;
   const eeroOffline = networkOffline || eero.status === "offline";
+  const placement = usePlacementTest();
+  const result = placement.results[eero.id];
 
   return (
     <div className="flex w-[460px] flex-col gap-5 rounded-(--card-radius) border bg-muted/40 px-4 pt-3 pb-4" role="group" aria-label={`Uplink of ${eero.location}`}>
@@ -69,6 +77,22 @@ export function EeroUplink({ eero, eeros, internet, networkOffline }: EeroUplink
               <LinkChip look={uplinkLook(d, { networkOffline, behindOffline: behind.has(d.id) })} className="ms-auto" />
             </div>
           ))}
+        </div>
+      )}
+      {!eero.isGateway && (
+        <div className="-mt-2 flex flex-col gap-1">
+          <div className="flex min-h-6 items-center justify-end gap-3">
+            {placement.testing === eero.id ? (
+              <span className="text-muted-foreground text-xs">Testing placement...</span>
+            ) : result ? (
+              <PlacementRating result={result} />
+            ) : (
+              <GatedButton gate={eeroOffline ? { allowed: false, reason: `${eero.location} is offline` } : placement.gate} size="xs" variant="outline" onClick={() => void placement.test(eero.id)}>
+                Test placement
+              </GatedButton>
+            )}
+          </div>
+          {result?.advice && <p className="text-2xs text-muted-foreground">{result.advice}</p>}
         </div>
       )}
     </div>

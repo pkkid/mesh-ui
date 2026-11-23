@@ -51,8 +51,7 @@ describe("Places show-if rules", () => {
     account: undefined,
     guest: undefined,
     wifi: undefined,
-    coverageMissing: false,
-    upgradeMissing: false,
+    insights: undefined,
     ...over,
   });
   const settings = (over: Partial<NetworkSettings>) => ({ connectionMode: "nat", ipv6: { enabled: true }, ...over }) as NetworkSettings;

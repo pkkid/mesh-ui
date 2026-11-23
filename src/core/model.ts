@@ -337,6 +337,8 @@ export type CoverageScan = {
 
 export type UpgradeReport = {
   byGeneration: { generation: "wifi7" | "wifi6e" | "wifi6" | "wifi5" | "wifi4"; devices: number }[];
+  /** The newest generation each device supports, by device id: what `wifi.insights` joins to the device list. */
+  devices: { deviceId: Id; generation: "wifi7" | "wifi6e" | "wifi6" | "wifi5" | "wifi4" }[];
   limitingEeros: { eeroId: Id; reason: string }[];
   notes: string[];
 };
@@ -395,6 +397,8 @@ export type Device = {
     standard: string | null;
     snr: number | null;
     retryPct: number | null;
+    /** Spatial streams (eero's `nss`), for the link's ceiling on the Signal page. */
+    streams: number | null;
   } | null;
   wiredPort: { eeroId: Id; port: number; speedMbps: number | null } | null;
   /** "WPA3 Personal (SAE)". */
@@ -580,6 +584,114 @@ export type WifiHealth = {
   radios: { eeroId: Id; eero: string; model: string | null; devices: number | null; bands: { band: WirelessBand; channel: number | null; widthMhz: number | null; utilization: number | null; txPowerDbm: number | null; devices: number | null }[] }[];
   /** The radio with the highest channel utilisation now, if any reports one. */
   busiest: { eeroId: Id; eero: string; band: WirelessBand; utilization: number } | null;
+  /** Every connected wireless device that reports a signal, weakest first: the points of the Signal page's charts. */
+  points: SignalPoint[];
+  /** Each eero with its link to the mesh and a roll-up of its wireless devices, gateway first, then by hop. */
+  mesh: MeshNode[];
+  /** Devices and median signal per eero and band; `radio` false where the eero has no radio on that band. */
+  load: { eeroId: Id; band: WirelessBand; radio: boolean; devices: number; medianDbm: number | null }[];
+  /** Things worth fixing that the device and eero lists show, most useful first. `wifi.insights` adds the ones that need the upgrade report. */
+  advice: SignalAdvice[];
+};
+
+/** One wireless device on the Signal page's charts. */
+export type SignalPoint = {
+  deviceId: Id;
+  name: string;
+  eeroId: Id | null;
+  band: WirelessBand;
+  dbm: number;
+  bars: number | null;
+  quality: SignalQuality;
+  /** Link speed, eero to device. */
+  rxMbps: number | null;
+  generation: WifiGeneration;
+  retryPct: number | null;
+  snr: number | null;
+  /** The top rate this link's standard, width and streams allow; null when one of them is unknown. */
+  maxMbps: number | null;
+  /** rxMbps as a share of maxMbps, 0 to 100. */
+  headroomPct: number | null;
+};
+
+/** One eero on the Signal page's mesh map. */
+export type MeshNode = {
+  eeroId: Id;
+  eero: string;
+  model: string | null;
+  isGateway: boolean;
+  status: Status;
+  backhaul: "wired" | "wireless" | null;
+  upstream: Id | null;
+  hop: number | null;
+  meshBars: number | null;
+  meshQuality: MeshQuality | null;
+  /** Connected wireless devices with a signal on this eero. */
+  devices: number;
+  weak: number;
+  medianDbm: number | null;
+};
+
+/** What a piece of advice asks for: `placement` offers eero's placement test on `eeroId`. */
+export type SignalAdviceKind = "weak_mesh_link" | "weak_devices" | "shared_channel" | "busy_radio" | "noisy_link" | "stuck_on_24" | "could_use_6ghz";
+
+/** One thing worth fixing on the Signal page (and `mesh-ui run wifi.insights`). */
+export type SignalAdvice = {
+  kind: SignalAdviceKind;
+  tone: "destructive" | "warning" | "info";
+  title: string;
+  detail: string;
+  /** The eero the advice is about, when there is one (the placement test runs on it). */
+  eeroId: Id | null;
+  devices: { deviceId: Id; name: string }[];
+  eeros: { eeroId: Id; name: string }[];
+};
+
+/** Why a device connects with an older Wi-Fi generation than it supports. */
+export type HeldBackReason = "weak_signal" | "on_24" | "no_6ghz_radio" | "on_5_near_6" | "other";
+
+/**
+ * `wifi.insights`: the upgrade report joined to the device list. What each
+ * device supports against what it connects with, why the ones below their
+ * best are held back, and the advice that needs it, merged with
+ * `wifi.health`'s.
+ */
+export type WifiInsights = {
+  /** False when eero's Wi-Fi generation scan is missing (a /2.4/ 404); flows and heldBack are then empty. */
+  report: boolean;
+  /** Devices per (supports, connected with) pair, newest first on both sides. */
+  flows: { supports: WifiGeneration; current: WifiGeneration; devices: { deviceId: Id; name: string }[] }[];
+  /** Devices connected below what they support, by reason, largest group first. */
+  heldBack: { reason: HeldBackReason; devices: { deviceId: Id; name: string; eeroId: Id | null }[] }[];
+  /** Every piece of advice, wifi.health's and the report's, most useful first. */
+  advice: SignalAdvice[];
+};
+
+/**
+ * `wifi.history`: each device's signal as Mesh UI sampled it while running
+ * (eero keeps no history on free accounts). A sample is taken whenever the
+ * device list is read, at most every 20 seconds, for the last few hours.
+ */
+export type SignalHistory = {
+  /** First and last sample in the window; null when nothing was sampled. */
+  from: Iso | null;
+  to: Iso | null;
+  samples: number;
+  /** The devices that most need a look first (most drops, then weakest), at most `limit`. */
+  devices: {
+    deviceId: Id;
+    name: string;
+    eeroId: Id | null;
+    /** One entry per sample in the window; null when the device was not connected then. */
+    dbm: (number | null)[];
+    /** Times it dropped off and came back inside the window. */
+    drops: number;
+    medianDbm: number | null;
+    minDbm: number | null;
+    maxDbm: number | null;
+  }[];
+  /** The sample times, matching each device's `dbm`. */
+  at: Iso[];
 };
 
 // ---------------------------------------------------------------------------
