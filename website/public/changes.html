@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changes · Mesh UI</title>
+<meta name="description" content="What changed in each Mesh UI release.">
+<link rel="canonical" href="https://meshui.pkarma.com/changes">
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#1d2021">
+<link rel="preload" href="fonts/SchibstedGrotesk-Variable-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true">
+  <!-- GitHub mark: Simple Icons (simpleicons.org), CC0 1.0; see img/LICENSE-simple-icons.txt -->
+  <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol>
+</svg>
+
+<header class="top" id="top">
+  <div class="top-in">
+    <a class="brand" href="./" aria-label="Mesh UI home">
+      <img src="img/icon.svg" alt="" width="30" height="30">
+      <span class="wordmark">Mesh UI</span>
+    </a>
+    <nav aria-label="Site">
+      <a class="navlink" href="changes.html" aria-current="page">Changes</a>
+      <a class="gh" href="https://github.com/pkkid/mesh-ui"><svg aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span></a>
+      <a class="button small" href="./#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main class="changes" id="main">
+  <header>
+    <p class="eyebrow">Changes</p>
+    <h1>What's new in Mesh UI</h1>
+    <p class="section-lead">Every release, newest first. Downloads and checksums are on each <a href="https://github.com/pkkid/mesh-ui/releases">GitHub release</a>.</p>
+  </header>
+
+  <section class="release" aria-labelledby="v1-0">
+    <h2 id="v1-0">1.0 <a href="https://github.com/pkkid/mesh-ui/releases/tag/v1.0.0">November 2026</a></h2>
+    <ul>
+      <li><strong>Full visual and layout overhaul:</strong> every page reviewed and updated by hand for consistent styling, cleaner control placement, and unified modals, sheets, popovers, menus, switches and checkboxes.</li>
+      <li><strong>Rebuilt Signal page:</strong> an actionable Wi-Fi health view with median signal, per-eero strips, a mesh map you can zoom and pan, a coverage scan, 4-hour signal history, airwaves and channel use, Wi-Fi generation insights, and a "Worth a look" list of recommendations.</li>
+      <li><strong>Regular, disruptive and destructive actions:</strong> clearly separated in the app, the CLI and the MCP server, so disruptive actions (yellow confirm) and destructive ones (red confirm) always ask first.</li>
+      <li><strong>Sign in with Amazon</strong> alongside email and phone codes, plus a refreshed sign-in screen that formats phone numbers as you type.</li>
+      <li><strong>Built-in eero API dev tools (F12):</strong> a docked panel showing live requests to and from the eero API, with status, command, headers, collapsible JSON bodies, timing, filtering, and tokens removed automatically.</li>
+      <li><strong>VS Code themes and a theme editor:</strong> search and install themes from Open VSX, or duplicate, customize and export themes in the floating theme editor.</li>
+      <li><strong>System tray and startup:</strong> an optional "Keep running in the tray" so desktop alerts keep arriving, and "Start at login".</li>
+      <li><strong>Navigation and shortcuts:</strong> Back and Forward buttons in the sidebar, searchable breadcrumb switchers on eero, device and profile pages, a stronger search palette (pages, sections and eeros), and six rebindable keyboard shortcuts.</li>
+      <li><strong>Smarter monitoring and polish:</strong> an opt-in Live throughput switch on Devices, a local Activity history beyond eero's 15-minute window, product icons for every eero and Echo, a sortable Devices table that remembers its sort and window state, MCP setup for Codex and Antigravity, and Linux AppImage update information for Gear Lever.</li>
+    </ul>
+  </section>
+
+  <section class="release" aria-labelledby="v0-6">
+    <h2 id="v0-6">0.6 <a href="https://github.com/pkkid/mesh-ui/releases/tag/v0.6.0">November 2026</a></h2>
+    <ul>
+      <li><strong>First public release</strong> for Linux, Windows and macOS.</li>
+      <li><strong>Application and account page:</strong> edit your name, email and phone, turn notifications and alerts on or off, see your networks (shared and offline ones too) and switch between them, pick a theme, and sign out or delete your account.</li>
+      <li><strong>Updates:</strong> About shows whether Mesh UI is up to date, downloading or ready to restart, with a chip in the sidebar when an update is ready. Unsigned macOS builds link to the download on GitHub.</li>
+      <li><strong>Command line on your PATH:</strong> Install CLI for the AppImage and macOS; the deb and rpm packages add <code>/usr/bin/mesh-ui</code>, and the Windows installer adds it to your PATH. A CLI and agents panel helps set up MCP.</li>
+      <li><strong>Demo mode:</strong> try Mesh UI from the sign-in screen without an eero account, and leave demo mode to sign in for real.</li>
+      <li><strong>Wi-Fi:</strong> edit the network nickname and print a Wi-Fi card for guests.</li>
+      <li><strong>Activity:</strong> a menu on each row to rename or block a device.</li>
+      <li><strong>Installers</strong> for every system, and a README that walks through them.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <div class="foot-brand"><img src="img/icon.svg" alt="" width="22" height="22"><span class="wordmark small">Mesh UI</span></div>
+    <p class="foot-links">
+      <a href="https://github.com/pkkid/mesh-ui">Source code</a> ·
+      <a href="https://github.com/pkkid/mesh-ui/issues/new/choose">Report a problem</a> ·
+      <a href="changes.html">Changes</a>
+    </p>
+    <p class="muted">Mesh UI is free software under the MIT licence. It is not made by or affiliated with eero or Amazon. This site sets no cookies and loads nothing from other servers.</p>
+  </div>
+</footer>
+</body>
+</html>

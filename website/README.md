@@ -6,7 +6,8 @@ the files in `public/` as they are. Its look follows dalica.pkarma.com.
 
 | Path | What |
 |---|---|
-| `public/index.html` | the page: header (GitHub, Download), hero, screenshot, downloads, footer |
+| `public/index.html` | the page: header (Changes, GitHub, Download), hero, screenshot, downloads, footer |
+| `public/changes.html` | the Changes page: a bulleted list per release, newest first (served at `/changes`) |
 | `public/style.css` | all styles, including the self-hosted `@font-face` rules |
 | `public/main.js` | headline arrival, the header hairline, the clickable app in the hero, and the download button that names the visitor's system |
 | `public/404.html` | the not-found page |
@@ -39,7 +40,7 @@ the change is on `main`: `npx wrangler deploy`. Then check `curl -sI https://mes
 
 ## Releasing a new version
 
-The version appears in `public/index.html` only: the download heading and the links
+Add the release's changes as a new section at the top of `public/changes.html`. In `public/index.html` the version appears in the download heading and the links
 (`releases/download/v0.6.0/...`). Replace `0.6.0` and `0.6` with the new version, then check
 every link answers 200:
 

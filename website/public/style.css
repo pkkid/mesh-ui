@@ -51,9 +51,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .wordmark::after { content: ""; display: inline-block; width: .16em; height: .16em; margin-left: .07em; background: var(--warm); border-radius: .03em; }
 .wordmark.small { font-size: 1.1rem; }
 .top nav { display: flex; align-items: center; gap: 20px; white-space: nowrap; }
-.gh { display: inline-flex; align-items: center; gap: 8px; color: var(--soft); text-decoration: none; font-size: .98rem; }
+.gh, .navlink { display: inline-flex; align-items: center; gap: 8px; color: var(--soft); text-decoration: none; font-size: .98rem; }
 .gh svg { width: 19px; height: 19px; }
-.gh:hover { color: var(--ink-hi); }
+.gh:hover, .navlink:hover, .navlink[aria-current="page"] { color: var(--ink-hi); }
 
 /* Buttons */
 .button { display: inline-flex; align-items: center; gap: .55em; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; border-radius: 10px; padding: .6em 1.1em; border: 0; cursor: pointer; font-family: inherit; font-size: 1rem;
@@ -162,6 +162,20 @@ h1 .w { display: inline-block; }
 .lost { max-width: 640px; margin: 0 auto; padding: 18vh 20px 80px; text-align: center; }
 .lost h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0 auto 10px; }
 .lost .section-lead { margin: 0 auto 28px; }
+
+/* Changes page */
+.changes { max-width: 760px; padding-top: 64px; padding-bottom: 96px; }
+.changes > header { text-align: center; margin-bottom: 56px; }
+.changes h1 { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -.03em; line-height: 1.15; margin: 0 0 10px; }
+.changes .section-lead { margin-bottom: 0; }
+.release { border-top: 1px solid var(--line); padding: 36px 0 12px; }
+.release h2 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; font-size: 1.6rem; margin: 0 0 14px; }
+.release h2 a { font: 500 .8rem/1 var(--mono); letter-spacing: .04em; color: var(--muted); text-decoration: none; }
+.release h2 a:hover { color: var(--accent-hi); }
+.release ul { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+.release li { padding-left: .2em; text-wrap: pretty; }
+.release li::marker { color: var(--accent); }
+.release strong { color: var(--ink-hi); font-weight: 600; }
 
 /* Small screens */
 @media (max-width: 760px) {
