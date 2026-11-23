@@ -30,7 +30,7 @@ the change is on `main`: `npx wrangler deploy`. Then check `curl -sI https://mes
 
 ## Editing the page
 
-- Dark Gruvbox only. One accent, the app's blue-gray `#83a598`; orange appears only as the
+- The site itself is dark Gruvbox only (the app picture in the hero has a light theme too). One accent, the app's blue-gray `#83a598`; orange appears only as the
   wordmark's dot. Colors are tokens at the top of `style.css`.
 - No `style="..."` attributes and no inline scripts: the Content-Security-Policy refuses them.
 - Every page fits a 320 px phone with no sideways scroll.
@@ -49,25 +49,39 @@ for u in $(grep -o 'https://github.com/pkkid/mesh-ui/releases/download/[^"]*' we
 
 ## The app in the hero
 
-The hero shows the app as a clickable picture: the sidebar's pages are buttons over the sidebar
-image (their row centres are the `data-y` values, in pixels of a 1400 x 860 window), the header
-stays put and the page scrolls (never on its own). Each page is three images in
-`img/pages/`: `<id>-nav.webp` (the sidebar, 480 x 1720), `<id>-head.webp` (the main header) and
-`<id>-body.webp` (the page below it, 1740 wide). The body heights are `HEIGHTS` in `main.js`.
+The hero shows the app as a clickable picture: every sidebar item (and the account row in the
+sidebar's footer) is a button over the sidebar image (their row centres are the `data-y` values,
+in pixels of a 1400 x 860 window), the header stays put and the page scrolls (never on its own).
+The light / dark button in the header picture is a button too (`#app-theme`, over the icon at
+x 1231): it swaps every picture to the other theme and keeps the page and its scroll. Dark is
+Gruvbox Hard (the maintainer's theme), light is the default Classic.
 
-All are demo-mode captures, dark theme, with the Demo badge removed. To retake them, run
-`pnpm ui:shot --shots shots.json` with, for every page, a `1400x860` shot (the sidebar) and a
-`1400x4000` shot (the whole page), both at `--scale 2` and with this `before`:
+Each page and theme is three images in `img/pages/`: `<id>-<theme>-nav.webp` (the sidebar,
+480 x 1720), `<id>-<theme>-head.webp` (the main header, 1740 x 66) and
+`<id>-<theme>-body.webp` (the page below it, 1740 wide). The body heights are `HEIGHTS` in
+`main.js`, one table per theme. The page ids are the app's route ids (`settings` is the
+Application page).
+
+All are demo-mode captures with the Demo badge removed. To retake them, run `pnpm ui:shot`
+for every page and theme (dark: `--theme dark --theme-file test/ui-shots/themes/gruvbox-hard.json`;
+light: `--theme light`) with `--wait 1500` and this `before`:
 
 ```js
 [...document.querySelectorAll('*')].filter(e=>e.children.length===0&&e.textContent.trim()==='Demo').forEach(e=>e.remove())
 ```
 
-Then crop at scale 2: the sidebar is `480x1720+0+0` of the short shot; the header is
-`2320x88+480+0` of the tall shot and the body runs from y 88 to the end of the content (trim the
-tall shot's background), both resized to 1740 wide. Update `HEIGHTS` from the body files.
+- a `--size 1400x860 --scale 2` shot: the sidebar is its `480x1720+0+0`;
+- a `--size 1400x4000 --scale 1.5` shot of the whole page (1.5 makes the main pane exactly
+  1740 wide): the header is its `1740x66+360+0`, and the body runs from y 66 to the end of the
+  content (trim the background, then keep about 45 px under it).
 
-`img/overview.jpg` is the link-preview image (`og:image`), the Overview page at 2000 px wide.
+The offscreen renderer crashes on shots over about 4096 x 4096 device pixels, and now and then
+on a long run, so take each shot in its own `ui:shot` launch and retry a failed one; Devices,
+Signal and Activity in dark may need a shorter tall shot (as tall as the page). Update
+`HEIGHTS` from the body files.
+
+`img/overview-1.0.jpg` is the link-preview image (`og:image`), the Overview page in dark at
+2000 px wide.
 
 The note's handwriting is Caveat (OFL, `fonts/OFL-Caveat.txt`).
 

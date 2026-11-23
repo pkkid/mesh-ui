@@ -13,7 +13,7 @@
 <meta property="og:url" content="https://meshui.pkarma.com/">
 <meta property="og:title" content="Mesh UI: unofficial desktop interface for your eero network">
 <meta property="og:description" content="An unofficial desktop UI for your eero network. Free for Linux, Windows and macOS.">
-<meta property="og:image" content="https://meshui.pkarma.com/img/overview.jpg">
+<meta property="og:image" content="https://meshui.pkarma.com/img/overview-1.0.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="fonts/SchibstedGrotesk-Variable-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
@@ -70,27 +70,32 @@
     <div class="frame">
       <div class="app" id="app">
         <div class="app-nav">
-          <img id="app-nav" src="img/pages/overview-nav.webp" width="480" height="1720" alt="">
+          <img id="app-nav" src="img/pages/overview-dark-nav.webp" width="480" height="1720" alt="">
           <div class="hotspots" role="group" aria-label="Pages of the app">
-          <button type="button" data-page="overview" data-y="158" aria-label="Overview" aria-pressed="true"></button>
-          <button type="button" data-page="internet" data-y="190" aria-label="Internet" aria-pressed="false"></button>
-          <button type="button" data-page="eeros" data-y="222" aria-label="eeros" aria-pressed="false"></button>
-          <button type="button" data-page="devices" data-y="254" aria-label="Devices" aria-pressed="false"></button>
-          <button type="button" data-page="profiles" data-y="286" aria-label="Profiles" aria-pressed="false"></button>
-          <button type="button" data-page="activity" data-y="318" aria-label="Activity" aria-pressed="false"></button>
-          <button type="button" data-page="guest" data-y="350" aria-label="Guest network" aria-pressed="false"></button>
-          <button type="button" data-page="wifi" data-y="413" aria-label="Wi-Fi" aria-pressed="false"></button>
-          <button type="button" data-page="advanced" data-y="445" aria-label="Advanced networking" aria-pressed="false"></button>
-          <button type="button" data-page="ports" data-y="477" aria-label="Reservations &amp; ports" aria-pressed="false"></button>
-          <button type="button" data-page="updates" data-y="509" aria-label="Updates &amp; admins" aria-pressed="false"></button>
-          <button type="button" data-page="troubleshooting" data-y="541" aria-label="Troubleshooting" aria-pressed="false"></button>
-          <button type="button" data-page="account" data-y="573" aria-label="Settings &amp; Account" aria-pressed="false"></button>
+          <button type="button" data-page="overview" data-y="156" aria-label="Overview" aria-pressed="true"></button>
+          <button type="button" data-page="internet" data-y="188" aria-label="Internet" aria-pressed="false"></button>
+          <button type="button" data-page="eeros" data-y="220" aria-label="eeros" aria-pressed="false"></button>
+          <button type="button" data-page="devices" data-y="252" aria-label="Devices" aria-pressed="false"></button>
+          <button type="button" data-page="profiles" data-y="284" aria-label="Profiles" aria-pressed="false"></button>
+          <button type="button" data-page="signal" data-y="316" aria-label="Signal" aria-pressed="false"></button>
+          <button type="button" data-page="activity" data-y="348" aria-label="Activity" aria-pressed="false"></button>
+          <button type="button" data-page="wifi" data-y="411" aria-label="Wi-Fi network" aria-pressed="false"></button>
+          <button type="button" data-page="guest" data-y="443" aria-label="Guest network" aria-pressed="false"></button>
+          <button type="button" data-page="advanced" data-y="475" aria-label="Advanced networking" aria-pressed="false"></button>
+          <button type="button" data-page="ports" data-y="507" aria-label="Reservations &amp; ports" aria-pressed="false"></button>
+          <button type="button" data-page="updates" data-y="539" aria-label="Updates &amp; admins" aria-pressed="false"></button>
+          <button type="button" data-page="troubleshooting" data-y="571" aria-label="Troubleshooting" aria-pressed="false"></button>
+          <button type="button" data-page="settings" data-y="603" aria-label="Application" aria-pressed="false"></button>
+          <button type="button" class="account" data-page="account" data-y="828" aria-label="Account" aria-pressed="false"></button>
           </div>
         </div>
         <div class="app-main">
-          <img id="app-head" src="img/pages/overview-head.webp" width="1740" height="66" alt="">
+          <div class="app-head">
+            <img id="app-head" src="img/pages/overview-dark-head.webp" width="1740" height="66" alt="">
+            <button type="button" class="theme-toggle" id="app-theme" aria-label="Show the light theme"></button>
+          </div>
           <div class="app-body" id="app-body" tabindex="0" aria-label="Page content, scrollable">
-            <img id="app-page" src="img/pages/overview-body.webp" width="1740" height="2015" fetchpriority="high" alt="Mesh UI's Overview page: the network's status and speed test results, data used over the last 24 hours, the eeros in the mesh and the devices using the most data.">
+            <img id="app-page" src="img/pages/overview-dark-body.webp" width="1740" height="2110" fetchpriority="high" alt="Mesh UI's Overview page: the network's status and speed test results, data used over the last 24 hours, the eeros in the mesh and the devices using the most data.">
           </div>
         </div>
       </div>
@@ -100,23 +105,23 @@
 
 <section class="download" id="download" aria-labelledby="download-title">
   <p class="eyebrow">Download</p>
-  <h2 id="download-title">Get Mesh UI 0.6</h2>
-  <p class="section-lead">Free and open source under the MIT licence. Checksums and every other package are on the <a href="https://github.com/pkkid/mesh-ui/releases/tag/v0.6.0">release page</a>.</p>
+  <h2 id="download-title">Get Mesh UI 1.0</h2>
+  <p class="section-lead">Free and open source under the MIT licence. Checksums and every other package are on the <a href="https://github.com/pkkid/mesh-ui/releases/tag/v1.0.0">release page</a>.</p>
   <p class="phone-note" id="phone-note" hidden>Mesh UI is a desktop app. Open this page on your computer to download it.</p>
   <div class="os-grid">
     <article class="os" data-os="linux">
       <div class="os-head"><svg aria-hidden="true"><use href="#i-linux"/></svg><div><h3>Linux</h3><p>x86_64 and ARM64</p></div><span class="mine">Your system</span></div>
-      <a class="button" href="https://github.com/pkkid/mesh-ui/releases/download/v0.6.0/Mesh-UI-0.6.0-x86_64.AppImage"><svg aria-hidden="true"><use href="#i-down"/></svg>AppImage</a>
-      <p class="alts">Also <a href="https://github.com/pkkid/mesh-ui/releases/download/v0.6.0/mesh-ui_0.6.0_amd64.deb">.deb</a>, <a href="https://github.com/pkkid/mesh-ui/releases/download/v0.6.0/mesh-ui-0.6.0.x86_64.rpm">.rpm</a> and <a href="https://github.com/pkkid/mesh-ui/releases/tag/v0.6.0">ARM64</a></p>
+      <a class="button" href="https://github.com/pkkid/mesh-ui/releases/download/v1.0.0/Mesh-UI-1.0.0-x86_64.AppImage"><svg aria-hidden="true"><use href="#i-down"/></svg>AppImage</a>
+      <p class="alts">Also <a href="https://github.com/pkkid/mesh-ui/releases/download/v1.0.0/mesh-ui_1.0.0_amd64.deb">.deb</a>, <a href="https://github.com/pkkid/mesh-ui/releases/download/v1.0.0/mesh-ui-1.0.0.x86_64.rpm">.rpm</a> and <a href="https://github.com/pkkid/mesh-ui/releases/tag/v1.0.0">ARM64</a></p>
     </article>
     <article class="os" data-os="win">
       <div class="os-head"><svg aria-hidden="true"><use href="#i-win"/></svg><div><h3>Windows</h3><p>x64 and ARM64</p></div><span class="mine">Your system</span></div>
-      <a class="button" href="https://github.com/pkkid/mesh-ui/releases/download/v0.6.0/Mesh-UI-Setup-0.6.0-x64.exe"><svg aria-hidden="true"><use href="#i-down"/></svg>Installer</a>
-      <p class="alts">Also a <a href="https://github.com/pkkid/mesh-ui/releases/download/v0.6.0/Mesh-UI-0.6.0-x64-portable.zip">portable .zip</a> and <a href="https://github.com/pkkid/mesh-ui/releases/tag/v0.6.0">ARM64</a></p>
+      <a class="button" href="https://github.com/pkkid/mesh-ui/releases/download/v1.0.0/Mesh-UI-Setup-1.0.0-x64.exe"><svg aria-hidden="true"><use href="#i-down"/></svg>Installer</a>
+      <p class="alts">Also a <a href="https://github.com/pkkid/mesh-ui/releases/download/v1.0.0/Mesh-UI-1.0.0-x64-portable.zip">portable .zip</a> and <a href="https://github.com/pkkid/mesh-ui/releases/tag/v1.0.0">ARM64</a></p>
     </article>
     <article class="os" data-os="mac">
       <div class="os-head"><svg aria-hidden="true"><use href="#i-mac"/></svg><div><h3>macOS</h3><p>Apple silicon and Intel</p></div><span class="mine">Your system</span></div>
-      <a class="button" href="https://github.com/pkkid/mesh-ui/releases/download/v0.6.0/Mesh-UI-0.6.0-universal.dmg"><svg aria-hidden="true"><use href="#i-down"/></svg>Disk image</a>
+      <a class="button" href="https://github.com/pkkid/mesh-ui/releases/download/v1.0.0/Mesh-UI-1.0.0-universal.dmg"><svg aria-hidden="true"><use href="#i-down"/></svg>Disk image</a>
       <p class="alts">Not notarized yet: the first time, right-click the app and choose Open</p>
     </article>
   </div>

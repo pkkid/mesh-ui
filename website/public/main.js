@@ -15,32 +15,47 @@
   onScroll();
 
   // The app in the hero: a page button swaps the sidebar, header and page pictures, then the
-  // page starts at the top; the visitor scrolls it.
-  var HEIGHTS = { overview: 2015, internet: 3624, eeros: 2229, devices: 2880, profiles: 2189, activity: 5192, guest: 1611,
-    wifi: 1968, advanced: 5043, ports: 2536, updates: 2231, troubleshooting: 3623, account: 2438 };
-  var nav = $("#app-nav"), head = $("#app-head"), page = $("#app-page"), body = $("#app-body");
-  var buttons = $$(".hotspots button"), pick = 0;
-  function load(src) { var i = new Image(); i.src = src; return i.decode ? i.decode().catch(function () {}) : Promise.resolve(); }
-  function show(id, button) {
-    var n = ++pick, p = "img/pages/" + id;
+  // page starts at the top; the visitor scrolls it. The header's light / dark button swaps every
+  // picture to the other theme (Gruvbox Hard dark, Classic light) and keeps the page and scroll.
+  var HEIGHTS = {
+    dark: { overview: 2110, internet: 2898, eeros: 2608, devices: 3675, profiles: 2155, signal: 4930, activity: 5020, wifi: 2089,
+      guest: 1848, advanced: 3871, ports: 2817, updates: 2010, troubleshooting: 3419, settings: 2805, account: 1501 },
+    light: { overview: 2110, internet: 2899, eeros: 2608, devices: 3633, profiles: 2155, signal: 4930, activity: 5020, wifi: 2089,
+      guest: 1849, advanced: 3871, ports: 2818, updates: 2011, troubleshooting: 3419, settings: 2805, account: 1501 }
+  };
+  var app = $("#app"), nav = $("#app-nav"), head = $("#app-head"), page = $("#app-page"), body = $("#app-body"), toggle = $("#app-theme");
+  var buttons = $$(".hotspots button"), pick = 0, theme = "dark", current = buttons[0];
+  function src(id, part, t) { return "img/pages/" + id + "-" + (t || theme) + "-" + part + ".webp"; }
+  function load(url) { var i = new Image(); i.src = url; return i.decode ? i.decode().catch(function () {}) : Promise.resolve(); }
+  function show(button, keepScroll) {
+    var n = ++pick, id = button.dataset.page, t = theme, top = keepScroll ? body.scrollTop : 0;
+    current = button;
     buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b === button)); });
-    nav.src = p + "-nav.webp"; head.src = p + "-head.webp";
     body.classList.add("loading");
-    load(p + "-body.webp").then(function () {
+    Promise.all([load(src(id, "nav", t)), load(src(id, "head", t)), load(src(id, "body", t))]).then(function () {
       if (n !== pick) return;
-      page.src = p + "-body.webp"; page.height = HEIGHTS[id];
-      page.alt = "Mesh UI's " + button.getAttribute("aria-label") + " page, in demo mode.";
-      body.classList.remove("loading"); body.scrollTop = 0;
+      app.classList.toggle("light", t === "light");
+      nav.src = src(id, "nav", t); head.src = src(id, "head", t);
+      page.src = src(id, "body", t); page.height = HEIGHTS[t][id];
+      page.alt = "Mesh UI's " + button.getAttribute("aria-label") + " page, in demo mode, " + t + " theme.";
+      body.classList.remove("loading"); body.scrollTop = top;
     });
   }
   buttons.forEach(function (b) {
-    b.style.top = (Number(b.dataset.y) - 15.5) / 860 * 100 + "%";
-    b.addEventListener("click", function () { show(b.dataset.page, b); });
-    b.addEventListener("pointerenter", function () { load("img/pages/" + b.dataset.page + "-body.webp"); });
+    // Rows are 31 px tall; the two-line account row in the footer is 44 px.
+    b.style.top = (Number(b.dataset.y) - (b.classList.contains("account") ? 22 : 15.5)) / 860 * 100 + "%";
+    b.addEventListener("click", function () { show(b, false); });
+    b.addEventListener("pointerenter", function () { load(src(b.dataset.page, "body")); });
   });
+  toggle.addEventListener("click", function () {
+    theme = theme === "dark" ? "light" : "dark";
+    toggle.setAttribute("aria-label", theme === "dark" ? "Show the light theme" : "Show the dark theme");
+    show(current, true);
+  });
+  toggle.addEventListener("pointerenter", function () { load(src(current.dataset.page, "body", theme === "dark" ? "light" : "dark")); });
   // The sidebar and header pictures are small: fetch them all after load, so a pick never blinks.
   addEventListener("load", function () {
-    buttons.forEach(function (b) { load("img/pages/" + b.dataset.page + "-nav.webp"); load("img/pages/" + b.dataset.page + "-head.webp"); });
+    buttons.forEach(function (b) { load(src(b.dataset.page, "nav")); load(src(b.dataset.page, "head")); });
   });
 
   // Download: name the visitor's system and lift its card. Phones and tablets get a note instead.

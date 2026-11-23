@@ -102,6 +102,16 @@ h1 .w { display: inline-block; }
 .hotspots button { position: absolute; left: 3.3%; right: 3.3%; height: 3.6%; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
 .hotspots button:hover { background: #fbf1c70f; box-shadow: inset 0 0 0 1px #fbf1c71f; }
 .hotspots button:focus-visible { outline-offset: 0; }
+.hotspots button.account { height: 5.2%; }
+/* The light theme's pictures: Classic light, so the frame behind them goes white too. */
+.app.light { background: #fcfcfc; }
+.app.light .app-body { scrollbar-color: #d4d4d8 transparent; }
+.app.light .hotspots button:hover, .app.light .theme-toggle:hover { background: #0000000a; box-shadow: inset 0 0 0 1px #00000014; }
+/* The app's light / dark button, over its icon in the header picture (x 1231 of the 1400 window). */
+.app-head { position: relative; }
+.theme-toggle { position: absolute; left: 84.22%; top: 18%; width: 2.42%; height: 64%; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
+.theme-toggle:hover { background: #fbf1c70f; box-shadow: inset 0 0 0 1px #fbf1c71f; }
+.theme-toggle:focus-visible { outline-offset: 0; }
 
 /* The handwritten note: Caveat in the warm accent, an arrow drawn in once. */
 .note { position: absolute; z-index: 2; left: 0; top: 0; width: 100%; margin-top: -10%; aspect-ratio: 1400 / 1000; overflow: visible; pointer-events: none; }
