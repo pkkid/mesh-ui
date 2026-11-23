@@ -80,7 +80,6 @@ export function Connection() {
     <>
       <CopyCommandButton
         // Icons inside buttons are dim (design-system.md, Buttons and links).
-        className="[&_svg]:text-muted-foreground"
         icon={<Copy />}
         idle="Copy details"
         done="Details copied"

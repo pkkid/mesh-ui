@@ -103,7 +103,7 @@ export function Diagnose({ offline }: { offline: boolean }) {
               }
               description={testing ? "eero is testing your network. This can take a minute." : s.detail}
               control={
-                <GatedButton gate={gate} variant="outline" className="[&_svg]:text-muted-foreground" disabled={write.running} onClick={() => void run(s.id)}>
+                <GatedButton gate={gate} variant="outline" disabled={write.running} onClick={() => void run(s.id)}>
                   {testing ? <Spinner className="size-3.5" /> : <Stethoscope />}
                   {testing ? "Testing..." : "Diagnose"}
                 </GatedButton>

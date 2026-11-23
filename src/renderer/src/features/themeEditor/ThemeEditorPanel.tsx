@@ -452,7 +452,7 @@ export function ThemeEditorPanel({
           size="xs"
           variant="outline"
           // An outline button with the dim icon, as every other tool button.
-          className="me-1 [&_svg]:text-muted-foreground"
+          className="me-1"
           aria-pressed={inspecting}
           title={inspecting ? "Cancel and clear the selection" : "Pick a color from the app"}
           onClick={() => (inspecting ? clearInspector() : setInspecting(true))}

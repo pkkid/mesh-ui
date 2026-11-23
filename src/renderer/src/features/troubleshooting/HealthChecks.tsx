@@ -55,7 +55,6 @@ const FIX: Partial<Record<string, { to: RouteId; label: string }>> = {
   mesh: { to: "signal", label: "View coverage" },
 };
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 function ScoreRing({ report, loading }: { report: HealthReport | undefined; loading: boolean }) {
   const size = 132;
@@ -149,7 +148,7 @@ export function HealthHero({ health }: { health: Health }) {
       }
       actions={
         <>
-          <Button variant="outline" className={DIM_ICON} onClick={runAgain} disabled={running} aria-busy={running} data-run-again>
+          <Button variant="outline" onClick={runAgain} disabled={running} aria-busy={running} data-run-again>
             <RefreshCw className={cn(running && "animate-spin motion-reduce:animate-none")} />
             {running ? "Checking..." : "Run checks again"}
           </Button>

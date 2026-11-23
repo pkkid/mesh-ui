@@ -131,7 +131,6 @@ function CopyInviteButton() {
   return (
     <Button
       variant="outline"
-      className="[&_svg]:text-muted-foreground"
       disabled={share.running}
       title="Copies a short invite with the network name and password"
       onClick={async () => {
@@ -165,7 +164,6 @@ export function PowerButton({ on }: { on: boolean }) {
     <GatedButton
       gate={gate}
       variant={on ? "outline" : "default"}
-      className={on ? "[&_svg]:text-muted-foreground" : undefined}
       disabled={write.running}
       onClick={() => void write.run()}
     >

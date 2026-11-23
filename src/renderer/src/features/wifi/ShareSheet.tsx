@@ -24,7 +24,6 @@ import type { GuestNetwork, Network, WifiShare } from "../../../../core/model";
 
 type ShareState = { value: WifiShare | null; error: string | null };
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 /** Runs `id` while `open` (and again on a network switch), dropping the answer when it closes. */
 function useShare(open: boolean, id: "wifi.share" | "guest.share", networkId: string | null): ShareState {
@@ -92,7 +91,6 @@ export function ShareWifiSheet({ open, onClose }: { open: boolean; onClose: () =
         <Button
           type="button"
           variant="outline"
-          className={DIM_ICON}
           disabled={!share?.password}
           title={share && share.password === null ? "This network has no password" : "Copies the Wi-Fi password"}
           onClick={() => share?.password && void copyText(share.password, { toast: "Copied password" })}
@@ -123,7 +121,6 @@ export function ShareGuestSheet({ open, onClose }: { open: boolean; onClose: () 
         <Button
           type="button"
           variant="outline"
-          className={DIM_ICON}
           disabled={!share}
           title="Copies a short invite with the network name and password"
           onClick={() => share && void copyText(inviteText(share), { toast: "Invite copied" })}

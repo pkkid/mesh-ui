@@ -17,7 +17,6 @@ import { Row as SettingsRow } from "~/features/advanced/SettingsGroups";
 import { entityColors } from "~/lib/chartColors";
 import type { ProfileList } from "../../../../core/model";
 
-import { DIM_ICON } from "./DeviceHero";
 import type { DeviceView } from "./DevicePage";
 
 export function DeviceSettings({ view }: { view: DeviceView }) {
@@ -37,7 +36,7 @@ export function DeviceSettings({ view }: { view: DeviceView }) {
 
   const profileButton = (
     // 32px, the settings row control size.
-    <GatedButton gate={d ? profileGate : { allowed: false, reason: null }} variant="outline" className={DIM_ICON}>
+    <GatedButton gate={d ? profileGate : { allowed: false, reason: null }} variant="outline">
       <UserRound />
       {profileName ?? "-"}
       <ChevronDown />

@@ -77,8 +77,6 @@ export function BlinkLightButton({ eero, size = "xs" }: { eero: Eero; size?: "xs
       // "context": the region's size (the hero's 28px), as the page header sets it.
       size={size === "context" ? undefined : size}
       variant="outline"
-      // Icons inside buttons are dim (design-system.md, Buttons and links).
-      className="[&_svg]:text-muted-foreground"
       gate={find.gate}
       disabled={find.running || find.left !== null}
       onClick={() => void find.run()}

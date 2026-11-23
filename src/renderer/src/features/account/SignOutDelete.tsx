@@ -59,12 +59,12 @@ export function SignOutDelete({ id, emailId, notificationsId }: { id?: string; e
           control={
             <>
               {demo && (
-                <Button variant="outline" className={DIM_ICON} disabled={leaveDemo.running || leaveDemo.result?.restarting} onClick={() => void leaveDemo.run({ enabled: false })}>
+                <Button variant="outline" disabled={leaveDemo.running || leaveDemo.result?.restarting} onClick={() => void leaveDemo.run({ enabled: false })}>
                   <FlaskConical />
                   {leaveDemo.result?.restarting ? "Restarting..." : "Leave demo mode"}
                 </Button>
               )}
-              <Button variant="outline" className={DIM_ICON} disabled={logout.running || !auth.data} onClick={() => void logout.run({})}>
+              <Button variant="outline" disabled={logout.running || !auth.data} onClick={() => void logout.run({})}>
                 <LogOut />
                 Sign out
               </Button>
@@ -77,7 +77,6 @@ export function SignOutDelete({ id, emailId, notificationsId }: { id?: string; e
   );
 }
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 function DeleteAccount({ account, networks }: { account: Account | undefined; networks: NetworkSummary[] | undefined }) {
   const [open, setOpen] = useState(false);
@@ -112,7 +111,7 @@ function DeleteAccount({ account, networks }: { account: Account | undefined; ne
       title="Delete account and data"
       description="Closes your eero account and deletes your personal data. It cannot be undone."
       control={
-        <Button variant="outline" className={DIM_ICON} aria-expanded={open} aria-controls={bodyId} onClick={toggle}>
+        <Button variant="outline" aria-expanded={open} aria-controls={bodyId} onClick={toggle}>
           {open ? "Cancel" : "Delete account\u2026"}
         </Button>
       }

@@ -40,10 +40,13 @@ function MenuPopup({
   );
 }
 
+/** Menu icons are dim like an outline button's; a destructive row's icon is red with its label. An icon with its own `text-*` class keeps it. */
+const menuIcon = "[&>svg:not([class*='text-'])]:text-muted-foreground";
+
 function MenuItem({ className, variant = "default", ...props }: MenuPrimitive.Item.Props & { variant?: "default" | "destructive" }) {
   return (
     <MenuPrimitive.Item
-      className={cn(popoverItem, variant === "destructive" && "text-destructive-foreground", className)}
+      className={cn(popoverItem, variant === "destructive" ? "text-destructive-foreground [&>svg:not([class*='text-'])]:text-current" : menuIcon, className)}
       data-slot="menu-item"
       data-variant={variant}
       {...props}
@@ -58,7 +61,7 @@ function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
 /** A row that opens a submenu; the chevron is added. */
 function MenuSubTrigger({ className, children, ...props }: MenuPrimitive.SubmenuTrigger.Props) {
   return (
-    <MenuPrimitive.SubmenuTrigger className={cn(popoverItem, "data-popup-open:bg-muted/60", className)} data-slot="menu-sub-trigger" {...props}>
+    <MenuPrimitive.SubmenuTrigger className={cn(popoverItem, menuIcon, "data-popup-open:bg-muted/60", className)} data-slot="menu-sub-trigger" {...props}>
       {children}
       <ChevronRight className="ms-auto text-muted-foreground" />
     </MenuPrimitive.SubmenuTrigger>

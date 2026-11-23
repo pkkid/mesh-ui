@@ -131,7 +131,7 @@ function PlanForm({ onClose }: { onClose: () => void }) {
             </Button>
           </span>
         ) : (
-          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" onClick={() => setRemoving(true)}>
+          <Button type="button" size="sm" variant="ghost" tone="danger" onClick={() => setRemoving(true)}>
             Remove plan
           </Button>
         ))

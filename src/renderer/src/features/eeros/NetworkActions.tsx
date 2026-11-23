@@ -103,7 +103,7 @@ export function useRestartNetworkRow(): { description: string; control: ReactNod
     description: restartNetworkLine(impact.data),
     control: (
       // Ellipsis: it confirms first.
-      <GatedButton gate={restart.gate} variant="outline" className="[&_svg]:text-muted-foreground" disabled={restart.write.running} onClick={() => void restart.run()}>
+      <GatedButton gate={restart.gate} variant="outline" disabled={restart.write.running} onClick={() => void restart.run()}>
         <RotateCcw />
         Restart network{"\u2026"}
       </GatedButton>

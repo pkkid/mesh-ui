@@ -116,7 +116,7 @@ export function GetHelp({ query }: { query: QueryState<SupportInfo> }) {
               {networkId && <InlineCopy text={networkId} what="Network ID" />}
             </Line>
             <Line label="Diagnostics report">
-              <CopyCommandButton load={loadReport} idle="Copy report" done="Report copied" icon={<ClipboardCopy />} className="[&_svg]:text-muted-foreground" />
+              <CopyCommandButton load={loadReport} idle="Copy report" done="Report copied" icon={<ClipboardCopy />} />
             </Line>
           </Card>
           <Footnote>

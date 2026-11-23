@@ -78,7 +78,7 @@ function CopyIcon({ label, text, disabled }: { label: string; text: () => Promis
 export function EditNamePasswordButton({ wifi, offline, onClick }: { wifi: WifiSettings | null; offline: boolean; onClick: () => void }) {
   const gate = useGate(GATE);
   return (
-    <GatedButton variant="outline" className="[&_svg]:text-muted-foreground" gate={gate} disabled={!wifi || offline} onClick={onClick}>
+    <GatedButton variant="outline" gate={gate} disabled={!wifi || offline} onClick={onClick}>
       <Pencil />
       Edit name and password{"\u2026"}
     </GatedButton>
@@ -276,7 +276,7 @@ function NamePasswordSheet({ open, onClose, wifi, onSaved }: { open: boolean; on
           <IconButton label={shown ? "Hide password" : "Show password"} onClick={() => setShown((v) => !v)}>
             {shown ? <EyeOff /> : <Eye />}
           </IconButton>
-          <Button type="button" size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => void generate()}>
+          <Button type="button" size="sm" variant="outline" onClick={() => void generate()}>
             <Dices />
             Generate
           </Button>

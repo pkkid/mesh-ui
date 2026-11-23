@@ -63,16 +63,16 @@ export function AccountHero({ id }: { id?: string }) {
         }
         actions={
           <>
-            <Button variant="outline" className={DIM_ICON} disabled={!usable} title={gate.reason ?? undefined} onClick={() => setOpen("name")}>
+            <Button variant="outline" disabled={!usable} title={gate.reason ?? undefined} onClick={() => setOpen("name")}>
               <Pencil />
               Edit name{"\u2026"}
             </Button>
-            <Button variant="outline" className={DIM_ICON} disabled={!usable} title={gate.reason ?? undefined} onClick={() => setOpen(emailAction === "Verify email" ? "email-code" : "email")}>
+            <Button variant="outline" disabled={!usable} title={gate.reason ?? undefined} onClick={() => setOpen(emailAction === "Verify email" ? "email-code" : "email")}>
               <Mail />
               {emailAction}
               {"\u2026"}
             </Button>
-            <Button variant="outline" className={DIM_ICON} disabled={!usable} title={gate.reason ?? undefined} onClick={() => setOpen(phoneAction === "Verify mobile" ? "phone-code" : "phone")}>
+            <Button variant="outline" disabled={!usable} title={gate.reason ?? undefined} onClick={() => setOpen(phoneAction === "Verify mobile" ? "phone-code" : "phone")}>
               <Smartphone />
               {phoneAction}
               {"\u2026"}
@@ -127,7 +127,6 @@ export function AccountHero({ id }: { id?: string }) {
   );
 }
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 const AUTH_WORD: Record<NonNullable<Account["authType"]>, string> = { email: "email", phone: "mobile", amazon: "Amazon" };
 
 /** An address or number as a hero fact: the value, then Verified or Unverified muted after it. */

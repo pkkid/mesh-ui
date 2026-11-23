@@ -329,7 +329,7 @@ function BulkBarContent({ selected, profiles, networkName, bridged, gate: writeG
               gate={blockGate}
               variant="outline"
               size="xs"
-              className="text-destructive-foreground"
+              tone="danger"
               onClick={() => void after(blockRequest(selected.filter((d) => !d.blocked), true, { networkName }))}
             >
               <Ban />

@@ -26,7 +26,7 @@ export function Pinholes({ query, lookup }: { query: QueryState<PinholeList>; lo
   const addGate = useGate("pinhole.add");
   const removeGate = useGate("pinhole.remove");
   const tools = (
-    <GatedButton gate={addGate} variant="outline" className="[&_svg]:text-muted-foreground" onClick={() => setAdding(true)}>
+    <GatedButton gate={addGate} variant="outline" onClick={() => setAdding(true)}>
       <Plus />
       Add a rule{"\u2026"}
     </GatedButton>

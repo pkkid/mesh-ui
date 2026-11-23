@@ -139,7 +139,6 @@ export function ThemeSearch({ onInstalled }: { onInstalled: () => void }) {
               <Button
                 size="xs"
                 variant="outline"
-                className="[&_svg]:text-muted-foreground"
                 disabled={installing !== null}
                 aria-label={`Install ${extension.name}`}
                 onClick={() => void install(extension)}

@@ -110,23 +110,23 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
         eero ? (
           <>
             {/* First in every detail hero; it opens the rename sheet, so it ends in an ellipsis. */}
-            <GatedButton variant="outline" className={DIM_ICON} gate={renameGate} onClick={() => setRenaming(true)}>
+            <GatedButton variant="outline" gate={renameGate} onClick={() => setRenaming(true)}>
               <Pencil />
               Rename{"\u2026"}
             </GatedButton>
             {restart.blocked ? (
-              <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate}>
+              <GatedButton variant="outline" gate={restart.gate}>
                 <Lightbulb />
                 Blink light
               </GatedButton>
             ) : (
-              <span className={cn("inline-flex", DIM_ICON)}>
+              <span className="inline-flex">
                 <BlinkLightButton eero={eero} size="context" />
               </span>
             )}
             {/* Ellipsis: it confirms first. The tooltip says what it takes down. */}
             <span title={restart.line ?? undefined} className="inline-flex">
-              <GatedButton variant="outline" className={DIM_ICON} gate={restart.gate} disabled={restart.running} onClick={() => void restart.run()}>
+              <GatedButton variant="outline" gate={restart.gate} disabled={restart.running} onClick={() => void restart.run()}>
                 <RotateCcw />
                 Restart eero…
               </GatedButton>
@@ -158,8 +158,6 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
   );
 }
 
-/** Icons inside buttons are dim (design-system.md, Buttons and links). */
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 const LED_LABEL = { on: "Status light on", dim: "Status light dimmed", off: "Status light off", unknown: "Status light unknown", blink: "Status light blinking" } as const;
 

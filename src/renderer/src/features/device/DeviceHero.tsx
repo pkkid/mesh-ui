@@ -35,8 +35,6 @@ import type { Device, Eero, ProfileList } from "../../../../core/model";
 import type { DeviceView } from "./DevicePage";
 import { DeviceNow } from "./DeviceNow";
 
-/** Icons inside buttons are dim (design-system.md, Buttons and links). */
-export const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 type State = "online" | "paused" | "offline" | "blocked";
 
@@ -101,7 +99,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   if (ready) {
     actions.push(
       // First in every detail hero; it opens the rename sheet, so it ends in an ellipsis.
-      <GatedButton key="rename" gate={editGate} variant="outline" className={DIM_ICON} onClick={() => setRenaming(true)}>
+      <GatedButton key="rename" gate={editGate} variant="outline" onClick={() => setRenaming(true)}>
         <Pencil />
         Rename{"\u2026"}
       </GatedButton>,
@@ -110,7 +108,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   if (ready && state === "blocked") {
     if (!view.bridged)
       actions.push(
-        <GatedButton key="unblock" gate={blockGate} variant="outline" className={DIM_ICON} onClick={() => void performWrite(blockRequest([ready], false))}>
+        <GatedButton key="unblock" gate={blockGate} variant="outline" onClick={() => void performWrite(blockRequest([ready], false))}>
           <CircleCheck />
           Unblock
         </GatedButton>,
@@ -118,7 +116,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   } else if (ready) {
     if (!view.bridged && !view.guest)
       actions.push(
-        <GatedButton key="pause" gate={gate} variant="outline" className={DIM_ICON} onClick={() => void performWrite(pauseRequest([ready], !ready.paused))}>
+        <GatedButton key="pause" gate={gate} variant="outline" onClick={() => void performWrite(pauseRequest([ready], !ready.paused))}>
           {ready.paused ? <Play /> : <Pause />}
           {ready.paused ? "Resume device" : "Pause device…"}
         </GatedButton>,
@@ -126,7 +124,7 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   }
   if (ready && state !== "blocked" && !view.bridged) {
     actions.push(
-      <GatedButton key="block" gate={blockGate} variant="outline" className="text-destructive-foreground" onClick={onBlock}>
+      <GatedButton key="block" gate={blockGate} variant="outline" tone="danger" onClick={onBlock}>
         <Ban />
         Block…
       </GatedButton>,

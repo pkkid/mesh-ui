@@ -248,7 +248,7 @@ function PowerScheduleSheet({ mode, onClose }: { mode: SheetMode; onClose: () =>
       error={errors._form}
       footerStart={
         mode.kind === "edit" ? (
-          <Button type="button" size="sm" variant="ghost" className="text-destructive-foreground" disabled={remove.running} onClick={() => void del()}>
+          <Button type="button" size="sm" variant="ghost" tone="danger" disabled={remove.running} onClick={() => void del()}>
             <Trash2 />
             Delete schedule
           </Button>

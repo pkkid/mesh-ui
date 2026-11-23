@@ -796,13 +796,29 @@ link inside one is dimmed the same way (`text-foreground/50`, underline
 `decoration-foreground/25`, `hover:text-foreground/70`), so only the
 underline marks it.
 
-**Icons in buttons are dim.** A button's icon uses `text-muted-foreground`
-while its label stays `text-foreground`, so the words lead and the icon
-supports them (`[&_svg]:text-muted-foreground` on the button). **Buttons
-side by side share a variant**: hero actions are all `outline`, never an
-outline next to a borderless `ghost`, which reads as a stray label. Overview
-follows both (Share Wi-Fi, Restart network); other pages move over page by
-page.
+**Icons in buttons are dim.** On a labelled button the icon is
+`text-muted-foreground` while the label stays `text-foreground`, so the
+words lead and the icon supports them. `Button` (`components/ui/button.tsx`)
+does this itself through each variant's `--btn-icon`, so call sites never
+add an icon color class:
+
+| Button | Icon color |
+| --- | --- |
+| `outline`, `ghost`, `secondary` | Muted, label bright |
+| `default`, `destructive`, `warning` (filled) | The fill's text color, same as the label |
+| `ghost-muted` (icon-only: close, edit pencil, zoom, copy) | The button's muted text, brightening with it on hover |
+| `link` | The label's color |
+| `tone="danger"` on `outline` or `ghost` (Block, Delete schedule, Remove eero) | Red, the same red as the label |
+
+Red-text buttons always use `tone="danger"`, never a hand-written
+`text-destructive-foreground`. An icon with its own `text-*` class (a
+status color, a spinner) keeps it. Menu rows follow the same rule
+(`components/ui/menu.tsx`): icons are muted, and a `destructive` row's icon
+is red with its label. Icon size comes from the button's `size`, never a
+`size-*` class on the icon.
+
+**Buttons side by side share a variant**: hero actions are all `outline`,
+never an outline next to a borderless `ghost`, which reads as a stray label.
 
 **Buttons act, links go.** Pick the element by what happens on click:
 
@@ -1366,8 +1382,8 @@ the same everywhere (never a note in place of the button):
   (`warning`) with a yellow title when it is disruptive, red
   (`destructive`) with a red title when it is destructive.
 - Destructive dialogs need a checkbox or typed name.
-- Danger buttons are red text on a neutral button until the confirm step,
-  where the confirming button is filled.
+- Danger buttons are red text on a neutral button (`tone="danger"`, icon
+  red too) until the confirm step, where the confirming button is filled.
 - **Red text is for actions that do not undo themselves**: destructive ones
   (Delete network, Remove eero, Delete profile, Reset Thread) and Block
   device, which cuts a device off until someone unblocks it. Disruptive

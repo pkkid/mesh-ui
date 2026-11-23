@@ -16,7 +16,6 @@ import { Button } from "~/components/ui/button";
 import { BreakdownTable } from "~/components/ui/breakdown-table";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { GatedButton, SectionError, useGate, useNow } from "~/components/ui/page";
-import { DIM_ICON } from "~/features/device/DeviceHero";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 import { Status } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
@@ -62,7 +61,7 @@ export function ProfileDevices({ profileId, profile, color, timezone, onEdit }: 
       className="gap-[15px]"
       tools={
         // Opens the devices picker sheet, so it ends in an ellipsis.
-        <GatedButton gate={gate} variant="outline" className={DIM_ICON} disabled={!profile} onClick={onEdit}>
+        <GatedButton gate={gate} variant="outline" disabled={!profile} onClick={onEdit}>
           <Plus />
           Add a device{"\u2026"}
         </GatedButton>

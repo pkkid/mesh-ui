@@ -55,7 +55,7 @@ export function PalettePreview(props: Props) {
       <div className="flex shrink-0 items-center gap-2 px-5 py-3">
         <span title={props.blocked ?? undefined} className="inline-flex">
           {/* Outline: the palette has no call to action, so nothing in it is a filled button. */}
-          <Button size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
+          <Button size="sm" variant="outline" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
             {/* Play runs a command; an arrow goes to a place, eero, device or profile. */}
             {props.item.kind === "command" ? <Play /> : <ArrowRight />}
             {props.runLabel}
@@ -63,7 +63,7 @@ export function PalettePreview(props: Props) {
         </span>
         {/* An eero, device or profile also runs its details read in line; Enter still goes to it. */}
         {(item.kind === "eero" || item.kind === "device" || item.kind === "profile") && (
-          <Button size="sm" variant="outline" className="[&_svg]:text-muted-foreground" onClick={props.onRunDetails} disabled={props.run.running}>
+          <Button size="sm" variant="outline" onClick={props.onRunDetails} disabled={props.run.running}>
             <Play />
             Run command
           </Button>

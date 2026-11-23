@@ -69,7 +69,6 @@ export function releaseUrl(version: string | null): string {
   return version ? `${RELEASES_URL}/tag/v${version}` : RELEASES_URL;
 }
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 export function SettingsHero({ id }: { id?: string }) {
   const info = useQuery<AppInfo>("app.info", undefined, { poll: true });
@@ -130,19 +129,19 @@ export function SettingsHero({ id }: { id?: string }) {
             )}
             <div className="flex flex-wrap items-center gap-2">
               {update?.state === "ready" && (
-                <Button variant="outline" className={DIM_ICON} disabled={install.running} onClick={() => void install.run({})}>
+                <Button variant="outline" disabled={install.running} onClick={() => void install.run({})}>
                   <RotateCw />
                   Restart to update
                 </Button>
               )}
               {update?.state === "available" && (
-                <Button variant="outline" className={DIM_ICON} render={<a href={releaseUrl(update.version)} target="_blank" rel="noreferrer" />}>
+                <Button variant="outline" render={<a href={releaseUrl(update.version)} target="_blank" rel="noreferrer" />}>
                   <Download />
                   Download from GitHub
                 </Button>
               )}
               {updates && update.state !== "ready" && (
-                <Button variant="outline" className={DIM_ICON} disabled={busy || check.running} onClick={() => void check.run({})}>
+                <Button variant="outline" disabled={busy || check.running} onClick={() => void check.run({})}>
                   <RefreshCw className={cn(busy && "animate-spin motion-reduce:animate-none")} />
                   Check for updates
                 </Button>

@@ -139,7 +139,6 @@ export function ProfileCards({ profiles, devices, usage, deviceUsage, colorOf, t
             <GatedButton
               gate={createGate}
               variant="outline"
-              className="[&_svg]:text-muted-foreground"
               onClick={() => setSheet({ kind: "create", deviceIds: assign.picked.map((d) => d.id) })}
             >
               <UserRoundPlus />
@@ -442,7 +441,7 @@ export function ProfilePauseButton({
       // Outside a header: the card size used across the app (24px, 12px text, as the eero cards' Blink light), icon dimmed.
       size={hero ? undefined : "xs"}
       variant={variant}
-      className={cn("[&_svg]:text-muted-foreground", className)}
+      className={className}
       disabled={write.running}
       onClick={() => void write.run({ profile: p.id })}
     >

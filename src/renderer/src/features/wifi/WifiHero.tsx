@@ -35,7 +35,6 @@ export const SECURITY_LABEL: Record<Security, string> = {
   WPA3: "Enhanced (WPA3)",
 };
 
-const DIM_ICON = "[&_svg]:text-muted-foreground";
 
 /** Show code's fade out, the same 150ms as a page change's (router.tsx FADE_OUT_MS); the code then fades in over 300ms, as a page does. */
 const REVEAL_FADE_MS = 150;
@@ -112,7 +111,6 @@ export function WifiHero({
       actions={
         <Button
           variant="outline"
-          className={DIM_ICON}
           disabled={!wifi || !wifi.hasPassword || password.loading}
           title={wifi && !wifi.hasPassword ? "This network has no password" : "Copies the Wi-Fi password"}
           onClick={async () => {
@@ -146,7 +144,6 @@ export function WifiHero({
                 <Button
                   size="xs"
                   variant="outline"
-                  className={DIM_ICON}
                   disabled={!wifi || fadingOut || (revealed && share.loading)}
                   aria-label={ssid ? `Show the QR code to join ${ssid}` : "Show the Wi-Fi QR code"}
                   onClick={reveal}

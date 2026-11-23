@@ -164,7 +164,7 @@ function ReservationBody({ mode, onClose, removable }: { mode: ReservationSheetM
             type="button"
             size="sm"
             variant="ghost"
-            className="text-destructive-foreground"
+            tone="danger"
             disabled={removing}
             onClick={() => {
               setRemoving(true);
