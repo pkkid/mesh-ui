@@ -43,6 +43,8 @@ export type PageItem = {
   routeId: string;
   anchor?: string;
   context?: string;
+  /** Other words a page is found by (RouteDef.keywords), ranked as a context match. */
+  keywords?: string;
   place?: "page" | "section" | "setting";
 };
 
@@ -170,11 +172,11 @@ export function commandItems(
   return out;
 }
 
-export function pageItems(routes: ReadonlyArray<{ id: string; path: string; title: string }>): PageItem[] {
+export function pageItems(routes: ReadonlyArray<{ id: string; path: string; title: string; keywords?: string }>): PageItem[] {
   // Detail routes need an id; the palette reaches them through eero, device and profile rows.
   return routes
     .filter((r) => !r.path.includes(":"))
-    .map((r) => ({ kind: "page", key: `page:${r.id}`, label: r.title, path: r.path, routeId: r.id, place: "page" }));
+    .map((r) => ({ kind: "page", key: `page:${r.id}`, label: r.title, path: r.path, routeId: r.id, keywords: r.keywords, place: "page" }));
 }
 
 export type PlaceEntry = { route: string; title: string; kind: "section" | "setting"; anchor: string; when: string | null };
@@ -404,8 +406,9 @@ export function search(query: string, sources: Sources, requested: Scope = "all"
         .map((item) => ({ item, score: 0, ranges: [], idRanges: [] }));
       rank(byKind.command);
     } else add("command", sources.commands);
-    // A place matches its title, then (ranked lower) the page it is on: "advanced" lists Advanced networking first.
-    add("page", sources.pages, (i) => (i.kind === "page" ? (i.context ?? null) : null));
+    // A place matches its title, then (ranked lower) the page it is on or its keywords: "advanced" lists Advanced
+    // networking first, and "settings" still finds Application.
+    add("page", sources.pages, (i) => (i.kind === "page" ? (i.context ?? i.keywords ?? null) : null));
     // An eero matches its location, then (ranked lower) its model.
     add("eero", sources.eeros ?? [], (i) => (i.kind === "eero" ? i.eero.model : null));
     add("device", sources.devices, (i) => (i.kind === "device" ? i.context : null));

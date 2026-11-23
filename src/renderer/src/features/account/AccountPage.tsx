@@ -4,7 +4,7 @@
  * and account deletion), in one full-width column. Opened from the
  * signed-in name in the sidebar footer. Layout, data and states:
  * docs/ux/pages/account.md. App settings (CLI and agents, theme, About) are
- * on the Settings page (SettingsPage.tsx).
+ * on the Application page (SettingsPage.tsx).
  *
  * Each section has a stable id for deep links: `#/account/<section>` opens
  * the page scrolled to `account-<section>` (ACCOUNT_SECTIONS).

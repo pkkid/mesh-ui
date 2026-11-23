@@ -1,6 +1,6 @@
 # Account
 
-The signed in eero account, notification choices, the networks on the account, and sign out and account deletion. App settings (CLI and agents, theme, About) are on the [Settings](settings.md) page.
+The signed in eero account, notification choices, the networks on the account, and sign out and account deletion. App settings (CLI and agents, theme, About) are on the [Application](settings.md) page.
 
 Mockup: [../../mockups/17-account-settings.html](../../mockups/17-account-settings.html) (drawn before the split; Account has its hero, Account, Networks and Sign out sections)
 
@@ -71,4 +71,4 @@ without leaving the page.
 - The hero's code sheet (`CodeDialog.tsx`, on `Sheet`: the lead as its muted line, Save name, Send code or Verify in the footer, and Later in place of Cancel once a code is pending) takes the new address or number, then the 6 digit code; a wrong code shows under the field and keeps the change pending. An unverified address or number opens it at the code step (the button reads Verify email or Verify mobile; Add mobile when there is none). Edit name has Undo; email and mobile changes do not (they need a code).
 - Desktop notifications are raised by the main process from the same `notifications.list` poll that feeds the bell; one poll, both surfaces.
 - Mesh UI does not offer **Switch to Amazon login** (it is permanent and needs Amazon sign in), so the Account section has no login row.
-- Support ID is the account `log_id`; it shows on Settings (About) and Troubleshooting (Get help). Network ID, the id in the network URL, is on Troubleshooting (Get help), under the Support ID.
+- Support ID is the account `log_id`; it shows on Application (the hero) and Troubleshooting (Get help). Network ID, the id in the network URL, is on Troubleshooting (Get help), under the Support ID.

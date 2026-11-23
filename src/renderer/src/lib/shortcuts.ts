@@ -24,7 +24,7 @@ export type ShortcutAction = { id: ShortcutId; label: string; defaults: { mac: s
 export const SHORTCUTS: ReadonlyArray<ShortcutAction> = [
   { id: "palette.open", label: "Open command palette", defaults: { mac: "F1", other: "F1" } },
   { id: "devtools.toggle", label: "Toggle DevTools panel", defaults: { mac: "F12", other: "F12" } },
-  { id: "nav.settings", label: "Open Settings", defaults: { mac: "meta+Comma", other: "ctrl+Comma" } },
+  { id: "nav.settings", label: "Open application settings", defaults: { mac: "meta+Comma", other: "ctrl+Comma" } },
   { id: "data.refresh", label: "Refresh page data", defaults: { mac: "F5", other: "F5" } },
   // Option+Left moves by a word in macOS text fields, so the Mac default is Cmd+[ as in Safari and Chrome.
   { id: "nav.back", label: "Go back", defaults: { mac: "meta+BracketLeft", other: "alt+ArrowLeft" } },

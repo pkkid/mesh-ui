@@ -31,7 +31,7 @@ export function useDevToolsOpen(): boolean {
   );
 }
 
-/** F12 by default (rebindable in Settings) opens and closes the panel, as in browsers. */
+/** F12 by default (rebindable on the Application page) opens and closes the panel, as in browsers. */
 export function useDevToolsShortcut(): void {
   useShortcut("devtools.toggle", toggleDevTools);
 }

@@ -98,7 +98,7 @@ Top to bottom, as in every page mockup (rendered by `docs/mockups/assets/mockup.
 | Settings | Reservations & ports | `arrow-left-right` | - | [pages/reservations-ports.md](pages/reservations-ports.md) | 14 |
 | Settings | Updates & admins | `download` | - | [pages/updates-admins.md](pages/updates-admins.md) | 15 |
 | Settings | Troubleshooting | `stethoscope` | - | [pages/troubleshooting.md](pages/troubleshooting.md) | 16 |
-| Settings | Settings | `settings` | - | [pages/settings.md](pages/settings.md) | 17 |
+| Settings | Application | `settings` | - | [pages/settings.md](pages/settings.md) | 17 |
 | (sidebar footer) | Account | `account` | - | [pages/account.md](pages/account.md) | 17 |
 
 - Counts come from the same queries the pages use (`eero.list`,
@@ -141,13 +141,13 @@ Left to right (mockup `.topbar`):
 
 | Element | What it shows | Notes |
 | --- | --- | --- |
-| Crumbs | The selected network, then the page: "Maple Street / Overview", "Maple Street / eeros / Office", "Maple Street / Devices / Alex's MacBook Pro". The page is the `h1`. Settings and Account, which are not about a network, show only their title. A detail page (a device, eero or profile) leaves its last crumb empty until its name loads, never a generic "Device" first | As T3 Code's breadcrumb: `text-sm font-medium`, 12px apart; earlier crumbs in `text-muted-foreground` and links (the network goes to Overview), turning `text-foreground` on hover; the `/` in `text-icon-muted`; the page in `text-foreground`. Nothing follows the page. |
+| Crumbs | The selected network, then the page: "Maple Street / Overview", "Maple Street / eeros / Office", "Maple Street / Devices / Alex's MacBook Pro". The page is the `h1`. Application and Account, which are not about a network, show only their title. A detail page (a device, eero or profile) leaves its last crumb empty until its name loads, never a generic "Device" first | As T3 Code's breadcrumb: `text-sm font-medium`, 12px apart; earlier crumbs in `text-muted-foreground` and links (the network goes to Overview), turning `text-foreground` on hover; the `/` in `text-icon-muted`; the page in `text-foreground`. Nothing follows the page. |
 | Subtitle | Freshness or page summary in `text-xs text-muted-foreground` ("Updated 4s ago", "eeroOS 7.12.1, up to date · updated 4s ago") | Freshness text comes from the page's main query `fetchedAt`; see [Live refresh](#live-refresh). |
 | Page navigation | Small buttons a page puts in the topbar slot: Prev and Next (Device detail) | Optional per page. Navigation and global tools only; page actions (Add a profile, Export CSV, Rename) live in the page, in hero actions or section tools. Share Wi-Fi (Devices), Live (Devices), Export CSV (Activity), Check for updates (Updates) and Rename (Profile detail) still sit here until #323 moves them. |
 | Search | "Search or run a command" field with the palette's current shortcut as its hint (`F1` by default) | Opens the [command palette](#command-palette); it is not a text field itself. |
 | Refresh | `RefreshCw` ghost icon button, tooltip "Refresh (F5)" (the current shortcut), with "· Updated 2m ago" where the page reports it, and on a second line how often the page updates on its own: "Updates every minute", or, for any other interval, the short form "Updates every 15m" (Updates & admins) (`useTopBarPollEvery`, from `POLL` in `src/core/poll.ts`) | On every page, in the one shared topbar, with the other icon buttons, between the search field and the notifications bell. Refetches every query on screen (page, sidebar, bell) once, past the engine cache. While it runs the icon spins and the button is disabled; clicks meanwhile are ignored. The icon also spins while any background refetch (a poll, a re-read after a write) has taken longer than 150 ms: it is the app's only updating cue. Errors show in each section as usual. Its shortcut (`F5` by default) does the same. See [Live refresh](#live-refresh). |
 | Bell | Notifications, with a small status-colour dot when anything is unread | See [Notifications bell](#notifications-bell). |
-| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The light and dark themes (Classic by default; also Rose, Grove, Ocean, Ember, Iris, and added VS Code themes such as Gruvbox) are picked in Settings. Stored in renderer `localStorage`, not a command. |
+| Theme toggle | Sun or moon icon | Flips between the light and dark variant of the current theme. The light and dark themes (Classic by default; also Rose, Grove, Ocean, Ember, Iris, and added VS Code themes such as Gruvbox) are picked on the Application page. Stored in renderer `localStorage`, not a command. |
 | Window controls | Minimise, maximise, close | Windows and Linux only. |
 
 ## Notifications bell
@@ -360,7 +360,7 @@ The mockup's "Pause 5 and 6 GHz for 2.4 GHz setup" row is `wifi.hide5g.set`
 `Ctrl` is `⌘` on macOS. Shortcuts are view state handled in the renderer;
 the ones that run commands go through `execute` like any button.
 
-Six global actions are rebindable in Settings, Keyboard shortcuts
+Six global actions are rebindable on the Application page, Keyboard shortcuts
 (`lib/shortcuts.ts`, per computer in localStorage). Each has one key
 combination, or none once removed, shown below with its Windows and Linux
 default. On macOS, Back
@@ -368,14 +368,14 @@ and Forward default to `⌘[` / `⌘]` instead, since `Option+←` moves by a wo
 in text fields. A new combination needs `Ctrl`, `⌘` or `Alt` (`Option`), or
 is a function key, and cannot be one another action has, one of the fixed
 shortcuts below, or a system key (copy, paste, undo, select all, close,
-quit, zoom, full screen). Everything else is fixed and not listed in
-Settings. `lib/shortcuts.test.ts` checks the rebindable rows against the
+quit, zoom, full screen). Everything else is fixed and not listed on
+the Application page. `lib/shortcuts.test.ts` checks the rebindable rows against the
 registry.
 
 | Keys | Action | Where |
 | --- | --- | --- |
 | `F1` | Open command palette (closes it too) | Rebindable. Global |
-| `Ctrl+,` | Open Settings | Rebindable. Global |
+| `Ctrl+,` | Open application settings | Rebindable. Global |
 | `Alt+←` | Go back (same as the sidebar's arrow; the mouse back button always works too) | Rebindable. Global |
 | `Alt+→` | Go forward (same as the sidebar's arrow; the mouse forward button always works too) | Rebindable. Global |
 | `F5` | Refresh page data: the current page's queries now, past the engine cache (same as the topbar Refresh) | Rebindable. Global. Main catches `F5` and `Ctrl+R` / `Cmd+R` so they never reload the window, and hands them to the renderer to run whatever they are bound to. `Ctrl+Shift+R` still reloads |

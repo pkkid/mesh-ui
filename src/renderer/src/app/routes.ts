@@ -63,6 +63,8 @@ export type RouteDef = {
   natOnly?: boolean;
   /** Page doc, shown on the ComingSoon placeholder. */
   doc: string;
+  /** Other words the palette's Places finds the page by (an old name, a common synonym). */
+  keywords?: string;
 };
 
 /** Props every page gets from the router. */
@@ -88,9 +90,10 @@ export const ROUTES: ReadonlyArray<RouteDef> = [
   { id: "ports", path: "/settings/ports", title: "Reservations & ports", icon: ArrowLeftRight, nav: "settings", natOnly: true, doc: "reservations-ports.md" },
   { id: "updates", path: "/settings/updates", title: "Updates & admins", icon: Download, nav: "settings", doc: "updates-admins.md" },
   { id: "troubleshooting", path: "/troubleshooting", title: "Troubleshooting", icon: Stethoscope, nav: "settings", doc: "troubleshooting.md" },
-  { id: "settings", path: "/settings", title: "Settings", icon: Settings, nav: "settings", doc: "settings.md" },
-  // Deep links to a Settings section (#/settings/theme). After the other /settings/* pages, which match first.
-  { id: "settings", path: "/settings/:section", title: "Settings", icon: Settings, doc: "settings.md" },
+  // Mesh UI's own settings. Titled Application, not Settings: it sits in the Settings group (#376). The id and path stay.
+  { id: "settings", path: "/settings", title: "Application", icon: Settings, nav: "settings", keywords: "Settings Preferences", doc: "settings.md" },
+  // Deep links to an Application section (#/settings/theme). After the other /settings/* pages, which match first.
+  { id: "settings", path: "/settings/:section", title: "Application", icon: Settings, doc: "settings.md" },
   // Account opens from the sidebar footer (the signed-in name), not a nav item.
   { id: "account", path: "/account", title: "Account", icon: UserRound, doc: "account.md" },
   // Deep links to an Account section (#/account/notifications): the same page.
