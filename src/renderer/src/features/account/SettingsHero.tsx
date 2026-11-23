@@ -3,8 +3,8 @@
  * with this copy of Mesh UI front and centre. The app icon, "Mesh UI 0.6.0",
  * the update status, then Electron, Platform, Release notes and Source and
  * issues stacked in one format (icon, then "Label value" or the link),
- * then Check for updates or Restart to update and the Automatic updates and
- * Beta updates switches. On the right, "eero details" in the same format: the
+ * then Check for updates or Restart to update (the Automatic updates and Beta
+ * updates switches live in Application settings). On the right, "eero details" in the same format: the
  * Support ID (with a copy icon), eero support articles and Show eero request
  * log.
  * It was the About side panel until 2026-11-21. The updater lives in main (src/main/updater.ts);
@@ -21,11 +21,10 @@ import { Button } from "~/components/ui/button";
 import { PageHeader } from "~/components/ui/hero";
 import { Meter } from "~/components/ui/meter";
 import { Status, type StatusTone } from "~/components/ui/status";
-import { Switch } from "~/components/ui/switch";
 import { copyText } from "~/lib/clipboard";
 import { cn } from "~/lib/utils";
 import { formatPercent, formatRelative } from "../../../../core/format";
-import type { Account, AppInfo, AppSettings, InstallKind, UpdateStatus } from "../../../../core/model";
+import type { Account, AppInfo, InstallKind, UpdateStatus } from "../../../../core/model";
 
 export const RELEASES_URL = "https://github.com/pkkid/mesh-ui/releases";
 const SOURCE_URL = "https://github.com/pkkid/mesh-ui";
@@ -72,11 +71,9 @@ export function releaseUrl(version: string | null): string {
 
 export function SettingsHero({ id }: { id?: string }) {
   const info = useQuery<AppInfo>("app.info", undefined, { poll: true });
-  const settings = useQuery<AppSettings>("app.settings.get");
   const account = useQuery<Account>("account.get", undefined, { poll: true });
   const check = useCommand<Record<string, never>, UpdateStatus>("app.update.check");
   const install = useCommand("app.update.install");
-  const setSettings = useCommand<Partial<AppSettings>, AppSettings>("app.settings.set");
   const showLog = useCommand("app.log.show");
 
   const app = info.data;
@@ -84,7 +81,7 @@ export function SettingsHero({ id }: { id?: string }) {
   const updates = update !== undefined && update.state !== "unsupported";
   const busy = update?.state === "checking" || update?.state === "downloading";
   const line = app && update ? updateStatusLine(update, app.install, Date.now()) : null;
-  const error = check.error ?? install.error ?? setSettings.error ?? showLog.error;
+  const error = check.error ?? install.error ?? showLog.error;
 
   return (
     <PageHeader
@@ -147,25 +144,6 @@ export function SettingsHero({ id }: { id?: string }) {
                 </Button>
               )}
             </div>
-            {/* The update switches sit with the update buttons, under the details. */}
-            {updates && (
-              <div className="flex w-72 flex-col gap-3">
-                <SwitchRow
-                  label="Automatic updates"
-                  detail="Check at launch and every 6 hours"
-                  on={settings.data?.autoUpdate}
-                  disabled={setSettings.running}
-                  onChange={(autoUpdate) => void setSettings.run({ autoUpdate })}
-                />
-                <SwitchRow
-                  label="Beta updates"
-                  detail="Also get pre-releases"
-                  on={settings.data ? settings.data.updateChannel === "beta" : undefined}
-                  disabled={setSettings.running}
-                  onChange={(beta) => void setSettings.run({ updateChannel: beta ? "beta" : "latest" })}
-                />
-              </div>
-            )}
           </div>
         )
       }
@@ -230,19 +208,6 @@ function InfoLine({ icon, label, value, mono = false, copy = false }: { icon: Re
           {done ? <Check /> : <Copy />}
         </button>
       )}
-    </div>
-  );
-}
-
-/** A label and muted detail with a small on/off switch on the right. */
-function SwitchRow({ label, detail, on, disabled, onChange }: { label: string; detail: string; on: boolean | undefined; disabled: boolean; onChange: (on: boolean) => void }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="min-w-0 flex-1">
-        <div className="font-medium text-[13px]">{label}</div>
-        <div className="text-muted-foreground text-xs">{detail}</div>
-      </div>
-      <Switch checked={on} aria-label={label} disabled={disabled} onCheckedChange={onChange} />
     </div>
   );
 }

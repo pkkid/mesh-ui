@@ -1,4 +1,4 @@
-/** The Startup and tray section's words (StartupTray.tsx). No `~` imports, so they are unit tested in Node. */
+/** The Application settings section's words (ApplicationSettings.tsx). No `~` imports, so they are unit tested in Node. */
 
 /** Start at login's description: what a login launch does with the tray setting as it is now. */
 export function startAtLoginDetail(supported: boolean | undefined, startsInTray: boolean): string {
@@ -7,9 +7,14 @@ export function startAtLoginDetail(supported: boolean | undefined, startsInTray:
   return "Open the Mesh UI window when you sign in to this computer. Turn on Keep running in the tray to start hidden in the tray instead.";
 }
 
-/** The section's description from the two settings: what happens at login and when the window closes. */
-export function startupSummary(startAtLogin: boolean | undefined, inTray: boolean | undefined): string {
-  if (startAtLogin === undefined || inTray === undefined) return "How Mesh UI starts and stops on this computer.";
+/**
+ * The section's description from the settings: what happens at login, when the window closes and how
+ * updates arrive. `autoUpdate` is null where this copy does not update itself, so updates go unmentioned.
+ */
+export function applicationSummary(startAtLogin: boolean | undefined, inTray: boolean | undefined, autoUpdate?: boolean | null, beta?: boolean): string {
+  if (startAtLogin === undefined || inTray === undefined) return "How Mesh UI starts, stops and updates on this computer.";
   const login = startAtLogin ? (inTray ? "Starts in the tray at login" : "Opens at login") : "Opens only when you start it";
-  return `${login}. ${inTray ? "Closing the window keeps it running in the tray." : "Closing the window quits it."}`;
+  const close = inTray ? "Closing the window keeps it running in the tray." : "Closing the window quits it.";
+  const updates = autoUpdate == null ? "" : autoUpdate ? (beta ? " Updates automatically, betas included." : " Updates automatically.") : " Updates only when you check.";
+  return `${login}. ${close}${updates}`;
 }

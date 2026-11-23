@@ -111,7 +111,7 @@ The user can turn them off on the Application page (`app.settings.set`).
 
 ## System tray
 
-**Keep running in the tray** (Settings, Startup and tray; `app.settings.set {runInTray}`,
+**Keep running in the tray** (Settings, Application settings; `app.settings.set {runInTray}`,
 off by default; `src/main/tray.ts`) keeps Mesh UI running after its window
 is closed, so desktop alerts keep arriving.
 
@@ -148,7 +148,7 @@ Headless runs (ui:shot), the CLI and tests never create a tray; tests drive
 
 ## Start at login
 
-**Start at login** (Settings, Startup and tray; `app.startup.set`,
+**Start at login** (Settings, Application settings; `app.startup.set`,
 `src/main/startup.ts`) asks the OS to open Mesh UI when the user signs in.
 The OS keeps the truth, so turning it off in system settings shows in Mesh UI.
 
