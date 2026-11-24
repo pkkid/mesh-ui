@@ -108,6 +108,8 @@ describe("networkClock", () => {
     expect(tokyo.time(at)).toBe("10:41 PM");
     expect(ny.dateTime(at)).toBe("Oct 20, 9:41 AM");
     expect(tokyo.dateTime(at)).toBe("Oct 20, 10:41 PM");
+    expect(ny.full("2026-10-20T13:41:07Z")).toBe("Tue, Oct 20, 2026, 9:41:07 AM EDT");
+    expect(tokyo.full("2026-10-20T13:41:07Z")).toBe("Tue, Oct 20, 2026, 10:41:07 PM GMT+9");
     expect(ny.hour(at)).toBe("9 AM");
     expect(tokyo.hour(at)).toBe("10 PM");
     expect(ny.day("2026-11-08T15:00:00Z")).toBe("Sun Nov 8");

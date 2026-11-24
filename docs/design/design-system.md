@@ -361,6 +361,13 @@ for status and errors.
 - Sentence case everywhere ("Restart network", not "Restart Network").
 - "eero" is always lowercase, even at the start of a label.
 
+### Relative times
+
+A relative time ("16h ago", "Nov 3", from `formatRelative`) is drawn with
+`TimeAgo` (`components/ui/time-ago.tsx`), whose tooltip gives the exact time
+in the network's time zone with seconds and the zone ("Tue, Nov 24, 2026,
+8:44:00 AM PST", `networkClock(tz).full`).
+
 ### Text selection
 
 Text selects as on a web page, so a name, address or figure can be copied

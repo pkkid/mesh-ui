@@ -145,6 +145,8 @@ export type Clock = {
   timeSeconds: (at: At) => string;
   /** "Oct 20, 9:41 AM" */
   dateTime: (at: At) => string;
+  /** "Tue, Oct 20, 2026, 9:41:07 AM EDT": the exact time, for the tooltip on a relative time. */
+  full: (at: At) => string;
   /** "Sat Nov 8" */
   day: (at: At) => string;
   /** "Saturday, Nov 8" */
@@ -188,6 +190,7 @@ function makeClock(timeZone: string): Clock {
     time: fmt({ hour: "numeric", minute: "2-digit" }),
     timeSeconds: fmt({ hour: "numeric", minute: "2-digit", second: "2-digit" }),
     dateTime: fmt({ month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }),
+    full: fmt({ weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", timeZoneName: "short" }),
     day: (at) => {
       const ms = toMs(at);
       if (!Number.isFinite(ms)) return MISSING;

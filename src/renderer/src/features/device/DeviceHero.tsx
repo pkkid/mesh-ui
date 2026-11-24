@@ -22,6 +22,7 @@ import { IconTile, Metric, PageHeader } from "~/components/ui/hero";
 import { RenameSheet } from "~/components/ui/rename-sheet";
 import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Sheet } from "~/components/ui/sheet";
+import { TimeAgo } from "~/components/ui/time-ago";
 import { blockRequest, pauseRequest } from "~/features/devices/BulkBar";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { Avatar } from "~/features/profiles/ProfileCards";
@@ -29,7 +30,6 @@ import { entityColors } from "~/lib/chartColors";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { cn } from "~/lib/utils";
 import { DEVICE_TYPES, deviceCategory } from "../../../../core/eero/map/device";
-import { formatRelative } from "../../../../core/format";
 import type { Device, Eero, ProfileList } from "../../../../core/model";
 
 import type { DeviceView } from "./DevicePage";
@@ -90,7 +90,12 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
   let context: ReactNode = d ? typeLabel(d.type) : null;
   if (d && state === "offline") {
     const where = eeroName(d.eeroId);
-    context = `last seen ${formatRelative(d.lastActive, now, tz)}${where ? ` on ${where}` : ""}`;
+    context = (
+      <>
+        last seen <TimeAgo at={d.lastActive} now={now} timeZone={tz} />
+        {where ? ` on ${where}` : ""}
+      </>
+    );
   }
 
   // Actions need the full device (device.get), not the list fallback.
