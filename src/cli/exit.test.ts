@@ -6,7 +6,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { version } from "../../package.json";
-import { cliMain, EXIT, nodeHost } from "./index";
+import { cliMain, EXIT, exitFor, nodeHost } from "./index";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -37,5 +37,12 @@ describe("cliMain exit", () => {
     expect(exit).toHaveBeenCalledTimes(1);
     expect(exit.mock.calls[0]?.[0]).not.toBe(EXIT.ok);
     expect(processExit).not.toHaveBeenCalled();
+  });
+});
+
+describe("exitFor", () => {
+  it("gives access_denied its own exit code", () => {
+    expect(exitFor("access_denied")).toBe(EXIT.accessDenied);
+    expect(EXIT.accessDenied).toBe(6);
   });
 });

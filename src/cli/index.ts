@@ -70,6 +70,7 @@ export const EXIT = {
   needsConfirm: 3,
   notSignedIn: 4,
   rateLimited: 5,
+  accessDenied: 6,
   scriptFailed: 10,
   interrupted: 130,
 } as const;
@@ -86,6 +87,8 @@ export function exitFor(code: ErrorCode): number {
       return EXIT.notSignedIn;
     case "rate_limited":
       return EXIT.rateLimited;
+    case "access_denied":
+      return EXIT.accessDenied;
     default:
       return EXIT.failed;
   }

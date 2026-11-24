@@ -1,10 +1,13 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { ToolListChangedNotificationSchema } from "@modelcontextprotocol/sdk/types.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { composeBackend } from "../../src/core/backend";
-import { createEngine } from "../../src/core/engine";
-import type { NetworkSummary } from "../../src/core/model";
+import { createDemoBackend } from "../../src/core/demo";
+import { createEngine, memorySettings } from "../../src/core/engine";
+import { toolName } from "../../src/core/mcpNames";
+import type { AccessLevel, NetworkSummary } from "../../src/core/model";
 import { type AnyCommand, defineCommand } from "../../src/core/spec";
 import { version as appVersion } from "../../package.json";
 import { createMcpServer, type McpOptions, parseMcpArgs } from "../../src/cli/mcp";
@@ -251,5 +254,73 @@ describe("mcp options", () => {
     expect(parseMcpArgs(["--demo", "mcp"], {}).demo).toBe(true);
     expect(parseMcpArgs(["mcp"], { MESH_UI_DEMO: "1" }).demo).toBe(true);
     expect(() => parseMcpArgs(["mcp", "--network"], {})).toThrow("--network needs a value.");
+  });
+});
+
+describe("mcp access levels", () => {
+  async function connectAt(level: AccessLevel, watchMs = 0) {
+    const settings = memorySettings({ mcpAccess: level });
+    const engine = createEngine({ backend: createDemoBackend(), surface: "mcp", settings, enforceAccess: true });
+    const server = createMcpServer(engine, { watchMs });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test", version: "1.0.0" });
+    await Promise.all([server.connect(serverSide), client.connect(clientSide)]);
+    clients.push(client);
+    return { client, settings };
+  }
+
+  it("lists only the tools the level allows, read again on each list", async () => {
+    const { client, settings } = await connectAt("read");
+    const names = async () => (await client.listTools()).tools.map((t) => t.name);
+    const read = await names();
+    expect(read).toContain(toolName("device.list"));
+    expect(read).not.toContain(toolName("device.pause"));
+    expect(read).not.toContain(toolName("wifi.password.get"));
+    await settings.update({ mcpAccess: "changes" });
+    const changes = await names();
+    expect(changes).toContain(toolName("device.pause"));
+    expect(changes).not.toContain(toolName("eero.remove"));
+    expect(changes).not.toContain(toolName("app.access.set"));
+    await settings.update({ mcpAccess: "off" });
+    expect(await names()).toEqual([]);
+  });
+
+  it("tells a connected client to list again when the window changes the level", async () => {
+    const { client, settings } = await connectAt("full", 10);
+    let changed = 0;
+    client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+      changed++;
+    });
+    const before = (await client.listTools()).tools.map((t) => t.name);
+    expect(before).toContain(toolName("eero.remove"));
+    await settings.update({ mcpAccess: "read" });
+    await vi.waitFor(() => expect(changed).toBe(1));
+    const after = (await client.listTools()).tools.map((t) => t.name);
+    expect(after).not.toContain(toolName("eero.remove"));
+    expect(after).toContain(toolName("device.list"));
+    // No change, no notice.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(changed).toBe(1);
+  });
+
+  it("also tells it when a call is refused for a level it had not listed yet", async () => {
+    const { client, settings } = await connectAt("full");
+    let changed = 0;
+    client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+      changed++;
+    });
+    await client.listTools();
+    await settings.update({ mcpAccess: "off" });
+    const res = await client.callTool({ name: toolName("device.list"), arguments: {} });
+    expect(text(res)).toMatchObject({ code: "access_denied" });
+    await vi.waitFor(() => expect(changed).toBe(1));
+    expect((await client.listTools()).tools).toEqual([]);
+  });
+
+  it("refuses a call the level does not allow with access_denied", async () => {
+    const { client } = await connectAt("changes");
+    const res = await client.callTool({ name: toolName("eero.remove"), arguments: { eero: "x", confirm: true } });
+    expect(res.isError).toBe(true);
+    expect(text(res)).toMatchObject({ code: "access_denied" });
   });
 });

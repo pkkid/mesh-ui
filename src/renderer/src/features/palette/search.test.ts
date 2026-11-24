@@ -275,6 +275,32 @@ describe("detail page switcher", () => {
   });
 });
 
+describe("access levels", () => {
+  const keyed = (items: ReturnType<typeof commandItems>) => new Map(items.map((c) => [c.info.id, c]));
+
+  it("lists a command only when the command line or MCP level allows it, and says which", async () => {
+    const { commands } = await demo();
+    const both = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "off", mcp: "changes" } }));
+    expect(both.get("device.list")).toMatchObject({ cli: false, mcp: true });
+    expect(both.get("device.pause")).toMatchObject({ cli: false, mcp: true });
+    expect(both.has("eero.remove")).toBe(false);
+
+    const read = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "read", mcp: "off" } }));
+    expect(read.get("device.list")).toMatchObject({ cli: true, mcp: false });
+    expect(read.has("device.pause")).toBe(false);
+    expect(read.has("wifi.password.get")).toBe(false);
+
+    const full = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "full", mcp: "read" } }));
+    expect(full.get("eero.remove")).toMatchObject({ cli: true, mcp: false });
+  });
+
+  it("lists no commands with both off, and every one without levels", async () => {
+    const { commands } = await demo();
+    expect(commandItems(commands, { ...SIGNED_IN, access: { cli: "off", mcp: "off" } })).toEqual([]);
+    expect(commandItems(commands, SIGNED_IN).every((c) => c.cli && c.mcp)).toBe(true);
+  });
+});
+
 describe("availability", () => {
   it("runs queries and writes, and hides network commands when signed out", async () => {
     const { commands } = await demo();

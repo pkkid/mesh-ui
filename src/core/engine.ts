@@ -11,7 +11,8 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Backend } from "./backend";
 import { CommandError, type ExecuteResult, toExecuteError } from "./errors";
-import type { AppSettings, HostEvent, Id } from "./model";
+import { ACCESS_SETTING, denial, levelOf } from "./access";
+import type { AccessLevel, AppSettings, HostEvent, Id } from "./model";
 import { type AuditLog, auditEntry, fileAudit } from "./audit";
 import { CACHE_NETWORKS, TTL, type Topic, WRITE_SETTLE_SEC } from "./poll";
 import { type CommandInfo, createRegistry, type RegisteredCommand } from "./registry";
@@ -43,6 +44,12 @@ export type EngineOptions = {
    * demo, fake, or without a config dir. null turns it off.
    */
   audit?: AuditLog | null;
+  /**
+   * Check the CLI and MCP access levels (security.md#access-levels). Default
+   * on for cli and mcp on the live backend; demo and fake runs change nothing
+   * real, so they are not limited.
+   */
+  enforceAccess?: boolean;
 };
 
 /** How one `execute` call runs, beside its params. */
@@ -63,6 +70,8 @@ export interface Engine {
   /** Host events (session.changed, network.selected). Returns an unsubscribe. */
   onEvent(listener: (event: HostEvent) => void): () => void;
   selectedNetworkId(): Id | null;
+  /** What this engine's surface may run now: the saved level for cli and mcp, `full` for the window and unlimited runs. */
+  access(): Promise<AccessLevel>;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,6 +86,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdate: true,
   updateChannel: "latest",
   runInTray: false,
+  cliAccess: "full",
+  mcpAccess: "changes",
 };
 
 export function memorySettings(initial: Partial<AppSettings> = {}): SettingsStore {
@@ -91,19 +102,31 @@ export function memorySettings(initial: Partial<AppSettings> = {}): SettingsStor
 }
 
 /**
- * settings.json in the config dir: read once, written atomically on change.
+ * settings.json in the config dir, written atomically on change. The app,
+ * the CLI and MCP servers share the file, so `update` and `reload` read it
+ * again first: one process never writes back another's stale copy, and a
+ * long-running MCP server sees an access level changed in the window.
  * `initial` fills fields the file does not have (the demo hosts pass the demo plan).
  */
 export function fileSettings(path: string, initial: Partial<AppSettings> = {}): SettingsStore {
   let current: Promise<AppSettings> | null = null;
+  /** The settings this process last read or wrote, for when the file is missing. */
+  let last: AppSettings | null = null;
   let writing: Promise<unknown> = Promise.resolve();
-  const load = async (): Promise<AppSettings> => {
+  /** The file, or null when it is missing or unreadable. */
+  const readFileSettings = async (): Promise<Partial<AppSettings> | null> => {
     try {
       const raw: unknown = JSON.parse(await readFile(path, "utf8"));
-      return raw && typeof raw === "object" ? { ...DEFAULT_SETTINGS, ...initial, ...(raw as Partial<AppSettings>) } : { ...DEFAULT_SETTINGS, ...initial };
+      return raw && typeof raw === "object" ? (raw as Partial<AppSettings>) : null;
     } catch {
-      return { ...DEFAULT_SETTINGS, ...initial };
+      return null;
     }
+  };
+  /** The file over the defaults; without a file, what this process last had. */
+  const load = async (): Promise<AppSettings> => {
+    const disk = await readFileSettings();
+    last = disk ? { ...DEFAULT_SETTINGS, ...initial, ...disk } : (last ?? { ...DEFAULT_SETTINGS, ...initial });
+    return last;
   };
   const save = async (s: AppSettings) => {
     await mkdir(dirname(path), { recursive: true });
@@ -113,12 +136,22 @@ export function fileSettings(path: string, initial: Partial<AppSettings> = {}): 
   };
   return {
     get: () => (current ??= load()),
-    update: async (patch) => {
-      const next = { ...(await (current ??= load())), ...patch };
-      current = Promise.resolve(next);
-      writing = writing.then(() => save(next)).catch(() => undefined);
-      await writing;
+    reload: () => {
+      const next = load();
+      current = next;
       return next;
+    },
+    update: (patch) => {
+      // One update at a time, each on a fresh read, so none is lost.
+      const run = writing.then(async () => {
+        const next = { ...(await load()), ...patch };
+        last = next;
+        current = Promise.resolve(next);
+        await save(next).catch(() => undefined);
+        return next;
+      });
+      writing = run.catch(() => undefined);
+      return run;
     },
   };
 }
@@ -227,6 +260,15 @@ export function createEngine(opts: EngineOptions): Engine {
   const live = backend.kind === "eero" && !backend.fake;
   const audit =
     opts.audit !== undefined ? opts.audit : surface !== "ui" && live && host.configDir ? fileAudit(join(host.configDir, "audit.jsonl")) : null;
+  /** The surface whose access level applies, or null when this engine is not limited. */
+  const limited = surface !== "ui" && (opts.enforceAccess ?? live) ? surface : null;
+  /** The level read fresh each time: the window may change it while an MCP server runs. */
+  const accessLevel = async (): Promise<AccessLevel> => {
+    if (!limited) return "full";
+    const field = ACCESS_SETTING[limited];
+    const current = await (settings.reload ? settings.reload() : settings.get());
+    return levelOf(current[field], DEFAULT_SETTINGS[field]);
+  };
   const listeners = new Set<(e: HostEvent) => void>();
   const writeQueues = new Map<string, Promise<unknown>>();
   let selected: Id | null | undefined; // undefined until read from settings
@@ -373,6 +415,7 @@ export function createEngine(opts: EngineOptions): Engine {
       return () => listeners.delete(listener);
     },
     selectedNetworkId: () => selected ?? null,
+    access: accessLevel,
     async execute<R>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>> {
       const outcome = await executeOnce<R>(id, params, options?.fresh === true);
       if (audit) {
@@ -387,6 +430,11 @@ export function createEngine(opts: EngineOptions): Engine {
   async function executeOnce<R>(id: string, params: unknown, fresh: boolean): Promise<ExecuteResult<R>> {
     const cmd = registry.get(id);
     if (!cmd) return { ok: false, error: { code: "unknown_command", message: `Unknown command "${id}".` } };
+
+    if (limited) {
+      const refused = denial(limited, await accessLevel(), cmd.spec);
+      if (refused) return { ok: false, error: { code: "access_denied", message: refused } };
+    }
 
     const parsed = cmd.schema.safeParse(params ?? {});
     if (!parsed.success) {

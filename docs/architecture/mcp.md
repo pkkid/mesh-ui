@@ -39,7 +39,7 @@ with a message telling the user to sign in in the app.
 | Flag | Effect |
 | --- | --- |
 | `--demo` | Demo backend (also `MESH_UI_DEMO=1`) |
-| `--read-only` | List and allow only `query` tools |
+| `--read-only` | List and allow only `query` tools (narrows the access level, never widens it) |
 | `--network <id\|name>` | Default network for tools that take `networkId` |
 | `--allow <glob,...>` | Only expose matching ids, for example `device.*,profile.*` |
 
@@ -102,6 +102,18 @@ replayed as a CLI script line.
 
 The MCP server can control the user's network, so:
 
+- **Access level.** The user sets what MCP agents may run in Settings, Command
+  line and agents: Off, Read only, Changes (the default: everything but what
+  cannot be undone) or Full access. `tools/list` lists only what the level
+  allows, read again on each list, and the engine refuses the rest with
+  `access_denied`. The server declares `tools.listChanged` and checks the
+  level every 3 seconds and after any `access_denied`; when it changed since
+  the client last listed, it sends `notifications/tools/list_changed`, so a
+  connected client drops tools it can no longer run without reconnecting.
+  At start-up stderr says how many tools the level allows ("serving 98
+  tools on stdio (access: changes)"); with Off the server still runs, with
+  no tools, so turning MCP back on needs no restart. See
+  [security.md](security.md#access-levels).
 - **Confirmation is enforced by the engine.** `disruptive` and `destructive`
   tools fail with `needs_confirm` unless the agent passes `confirm: true`.
   Agents should ask the user before setting it; `destructiveHint` makes MCP

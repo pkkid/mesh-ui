@@ -24,6 +24,8 @@ export type RefCandidate = { id: Id; names: (string | null | undefined)[] };
 export interface SettingsStore {
   get(): Promise<AppSettings>;
   update(patch: Partial<AppSettings>): Promise<AppSettings>;
+  /** Reads the store again, for a value another process may have changed (the access levels). Default `get`. */
+  reload?(): Promise<AppSettings>;
 }
 
 /**

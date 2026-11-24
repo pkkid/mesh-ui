@@ -37,7 +37,10 @@ execute(id: string, params?: unknown): Promise<ExecuteResult<unknown>>
 
 Steps, in order:
 
-1. Look up `id`. Missing: `unknown_command`.
+1. Look up `id`. Missing: `unknown_command`. Then, for the `cli` and `mcp`
+   surfaces on the live backend, the access level from `settings.json`
+   (read again each call): a command it does not allow is `access_denied`
+   (see [security.md](security.md#access-levels)).
 2. Validate `params` (default `{}`) with the spec's zod schema. Failure:
    `bad_params` with `detail.issues`.
 3. Scope check. Every command except `app` scope and `auth.*` asks

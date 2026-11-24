@@ -13,6 +13,8 @@ import { z } from "zod";
 import { toolName } from "../../../../core/mcpNames";
 import type { Device, Effect, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import type { CommandInfo, JsonSchema } from "../../../../core/registry";
+import { allows } from "../../../../core/access";
+import type { AccessLevel } from "../../../../core/model";
 import { needsConfirm, ownerOnly } from "../../../../core/spec";
 import { type GateOptions, gateFor, type WriteRequest } from "../../app/useWrite";
 
@@ -29,6 +31,9 @@ export type CommandItem = {
   params: Record<string, unknown>;
   /** Why it cannot run here ("Owner only", "Off in bridge mode"), or null. */
   unavailable: string | null;
+  /** Whether the command line's and MCP's access levels allow it: the preview shows only those calls. */
+  cli: boolean;
+  mcp: boolean;
 };
 
 /**
@@ -109,7 +114,23 @@ export type AvailabilityContext = {
   permissions: Permissions | null;
   /** The open network, for capability and bridge mode gates. */
   network?: Network | null;
+  /** The command line and MCP access levels (Settings); missing means both full. */
+  access?: Access;
 };
+
+/** The two access levels the palette follows (docs/architecture/security.md#access-levels). */
+export type Access = { cli: AccessLevel; mcp: AccessLevel };
+
+/** Whether each surface's level allows a command: the palette lists it only when one does. */
+export function surfacesFor(info: Pick<CommandInfo, "effect" | "sensitive">, access: Access | undefined): { cli: boolean; mcp: boolean } {
+  if (!access) return { cli: true, mcp: true };
+  return { cli: allows(access.cli, info.effect, info.sensitive), mcp: allows(access.mcp, info.effect, info.sensitive) };
+}
+
+/** Why the palette cannot run a command the command line's level does not allow; it runs as the CLI would. */
+export function cliRefusal(access: Access | undefined): string {
+  return access?.cli === "off" ? "The command line is off in Settings" : "The command line's access in Settings does not allow this";
+}
 
 /**
  * What a write needs to run on this network, from its spec's `gate`
@@ -151,6 +172,9 @@ export function commandUnavailable(
 export function availability(info: CommandInfo, ctx: AvailabilityContext): string | null | false {
   if (HIDDEN.has(info.id)) return false;
   if (!ctx.signedIn && info.scope === "network") return false;
+  // Below both levels: neither the CLI nor an agent could run it, so the palette does not list it.
+  const surfaces = surfacesFor(info, ctx.access);
+  if (!surfaces.cli && !surfaces.mcp) return false;
   return commandUnavailable(info, ctx.permissions, ctx.network);
 }
 
@@ -163,10 +187,11 @@ export function commandItems(
   for (const info of commands) {
     const unavailable = availability(info, ctx);
     if (unavailable === false) continue;
-    out.push({ kind: "command", key: `command:${info.id}`, info, label: info.label, params: {}, unavailable });
+    const surfaces = surfacesFor(info, ctx.access);
+    out.push({ kind: "command", key: `command:${info.id}`, info, label: info.label, params: {}, unavailable, ...surfaces });
     for (const p of presets.filter((p) => p.id === info.id)) {
       const key = `command:${info.id} ${JSON.stringify(p.params)}`;
-      out.push({ kind: "command", key, info, label: p.label, params: p.params, unavailable });
+      out.push({ kind: "command", key, info, label: p.label, params: p.params, unavailable, ...surfaces });
     }
   }
   return out;

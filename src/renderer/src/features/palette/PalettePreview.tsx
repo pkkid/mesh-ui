@@ -36,6 +36,8 @@ type Props = {
   onRunDetails: () => void;
   /** Why the run button is disabled, or null. */
   blocked: string | null;
+  /** Whether the command line's and MCP's levels allow an eero, device or profile's details read. */
+  details: { cli: boolean; mcp: boolean };
   runLabel: string;
   onCopy: () => Promise<boolean>;
 };
@@ -49,20 +51,24 @@ export function PalettePreview(props: Props) {
         {item.kind === "command" ? (
           <CommandPreview {...props} item={item} />
         ) : (
-          <EntityPreview item={item} run={props.run} />
+          <EntityPreview item={item} run={props.run} details={props.details} />
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2 px-5 py-3">
-        <span title={props.blocked ?? undefined} className="inline-flex">
-          {/* Outline: the palette has no call to action, so nothing in it is a filled button. */}
-          <Button size="sm" variant="outline" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
-            {/* Play runs a command; an arrow goes to a place, eero, device or profile. */}
-            {props.item.kind === "command" ? <Play /> : <ArrowRight />}
-            {props.runLabel}
-          </Button>
-        </span>
+        {/* A command the command line's level does not allow has no Run: the palette runs it as the CLI would. */}
+        {(item.kind !== "command" || item.cli) && (
+          <span title={props.blocked ?? undefined} className="inline-flex">
+            {/* Outline: the palette has no call to action, so nothing in it is a filled button. */}
+            <Button size="sm" variant="outline" onClick={props.onRun} disabled={props.blocked !== null || props.run.running}>
+              {/* Play runs a command; an arrow goes to a place, eero, device or profile. */}
+              {props.item.kind === "command" ? <Play /> : <ArrowRight />}
+              {props.runLabel}
+            </Button>
+          </span>
+        )}
+        {item.kind === "command" && !item.cli && <span className="text-muted-foreground text-xs">{props.blocked}.</span>}
         {/* An eero, device or profile also runs its details read in line; Enter still goes to it. */}
-        {(item.kind === "eero" || item.kind === "device" || item.kind === "profile") && (
+        {(item.kind === "eero" || item.kind === "device" || item.kind === "profile") && props.details.cli && (
           <Button size="sm" variant="outline" onClick={props.onRunDetails} disabled={props.run.running}>
             <Play />
             Run command
@@ -77,7 +83,7 @@ export function PalettePreview(props: Props) {
  * The details read for an eero, device or profile (`eero.get`, `device.get`, `profile.get`) as the CLI line and the
  * MCP tool call, so an agent or script can fetch the same thing the page shows.
  */
-function DetailsCall({ item, run }: { item: Exclude<Item, { kind: "command" }>; run: RunState }) {
+function DetailsCall({ item, run, details }: { item: Exclude<Item, { kind: "command" }>; run: RunState; details: { cli: boolean; mcp: boolean } }) {
   const [copied, setCopied] = useState(false);
   if (item.kind === "page") return null;
   const id = `${item.kind}.get`;
@@ -85,6 +91,7 @@ function DetailsCall({ item, run }: { item: Exclude<Item, { kind: "command" }>; 
   const line = cliLine(id, params, "query");
   return (
     <>
+      {details.cli && (
       <div>
         <Label right={
             // The app's plain copy icon (as Get help's and the CLI codes on Settings): no label, a check once copied.
@@ -111,13 +118,14 @@ function DetailsCall({ item, run }: { item: Exclude<Item, { kind: "command" }>; 
           {line}
         </Code>
       </div>
-      <div>
-        <Label>
-          MCP tool
-        </Label>
-        <Code>{JSON.stringify(mcpCall(id, params, "query"))}</Code>
-        <RunResult run={run} />
-      </div>
+      )}
+      {details.mcp && (
+        <div>
+          <Label>MCP tool</Label>
+          <Code>{JSON.stringify(mcpCall(id, params, "query"))}</Code>
+        </div>
+      )}
+      <RunResult run={run} />
     </>
   );
 }
@@ -207,6 +215,7 @@ function CommandPreview({
         <ParamsForm key={item.key} fields={fields} values={values} onChange={onValuesChange} errors={errors} entities={entities} />
       </div>
 
+      {item.cli && (
       <div>
         <Label right={
             // The app's plain copy icon (as Get help's and the CLI codes on Settings): no label, a check once copied.
@@ -233,20 +242,21 @@ function CommandPreview({
           {cliLine(info.id, chosen, info.effect)}
         </Code>
       </div>
+      )}
 
-      <div>
-        <Label>
-          MCP tool
-        </Label>
-        <Code>{JSON.stringify(call)}</Code>
-        <RunResult run={run} />
-      </div>
+      {item.mcp && (
+        <div>
+          <Label>MCP tool</Label>
+          <Code>{JSON.stringify(call)}</Code>
+        </div>
+      )}
+      <RunResult run={run} />
 
     </>
   );
 }
 
-function EntityPreview({ item, run }: { item: Exclude<Item, { kind: "command" }>; run: RunState }) {
+function EntityPreview({ item, run, details }: { item: Exclude<Item, { kind: "command" }>; run: RunState; details: { cli: boolean; mcp: boolean } }) {
   const what =
     item.kind === "page" ? (item.place === "section" ? "Section" : item.place === "setting" ? "Setting" : "Page") : item.kind === "eero" ? "eero" : item.kind === "device" ? "Device" : "Profile";
   return (
@@ -274,7 +284,7 @@ function EntityPreview({ item, run }: { item: Exclude<Item, { kind: "command" }>
             : `Opens the ${item.label} page.`
           : `Opens ${item.label} in its ${what.toLowerCase()} page.`}
       </p>
-      <DetailsCall item={item} run={run} />
+      <DetailsCall item={item} run={run} details={details} />
     </>
   );
 }

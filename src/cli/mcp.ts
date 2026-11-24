@@ -12,8 +12,9 @@ import { version as appVersion } from "../../package.json";
 import { createDemoBackend } from "../core/demo";
 import { createEngine, type Engine } from "../core/engine";
 import { mcpHints, toolName } from "../core/mcpNames";
-import type { Effect } from "../core/model";
+import type { AccessLevel, Effect } from "../core/model";
 import type { CommandInfo, JsonSchema } from "../core/registry";
+import { allows } from "../core/access";
 import { needsConfirm } from "../core/spec";
 import { type CliIo, EXIT } from "./index";
 
@@ -24,7 +25,15 @@ export type McpOptions = {
   allow?: string[] | null;
   /** Default `networkId` for network-scoped tools that do not pass one. */
   network?: string | null;
+  /**
+   * How often to check the access level for a change made in the window, in
+   * ms (default 3000; 0 turns it off). A change sends `tools/list_changed`,
+   * so a connected client lists the tools again.
+   */
+  watchMs?: number;
 };
+
+const WATCH_MS = 3000;
 
 /** Commands that need a person and a window; agents use the session the user created. */
 export const NOT_EXPOSED: readonly string[] = [
@@ -33,6 +42,7 @@ export const NOT_EXPOSED: readonly string[] = [
   "auth.login.resend",
   "auth.login.amazon",
   "app.cli.install",
+  "app.access.set",
 ];
 
 const EFFECT_TEXT: Record<Effect, string> = {
@@ -113,11 +123,43 @@ const errorResult = (code: string, message: string): CallToolResult => ({
 export function createMcpServer(engine: Engine, opts: McpOptions = {}, version = appVersion): Server {
   const exposed = exposedCommands(engine.commands(), opts);
   const byName = new Map(exposed.map((info) => [toolName(info.id), info]));
-  const tools = exposed.map(toTool);
+  const tools = exposed.map((info) => ({ info, tool: toTool(info) }));
 
-  const server = new Server({ name: "mesh-ui", version }, { capabilities: { tools: {} } });
+  const server = new Server({ name: "mesh-ui", version }, { capabilities: { tools: { listChanged: true } } });
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
+  /**
+   * The access level the client last saw tools for. When the window changes it, the server sends
+   * `tools/list_changed`, so a connected client drops the tools it can no longer run (and finds new ones) instead
+   * of advertising them until it reconnects.
+   */
+  let advertised: AccessLevel | null = null;
+  const checkLevel = async (): Promise<AccessLevel> => {
+    const level = await engine.access();
+    if (advertised !== null && level !== advertised) {
+      advertised = level;
+      await server.sendToolListChanged().catch(() => undefined);
+    }
+    return level;
+  };
+
+  // Listed by the access level set in the window, read on each list; the engine refuses the rest on call.
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const level = await engine.access();
+    advertised = level;
+    return { tools: tools.filter(({ info }) => allows(level, info.effect, info.sensitive)).map(({ tool }) => tool) };
+  });
+
+  const watchMs = opts.watchMs ?? WATCH_MS;
+  if (watchMs > 0) {
+    // Only while a client is connected; unref so it never keeps the process alive.
+    const timer = setInterval(() => void checkLevel().catch(() => undefined), watchMs);
+    timer.unref?.();
+    const closed = server.onclose;
+    server.onclose = () => {
+      clearInterval(timer);
+      closed?.();
+    };
+  }
 
   server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
     const info = byName.get(request.params.name);
@@ -126,6 +168,8 @@ export function createMcpServer(engine: Engine, opts: McpOptions = {}, version =
     if (opts.network && info.scope === "network" && params.networkId === undefined) params.networkId = opts.network;
 
     const outcome = await engine.execute(info.id, params);
+    // A refusal means the level may have changed since the client listed; tell it at once.
+    if (!outcome.ok && outcome.error.code === "access_denied") await checkLevel().catch(() => undefined);
     if (!outcome.ok) return errorResult(outcome.error.code, outcome.error.message);
     const { result } = outcome;
     const structured =
@@ -180,11 +224,17 @@ export async function runMcp(argv: string[], io: CliIo, makeEngine: EngineFactor
   const server = createMcpServer(engine, args);
   const transport = new StdioServerTransport();
   const closed = new Promise<void>((resolve) => {
-    server.onclose = resolve;
+    const stopWatching = server.onclose;
+    server.onclose = () => {
+      stopWatching?.();
+      resolve();
+    };
     process.stdin.once("end", resolve);
   });
   await server.connect(transport);
-  io.stderr(`mesh-ui mcp: serving ${exposedCommands(engine.commands(), args).length} tools on stdio\n`);
+  const level = await engine.access();
+  const serving = exposedCommands(engine.commands(), args).filter((c) => allows(level, c.effect, c.sensitive)).length;
+  io.stderr(`mesh-ui mcp: serving ${serving} tools on stdio${level === "full" ? "" : ` (access: ${level})`}\n`);
   await closed;
   await server.close();
   return EXIT.ok;

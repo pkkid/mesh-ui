@@ -8,9 +8,10 @@
 
 import { join } from "node:path";
 import { z } from "zod";
+import { ACCESS_LEVELS } from "../access";
 import { readAudit } from "../audit";
 import { CommandError } from "../errors";
-import type { AppInfo, AppSettings, AuditList, CliStatus, StartupStatus, UpdateStatus } from "../model";
+import type { AccessLevel, AppInfo, AppSettings, AuditList, CliStatus, StartupStatus, UpdateStatus } from "../model";
 import { POLL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, HOST_ONLY, type HostActions } from "../spec";
 
@@ -81,7 +82,7 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "app.settings.get",
     label: "App settings",
-    description: "Mesh UI's own settings on this computer (settings.json): User-Agent, plan speeds, desktop alerts, network to open, automatic updates and channel, and keep running in the tray.",
+    description: "Mesh UI's own settings on this computer (settings.json): User-Agent, plan speeds, desktop alerts, network to open, automatic updates and channel, keep running in the tray, and command line and agent access.",
     icon: "settings",
     params: z.object({}),
     effect: "query",
@@ -105,6 +106,30 @@ export const commands: AnyCommand[] = [
       // The window shows or removes its tray icon at once; other hosts pick it up on the next launch.
       if (patch.runInTray !== undefined) await ctx.host.actions?.tray?.apply(next.runInTray);
       return next;
+    },
+  }),
+
+  defineCommand({
+    id: "app.access.set",
+    label: "Command line and agent access",
+    description:
+      "Sets how much the command line and MCP agents may run: off, read only (no Wi-Fi passwords), changes (everything but what cannot be undone) or full access. The window is never limited. Only in the Mesh UI window, so an agent cannot raise its own access.",
+    icon: "shield",
+    params: z.object({
+      cli: z.enum(ACCESS_LEVELS as [AccessLevel, ...AccessLevel[]]).optional().describe("Access for mesh-ui run and the other CLI commands."),
+      mcp: z.enum(ACCESS_LEVELS as [AccessLevel, ...AccessLevel[]]).optional().describe("Access for MCP agents (mesh-ui mcp)."),
+    }),
+    effect: "write",
+    gate: { area: null },
+    scope: "app",
+    run: async (ctx, p): Promise<AppSettings> => {
+      // Checked here as well as hidden from MCP: the CLI and agents never change their own access.
+      if (ctx.surface !== "ui") throw new CommandError("bad_params", HOST_ONLY);
+      const patch: Partial<AppSettings> = {};
+      if (p.cli) patch.cliAccess = p.cli;
+      if (p.mcp) patch.mcpAccess = p.mcp;
+      if (Object.keys(patch).length === 0) throw new CommandError("bad_params", "Give cli, mcp or both.");
+      return ctx.settings.update(patch);
     },
   }),
 

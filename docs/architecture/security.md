@@ -160,6 +160,42 @@ surface:
 - **MCP** agents must pass `confirm: true`; tools carry `destructiveHint` so
   clients ask the user first.
 
+## Access levels
+
+The user chooses how much the command line and MCP agents may do, in
+Settings, Command line and agents (`app.access.set`). One level per surface,
+saved in `settings.json` as `cliAccess` and `mcpAccess`:
+
+| Level | Allows | Default for |
+| --- | --- | --- |
+| Off | Nothing; every command answers `access_denied` | |
+| Read only | `query` commands, except sensitive ones (Wi-Fi passwords) | |
+| Changes | Everything but `destructive`: reads, writes, and disruptive commands such as pause or restart | MCP |
+| Full access | Every command | CLI |
+
+- **The engine enforces it** (`src/core/access.ts`), before params are
+  validated, for the `cli` and `mcp` surfaces on the live backend. The window
+  is never limited, and demo and fake runs are not (they change nothing
+  real). Refusals are `access_denied` (CLI exit code 6) and go in the audit
+  log, so the This week list shows them as "blocked".
+- **Confirmation still applies.** Changes and Full access do not replace
+  `confirm: true`; a disruptive command still needs it.
+- **Read fresh on every call.** `fileSettings` reads `settings.json` again
+  for the level, so a change in the window reaches an MCP server that is
+  already running at its next call, and `tools/list` lists only the tools
+  the level allows. A running MCP server checks the level every 3 seconds
+  and sends `tools/list_changed` when it changes, so clients do not keep
+  advertising tools they can no longer run.
+- **Only the window changes a level.** `app.access.set` is hidden from MCP
+  and answers `bad_params` from the CLI and MCP, so an agent cannot raise its
+  own access.
+- **A safety rail, not a boundary.** Anything running as the same OS user can
+  edit `settings.json` (see Out of scope). The levels stop an agent or script
+  from doing more than the user meant; they do not stop malware.
+
+`mesh-ui mcp --read-only` and `--allow` still work and can only narrow what
+the level allows.
+
 ## Sensitive results
 
 Some `query` commands return secrets by design: `wifi.password.get`,

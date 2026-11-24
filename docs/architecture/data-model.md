@@ -781,7 +781,13 @@ type AppSettings = {
   openOnLaunch: Id | null;
   autoUpdate: boolean;            // default true
   updateChannel: "latest" | "beta"; // default "latest"
+  runInTray: boolean;             // default false
+  cliAccess: AccessLevel;         // default "full"; set by app.access.set only
+  mcpAccess: AccessLevel;         // default "changes"
 };
+
+/** What the CLI or MCP may run (security.md#access-levels). */
+type AccessLevel = "off" | "read" | "changes" | "full";
 
 type AuditEntry = { at: Iso; surface: "cli" | "mcp"; id: string; effect: Effect | null; ok: boolean; code: string | null };
 

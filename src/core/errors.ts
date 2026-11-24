@@ -9,6 +9,7 @@ export const ERROR_CODES = [
   "unknown_command",
   "bad_params",
   "needs_confirm",
+  "access_denied",
   "not_signed_in",
   "rate_limited",
   "eero_error",

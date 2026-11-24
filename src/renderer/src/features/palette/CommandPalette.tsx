@@ -24,13 +24,15 @@ import { WriteConfirmDialog } from "~/components/ui/confirm";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "~/components/ui/dialog";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
-import type { AuthStatus, DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
+import type { AppSettings, AuthStatus, DeviceList, Eero, Network, Permissions, ProfileList } from "../../../../core/model";
 import { KIND_LABEL, Keys, PaletteResults, useCommandIcons } from "./PaletteResults";
 import type { EntityOptions } from "./ParamsForm";
 import { PalettePreview, type RunState } from "./PalettePreview";
 import {
   chosenParams,
+  type Access,
   cliLine,
+  cliRefusal,
   commandItems,
   defaultParams,
   deviceItems,
@@ -43,6 +45,7 @@ import {
   profileItems,
   type Scope,
   search,
+  surfacesFor,
   missingRequired,
   validateParams,
   writeRequest,
@@ -137,6 +140,13 @@ function PaletteBody({ close }: { close: () => void }) {
   const eeros = useQuery<Eero[]>("eero.list", undefined, { enabled: signedIn });
   const permissions = useQuery<Permissions>("network.permissions", undefined, { enabled: signedIn });
   const network = useQuery<Network>("network.get", undefined, { enabled: signedIn });
+  // The command line and MCP access levels: commands neither allows are not listed, the preview shows only the
+  // calls each allows, and Run follows the command line's level (the palette runs a command as the CLI would).
+  const settings = useQuery<AppSettings>("app.settings.get");
+  const access: Access | undefined = settings.data ? { cli: settings.data.cliAccess, mcp: settings.data.mcpAccess } : undefined;
+  const accessKey = access ? `${access.cli}|${access.mcp}` : "";
+  /** What each surface may do for an eero, device or profile's details read (a query). */
+  const details = surfacesFor({ effect: "query", sensitive: false }, access);
 
   // Refetch lists older than a minute when the palette opens.
   useEffect(() => {
@@ -149,7 +159,7 @@ function PaletteBody({ close }: { close: () => void }) {
   const placeCtx = usePlaceContext(signedIn);
 
   const sources = useMemo(() => {
-    const ctx = { signedIn, permissions: permissions.data ?? null, network: network.data ?? null };
+    const ctx = { signedIn, permissions: permissions.data ?? null, network: network.data ?? null, access };
     const cmds = registry ?? [];
     return {
       commands: commandItems(cmds, ctx),
@@ -160,7 +170,8 @@ function PaletteBody({ close }: { close: () => void }) {
       profiles: signedIn ? profileItems(profiles.data ?? null) : [],
       recent,
     };
-  }, [registry, signedIn, permissions.data, network.data, devices.data, profiles.data, eeros.data, placeCtx]);
+    // accessKey stands for access, a new object each render.
+  }, [registry, signedIn, permissions.data, network.data, devices.data, profiles.data, eeros.data, placeCtx, accessKey]);
 
   const result = useMemo(() => search(query, sources, scope), [query, sources, scope]);
   const hit = result.flat.find((h) => h.item.key === selected) ?? result.flat[0] ?? null;
@@ -209,7 +220,9 @@ function PaletteBody({ close }: { close: () => void }) {
       ? "Nothing selected"
       : item.kind !== "command"
         ? null
-        : (item.unavailable ??
+        : !item.cli
+          ? cliRefusal(access)
+          : (item.unavailable ??
           (missing.length > 0 ? `Set ${missing.join(", ")} first` : Object.keys(errors).length > 0 ? "Fix the params first" : null));
 
   // A change asks first (a confirm), so its button ends in an ellipsis; a query runs at once.
@@ -271,7 +284,7 @@ function PaletteBody({ close }: { close: () => void }) {
 
   /** Runs the selected eero, device or profile's details read (`device.get`, ...) in line, as a query command runs. */
   const runDetails = async () => {
-    if (!item || (item.kind !== "eero" && item.kind !== "device" && item.kind !== "profile")) return;
+    if (!item || (item.kind !== "eero" && item.kind !== "device" && item.kind !== "profile") || !details.cli) return;
     const key = item.key;
     setRun({ key, state: { running: true, result: null } });
     const res = await execute(`${item.kind}.get`, { [item.kind]: item.id });
@@ -281,9 +294,9 @@ function PaletteBody({ close }: { close: () => void }) {
   /** The highlighted result's CLI line: the command with its chosen params, or an eero, device or profile's details read. */
   const copyCli = async (): Promise<boolean> => {
     let line: string | null = null;
-    if (item?.kind === "command") line = cliLine(item.info.id, chosen, item.info.effect);
-    else if (item?.kind === "eero" || item?.kind === "device" || item?.kind === "profile") line = cliLine(`${item.kind}.get`, { [item.kind]: item.id }, "query");
-    if (line === null) return false; // a place has no command
+    if (item?.kind === "command") line = item.cli ? cliLine(item.info.id, chosen, item.info.effect) : null;
+    else if ((item?.kind === "eero" || item?.kind === "device" || item?.kind === "profile") && details.cli) line = cliLine(`${item.kind}.get`, { [item.kind]: item.id }, "query");
+    if (line === null) return false; // a place has no command, and the command line's level may not allow it
     try {
       return await copyText(line, { toast: "Copied the CLI command" });
     } catch {
@@ -457,6 +470,7 @@ function PaletteBody({ close }: { close: () => void }) {
               onRun={() => void runItem(item)}
               onRunDetails={() => void runDetails()}
               blocked={blocked}
+              details={details}
               runLabel={runLabel}
               onCopy={copyCli}
             />
@@ -480,10 +494,12 @@ function PaletteBody({ close }: { close: () => void }) {
           Run, Go to
         </span>
         {/* Tab still moves into the params; it is what people expect, so the footer does not list it. */}
-        <span className="inline-flex items-center gap-1.5">
-          <Keys keys={isMac() ? ["⌘", "⇧", "C"] : ["Ctrl", "Shift", "C"]} />
-          Copy as CLI
-        </span>
+        {access?.cli !== "off" && (
+          <span className="inline-flex items-center gap-1.5">
+            <Keys keys={isMac() ? ["⌘", "⇧", "C"] : ["Ctrl", "Shift", "C"]} />
+            Copy as CLI
+          </span>
+        )}
       </div>
     </div>
   );

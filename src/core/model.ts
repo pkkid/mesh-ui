@@ -1106,7 +1106,18 @@ export type AppSettings = {
   updateChannel: UpdateChannel;
   /** Closing (and on Windows and Linux minimizing) hides the window to the system tray, so desktop alerts keep arriving (default false). */
   runInTray: boolean;
+  /** What the command line may run (default `full`). Set only in the window (`app.access.set`). */
+  cliAccess: AccessLevel;
+  /** What MCP agents may run (default `changes`). Set only in the window (`app.access.set`). */
+  mcpAccess: AccessLevel;
 };
+
+/**
+ * How much the CLI or MCP may do, by effect: `off` nothing, `read` queries
+ * that hold no password, `changes` everything but `destructive`, `full`
+ * everything. The window is never limited. See docs/architecture/security.md#access-levels.
+ */
+export type AccessLevel = "off" | "read" | "changes" | "full";
 
 /** One CLI or MCP command from the audit log, as Settings lists it. */
 export type AuditEntry = {

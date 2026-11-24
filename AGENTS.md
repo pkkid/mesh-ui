@@ -78,7 +78,8 @@ backends   eero (live cloud API) · demo (fixtures)
   the command, and returns `{ ok: true, result }` or
   `{ ok: false, error: { code, message } }`. It never throws to a surface.
   Error codes: `unknown_command`, `bad_params`, `needs_confirm`,
-  `not_signed_in`, `rate_limited`, `eero_error`, `network_error`.
+  `access_denied`, `not_signed_in`, `rate_limited`, `eero_error`,
+  `network_error`.
 - **Confirmation.** `disruptive` and `destructive` commands fail with
   `needs_confirm` unless params include `"confirm": true`. The UI shows a
   confirm dialog first and then passes `confirm: true`; the CLI needs
@@ -137,6 +138,10 @@ of which must hold on macOS, Windows, and Linux:
   plaintext; without one the session stays in memory.
 - MCP and CLI automation can control the user's network. `disruptive` and
   `destructive` commands always require explicit `confirm`, on every surface.
+- The user sets an access level for the CLI and for MCP in the window (Off,
+  Read only, Changes, Full access); the engine refuses what the level does
+  not allow with `access_denied`. Only the window can change a level
+  (`app.access.set`). See `docs/architecture/security.md#access-levels`.
 - New windows or web contents inherit the lockdown in `src/main/index.ts`
   (`web-contents-created`): no off-app navigation, popups, webviews, or
   permissions. Do not loosen it to load remote content.

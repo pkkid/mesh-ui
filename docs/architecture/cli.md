@@ -204,6 +204,7 @@ Errors in table format go to stderr as one line: `error needs_confirm: ...`.
 | 3 | Needs confirmation | `needs_confirm` |
 | 4 | Not signed in | `not_signed_in` |
 | 5 | Rate limited | `rate_limited` (retry after `error.detail.retryAfterSec` seconds) |
+| 6 | Not allowed | `access_denied`: the command line's access level in Settings does not allow it ([security.md](security.md#access-levels)) |
 | 10 | A script line failed (see Scripts) | any |
 | 130 | Interrupted (Ctrl C) | |
 
