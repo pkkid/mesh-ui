@@ -167,7 +167,7 @@ and next device in the Devices table's order. Sidebar item Devices stays active.
 - **Blocked.** Status Blocked; with Live on, Live throughput reads "Device
   blocked"; the hero actions are Unblock and Rename…; the profile stays in Device
   settings and the Profile row is dimmed.
-- **Wired device.** Signal shows `-`; Device information shows the eero port
+- **Wired device.** Signal shows the `<···>` wired mark and "Wired"; Device information shows the eero port
   and negotiated speed instead of Wi-Fi standard, channel and SNR.
 - **Guest device.** GUEST tag; Pause, the Profile row and port forwarding
   hidden; Block stays.

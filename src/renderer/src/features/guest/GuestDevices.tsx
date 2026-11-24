@@ -5,6 +5,7 @@
  * (Layout 6). Rows come from `device.list {ssid: guest}`, data from
  * `usage.breakdown {by: device, range: day}`, eero names from `eero.list`.
  */
+import { WiredSignal } from "~/features/devices/DeviceTable";
 import { useState } from "react";
 
 import { pathFor } from "~/app/router";
@@ -114,9 +115,10 @@ export function GuestDevices({ timezone }: { timezone: string | null }) {
   );
 }
 
-/** dBm and four bars; "-" when offline, wired or unknown. */
+/** dBm and four bars; the wired mark for wired, "-" when offline or unknown. */
 function Signal({ device: d }: { device: Device }) {
-  if (!d.connected || d.band === "wired" || !d.signal || d.signal.dbm === null) return <span className="text-muted-foreground">{MISSING}</span>;
+  if (d.connected && d.band === "wired") return <WiredSignal />;
+  if (!d.connected || !d.signal || d.signal.dbm === null) return <span className="text-muted-foreground">{MISSING}</span>;
   const n = d.signal.bars === null ? 0 : Math.max(0, Math.min(4, Math.round((d.signal.bars / 5) * 4)));
   const on = n === 1 ? "bg-destructive" : n === 2 ? "bg-warning" : "bg-foreground/80";
   return (

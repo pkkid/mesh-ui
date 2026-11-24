@@ -5,6 +5,7 @@
  * (Layout 3). Rows come from `device.list {eero}`, data from
  * `usage.breakdown {by: device, range: day}`.
  */
+import { WiredSignal } from "~/features/devices/DeviceTable";
 import { pathFor } from "~/app/router";
 import { linkSpeed } from "~/components/mesh/LinkChip";
 import { useQuery } from "~/app/useCommand";
@@ -87,9 +88,10 @@ function Connection({ device: d }: { device: Device }) {
   );
 }
 
-/** dBm and four bars; "-" for wired or unknown. */
+/** dBm and four bars; the wired mark for wired, "-" when unknown. */
 function Signal({ device: d }: { device: Device }) {
-  if (d.band === "wired" || !d.signal || d.signal.dbm === null) return <span className="text-muted-foreground">{MISSING}</span>;
+  if (d.band === "wired") return <WiredSignal />;
+  if (!d.signal || d.signal.dbm === null) return <span className="text-muted-foreground">{MISSING}</span>;
   return (
     <span className="inline-flex items-center justify-end gap-1.5">
       <span className="text-muted-foreground text-xs tabular-nums">{d.signal.dbm}</span>

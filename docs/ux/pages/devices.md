@@ -126,7 +126,7 @@ switch is in the topbar on every page (Share Wi-Fi lives on Overview and Wi-Fi, 
    the columns shown) (icon, name
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
-   Signal (bars, `-` for wired), IP · MAC (two mono lines), Live data
+   Signal (bars; wired shows the `<···>` wired mark, lucide `ChevronsLeftRightEllipsis`, as the eero app does), IP · MAC (two mono lines), Live data
    (two small rates with their unit, "4.2 Mbps" or "320 kbps", and the
    device's share of current traffic, "12%", as in the eero app's live
    view; "Paused" or last-seen text when not live), Live chart (its own

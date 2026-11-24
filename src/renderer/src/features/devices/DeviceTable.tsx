@@ -8,6 +8,7 @@
  * runs the device writes: pause or resume, rename in place, change profile,
  * block (after the app's confirm dialog) or unblock.
  */
+import { ChevronsLeftRightEllipsis } from "lucide-react";
 import {
   ArrowDown,
   ArrowUp,
@@ -522,7 +523,7 @@ function Row(props: RowProps) {
       )}
       {show("signal") && (
         <td className={td}>
-          {d.band === "wired" ? <span className="text-muted-foreground/70 text-xs">-</span> : <SignalBars bars={off ? 0 : (d.signal?.bars ?? 0)} />}
+          {d.band === "wired" ? <WiredSignal /> : <SignalBars bars={off ? 0 : (d.signal?.bars ?? 0)} />}
         </td>
       )}
       {show("addr") && (
@@ -720,6 +721,15 @@ function Tag({ muted = false, children }: { muted?: boolean; children: ReactNode
       )}
     >
       {children}
+    </span>
+  );
+}
+
+/** Signal for a wired device: the `<···>` link mark the eero app shows, in place of bars. */
+export function WiredSignal() {
+  return (
+    <span role="img" aria-label="Wired" title="Wired" className="inline-flex h-3 items-center text-foreground/80">
+      <ChevronsLeftRightEllipsis aria-hidden className="size-4" />
     </span>
   );
 }

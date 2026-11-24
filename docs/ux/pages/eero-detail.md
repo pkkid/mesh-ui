@@ -54,7 +54,7 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      devices →". The card is capped at about seven rows (392px); more rows
      scroll inside it, with the header row pinned. Table: Device (icon, name,
      thin usage bar), Connection (band badge or Wired, plus Wi-Fi generation
-     or port: "Wi-Fi 6E", "Port 1"), Signal (dBm and bars, `-` for wired),
+     or port: "Wi-Fi 6E", "Port 1"), Signal (dBm and bars; the `<···>` wired mark for wired),
      Rate (link rate, "866 Mbps"), Data 24h.
    - **Ethernet ports**. Description: the ports, then how many are in use
      ("2 x 5 GbE, 1 in use"). Port actions under the tiles end in an

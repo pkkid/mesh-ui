@@ -24,6 +24,7 @@ import { GatedButton, useGate, useNow } from "~/components/ui/page";
 import { Sheet } from "~/components/ui/sheet";
 import { TimeAgo } from "~/components/ui/time-ago";
 import { blockRequest, pauseRequest } from "~/features/devices/BulkBar";
+import { WiredSignal } from "~/features/devices/DeviceTable";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { Avatar } from "~/features/profiles/ProfileCards";
 import { entityColors } from "~/lib/chartColors";
@@ -195,7 +196,12 @@ export function DeviceHero({ view, fallback, onBlock }: { view: DeviceView; fall
           <Metric
             label="Signal"
             value={
-              d && live && !wired && d.signal ? (
+              d && live && wired ? (
+                <span className="flex items-center gap-1.5">
+                  <WiredSignal />
+                  Wired
+                </span>
+              ) : d && live && d.signal ? (
                 <span className="flex items-center gap-1.5">
                   <SignalBars bars={d.signal.bars ?? 0} />
                   {d.signal.dbm === null ? null : `${d.signal.dbm} dBm`}
