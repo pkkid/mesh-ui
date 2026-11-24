@@ -1,9 +1,9 @@
 /**
  * Live rates for every view that shows them, only while the shared Live
- * switch is on (`useLiveMode`, #319). Those views (Devices, Device detail Now box). While
+ * switch is on (`useLiveMode`, #319). LiveCollector runs it from the shell, on every page. While
  * `active`, it asks for `device.rates.refresh` every `POLL.rates` seconds,
  * minimized or hidden windows included (Live is bounded already: it turns
- * off after 10 minutes and when the user leaves those pages), and, once the burst has settled, refetches `device.list` and `device.get`
+ * off after 15 minutes), and, once the burst has settled, refetches `device.list` and `device.get`
  * every few seconds while eero keeps the burst's figures live
  * (`burstReadTimes`), like the eero app's live view (#254). eero queues a
  * burst asked for while its last one is still running (its `next_burst` then

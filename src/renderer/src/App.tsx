@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 
+import { LiveCollector } from "~/app/LiveCollector";
 import { RouterOutlet, useNavigationShortcuts } from "~/app/router";
 import { followHostEvents, onSessionEnded, useQuery } from "~/app/useCommand";
 import { ConfirmHost } from "~/components/ui/confirm";
@@ -98,6 +99,8 @@ function Shell() {
         <main className="flex min-w-0 flex-1 flex-col bg-background">
           <TopBar />
           <RouterOutlet />
+          {/* Live rates on every page while Live is on. */}
+          <LiveCollector />
         </main>
       </TopBarProvider>
       <CommandPalette />

@@ -4,7 +4,7 @@
  * is `no-drag` and it leaves room for native window controls on the right.
  *
  * Left: crumbs (parent page link, then the page title), nothing after it.
- * Right: an actions slot for the page, Refresh (every query on screen, past
+ * Right: an actions slot for the page, the Live switch, Refresh (every query on screen, past
  * the engine cache; also its shortcut, F5 by default), search,
  * notifications and the light/dark toggle. Pages fill the slots with
  * <TopBarTitle> and <TopBarActions>, which portal into the bar, and report
@@ -20,6 +20,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation } from "~/app/router";
 import { refreshAll, useQuery, useRefresh, useUpdating } from "~/app/useCommand";
 import { routeById } from "~/app/routes";
+import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { useNow } from "~/components/ui/page";
 import { Bell } from "~/features/notifications/Bell";
 import { openPalette } from "~/features/palette/CommandPalette";
@@ -127,6 +128,8 @@ export function TopBar() {
 
       <div className="no-drag ms-auto flex items-center gap-1">
         <div ref={refs.actions} className="flex items-center gap-1 empty:hidden" />
+        {/* On every page, so Live stays on wherever you go; it turns itself off after LIVE_AUTO_OFF_MIN. */}
+        <LiveToggle size="tool" />
         <button
           type="button"
           onClick={() => openPalette()}

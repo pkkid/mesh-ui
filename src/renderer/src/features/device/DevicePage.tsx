@@ -14,13 +14,10 @@ import { useEffect, useMemo } from "react";
 import { Link, navigate, pathFor } from "~/app/router";
 import type { PageProps } from "~/app/routes";
 import { useQuery } from "~/app/useCommand";
-import { useLivePage } from "~/app/useLiveMode";
-import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { Card, Empty } from "~/components/ui/card";
 import { SectionError } from "~/components/ui/page";
-import { TopBarActions } from "~/features/shell/TopBar";
 import { TopBarTitleSwitcher } from "~/features/shell/TitleSwitcher";
 import { deviceItems } from "~/features/palette/search";
 import { blockRequest } from "~/features/devices/BulkBar";
@@ -103,7 +100,6 @@ export function DevicePage({ params }: PageProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [prev, next]);
 
-  useLivePage();
 
   return (
     <>
@@ -111,9 +107,6 @@ export function DevicePage({ params }: PageProps) {
       {(d ?? listed) && (
         <TopBarTitleSwitcher title={(d ?? listed)?.name ?? ""} kind="device" items={siblings} currentId={id} pathFor={(to) => pathFor("device", { deviceId: to })} />
       )}
-      <TopBarActions>
-        <LiveToggle size="tool" />
-      </TopBarActions>
 
       {gone ? (
         <Card>

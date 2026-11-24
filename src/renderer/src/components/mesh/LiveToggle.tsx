@@ -1,7 +1,9 @@
 /**
  * The Live switch (#319) with a pulse icon, like the eero app's live usage
- * view. Turning it on lets views ask eero for live rates; it is one shared
- * setting (`useLiveMode`). Neutral button; a status dot shows while it is on,
+ * view, in the topbar on every page. Turning it on lets views ask eero for
+ * live rates on every page (LiveCollector), shown on Devices and device
+ * detail; it is one shared setting
+ * (`useLiveMode`). Neutral button; a status dot shows while it is on,
  * and the tooltip counts down to when Live turns itself off.
  */
 import { Activity } from "lucide-react";
@@ -25,8 +27,8 @@ export function LiveToggle({ size, className }: { size?: "xs" | "tool"; classNam
       aria-pressed={live}
       title={
         live && left !== null
-          ? `Live rates on. Turns off in ${formatCountdown(Math.max(0, (left - now) / 1000))}.`
-          : "Show live rates (asks eero for live reporting while on)"
+          ? `Live rates on, shown on the Devices page. Turns off in ${formatCountdown(Math.max(0, (left - now) / 1000))}.`
+          : "Show live rates on the Devices page (asks eero for live reporting while on)"
       }
       onClick={() => setLive(!live)}
       className={cn(live && "bg-accent dark:bg-accent", className)}

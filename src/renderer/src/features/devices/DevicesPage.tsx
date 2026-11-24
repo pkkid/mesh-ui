@@ -17,11 +17,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "~/app/useCommand";
 import { Footnote, useGate } from "~/components/ui/page";
-import { useLivePage } from "~/app/useLiveMode";
-import { useLiveRates } from "~/app/useLiveRates";
-import { LiveToggle } from "~/components/mesh/LiveToggle";
 import { entityColors } from "~/lib/chartColors";
-import { TopBarActions, useTopBarUpdated } from "~/features/shell/TopBar";
+import { useTopBarUpdated } from "~/features/shell/TopBar";
 import { type DeviceSortKey, SORT_DEFAULT_ORDER } from "../../../../core/commands/device";
 import { formatCount } from "../../../../core/format";
 import type { DeviceList, Eero, Network, ProfileList, UsageBreakdown } from "../../../../core/model";
@@ -162,8 +159,6 @@ export function DevicesPage() {
   const eeros = useQuery<Eero[]>("eero.list", undefined, { poll: true });
   const profiles = useQuery<ProfileList>("profile.list", undefined, { poll: true });
   const usage = useQuery<UsageBreakdown>("usage.breakdown", { range: "day", by: "device" }, { poll: true });
-  useLiveRates(netId !== "", netId);
-  useLivePage();
 
   const bridged = network.data?.connectionMode === "bridged" || network.data?.connectionMode === "ipPassthrough";
   const gate = useGate({ area: "devices", bridgeOff: true });
@@ -217,9 +212,6 @@ export function DevicesPage() {
 
   return (
     <>
-      <TopBarActions>
-        <LiveToggle size="tool" />
-      </TopBarActions>
 
       <DevicesHero
         summary={summary}

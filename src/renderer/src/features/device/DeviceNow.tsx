@@ -5,17 +5,15 @@
  * Live on it shows this device's download and upload, a chart of its readings
  * since Live was turned on, and when the last reading came. An offline,
  * paused or blocked device has no live rates, so the watermark says why.
- * While Live is on and the device is online it asks for
- * `device.rates.refresh` through the shared `useLiveRates` hook, which
- * refetches `device.get` once the rates have settled.
+ * While Live is on, LiveCollector (in the shell) asks for
+ * `device.rates.refresh` on every page and refetches `device.get` once the
+ * rates have settled; the chart's readings are recorded there too.
  */
-import { useLiveRates } from "~/app/useLiveRates";
 import { LivePanel } from "~/features/devices/LiveThroughput";
 import { networkClock } from "../../../../core/format";
 import type { Device } from "../../../../core/model";
 
 export function DeviceNow({ device: d, timezone }: { device: Device; timezone: string | null | undefined }) {
-  useLiveRates(d.connected && !d.blocked && !d.paused);
   const unavailable = d.blocked ? "Device blocked" : !d.connected ? "Device offline" : d.paused ? "Device paused" : null;
   const { timeSeconds } = networkClock(timezone ?? "UTC");
   return (

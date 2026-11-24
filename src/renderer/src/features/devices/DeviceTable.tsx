@@ -32,17 +32,20 @@ import {
 } from "lucide-react";
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
+import { useLiveReadings } from "~/app/liveReadings";
 import { useLiveMode } from "~/app/useLiveMode";
 import { Link, navigate, pathFor } from "~/app/router";
 import { type Gate, performWrite } from "~/app/useWrite";
 import { Button } from "~/components/ui/button";
 import { BandBadge } from "~/components/ui/band-badge";
+import { MiniArea } from "~/components/charts/MiniArea";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Card, Empty } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "~/components/ui/menu";
 import { Status, type StatusTone } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
+import { seriesColors } from "~/lib/chartColors";
 import { cn } from "~/lib/utils";
 import { formatBytes, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
 import type { DeviceSortKey } from "../../../../core/commands/device";
@@ -359,6 +362,11 @@ export function DeviceTable(props: DeviceTableProps) {
                     Live <span className="text-muted-foreground/70">down / up</span>
                   </>,
                 )}
+              {show("chart") && (
+                <th className={cn(th, "w-16 ps-0")}>
+                  <span className="sr-only">Live chart</span>
+                </th>
+              )}
               {show("today") && sortable("usage", "24h", "text-end")}
               {show("status") && sortable("status", "Status")}
               <th className={cn(th, "w-6")}>
@@ -531,6 +539,11 @@ function Row(props: RowProps) {
           <NowCell device={d} />
         </td>
       )}
+      {show("chart") && (
+        <td className={cn(td, "ps-0")}>
+          <LiveSpark device={d} />
+        </td>
+      )}
       {show("today") && (
         <td className={cn(td, "whitespace-nowrap text-end tabular-nums")}>{used ? formatBytes(used) : "-"}</td>
       )}
@@ -670,6 +683,23 @@ function NowCell({ device: d }: { device: Device }) {
       {/* Share of the network's current traffic, like the eero app's live view. */}
       <span className="w-8 text-end text-2xs text-muted-foreground tabular-nums">{share ? formatPercent(share) : ""}</span>
     </div>
+  );
+}
+
+/** Live chart: a mini chart of the device's download and upload since Live was turned on. */
+function LiveSpark({ device: d }: { device: Device }) {
+  const [live] = useLiveMode();
+  // Recorded on every page while Live is on (LiveCollector).
+  const readings = useLiveReadings(`device:${d.id}`);
+  if (!live || !d.connected || d.paused || d.blocked || readings.length === 0) return null;
+  return (
+    <MiniArea
+      ariaLabel={`Download and upload for ${d.name} since Live was turned on`}
+      series={[
+        { id: "down", color: seriesColors.download, values: readings.map((r) => r.down) },
+        { id: "up", color: seriesColors.upload, values: readings.map((r) => r.up) },
+      ]}
+    />
   );
 }
 

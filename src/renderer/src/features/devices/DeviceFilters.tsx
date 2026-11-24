@@ -28,7 +28,7 @@ import type { Band, DeviceCategory, DeviceSummary } from "../../../../core/model
 
 export type StatusFilter = "all" | "online" | "offline" | "paused" | "blocked";
 export type GroupBy = "category" | "status" | "eero" | "profile" | "none";
-export type ColumnKey = "profile" | "eero" | "band" | "signal" | "addr" | "now" | "today" | "status";
+export type ColumnKey = "profile" | "eero" | "band" | "signal" | "addr" | "now" | "chart" | "today" | "status";
 
 /** `profile` filter value for devices with no profile (sent as `profile: null`). */
 export const UNASSIGNED = "__unassigned__";
@@ -94,6 +94,7 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   signal: "Signal",
   addr: "IP · MAC",
   now: "Live",
+  chart: "Live chart",
   today: "24h",
   status: "Status",
 };

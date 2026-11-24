@@ -6,8 +6,8 @@ bulk actions (pause, resume, assign profile, block).
 Mockup: [../../mockups/05-devices.html](../../mockups/05-devices.html)
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: title "Devices", nothing after it (freshness is in the Refresh tooltip), page action the **Live**
-switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known devices (38).
+Topbar: title "Devices", nothing after it (freshness is in the Refresh tooltip); the **Live**
+switch is in the topbar on every page (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known devices (38).
 
 ## Layout
 
@@ -108,7 +108,7 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
      row), New this week (3, eero's New Device notices), and a footer "3 filters set" with
      **Clear all**.
    - Right: Group by menu (None) and a Columns button (show or hide
-     Profile, Connected to, Band, Signal, IP · MAC, Live, 24h and Status). The menu shows its
+     Profile, Connected to, Band, Signal, IP · MAC, Live, Live chart, 24h and Status). The menu shows its
      name in the tooltip. Sorting is on the table headers (below).
 4. **Active filters** (only while a popover filter is set): one small chip
    per filter ("6 GHz", "Computers", "Profile: Alex") with an x to remove it,
@@ -129,7 +129,12 @@ switch (Share Wi-Fi lives on Overview and Wi-Fi, #259). Sidebar count: all known
    Signal (bars, `-` for wired), IP · MAC (two mono lines), Live down / up
    (two small rates with their unit, "4.2 Mbps" or "320 kbps", and the
    device's share of current traffic, "12%", as in the eero app's live
-   view; "Paused" or last-seen text when not live), 24h
+   view; "Paused" or last-seen text when not live), Live chart (no visible
+   header: a 64 by 24px chart of the device's download and upload since Live
+   was turned on, the same lines and colors as Live throughput on one shared
+   scale, a point for each new burst or change in its figures; kept per
+   device for the session and dropped when Live goes off; empty while Live is
+   off or the device is offline, paused or blocked), 24h
    (data used in the last 24 hours, `usage.breakdown` range day), Status (Online, Paused, Offline, Blocked), and a row menu (`...`).
    - Every column header except the checkbox and the row menu sorts the
      table (`device.list` `sort` and `order`). The default is Device, A to
@@ -251,17 +256,18 @@ from the gates.
 - **Live switch (#319).** Live rates (a burst a minute plus the reads in its
   window) run only while the shared **Live** switch is on: a pulse icon
   (lucide `Activity`) and "Live", with a status dot while on, 28px like the
-  topbar search. It shows in the topbar of the only two pages with live
-  rates, Devices and a device's detail page, and nowhere else; one setting
-  for both, so moving between them (a row, `[` and `]` on device detail, the Devices crumb)
-  keeps it on, and going to any other page turns it off (`useLivePage`;
-  Internet
-  had a "Using the most right now" panel and dropped it: its tables already
-  show who used the most), like the eero app's live usage
-  view. Off at every launch (not remembered; renderer view state,
-  `useLiveMode`), and it turns itself off after 10 minutes; while on, the
-  switch's tooltip counts down to that ("Live rates on. Turns off in 7m
-  12s."). While off,
+  topbar search. It shows in the topbar on every page and stays on wherever
+  you go (one app-wide setting). While on, the shell keeps asking eero for
+  live rates on every page (`LiveCollector`) and records each reading
+  (`app/liveReadings.ts`), so the Live throughput chart, device detail and
+  the table's Live chart column keep their history while you are elsewhere
+  (Internet had a "Using the most right now" panel and dropped it:
+  its tables already show who used the most), like the eero app's live usage
+  view. Its tooltip says the rates show on the Devices page ("Show live
+  rates on the Devices page (asks eero for live reporting while on)"). Off at every launch (not remembered; renderer view state,
+  `useLiveMode`), and it turns itself off after 15 minutes; while on, the
+  switch's tooltip counts down to that ("Live rates on, shown on the
+  Devices page. Turns off in 7m 12s."). While off,
   nothing asks eero for live rates and rates show `-` with "Turn on Live to see
   current rates". The CLI and MCP are unchanged.
 - Live rates: `device.rates.refresh` (`POST {net}/burst_reporters`) is

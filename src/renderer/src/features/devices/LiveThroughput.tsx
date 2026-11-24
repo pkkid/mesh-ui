@@ -8,16 +8,16 @@
  * "Live throughput off"; the two cross-fade, and the chart opens and closes,
  * with the Live switch in the topbar.
  *
- * The chart is a view of readings already on screen: each new burst or
- * change in the summary's figures is kept here, timed when it arrived, per
- * network for the session (Live turns
- * itself off after LIVE_AUTO_OFF_MIN, so the buffer stays small) and cleared
- * when Live goes off.
+ * The chart reads the live readings (app/liveReadings.ts), which
+ * LiveCollector records on every page while Live is on: each new burst or
+ * change in the figures, timed when it arrived, per network (and per device
+ * as `device:<id>`), cleared when Live goes off.
  */
 import { Activity } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
-import { LIVE_AUTO_OFF_MIN, useLiveMode } from "~/app/useLiveMode";
+import { type LiveRates, useLiveReadings } from "~/app/liveReadings";
+import { useLiveMode } from "~/app/useLiveMode";
 import { AreaChart } from "~/components/charts/AreaChart";
 import { StatusDot } from "~/components/ui/status";
 import { seriesColors } from "~/lib/chartColors";
@@ -25,39 +25,7 @@ import { cn } from "~/lib/utils";
 import { formatMbps, formatPercent, mbpsParts, networkClock } from "../../../../core/format";
 import type { DeviceRateTotals } from "../../../../core/model";
 
-/** What the panel needs from a rate reading: the network summary's totals or one device's rates. */
-export type LiveRates = { downMbps: number; upMbps: number; at: string };
-
-/** One point: when it arrived, the burst it came from, and the totals. */
-type Reading = { at: string; burstAt: string; down: number; up: number };
-
-/** Readings per panel (a network, or one device), kept while the app runs. */
-const readings = new Map<string, Reading[]>();
-/** At most one reading every few seconds for the Live window, with room to spare. */
-const MAX_READINGS = LIVE_AUTO_OFF_MIN * 20;
-
-function useReadings(netId: string, rates: LiveRates | null, live: boolean): Reading[] {
-  const [list, setList] = useState<Reading[]>(() => readings.get(netId) ?? []);
-  useEffect(() => {
-    if (!live) {
-      readings.delete(netId);
-      setList([]);
-      return;
-    }
-    const prev = readings.get(netId) ?? [];
-    const last = prev.at(-1);
-    // Each read in a burst's live window can move the figures, and they all share the burst's time,
-    // so a new burst or new figures make a point; a repeat of the held figures does not.
-    if (!rates || (last && last.burstAt === rates.at && last.down === rates.downMbps && last.up === rates.upMbps)) {
-      setList(prev);
-      return;
-    }
-    const next = [...prev, { at: new Date().toISOString(), burstAt: rates.at, down: rates.downMbps, up: rates.upMbps }].slice(-MAX_READINGS);
-    readings.set(netId, next);
-    setList(next);
-  }, [netId, rates, live]);
-  return list;
-}
+export type { LiveRates } from "~/app/liveReadings";
 
 /** The last non-empty rates per panel, kept while Live is on. */
 const lastRates = new Map<string, LiveRates>();
@@ -133,7 +101,9 @@ export function LivePanel<R extends LiveRates>({ id: netId, rates: summaryRates,
   const live = liveOn && !unavailable;
   // Live off (#319): no rates on screen, even ones core still holds from the last burst.
   const fresh = live ? (summaryRates ?? null) : null;
-  const list = useReadings(netId, fresh, live);
+  // Recorded on every page while Live is on (LiveCollector); empty while it is off.
+  const all = useLiveReadings(netId);
+  const list = live ? all : [];
   // While Live is on, a read with no rates (they went stale between bursts, or eero sent none)
   // keeps the last figures on screen instead of turning them back to "-".
   const rates = useLastRates(netId, fresh, live);
