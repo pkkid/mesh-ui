@@ -26,7 +26,7 @@ import { WeekTimeline, type WeekSchedule } from "~/components/ui/timeline";
 import { WriteSwitch } from "~/features/advanced/SettingsGroups";
 import { PROFILE_GATE } from "~/features/profiles/ProfileCards";
 import { entityColors } from "~/lib/chartColors";
-import { cn } from "~/lib/utils";
+import { cn, hasTextSelection } from "~/lib/utils";
 import type { Profile, ProfileDetail, Schedule } from "../../../../core/model";
 
 import { dayChips, scheduledHoursPerWeek, scheduleIcon, timeRange, todayIn, weekInput, zoneName } from "./helpers";
@@ -170,7 +170,7 @@ function ScheduleRow({ profile: p, schedule: s, color, allowed, reason, onOpen }
   return (
     <div
       className={cn("group flex min-h-[58px] items-center gap-3 px-[18px] py-2.5", allowed && "cursor-pointer hover:bg-muted/50")}
-      onClick={allowed ? onOpen : undefined}
+      onClick={allowed ? () => !hasTextSelection() && onOpen() : undefined}
     >
       <div className={cn("flex min-w-0 flex-1 items-center gap-3", !s.enabled && "opacity-60")}>
         {/* No icon tile: the colour square by the name says which schedule it is, and the days and times need the width. */}

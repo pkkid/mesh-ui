@@ -181,7 +181,7 @@ function ThemeCard({ themes, settings }: { themes: ReadonlyArray<ThemeDefinition
 
   return (
     <div
-      className="flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border/70 bg-card/60 transition-colors hover:bg-accent/10"
+      className="flex cursor-pointer select-none flex-col overflow-hidden rounded-xl border border-border/70 bg-card/60 transition-colors hover:bg-accent/10"
       onClick={pickCard}
       onMouseLeave={() => setOpen(null)}
     >

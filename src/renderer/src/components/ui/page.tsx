@@ -46,7 +46,7 @@ export function SectionLink({ to, children }: { to: string; children: ReactNode 
   return (
     <Link
       to={to}
-      className="inline-flex items-center gap-1 rounded-sm text-muted-foreground text-xs outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex select-none items-center gap-1 rounded-sm text-muted-foreground text-xs outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
       <ArrowRight className="size-3.5" />

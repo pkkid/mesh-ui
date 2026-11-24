@@ -241,8 +241,41 @@ html[data-theme-id="rose"] {
     @apply surface-grain font-sans text-foreground antialiased;
     font-size: 14px;
     overflow: hidden;
+  }
+  /* Text selects as on a web page, so names, addresses and figures can be
+     copied out, links included (they do not drag; Link ignores the click
+     that ends a drag-select). Chrome does not: controls (their labels
+     included), the sidebar and titlebar, menus, tooltips, table headers and
+     charts.
+     `select-none` opts out anything else; `data-selectable` opts a value
+     back in inside one of these. See docs/design/design-system.md#text-selection. */
+  button,
+  label,
+  select,
+  summary,
+  th,
+  svg,
+  kbd,
+  [role="button"],
+  [role="tab"],
+  [role="menu"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="listbox"],
+  [role="option"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="slider"],
+  [role="tooltip"],
+  [data-app-sidebar],
+  .drag-region {
     user-select: none;
     -webkit-user-select: none;
+  }
+  a {
+    -webkit-user-drag: none;
   }
   input,
   textarea,

@@ -46,7 +46,7 @@ import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSu
 import { Status, type StatusTone } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
 import { seriesColors } from "~/lib/chartColors";
-import { cn } from "~/lib/utils";
+import { cn, hasTextSelection } from "~/lib/utils";
 import { formatBytes, formatPercent, formatRelative, mbpsParts } from "../../../../core/format";
 import type { DeviceSortKey } from "../../../../core/commands/device";
 import type { Device, DeviceCategory } from "../../../../core/model";
@@ -448,6 +448,7 @@ function Row(props: RowProps) {
         // Menus render in a portal; their clicks still bubble here through React.
         if (!e.currentTarget.contains(e.target as Node)) return;
         if ((e.target as HTMLElement).closest("a,button,input,[role=checkbox],[data-select-cell]")) return;
+        if (hasTextSelection()) return;
         navigate(to);
       }}
       aria-selected={isSelected}

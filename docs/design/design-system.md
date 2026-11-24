@@ -361,6 +361,20 @@ for status and errors.
 - Sentence case everywhere ("Restart network", not "Restart Network").
 - "eero" is always lowercase, even at the start of a label.
 
+### Text selection
+
+Text selects as on a web page, so a name, address or figure can be copied
+into another app, link text included (links do not drag, and `Link` ignores
+the click that ends a drag-select). Chrome does not: buttons, labels, switches,
+checkboxes, tabs, menus, select lists, tooltips, table headers, charts
+(`svg`), the sidebar and the titlebar (`drag-region`). The base layer in
+`index.css` sets this by element and role, so new primitives built on those
+follow it. Anything else that is chrome takes `select-none` (a clickable card,
+a drag handle); a value inside chrome that should copy takes
+`data-selectable`. A clickable row that holds values (a device row, a
+schedule row) ignores the click that ends a drag-select
+(`hasTextSelection()` in `lib/utils.ts`), so copying a value does not open it.
+
 ## Shape and spacing
 
 Spacing uses Tailwind's 4px scale (`p-3` is 12px). The shell sizes live as

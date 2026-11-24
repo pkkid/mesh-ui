@@ -27,7 +27,7 @@ const EDGE = 6;
  * bar, the donut and every `title` tooltip (TitleTooltips) use it.
  */
 export const tooltipSurface =
-  "rounded-md border border-border bg-tooltip/95 text-xs text-tooltip-foreground shadow-lg backdrop-blur-md";
+  "select-none rounded-md border border-border bg-tooltip/95 text-xs text-tooltip-foreground shadow-lg backdrop-blur-md";
 
 export function ChartTooltip({
   tooltipRef,

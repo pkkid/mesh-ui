@@ -8,7 +8,7 @@ import { type AnchorHTMLAttributes, type MouseEvent as ReactMouseEvent, Suspense
 import { ComingSoon } from "~/features/shell/ComingSoon";
 import { PageLoading } from "~/features/shell/PageLoading";
 import { useShortcut } from "~/lib/shortcuts";
-import { cn } from "~/lib/utils";
+import { cn, hasTextSelection } from "~/lib/utils";
 import { HoldPage, PageLoad, PageLoadContext } from "./pageLoad";
 import { DEFAULT_ROUTE, PAGES, ROUTES, type RouteDef, routeById } from "./routes";
 
@@ -128,6 +128,8 @@ export function Link({ to, onClick, ...props }: LinkProps) {
     onClick?.(e);
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
+    // The click that ends a drag-select over the link copies, it does not navigate.
+    if (hasTextSelection()) return;
     navigate(to);
   };
   return <a href={`#${to}`} onClick={handle} {...props} />;

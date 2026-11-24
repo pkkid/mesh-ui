@@ -9,3 +9,9 @@ const twMerge = extendTailwindMerge({
 export function cn(...inputs: CxOptions) {
   return twMerge(cx(inputs));
 }
+
+/** True while the user has text selected: a clickable row ignores the click that ends a drag-select, so copying a value does not open it. */
+export function hasTextSelection(): boolean {
+  const sel = window.getSelection();
+  return sel !== null && !sel.isCollapsed && sel.toString().trim() !== "";
+}
