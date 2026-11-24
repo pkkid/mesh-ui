@@ -358,14 +358,10 @@ export function DeviceTable(props: DeviceTableProps) {
               {show("now") &&
                 sortable(
                   "rate",
-                  <>
-                    Live <span className="text-muted-foreground/70">down / up</span>
-                  </>,
+                  "Live data",
                 )}
               {show("chart") && (
-                <th className={cn(th, "w-16 ps-0")}>
-                  <span className="sr-only">Live chart</span>
-                </th>
+                <th className={cn(th, "whitespace-nowrap")}>Live chart</th>
               )}
               {show("today") && sortable("usage", "24h", "text-end")}
               {show("status") && sortable("status", "Status")}
@@ -541,7 +537,7 @@ function Row(props: RowProps) {
         </td>
       )}
       {show("chart") && (
-        <td className={cn(td, "ps-0")}>
+        <td className={td}>
           <LiveSpark device={d} />
         </td>
       )}

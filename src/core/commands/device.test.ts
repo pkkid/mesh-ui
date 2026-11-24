@@ -7,7 +7,7 @@ import { deviceCategory, deviceName, mapDevice } from "../eero/map/device";
 import { createEngine } from "../engine";
 import type * as M from "../model";
 import { BURST_LEAD_SEC, burstReadTimes } from "../poll";
-import { commands as deviceCommands, summarize } from "./device";
+import { commands as deviceCommands, rateSortValue, summarize } from "./device";
 
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const LAKE = "5130264";
@@ -201,6 +201,27 @@ describe("device.list (demo)", () => {
     expect(names(used)).toEqual(["Living Room TV"]);
   });
 
+  it("sorts rate as online by speed, then paused, then offline by last seen, then blocked, and reverses fully", async () => {
+    const { engine } = demo();
+    const tier = (d: M.Device) => (d.blocked ? 0 : !d.connected ? 1 : d.paused ? 2 : 3);
+    const desc = (await list(engine, { sort: "rate" })).devices;
+    const tiers = desc.map(tier);
+    expect(tiers).toEqual([...tiers].sort((a, b) => b - a));
+    expect(new Set(tiers).size).toBe(4);
+    const speeds = desc.filter((d) => tier(d) === 3).map((d) => (d.rates?.downMbps ?? 0) + (d.rates?.upMbps ?? 0));
+    expect(speeds).toEqual([...speeds].sort((a, b) => b - a));
+    const offline = desc.filter((d) => tier(d) === 1).map((d) => Date.parse(d.lastActive ?? "") || 0);
+    expect(offline).toEqual([...offline].sort((a, b) => b - a));
+    const asc = (await list(engine, { sort: "rate", order: "asc" })).devices;
+    expect(asc.map(tier)).toEqual([...tiers].reverse());
+  });
+
+  it("sorts rate with no live readings (Live off): online first by name, offline after by last seen", () => {
+    const at = (iso: string | null, extra: Partial<M.Device> = {}) => ({ connected: false, blocked: false, paused: false, rates: null, lastActive: iso, ...extra }) as M.Device;
+    const values = [at(null, { connected: true }), at("2026-11-20T00:00:00Z"), at("2026-11-23T00:00:00Z"), at(null), at("2026-11-23T00:00:00Z", { blocked: true })].map(rateSortValue);
+    expect(values).toEqual([[3, 0], [1, Date.parse("2026-11-20T00:00:00Z")], [1, Date.parse("2026-11-23T00:00:00Z")], [1, 0], [0, Date.parse("2026-11-23T00:00:00Z")]]);
+  });
+
   it("sorts by every key in both orders, missing values last, ties by name", async () => {
     const { engine } = demo();
     const eeros = new Map<string, string>();
@@ -213,7 +234,6 @@ describe("device.list (demo)", () => {
     const ip = (s: string | null) => (s ? s.split(".").reduce((a, n) => a * 256 + Number(n), 0) : null);
     const status = (d: M.Device) => (d.blocked ? 2 : !d.connected ? 3 : d.paused ? 1 : 0);
     const keys: Record<string, (d: M.Device) => number | string | null> = {
-      rate: (d) => (d.rates ? d.rates.downMbps + d.rates.upMbps : null),
       profile: (d) => (d.profileId ? (profiles.get(d.profileId) ?? null) : null),
       eero: (d) => (d.eeroId ? (eeros.get(d.eeroId) ?? null) : null),
       band: (d) => (live(d) && d.band ? ["2.4", "5", "6", "wired"].indexOf(d.band) : null),

@@ -265,7 +265,7 @@ async function usageByDevice(ctx: CommandContext): Promise<Map<M.Id, number>> {
   return new Map(b.rows.flatMap((r) => (r.id ? [[r.id, r.down + r.up] as const] : [])));
 }
 
-type SortValue = number | string | null;
+type SortValue = number | string | number[] | null;
 
 /** "192.168.4.20" as one number, so .9 sorts before .10. */
 function ipNumber(ip: string | null): number | null {
@@ -279,13 +279,28 @@ const BAND_ORDER: Record<M.Band, number> = { "2.4": 0, "5": 1, "6": 2, wired: 3 
 /** Not live: offline or blocked. Band and signal read as missing, as the table shows them. */
 const notLive = (d: M.Device) => !d.connected || d.blocked;
 
+/**
+ * Sort "rate" as [tier, value]: online devices by their live rate (0 while
+ * Live is off, so they tie and fall back to name), then paused, then offline
+ * by when they were last seen, then blocked. Every device has a value, so the
+ * opposite order is the exact reverse: offline oldest first, fastest last.
+ */
+export function rateSortValue(d: M.Device): number[] {
+  const seen = d.lastActive ? Date.parse(d.lastActive) : Number.NaN;
+  const lastSeen = Number.isFinite(seen) ? seen : 0;
+  if (d.blocked) return [0, lastSeen];
+  if (!d.connected) return [1, lastSeen];
+  if (d.paused) return [2, 0];
+  return [3, d.rates ? d.rates.downMbps + d.rates.upMbps : 0];
+}
+
 /** The value each key sorts by; null is missing and always sorts last. */
 async function sortValue(ctx: CommandContext, by: DeviceSortKey): Promise<(d: M.Device) => SortValue> {
   switch (by) {
     case "name":
       return () => null;
     case "rate":
-      return (d) => (d.rates ? d.rates.downMbps + d.rates.upMbps : null);
+      return rateSortValue;
     case "last_seen":
       return (d) => (d.connected ? Number.POSITIVE_INFINITY : d.lastActive && Number.isFinite(Date.parse(d.lastActive)) ? Date.parse(d.lastActive) : null);
     case "usage": {
@@ -314,8 +329,13 @@ async function sortValue(ctx: CommandContext, by: DeviceSortKey): Promise<(d: M.
   }
 }
 
-const compareValues = (a: number | string, b: number | string) =>
-  typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b), "en", { sensitivity: "base" });
+function compareValues(a: number | string | number[], b: number | string | number[]): number {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
+    return a.length - b.length;
+  }
+  return typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b), "en", { sensitivity: "base" });
+}
 
 async function sort(ctx: CommandContext, devices: M.Device[], by: DeviceSortKey = "name", order?: "asc" | "desc"): Promise<M.Device[]> {
   const dir = (order ?? SORT_DEFAULT_ORDER[by]) === "asc" ? 1 : -1;

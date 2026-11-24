@@ -93,7 +93,7 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   band: "Band",
   signal: "Signal",
   addr: "IP · MAC",
-  now: "Live",
+  now: "Live data",
   chart: "Live chart",
   today: "24h",
   status: "Status",

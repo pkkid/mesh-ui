@@ -108,7 +108,7 @@ switch is in the topbar on every page (Share Wi-Fi lives on Overview and Wi-Fi, 
      row), New this week (3, eero's New Device notices), and a footer "3 filters set" with
      **Clear all**.
    - Right: Group by menu (None) and a Columns button (show or hide
-     Profile, Connected to, Band, Signal, IP · MAC, Live, Live chart, 24h and Status). The menu shows its
+     Profile, Connected to, Band, Signal, IP · MAC, Live data, Live chart, 24h and Status). The menu shows its
      name in the tooltip. Sorting is on the table headers (below).
 4. **Active filters** (only while a popover filter is set): one small chip
    per filter ("6 GHz", "Computers", "Profile: Alex") with an x to remove it,
@@ -126,11 +126,11 @@ switch is in the topbar on every page (Share Wi-Fi lives on Overview and Wi-Fi, 
    the columns shown) (icon, name
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
    and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
-   Signal (bars, `-` for wired), IP · MAC (two mono lines), Live down / up
+   Signal (bars, `-` for wired), IP · MAC (two mono lines), Live data
    (two small rates with their unit, "4.2 Mbps" or "320 kbps", and the
    device's share of current traffic, "12%", as in the eero app's live
-   view; "Paused" or last-seen text when not live), Live chart (no visible
-   header: a 64 by 24px chart of the device's download and upload since Live
+   view; "Paused" or last-seen text when not live), Live chart (its own
+   column with a visible header: a 64 by 24px chart of the device's download and upload since Live
    was turned on, the same lines and colors as Live throughput on one shared
    scale, a point for each new burst or change in its figures; kept per
    device for the session and dropped when Live goes off; empty while Live is
@@ -139,8 +139,11 @@ switch is in the topbar on every page (Share Wi-Fi lives on Overview and Wi-Fi, 
    - Every column header except the checkbox and the row menu sorts the
      table (`device.list` `sort` and `order`). The default is Device, A to
      Z. Clicking a new header sorts by it in its natural direction (Device,
-     Profile, Connected to, Band, IP and Status ascending; Signal, Now and
-     24h largest first); clicking the active header flips it. The active
+     Profile, Connected to, Band, IP and Status ascending; Signal, Live data and
+     24h largest first); clicking the active header flips it. Live data sorts
+     online devices first, fastest first (by name while Live is off), then
+     paused, then offline by last seen, most recent first, then blocked; the
+     other direction reverses all of it. The active
      header is in the text colour with a small muted up or down arrow and
      `aria-sort`. Missing values (`-`, Unassigned) sort last either way, and
      ties sort by name. With Group by on, rows are sorted within each group.
