@@ -172,6 +172,19 @@
  * the content area T3 shows is the canvas colour itself. Rose is T3's T3 Chat
  * theme and keeps its lighter tile.
  */
+/*
+ * Download and upload colors (lib/trafficColors.ts, Settings): blue and purple
+ * by default, green and red when picked. Both follow the active theme's hues.
+ */
+:root {
+  --series-download: var(--series-blue);
+  --series-upload: var(--series-purple);
+}
+:root[data-traffic-colors="green-red"] {
+  --series-download: var(--series-green);
+  --series-upload: var(--series-red);
+}
+
 :root {
   --surface-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   --surface-grain-size: 256px 256px;

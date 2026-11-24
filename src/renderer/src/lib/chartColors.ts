@@ -13,8 +13,10 @@ export const hue = (name: SeriesHue): string => `var(--series-${name})`;
 
 /** Fixed series kinds. */
 export const seriesColors = {
-  download: hue("blue"),
-  upload: hue("purple"),
+  /** Blue, or green with the green and red choice (lib/trafficColors.ts). */
+  download: "var(--series-download)",
+  /** Purple, or red with the green and red choice. */
+  upload: "var(--series-upload)",
   band24: hue("yellow"),
   band5: hue("blue"),
   band6: hue("purple"),

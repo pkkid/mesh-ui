@@ -1,6 +1,6 @@
 /**
  * Settings, Application settings (docs/ux/pages/settings.md, Layout 2): four
- * settings rows in one card, as on Advanced networking. Keep running in the
+ * settings rows (four switches and a color menu) in one card, as on Advanced networking. Keep running in the
  * tray comes first, because what Start at login does depends on it; the
  * update switches follow.
  *
@@ -16,12 +16,18 @@
  *   src/main/updater.ts. Install kinds that cannot update themselves (deb,
  *   rpm, portable, dev) show both switches disabled, as Start at login does.
  *
+ * - **Download and upload colors**: blue and purple, or green and red
+ *   (lib/trafficColors.ts); view state saved on this computer, no command.
+ *
  * With both on, a login launch always starts hidden in the tray; with the
  * tray off it opens the window, and Start at login's description says which.
  */
 import { useQuery } from "~/app/useCommand";
 import { useWrite } from "~/app/useWrite";
+import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Group, Row, WriteSwitch } from "~/features/advanced/SettingsGroups";
+import { hue } from "~/lib/chartColors";
+import { setTrafficColors, TRAFFIC_COLOR_OPTIONS, type TrafficColors, useTrafficColors } from "~/lib/trafficColors";
 import type { AppInfo, AppSettings, StartupStatus } from "../../../../core/model";
 import { applicationSummary, startAtLoginDetail } from "./startupCopy";
 
@@ -43,6 +49,7 @@ export function ApplicationSettings({ id }: { id?: string }) {
   const update = info.data?.update;
   const updates = update === undefined ? undefined : update.state !== "unsupported";
   const autoUpdate = settings.data?.autoUpdate;
+  const trafficColors = useTrafficColors();
   const beta = settings.data ? settings.data.updateChannel === "beta" : undefined;
 
   return (
@@ -132,6 +139,38 @@ export function ApplicationSettings({ id }: { id?: string }) {
           />
         }
       />
+      <Row
+        title="Download and upload colors"
+        description="The colors for download and upload in every chart, legend and rate. Saved on this computer."
+        control={
+          <Select items={TRAFFIC_COLOR_OPTIONS} value={trafficColors} onValueChange={(v) => v && setTrafficColors(v as TrafficColors)}>
+            <SelectTrigger size="tool" aria-label="Download and upload colors">
+              <SelectValue>{(v: TrafficColors) => <TrafficOption value={v} />}</SelectValue>
+            </SelectTrigger>
+            <SelectPopup>
+              {TRAFFIC_COLOR_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  <TrafficOption value={o.value} />
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
+        }
+      />
     </Group>
+  );
+}
+
+/** A colors choice: a dot for download and one for upload, in that choice's hues, then its name. */
+function TrafficOption({ value }: { value: TrafficColors }) {
+  const o = TRAFFIC_COLOR_OPTIONS.find((x) => x.value === value) ?? TRAFFIC_COLOR_OPTIONS[0];
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span aria-hidden className="inline-flex gap-1">
+        <span className="size-2 rounded-full" style={{ backgroundColor: hue(o.download) }} />
+        <span className="size-2 rounded-full" style={{ backgroundColor: hue(o.upload) }} />
+      </span>
+      {o.label}
+    </span>
   );
 }

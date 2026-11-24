@@ -269,7 +269,11 @@ series palette so they read on both light and dark.
 | Activity event types | `eventCategoryColors`: devices blue, paused / blocked orange, schedules red, eero status yellow, speed tests aqua, firmware gray, admin purple, ports & temperature green, other neutral | | |
 
 Download and upload never appear in the same chart as bands, so sharing blue
-and purple is safe. VS Code themes (Gruvbox included) take the series from
+and purple is safe. Settings, Application settings, **Download and upload
+colors** can switch them to green (download) and red (upload): charts use
+`--series-download` and `--series-upload` (`seriesColors.download`,
+`.upload`), which index.css points at the theme's blue and purple, or green
+and red (`lib/trafficColors.ts`). VS Code themes (Gruvbox included) take the series from
 their ANSI colours (see Themes); the others use T3-style mid-tones
 (`#5b9bbd` blue, `#8c7bd1` violet, `#4d9f8a` teal, `#d97757` orange). Check
 every chart in light and dark.
