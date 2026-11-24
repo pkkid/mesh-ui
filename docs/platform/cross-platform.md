@@ -117,8 +117,8 @@ is closed, so desktop alerts keep arriving.
 
 - **On:** closing the window (X, `Alt F4`, `Cmd W`) hides it; on Windows and
   Linux minimizing hides it too (macOS keeps its normal minimize to the
-  Dock). The first hide in a run shows one notice, "Mesh UI is still
-  running". Only Quit really exits: the tray menu's **Quit Mesh UI**,
+  Dock). Hiding is quiet: no "still running" notification, the tray icon
+  is the cue. Only Quit really exits: the tray menu's **Quit Mesh UI**,
   `Cmd Q`, the app menu, an update restart, or the OS logging off or
   shutting down.
 - **Tray icon:** clicking it (Windows and Linux) or its menu's **Open Mesh

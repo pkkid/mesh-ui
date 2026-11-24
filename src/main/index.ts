@@ -365,10 +365,6 @@ const trayMode = createTrayMode({
   },
   open: () => void showWindow(),
   quit: () => app.quit(),
-  notice() {
-    const where = process.platform === "darwin" ? "menu bar" : "system tray";
-    notifyHost.show({ title: "Mesh UI is still running", body: `It is in the ${where}, so desktop alerts keep arriving. Quit from there to close it.` }, () => void showWindow());
-  },
 });
 
 /** How long a Linux login launch waits for the panel's tray host before showing the window. */

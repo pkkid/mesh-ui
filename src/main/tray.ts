@@ -27,8 +27,6 @@ export type TrayDeps = {
   open(): void;
   /** Really quits the app. */
   quit(): void;
-  /** The one-time "still running" notice, the first time the window hides. */
-  notice(): void;
 };
 
 export type TrayMode = {
@@ -48,7 +46,6 @@ export function createTrayMode(d: TrayDeps): TrayMode {
   let icon: TrayIcon | null = null;
   let wanted = false;
   let quitting = false;
-  let noticed = false;
   /** Bumped by every apply, so an older apply that finishes late does nothing. */
   let generation = 0;
 
@@ -57,12 +54,8 @@ export function createTrayMode(d: TrayDeps): TrayMode {
     icon = null;
   };
   const active = () => icon !== null && !quitting;
-  const hide = (win: TrayWindow) => {
-    win.hide();
-    if (noticed) return;
-    noticed = true;
-    d.notice();
-  };
+  /** Hides quietly: no "still running" notice, the tray icon says so. */
+  const hide = (win: TrayWindow) => win.hide();
 
   return {
     async apply(on) {

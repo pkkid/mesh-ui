@@ -14,7 +14,6 @@ function fakeHost(over: Partial<TrayDeps> = {}) {
     },
     open: () => void log.push("open"),
     quit: () => void log.push("quit"),
-    notice: () => void log.push("notice"),
     ...over,
   };
   const win = { hide: () => void log.push("hide") };
@@ -36,10 +35,10 @@ describe("tray mode", () => {
     expect(await mode.apply(true)).toBe(true);
     expect(log).toEqual(["create"]);
 
-    // Close hides, with the notice only the first time.
-    expect(mode.close(win)).toBe(true);
+    // Minimize and close hide quietly, with no "still running" notice.
     expect(mode.minimize(win)).toBe(true);
-    expect(log).toEqual(["create", "hide", "notice", "hide"]);
+    expect(mode.close(win)).toBe(true);
+    expect(log).toEqual(["create", "hide", "hide"]);
 
     menu()?.open();
     expect(log.at(-1)).toBe("open");
@@ -98,7 +97,7 @@ describe("tray mode", () => {
     await mode.apply(true);
     expect(mode.minimize(win)).toBe(false);
     expect(mode.close(win)).toBe(true);
-    expect(log).toEqual(["create", "hide", "notice"]);
+    expect(log).toEqual(["create", "hide"]);
   });
 });
 
