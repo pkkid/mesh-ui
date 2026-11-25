@@ -55,10 +55,11 @@ export function EeroUplink({ eero, eeros, internet, networkOffline }: EeroUplink
         ) : upstream ? (
           <Node icon={eeroIcon(upstream)} name={upstream.location} detail={upstream.isGateway ? "Gateway" : "upstream"} to={pathFor("eero", { eeroId: upstream.id })} muted={networkOffline || upstream.status === "offline"} />
         ) : (
-          <Node icon={Globe} name="-" detail="upstream" muted />
+          // eero does not say which eero an eero Built-in device meshes to.
+          <Node icon={Globe} name="-" detail={eero.kind === "builtin" ? "not reported" : "upstream"} muted />
         )}
         <Wire look={up} />
-        <Node icon={eeroIcon(eero)} name={eero.location} detail="this eero" self muted={eeroOffline} />
+        <Node icon={eeroIcon(eero)} name={eero.location} detail={eero.kind === "builtin" ? "this Echo" : "this eero"} self muted={eeroOffline} />
         {downstream.length === 1 && downstream[0] && (
           <>
             <Wire look={uplinkLook(downstream[0], { networkOffline, behindOffline: behind.has(downstream[0].id) })} />
@@ -79,7 +80,8 @@ export function EeroUplink({ eero, eeros, internet, networkOffline }: EeroUplink
           ))}
         </div>
       )}
-      {!eero.isGateway && (
+      {/* eero has no placement test for an eero Built-in device. */}
+      {!eero.isGateway && eero.kind !== "builtin" && (
         <div className="-mt-2 flex flex-col gap-1">
           <div className="flex min-h-6 items-center justify-end gap-3">
             {placement.testing === eero.id ? (

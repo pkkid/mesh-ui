@@ -3,7 +3,7 @@ import { createFakeEero } from "../../../test/fake-eero/server";
 import { type AuthState, composeBackend, type SecretStore } from "../backend";
 import { createDemoBackend } from "../demo";
 import { createEeroBackend } from "../eero/backend";
-import { bandOf, eeroStatus, lanOf, mapEero, mapFirmwareHistory, mapPorts, portSpeed } from "../eero/map/eero";
+import { bandOf, eeroStatus, lanOf, mapBuiltinEeros, mapEero, mapFirmwareHistory, mapPorts, portSpeed } from "../eero/map/eero";
 import { createEngine } from "../engine";
 import { allCommands } from "../registry";
 import { eeroRestartMessage, meshQuality, restartedBy, withTopology } from "./eero";
@@ -18,11 +18,12 @@ describe("eero.list and eero.get (demo)", () => {
   it("lists the eeros gateway first with topology", async () => {
     const r = await demoEngine().execute<M.Eero[]>("eero.list");
     if (!r.ok) throw new Error(r.error.message);
-    expect(r.result.map((e) => e.location)).toEqual(["Living Room", "Garage", "Office", "Upstairs Hall"]);
+    // The eero Built-in Echo comes after the eeros.
+    expect(r.result.map((e) => e.location)).toEqual(["Living Room", "Garage", "Office", "Upstairs Hall", "Kitchen Echo"]);
     const [gw, ...rest] = r.result;
     expect(gw?.isGateway).toBe(true);
     expect(gw?.upstream).toBeNull();
-    for (const e of rest) expect(e.upstream).not.toBeNull();
+    for (const e of rest.filter((x) => x.kind === "eero")) expect(e.upstream).not.toBeNull();
   });
 
   it("derives hop and mesh quality in core", async () => {
@@ -34,6 +35,8 @@ describe("eero.list and eero.get (demo)", () => {
       ["Garage", 2, 2, "weak"],
       ["Office", 1, 5, "excellent"],
       ["Upstairs Hall", 1, 4, "excellent"],
+      // No upstream from eero: counted as hanging off the gateway.
+      ["Kitchen Echo", 1, 4, "excellent"],
     ]);
     const garage = await engine.execute<M.Eero>("eero.get", { eero: "Garage" });
     expect(garage.ok && [garage.result.hop, garage.result.meshQuality]).toEqual([2, "weak"]);
@@ -161,6 +164,8 @@ describe("eero commands (fake eero server)", () => {
       ["500004", "Garage", "degraded", false, "wireless", "500002", 1],
       ["500002", "Office", "online", false, "wireless", "500001", 5],
       ["500003", "Upstairs Hall", "online", false, "wired", "500001", null],
+      // The eero Built-in Echo from the network object's proxied_nodes: no upstream from eero.
+      [expect.any(String), "Kitchen Echo", "online", false, "wireless", null, 4],
     ]);
     // Hop follows the real links, not the "hangs off the gateway" fallback.
     expect(r.result.map((e) => [e.location, e.hop])).toEqual([
@@ -168,12 +173,13 @@ describe("eero commands (fake eero server)", () => {
       ["Garage", 2],
       ["Office", 1],
       ["Upstairs Hall", 1],
+      ["Kitchen Echo", 1],
     ]);
     const garage = r.result.find((e) => e.location === "Garage");
     expect(garage).toMatchObject({ model: "eero Beacon", bands: ["2.4", "5", "6"], nightlight: { mode: "off", brightness: 50, on: "20:00", off: "07:00" }, firmware: "7.10.1", updateAvailable: true });
     expect(fake.log.map((l) => `${l.method} ${l.path}`).sort()).toEqual(["GET /2.2/networks/100001", "GET /2.2/networks/100001/eeros"]);
     // Automatic DHCP: eero's default LAN, as reservation.list reports it. The gateway is the gateway eero's address.
-    expect(r.result.map((e) => [e.subnet, e.gatewayIp])).toEqual(Array(4).fill(["192.168.4.0/22", "192.168.4.1"]));
+    expect(r.result.map((e) => [e.subnet, e.gatewayIp])).toEqual(Array(5).fill(["192.168.4.0/22", "192.168.4.1"]));
   });
 
   it("maps a custom DHCP subnet and drops the gateway in bridge mode", async () => {
@@ -693,7 +699,7 @@ describe("eero.port.action and eero.remove (demo)", () => {
     const engine = demoEngine();
     await ok(engine.execute("eero.list"));
     expect(await ok(engine.execute("eero.remove", { eero: "Upstairs Hall", confirm: true }))).toEqual({ networkId: MAPLE, eeroId: "80013", location: "Upstairs Hall" });
-    expect((await ok(engine.execute<M.Eero[]>("eero.list"))).map((e) => e.location)).toEqual(["Living Room", "Garage", "Office"]);
+    expect((await ok(engine.execute<M.Eero[]>("eero.list"))).map((e) => e.location)).toEqual(["Living Room", "Garage", "Office", "Kitchen Echo"]);
     expect(await engine.execute("eero.remove", { eero: "Upstairs Hall", confirm: true })).toMatchObject({ ok: false, error: { code: "bad_params" } });
     expect(await engine.execute("eero.remove", {})).toMatchObject({ ok: false, error: { code: "bad_params" } });
   });
@@ -767,5 +773,89 @@ describe("eero.port.action and eero.remove (fake eero server)", () => {
     expect(r[0]?.version).toBe("v7.119.0-1");
     const offsets = fake.log.filter((l) => l.path.endsWith("/firmware_update/history")).map((l) => new URLSearchParams(l.query).get("offset"));
     expect(offsets).toEqual(["0", "50", "100"]);
+  });
+});
+
+describe("eero Built-in devices (Echos) as eeros", () => {
+  it("lists and gets the demo Echo as an eero of kind builtin, counted with the eeros, and drops it when eero Built-in is off", async () => {
+    const engine = demoEngine();
+    const list = await engine.execute<M.Eero[]>("eero.list");
+    if (!list.ok) throw new Error(list.error.message);
+    const echo = list.result.find((e) => e.kind === "builtin");
+    expect(echo).toMatchObject({ location: "Kitchen Echo", model: "Echo (4th Gen)", isGateway: false, backhaul: "wireless", meshBars: 4, signalDbm: -58, radios: [], firmware: null });
+    expect(list.result.filter((e) => e.kind === "eero")).toHaveLength(4);
+    // A device connected through it carries this id as its eeroId: the compact MAC.
+    expect(echo?.id).toBe(echo?.mac?.replace(/:/g, ""));
+    const got = await engine.execute<M.Eero>("eero.get", { eero: "Kitchen Echo" });
+    expect(got.ok && got.result).toMatchObject({ id: echo?.id, kind: "builtin" });
+    const net = await engine.execute<M.Network>("network.get");
+    expect(net.ok && net.result.counts.eeros).toBe(5);
+    await engine.execute("integrations.builtin.set", { enabled: false, confirm: true });
+    const after = await engine.execute<M.Eero[]>("eero.list");
+    expect(after.ok && after.result.map((e) => e.kind)).toEqual(["eero", "eero", "eero", "eero"]);
+  });
+
+  it("refuses every eero action for an Echo with bad_params, before any confirm, and reads no ports or history", async () => {
+    const engine = demoEngine();
+    const refused = { ok: false, error: { code: "bad_params", message: expect.stringContaining("Kitchen Echo is an eero Built-in device") } };
+    expect(await engine.execute("eero.rename", { eero: "Kitchen Echo", location: "Den" })).toMatchObject(refused);
+    expect(await engine.execute("eero.find", { eero: "Kitchen Echo" })).toMatchObject(refused);
+    expect(await engine.execute("eero.led.set", { eero: "Kitchen Echo", on: false })).toMatchObject(refused);
+    expect(await engine.execute("eero.nightlight.set", { eero: "Kitchen Echo", mode: "off" })).toMatchObject(refused);
+    expect(await engine.execute("eero.restart", { eero: "Kitchen Echo" })).toMatchObject(refused);
+    expect(await engine.execute("eero.remove", { eero: "Kitchen Echo" })).toMatchObject(refused);
+    expect(await engine.execute("eero.port.action", { eero: "Kitchen Echo", port: 1, action: "DISABLE_PORT" })).toMatchObject(refused);
+    expect(await engine.execute("eero.placement.test", { eero: "Kitchen Echo" })).toMatchObject(refused);
+    const ports = await engine.execute<M.EeroPorts>("eero.ports.get", { eero: "Kitchen Echo" });
+    expect(ports.ok && ports.result.ports).toEqual([]);
+    const history = await engine.execute<M.FirmwareEntry[]>("eero.firmware.history", { eero: "Kitchen Echo" });
+    expect(history.ok && history.result).toEqual([]);
+  });
+
+  it("network.restart does not count an Echo among the eeros that restart", async () => {
+    const r = await demoEngine().execute<{ eeroIds: string[] }>("network.restart", { confirm: true });
+    expect(r.ok && r.result.eeroIds).toHaveLength(4);
+  });
+
+  it("reads the Echo from GET {net}'s embedded proxied_nodes on the fake server, never an {eero} route", async () => {
+    const { fake, engine } = fakeEngine();
+    try {
+      const list = await engine.execute<M.Eero[]>("eero.list", { networkId: "100001" });
+      if (!list.ok) throw new Error(list.error.message);
+      const echo = list.result.find((e) => e.kind === "builtin");
+      expect(echo).toMatchObject({ location: "Kitchen Echo", ipv4: "192.168.4.190", status: "online", meshBars: 4, signalDbm: -58, clients: { total: 2, wired: null, wireless: 2 } });
+      const got = await engine.execute<M.Eero>("eero.get", { eero: echo?.id ?? "", networkId: "100001" });
+      expect(got.ok && got.result.kind).toBe("builtin");
+      expect(fake.log.map((l) => l.path).filter((p) => p.includes(echo?.id ?? "-"))).toEqual([]);
+      expect(fake.writes).toHaveLength(0);
+    } finally {
+      await fake.close();
+    }
+  });
+
+  it("maps the real shape: only enabled or meshing Echos, eero's status words, bars and dBm", () => {
+    const node = (over: Record<string, unknown>) => ({
+      url: "/2.2/networks/1/proxied_nodes/02aabbccddee",
+      mac_address: "02:aa:bb:cc:dd:ee",
+      ip_address: "192.168.4.150",
+      display_name: "Den Echo",
+      model_name: "Echo Spot (2024 release)",
+      status: "green",
+      enabled: true,
+      is_meshing: true,
+      serial: "FAKESERIAL",
+      connected_clients_count: 7,
+      connection: { signal: "-61 dBm", score: 4, score_bars: 4 },
+      ...over,
+    });
+    const raw = { proxied_nodes: { enabled: true, devices: [node({}), node({ url: "/x/02aabbccdd00", display_name: "Kitchen Dot", enabled: false, is_meshing: false })] } };
+    const [e, ...rest] = mapBuiltinEeros(raw);
+    expect(rest).toEqual([]);
+    expect(e).toMatchObject({ id: "02aabbccddee", kind: "builtin", location: "Den Echo", model: "Echo Spot (2024 release)", serial: "FAKESERIAL", ipv4: "192.168.4.150", status: "online", backhaul: "wireless", meshBars: 4, signalDbm: -61, upstream: null, clients: { total: 7, wired: null, wireless: 7 } });
+    // Offline: no signal or clients. No url: the compact MAC. eero Built-in off or missing: none.
+    expect(mapBuiltinEeros({ proxied_nodes: { enabled: true, devices: [node({ status: "red", url: undefined })] } })[0]).toMatchObject({ id: "02aabbccddee", status: "offline", meshBars: null, signalDbm: null, clients: { total: null } });
+    expect(mapBuiltinEeros({ proxied_nodes: { enabled: false, devices: [node({})] } })).toEqual([]);
+    expect(mapBuiltinEeros({})).toEqual([]);
+    expect(mapBuiltinEeros({ proxied_nodes: { enabled: true, devices: [{ enabled: true }] } })).toEqual([]);
   });
 });

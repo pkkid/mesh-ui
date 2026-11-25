@@ -10,6 +10,8 @@ import { createFixtures } from "./fixtures";
 import { SCENARIO_NAMES } from "./scenario";
 
 // Thursday Nov 12 2026, 2:41 PM in Los Angeles, as in the mockups.
+/** eero hardware only: eero Built-in devices (Echos) have no ports, firmware, usage or health row of their own. */
+const hardware = (eeros: M.Eero[]) => eeros.filter((e) => e.kind === "eero");
 const NOW = Date.parse("2026-11-12T22:41:00Z");
 const HOUR = 3_600_000;
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -68,7 +70,8 @@ describe("networks and account", () => {
       expect(full.counts).toEqual({ eeros: eeros.length, devices: devices.length, profiles: profiles.length });
       expect(full).toMatchObject({ id: n.id, eeroCount: n.eeroCount, devicesOnline: n.devicesOnline });
     }
-    expect(nets.map((n) => [n.eeroCount, n.devicesOnline])).toEqual([[4, 31], [1, 0], [2, 9]]);
+    // Maple Street counts its eero Built-in Echo with the four eeros.
+    expect(nets.map((n) => [n.eeroCount, n.devicesOnline])).toEqual([[5, 31], [1, 0], [2, 9]]);
     const account = await b.account.get();
     expect(account).toMatchObject({ name: "Alex Kim", email: { value: "alex@example.com", verified: true }, networkCount: nets.length });
   });
@@ -84,7 +87,7 @@ describe("networks and account", () => {
     expect((await b.network.permissions(MOM)).role).toBe("admin");
     expect((await b.network.permissions(MOM)).can["network.transfer"]?.update).toBe(false);
     expect((await b.network.permissions(MAPLE)).can["network.transfer"]?.update).toBe(true);
-    const eeros = await b.eero.list(MAPLE);
+    const eeros = hardware(await b.eero.list(MAPLE));
     expect(eeros.every((e) => e.updateAvailable)).toBe(true);
     expect(eeros.filter((e) => e.nightlight !== null).map((e) => e.model)).toEqual(["eero Beacon"]);
     const devices = await b.device.list(MAPLE);
@@ -96,7 +99,7 @@ describe("networks and account", () => {
   it("reports health per eero with the Garage weak link", async () => {
     const b = demo();
     const health = await b.network.health(MAPLE);
-    const eeros = await b.eero.list(MAPLE);
+    const eeros = hardware(await b.eero.list(MAPLE));
     expect(health.eeros.map((e) => e.id)).toEqual(eeros.map((e) => e.id));
     expect(health.eeros.filter((e) => e.weakLink).map((e) => e.location)).toEqual(["Garage"]);
     expect((await b.network.health(LAKE)).status).toBe("offline");
@@ -113,6 +116,8 @@ describe("eeros", () => {
       ["Office", "eero Pro 7", false, 9],
       ["Upstairs Hall", "eero 7", false, 7],
       ["Garage", "eero Beacon", false, 3],
+      // The eero Built-in Echo: no demo device connects through it.
+      ["Kitchen Echo", "Echo (4th Gen)", false, 0],
     ]);
     for (const e of eeros) {
       const on = devices.filter((d) => d.connected && d.eeroId === e.id);
@@ -223,7 +228,7 @@ describe("usage", () => {
     expect(sum(network.points)).toBe(network.total.down + network.total.up);
     expect(network.total.down).toBeGreaterThan(network.total.up);
     expect(network.busiest).not.toBeNull();
-    const eeros = await b.eero.list(MAPLE);
+    const eeros = hardware(await b.eero.list(MAPLE));
     const byEero = await Promise.all(eeros.map((e) => series(b, MAPLE, "eero", e.id)));
     expect(sum(byEero.map((s) => s.total))).toBe(network.total.down + network.total.up);
 
@@ -421,7 +426,7 @@ describe("M2 fixtures", () => {
     const b = demo();
     for (const n of await b.network.list()) {
       const devices = await b.device.list(n.id);
-      for (const e of await b.eero.list(n.id)) {
+      for (const e of hardware(await b.eero.list(n.id))) {
         const { eeroId, ports } = await b.eero.ports(n.id, e.id);
         expect(eeroId).toBe(e.id);
         for (const p of ports) {
@@ -452,7 +457,7 @@ describe("M2 fixtures", () => {
   it("end firmware history at each eero's current version, newest first", async () => {
     const b = demo();
     for (const n of await b.network.list()) {
-      for (const e of await b.eero.list(n.id)) {
+      for (const e of hardware(await b.eero.list(n.id))) {
         const h = await b.eero.firmwareHistory(n.id, e.id, 50);
         expect(h.length).toBeGreaterThan(0);
         expect(h[0]).toMatchObject({ version: e.firmware, current: true });
@@ -496,7 +501,7 @@ describe("M2 fixtures", () => {
     const b = demo();
     const maple = await b.updates.get(MAPLE);
     expect(maple).toMatchObject({ status: "scheduled", current: "7.12.1", target: "7.13.0", canUpdateNow: true });
-    expect(maple.eeros.map((e) => e.firmware)).toEqual((await b.eero.list(MAPLE)).map((e) => e.firmware));
+    expect(maple.eeros.map((e) => e.firmware)).toEqual(hardware(await b.eero.list(MAPLE)).map((e) => e.firmware));
     expect(Date.parse(maple.scheduledAt ?? "")).toBeGreaterThan(NOW);
     expect(await b.updates.get(LAKE)).toMatchObject({ status: "up_to_date", current: "7.11.4", target: null });
     expect(await b.updates.get(MOM)).toMatchObject({ status: "available", target: "7.13.0" });
@@ -523,7 +528,7 @@ describe("invented data only", () => {
     for (const n of await b.network.list()) {
       dump.push(await b.network.get(n.id), await b.internet.get(n.id), await b.eero.list(n.id), await b.device.list(n.id), await b.events.list(n.id, null));
       dump.push(await b.routing.get(n.id), await b.updates.get(n.id));
-      for (const e of await b.eero.list(n.id)) dump.push(await b.eero.ports(n.id, e.id), await b.eero.firmwareHistory(n.id, e.id, 50));
+      for (const e of hardware(await b.eero.list(n.id))) dump.push(await b.eero.ports(n.id, e.id), await b.eero.firmwareHistory(n.id, e.id, 50));
     }
     const text = JSON.stringify(dump);
     const macs = text.match(/\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b/gi) ?? [];
@@ -828,7 +833,7 @@ describe("writes (M4)", () => {
   it("restarts an eero or the network: updating for a few seconds, then back", async () => {
     let t = NOW;
     const b = createDemoBackend({ clock: () => t });
-    const eeros = await b.eero.list(MAPLE);
+    const eeros = hardware(await b.eero.list(MAPLE));
     const one = eeros.find((e) => e.status === "online" && !e.isGateway);
     if (!one) throw new Error("fixture: an online eero");
     await b.eero.restart(MAPLE, one.id);
@@ -843,7 +848,7 @@ describe("writes (M4)", () => {
     t += RESTART_MS;
     expect((await b.network.list()).find((n) => n.id === MAPLE)?.status).toBe(before.status);
     expect((await b.network.get(MAPLE)).status).toBe(before.status);
-    expect((await b.eero.list(MAPLE)).map((e) => e.status)).toEqual(eeros.map((e) => e.status));
+    expect(hardware(await b.eero.list(MAPLE)).map((e) => e.status)).toEqual(eeros.map((e) => e.status));
 
     // Lake Cabin is offline: its eero cannot be reached.
     const offline = (await b.eero.list(LAKE)).find((e) => e.status === "offline");
@@ -1058,7 +1063,7 @@ describe("writes (M5)", () => {
 
   it("eero remove takes it off the list; placement and coverage read the eeros", async () => {
     const b = demo();
-    const eeros = await b.eero.list(MAPLE);
+    const eeros = hardware(await b.eero.list(MAPLE));
     const leaf = eeros.find((e) => !e.isGateway) as M.Eero;
     expect((await b.eero.placementTest(MAPLE, leaf.id)).eeroId).toBe(leaf.id);
     const scan = await b.diagnostics.coverageScan(MAPLE);

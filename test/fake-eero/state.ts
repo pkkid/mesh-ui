@@ -83,6 +83,12 @@ export type FakeNetwork = {
    * while, which a real network lists only in their profile's `devices[]`.
    */
   unlisted: string[];
+  /**
+   * Echos that can do eero Built-in but have it off: eero leaves them out of
+   * `GET {net}/devices` and every count, and answers only their own
+   * `client_device_url` (`GET {net}/devices/{mac}`; real capture, 2026-11-24).
+   */
+  hiddenEchos: RawDevice[];
   /** `GET {eero}/connections` per eero id. */
   connections: Record<string, RawConnections>;
   /** `GET /2.2/eeros/{id}/firmware_update/history` rows per eero id, newest first as eero sends them. */
@@ -371,6 +377,38 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
 
   const online = devices.filter((d) => d.connected).length;
   const maple = seed.id === "100001";
+  // Maple's Den Dot can do eero Built-in but has it off: eero's device list leaves it out, while its
+  // client_device_url answers a full row connected through the Kitchen Echo (real capture, 2026-11-24).
+  const hiddenEcho: RawDevice | null = maple
+    ? {
+        url: `${netUrl}/devices/${compact(mac(991))}`,
+        mac: mac(991),
+        nickname: "Den Dot",
+        hostname: null,
+        display_name: "Den Dot",
+        manufacturer: "Example Corp",
+        model_name: "Echo Dot (4th Gen)",
+        device_type: "generic",
+        ip: "192.168.4.195",
+        ips: ["192.168.4.195"],
+        connected: true,
+        wireless: true,
+        connection_type: "wireless",
+        source: { location: "Kitchen Echo", is_gateway: false, url: `${netUrl}/proxied_nodes/${compact(mac(990))}`, model: "Echo (4th Gen)", serial_number: "FAKEECHO0001" },
+        interface: { frequency: "5", frequency_unit: "GHz" },
+        ssid: seed.name,
+        subnet_kind: "main",
+        is_guest: false,
+        is_private: false,
+        connectivity: { signal: "-60 dBm", signal_avg: "-61 dBm", score: 0.8, score_bars: 4, rx_bitrate: "433.3 Mbit/s" },
+        usage: null,
+        last_active: new Date(Date.now() - 60 * 1000).toISOString(),
+        first_active: iso("01T12:40:00"),
+        paused: false,
+        blocked: false,
+        profile: unassigned ? { url: unassigned.url, name: unassigned.name, paused: unassigned.paused } : null,
+      }
+    : null;
   const updates: RawUpdates = {
     has_update: maple,
     update_required: false,
@@ -436,7 +474,8 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     proxied_nodes: {
       enabled: maple,
       devices: maple
-        ? [{ url: `${netUrl}/proxied_nodes/${compact(mac(990))}`, client_device_url: `${netUrl}/devices/${compact(mac(990))}`, mac_address: mac(990), ip_address: "192.168.4.190", display_name: "Kitchen Echo", model_name: "Echo (4th Gen)", manufacturer: "Example Corp", status: "connected", enabled: true, is_meshing: true, is_guest: false, blocked: false, paused: false, serial: "FAKEECHO0001", os: "FireOS", os_version: "1.0", first_seen: iso("01T12:00:00") }]
+        ? [{ url: `${netUrl}/proxied_nodes/${compact(mac(990))}`, client_device_url: `${netUrl}/devices/${compact(mac(990))}`, mac_address: mac(990), ip_address: "192.168.4.190", display_name: "Kitchen Echo", model_name: "Echo (4th Gen)", manufacturer: "Example Corp", status: "connected", enabled: true, is_meshing: true, is_guest: false, blocked: false, paused: false, serial: "FAKEECHO0001", os: "FireOS", os_version: "1.0", first_seen: iso("01T12:00:00"), connected_clients_count: 2, connection: { signal: "-58 dBm", score: 4, score_bars: 4, rx_bitrate: "433.3 MBit/s", tx_retry_pct: 1 } },
+            { url: `${netUrl}/proxied_nodes/${compact(mac(991))}`, client_device_url: `${netUrl}/devices/${compact(mac(991))}`, mac_address: mac(991), ip_address: "192.168.4.195", display_name: "Den Dot", model_name: "Echo Dot (4th Gen)", manufacturer: "Example Corp", status: "connected", enabled: false, is_meshing: false, is_guest: false, blocked: false, paused: false, serial: "FAKEECHO0002", os: "FireOS", os_version: "1.0", first_seen: iso("01T12:40:00"), connected_clients_count: 0, connection: { signal: "-60 dBm", score: 4, score_bars: 4, rx_bitrate: "433.3 MBit/s", tx_retry_pct: 1 } }]
         : [],
     },
     // As eero sends it: the password is in the clear here and in GET {net}/guestnetwork.
@@ -530,6 +569,7 @@ function buildNetwork(seed: { id: string; name: string; role: string; status: st
     ],
     blacklist: [],
     unlisted: seed.devices.flatMap((d, i) => (d.unlisted ? [devices[i]?.url ?? ""] : [])),
+    hiddenEchos: hiddenEcho ? [hiddenEcho] : [],
     connections: Object.fromEntries(seed.eeros.map((e, i) => [e.id, seedConnections(e, i, devices)])),
     firmwareHistory: Object.fromEntries(
       eeros.map((e) => [

@@ -188,6 +188,7 @@ export function EerosPage(_props: PageProps) {
         ) : (
           <EeroCards
             eeros={list}
+            networkOffline={networkOffline}
             view={cardView}
             statusOf={statusOf}
             offlineDetail={(e) => (lastSeen(e) ? `last seen ${lastSeen(e)}` : null)}

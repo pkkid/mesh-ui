@@ -6,13 +6,15 @@
  * form), find (`POST /2.2/eeros/{serial}/led_cycle` form), nightlight
  * (`PUT {nightlight.url}` JSON) and restart (`POST resources.reboot`).
  * M5.7: port actions (`POST {eero}/ports/{n}/action` JSON) and remove
- * (`DELETE {eero}`).
+ * (`DELETE {eero}`). eero Built-in devices (Echos extending the mesh) come
+ * from the network object's `proxied_nodes` and join the list as eeros of
+ * kind `builtin`; core refuses eero writes for them before anything is sent.
  */
 
 import { BackendError } from "../../errors";
 import type * as M from "../../model";
 import { mapDevice, type RawDeviceFull } from "../map/device";
-import { type Lan, lanOf, mapEero, mapFirmwareHistory, mapPorts, portConnections, type RawEeroFull } from "../map/eero";
+import { type Lan, lanOf, mapBuiltinEeros, mapEero, mapFirmwareHistory, mapPorts, portConnections, type RawEeroFull } from "../map/eero";
 import { asList, linkUrl, type RawConnections, type RawEero, type RawFirmwareHistoryEntry, type RawLedWrite, type RawNetwork, type RawNightlightWrite } from "../raw";
 import { idFromUrl, networkPath } from "../urls";
 import type { EeroArea } from "./index";
@@ -51,6 +53,13 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
   };
 
   const get = async (net: M.Id, id: M.Id): Promise<M.Eero> => {
+    // An eero Built-in device has no {eero} resource: it lives on the network object.
+    const rawNet0 = await network(net);
+    const builtin = mapBuiltinEeros(rawNet0).find((e) => e.id === id);
+    if (builtin) {
+      const peers = await rawList(net).catch(() => [] as RawEeroFull[]);
+      return mapBuiltinEeros(rawNet0, lanOf(rawNet0, peers)).find((e) => e.id === id) ?? builtin;
+    }
     // The list names a wireless parent (eero sends only its location); eero.get reads it too, so the client shares the read.
     const [raw, rawNet, peers] = await Promise.all([rawGet(net, id), network(net), rawList(net).catch((err: unknown) => {
       if (err instanceof BackendError && err.code === "eero_error") return [] as RawEeroFull[];
@@ -81,7 +90,7 @@ export const eero: EeroArea<"eero"> = ({ client }) => {
     async list(net) {
       const [raws, rawNet] = await Promise.all([rawList(net), network(net)]);
       const lan = lanOf(rawNet, raws);
-      return raws.map((r) => mapEero(r, lan, raws));
+      return [...raws.map((r) => mapEero(r, lan, raws)), ...mapBuiltinEeros(rawNet, lan)];
     },
 
     get,

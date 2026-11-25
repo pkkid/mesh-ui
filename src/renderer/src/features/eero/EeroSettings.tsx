@@ -71,7 +71,8 @@ export function EeroInfo({ eero, clock }: { eero: Eero | null; clock: Clock }) {
   return (
     <Section title="Device information" description={description} className="gap-[15px]">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <SoftwareCard eero={eero} clock={clock} />
+        {/* eero runs no eeroOS on an eero Built-in device and reports no version for it. */}
+        {eero?.kind !== "builtin" && <SoftwareCard eero={eero} clock={clock} />}
         <IpCard eero={eero} />
         <InfoCard eero={eero} />
       </div>

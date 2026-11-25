@@ -11,7 +11,8 @@ import { useState } from "react";
 
 import { useWrite } from "~/app/useWrite";
 
-import { GatewayLabel } from "~/components/ui/badge";
+import { MeshBars } from "~/components/mesh/LinkChip";
+import { EeroRoleLabel } from "~/components/ui/badge";
 import { GatedButton, useGate } from "~/components/ui/page";
 import { RenameSheet } from "~/components/ui/rename-sheet";
 import { Metric, PageHeader } from "~/components/ui/hero";
@@ -52,6 +53,9 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
   const renameGate = !eero ? { allowed: false, reason: null } : offline ? { allowed: false, reason: `${eero.location} is offline` } : roleGate;
   const status = offline ? networkStatus("offline") : networkStatus(eero?.status);
   const badge = eero ? radioBadge(eero) : null;
+  // An eero Built-in device (an Echo): no radios, usage, LED or eero actions; its mesh signal instead.
+  const builtin = eero?.kind === "builtin";
+  const bars = offline || !eero ? null : eero.meshBars;
   const wired = eero?.clients.wired ?? null;
   const total = offline ? null : (eero?.clients.total ?? null);
   const bytes = usage ? usage.down + usage.up : null;
@@ -65,7 +69,7 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
         // "Gateway" is a role label beside the name: plain dim text (design-system.md, Role label).
         <span className="flex min-w-0 items-baseline gap-2.5">
           <span className="truncate">{eero?.location ?? "-"}</span>
-          {eero?.isGateway && <GatewayLabel />}
+          {eero && <EeroRoleLabel eero={eero} />}
         </span>
       }
       icon={<ProductTile eero={eero} offline={offline} />}
@@ -79,7 +83,21 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
       facts={
         <>
           <Metric label="Model" value={eero?.model ?? null} />
-          <Metric label="Radios" value={badge} />
+          {builtin ? (
+            <Metric
+              label="Mesh signal"
+              value={
+                bars === null ? null : (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MeshBars bars={bars} />
+                    {bars} of 5 bars
+                  </span>
+                )
+              }
+            />
+          ) : (
+            <Metric label="Radios" value={badge} />
+          )}
           <Metric
             label="Devices"
             value={
@@ -91,6 +109,7 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
               )
             }
           />
+          {!builtin && (
           <Metric
             label="Data, 24h"
             value={
@@ -103,11 +122,12 @@ export function EeroHero({ eero, eeros, offline, networkOffline, lastSeen, usage
               )
             }
           />
+          )}
         </>
       }
       // Hero actions, as on Overview and Internet: outline, the hero's 28px size, dim icons, under the facts.
       actions={
-        eero ? (
+        eero && !builtin ? (
           <>
             {/* First in every detail hero; it opens the rename sheet, so it ends in an ellipsis. */}
             <GatedButton variant="outline" gate={renameGate} onClick={() => setRenaming(true)}>
@@ -169,9 +189,10 @@ function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean })
   return (
     <div
       role="img"
-      aria-label={`${eero?.model ?? "eero"}. ${LED_LABEL[led]}`}
+      aria-label={eero?.kind === "builtin" ? (eero.model ?? "Echo") : `${eero?.model ?? "eero"}. ${LED_LABEL[led]}`}
       className="relative grid size-16 shrink-0 place-items-center rounded-(--hero-radius) bg-muted text-muted-foreground shadow-[inset_0_0_0_1px_var(--color-border)]"
     >
+      {eero?.kind !== "builtin" && (
       <span
         aria-hidden
         className={cn(
@@ -182,6 +203,7 @@ function ProductTile({ eero, offline }: { eero: Eero | null; offline: boolean })
           (led === "off" || led === "unknown") && "bg-border",
         )}
       />
+      )}
       <Icon aria-hidden className={cn("size-[30px]", offline && "opacity-60")} />
     </div>
   );

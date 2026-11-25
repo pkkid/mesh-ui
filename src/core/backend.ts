@@ -140,7 +140,7 @@ export interface UsageBackend {
 }
 
 export interface EeroBackend {
-  /** `hop` and `meshQuality` are filled in by core; backends may leave them null. */
+  /** `hop` and `meshQuality` are filled in by core; backends may leave them null. eero Built-in devices (kind `builtin`) come after the eeros. */
   list(net: M.Id): Promise<M.Eero[]>;
   get(net: M.Id, eero: M.Id): Promise<M.Eero>;
   /** Ethernet ports, with attached devices or eeros joined by MAC. Empty list when eero reports none. */

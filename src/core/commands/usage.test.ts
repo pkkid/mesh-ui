@@ -198,7 +198,8 @@ describe("usage.get on the demo backend", () => {
     const { engine, backend } = demoEngine();
     const network = await ok(engine.execute<M.UsageSeries>("usage.get", { range: "day" }));
     const perEero = await ok(engine.execute<M.UsageSeries[]>("usage.get", { scope: "eero" }));
-    expect(perEero.map((s) => s.id)).toEqual((await backend.eero.list("4821907")).map((e) => e.id));
+    // eero hardware only: eero keeps no usage for an eero Built-in Echo.
+    expect(perEero.map((s) => s.id)).toEqual((await backend.eero.list("4821907")).filter((e) => e.kind === "eero").map((e) => e.id));
     expect(perEero.every((s) => s.points.length === 24)).toBe(true);
     expect(sumOf(perEero.map((s) => s.total))).toBe(bytes(network.total));
 

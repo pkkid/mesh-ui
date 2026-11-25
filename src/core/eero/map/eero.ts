@@ -4,7 +4,7 @@
  */
 
 import * as M from "../../model";
-import { type RawEero, type RawFirmwareHistoryEntry, type RawNetwork, type RawPortConnection, type RawPortInterface, linkUrl } from "../raw";
+import { type RawEero, type RawFirmwareHistoryEntry, type RawNetwork, type RawPortConnection, type RawPortInterface, type RawProxiedNode, linkUrl } from "../raw";
 import { compactMac, idFromUrl } from "../urls";
 import { speedMbps } from "./device";
 import { toIso } from "./network";
@@ -141,6 +141,7 @@ export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN, peers: RawEero[] = 
   const eol = raw.update_status;
   return {
     id: url ? idFromUrl(url) : (str(raw.serial) ?? ""),
+    kind: "eero",
     serial: str(raw.serial),
     location: str(raw.location) ?? str(raw.serial) ?? "eero",
     model: str(raw.model),
@@ -152,6 +153,7 @@ export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN, peers: RawEero[] = 
     endOfLife: eol && (eol.support_expired !== undefined || eol.support_expiration_date) ? { expired: eol.support_expired === true, date: str(eol.support_expiration_date) } : null,
     backhaul,
     meshBars: backhaul === "wireless" && bars !== null ? Math.max(1, Math.min(5, bars)) : null,
+    signalDbm: null,
     upstream: isGateway ? null : upstream(raw, wired, peers),
     // Derived in core (eero.list, eero.get).
     hop: null,
@@ -180,6 +182,77 @@ export function mapEero(raw: RawEeroFull, lan: Lan = NO_LAN, peers: RawEero[] = 
     lastHeartbeat: str(raw.last_heartbeat),
     powerSource: str(raw.power_info?.power_source),
     messages: (raw.messages ?? []).map((m) => (typeof m === "string" ? m : str((m as { message?: unknown; title?: unknown })?.message) ?? str((m as { title?: unknown })?.title))).filter((m): m is string => !!m),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// eero Built-in devices (the network's embedded `proxied_nodes`)
+
+/**
+ * The eero Built-in devices (Amazon Echos) extending the mesh, as eeros of
+ * kind `builtin`. eero lists every capable Echo in `proxied_nodes.devices[]`;
+ * only the ones switched on (`enabled`) or meshing (`is_meshing`) extend the
+ * mesh, as the eero app shows (real capture, 2026-11-24: 3 listed, 1
+ * meshing). None while eero Built-in is off. The id is the url's last part
+ * (the compact MAC), which devices connected through it carry as `eeroId`.
+ * eero sends no radios, firmware, uptime, ports or upstream eero for them.
+ */
+export function mapBuiltinEeros(raw: Pick<RawNetwork, "proxied_nodes"> | null, lan: Lan = NO_LAN): M.Eero[] {
+  const nodes = raw?.proxied_nodes;
+  if (!nodes || typeof nodes !== "object" || nodes.enabled === false || !Array.isArray(nodes.devices)) return [];
+  return nodes.devices.filter((n) => n.enabled === true || n.is_meshing === true).flatMap((n) => {
+    const e = mapBuiltinEero(n, lan);
+    return e ? [e] : [];
+  });
+}
+
+function mapBuiltinEero(n: RawProxiedNode, lan: Lan): M.Eero | null {
+  const url = typeof n.url === "string" && n.url ? idFromUrl(n.url) : "";
+  const mac = str(n.mac_address);
+  const id = url || (mac ? compactMac(mac) : "");
+  if (!id) return null;
+  // eero's colour words, as for an eero; "connected" and "disconnected" come from the fake server and older clients.
+  const word = n.status?.toLowerCase();
+  const status = word === "connected" ? "online" : word === "disconnected" ? "offline" : eeroStatus({ status: n.status });
+  const offline = status === "offline";
+  const bars = num(n.connection?.score_bars);
+  const dbm = typeof n.connection?.signal === "string" ? /-?\d+(\.\d+)?/.exec(n.connection.signal) : null;
+  const clients = num(n.connected_clients_count);
+  return {
+    id,
+    kind: "builtin",
+    serial: str(n.serial),
+    location: str(n.display_name) ?? str(n.model_name) ?? "Echo",
+    model: str(n.model_name),
+    modelNumber: null,
+    isGateway: false,
+    status,
+    firmware: null,
+    updateAvailable: null,
+    endOfLife: null,
+    backhaul: "wireless",
+    meshBars: offline || bars === null ? null : Math.max(0, Math.min(5, Math.round(bars))),
+    signalDbm: offline || !dbm ? null : Number(dbm[0]),
+    // eero does not say which eero it meshes to.
+    upstream: null,
+    hop: null,
+    meshQuality: null,
+    clients: { total: offline ? null : clients, wired: null, wireless: offline ? null : clients },
+    bands: [],
+    radios: [],
+    led: { on: null, brightness: null },
+    nightlight: null,
+    ipv4: str(n.ip_address),
+    ipv6: [],
+    subnet: lan.subnet,
+    gatewayIp: lan.gatewayIp,
+    mac,
+    bssids: [],
+    joined: str(n.first_seen),
+    uptimeSec: null,
+    lastHeartbeat: null,
+    powerSource: null,
+    messages: [],
   };
 }
 

@@ -268,7 +268,8 @@ describe("Guest page load against the fake eero server", () => {
     expect(reads("/2.2/networks/100001/guestnetwork")).toBe(1);
     // One guest on the fake network: one per-device usage read for the guest series.
     expect(f.log.filter((e) => e.path.includes("/data_usage/devices/")).length).toBe(1);
-    expect(f.log.length).toBeLessThanOrEqual(16);
+    // 17 with device.list's read of the hidden Echo's device link.
+    expect(f.log.length).toBeLessThanOrEqual(17);
     await f.close();
   });
 });

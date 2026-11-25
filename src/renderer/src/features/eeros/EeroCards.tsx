@@ -3,7 +3,9 @@
  * or one row per eero (List) with per-band client counts. Blink light
  * (`eero.find`) blinks the LED and the button counts down ("Blinking · 24s"); the blink state is
  * shared with eero detail (`useFind`). No Stop until a stop call is
- * verified. docs/ux/pages/eeros.md (Layout 2).
+ * verified. eero Built-in devices (Echos extending the mesh) are eeros too,
+ * listed after the others as in the eero app: their card has a mesh link row
+ * instead of radios and no Blink light. docs/ux/pages/eeros.md (Layout 2).
  */
 import { ChevronRight, Lightbulb } from "lucide-react";
 import { useSyncExternalStore } from "react";
@@ -11,7 +13,7 @@ import { useSyncExternalStore } from "react";
 import { pathFor } from "~/app/router";
 import { eeroIcon } from "~/lib/deviceIcons";
 import { RadioTable, wirelessRadios } from "~/components/mesh/RadioTable";
-import { GatewayLabel } from "~/components/ui/badge";
+import { EeroRoleLabel } from "~/components/ui/badge";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Card, CardLink } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
@@ -92,6 +94,8 @@ export type EeroStatusWord = { tone: StatusTone; label: string };
 
 export type EeroCardsProps = {
   eeros: ReadonlyArray<Eero>;
+  /** The whole network is offline: no live figures. */
+  networkOffline?: boolean;
   view: "grid" | "list";
   statusOf: (e: Eero) => EeroStatusWord;
   /** "last seen 2:16 AM" for an offline eero. */
@@ -106,7 +110,7 @@ function facts(e: Eero, offlineDetail: (e: Eero) => string | null): string {
   return [e.model, e.ipv4, up].filter(Boolean).join(" · ") || "-";
 }
 
-export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false }: EeroCardsProps) {
+export function EeroCards({ eeros, networkOffline = false, view, statusOf, offlineDetail, fading = false }: EeroCardsProps) {
   if (view === "list") {
     return (
       <RowList className={cn("transition-opacity", fading && "opacity-40")}>
@@ -127,6 +131,13 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
                     <span className="w-5 font-medium tabular-nums">{formatCount(r.clients)}</span>
                   </span>
                 ))}
+                {/* An eero Built-in device reports no radios: its device count alone. */}
+                {e.kind === "builtin" && (
+                  <span className="inline-flex items-center gap-1.5 text-xs">
+                    <span className="text-muted-foreground">Devices</span>
+                    <span className="w-5 font-medium tabular-nums">{formatCount(e.clients.total)}</span>
+                  </span>
+                )}
                 {(e.clients.wired ?? 0) > 0 && (
                   <span className="inline-flex items-center gap-1.5 text-xs">
                     <BandBadge band="wired" />
@@ -162,13 +173,16 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
                   -me-1: 4px further right, so the button's gap to the card edge matches its gap to the top. */}
               <div className="-me-1 flex h-5 items-center gap-3 self-start">
                 <Status tone={status.tone}>{status.label}</Status>
-                <span data-card-ignore className="flex">
-                  <BlinkLightButton eero={e} />
-                </span>
+                {/* eero has no Blink light for an eero Built-in device. */}
+                {e.kind !== "builtin" && (
+                  <span data-card-ignore className="flex">
+                    <BlinkLightButton eero={e} />
+                  </span>
+                )}
               </div>
             </div>
             <div className="border-t px-[18px] pt-3 pb-3.5">
-              <RadioTable eero={e} />
+              <RadioTable eero={e} note={false} offline={networkOffline} />
             </div>
           </Card>
         );
@@ -177,7 +191,7 @@ export function EeroCards({ eeros, view, statusOf, offlineDetail, fading = false
   );
 }
 
-/** The eero's name plus its Gateway label. With `to` the name is the clickable card's link (its keyboard focus target). */
+/** The eero's name plus its role ("Gateway", "eero Built-in"). With `to` the name is the clickable card's link (its keyboard focus target). */
 function Title({ eero, to }: { eero: Eero; to?: string }) {
   return (
     // 14px, the list-name size on the type scale (was an off-scale 15px / 13.5px).
@@ -187,9 +201,7 @@ function Title({ eero, to }: { eero: Eero; to?: string }) {
       ) : (
         <span className="truncate">{eero.location}</span>
       )}
-      {eero.isGateway && (
-        <GatewayLabel />
-      )}
+      <EeroRoleLabel eero={eero} />
     </span>
   );
 }

@@ -21,7 +21,7 @@ and next device in the Devices table's order. Sidebar item Devices stays active.
    detail; no card, closed by the 1px rule):
    - Left: device type icon in the 64px tile; name with the GUEST tag; status
      line with Online and the type ("Laptop"); facts: Profile (avatar and
-     "Alex"), Connected to ("Office"), Signal (bars and "-52 dBm"). Actions,
+     "Alex"), Connected to ("Office", or the eero Built-in Echo it connects through), Signal (bars and "-52 dBm"). Actions,
      all outline: **Rename…** first (the shared Rename sheet: the nickname, with the device's own name as the
      placeholder; empty follows the own name again; `device.rename` with
      Undo), then **Pause device…** (or **Resume device**), then **Block…**

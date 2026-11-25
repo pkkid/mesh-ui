@@ -143,6 +143,12 @@ export class EeroClient {
   private readonly readShareMs: number;
   /** Session GETs in flight or answered in the last readShareMs, by URL. */
   private readonly shared = new Map<string, SharedRead>();
+  /**
+   * Device, profile and blocklist writes sent so far: the device area's cache of the hidden
+   * Echos' device rows drops what it holds when this changes (a pause, block or profile move
+   * may have changed them). Other writes leave it.
+   */
+  deviceWrites = 0;
   private readonly onLog: ((entry: RequestLogEntry) => void) | undefined;
   private readonly onSessionChange: ((signedIn: boolean) => void) | undefined;
 
@@ -389,7 +395,12 @@ export class EeroClient {
     if (effect === "write") {
       // A write may change anything a shared read holds: drop them before and after.
       this.shared.clear();
-      return this.limiter.serial(() => this.withRetries<T>(spec, effect)).finally(() => this.shared.clear());
+      const touchesDevices = /\/(devices|profiles|blacklist)(\/|$|\?)/.test(spec.path);
+      if (touchesDevices) this.deviceWrites++;
+      return this.limiter.serial(() => this.withRetries<T>(spec, effect)).finally(() => {
+        this.shared.clear();
+        if (touchesDevices) this.deviceWrites++;
+      });
     }
     if (spec.method !== "GET" || (spec.auth ?? "session") !== "session") return this.withRetries<T>(spec, effect);
     return this.sharedRead<T>(spec);

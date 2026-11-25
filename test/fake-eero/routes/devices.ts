@@ -66,7 +66,7 @@ export const routes: Route[] = [
     path: "/networks/:net/devices/:mac",
     handle: ({ params, network, state }) => {
       const net = network(params.net ?? "");
-      const d = net.devices.find((x) => compact(x.mac ?? "") === compact(params.mac ?? ""));
+      const d = [...net.devices, ...net.hiddenEchos].find((x) => compact(x.mac ?? "") === compact(params.mac ?? ""));
       if (!d) return fail(404, "error.device.not.found");
       return ok(blocked(net, d) ? { ...d, blocked: true, connected: false } : live(net, d, state.now()));
     },

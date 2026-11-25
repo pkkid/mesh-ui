@@ -448,6 +448,10 @@ export type RawProxiedNode = {
   os_version?: string;
   first_seen?: string;
   profile?: RawRef;
+  /** Devices connected through it (real capture, 2026-11-24). */
+  connected_clients_count?: number;
+  /** Its own link into the mesh: `signal` "-52 dBm", `score_bars` 0 to 5 (real capture, 2026-11-24). */
+  connection?: { signal?: string; score?: number; score_bars?: number; rx_bitrate?: string; tx_retry_pct?: number };
 };
 
 // ---------------------------------------------------------------------------

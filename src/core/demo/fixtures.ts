@@ -110,6 +110,8 @@ export type NetworkData = {
   /** Pending invites; empty for an admin, who cannot read them. */
   invites: M.Invite[];
   integrations: M.Integrations;
+  /** eero Built-in devices (Echos) extending the mesh, as eeros of kind `builtin`; eero.list shows them while eero Built-in is on. */
+  builtinEeros: EeroFixture[];
   /** Newest first. */
   notifications: M.Notification[];
   /** eero's notification switches, keys as eero sends them. */
@@ -457,6 +459,7 @@ function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Rec
   const wireless = (row.bands.filter((b) => b !== "wired") as M.WirelessBand[]);
   return {
     id: row.id,
+    kind: "eero",
     serial: row.serial,
     location: row.location,
     model: row.model,
@@ -468,6 +471,7 @@ function buildEero(row: EeroRow, block: number, n: number, now: number, ids: Rec
     endOfLife: row.endOfLife ?? null,
     backhaul: row.gateway ? "wired" : "wireless",
     meshBars: row.gateway ? null : (row.meshBars ?? null),
+    signalDbm: null,
     upstream: row.upstream ? (ids[row.upstream] ?? null) : null,
     hop: null,
     meshQuality: null,
@@ -681,6 +685,10 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
     buildEero({ key: "ga", id: mapleIds.ga, location: "Garage", model: "eero Beacon", modelNumber: "D010001", serial: "MU0DEMO0000014", upstream: "of", meshBars: 2, bands: ["2.4", "5"], radios: { "2.4": { channel: 1, width: 20 }, "5": { channel: 36, width: 80 } }, ip: "192.168.4.26", v6: "2001:db8:4a1c:7e00::26", firmware: "7.12.1", updateAvailable: true, uptimeMin: 2 * 24 * 60 + 12 * 60, joined: "2025-06-14T19:40:00Z", nightlight: { mode: "ambient", brightness: 40, on: null, off: null }, subnet: "192.168.4.0/22", gatewayIp: "192.168.4.1" }, 0xe0, 0x1030, now, mapleIds),
   ];
   const mapleProfileIds = { alex: "9101", jamie: "9102", mia: "9103", leo: "9104" };
+  // The Kitchen Echo extends the mesh (eero Built-in); its node id is its compact MAC, as eero's url uses.
+  const echoIndex = MAPLE_DEVICES.findIndex((r) => r.name === "Kitchen Echo");
+  const echoMac = mac(0x10, echoIndex + 1);
+  const mapleEcho = idOf(echoMac);
   const mapleBuilt = MAPLE_DEVICES.map((row, i) => buildDevice(row, i + 1, now, { block: 0x10, subnet: "192.168.4", v6: "2001:db8:4a1c:7e00", eeros: mapleIds, eeroList: mapleEeros, profiles: mapleProfileIds }));
   const mapleDevices = mapleBuilt.map(([d]) => d);
   const deviceId = (name: string) => mapleDevices.find((d) => d.name === name)?.id;
@@ -847,6 +855,43 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       smart_home_hub: integration(true, null),
       ffs: integration(true, true),
     },
+    builtinEeros: [
+      {
+        id: mapleEcho,
+        kind: "builtin",
+        serial: "MU0DEMOECHO0001",
+        location: "Kitchen Echo",
+        model: "Echo (4th Gen)",
+        modelNumber: null,
+        isGateway: false,
+        status: "online",
+        firmware: null,
+        updateAvailable: null,
+        endOfLife: null,
+        backhaul: "wireless",
+        meshBars: 4,
+        signalDbm: -58,
+        // eero does not say which eero an Echo meshes to.
+        upstream: null,
+        hop: null,
+        meshQuality: null,
+        bands: [],
+        radios: [],
+        led: { on: null, brightness: null },
+        nightlight: null,
+        ipv4: "192.168.4.183",
+        ipv6: [],
+        subnet: "192.168.4.0/22",
+        gatewayIp: "192.168.4.1",
+        mac: echoMac,
+        bssids: [],
+        joined: "2025-04-02T18:10:00Z",
+        uptimeSec: null,
+        lastHeartbeat: null,
+        powerSource: null,
+        messages: [],
+      },
+    ],
     notifications: toNotifications(
       [
         { min: 25, title: "Leo is paused", body: "Alex Kim paused Leo's 3 devices until resumed.", read: false, category: "profile" },
@@ -990,6 +1035,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       smart_home_hub: integration(false, null, "Needs an eero with a Zigbee radio"),
       ffs: integration(true, false),
     },
+    builtinEeros: [],
     notifications: toNotifications([{ min: lakeOfflineMin, title: "Lake Cabin is offline", body: "Lake Cabin stopped checking in. Check power and the modem.", read: false, category: "network" }], now, "lc"),
     notificationSettings: notificationSwitches(),
   };
@@ -1101,6 +1147,7 @@ export function createFixtures(nowMs: number, seed = 42): DemoFixtures {
       smart_home_hub: integration(false, null, "Needs an eero with a Zigbee radio"),
       ffs: integration(true, true),
     },
+    builtinEeros: [],
     notifications: toNotifications([{ min: 90, title: "Update available", body: "eeroOS 7.13.0 is ready. The owner can install it.", read: true, category: "network" }], now, "mh"),
     notificationSettings: notificationSwitches(["permissions.updates"]),
   };

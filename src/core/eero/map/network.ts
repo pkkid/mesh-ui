@@ -110,6 +110,13 @@ export function roleFor(perms: RawPermissions | null, account: RawAccount | null
   return mapRole(perms?.role) ?? mapRole(account?.role);
 }
 
+/** eero Built-in devices (Echos) extending the mesh, counted with the eeros (`mapBuiltinEeros` lists them). */
+function builtinCount(raw: RawNetwork): number {
+  const nodes = raw.proxied_nodes;
+  if (!nodes || typeof nodes !== "object" || nodes.enabled === false || !Array.isArray(nodes.devices)) return 0;
+  return nodes.devices.filter((n) => n.enabled === true || n.is_meshing === true).length;
+}
+
 export function mapNetworkSummary(raw: RawNetwork, opts: { id?: M.Id; role: M.Role | null; name?: string | null; nickname?: string | null }): M.NetworkSummary {
   const status = networkStatus(raw);
   const eeros = raw.eeros;
@@ -119,7 +126,8 @@ export function mapNetworkSummary(raw: RawNetwork, opts: { id?: M.Id; role: M.Ro
     nickname: str(raw.nickname_label) ?? str(opts.nickname),
     role: opts.role,
     status,
-    eeroCount: num(eeros?.count) ?? (Array.isArray(eeros?.data) ? eeros.data.length : null),
+    // eero's count is eero hardware only; the Echos extending the mesh count too, as eero.list lists them.
+    eeroCount: ((n) => (n === null ? null : n + builtinCount(raw)))(num(eeros?.count) ?? (Array.isArray(eeros?.data) ? eeros.data.length : null)),
     devicesOnline: num(raw.clients?.count),
     isp: str(raw.geo_ip?.isp),
     updateAvailable: bool(raw.updates?.has_update),

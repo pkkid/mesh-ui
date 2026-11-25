@@ -289,6 +289,9 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
 
   const deviceView = (d: M.Device): M.Device => ({ ...clone(d), rates: rates(d), reservation: null });
 
+  /** Echos extending the mesh, listed as eeros of kind `builtin` while eero Built-in is on. */
+  const builtinEeros = (data: NetworkData) => (data.integrations.builtin.enabled === true ? data.builtinEeros : []);
+
   const eeroView = (data: NetworkData, e: NetworkData["eeros"][number]): M.Eero => {
     const on = data.devices.filter((d) => d.connected && d.eeroId === e.id);
     const wired = on.filter((d) => d.band === "wired").length;
@@ -348,7 +351,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
       nickname: n.nickname,
       role: n.role,
       status: n.status,
-      eeroCount: data.eeros.length,
+      eeroCount: data.eeros.length + builtinEeros(data).length,
       devicesOnline: data.devices.filter((d) => d.connected).length,
       isp: data.internet.isp.name,
       updateAvailable: data.eeros.some((e) => e.updateAvailable),
@@ -626,7 +629,7 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
           lastReboot: n.lastReboot,
           capabilities: clone(n.capabilities),
           messages: clone(n.messages),
-          counts: { eeros: data.eeros.length, devices: data.devices.length, profiles: data.profiles.length },
+          counts: { eeros: data.eeros.length + builtinEeros(data).length, devices: data.devices.length, profiles: data.profiles.length },
         };
       },
       health: async (id) => {
@@ -731,11 +734,11 @@ export function createDemoBackend(opts: DemoBackendOptions = {}): DemoBackend {
     eero: {
       list: async (id) => {
         const data = net(id);
-        return data.eeros.map((e) => eeroView(data, e));
+        return [...data.eeros.map((e) => eeroView(data, e)), ...builtinEeros(data).map((e) => eeroView(data, e))];
       },
       get: async (id, eeroId) => {
         const data = net(id);
-        const e = data.eeros.find((x) => x.id === eeroId) ?? notFound("eero");
+        const e = data.eeros.find((x) => x.id === eeroId) ?? builtinEeros(data).find((x) => x.id === eeroId) ?? notFound("eero");
         return eeroView(data, e);
       },
       ports: async (id, eeroId) => portsView(net(id), eeroId),

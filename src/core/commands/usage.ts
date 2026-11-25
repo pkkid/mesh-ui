@@ -144,7 +144,8 @@ const usageGet = defineCommand({
 
     // No id: one series per eero, or per profile plus Unassigned.
     if (p.scope === "eero") {
-      const eeros = await ctx.backend.eero.list(ctx.net);
+      // eero keeps no usage for an eero Built-in device (an Echo), so it has no series.
+      const eeros = (await ctx.backend.eero.list(ctx.net)).filter((e) => e.kind !== "builtin");
       const out: M.UsageSeries[] = [];
       for (const e of eeros) out.push(await query("eero", e.id));
       return out;

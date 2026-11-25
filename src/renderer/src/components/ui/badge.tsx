@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
 
 import { cn } from "~/lib/utils";
+import type { Eero } from "../../../../core/model";
 
 const badgeVariants = cva(
   "inline-flex h-5 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-sm px-1.5 font-medium text-xs [&_svg]:size-3 [&_svg]:shrink-0",
@@ -38,4 +39,14 @@ function GatewayLabel() {
   return <span className="shrink-0 font-normal text-muted-foreground text-xs">Gateway</span>;
 }
 
-export { GatewayLabel };
+/**
+ * The eero's role beside its name, in the same dim text: "Gateway", or
+ * "eero Built-in" for an Echo extending the mesh; nothing for other eeros.
+ */
+function EeroRoleLabel({ eero }: { eero: Pick<Eero, "isGateway" | "kind"> }) {
+  if (eero.isGateway) return <GatewayLabel />;
+  if (eero.kind !== "builtin") return null;
+  return <span className="shrink-0 font-normal text-muted-foreground text-xs">eero Built-in</span>;
+}
+
+export { EeroRoleLabel, GatewayLabel };

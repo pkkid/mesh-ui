@@ -314,7 +314,7 @@ async function sortValue(ctx: CommandContext, by: DeviceSortKey): Promise<(d: M.
       return (d) => (d.profileId ? (names.get(d.profileId) ?? d.profileId) : null);
     }
     case "eero": {
-      const names = new Map((await ctx.backend.eero.list(ctx.net)).map((e) => [e.id, e.location]));
+      const names = await eeroNames(ctx);
       return (d) => (d.eeroId ? (names.get(d.eeroId) ?? d.eeroId) : null);
     }
     case "band":
@@ -368,12 +368,16 @@ async function withUnassigned<T extends Pick<M.Device, "profileId">>(ctx: Comman
   return devices.map((d) => (d.profileId && !listed.has(d.profileId) ? { ...d, profileId: null } : d));
 }
 
+/** eero names by id; the list includes eero Built-in devices (Echos), which devices connected through one name as their eero. */
+async function eeroNames(ctx: CommandContext): Promise<Map<M.Id, string>> {
+  return new Map((await ctx.backend.eero.list(ctx.net)).map((e) => [e.id, e.location]));
+}
+
 const statusLabel = (d: M.Device) => (d.blocked ? "Blocked" : d.paused ? "Paused" : d.connected ? "Online" : "Offline");
 const bandLabel = (b: M.Band | null) => (b === null ? null : b === "wired" ? "Wired" : `${b} GHz`);
 
 async function toDeviceCsv(ctx: CommandContext, devices: M.Device[]): Promise<string> {
-  const [eeros, profiles] = await Promise.all([ctx.backend.eero.list(ctx.net), ctx.backend.profile.list(ctx.net)]);
-  const eeroName = new Map(eeros.map((e) => [e.id, e.location]));
+  const [eeroName, profiles] = await Promise.all([eeroNames(ctx), ctx.backend.profile.list(ctx.net)]);
   const profileName = new Map(profiles.map((p) => [p.id, p.name]));
   return toCsv(devices, [
     { header: "Name", value: (d) => d.name },

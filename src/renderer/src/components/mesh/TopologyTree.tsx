@@ -5,7 +5,7 @@
  */
 import { Globe } from "lucide-react";
 
-import { GatewayLabel } from "~/components/ui/badge";
+import { EeroRoleLabel } from "~/components/ui/badge";
 import { Card } from "~/components/ui/card";
 import { networkStatus, Status } from "~/components/ui/status";
 import { cn } from "~/lib/utils";
@@ -114,7 +114,7 @@ export function TopologyTree({ eeros, internet, selectedId, warnIds, onSelect, o
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 font-medium text-[13px]">
                   <span className="truncate">{e.location}</span>
-                  {e.isGateway && <GatewayLabel />}
+                  <EeroRoleLabel eero={e} />
                 </div>
                 <div className="truncate text-muted-foreground text-xs">{[e.model, backhaul, detail].filter(Boolean).join(" · ") || "-"}</div>
               </div>

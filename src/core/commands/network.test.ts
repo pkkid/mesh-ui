@@ -202,7 +202,7 @@ describe("network commands (fake eero server)", () => {
     const { engine, fake } = fakeEngine();
     const nets = await ok(engine.execute<M.NetworkSummary[]>("network.list"));
     expect(nets).toEqual([
-      { id: "100001", name: "Maple Street", nickname: null, role: "owner", status: "online", eeroCount: 4, devicesOnline: 7, isp: "Example Fiber", updateAvailable: true, lastSeen: null, selected: false },
+      { id: "100001", name: "Maple Street", nickname: null, role: "owner", status: "online", eeroCount: 5, devicesOnline: 7, isp: "Example Fiber", updateAvailable: true, lastSeen: null, selected: false },
       { id: "100002", name: "Lake Cabin", nickname: null, role: "admin", status: "offline", eeroCount: 1, devicesOnline: 0, isp: "Example Fiber", updateAvailable: false, lastSeen: "2026-11-12T18:00:00.000Z", selected: false },
     ]);
     const paths = fake.log.map((l) => l.path).sort();
@@ -250,8 +250,9 @@ describe("network commands (fake eero server)", () => {
       const devices = await ok(engine.execute<M.DeviceList>("device.list", { networkId }));
       expect(net.counts.devices).toBe(devices.summary.total);
     }
-    // Maple: 8 listed (7 connected, which is eero's clients.count), one offline profile member only its profile lists, and one blocklist-only MAC.
-    expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).counts.devices).toBe(10);
+    // Maple: 8 listed (7 connected, which is eero's clients.count), one offline profile member only its profile lists,
+    // one blocklist-only MAC, and Den Dot, the Echo eero lists only by its own device link.
+    expect((await ok(engine.execute<M.Network>("network.get", { networkId: "100001" }))).counts.devices).toBe(11);
   });
 
   it("network.health derives eero status and weak links from GET {net}", async () => {

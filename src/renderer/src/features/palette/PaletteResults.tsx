@@ -17,7 +17,7 @@ import {
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import { eeroIcon } from "~/lib/deviceIcons";
-import { GatewayLabel } from "~/components/ui/badge";
+import { EeroRoleLabel } from "~/components/ui/badge";
 import { IconTile } from "~/components/ui/hero";
 import { networkStatus, Status } from "~/components/ui/status";
 import { deviceIcon } from "~/lib/deviceIcons";
@@ -267,9 +267,7 @@ export function EeroBadges({ item }: { item: Extract<Item, { kind: "eero" }> }) 
   const status = networkStatus(item.eero.status);
   return (
     <>
-      {item.eero.isGateway && (
-        <GatewayLabel />
-      )}
+      <EeroRoleLabel eero={item.eero} />
       <Status tone={status.tone}>{status.label}</Status>
     </>
   );

@@ -266,7 +266,8 @@ export function wifiHealth(devices: ReadonlyArray<M.Device>, eeros: ReadonlyArra
   const generations = GENERATION_ORDER.filter((g) => g !== "unknown" || gen.has("unknown")).map((generation) => ({ generation, devices: gen.get(generation) ?? 0 }));
 
   // One entry per radio: 5 GHz low and high are two radios on some eeros, so a band can appear twice.
-  const radios = eeros.map((e) => ({
+  // eero Built-in devices (Echos) report no radios, so they have no row.
+  const radios = eeros.filter((e) => e.kind !== "builtin").map((e) => ({
     eeroId: e.id,
     eero: e.location,
     model: e.model,

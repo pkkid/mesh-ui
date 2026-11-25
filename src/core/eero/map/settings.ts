@@ -219,7 +219,8 @@ export function mapIntegrations(raw: RawNetwork): M.Integrations {
   const amazon = linked === null ? integration(false, null) : integration(true, linked, linked ? "Linked to an Amazon account" : "Link in the eero app");
 
   const nodes = raw.proxied_nodes;
-  const devices = Array.isArray(nodes?.devices) ? nodes.devices.length : 0;
+  // Only Echos switched on (or meshing) extend the mesh; eero lists every capable one (real capture 2026-11-24: 3 listed, 1 on).
+  const devices = Array.isArray(nodes?.devices) ? nodes.devices.filter((n) => n?.enabled === true || n?.is_meshing === true).length : 0;
   const builtin =
     bridged
       ? integration(false, null, "Not available in bridge mode")

@@ -244,6 +244,7 @@ type UsageBreakdown = {
 ```ts
 type Eero = {
   id: Id;
+  kind: "eero" | "builtin";       // builtin: an Echo extending the mesh (see eero Built-in devices below)
   serial: string | null;
   location: string;
   model: string | null;           // "eero Pro 7"
@@ -255,6 +256,7 @@ type Eero = {
   endOfLife: { expired: boolean; date: Iso | null } | null;
   backhaul: "wired" | "wireless" | null;
   meshBars: number | null;        // 1..5, wireless only
+  signalDbm: number | null;       // eero Built-in devices only: their own link in dBm
   upstream: Id | null;            // parent eero
   hop: number | null;             // core: 0 gateway, parent + 1; null for a broken chain
   meshQuality: "excellent" | "good" | "weak" | "poor" | null;  // core: bars 4-5, 3, 2, 0-1; null when wired
@@ -730,6 +732,20 @@ type Integrations = Record<IntegrationId, Integration>;
 
 A 403 or 404 makes one integration unavailable (`enabled: null`), never an
 error for the whole read.
+
+### eero Built-in devices
+
+An Amazon Echo extending the mesh (eero Built-in) is an `Eero` with
+`kind: "builtin"`; eero hardware has `kind: "eero"`. It comes from network
+`proxied_nodes.devices[]` (only entries with `enabled` or `is_meshing` true):
+`location` is `display_name`, `meshBars` is `connection.score_bars`,
+`signalDbm` is `connection.signal` ("-61 dBm"; null on every eero),
+`clients` is `connected_clients_count` (all wireless), `joined` is
+`first_seen` (real capture, 2026-11-24). Radios, bands, BSSIDs, firmware,
+uptime, LED, nightlight, power source and `upstream` are empty or null: eero
+does not send them. A device connected through an Echo has
+`source.is_proxied_node: true` and a `source.url` ending in the Echo's id, so
+its `eeroId` is the Echo.
 
 ## App
 

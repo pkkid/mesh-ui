@@ -180,8 +180,8 @@ describe("page load against the fake eero server", () => {
     expect(get?.ok && (get.result as Profile).schedules.length).toBeGreaterThan(0);
     // Identical reads are shared; no /schedules reads (a 404 on real eero); about 18 requests, well under the 80 a minute budget.
     expect(fake.log.some((e) => e.path.endsWith("/schedules"))).toBe(false);
-    // 21 with device.list's read of the New Device notifications.
-    expect(fake.log.length).toBeLessThanOrEqual(21);
+    // 22 with device.list's read of the New Device notifications and of the hidden Echo's device link.
+    expect(fake.log.length).toBeLessThanOrEqual(22);
   });
 });
 

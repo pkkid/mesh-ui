@@ -245,8 +245,12 @@ export type Nightlight = {
   off: Hhmm | null;
 };
 
+/** "eero": eero hardware. "builtin": an eero Built-in device, a partner device (an Amazon Echo) extending the mesh, for which eero sends far less. */
+export type EeroKind = "eero" | "builtin";
+
 export type Eero = {
   id: Id;
+  kind: EeroKind;
   serial: string | null;
   location: string;
   /** "eero Pro 7". */
@@ -261,6 +265,8 @@ export type Eero = {
   backhaul: "wired" | "wireless" | null;
   /** 1 to 5, wireless only. */
   meshBars: number | null;
+  /** Its own mesh link in dBm; eero sends it only for an eero Built-in device. */
+  signalDbm: number | null;
   /** Parent eero. */
   upstream: Id | null;
   /** Links from the gateway: 0 gateway, 1 its children, and so on. Filled in by core. */

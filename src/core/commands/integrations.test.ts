@@ -105,7 +105,7 @@ describe("integrations writes (demo)", () => {
 
   it("declares effect, gate and the topics each write invalidates", () => {
     const spec = (id: string) => integrationCommands.find((c) => c.id === id);
-    expect(spec("integrations.builtin.set")).toMatchObject({ effect: "disruptive", gate: { area: "network.proxied_nodes", bridgeOff: true }, invalidates: ["integrations", "devices"] });
+    expect(spec("integrations.builtin.set")).toMatchObject({ effect: "disruptive", gate: { area: "network.proxied_nodes", bridgeOff: true }, invalidates: ["integrations", "devices", "eeros", "network"] });
     expect(spec("integrations.zigbee.discover")).toMatchObject({ effect: "write", gate: { area: "network.smart_home_hub" }, invalidates: ["integrations"] });
     expect(spec("integrations.amazon.unlink")).toMatchObject({ effect: "destructive", gate: { area: "amazon.account", op: "delete" }, invalidates: ["integrations", "network"] });
   });
@@ -247,6 +247,7 @@ describe("integrations mapping", () => {
     for (const id of IDS) expect(none[id]).toMatchObject({ available: false, enabled: null });
     expect(mapIntegrations({ connection: { mode: "bridged" }, proxied_nodes: { enabled: true, devices: [] } }).builtin).toMatchObject({ available: false, detail: "Not available in bridge mode" });
     expect(mapIntegrations({ amazon_account_linked: false }).amazon).toEqual({ available: true, enabled: false, detail: "Link in the eero app" });
-    expect(mapIntegrations({ proxied_nodes: { enabled: true, devices: [{}, {}] } }).builtin.detail).toBe("2 Echos extend your network");
+    // Only Echos switched on for eero Built-in (or meshing) extend the mesh.
+    expect(mapIntegrations({ proxied_nodes: { enabled: true, devices: [{ enabled: true }, { is_meshing: true }, { enabled: false }] } }).builtin.detail).toBe("2 Echos extend your network");
   });
 });

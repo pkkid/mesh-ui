@@ -385,12 +385,17 @@ describe("device commands (fake eero server)", () => {
     expect(l.devices.find((d) => d.name === "Alex's Phone")).toMatchObject({ profileId: "700", ssid: "main", ipv4: "192.168.4.101" });
     // Jamie's Tablet is offline and only in Jamie's profile, not in GET {net}/devices (M5.R-fix6).
     expect(l.devices.find((d) => d.name === "Jamie's Tablet")).toMatchObject({ profileId: "701", connected: false });
-    expect(l.summary).toMatchObject({ total: 10, online: 6, offline: 2, paused: 1, blocked: 2, rates: null });
+    // Den Dot: an Echo eero leaves out of GET {net}/devices, read from its own device link (real capture 2026-11-24).
+    expect(l.devices.find((d) => d.name === "Den Dot")).toMatchObject({ connected: true, model: "Echo Dot (4th Gen)", eeroId: "0a1b2c0003de" });
+    expect(l.summary).toMatchObject({ total: 11, online: 7, offline: 2, paused: 1, blocked: 2, rates: null });
     // The profiles give offline members, then tell eero's default (Unassigned) profile from people's
     // profiles. The app shares the second read (READ_SHARE_MS); this test client shares only in flight.
+    // The network object names the Echos eero leaves out of the list; each one not acting as an eero is read by its own link.
     expect(fake.log.map((e) => `${e.method} ${e.path}`).sort()).toEqual([
+      "GET /2.2/networks/100001",
       "GET /2.2/networks/100001/blacklist",
       "GET /2.2/networks/100001/devices",
+      "GET /2.2/networks/100001/devices/0a1b2c0003df",
       "GET /2.2/networks/100001/profiles",
       "GET /2.2/networks/100001/profiles",
     ]);
@@ -408,15 +413,15 @@ describe("device commands (fake eero server)", () => {
     const all = await list(engine);
     expect(all.devices.some((d) => d.profileId === "790")).toBe(false);
     const unassigned = await list(engine, { profile: null });
-    expect(unassigned.devices.map((d) => d.name).sort((a, b) => a.localeCompare(b))).toEqual(["esp-plug-07", "Living Room TV", "Old Printer"]);
-    expect(all.summary.byProfile.find((r) => r.profileId === null)?.count).toBe(3);
+    expect(unassigned.devices.map((d) => d.name).sort((a, b) => a.localeCompare(b))).toEqual(["Den Dot", "esp-plug-07", "Living Room TV", "Old Printer"]);
+    expect(all.summary.byProfile.find((r) => r.profileId === null)?.count).toBe(4);
     expect(all.summary.byProfile.map((r) => r.profileId)).not.toContain("790");
 
     const one = await engine.execute<M.Device>("device.get", { device: "Living Room TV" });
     expect(one.ok && one.result.profileId).toBeNull();
     const csv = await engine.execute<string>("device.list", { profile: null, format: "csv" });
     if (!csv.ok) throw new Error(csv.error.message);
-    expect(csv.result.match(/Unassigned/g)).toHaveLength(3);
+    expect(csv.result.match(/Unassigned/g)).toHaveLength(4);
     expect(csv.result).not.toContain("790");
     // The default profile is not a profile you can filter by.
     expect(await engine.execute("device.list", { profile: "790" })).toMatchObject({ ok: false, error: { code: "bad_params" } });

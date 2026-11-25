@@ -337,7 +337,8 @@ describe("Updates page load against the fake eero server", () => {
     expect(reads("/2.2/account")).toBe(1);
     expect(reads(MANIFEST_PATH)).toBe(1);
     expect(f.log.filter((e) => e.path.includes("/data_usage")).length).toBe(1);
-    expect(f.log.length).toBeLessThanOrEqual(14);
+    // 15 with device.list's read of the hidden Echo's device link.
+    expect(f.log.length).toBeLessThanOrEqual(15);
 
     // The admin view (Lake Cabin): invites answer 403 and the page still loads.
     await engine.execute("network.select", { network: "100002" });

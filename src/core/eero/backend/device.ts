@@ -22,6 +22,15 @@
  * (capture 2026-11-14: two profiles had 6 members missing from the list).
  * The list adds them from `GET {net}/profiles`, offline and in that profile,
  * so a profile's devices and counts match the eero app on every surface.
+ *
+ * Echos that can do eero Built-in (real capture, 2026-11-24): `GET
+ * {net}/devices` leaves out every Echo listed in the network's
+ * `proxied_nodes`, while each one's `client_device_url` (`{net}/devices/{mac}`)
+ * answers a full device row, `source` naming the eero or Echo it connects
+ * through. The eero app lists them as connected devices, so the list reads
+ * that row for each one not acting as an eero (an Echo with eero Built-in on
+ * is an eero in `eero.list`, and its device row answers an error). One GET
+ * per such Echo; a failed read leaves it out.
  */
 
 import { BackendError } from "../../errors";
@@ -31,12 +40,16 @@ import { mapDevice, type RawDeviceFull } from "../map/device";
 import { asList, linkUrl, type RawBlockWrite, type RawBurstResult, type RawDeviceWrite, type RawProfile } from "../raw";
 import { compactMac, deviceWritePath, idFromUrl, networkPath } from "../urls";
 import type { EeroArea } from "./index";
+import { fetchNetwork } from "./network";
 import { fetchRouting } from "./routing";
 
 type Usage = RawDeviceFull["usage"];
 
 /** The last live figures per network: their burst's time and each device's usage, by compact MAC. */
 type Held = { at: string; byMac: Map<string, Usage> };
+
+/** How long the hidden Echos' device rows are kept before they are read again. */
+const ECHO_ROWS_MS = 60_000;
 
 export const device: EeroArea<"device"> = (ctx) => {
   const { client } = ctx;
@@ -113,13 +126,46 @@ export const device: EeroArea<"device"> = (ctx) => {
     }
   };
 
+  /** The hidden Echos' rows per network, read at most once a minute: many queries read the device list each poll. */
+  const echoMemo = new Map<M.Id, { at: number; writes: number; rows: Promise<RawDeviceFull[]> }>();
+
+  /** Device rows for the Echos `GET {net}/devices` leaves out: capable of eero Built-in but not acting as an eero. */
+  const echoRows = (net: M.Id, listed: RawDeviceFull[]): Promise<RawDeviceFull[]> => {
+    const listedMacs = new Set(listed.map((d) => compactMac(d.mac ?? "")).filter(Boolean));
+    const keep = (rows: RawDeviceFull[]) => rows.filter((d) => !listedMacs.has(compactMac(d.mac ?? "")));
+    const hit = echoMemo.get(net);
+    // Kept a minute, and dropped after a device, profile or block write (it may have changed them).
+    if (hit && hit.writes === client.deviceWrites && Date.now() - hit.at < ECHO_ROWS_MS) return hit.rows.then(keep);
+    const rows = (async () => {
+      let nodes;
+      try {
+        nodes = (await fetchNetwork(ctx, net)).proxied_nodes?.devices ?? [];
+      } catch {
+        return [];
+      }
+      const missing = nodes.filter((n) => n.enabled !== true && n.is_meshing !== true && n.client_device_url);
+      const read = await Promise.all(
+        missing.map((n) =>
+          client
+            .request<RawDeviceFull>({ method: "GET", path: n.client_device_url as string })
+            .then((d) => (d && typeof d === "object" && (d.url || d.mac) ? [d] : []))
+            .catch(() => [] as RawDeviceFull[]),
+        ),
+      );
+      return read.flat();
+    })();
+    echoMemo.set(net, { at: Date.now(), writes: client.deviceWrites, rows });
+    return rows.then(keep);
+  };
+
   const list = async (net: M.Id): Promise<M.Device[]> => {
-    const [listed, blocked, members] = await Promise.all([
+    const [listedOnly, blocked, members] = await Promise.all([
       // While a burst is live each read must reach eero, not take the client's 5 s shared answer.
       client.request({ method: "GET", path: networkPath(net, "devices"), share: !isLive(net) }).then((d) => asList<RawDeviceFull>(d, "devices")),
       blacklist(net),
       profileMembers(net),
     ]);
+    const listed = [...listedOnly, ...(await echoRows(net, listedOnly))];
     // Members the device list left out (offline a while), once each, after the listed ones. Matched on MAC or link id.
     const keysOf = (d: RawDeviceFull) => [compactMac(d.mac ?? ""), idFromUrl(linkUrl(d.url) ?? "")].filter(Boolean);
     const known = new Set(listed.flatMap(keysOf));

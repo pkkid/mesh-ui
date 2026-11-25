@@ -202,7 +202,8 @@ describe("profile commands (fake eero server)", () => {
     ]);
     // Thursday 5:41 PM in New York: Bedtime starts at 9 PM (02:00Z).
     expect(mia?.nextChange).toEqual({ at: "2026-11-13T02:00:00.000Z", to: "paused", scheduleId: "1" });
-    expect(r.result.unassigned).toEqual({ deviceIds: ["0a1b2c000006", "0a1b2c000007", "0a1b2c000008"], devicesOnline: 2, paused: false, schedules: [] });
+    // Den Dot (an Echo eero leaves out of its device list) is Unassigned too.
+    expect(r.result.unassigned).toEqual({ deviceIds: ["0a1b2c000006", "0a1b2c000007", "0a1b2c000008", "0a1b2c0003df"], devicesOnline: 3, paused: false, schedules: [] });
     // Today's lanes in New York (Thursday 5:41 PM): the end of Wednesday's Bedtime, then tonight's; Leo is paused from now.
     expect(r.result.today).toMatchObject({ date: "2026-11-12", timezone: "America/New_York", now: 17 * 60 + 41 });
     const lane = (id: string | null) => r.result.today.lanes.find((l) => l.profileId === id)?.segments.map((x) => [x.kind, x.start, x.end]);
@@ -287,7 +288,8 @@ describe("profile commands (fake eero server)", () => {
     // (one usage read per profile per range), far under the 80 a minute budget, and no /schedules reads.
     expect(fake.log.filter((e) => e.path === "/2.2/networks/100001/profiles").length).toBe(1);
     expect(fake.log.some((e) => e.path.endsWith("/schedules"))).toBe(false);
-    expect(fake.log.length).toBeLessThanOrEqual(24);
+    // 25 with device.list's read of the hidden Echo's device link (once a minute).
+    expect(fake.log.length).toBeLessThanOrEqual(25);
   });
 });
 

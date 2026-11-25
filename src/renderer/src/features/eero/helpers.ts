@@ -9,6 +9,16 @@ import { formatCount } from "../../../../core/format";
 import type { Eero, EeroPort, Radio, SettingsImpact } from "../../../../core/model";
 
 /** "Tri-band Wi-Fi 7", "Dual-band": band count, plus the Wi-Fi generation when the model name carries it. */
+/**
+ * The eero's name in the breadcrumb: "Office eero", so it reads as one. An
+ * eero Built-in device (an Echo) is not an eero, and a name that already says
+ * eero ("Basement eero", "eero Pro") does not need it twice: those stay as named.
+ */
+export function crumbTitle(e: Pick<Eero, "location" | "kind">): string {
+  if (e.kind === "builtin" || /\beero\b/i.test(e.location)) return e.location;
+  return `${e.location} eero`;
+}
+
 export function radioBadge(e: Pick<Eero, "bands" | "model">): string | null {
   const n = e.bands.filter((b) => b !== "wired").length;
   const bands = n >= 3 ? "Tri-band" : n === 2 ? "Dual-band" : null;
@@ -36,9 +46,11 @@ export function autoChannelLine(radios: ReadonlyArray<Radio>): string | null {
 /** This eero's upstream (the gateway when eero reports none) and the eeros that hang off it. */
 export function uplinkOf(eero: Eero, eeros: ReadonlyArray<Eero>): { upstream: Eero | null; downstream: Eero[] } {
   const others = eeros.filter((e) => e.id !== eero.id);
-  const upstream = eero.isGateway ? null : (others.find((e) => e.id === eero.upstream) ?? others.find((e) => e.isGateway) ?? null);
+  // eero does not say which eero an eero Built-in device (an Echo) meshes to: no upstream, and nobody's downstream.
+  const unknownUplink = (e: Eero) => e.kind === "builtin" && e.upstream === null;
+  const upstream = eero.isGateway || unknownUplink(eero) ? null : (others.find((e) => e.id === eero.upstream) ?? others.find((e) => e.isGateway) ?? null);
   const downstream = others
-    .filter((e) => !e.isGateway && (e.upstream === eero.id || (eero.isGateway && e.upstream === null)))
+    .filter((e) => !e.isGateway && (e.upstream === eero.id || (eero.isGateway && e.upstream === null && !unknownUplink(e))))
     .sort((a, b) => a.location.localeCompare(b.location));
   return { upstream, downstream };
 }

@@ -9,7 +9,7 @@ import { pathFor } from "~/app/router";
 import { useQuery } from "~/app/useCommand";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { MeshBars } from "~/components/mesh/LinkChip";
-import { GatewayLabel } from "~/components/ui/badge";
+import { EeroRoleLabel } from "~/components/ui/badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { IconTile } from "~/components/ui/hero";
 import { PlaceholderRows, Row, RowList, SectionError, SectionLink } from "~/components/ui/page";
@@ -85,9 +85,7 @@ export function EerosList() {
                 <IconTile icon={eeroIcon(e)} className="row-span-3" />
                 <div className="col-span-2 flex min-w-0 items-center gap-2 font-medium text-sm">
                   <span className="truncate">{e.location}</span>
-                  {e.isGateway && (
-                    <GatewayLabel />
-                  )}
+                  <EeroRoleLabel eero={e} />
                 </div>
                 <div className="flex items-center gap-x-1.5 whitespace-nowrap text-muted-foreground text-xs">
                   {e.model && <span>{e.model}</span>}

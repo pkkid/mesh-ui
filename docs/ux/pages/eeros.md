@@ -59,12 +59,24 @@ Sidebar count: number of eeros.
      band colour, warning colour and text at 65% or more, percent on the
      right), Devices; headers in normal case. A Wired row with the wired
      client count, when there are any, is the last row of the same table
-     (same dashed divider), and the note for dual-band models ("eero 7 is
-     dual band, no 6 GHz radio") sits under the whole table. The header's
+     (same dashed divider). The header's
      status and Blink light are level with the eero name, 4px further right
      so the button's gap to the card edge matches its gap to the top.
    - List view: one row per eero with the header fields and per-band client
      counts.
+   - **eero Built-in devices** (Echos extending the mesh) are eeros of
+     kind `builtin` in `eero.list`, so they appear everywhere eeros do (the
+     topology, these cards, the sidebar count, the titlebar switcher, the
+     palette, Overview) after the eero hardware. Their card has the Echo icon
+     for its model, "eero Built-in" beside the name in the Gateway label's
+     dim text, "Echo Spot (2024 release) · 192.168.4.150", status, and no
+     Blink light. eero sends no radios for an Echo, so the body is one row:
+     Backhaul "Wireless", Mesh signal (bars, "4 of 5 bars", dBm), Devices.
+     The card opens the eero detail page like any other. List view: a
+     Devices count in place of the band counts. On the map, an Echo hangs
+     off the gateway (eero does not say which eero it meshes to; core counts
+     it hop 1, as any eero with no known upstream).
+   - Cards leave out the dual-band footnote (eero detail keeps it).
 3. Two columns, 56px below Your eeros:
    - **Data usage by eero**. Description under the title: the window and the
      busiest eero's share ("24 hours, Living Room carried 66%"). Range

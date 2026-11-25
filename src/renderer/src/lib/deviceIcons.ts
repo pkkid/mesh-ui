@@ -161,8 +161,9 @@ export const EERO_MODEL_ICONS: Record<string, LucideIcon> = {
   U010001: EeroGateway, // eero PoE Gateway
 };
 
-/** The icon for an eero: by model number, then by model name, then the puck. */
-export function eeroIcon(e: Partial<Pick<Eero, "model" | "modelNumber">> | null | undefined): LucideIcon {
+/** The icon for an eero: by model number, then by model name, then the puck. An eero Built-in device gets its Echo glyph. */
+export function eeroIcon(e: Partial<Pick<Eero, "model" | "modelNumber" | "kind">> | null | undefined): LucideIcon {
+  if (e?.kind === "builtin") return echoIcon(e.model) ?? EchoSphere;
   const byNumber = e?.modelNumber ? EERO_MODEL_ICONS[e.modelNumber.trim().toUpperCase()] : undefined;
   if (byNumber) return byNumber;
   const m = (e?.model ?? "").toLowerCase();

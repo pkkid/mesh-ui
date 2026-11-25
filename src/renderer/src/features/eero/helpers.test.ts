@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { Device, Eero, EeroPort, Radio } from "../../../../core/model";
 import { RESTART_ESTIMATE } from "../../../../core/commands/network";
 import { IMPACT, settingsImpact } from "../../../../core/commands/settings";
-import { autoChannelLine, ethernet, ipText, ledState, portName, portsLine, radioBadge, restartLine, restartNetworkLine, updateWindow, uplinkOf } from "./helpers";
+import { autoChannelLine, crumbTitle, ethernet, ipText, ledState, portName, portsLine, radioBadge, restartLine, restartNetworkLine, updateWindow, uplinkOf } from "./helpers";
 
 /** An invented eero; only the fields a test names matter. */
 function eero(over: Partial<Eero> & Pick<Eero, "id" | "location">): Eero {
   return {
+    kind: "eero",
+    signalDbm: null,
     serial: null,
     model: null,
     modelNumber: null,
@@ -203,5 +205,16 @@ describe("restart copy comes from core's estimates", () => {
     expect(restartNetworkLine(impact)).toBe(`Restarts every eero at once. 2 devices online lose internet for ${IMPACT["network.restart"]?.estimate}.`);
     expect(restartNetworkLine(settingsImpact(["network.restart"], [device("a", true)]))).toContain("1 device online loses internet");
     expect(restartNetworkLine(undefined)).toBe(`Restarts every eero at once. Everyone loses internet for ${IMPACT["network.restart"]?.estimate}.`);
+  });
+});
+
+describe("crumbTitle", () => {
+  it("adds eero, except for an Echo or a name that already says eero", () => {
+    expect(crumbTitle({ location: "Office", kind: "eero" })).toBe("Office eero");
+    expect(crumbTitle({ location: "Basement eero", kind: "eero" })).toBe("Basement eero");
+    expect(crumbTitle({ location: "Eero Pro", kind: "eero" })).toBe("Eero Pro");
+    // A word inside another word is not "eero".
+    expect(crumbTitle({ location: "Veeroom", kind: "eero" })).toBe("Veeroom eero");
+    expect(crumbTitle({ location: "Kitchen Echo", kind: "builtin" })).toBe("Kitchen Echo");
   });
 });

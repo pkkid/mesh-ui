@@ -1,8 +1,11 @@
 /**
  * One eero's radios: band, channel, width, utilisation and devices, plus a
  * dual-band note and a Wired row. Used by the eero cards on the eeros page
- * and by eero detail. docs/ux/pages/eeros.md (Layout 2).
+ * and by eero detail. An eero Built-in device (an Echo) reports no radios, so
+ * it gets one row for its own link into the mesh instead.
+ * docs/ux/pages/eeros.md (Layout 2).
  */
+import { MeshBars } from "~/components/mesh/LinkChip";
 import { BandBadge } from "~/components/ui/band-badge";
 import { Meter, meterTone } from "~/components/ui/meter";
 import { cn } from "~/lib/utils";
@@ -20,7 +23,9 @@ const COLS = "grid grid-cols-[62px_64px_58px_minmax(0,1fr)_48px] items-center ga
 export const wirelessRadios = (e: Pick<Eero, "radios">): Radio[] =>
   e.radios.filter((r) => r.band !== "wired").sort((a, b) => (ORDER[a.band] ?? 9) - (ORDER[b.band] ?? 9));
 
-export function RadioTable({ eero, className }: { eero: Eero; className?: string }) {
+/** `note`: the dual-band footnote under the table (eero detail shows it; the eeros page cards leave it out). `offline`: no live figures. */
+export function RadioTable({ eero, className, note = true, offline = false }: { eero: Eero; className?: string; note?: boolean; offline?: boolean }) {
+  if (eero.kind === "builtin") return <MeshLinkTable eero={eero} offline={offline || eero.status === "offline"} className={className} />;
   const radios = wirelessRadios(eero);
   const dualBand = radios.length > 0 && !radios.some((r) => r.band === "6");
   const wired = eero.clients.wired ?? 0;
@@ -86,9 +91,44 @@ export function RadioTable({ eero, className }: { eero: Eero; className?: string
           </span>
         </div>
       )}
-      {dualBand && <div className="mt-2 text-2xs text-muted-foreground">{eero.model ?? "This eero"} is dual band, no 6 GHz radio</div>}
+      {note && dualBand && <div className="mt-2 text-2xs text-muted-foreground">{eero.model ?? "This eero"} is dual band, no 6 GHz radio</div>}
     </div>
   );
 }
 
 const bandName = (b: Radio["band"]) => (b === "wired" ? "Wired" : `${b} GHz`);
+
+const LINK_COLS = "grid grid-cols-[88px_minmax(0,1fr)_48px] items-center gap-2";
+
+/** An eero Built-in device's one row: its wireless link into the mesh, the signal, and the devices connected through it. */
+function MeshLinkTable({ eero, offline, className }: { eero: Eero; offline: boolean; className?: string }) {
+  const bars = offline ? null : eero.meshBars;
+  return (
+    <div className={cn("text-xs", className)} role="table" aria-label={`${eero.location} mesh link`}>
+      <div role="row" className={cn(LINK_COLS, "pb-1 text-muted-foreground")}>
+        <span role="columnheader">Backhaul</span>
+        <span role="columnheader">Mesh signal</span>
+        <span role="columnheader" className="text-right">
+          Devices
+        </span>
+      </div>
+      <div role="row" className={cn(LINK_COLS, "py-[5px]")}>
+        <span role="cell">Wireless</span>
+        <span role="cell" className="flex items-center gap-1.5 tabular-nums">
+          {bars === null ? (
+            <span className="text-muted-foreground">{MISSING}</span>
+          ) : (
+            <>
+              <MeshBars bars={bars} />
+              <span>{bars} of 5 bars</span>
+              {eero.signalDbm !== null && <span className="text-muted-foreground">{eero.signalDbm} dBm</span>}
+            </>
+          )}
+        </span>
+        <span role="cell" className="text-right font-medium tabular-nums">
+          {formatCount(offline ? null : eero.clients.total)}
+        </span>
+      </div>
+    </div>
+  );
+}

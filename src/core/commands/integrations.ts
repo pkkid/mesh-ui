@@ -64,7 +64,8 @@ export const commands: AnyCommand[] = [
     params: enabledParams,
     effect: "disruptive",
     gate: { area: "network.proxied_nodes", bridgeOff: true },
-    invalidates: ["integrations", "devices"],
+    // Echos join or leave eero.list as eero Built-in devices.
+    invalidates: ["integrations", "devices", "eeros", "network"],
     confirmMessage: async (ctx, p) =>
       // An unavailable integration is refused with eero's reason before anything asks.
       (await available(ctx, "builtin"), p.enabled)

@@ -3,6 +3,9 @@
  * devices, Ethernet ports, settings (shown as values) and more actions.
  * Rename, status light, nightlight, Blink and Restart run their commands
  * through the write kit; port actions and Remove stay "Coming soon" (M5).
+ * An eero Built-in device (an Echo) uses the same page with what eero
+ * reports for it: its mesh link, devices and addresses; no usage, ports,
+ * software, settings or actions.
  * Layout, data and states: docs/ux/pages/eero-detail.md
  * and docs/mockups/04-eero-detail.html. `[` and `]` move between eeros.
  */
@@ -27,6 +30,7 @@ import { EeroPorts } from "./EeroPorts";
 import { EeroRadios } from "./EeroRadios";
 import { EeroInfo, EeroSettings } from "./EeroSettings";
 import { EeroUsage } from "./EeroUsage";
+import { crumbTitle } from "./helpers";
 
 export function EeroPage({ params }: PageProps) {
   const id = params.eeroId ?? "";
@@ -75,12 +79,13 @@ export function EeroPage({ params }: PageProps) {
   const gatewayId = list.find((e) => e.isGateway)?.id;
   const wiredOnGateway = (allDevices.data?.devices ?? []).filter((d) => d.connected && d.band === "wired" && d.eeroId === gatewayId).length;
   const name = data?.location ?? "eero";
+  const builtin = data?.kind === "builtin";
 
   return (
     <>
-      {/* "Basement eero": the eero's name in the breadcrumb, with "eero" so it reads as one. */}
+      {/* "Office eero": the eero's name in the breadcrumb, with "eero" unless it is an Echo or already says it (crumbTitle). */}
       {data?.location && (
-        <TopBarTitleSwitcher title={`${data.location} eero`} kind="eero" items={siblings} currentId={id} pathFor={(to) => pathFor("eero", { eeroId: to })} />
+        <TopBarTitleSwitcher title={crumbTitle(data)} kind="eero" items={siblings} currentId={id} pathFor={(to) => pathFor("eero", { eeroId: to })} />
       )}
 
       <EeroHero
@@ -97,22 +102,32 @@ export function EeroPage({ params }: PageProps) {
 
       {/* 56px between sections (design-system.md, Shape and spacing). */}
       <div className="flex flex-col gap-14">
-        <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <EeroUsage eeroId={id} name={name} timezone={network.data?.timezone ?? null} />
-          <EeroRadios eero={data} offline={offline} />
-        </div>
-
-        <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-          <EeroDevices eeroId={id} name={name} />
-          <div className="flex flex-col gap-3">
-            <EeroPorts eeroId={id} offline={offline} />
-            <WiredBackhaulNote eeros={list} wiredOnGateway={wiredOnGateway} />
+        {builtin ? (
+          // eero keeps no usage, ports or settings for an eero Built-in device: its devices beside its mesh link.
+          <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <EeroDevices eeroId={id} name={name} />
+            <EeroRadios eero={data} offline={offline} />
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <EeroUsage eeroId={id} name={name} timezone={network.data?.timezone ?? null} />
+              <EeroRadios eero={data} offline={offline} />
+            </div>
+
+            <div className="grid gap-x-7 gap-y-14 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <EeroDevices eeroId={id} name={name} />
+              <div className="flex flex-col gap-3">
+                <EeroPorts eeroId={id} offline={offline} />
+                <WiredBackhaulNote eeros={list} wiredOnGateway={wiredOnGateway} />
+              </div>
+            </div>
+          </>
+        )}
 
         <EeroInfo eero={data} clock={clock} />
 
-        <EeroSettings eero={data} remove={<RemoveEeroRow eero={data} eeros={list} networkName={networkName} />} />
+        {!builtin && <EeroSettings eero={data} remove={<RemoveEeroRow eero={data} eeros={list} networkName={networkName} />} />}
       </div>
     </>
   );

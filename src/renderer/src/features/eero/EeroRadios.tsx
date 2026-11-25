@@ -4,7 +4,9 @@
  * settings group (no card per band: no nested boxes). Missing figures show "-"; an offline eero
  * shows "-" throughout. docs/ux/pages/eero-detail.md (Layout 2).
  */
+import { MeshBars } from "~/components/mesh/LinkChip";
 import { BUSY_AT, wirelessRadios } from "~/components/mesh/RadioTable";
+import { KvList } from "~/components/ui/kv-list";
 import { BandBadge, bandLabel } from "~/components/ui/band-badge";
 import { Card, Empty, Section } from "~/components/ui/card";
 import { Meter, meterTone } from "~/components/ui/meter";
@@ -24,6 +26,34 @@ const PLACEHOLDER: Radio[] = (["2.4", "5"] as const).map((band) => ({
 }));
 
 export function EeroRadios({ eero, offline }: { eero: Eero | null; offline: boolean }) {
+  // An eero Built-in device (an Echo) reports no radios: its own link into the mesh instead.
+  if (eero?.kind === "builtin") {
+    const bars = offline ? null : eero.meshBars;
+    return (
+      <Section title="Mesh link" description={bars === null ? "Wireless" : `Wireless, ${bars} of 5 bars`} className="gap-[15px]">
+        <Card padded>
+          <KvList
+            className="text-xs"
+            items={[
+              { label: "Backhaul", value: "Wireless" },
+              {
+                label: "Mesh signal",
+                value:
+                  bars === null ? null : (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MeshBars bars={bars} />
+                      {bars} of 5 bars
+                    </span>
+                  ),
+              },
+              { label: "Signal", value: offline || eero.signalDbm === null ? null : `${eero.signalDbm} dBm` },
+              { label: "Devices", value: offline ? null : formatCount(eero.clients.total) },
+            ]}
+          />
+        </Card>
+      </Section>
+    );
+  }
   const radios = eero ? wirelessRadios(eero) : PLACEHOLDER;
   // "2 radios, auto channel on": the count, then how channels are picked (data-driven, under the title).
   const auto = eero && !offline ? autoChannelLine(radios) : null;

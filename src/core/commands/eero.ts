@@ -7,8 +7,26 @@ import { POLL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
 import { RESTART_ESTIMATE, type RestartResult } from "./network";
 
-/** Gateway first, then by location. */
-const byTopology = (a: M.Eero, b: M.Eero) => Number(b.isGateway) - Number(a.isGateway) || a.location.localeCompare(b.location);
+/** Gateway first, then eeros by location, then eero Built-in devices (Echos) by name, as the eero app lists them. */
+const byTopology = (a: M.Eero, b: M.Eero) =>
+  Number(b.isGateway) - Number(a.isGateway) || Number(a.kind === "builtin") - Number(b.kind === "builtin") || a.location.localeCompare(b.location);
+
+/**
+ * eero offers none of its eero actions for an eero Built-in device (an Echo
+ * extending the mesh): bad_params before anything is sent or confirmed.
+ */
+export function builtinRefusal(eero: Pick<M.Eero, "kind" | "location">, what: string): string | null {
+  return eero.kind === "builtin" ? `${eero.location} is an eero Built-in device. eero does not offer ${what} for it; use the Alexa app.` : null;
+}
+
+/** The eero for a write, refused with bad_params when it is an eero Built-in device. */
+async function eeroFor(ctx: CommandContext, eeroRef: string, what: string): Promise<{ id: M.Id; eero: M.Eero | undefined }> {
+  const id = await ctx.resolve("eero", eeroRef);
+  const eero = (await ctx.backend.eero.list(ctx.net)).find((e) => e.id === id);
+  const refused = eero ? builtinRefusal(eero, what) : null;
+  if (refused) throw new CommandError("bad_params", refused);
+  return { id, eero };
+}
 
 /** Mesh link quality from bars: 4 to 5 excellent, 3 good, 2 weak, 0 to 1 poor. Null for a wired eero or no bars. */
 export function meshQuality(e: Pick<M.Eero, "backhaul" | "meshBars">): M.MeshQuality | null {
@@ -120,7 +138,7 @@ export function portActionMessage(eero: Pick<M.Eero, "location">, port: Pick<M.E
 
 /** The port and eero for a port action, or bad_params when the port does not exist or does not list the action. */
 async function portFor(ctx: CommandContext, eeroRef: string, number: number, action: M.PortAction) {
-  const id = await ctx.resolve("eero", eeroRef);
+  const { id } = await eeroFor(ctx, eeroRef, "Ethernet ports");
   const [eero, ports] = await Promise.all([ctx.backend.eero.get(ctx.net, id), ctx.backend.eero.ports(ctx.net, id)]);
   const port = ports.ports.find((p) => p.number === number);
   if (!port) {
@@ -166,7 +184,7 @@ const writeCommands: AnyCommand[] = [
     gate: { area: "eeros" },
     invalidates: ["eeros", "network", "eero_ports"],
     params: z.object({ eero: ref("eero"), location: z.string().trim().min(1, "Enter a name.").max(32, "32 characters at most.").describe("New room name, 1 to 32 characters.") }),
-    run: async (ctx, p): Promise<M.Eero> => ctx.backend.eero.rename(ctx.net, await ctx.resolve("eero", p.eero), p.location),
+    run: async (ctx, p): Promise<M.Eero> => ctx.backend.eero.rename(ctx.net, (await eeroFor(ctx, p.eero, "renaming")).id, p.location),
   }),
 
   defineCommand({
@@ -179,7 +197,7 @@ const writeCommands: AnyCommand[] = [
     invalidates: [],
     params: z.object({ eero: ref("eero"), seconds: z.number().int().min(10).max(60).optional().describe(`How long to blink, 10 to 60 seconds (default ${FIND_SECONDS}).`) }),
     async run(ctx, p): Promise<{ eeroId: M.Id; seconds: number }> {
-      const id = await ctx.resolve("eero", p.eero);
+      const { id } = await eeroFor(ctx, p.eero, "Blink light");
       const seconds = p.seconds ?? FIND_SECONDS;
       await ctx.backend.eero.find(ctx.net, id, seconds);
       return { eeroId: id, seconds };
@@ -197,7 +215,7 @@ const writeCommands: AnyCommand[] = [
     params: z.object({ eero: ref("eero"), on: z.boolean().optional().describe("Light on or off."), brightness: z.number().int().min(0).max(100).optional().describe("Brightness, 0 to 100.") }),
     async run(ctx, p): Promise<M.Eero> {
       if (p.on === undefined && p.brightness === undefined) throw new CommandError("bad_params", "Give on, brightness or both.");
-      return ctx.backend.eero.setLed(ctx.net, await ctx.resolve("eero", p.eero), { on: p.on, brightness: p.brightness });
+      return ctx.backend.eero.setLed(ctx.net, (await eeroFor(ctx, p.eero, "a status light")).id, { on: p.on, brightness: p.brightness });
     },
   }),
 
@@ -217,7 +235,7 @@ const writeCommands: AnyCommand[] = [
       off: hhmm.optional().describe("Schedule end, HH:MM. Default: the current one."),
     }),
     async run(ctx, p): Promise<M.Eero> {
-      const id = await ctx.resolve("eero", p.eero);
+      const { id } = await eeroFor(ctx, p.eero, "a nightlight");
       const current = await ctx.backend.eero.get(ctx.net, id);
       // Capability check: only a Beacon reports a nightlight.
       if (!current.nightlight) throw new CommandError("bad_params", `${current.location} has no nightlight. Only eero Beacon has one.`);
@@ -238,18 +256,18 @@ const writeCommands: AnyCommand[] = [
     invalidates: ["eeros", "network"],
     params: z.object({ eero: ref("eero") }),
     async confirmMessage(ctx, p) {
-      const id = await ctx.resolve("eero", p.eero);
+      const { id } = await eeroFor(ctx, p.eero, "restarts");
       const [eeros, name] = await Promise.all([ctx.backend.eero.list(ctx.net), networkName(ctx)]);
       const e = eeros.find((x) => x.id === id);
       return e ? eeroRestartMessage(e, eeros, name) : `Restarts this eero. Its devices drop for ${RESTART_ESTIMATE.eero}.`;
     },
     async run(ctx, p): Promise<RestartResult> {
-      const id = await ctx.resolve("eero", p.eero);
+      const { id } = await eeroFor(ctx, p.eero, "restarts");
       const eeros = await ctx.backend.eero.list(ctx.net);
       const e = eeros.find((x) => x.id === id);
       await ctx.backend.eero.restart(ctx.net, id);
-      // An offline eero cannot take the restart, so it is not waited for.
-      const offline = new Set(eeros.filter((x) => x.status === "offline").map((x) => x.id));
+      // An offline eero cannot take the restart, and an eero Built-in device (an Echo) does not restart with the mesh.
+      const offline = new Set(eeros.filter((x) => x.status === "offline" || x.kind === "builtin").map((x) => x.id));
       const down = (e ? restartedBy(e, eeros) : [id]).filter((x) => !offline.has(x));
       return { networkId: ctx.net, eeroIds: down, estimate: e?.isGateway ? RESTART_ESTIMATE.network : RESTART_ESTIMATE.eero };
     },
@@ -290,7 +308,7 @@ const writeCommands: AnyCommand[] = [
     invalidates: ["eeros", "network", "eero_ports", "devices", "usage"],
     params: z.object({ eero: ref("eero") }),
     async confirmMessage(ctx, p) {
-      const id = await ctx.resolve("eero", p.eero);
+      const { id } = await eeroFor(ctx, p.eero, "removing it from the network here");
       const [eeros, name] = await Promise.all([ctx.backend.eero.list(ctx.net), networkName(ctx)]);
       const e = eeros.find((x) => x.id === id);
       if (!e) return `Removes this eero from ${name} and resets it. This cannot be undone.`;
@@ -299,7 +317,7 @@ const writeCommands: AnyCommand[] = [
       return removeMessage(e, eeros, name);
     },
     async run(ctx, p): Promise<{ networkId: M.Id; eeroId: M.Id; location: string }> {
-      const id = await ctx.resolve("eero", p.eero);
+      const { id } = await eeroFor(ctx, p.eero, "removing it from the network here");
       const eeros = await ctx.backend.eero.list(ctx.net);
       const e = eeros.find((x) => x.id === id);
       if (!e) throw new CommandError("bad_params", "That eero is not on this network.");
@@ -315,7 +333,8 @@ export const commands: AnyCommand[] = [
   defineCommand({
     id: "eero.list",
     label: "eeros",
-    description: "Lists the eeros on the network with status, topology (upstream eero, mesh bars), clients and bands. Gateway first.",
+    description:
+      "Lists the eeros on the network with status, topology (upstream eero, mesh bars), clients and bands. Gateway first. eero Built-in devices (Amazon Echos extending the mesh) are listed after the eeros with `kind: \"builtin\"`: eero sends no radios, firmware, uptime, ports or upstream for them, and eero actions refuse them.",
     icon: "router",
     effect: "query",
     topic: "eeros",
@@ -356,7 +375,10 @@ export const commands: AnyCommand[] = [
     poll: POLL.eeros,
     params: z.object({ eero: ref("eero") }),
     async run(ctx, p): Promise<M.EeroPorts> {
-      return normalisePorts(await ctx.backend.eero.ports(ctx.net, await ctx.resolve("eero", p.eero)));
+      const id = await ctx.resolve("eero", p.eero);
+      // An eero Built-in device reports no ports: an empty list, as for an eero without any.
+      if ((await ctx.backend.eero.list(ctx.net)).find((e) => e.id === id)?.kind === "builtin") return { eeroId: id, ports: [] };
+      return normalisePorts(await ctx.backend.eero.ports(ctx.net, id));
     },
   }),
 
@@ -368,7 +390,12 @@ export const commands: AnyCommand[] = [
     effect: "query",
     topic: "firmware_history",
     params: z.object({ eero: ref("eero"), limit: z.number().int().min(1).max(200).optional().describe("Most entries to return, 1 to 200 (default 20).") }),
-    run: async (ctx, p): Promise<M.FirmwareEntry[]> => ctx.backend.eero.firmwareHistory(ctx.net, await ctx.resolve("eero", p.eero), p.limit ?? 20),
+    async run(ctx, p): Promise<M.FirmwareEntry[]> {
+      const id = await ctx.resolve("eero", p.eero);
+      // eero keeps no eeroOS history for an eero Built-in device.
+      if ((await ctx.backend.eero.list(ctx.net)).find((e) => e.id === id)?.kind === "builtin") return [];
+      return ctx.backend.eero.firmwareHistory(ctx.net, id, p.limit ?? 20);
+    },
   }),
   ...writeCommands,
 ];

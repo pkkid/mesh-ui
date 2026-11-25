@@ -50,7 +50,7 @@ describe("health.check (demo)", () => {
   it("default: every check good except the Garage weak link, one warning, score 86", async () => {
     const { engine } = demo();
     const r = await ok(engine.execute<M.HealthReport>("health.check", { networkId: MAPLE }));
-    expect(r.checks.map((c) => c.id.replace(/^eero\..*/, "eero"))).toEqual(["internet", "dns", "eero", "eero", "eero", "eero", "mesh", "firmware"]);
+    expect(r.checks.map((c) => c.id.replace(/^eero\..*/, "eero"))).toEqual(["internet", "dns", "eero", "eero", "eero", "eero", "eero", "mesh", "firmware"]);
     expect(byId(r, "mesh")).toMatchObject({ status: "warning", detail: "Garage 2 bars to Office" });
     expect(r.checks.filter((c) => c.id !== "mesh").every((c) => c.status === "good")).toBe(true);
     expect(byId(r, "internet")?.detail).toMatch(/^Ziply Fiber up · .+ down, .+ up$/);

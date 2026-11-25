@@ -302,8 +302,8 @@ describe("Wi-Fi page load (fake eero server)", () => {
       expect(gets("/2.2/networks/100001/devices")).toBe(1);
       expect(gets("/2.2/networks/100001/wpa3_per_band")).toBe(1);
       const load = fake.log.length;
-      // 11 with device.list's one read of the New Device notifications (cached a minute).
-      expect(load).toBeLessThanOrEqual(11);
+      // 12 with device.list's one read of the New Device notifications (cached a minute) and of the hidden Echo's device link.
+      expect(load).toBeLessThanOrEqual(12);
       expect(JSON.stringify(results.filter((r) => r.ok))).not.toContain("fake-main-pass-01");
 
       // Show code: one more request at most, and only then is the password read.

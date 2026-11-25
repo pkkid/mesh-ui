@@ -533,6 +533,34 @@ read, and the app's request log (which starts after that save) has no
 `labelType=specialMarket` may be a market-specific label. MANUAL check in
 the #270 PR; if eero does not keep it, drop the command.
 
+
+## 21. eero Built-in nodes (2026-11-24)
+
+One read-only `GET {net}` on the maintainer's network (key paths and types
+only). `proxied_nodes{enabled: bool, devices[]}` listed 3 Echos; each row:
+`url`, `client_device_url`, `mac_address`, `ip_address`, `display_name`,
+`model_name`, `model_name_internal`, `manufacturer`,
+`manufacturer_device_type_id`, `status` ("green" while online), `os`,
+`os_version`, `serial`, `first_seen`, `first_active`: string; `enabled`,
+`is_meshing`: bool; `connected_clients_count`: number;
+`connection{signal: string ("-61 dBm"), score: number, score_bars: number,
+rx_bitrate: string, tx_retry_pct: number}`; `profile{url, name}`. Only one
+had `enabled` and `is_meshing` true, and only that one shows under the
+eeros in the eero app (with its client count and an eero Built-in switch);
+the other two were capable but off. `url` is `{net}/proxied_nodes/{id}` and
+`client_device_url` is `{net}/devices/{id}`. The node is not in `{net}/eeros`,
+and the device list did not include it either. Devices connected through it
+have a `source.url` ending in the same id, so their eero is the node. No
+row says which eero the node meshes to.
+
+The two Echos with eero Built-in off are missing from `{net}/devices` too,
+but each one's `client_device_url` answered a full device row (the usual
+device keys plus `is_proxied_node`, `upstream_device`, `amazon_devices_detail`)
+with `connected: true`, `connection_type: "wireless"` and a `source` (with
+`is_proxied_node: true`) pointing at the meshing Echo: they were the 2 of its
+7 clients missing from the list. The meshing Echo's own
+`client_device_url` answered an error. The eero app lists both as connected
+devices of the meshing Echo.
 ---
 
 ## API versions

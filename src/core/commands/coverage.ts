@@ -11,6 +11,8 @@ import { z } from "zod";
 import type * as M from "../model";
 import { TTL } from "../poll";
 import { type AnyCommand, type CommandContext, defineCommand, ref } from "../spec";
+import { CommandError } from "../errors";
+import { builtinRefusal } from "./eero";
 
 /** The generations in report order, newest first. */
 export const GENERATIONS: M.UpgradeReport["byGeneration"][number]["generation"][] = ["wifi7", "wifi6e", "wifi6", "wifi5", "wifi4"];
@@ -29,7 +31,8 @@ export function fillGenerations(report: M.UpgradeReport): M.UpgradeReport {
  */
 async function completeScan(ctx: CommandContext, scan: M.CoverageScan): Promise<M.CoverageScan> {
   const eeros = await ctx.backend.eero.list(ctx.net).catch(() => []);
-  const missing = eeros.filter((e) => !scan.rooms.some((r) => r.eeroId === e.id)).map((e) => ({ eeroId: e.id, location: e.location, quality: null, devices: 0, servedBy: null }));
+  // An eero Built-in device (an Echo) is not part of eero's scan, so it gets no room.
+  const missing = eeros.filter((e) => e.kind !== "builtin" && !scan.rooms.some((r) => r.eeroId === e.id)).map((e) => ({ eeroId: e.id, location: e.location, quality: null, devices: 0, servedBy: null }));
   const rooms = [...scan.rooms, ...missing]
     .map((r) => {
       const eero = eeros.find((e) => e.id === r.eeroId);
@@ -73,6 +76,12 @@ export const commands: AnyCommand[] = [
     gate: { area: "eeros" },
     invalidates: ["coverage"],
     params: z.object({ eero: ref("eero") }),
-    run: async (ctx, p): Promise<M.PlacementResult> => ctx.backend.eero.placementTest(ctx.net, await ctx.resolve("eero", p.eero)),
+    async run(ctx, p): Promise<M.PlacementResult> {
+      const id = await ctx.resolve("eero", p.eero);
+      const e = (await ctx.backend.eero.list(ctx.net)).find((x) => x.id === id);
+      const refused = e ? builtinRefusal(e, "a placement test") : null;
+      if (refused) throw new CommandError("bad_params", refused);
+      return ctx.backend.eero.placementTest(ctx.net, id);
+    },
   }),
 ];

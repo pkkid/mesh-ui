@@ -65,7 +65,8 @@ function setMembers(net: FakeNetwork, p: RawProfile, devices: RawDevice[]) {
 function setPaused(net: FakeNetwork, p: RawProfile, paused: boolean) {
   p.paused = paused;
   p.state = { ...p.state, value: paused ? "paused" : "active" };
-  for (const d of net.devices) {
+  // Hidden Echos are still devices in the profile: eero pauses them too.
+  for (const d of [...net.devices, ...net.hiddenEchos]) {
     if (d.profile?.url !== p.url) continue;
     d.paused = paused;
     d.profile = { ...d.profile, paused };

@@ -125,7 +125,7 @@ switch is in the topbar on every page (Share Wi-Fi lives on Overview and Wi-Fi, 
    table fits its card; it scrolls sideways only on windows too narrow for
    the columns shown) (icon, name
    with optional NEW or GUEST tag, maker and model line), Profile (avatar
-   and name, or "Unassigned"), Connected to (eero), Band (badge or Wired),
+   and name, or "Unassigned"), Connected to (eero, an eero Built-in Echo included; Echos that can do eero Built-in but have it off are listed too, although eero's device list leaves them out), Band (badge or Wired),
    Signal (bars; wired shows the `<···>` wired mark, lucide `ChevronsLeftRightEllipsis`, as the eero app does), IP · MAC (two mono lines), Live data
    (two small rates with their unit, "4.2 Mbps" or "320 kbps", and the
    device's share of current traffic, "12%", as in the eero app's live

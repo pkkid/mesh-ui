@@ -7,7 +7,7 @@ Mockup: [../../mockups/04-eero-detail.html](../../mockups/04-eero-detail.html)
 (shows "Office", an eero Pro 7 with wireless backhaul and Garage downstream).
 
 Shell, confirmations, states and refresh rules: [../overview.md](../overview.md).
-Topbar: crumbs "Maple Street / eeros / Office eero" (the eero's name plus "eero"; just "eero" until it loads; the name opens the crumb switcher, a list of every eero in `eero.list` order with its status, see design-system.md, Crumb switcher), nothing after them; the Refresh tooltip says "Updated 4s ago". Sidebar item
+Topbar: crumbs "Maple Street / eeros / Office eero" (the eero's name plus "eero", except for an eero Built-in Echo or a name that already has the word "eero", which stay as named ("Kitchen Echo", "Basement eero"); just "eero" until it loads; the name opens the crumb switcher, a list of every eero in `eero.list` order with its status, see design-system.md, Crumb switcher), nothing after them; the Refresh tooltip says "Updated 4s ago". Sidebar item
 eeros stays active. `[` and `]` move to the previous and next eero.
 
 ## Layout
@@ -105,6 +105,23 @@ eeros stays active. `[` and `]` move to the previous and next eero.
      removed while other eeros use it", and the description "The gateway
      can't be removed while other eeros use it; replace it in the eero app."
 
+
+### eero Built-in devices (Echos)
+
+An Echo extending the mesh (`kind: "builtin"` in `eero.list`) opens this
+page too, with what eero reports for it:
+
+- Hero: the Echo icon for its model (no LED bar), "eero Built-in" beside the
+  name, status, facts Model, Mesh signal (bars and "4 of 5 bars") and
+  Devices; no Data 24h and no actions (eero offers no rename, Blink light or
+  restart for it; the commands refuse it). The Uplink card shows the
+  upstream as "-", "not reported", since eero does not say which eero the
+  Echo meshes to, and has no Test placement.
+- Body: Connected devices beside **Mesh link** (Backhaul, Mesh signal,
+  Signal in dBm, Devices), then Device information with IP addresses and
+  Device information (no Software card: eero reports no eeroOS for it). No
+  Data usage, Radios, Ethernet ports or eero settings: eero keeps none of
+  them for an Echo.
 ## Data
 
 | Element | Command | Refresh |

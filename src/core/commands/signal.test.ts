@@ -83,7 +83,7 @@ describe("wifi.health (demo): points, mesh, load and advice", () => {
 
   it("calls a busy radio and weak devices on a healthy eero", () => {
     const eero = (over: Partial<M.Eero>): M.Eero => ({
-      id: "e1", serial: null, location: "Hall", model: null, modelNumber: null, isGateway: true, status: "online", firmware: null, updateAvailable: null, endOfLife: null,
+      id: "e1", kind: "eero", signalDbm: null, serial: null, location: "Hall", model: null, modelNumber: null, isGateway: true, status: "online", firmware: null, updateAvailable: null, endOfLife: null,
       backhaul: "wired", meshBars: null, upstream: null, hop: 0, meshQuality: null, clients: { total: 1, wired: 0, wireless: 1 }, bands: ["2.4"],
       radios: [{ band: "2.4", channel: 6, widthMhz: 20, utilization: 72, clients: 1, txPowerDbm: null, autoChannel: null }],
       led: { on: null, brightness: null }, nightlight: null, ipv4: null, ipv6: [], subnet: null, gatewayIp: null, mac: null, bssids: [], joined: null, uptimeSec: null, lastHeartbeat: null, powerSource: null, messages: [], ...over,
