@@ -149,7 +149,7 @@ eero.remove         destructive  Remove eero
 ```
 
 JSON format is an array of
-`{ id, label, description, effect, sensitive, params }` where `params` is the
+`{ id, label, description, effect, sensitive, access, params }` where `params` is the
 JSON Schema generated from the command's zod schema. This is the params
 documentation; there is no separate list to keep in sync.
 

@@ -20,6 +20,8 @@ export type CommandInfo = {
   effect: Effect;
   scope: Scope;
   sensitive: boolean;
+  /** "full": the CLI and MCP need Full access whatever the effect. */
+  access: "full" | null;
   poll: number | null;
   /** Writes: what they need to run (permission, bridge mode, capability); null for queries. */
   gate: ResolvedGate | null;
@@ -70,6 +72,7 @@ function register(spec: AnyCommand): RegisteredCommand {
     effect: spec.effect,
     scope,
     sensitive: spec.sensitive === true,
+    access: spec.access ?? null,
     poll: spec.poll ?? null,
     gate: spec.gate ? resolveGate(spec.gate) : null,
     confirmsWhenOffline: spec.confirmWhen !== undefined,

@@ -118,13 +118,13 @@ export type AvailabilityContext = {
   access?: Access;
 };
 
-/** The two access levels the palette follows (docs/architecture/security.md#access-levels). */
-export type Access = { cli: AccessLevel; mcp: AccessLevel };
+/** The two access levels and Reveal secrets the palette follows (docs/architecture/security.md#access-levels). */
+export type Access = { cli: AccessLevel; mcp: AccessLevel; secrets: boolean };
 
-/** Whether each surface's level allows a command: the palette lists it only when one does. */
-export function surfacesFor(info: Pick<CommandInfo, "effect" | "sensitive">, access: Access | undefined): { cli: boolean; mcp: boolean } {
+/** Whether each surface's access allows a command: the palette lists it only when one does. */
+export function surfacesFor(info: Pick<CommandInfo, "effect" | "sensitive" | "access">, access: Access | undefined): { cli: boolean; mcp: boolean } {
   if (!access) return { cli: true, mcp: true };
-  return { cli: allows(access.cli, info.effect, info.sensitive), mcp: allows(access.mcp, info.effect, info.sensitive) };
+  return { cli: allows({ level: access.cli, secrets: access.secrets }, info), mcp: allows({ level: access.mcp, secrets: access.secrets }, info) };
 }
 
 /** Why the palette cannot run a command the command line's level does not allow; it runs as the CLI would. */

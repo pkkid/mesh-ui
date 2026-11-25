@@ -13,7 +13,8 @@ explains them and adds detail.
 | eero session token | Engine memory; encrypted `session.json` | Full control of every network on the account |
 | Pending login token | Engine memory only, until verify | Becomes the session once a code is entered |
 | Wi-Fi and guest passwords | eero; returned only by `wifi.password.get`, `wifi.share`, `guest.share` | Network access |
-| Thread credentials | eero only; no command reads them | Smart home pairing |
+| Thread credentials | eero; returned only by `settings.thread.credentials` | Smart home pairing |
+| Admin invite links | eero; returned only by `admin.invite.create` | Whoever opens one becomes an admin |
 | Network data (device names, MACs, IPs, usage) | eero; renderer memory while shown | Privacy |
 | Ability to change the network | Every `write`, `disruptive`, `destructive` command | Outages, lockout, loss of data |
 
@@ -164,13 +165,14 @@ surface:
 
 The user chooses how much the command line and MCP agents may do, in
 Settings, Command line and agents (`app.access.set`). One level per surface,
-saved in `settings.json` as `cliAccess` and `mcpAccess`:
+saved in `settings.json` as `cliAccess` and `mcpAccess`, plus one **Reveal
+secrets** switch shared by both (`revealSecrets`, below):
 
 | Level | Allows | Default for |
 | --- | --- | --- |
 | Off | Nothing; every command answers `access_denied` | |
-| Read only | `query` commands, except sensitive ones (Wi-Fi passwords) | |
-| Changes | Everything but `destructive`: reads, writes, and disruptive commands such as pause or restart | MCP |
+| Read only | `query` commands | |
+| Changes | Everything but `destructive` and `admin.invite.create`: reads, writes, and disruptive commands such as pause or restart | MCP |
 | Full access | Every command | CLI |
 
 - **The engine enforces it** (`src/core/access.ts`), before params are
@@ -193,19 +195,34 @@ saved in `settings.json` as `cliAccess` and `mcpAccess`:
   edit `settings.json` (see Out of scope). The levels stop an agent or script
   from doing more than the user meant; they do not stop malware.
 
+- **Secrets need Reveal secrets, at every level.** A `sensitive` query
+  (`wifi.password.get`, `wifi.share`, `guest.share`,
+  `settings.thread.credentials`) is refused unless Reveal secrets is on, even
+  at Full access, and `tools/list` leaves it out. It is off by default and
+  the window, like the levels, is the only place to change it
+  (`app.access.set {secrets}`). The window itself always reveals them.
+- **Handing over the network needs Full access.** `admin.invite.create` is a
+  `write`, but its link makes whoever opens it an admin, so its spec sets
+  `access: "full"`: Read only and Changes refuse it whatever the effect.
+  Reveal secrets does not apply to it.
+
 `mesh-ui mcp --read-only` and `--allow` still work and can only narrow what
 the level allows.
 
 ## Sensitive results
 
-Some `query` commands return secrets by design: `wifi.password.get`,
-`wifi.share`, `guest.share` (Wi-Fi passwords and `WIFI:` QR payloads). For
-these the spec sets `sensitive: true`, and:
+Some commands return secrets by design: `wifi.password.get`, `wifi.share`,
+`guest.share` (Wi-Fi passwords and `WIFI:` QR payloads),
+`settings.thread.credentials` (the Thread network key, PSKc and dataset) and
+`admin.invite.create` (the invite link). For these the spec sets
+`sensitive: true`, and:
 
 - the UI reveals them only after a click and does not keep them in state after
   the view closes;
 - CLI table output masks them unless `--reveal` is passed;
-- MCP tool descriptions say the result contains a password;
+- the CLI and MCP run the queries only while Reveal secrets is on
+  ([Access levels](#access-levels));
+- MCP tool descriptions say the result contains a secret;
 - the audit log records that they ran, never the result.
 
 ## Audit log

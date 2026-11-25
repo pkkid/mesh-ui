@@ -143,10 +143,12 @@ function PaletteBody({ close }: { close: () => void }) {
   // The command line and MCP access levels: commands neither allows are not listed, the preview shows only the
   // calls each allows, and Run follows the command line's level (the palette runs a command as the CLI would).
   const settings = useQuery<AppSettings>("app.settings.get");
-  const access: Access | undefined = settings.data ? { cli: settings.data.cliAccess, mcp: settings.data.mcpAccess } : undefined;
-  const accessKey = access ? `${access.cli}|${access.mcp}` : "";
+  const access: Access | undefined = settings.data
+    ? { cli: settings.data.cliAccess, mcp: settings.data.mcpAccess, secrets: settings.data.revealSecrets === true }
+    : undefined;
+  const accessKey = access ? `${access.cli}|${access.mcp}|${access.secrets}` : "";
   /** What each surface may do for an eero, device or profile's details read (a query). */
-  const details = surfacesFor({ effect: "query", sensitive: false }, access);
+  const details = surfacesFor({ effect: "query", sensitive: false, access: null }, access);
 
   // Refetch lists older than a minute when the palette opens.
   useEffect(() => {

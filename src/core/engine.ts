@@ -11,8 +11,8 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { Backend } from "./backend";
 import { CommandError, type ExecuteResult, toExecuteError } from "./errors";
-import { ACCESS_SETTING, denial, levelOf } from "./access";
-import type { AccessLevel, AppSettings, HostEvent, Id } from "./model";
+import { ACCESS_SETTING, denial, FULL_GRANT, type Grant, levelOf } from "./access";
+import type { AppSettings, HostEvent, Id } from "./model";
 import { type AuditLog, auditEntry, fileAudit } from "./audit";
 import { CACHE_NETWORKS, TTL, type Topic, WRITE_SETTLE_SEC } from "./poll";
 import { type CommandInfo, createRegistry, type RegisteredCommand } from "./registry";
@@ -70,8 +70,8 @@ export interface Engine {
   /** Host events (session.changed, network.selected). Returns an unsubscribe. */
   onEvent(listener: (event: HostEvent) => void): () => void;
   selectedNetworkId(): Id | null;
-  /** What this engine's surface may run now: the saved level for cli and mcp, `full` for the window and unlimited runs. */
-  access(): Promise<AccessLevel>;
+  /** What this engine's surface may run now: the saved level and Reveal secrets for cli and mcp, everything for the window and unlimited runs. */
+  access(): Promise<Grant>;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +88,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   runInTray: false,
   cliAccess: "full",
   mcpAccess: "changes",
+  revealSecrets: false,
 };
 
 export function memorySettings(initial: Partial<AppSettings> = {}): SettingsStore {
@@ -262,12 +263,12 @@ export function createEngine(opts: EngineOptions): Engine {
     opts.audit !== undefined ? opts.audit : surface !== "ui" && live && host.configDir ? fileAudit(join(host.configDir, "audit.jsonl")) : null;
   /** The surface whose access level applies, or null when this engine is not limited. */
   const limited = surface !== "ui" && (opts.enforceAccess ?? live) ? surface : null;
-  /** The level read fresh each time: the window may change it while an MCP server runs. */
-  const accessLevel = async (): Promise<AccessLevel> => {
-    if (!limited) return "full";
+  /** The level and Reveal secrets, read fresh each time: the window may change them while an MCP server runs. */
+  const accessGrant = async (): Promise<Grant> => {
+    if (!limited) return FULL_GRANT;
     const field = ACCESS_SETTING[limited];
     const current = await (settings.reload ? settings.reload() : settings.get());
-    return levelOf(current[field], DEFAULT_SETTINGS[field]);
+    return { level: levelOf(current[field], DEFAULT_SETTINGS[field]), secrets: current.revealSecrets === true };
   };
   const listeners = new Set<(e: HostEvent) => void>();
   const writeQueues = new Map<string, Promise<unknown>>();
@@ -415,7 +416,7 @@ export function createEngine(opts: EngineOptions): Engine {
       return () => listeners.delete(listener);
     },
     selectedNetworkId: () => selected ?? null,
-    access: accessLevel,
+    access: accessGrant,
     async execute<R>(id: string, params?: unknown, options?: ExecuteOptions): Promise<ExecuteResult<R>> {
       const outcome = await executeOnce<R>(id, params, options?.fresh === true);
       if (audit) {
@@ -432,7 +433,7 @@ export function createEngine(opts: EngineOptions): Engine {
     if (!cmd) return { ok: false, error: { code: "unknown_command", message: `Unknown command "${id}".` } };
 
     if (limited) {
-      const refused = denial(limited, await accessLevel(), cmd.spec);
+      const refused = denial(limited, await accessGrant(), cmd.spec);
       if (refused) return { ok: false, error: { code: "access_denied", message: refused } };
     }
 

@@ -280,23 +280,31 @@ describe("access levels", () => {
 
   it("lists a command only when the command line or MCP level allows it, and says which", async () => {
     const { commands } = await demo();
-    const both = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "off", mcp: "changes" } }));
+    const both = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "off", mcp: "changes", secrets: false } }));
     expect(both.get("device.list")).toMatchObject({ cli: false, mcp: true });
     expect(both.get("device.pause")).toMatchObject({ cli: false, mcp: true });
     expect(both.has("eero.remove")).toBe(false);
 
-    const read = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "read", mcp: "off" } }));
+    const read = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "read", mcp: "off", secrets: false } }));
     expect(read.get("device.list")).toMatchObject({ cli: true, mcp: false });
     expect(read.has("device.pause")).toBe(false);
     expect(read.has("wifi.password.get")).toBe(false);
 
-    const full = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "full", mcp: "read" } }));
+    const full = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "full", mcp: "read", secrets: false } }));
     expect(full.get("eero.remove")).toMatchObject({ cli: true, mcp: false });
+    expect(full.get("admin.invite.create")).toMatchObject({ cli: true, mcp: false });
+    // Reveal secrets off hides the secrets at every level, Full access included.
+    expect(full.has("wifi.password.get")).toBe(false);
+    expect(full.has("settings.thread.credentials")).toBe(false);
+
+    const secrets = keyed(commandItems(commands, { ...SIGNED_IN, access: { cli: "read", mcp: "changes", secrets: true } }));
+    expect(secrets.get("wifi.password.get")).toMatchObject({ cli: true, mcp: true });
+    expect(secrets.has("admin.invite.create")).toBe(false);
   });
 
   it("lists no commands with both off, and every one without levels", async () => {
     const { commands } = await demo();
-    expect(commandItems(commands, { ...SIGNED_IN, access: { cli: "off", mcp: "off" } })).toEqual([]);
+    expect(commandItems(commands, { ...SIGNED_IN, access: { cli: "off", mcp: "off", secrets: true } })).toEqual([]);
     expect(commandItems(commands, SIGNED_IN).every((c) => c.cli && c.mcp)).toBe(true);
   });
 });

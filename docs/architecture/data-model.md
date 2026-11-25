@@ -800,6 +800,7 @@ type AppSettings = {
   runInTray: boolean;             // default false
   cliAccess: AccessLevel;         // default "full"; set by app.access.set only
   mcpAccess: AccessLevel;         // default "changes"
+  revealSecrets: boolean;         // default false: no passwords or Thread credentials to the CLI or MCP at any level
 };
 
 /** What the CLI or MCP may run (security.md#access-levels). */

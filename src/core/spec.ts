@@ -213,8 +213,10 @@ export interface CommandSpec<P extends z.ZodObject = z.ZodObject, R = unknown> {
   gate?: WriteGate;
   /** Write: topics to mark stale after success. */
   invalidates?: Topic[];
-  /** The result holds a credential. Never cached; masked by the CLI. */
+  /** The result holds a credential. Never cached; masked by the CLI. A sensitive query also needs Reveal secrets on the CLI and MCP. */
   sensitive?: true;
+  /** The CLI and MCP need Full access whatever the effect (admin.invite.create: the link hands over the network). */
+  access?: "full";
   /** Query: poll interval in seconds, from POLL in poll.ts. */
   poll?: number;
   /** Register only with this backend (demo.scenario.set). */

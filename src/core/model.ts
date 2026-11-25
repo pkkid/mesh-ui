@@ -1116,12 +1116,14 @@ export type AppSettings = {
   cliAccess: AccessLevel;
   /** What MCP agents may run (default `changes`). Set only in the window (`app.access.set`). */
   mcpAccess: AccessLevel;
+  /** Whether the command line and MCP agents may read secrets: Wi-Fi and guest passwords, Thread credentials (default false, at every level). Set only in the window (`app.access.set`). */
+  revealSecrets: boolean;
 };
 
 /**
- * How much the CLI or MCP may do, by effect: `off` nothing, `read` queries
- * that hold no password, `changes` everything but `destructive`, `full`
- * everything. The window is never limited. See docs/architecture/security.md#access-levels.
+ * How much the CLI or MCP may do, by effect: `off` nothing, `read` queries,
+ * `changes` everything but `destructive` and commands that need full access,
+ * `full` everything. Secrets also need `revealSecrets`, at every level. The window is never limited. See docs/architecture/security.md#access-levels.
  */
 export type AccessLevel = "off" | "read" | "changes" | "full";
 

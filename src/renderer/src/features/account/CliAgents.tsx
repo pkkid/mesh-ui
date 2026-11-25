@@ -5,7 +5,9 @@
  * Settings rows in one card. First the access levels for the command line
  * and MCP agents (`app.access.set`, saved in settings.json and checked by the
  * engine: Off, Read only, Changes, Full access; see
- * docs/architecture/security.md#access-levels), then one taller row with
+ * docs/architecture/security.md#access-levels), then the Reveal secrets
+ * switch shared by both (`app.access.set {secrets}`, off by default: no
+ * passwords or Thread credentials at any level), then one taller row with
  * the hookup and this week's commands. A surface that is off shows no
  * hookup lines; with both off the row is only this week's list.
  *
@@ -27,6 +29,7 @@ import { useCommand, useQuery } from "~/app/useCommand";
 import { Sparkline } from "~/components/charts/Sparkline";
 import { Button } from "~/components/ui/button";
 import { useWrite } from "~/app/useWrite";
+import { Switch } from "~/components/ui/switch";
 import { ChoiceSelect, Group, Row } from "~/features/advanced/SettingsGroups";
 import { toast } from "~/components/ui/toast";
 import { seriesColors } from "~/lib/chartColors";
@@ -51,7 +54,7 @@ const ACCESS_OPTIONS: ReadonlyArray<{ value: AccessLevel; label: string }> = [
 ];
 const ACCESS_DETAIL: Record<AccessLevel, string> = {
   off: "Every command is refused.",
-  read: "Can look at the network, but not change it or see Wi-Fi passwords.",
+  read: "Can look at the network, but not change it.",
   changes: "Can look and make changes, such as pausing a device or restarting an eero, but never delete or hand over anything.",
   full: "Can run every command, including ones that cannot be undone, such as removing an eero.",
 };
@@ -214,6 +217,21 @@ function AccessRow({ surface, settings }: { surface: keyof typeof ACCESS_SURFACE
   );
 }
 
+/** Reveal secrets: one switch for both surfaces, whatever their levels. */
+function SecretsRow({ settings }: { settings: AppSettings | undefined }) {
+  const write = useWrite<{ secrets: boolean }, AppSettings>("app.access.set", { failure: "Couldn't change Reveal secrets" });
+  const on = settings?.revealSecrets;
+  const toggle = (next: boolean) =>
+    void write.run({ secrets: next }, { success: `Reveal secrets turned ${next ? "on" : "off"}`, undo: { id: "app.access.set", params: { secrets: !next } } });
+  return (
+    <Row
+      title="Reveal secrets"
+      description="When off, the command line and AI agents can never see the Wi-Fi password, the guest Wi-Fi password or the Thread credentials, whatever their access level. This window can always show them."
+      control={<Switch checked={on} aria-label="Reveal secrets" disabled={on === undefined || write.running} onCheckedChange={toggle} />}
+    />
+  );
+}
+
 export function CliAgents({ id }: { id?: string }) {
   const info = useQuery<AppInfo>("app.info", undefined, { poll: true });
   const audit = useQuery<AuditList>("app.audit.list", { limit: SHOWN }, { poll: true });
@@ -245,6 +263,7 @@ export function CliAgents({ id }: { id?: string }) {
     >
       <AccessRow surface="cli" settings={settings.data} />
       <AccessRow surface="mcp" settings={settings.data} />
+      <SecretsRow settings={settings.data} />
       <div className={cn("grid items-start gap-7 px-4 py-4", hookup && "md:grid-cols-2", audit.loading && !audit.data && "opacity-40")}>
         {offerInstall ? <InstallCli cli={cli} /> : hookup && <CommandLines cli={cli} showCli={showCli} showMcp={showMcp} />}
         <ThisWeek audit={audit.data} now={now} />

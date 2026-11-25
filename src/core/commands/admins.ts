@@ -74,6 +74,8 @@ export const commands: AnyCommand[] = [
     gate: { area: "network.admin_invites", op: "create" },
     // The link makes whoever opens it an admin: never cached, masked by the CLI, kept out of the audit log.
     sensitive: true,
+    // Whoever opens the link can run the network, so the CLI and agents need Full access, as for what cannot be undone.
+    access: "full",
     invalidates: ["admins"],
     async run(ctx, { nickname }): Promise<InviteCreated> {
       const list = await ctx.backend.admins.list(ctx.net);

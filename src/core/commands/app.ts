@@ -113,11 +113,12 @@ export const commands: AnyCommand[] = [
     id: "app.access.set",
     label: "Command line and agent access",
     description:
-      "Sets how much the command line and MCP agents may run: off, read only (no Wi-Fi passwords), changes (everything but what cannot be undone) or full access. The window is never limited. Only in the Mesh UI window, so an agent cannot raise its own access.",
+      "Sets how much the command line and MCP agents may run: off, read only, changes (everything but what cannot be undone or hands over the network) or full access, and whether either may reveal secrets (Wi-Fi and guest passwords, Thread credentials; off by default, at every level). The window is never limited. Only in the Mesh UI window, so an agent cannot raise its own access.",
     icon: "shield",
     params: z.object({
       cli: z.enum(ACCESS_LEVELS as [AccessLevel, ...AccessLevel[]]).optional().describe("Access for mesh-ui run and the other CLI commands."),
       mcp: z.enum(ACCESS_LEVELS as [AccessLevel, ...AccessLevel[]]).optional().describe("Access for MCP agents (mesh-ui mcp)."),
+      secrets: z.boolean().optional().describe("Whether the command line and MCP agents may reveal Wi-Fi and guest passwords and Thread credentials."),
     }),
     effect: "write",
     gate: { area: null },
@@ -128,7 +129,8 @@ export const commands: AnyCommand[] = [
       const patch: Partial<AppSettings> = {};
       if (p.cli) patch.cliAccess = p.cli;
       if (p.mcp) patch.mcpAccess = p.mcp;
-      if (Object.keys(patch).length === 0) throw new CommandError("bad_params", "Give cli, mcp or both.");
+      if (p.secrets !== undefined) patch.revealSecrets = p.secrets;
+      if (Object.keys(patch).length === 0) throw new CommandError("bad_params", "Give cli, mcp, secrets or more than one.");
       return ctx.settings.update(patch);
     },
   }),

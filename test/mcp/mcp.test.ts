@@ -162,7 +162,7 @@ describe("mcp tools", () => {
     expect(restart?.inputSchema.required).toEqual(["thing", "confirm"]);
     expect(tools.find((t) => t.name === "thing_remove")?.inputSchema.required).toEqual(["confirm"]);
     expect(tools.find((t) => t.name === "thing_rename")?.inputSchema.properties?.confirm).toBeUndefined();
-    expect(tools.find((t) => t.name === "wifi_password_get")?.description).toContain("The result contains a Wi-Fi password.");
+    expect(tools.find((t) => t.name === "wifi_password_get")?.description).toContain("The result contains a secret");
   });
 
   it("derives annotations from the effect", async () => {
@@ -281,6 +281,7 @@ describe("mcp access levels", () => {
     expect(changes).toContain(toolName("device.pause"));
     expect(changes).not.toContain(toolName("eero.remove"));
     expect(changes).not.toContain(toolName("app.access.set"));
+    expect(changes).not.toContain(toolName("admin.invite.create"));
     await settings.update({ mcpAccess: "off" });
     expect(await names()).toEqual([]);
   });
@@ -315,6 +316,24 @@ describe("mcp access levels", () => {
     expect(text(res)).toMatchObject({ code: "access_denied" });
     await vi.waitFor(() => expect(changed).toBe(1));
     expect((await client.listTools()).tools).toEqual([]);
+  });
+
+  it("lists secrets only while Reveal secrets is on, and tells the client when it changes", async () => {
+    const { client, settings } = await connectAt("full", 10);
+    let changed = 0;
+    client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+      changed++;
+    });
+    const names = async () => (await client.listTools()).tools.map((t) => t.name);
+    const off = await names();
+    expect(off).toContain(toolName("eero.remove"));
+    expect(off).toContain(toolName("admin.invite.create"));
+    for (const id of ["wifi.password.get", "wifi.share", "guest.share", "settings.thread.credentials"]) expect(off).not.toContain(toolName(id));
+    const res = await client.callTool({ name: toolName("wifi.password.get"), arguments: {} });
+    expect(text(res)).toMatchObject({ code: "access_denied" });
+    await settings.update({ revealSecrets: true });
+    await vi.waitFor(() => expect(changed).toBe(1));
+    expect(await names()).toContain(toolName("wifi.password.get"));
   });
 
   it("refuses a call the level does not allow with access_denied", async () => {

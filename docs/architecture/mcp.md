@@ -104,14 +104,16 @@ The MCP server can control the user's network, so:
 
 - **Access level.** The user sets what MCP agents may run in Settings, Command
   line and agents: Off, Read only, Changes (the default: everything but what
-  cannot be undone) or Full access. `tools/list` lists only what the level
-  allows, read again on each list, and the engine refuses the rest with
+  cannot be undone or hands over the network) or Full access, and one
+  Reveal secrets switch (off by default) for the Wi-Fi and guest passwords
+  and Thread credentials at every level. `tools/list` lists only what the
+  level and the switch allow, read again on each list, and the engine refuses the rest with
   `access_denied`. The server declares `tools.listChanged` and checks the
   level every 3 seconds and after any `access_denied`; when it changed since
   the client last listed, it sends `notifications/tools/list_changed`, so a
   connected client drops tools it can no longer run without reconnecting.
   At start-up stderr says how many tools the level allows ("serving 98
-  tools on stdio (access: changes)"); with Off the server still runs, with
+  tools on stdio (access: changes, secrets hidden)"); with Off the server still runs, with
   no tools, so turning MCP back on needs no restart. See
   [security.md](security.md#access-levels).
 - **Confirmation is enforced by the engine.** `disruptive` and `destructive`

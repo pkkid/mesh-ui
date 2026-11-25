@@ -25,6 +25,7 @@ type CommandSpec<P extends z.ZodTypeAny, R> = {
   gate?: WriteGate;           // write: what it needs to run here; required for every non-query command
   invalidates?: Topic[];      // write: topics to refresh after success
   sensitive?: true;           // result contains a password or key
+  access?: "full";            // the CLI and MCP need Full access whatever the effect
   poll?: number;              // query: poll interval in seconds, from src/core/poll.ts
   confirmMessage?(ctx, params): Promise<string>;       // disruptive and destructive: the needs_confirm message
   confirmWhen?(ctx, params): Promise<string | null>;   // write: the needs_confirm message when this run would take devices offline
@@ -41,7 +42,11 @@ Field notes (this is the one place they are defined):
 - `icon`: a lucide icon name. Core stores only the string; the renderer maps
   it to the component. Optional; the palette falls back to the area icon.
 - `sensitive`: the result holds a credential (Wi-Fi or guest password, Thread
-  key). See [Effects](#effects) for how surfaces treat it.
+  key, admin invite link). See [Effects](#effects) for how surfaces treat it.
+  A sensitive query also needs the Reveal secrets switch on the CLI and MCP.
+- `access`: `"full"` when the CLI and MCP need Full access whatever the
+  effect, because the command hands over the network (`admin.invite.create`).
+  See [security.md](security.md#access-levels).
 - `gate` (`WriteGate` in `src/core/spec.ts`): what a write needs to run on
   this network: `area`, the `network.permissions` `can` key (`devices`,
   `eeros`, `profiles`, `settings`, `network`, or a dotted key such as
@@ -127,8 +132,9 @@ Field notes (this is the one place they are defined):
 `disruptive`. The UI colors them the same way: yellow title and button for
 disruptive, red for destructive ([design-system.md](../design/design-system.md#modals-and-popups)).
 
-`sensitive: true` queries also say in their MCP description that the result
-contains a credential, and the CLI masks them unless `--reveal` is passed
+`sensitive: true` commands also say in their MCP description that the result
+contains a secret, and the CLI masks them unless `--reveal` is passed; the
+CLI and MCP run sensitive queries only while Reveal secrets is on
 ([security.md](security.md#sensitive-results)). Full MCP annotations,
 including `openWorldHint`, are in [mcp.md](mcp.md#tools). Choosing an effect: if any eero client has
 seen the call restart the mesh or drop clients, it is `disruptive`, even
@@ -506,7 +512,7 @@ error stands.
 | id | label | params | effect | eero endpoint(s) | notes |
 | --- | --- | --- | --- | --- | --- |
 | `admin.list` | User permissions | `{}` | q | `GET {net}/members`, `GET {net}/invites` (plus the shared account and permissions reads) | `AdminList`: owner first then admins by name, invites newest first, seats used (members, owner included) of 10. eero sends no member email, so there is none. `isYou` is decided in core: the member whose name is the account name, narrowed by this network's role. Invites answer 403 for an admin; that part is empty, not an error. |
-| `admin.invite.create` | Invite an admin | `{ nickname?: string(1..32) }` | w | `GET {net}/invites`, `POST {net}/invites` JSON `{invite_role: "admin"}` (answers only `{invite_url}`), `GET {net}/invites` again to find the new row, then `PUT {net}/invites/{id}` JSON `{invite_nickname}` when a nickname is given | **Sensitive**: returns `{ invite, inviteUrl, expiresAt }`; the link makes whoever opens it an admin. `bad_params` when members plus pending invites fill the 10 seats. eero sends no email and has no email invite endpoint, so there is no `email` param: the link is shared by hand (QR or Copy link). Gate `network.admin_invites` create. |
+| `admin.invite.create` | Invite an admin | `{ nickname?: string(1..32) }` | w | `GET {net}/invites`, `POST {net}/invites` JSON `{invite_role: "admin"}` (answers only `{invite_url}`), `GET {net}/invites` again to find the new row, then `PUT {net}/invites/{id}` JSON `{invite_nickname}` when a nickname is given | **Sensitive**: returns `{ invite, inviteUrl, expiresAt }`; the link makes whoever opens it an admin, so the CLI and MCP need Full access (spec `access: "full"`). `bad_params` when members plus pending invites fill the 10 seats. eero sends no email and has no email invite endpoint, so there is no `email` param: the link is shared by hand (QR or Copy link). Gate `network.admin_invites` create. |
 | `admin.invite.cancel` | Cancel invite | `{ invite: Ref }` | w | `DELETE {net}/invites/{id}` | The invite is an id or its nickname. Resend on the page is this on the old one, then `admin.invite.create` with the same nickname, so a full network keeps its seat. Gate `network.admin_invites` delete. |
 | `admin.remove` | Remove admin | `{ admin: Ref }` | x | `DELETE {net}/admins/{user_id}` | Owner only (eero answers 403 otherwise). `bad_params` for the owner. The page confirms by typing the person's name. Gate `network.standard_admins` delete. |
 | `network.transfer` | Transfer network | `{ name: string, email?: string, phone?: string, networkName: string }` | x | `POST {net}/transfer` form `{name, email}` or `{name, phone}` | Exactly one of `email` or `phone` (where eero sends it), else `bad_params`. `networkName` must equal the network's name or nickname (the type-to-confirm step), else `bad_params`. Returns `{ recipient, sentTo }`; the recipient becomes owner when they accept. Owner only. Gate `network.ownership_transfer` create and capability `ownership_transfer`. |
@@ -563,7 +569,7 @@ and eero alerts first and sends at most 5 per poll.
 | `app.settings.set` | Change app settings | `{ userAgent?, openOnLaunch?, autoUpdate?, updateChannel?, runInTray? }` (at least one) | w | none | User-Agent override (applies on the next launch), network to open on launch, automatic update checks, `latest` or `beta`, keep running in the system tray (off by default; the window shows or removes its tray icon at once through the `tray` host action, other hosts only save it). Plan speed and desktop alerts have their own commands (`internet.plan.set`, `notifications.settings.set`). Returns `AppSettings`. |
 | `app.startup.set` | Start at login | `{ enabled }` | w | none | Adds or removes the OS login item (macOS and Windows login items, a Linux XDG autostart entry, `src/main/startup.ts`). With Keep running in the tray on, a login launch starts in the tray. `bad_params` in a development build and outside the window (`HOST_ONLY`). Returns `StartupStatus`. |
 | `app.cli.install` | Install command line tool | `{}` | w | none | macOS symlink into `/usr/local/bin`, AppImage `~/.local/bin`. On Windows, deb and rpm it reports where the installer put it. Window only. Returns `CliStatus`. |
-| `app.access.set` **(added)** | Command line and agent access | `{ cli?, mcp? }` each `off`, `read`, `changes` or `full` (at least one) | w | none | Sets `cliAccess` and `mcpAccess` in `settings.json` ([security.md](security.md#access-levels)). Window only: hidden from MCP and `bad_params` from the CLI, so an agent cannot raise its own access. Returns `AppSettings`. |
+| `app.access.set` **(added)** | Command line and agent access | `{ cli?, mcp?, secrets? }`: `cli` and `mcp` each `off`, `read`, `changes` or `full`, `secrets` a boolean (at least one) | w | none | Sets `cliAccess`, `mcpAccess` and `revealSecrets` in `settings.json` ([security.md](security.md#access-levels)). Window only: hidden from MCP and `bad_params` from the CLI, so an agent cannot raise its own access. Returns `AppSettings`. |
 | `app.audit.list` **(added)** | Recent CLI and agent commands | `{ limit?: 1..200 }` (default 20) | q | none | `AuditList` from `audit.jsonl` in the config dir for the Settings "This week" list: newest entries, a count per local day, refused with `needs_confirm`, `mcpLastAt`. Entry format, redaction and cap are in [security.md](security.md#audit-log); never results. Polled every 60 s. Reading lands in M6.6 (`readAudit`); until then an empty week. |
 | `app.update.check` **(added)** | Check for updates | `{}` | w | none | Checks now; returns `UpdateStatus`. Window only. |
 | `app.update.install` **(added)** | Restart to update | `{}` | w | none | Restarts Mesh UI (only the app, never the network) to install a downloaded update; `bad_params` unless the state is `ready`. Never runs on its own. Window only. Returns `{ restarting: true, version }`. |

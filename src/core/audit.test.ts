@@ -11,7 +11,7 @@ import type { Backend } from "./backend";
 import { AUDIT_MAX_LINES, type AuditEntry, fileAudit, memoryAudit, readAudit, redactParams, weekDays } from "./audit";
 import { allCommands } from "./registry";
 import { createDemoBackend } from "./demo";
-import { createEngine } from "./engine";
+import { createEngine, memorySettings } from "./engine";
 import { type AnyCommand, defineCommand } from "./spec";
 
 const SECRET = "hunter2-very-secret";
@@ -129,7 +129,9 @@ describe("CLI and MCP calls", () => {
     // The node host with a live-kind backend over the demo fixtures, as the Electron host builds a live engine.
     const host: CliHost = {
       ...nodeHost(),
-      createEngine: ({ surface }) => createEngine({ backend: liveLike(), commands, surface, host: { configDir: userDataDir } }),
+      // Reveal secrets on, so the password read runs and the log can be checked for it.
+      createEngine: ({ surface }) =>
+        createEngine({ backend: liveLike(), commands, surface, host: { configDir: userDataDir }, settings: memorySettings({ revealSecrets: true }) }),
     };
     expect(await runCli(["--format", "json", "run", "wifi.password.get"], io, host)).toBe(0);
     expect(await runCli(["run", "device.get", "--params", '{"device":"no such device"}'], io, host)).not.toBe(0);
